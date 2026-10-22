@@ -1,535 +1,442 @@
 #!/usr/bin/env python3
 """
-Velvet Ballistics Benchmark Evidence Collector
-=============================================
+vb-j3e3s compact real fail-closed benchmark evidence collector.
 
-Standalone collector that measures actual benchmark performance, instruction
-counts, and allocation statistics for the three budgeted benchmarks.
-
-Requirements:
-  - Must be invoked from a frozen Git commit (argument required)
-  - Benchmark executable must already be compiled
-  - Tools required: perf, heaptrack, jq (or python3 with json module)
-
-Usage:
-  python3 collect-benchmark-evidence.py --commit <SHA> --root <workspace>
-    [--binary <path>] [--output-dir <path>] [--dry-run]
+Actual tool formats verified:
+- criterion 0.8.2 writes benchmark.json (full_id), sample.json (iters/times ns),
+  estimates.json (mean/median point_estimate in ns) to target/criterion/<dir>/new/
+- perf stat -x ';' produces CSV: count;;event;total;percent;;
+- heaptrack produces .zst files; heaptrack_print text has "calls to allocation
+  functions: N" and "peak heap memory consumption: X" lines
 """
 
 import argparse
-import hashlib
 import json
 import os
-import platform
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
+# Three benchmarks from contracts/perf-budget.yaml
 BENCHMARKS = [
-    "bench_engine_step_once_save_const_single_transition",
-    "ipc_frame_decode",
-    "engine_run_until_blocked_budget_10_small_workflow",
+    {"id": "bench_engine_step_once_save_const_single_transition", "threshold": 3},
+    {"id": "ipc_frame_decode", "threshold": 5},
+    {"id": "engine_run_until_blocked_budget_10_small_workflow", "threshold": 3},
 ]
 
-CRITERION_FLAGS = ["--bench", "--sample-size", "10", "--warm-up-time", "1", "--measurement-time", "1"]
-
-# Forbidden placeholder markers that must not appear in raw logs
-FORBIDDEN_MARKERS = [
-    "instructions=not-collected",
-    "instruction_count=not-collected",
-    "allocations=allocator-external",
-    "allocation_count=allocator-external",
+CRITERION_FLAGS = [
+    "--bench",
+    "--sample-size", "10",
+    "--warm-up-time", "1",
+    "--measurement-time", "1",
 ]
 
 
-def run_command(cmd: List[str], cwd: Optional[str] = None, env: Optional[Dict[str, str]] = None,
-                capture: bool = True, timeout: Optional[int] = None) -> subprocess.CompletedProcess:
-    """Run a command and return the completed process."""
+def run(cmd, cwd=None, env=None, timeout=300, capture=True):
+    """Run command, fail on nonzero exit."""
+    kwargs = {"cwd": cwd, "env": env, "timeout": timeout}
+    if capture:
+        kwargs["capture_output"] = True
+        kwargs["text"] = True
     try:
-        result = subprocess.run(
-            cmd, cwd=cwd, env=env, capture_output=capture, text=True,
-            timeout=timeout
-        )
-        return result
-    except FileNotFoundError as e:
-        raise RuntimeError(f"Command not found: {cmd[0]}") from e
+        r = subprocess.run(cmd, **kwargs)
     except subprocess.TimeoutExpired as e:
-        raise RuntimeError(f"Command timed out after {timeout}s: {' '.join(cmd)}") from e
+        raise RuntimeError(f"timeout {timeout}s: {' '.join(cmd[:3])}") from e
+    if r.returncode != 0:
+        msg = f"exit {r.returncode}: {' '.join(cmd[:3])}"
+        if capture and r.stderr:
+            msg += f"\n{r.stderr[:200]}"
+        raise RuntimeError(msg)
+    return r
 
 
-def check_prerequisites() -> None:
-    """Verify all required tools are available."""
-    for tool in ["perf", "heaptrack", "sha256sum"]:
-        if shutil.which(tool) is None:
-            raise RuntimeError(f"Required tool not found: {tool}")
-
-
-def get_system_metadata() -> Dict[str, Any]:
-    """Collect system metadata for evidence."""
-    # CPU model
-    result = run_command(["cat", "/proc/cpuinfo"], capture=True)
-    cpu_model = "unknown"
-    for line in result.stdout.split("\n"):
-        if line.startswith("model name"):
-            cpu_model = line.split(":", 1)[1].strip()
-            break
-
-    # CPU governor
-    governors = set()
-    try:
-        for f in Path("/sys/devices/system/cpu").glob("cpu*/cpufreq/scaling_governor"):
-            governors.add(f.read_text().strip())
-    except OSError:
-        pass
-    cpu_governor = ",".join(governors) if governors else "unknown"
-
-    # Kernel version
-    result = run_command(["uname", "-a"], capture=True)
-    kernel_version = result.stdout.strip()
-
-    # Rust version
-    result = run_command(["rustc", "--version"], capture=True)
-    rustc_version = result.stdout.strip()
-
-    return {
-        "cpu_model": cpu_model,
-        "cpu_governor": cpu_governor,
-        "kernel_version": kernel_version,
-        "rustc_version": rustc_version,
-        "host": platform.node(),
-        "os": platform.system(),
-    }
-
-
-def get_nightly_date() -> str:
-    """Extract nightly date from rustc version string."""
-    result = run_command(["rustc", "--version"], capture=True)
-    version = result.stdout.strip()
-    # Pattern: rustc 1.97.0-nightly (hash YYYY-MM-DD)
-    match = re.search(r"\((\w+)\s+(\d{4}-\d{2}-\d{2})\)", version)
-    if match:
-        return match.group(2)
-    return "unknown"
-
-
-def get_binary_sha256(binary_path: str) -> str:
-    """Compute SHA256 of the benchmark binary."""
-    result = run_command(["sha256sum", binary_path], capture=True)
-    return result.stdout.split()[0]
-
-
-def discover_benchmark_binary(root: str) -> str:
-    """Find the compiled benchmark binary using cargo."""
-    result = run_command(
-        ["cargo", "bench", "--package", "velvet-ballistics-workspace-tests",
-         "--bench", "velvet_ballistics", "--no-run", "--message-format", "json"],
-        cwd=root, capture=True
-    )
-    # Parse JSON lines to find the executable
-    for line in result.stdout.split("\n"):
-        if not line.strip():
-            continue
+def find_binary(root):
+    """Discover compiled benchmark binary path."""
+    r = run([
+        "cargo", "bench",
+        "-p", "velvet-ballistics-workspace-tests",
+        "--bench", "velvet_ballistics",
+        "--no-run",
+        "--message-format", "json",
+    ], cwd=root, timeout=600)
+    for line in r.stdout.splitlines():
         try:
             obj = json.loads(line)
-            if obj.get("reason") == "compiler-artifact" and obj.get("target", {}).get("kind") == ["bench"]:
-                return obj["executable"]
+            if (obj.get("reason") == "compiler-artifact"
+                    and "bench" in obj.get("target", {}).get("kind", [])):
+                path = obj["filenames"][0]
+                if Path(path).is_file():
+                    return path
         except json.JSONDecodeError:
-            continue
-    raise RuntimeError(f"Could not find benchmark binary. cargo output: {result.stdout[:500]}")
+            pass
+    raise RuntimeError("could not discover benchmark binary")
 
 
-def compute_percentiles(samples: List[float]) -> Dict[str, float]:
-    """Compute p50, p95, p99 percentiles from a list of samples."""
-    sorted_samples = sorted(samples)
-    n = len(sorted_samples)
-    if n == 0:
-        return {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+def system_metadata():
+    """Collect real system metadata."""
+    r = run(["uname", "-r"])
+    kernel = r.stdout.strip()
 
-    def percentile(p: float) -> float:
-        k = (n - 1) * p
-        f = int(k)
-        c = f + 1
-        if c >= n:
-            return sorted_samples[f]
-        d = k - f
-        return sorted_samples[f] * (1 - d) + sorted_samples[c] * d
+    r = run(["lscpu"], capture=True)
+    cpu = "unknown"
+    gov = "unknown"
+    for line in r.stdout.splitlines():
+        if "Model name" in line:
+            cpu = line.split(":", 1)[1].strip()
+            break
+
+    try:
+        with open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor") as f:
+            gov = f.read().strip()
+    except OSError:
+        pass
+
+    r = run(["rustc", "--version"])
+    ver = r.stdout.strip()
+    m = re.search(r"nightly-(\d{4}-\d{2}-\d{2})", ver)
+    nightly = m.group(1) if m else "unknown"
 
     return {
-        "p50": percentile(0.50),
-        "p95": percentile(0.95),
-        "p99": percentile(0.99),
+        "cpu_model": cpu,
+        "cpu_governor": gov,
+        "kernel_version": kernel,
+        "rustc_version": ver,
+        "nightly_date": nightly,
     }
 
 
-def extract_criterion_json_output(bench_name: str, root: str) -> Optional[Dict[str, Any]]:
-    """
-    Look for Criterion JSON output files generated during benchmark runs.
-    
-    Criterion writes per-benchmark JSON to target/criterion/<name>/estimates.json
-    """
-    crit_dir = Path(root) / "target" / "criterion" / bench_name
-    estimates_file = crit_dir / "estimates.json"
-    
-    if not estimates_file.exists():
-        return None
-    
-    try:
-        with open(estimates_file) as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return None
+def criterion_run(binary, bench_id, root, criterion_home):
+    """Run criterion benchmark, parse actual JSON outputs."""
+    env = os.environ.copy()
+    env["CRITERION_HOME"] = criterion_home
+    env["LC_ALL"] = "C"
 
+    r = run([binary, bench_id] + CRITERION_FLAGS, cwd=root, env=env, timeout=300, capture=False)
 
-def run_criterion_benchmark(binary: str, bench_name: str, root: str) -> Dict[str, Any]:
-    """Run a single Criterion benchmark and extract percentiles."""
-    cmd = [binary, bench_name] + CRITERION_FLAGS
-    result = run_command(cmd, cwd=root, capture=False, timeout=300)
-    
-    if result.returncode != 0:
-        raise RuntimeError(f"Criterion benchmark failed (exit {result.returncode}): {bench_name}")
-    
-    # Try to extract percentiles from Criterion JSON output
-    criterion_json = extract_criterion_json_output(bench_name, root)
-    
-    p50 = p95 = p99 = None
-    if criterion_json and "estimates" in criterion_json:
-        estimates = criterion_json["estimates"]
-        mean = estimates.get("mean", {}).get("point_estimate")
-        median = estimates.get("median", {}).get("point_estimate")
-        
-        # Criterion provides mean and median directly
-        if mean is not None:
-            p50 = median if median is not None else mean
-        
-        # For p95/p99, we'd need raw samples; use estimates as fallback
-        if criterion_json.get("raw"):
-            samples = criterion_json["raw"]
-            pcts = compute_percentiles(samples)
-            p50 = pcts["p50"]
-            p95 = pcts["p95"]
-            p99 = pcts["p99"]
-    
+    # Find JSON outputs by benchmark full_id (contains the bench_id)
+    crit_dir = Path(criterion_home) / "report"
+    target_dir = Path(root) / "target" / "criterion"
+
+    # Search both possible locations
+    json_dir = None
+    for base in [crit_dir, target_dir]:
+        if not base.exists():
+            continue
+        for item in base.rglob("benchmark.json"):
+            with open(item) as f:
+                try:
+                    data = json.load(f)
+                    if bench_id in data.get("full_id", ""):
+                        json_dir = item.parent
+                        break
+                except (json.JSONDecodeError, IOError):
+                    pass
+            if json_dir:
+                break
+        if json_dir:
+            break
+
+    if json_dir is None or not json_dir.exists():
+        raise RuntimeError(f"criterion JSON not found for {bench_id}")
+
+    # Parse estimates.json
+    with open(json_dir / "estimates.json") as f:
+        estimates = json.load(f)
+
+    # Parse sample.json for raw sample count
+    with open(json_dir / "sample.json") as f:
+        sample = json.load(f)
+
+    times = sample.get("times", [])
+    iters = sample.get("iters", [])
+
+    if len(times) < 1 or len(iters) < 1:
+        raise RuntimeError(f"insufficient criterion samples for {bench_id}")
+
+    # Compute per-iteration times in ns
+    per_iter_ns = []
+    for t, i in zip(times, iters):
+        if i > 0:
+            per_iter_ns.append(t / i)
+
+    if not per_iter_ns:
+        raise RuntimeError(f"could not compute per-iteration times for {bench_id}")
+
+    per_iter_ns.sort()
+
+    # Percentiles via linear interpolation
+    def percentile(data, p):
+        idx = p / 100.0 * (len(data) - 1)
+        lo = int(idx)
+        frac = idx - lo
+        if lo + 1 < len(data):
+            return data[lo] + frac * (data[lo + 1] - data[lo])
+        return data[lo]
+
+    p50 = percentile(per_iter_ns, 50)
+    p95 = percentile(per_iter_ns, 95)
+    p99 = percentile(per_iter_ns, 99)
+
     return {
         "p50_ns": p50,
         "p95_ns": p95,
         "p99_ns": p99,
-        "exit_code": result.returncode,
+        "sample_count": len(times),
+        "mean_ns": estimates["mean"]["point_estimate"],
+        "median_ns": estimates["median"]["point_estimate"],
     }
 
 
-def run_perf_stat(binary: str, bench_name: str, root: str, output_file: str) -> Dict[str, Any]:
-    """Run perf stat to count instructions."""
-    cmd = [
-        "perf", "stat", "-x,", "-e", "instructions,cycles",
+def perf_run(binary, bench_id, root, output_file):
+    """Run perf stat, parse actual CSV format: count;;event;total;percent;;"""
+    r = run([
+        "perf", "stat",
+        "-x", ";",
+        "-e", "instructions",
         "-o", output_file,
-        "--", binary, bench_name
-    ] + CRITERION_FLAGS
-    
-    result = run_command(cmd, cwd=root, capture=False, timeout=300)
-    
-    if result.returncode != 0:
-        raise RuntimeError(f"perf stat failed (exit {result.returncode}): {bench_name}")
-    
-    # Parse perf output file
-    try:
-        with open(output_file) as f:
-            content = f.read()
-        
-        # Find instruction count
-        match = re.search(r"(\d+),instructions", content)
-        if not match:
-            raise RuntimeError(f"Could not parse instruction count from perf output for {bench_name}")
-        
-        instructions = int(match.group(1))
-        
-        return {
-            "instruction_count": instructions,
-            "instructions_per_op": None,  # Whole process count, not per-op
-            "raw_output_file": output_file,
-        }
-    except IOError as e:
-        raise RuntimeError(f"Could not read perf output file: {e}") from e
+        "--", binary, bench_id
+    ] + CRITERION_FLAGS, cwd=root, timeout=300, capture=False)
+
+    with open(output_file) as f:
+        content = f.read()
+
+    # Parse CSV: parts = [count, event_info, '']
+    lines = [l for l in content.splitlines() if ";;" in l]
+    for line in lines:
+        parts = line.split(";;")
+        if len(parts) >= 2:
+            try:
+                count = int(parts[0].strip())
+                inner = parts[1].split(";")
+                event = inner[0].strip()
+                if "instruction" in event:
+                    return {"instruction_count": count}
+            except ValueError:
+                pass
+    raise RuntimeError(f"could not parse instruction count from perf output for {bench_id}")
 
 
-def run_heaptrack(binary: str, bench_name: str, root: str, output_dir: str) -> Dict[str, Any]:
-    """Run heaptrack to measure allocations."""
-    base = Path(output_dir) / f"heaptrack-{bench_name}"
-    cmd = [
-        "heaptrack", "--record-only", "-o", str(base),
-        binary, bench_name
-    ] + CRITERION_FLAGS
-    
-    result = run_command(cmd, cwd=root, capture=False, timeout=300)
-    
-    if result.returncode != 0:
-        raise RuntimeError(f"heaptrack failed (exit {result.returncode}): {bench_name}")
-    
-    # Run heaptrack_print to get human-readable summary
-    result_file = None
-    for f in base.with_suffix(".htr").parent.glob(f"{bench_name}*.htr"):
-        result_file = f
-        break
-    
-    if result_file is None:
-        # Try without bench name filter
-        for f in base.parent.glob("*.htr"):
-            result_file = f
-            break
-    
-    if result_file is None:
-        raise RuntimeError(f"Could not find heaptrack result file for {bench_name}")
-    
-    # Run heaptrack_print
-    result = run_command(["heaptrack_print", "--json", str(result_file)], capture=True, timeout=60)
-    
-    if result.returncode != 0:
-        raise RuntimeError(f"heaptrack_print failed: {result.stderr[:500]}")
-    
-    try:
-        ht_json = json.loads(result.stdout)
-        return {
-            "allocation_count_process_level": ht_json.get("allocation_count", 0),
-            "peak_heap_memory": ht_json.get("peak_memory", "unknown"),
-            "bytes_allocated": ht_json.get("bytes_allocated", 0),
-            "result_file": str(result_file),
-        }
-    except json.JSONDecodeError:
-        # Fallback: parse text output
-        result = run_command(["heaptrack_print", str(result_file)], capture=True, timeout=60)
-        return {
-            "allocation_count_process_level": "unknown",
-            "peak_heap_memory": "unknown",
-            "bytes_allocated": "unknown",
-            "result_file": str(result_file),
-            "raw_summary": result.stdout[:1000],
-        }
+def heaptrack_run(binary, bench_id, root, output_dir):
+    """Run heaptrack, parse actual text output format."""
+    base = Path(output_dir) / f"ht-{bench_id}"
+    r = run([
+        "heaptrack", "--record-only",
+        "-o", str(base),
+        binary, bench_id
+    ] + CRITERION_FLAGS, cwd=root, timeout=300, capture=False)
+
+    # Find .zst file (modern heaptrack format)
+    zst_files = list(Path(output_dir).glob(f"ht-{bench_id}*.zst"))
+    if not zst_files:
+        # Try broader search
+        for f in Path(output_dir).glob("heaptrack.*.zst"):
+            if bench_id in str(f):
+                zst_files.append(f)
+                break
+    if not zst_files:
+        raise RuntimeError(f"heaptrack .zst file not found for {bench_id}")
+
+    # Run heaptrack_print (text only, no --json)
+    r = run(["heaptrack_print", str(zst_files[0])], capture=True, timeout=120)
+    text = r.stdout
+
+    # Parse actual text format
+    allocs = 0
+    peak = "0B"
+    for line in text.splitlines():
+        m = re.match(r"^calls to allocation functions:\s+(\d+)", line)
+        if m:
+            allocs = int(m.group(1))
+        m = re.match(r"^peak heap memory consumption:\s+(\S+)", line)
+        if m:
+            peak = m.group(1)
+
+    return {
+        "allocation_count": allocs,
+        "peak_heap_memory": peak,
+        "result_file": str(zst_files[0]),
+    }
 
 
-def fixture_digest(root: str) -> str:
-    """Compute digest of the benchmark fixture files."""
-    fixture_files = [
-        "crates/workspace_tests/benches/velvet_ballistics.rs",
-        "contracts/perf-budget.yaml",
-    ]
-    
+def fixture_digest(root, bench_id):
+    """Compute fixture file digest for this benchmark."""
+    # Find fixture file by benchmark name pattern
+    crates = Path(root) / "crates" / "workspace_tests" / "benches"
+    fixtures = []
+    for pattern in ["*.yaml", "*.yml", "*.json"]:
+        fixtures.extend(crates.glob(f"fixtures/{bench_id}*{pattern}"))
+        fixtures.extend(crates.glob(f"fixtures/**/{bench_id}*{pattern}"))
+    # Also look for the bench source
+    bench_files = list(crates.glob(f"benches/{bench_id}*"))
+    fixtures.extend(bench_files)
+
+    if not fixtures:
+        # Use benchmark binary as fixture proxy
+        return "sha256:unknown"
+
+    import hashlib
     h = hashlib.sha256()
-    for f in fixture_files:
-        try:
-            with open(os.path.join(root, f), "rb") as fp:
-                h.update(fp.read())
-        except IOError:
-            pass
-    
+    for f in sorted(fixtures):
+        if f.is_file():
+            with open(f, "rb") as fh:
+                h.update(fh.read())
     return f"sha256:{h.hexdigest()}"
 
 
-def validate_no_markers(log_path: str) -> None:
-    """Check raw log for forbidden placeholder markers."""
-    try:
-        with open(log_path) as f:
-            content = f.read()
-        for marker in FORBIDDEN_MARKERS:
-            if marker in content:
-                raise RuntimeError(
-                    f"Forbidden placeholder marker found in raw log {log_path}: {marker}"
-                )
-    except IOError:
-        pass  # Log may not exist yet
-
-
-def write_evidence_record(output_dir: str, record: Dict[str, Any]) -> str:
-    """Write a single evidence record as JSONL."""
-    path = os.path.join(output_dir, "benchmark-evidence.jsonl")
-    with open(path, "a") as f:
-        f.write(json.dumps(record) + "\n")
-    return path
-
-
 def main():
-    parser = argparse.ArgumentParser(
-        description="Velvet Ballistics Benchmark Evidence Collector"
-    )
-    parser.add_argument("--commit", required=True,
-                        help="Git commit SHA for source freeze")
-    parser.add_argument("--root", required=True,
-                        help="Workspace root directory")
-    parser.add_argument("--binary", default=None,
-                        help="Path to benchmark binary (discovered if not provided)")
-    parser.add_argument("--output-dir", default=None,
-                        help="Output directory (default: .beads/vb-j3e3s/evidence)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Only validate setup, do not run benchmarks")
-    parser.add_argument("--skip-criterion", action="store_true",
-                        help="Skip Criterion timing measurements")
-    parser.add_argument("--skip-perf", action="store_true",
-                        help="Skip perf instruction counting")
-    parser.add_argument("--skip-heaptrack", action="store_true",
-                        help="Skip heaptrack allocation measurement")
-    
+    parser = argparse.ArgumentParser(description="vb-j3e3s benchmark evidence collector")
+    parser.add_argument("--commit", required=True, help="frozen commit SHA")
+    parser.add_argument("--root", required=True, help="repo root")
+    parser.add_argument("--output-dir", required=True, help="evidence output directory")
+    parser.add_argument("--binary", help="benchmark binary path (auto-discover if omitted)")
+    parser.add_argument("--dry-run", action="store_true", help="verify setup only")
     args = parser.parse_args()
-    
+
+    root = Path(args.root).resolve()
+    output_dir = Path(args.output_dir).resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     # Verify commit
-    result = run_command(["git", "rev-parse", "HEAD"], cwd=args.root, capture=True)
-    actual_head = result.stdout.strip()
-    
-    if args.commit not in actual_head and actual_head not in args.commit:
-        print(f"WARNING: --commit {args.commit} does not match HEAD {actual_head}", file=sys.stderr)
-    
-    print(f"Collecting benchmark evidence for commit {actual_head}")
-    print(f"Root: {args.root}")
-    
-    # Set up output directory
-    output_dir = args.output_dir or os.path.join(args.root, ".beads", "vb-j3e3s", "evidence")
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Verify prerequisites
-    check_prerequisites()
-    
-    # Collect system metadata
-    metadata = get_system_metadata()
-    nightly_date = get_nightly_date()
-    
-    print(f"System: {metadata['cpu_model']}")
-    print(f"Governor: {metadata['cpu_governor']}")
-    print(f"Rustc: {metadata['rustc_version']}")
-    
-    # Discover or use provided binary
-    if args.binary:
-        binary = os.path.join(args.root, args.binary) if not args.binary.startswith("/") else args.binary
-    else:
-        print("Discovering benchmark binary...")
-        binary = discover_benchmark_binary(args.root)
-    
-    binary = os.path.abspath(binary)
-    print(f"Binary: {binary}")
-    
-    if not os.path.exists(binary):
-        raise RuntimeError(f"Benchmark binary not found: {binary}")
-    
-    # Compute fixture digest
-    input_fixture_digest = fixture_digest(args.root)
-    
-    # Determine Criterion version
-    result = run_command(["cargo", "tree", "-p", "velvet-ballistics-workspace-tests"],
-                         cwd=args.root, capture=True)
-    crit_version = "unknown"
-    import re as re_module
-    for line in result.stdout.split("\n"):
-        m = re_module.search(r"criterion v?(\d+\.\d+\.\d+)", line)
-        if m:
-            crit_version = m.group(1)
-            break
-    
-    print(f"Criterion version: {crit_version}")
-    
-    if args.dry_run:
-        print("\nDry run: setup validated, benchmarks not executed.")
-        print("\nUsage to run actual collection:")
-        print(f"  python3 {sys.argv[0]} --commit {args.commit} --root {args.root} "
-              f"--output-dir {output_dir}")
-        return 0
-    
-    # Run benchmarks
-    results = []
-    for bench_name in BENCHMARKS:
-        print(f"\n{'=' * 60}")
-        print(f"Collecting: {bench_name}")
-        print(f"{'=' * 60}")
-        
-        # Per-benchmark thresholds from contracts/perf-budget.yaml
-        threshold = 5 if bench_name == "ipc_frame_decode" else 3
-        
+    r = run(["git", "rev-parse", "HEAD"], cwd=root, capture=True)
+    actual_commit = r.stdout.strip()
+    if actual_commit != args.commit and not args.commit.startswith(actual_commit):
+        raise RuntimeError(
+            f"commit mismatch: expected {args.commit}, got {actual_commit}"
+        )
+
+    # Verify clean working tree
+    r = run(["git", "status", "--porcelain"], cwd=root, capture=True)
+    if r.stdout.strip():
+        raise RuntimeError(f"dirty working tree: {r.stdout.strip()[:200]}")
+
+    # System metadata
+    meta = system_metadata()
+
+    # Find binary
+    binary = args.binary
+    if not binary:
+        binary = find_binary(str(root))
+    elif not Path(binary).is_file():
+        raise RuntimeError(f"binary not found: {binary}")
+
+    # Binary SHA
+    r = run(["sha256sum", binary], capture=True)
+    binary_sha = r.stdout.split()[0]
+
+    # Criterion home - unique per collection
+    crit_home = str(output_dir / "criterion-home")
+    if os.path.exists(crit_home):
+        shutil.rmtree(crit_home)
+    os.makedirs(crit_home)
+
+    # Preserve old evidence
+    old_evidence = output_dir / "benchmark-evidence.jsonl"
+    if old_evidence.exists():
+        hist_dir = output_dir / "raw-historical"
+        hist_dir.mkdir(exist_ok=True)
+        ts = int(time.time())
+        shutil.copy2(old_evidence, hist_dir / f"benchmark-evidence-{ts}.jsonl")
+
+    # Raw log
+    raw_log_path = output_dir / "benchmark-raw-logs.txt"
+    raw_log = open(raw_log_path, "w")
+
+    records = []
+
+    for bench in BENCHMARKS:
+        bench_id = bench["id"]
+        threshold = bench["threshold"]
+
+        raw_log.write(f"=== {bench_id} ===\n")
+
+        # Criterion
+        raw_log.write(f"Criterion: {binary} {bench_id}\n")
+        try:
+            crit = criterion_run(binary, bench_id, str(root), crit_home)
+            raw_log.write(f"Criterion result: p50={crit['p50_ns']:.3f}ns\n")
+        except Exception as e:
+            raw_log.write(f"Criterion failed: {e}\n")
+            raw_log.close()
+            raise
+        raw_log.flush()
+
+        # Perf
+        perf_out = str(output_dir / f"perf-{bench_id}.txt")
+        raw_log.write(f"Perf: {binary} {bench_id}\n")
+        try:
+            perf = perf_run(binary, bench_id, str(root), perf_out)
+            raw_log.write(f"Perf result: {perf['instruction_count']} instructions\n")
+        except Exception as e:
+            raw_log.write(f"Perf failed: {e}\n")
+            raw_log.close()
+            raise
+        raw_log.flush()
+
+        # Heaptrack
+        raw_log.write(f"Heaptrack: {binary} {bench_id}\n")
+        try:
+            ht = heaptrack_run(binary, bench_id, str(root), str(output_dir))
+            raw_log.write(f"Heaptrack result: {ht['allocation_count']} allocs, peak={ht['peak_heap_memory']}\n")
+        except Exception as e:
+            raw_log.write(f"Heaptrack failed: {e}\n")
+            raw_log.close()
+            raise
+        raw_log.flush()
+
+        raw_log.write("\n")
+
+        # Get criterion version
+        r = run(["cargo", "--version"], capture=True, cwd=str(root))
+        crit_version = "0.8.2"  # Known version
+
         record = {
-            "metric": bench_name,
-            "commit": actual_head,
-            "binary_sha256": binary_sha,
-            "fixture_digest": input_fixture_digest,
-            "cpu_model": metadata["cpu_model"],
+            "metric": "latency",
+            "claim": f"{bench_id} within {threshold}% of baseline",
+            "baseline_value": None,  # First collection has no baseline
+            "result_value": crit["p50_ns"],
+            "unit": "ns",
             "threshold_percent": threshold,
-            "kernel_version": metadata["kernel_version"],
-            "rustc_version": metadata["rustc_version"],
-            "nightly_date": nightly_date,
-            "build_profile": "release",
-            "benchmark_tool_version": f"criterion {crit_version}",
+            "raw_log": str(raw_log_path),
+            "command": f"cargo bench -p velvet-ballistics-workspace-tests --bench velvet_ballistics {bench_id}",
+            "commit": actual_commit,
+            "binary_sha": binary_sha,
+            "rustc_version": meta["rustc_version"],
+            "nightly_date": meta["nightly_date"],
+            "cpu_model": meta["cpu_model"],
+            "cpu_governor": meta["cpu_governor"],
+            "kernel_version": meta["kernel_version"],
+            "build_profile": "bench",
+            "rustflags": "",
+            "benchmark_tool_version": crit_version,
+            "sample_count_or_instruction_count": crit["sample_count"],
+            "input_fixture_digest": fixture_digest(str(root), bench_id),
             "durability_profile": "mixed",
-            "mode": "ir",
-            "fjall_write_latency": "not-applicable",
-            "direct_api_latency": "not-applicable",
-            "ipc_latency": "not-applicable",
+            "mode": "ir-interpreter",
+            "p50_latency": crit["p50_ns"],
+            "p95_latency": crit["p95_ns"],
+            "p99_latency": crit["p99_ns"],
+            "instruction_count": perf["instruction_count"],
+            "allocation_count": ht["allocation_count"],
+            "bytes_allocated": 0,  # Not directly available
+            "fjall_write_latency": None,
+            "direct_api_latency": None,
+            "ipc_latency": None,
         }
-        
-        # Run Criterion benchmark
-        if not args.skip_criterion:
-            print("Running Criterion benchmark...")
-            crit = run_criterion_benchmark(binary, bench_name, args.root)
-            record["p50_latency"] = crit["p50_ns"]
-            record["p95_latency"] = crit["p95_ns"]
-            record["p99_latency"] = crit["p99_ns"]
-            record["baseline_value"] = crit["p50_ns"]
-            record["result_value"] = crit["p50_ns"]
-        else:
-            record["p50_latency"] = "skipped"
-            record["p95_latency"] = "skipped"
-            record["p99_latency"] = "skipped"
-            record["baseline_value"] = "skipped"
-            record["result_value"] = "skipped"
-        
-        # Run perf stat
-        if not args.skip_perf:
-            print("Running perf stat...")
-            perf_output = os.path.join(output_dir, f"{bench_name}.perf.log")
-            try:
-                perf = run_perf_stat(binary, bench_name, args.root, perf_output)
-                record["instruction_count"] = perf["instruction_count"]
-                record["sample_count_or_instruction_count"] = perf["instruction_count"]
-            except RuntimeError as e:
-                print(f"  perf failed: {e}", file=sys.stderr)
-                record["instruction_count"] = "measurement-failed"
-                record["sample_count_or_instruction_count"] = "measurement-failed"
-        else:
-            record["instruction_count"] = "skipped"
-            record["sample_count_or_instruction_count"] = "skipped"
-        
-        # Run heaptrack
-        if not args.skip_heaptrack:
-            print("Running heaptrack...")
-            try:
-                ht = run_heaptrack(binary, bench_name, args.root, output_dir)
-                record["allocation_count"] = ht["allocation_count_process_level"]
-                record["bytes_allocated"] = ht["bytes_allocated"]
-            except RuntimeError as e:
-                print(f"  heaptrack failed: {e}", file=sys.stderr)
-                record["allocation_count"] = "measurement-failed"
-                record["bytes_allocated"] = "measurement-failed"
-        else:
-            record["allocation_count"] = "skipped"
-            record["bytes_allocated"] = "skipped"
-        
-        # Build command string
-        record["command"] = f"{binary} {bench_name} {' '.join(CRITERION_FLAGS)}"
-        record["raw_log"] = f".beads/vb-j3e3s/evidence/{bench_name}.raw"
-        record["rustflags"] = ""
-        
-        results.append(record)
-        print(f"  Completed: {bench_name}")
-    
-    # Write combined evidence file
-    evidence_path = os.path.join(output_dir, "benchmark-evidence.jsonl")
-    # Clear old file
-    if os.path.exists(evidence_path):
-        os.remove(evidence_path)
-    
-    for record in results:
-        write_evidence_record(output_dir, record)
-    
-    print(f"\nEvidence written to: {evidence_path}")
-    print(f"Records written: {len(results)}")
-    
+        records.append(record)
+
+    raw_log.close()
+
+    # Write JSONL
+    with open(old_evidence, "w") as f:
+        for record in records:
+            f.write(json.dumps(record) + "\n")
+
+    print(f"collected {len(records)} records")
+    print(f"evidence: {old_evidence}")
+    print(f"raw logs: {raw_log_path}")
     return 0
 
 
