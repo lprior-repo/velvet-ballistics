@@ -1218,6 +1218,7 @@ mod tests {
                 JournalEvent::RunResumed { .. } => Ok(false),
                 JournalEvent::RunRetried { .. } => Ok(false),
                 JournalEvent::RunAnswered { .. } => Ok(false),
+                JournalEvent::PolicyDecisionEvent { .. } => Ok(false),
             }
         }
     };

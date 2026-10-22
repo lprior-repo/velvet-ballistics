@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-exact-errors",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--test",
+    "policy_decision_full_record"
+  ],
+  "exit_code": 0,
+  "seconds": 0.311,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/EXACT_ERRORS_V9_01",
+  "coordinator_message": "Coordinator: keep exact nested postcard error in malformed test too; PostcardDecodeFailed(_) still accepts unrelated postcard failures and does not satisfy requested exact variants. Inspect actual codec fallback and a bounded raw test run to establish the actual error, then assert precisely. postcard::Error has SerdeSerCustom / SerdeDeCustom unit variants, NOT invented SerializeCustomError(msg)/DeserializeCustomError(msg). No message strings survive this serializer. Preserve valid decode positive control and full equality. Do not change production or accept generic error to get green. Canonical fmt check must be green on final changed test file.\n"
+}

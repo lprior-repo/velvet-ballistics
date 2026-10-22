@@ -48,7 +48,8 @@ impl JournalEvent {
             | Self::RunResumed { run, .. }
             | Self::RunRetried { run, .. }
             | Self::RunAnswered { run, .. }
-            | Self::AskTimedOutEvent { run, .. } => *run,
+            | Self::AskTimedOutEvent { run, .. }
+            | Self::PolicyDecisionEvent { run, .. } => *run,
         }
     }
 
@@ -84,7 +85,8 @@ impl JournalEvent {
             | Self::RunResumed { seq, .. }
             | Self::RunRetried { seq, .. }
             | Self::RunAnswered { seq, .. }
-            | Self::AskTimedOutEvent { seq, .. } => *seq,
+            | Self::AskTimedOutEvent { seq, .. }
+            | Self::PolicyDecisionEvent { seq, .. } => *seq,
         }
     }
 
@@ -137,6 +139,7 @@ impl JournalEvent {
             Self::RunRetried { .. } => RecordKind::RunRetried,
             Self::RunAnswered { .. } => RecordKind::RunAnswered,
             Self::AskTimedOutEvent { .. } => RecordKind::AskTimedOut,
+            Self::PolicyDecisionEvent { .. } => RecordKind::PolicyDecision,
         }
     }
 
@@ -211,7 +214,8 @@ impl JournalEvent {
             | Self::StepSucceeded { .. }
             | Self::RunResumed { .. }
             | Self::RunRetried { .. }
-            | Self::RunAnswered { .. } => None,
+            | Self::RunAnswered { .. }
+            | Self::PolicyDecisionEvent { .. } => None,
         }
     }
 
@@ -261,7 +265,8 @@ impl JournalEvent {
             | Self::StepSucceeded { .. }
             | Self::RunResumed { .. }
             | Self::RunRetried { .. }
-            | Self::RunAnswered { .. } => true,
+            | Self::RunAnswered { .. }
+            | Self::PolicyDecisionEvent { .. } => true,
         }
     }
 }

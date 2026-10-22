@@ -1,0 +1,175 @@
+▮▮▮▮ Loading changed files
+Base revision: N/A
+Head revision: HEAD
+Changed files:
+	.beads/vb-84im6/coordinator-review-limits.md
+	.beads/vb-84im6/evidence/REV_01.json
+	.beads/vb-84im6/evidence/REV_01.stderr
+	.beads/vb-84im6/evidence/REV_01.stdout
+	.beads/vb-84im6/evidence/REV_02.json
+	.beads/vb-84im6/evidence/REV_02.stderr
+	.beads/vb-84im6/evidence/REV_02.stdout
+	.beads/vb-84im6/evidence/gate-results.md
+	.beads/vb-84im6/review.md
+	.beads/vb-84im6/source-manifest.json
+	.beads/vb-s4hfc/coordinator-final-scope-v7.md
+	.beads/vb-s4hfc/coordinator-test-audit-v4.md
+	.beads/vb-s4hfc/evidence/CLEANUP_V7_01.json
+	.beads/vb-s4hfc/evidence/CLEANUP_V7_01.stderr
+	.beads/vb-s4hfc/evidence/CLEANUP_V7_01.stdout
+	.beads/vb-s4hfc/evidence/CLEANUP_V7_02.json
+	.beads/vb-s4hfc/evidence/CLEANUP_V7_02.stderr
+	.beads/vb-s4hfc/evidence/CLEANUP_V7_02.stdout
+	.beads/vb-s4hfc/evidence/CLEANUP_V7_03.json
+	.beads/vb-s4hfc/evidence/CLEANUP_V7_03.stderr
+	.beads/vb-s4hfc/evidence/CLEANUP_V7_03.stdout
+	.beads/vb-s4hfc/evidence/FINAL_TEST_V5_UNIQUE.json
+	.beads/vb-s4hfc/evidence/FINAL_TEST_V5_UNIQUE.stderr
+	.beads/vb-s4hfc/evidence/FINAL_TEST_V5_UNIQUE.stdout
+	.beads/vb-s4hfc/evidence/FINAL_TEST_V6_01.json
+	.beads/vb-s4hfc/evidence/FINAL_TEST_V6_01.stderr
+	.beads/vb-s4hfc/evidence/FINAL_TEST_V6_01.stdout
+	.beads/vb-s4hfc/evidence/TEST_V4_05.json
+	.beads/vb-s4hfc/evidence/TEST_V4_05.stderr
+	.beads/vb-s4hfc/evidence/TEST_V4_05.stdout
+	.beads/vb-s4hfc/evidence/assembled-v4-tests.json
+	.beads/vb-s4hfc/evidence/assembled-v4-tests.stderr
+	.beads/vb-s4hfc/evidence/assembled-v4-tests.stdout
+	.beads/vb-s4hfc/evidence/final-source-v7.json
+	.beads/vb-s4hfc/evidence/root-prod-v2-clippy.json
+	.beads/vb-s4hfc/evidence/root-prod-v2-clippy.stderr
+	.beads/vb-s4hfc/evidence/root-prod-v2-clippy.stdout
+	.beads/vb-s4hfc/evidence/root-test-compile-v2.json
+	.beads/vb-s4hfc/evidence/root-test-compile-v2.stderr
+	.beads/vb-s4hfc/evidence/root-test-compile-v2.stdout
+	.beads/vb-s4hfc/full-record-contract.md
+	.beads/vb-s4hfc/handoff-final-v7.md
+	.beads/vb-s4hfc/handoff-prod-v2.md
+	.beads/vb-s4hfc/handoff-tests-v2.md
+	.beads/vb-s4hfc/handoff-tests-v4.md
+	.beads/vb-s4hfc/handoff-tests-v5.md
+	crates/vb_storage/src/codec/tests/replay_integrity.rs
+	crates/vb_storage/src/events.rs
+	crates/vb_storage/src/events/event.rs
+	crates/vb_storage/src/events/wire_category.rs
+	crates/vb_storage/src/events/wire_deserialize.rs
+	crates/vb_storage/src/events/wire_deserialize_policy.rs
+	crates/vb_storage/src/events/wire_serialize.rs
+	crates/vb_storage/src/events/wire_serialize_policy.rs
+	crates/vb_storage/src/events/wire_tags.rs
+	crates/vb_storage/src/journal/incident.rs
+	crates/vb_storage/src/records.rs
+	crates/vb_storage/src/recovery/hydrate.rs
+	crates/vb_storage/src/recovery/recovery_unit_tests.rs
+	crates/vb_storage/src/recovery/replay/summary/apply.rs
+	crates/vb_storage/src/recovery/tests.rs
+	crates/vb_storage/tests/policy_decision_full_record.rs
+	crates/vb_storage/tests/policy_decision_full_record/pd_helpers.rs
+	vb-s4hfc-clippy-v2-1.json
+	vb-s4hfc-clippy-v2-1.stderr
+	vb-s4hfc-clippy-v2-1.stdout
+	vb-s4hfc-clippy-v2-2.json
+	vb-s4hfc-clippy-v2-2.stderr
+	vb-s4hfc-clippy-v2-2.stdout
+	vb-s4hfc-clippy-v2-3.json
+	vb-s4hfc-clippy-v2-3.stderr
+	vb-s4hfc-clippy-v2-3.stdout
+	vb-s4hfc-prod-v2-1.json
+	vb-s4hfc-prod-v2-1.stderr
+	vb-s4hfc-prod-v2-1.stdout
+	vb-s4hfc-prod-v2-2.json
+	vb-s4hfc-prod-v2-2.stderr
+	vb-s4hfc-prod-v2-2.stdout
+	vb-s4hfc-prod-v2-3.json
+	vb-s4hfc-prod-v2-3.stderr
+	vb-s4hfc-prod-v2-3.stdout
+	vb-s4hfc-prod-v2-4.json
+	vb-s4hfc-prod-v2-4.stderr
+	vb-s4hfc-prod-v2-4.stdout
+	vb-s4hfc-prod-v2-5.json
+	vb-s4hfc-prod-v2-5.stderr
+	vb-s4hfc-prod-v2-5.stdout
+	vb-s4hfc-prod-v2-6.json
+	vb-s4hfc-prod-v2-6.stderr
+	vb-s4hfc-prod-v2-6.stdout
+▮▮▮▮ Building action graph
+Action count: 11
+Requested targets: 4
+	:fmt
+	:source-length
+	:test-integrity
+	:nightly-feature-gate
+Resolved targets: 4
+	velvet-ballistics:test-integrity
+	velvet-ballistics:source-length
+	velvet-ballistics:nightly-feature-gate
+	velvet-ballistics:fmt
+▮▮▮▮ Executing action pipeline
+▮▮▮▮ velvet-ballistics:workspace-assertions (80ae4217)
+▮▮▮▮ velvet-ballistics:fmt (2ba0acda)
+▮▮▮▮ velvet-ballistics:workspace-assertions (95ms, 80ae4217)
+▮▮▮▮ velvet-ballistics:nightly-feature-gate (a3097d2e)
+                 velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/crates/vb_storage/src/codec/tests/replay_integrity.rs:229:
+                 velvet-ballistics:fmt |          );
+                 velvet-ballistics:fmt |      }
+                 velvet-ballistics:fmt |      // Kinds outside the journal range remain rejected.
+                 velvet-ballistics:fmt | -    assert!(is_known_record_kind(38), "kind 38 (PolicyDecision) must be known");
+                 velvet-ballistics:fmt | +    assert!(
+                 velvet-ballistics:fmt | +        is_known_record_kind(38),
+                 velvet-ballistics:fmt | +        "kind 38 (PolicyDecision) must be known"
+                 velvet-ballistics:fmt | +    );
+                 velvet-ballistics:fmt |      assert!(
+                 velvet-ballistics:fmt |          validate_kind_family(MAGIC_JOURNAL_EVENT, 38).is_ok(),
+                 velvet-ballistics:fmt |          "kind 38 must be admitted for journal magic"
+                 velvet-ballistics:fmt | Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/crates/vb_storage/tests/policy_decision_full_record.rs:357:
+                 velvet-ballistics:fmt |  
+                 velvet-ballistics:fmt |      let decoded = postcard::from_bytes::<JournalEvent>(&valid_wire)?;
+                 velvet-ballistics:fmt |      match decoded {
+                 velvet-ballistics:fmt | -        JournalEvent::PolicyDecisionEvent { run, seq, decision: d } => {
+                 velvet-ballistics:fmt | +        JournalEvent::PolicyDecisionEvent {
+                 velvet-ballistics:fmt | +            run,
+                 velvet-ballistics:fmt | +            seq,
+                 velvet-ballistics:fmt | +            decision: d,
+                 velvet-ballistics:fmt | +        } => {
+                 velvet-ballistics:fmt |              assert_eq!(run.get(), 100);
+                 velvet-ballistics:fmt |              assert_eq!(seq.get(), 0);
+                 velvet-ballistics:fmt |              assert_eq!(d.outcome, DecisionCode::Denied);
+▮▮▮▮ velvet-ballistics:fmt (1s 529ms, 2ba0acda)
+▮▮▮▮ velvet-ballistics:panic-surface (37e8839e)
+       velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests
+       velvet-ballistics:panic-surface | CommitSHA: 6de76b998c6b1f118b98d4bd1235619b34b252b7
+       velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+       velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+       velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+       velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+       velvet-ballistics:panic-surface | NoViolationFound
+       velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (3s 328ms, 37e8839e)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (d06b831a)
+▮▮▮▮ velvet-ballistics:nightly-feature-gate (5s 381ms, a3097d2e)
+▮▮▮▮ velvet-ballistics:unsafe-audit (47368f1b)
+▮▮▮▮ velvet-ballistics:unsafe-audit (8ms, 47368f1b)
+▮▮▮▮ velvet-ballistics:test-integrity (21e2f3c4)
+▮▮▮▮ velvet-ballistics:test-integrity (305ms, 21e2f3c4)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (26s 590ms, d06b831a)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, 64f5677c)
+▮▮▮▮ velvet-ballistics:source-length (skipped)
+
+Tasks: 6 completed, 2 failed, 1 skipped
+ Time: 31s 734ms
+

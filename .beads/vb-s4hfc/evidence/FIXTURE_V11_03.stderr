@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-s4hfc-v11/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.75s
+     Running tests/vb_eepg_bdd_tests.rs (target/debug/deps/vb_eepg_bdd_tests-625256d24407d814)

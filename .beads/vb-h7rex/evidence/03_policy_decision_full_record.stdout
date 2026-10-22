@@ -1,0 +1,20 @@
+
+running 15 tests
+test distinct_nonzero_digests ... ok
+test envelope_kind_mismatch_rejected ... ok
+test influence_state_values_distinct ... ok
+test all_decision_enum_variants_round_trip ... ok
+test neutral_policy_fact_does_not_reset_lifecycle ... ok
+test malformed_payload_rejected ... ok
+test old_tag_10_fixture_unchanged ... ok
+test journal_seq_not_ticket_seq ... ok
+test run_envelope_mismatch_protected ... ok
+test truncated_payload_rejected ... ok
+test policy_decision_event_round_trip ... ok
+test policy_decode_rejects_mismatched_run ... ok
+test fjall_persistence_survives_reopen ... ok
+test all_outcome_layers_taints_round_trip ... ok
+test multiple_ordered_policy_events ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

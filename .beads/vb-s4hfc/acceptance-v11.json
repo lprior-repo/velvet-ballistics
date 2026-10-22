@@ -1,0 +1,35 @@
+{
+  "status": "scoped_storage_accepted",
+  "bead": "vb-s4hfc",
+  "base": "0434f64f0f1f4e2ab89ffd49628fcae903f809d3",
+  "frozen_source": "ffa76eb26b35de6c795be058d97a57ca0125e82c",
+  "source_manifest": "evidence/final-source-v11.json",
+  "source_files": 18,
+  "canonical": {
+    "raw": "evidence/FINAL_V11_CANONICAL.json",
+    "exit_code": 0,
+    "seconds": 493.449,
+    "tasks_completed": 17,
+    "tests_passed": 14415,
+    "preexisting_skips": 27,
+    "test_workers": 16
+  },
+  "reviews": {
+    "production": "8df0c0a346ddf352f2b6e340e11ddd2fecf0b45d",
+    "full_record_tests": "f2e9f09e149602dc08c4b9bd4f5e8c29e875868b",
+    "fixture_tests": "d214e1171c30e913ff5af1efb8068c3233330d30",
+    "scope": "CODE limited to twelve production files with recorded formatting applicability; TEST V10 exact17files identical in V11, fixture delta independent limited review with reporting errata"
+  },
+  "measurements": {
+    "raw": "evidence/FINAL_V11_MEASUREMENT.json",
+    "real_metrics": 3,
+    "comparison": "baseline equals result; no speedup claimed",
+    "published_files": 250,
+    "expanded_text_local_only": 3
+  },
+  "limits": [
+    "storage codec/persistence only; no runtime policy dispatch acceptance",
+    "admission recovery and durable emergency controls remain separate unaccepted children",
+    "no full v1 or broad formal proof closure"
+  ]
+}

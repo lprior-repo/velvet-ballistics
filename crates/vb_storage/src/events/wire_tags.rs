@@ -31,6 +31,7 @@ pub(super) const TAG_RUN_RESUMED: u16 = RecordKind::RunResumed.id();
 pub(super) const TAG_RUN_RETRIED: u16 = RecordKind::RunRetried.id();
 pub(super) const TAG_RUN_ANSWERED: u16 = RecordKind::RunAnswered.id();
 pub(super) const TAG_ASK_TIMED_OUT: u16 = RecordKind::AskTimedOut.id();
+pub(super) const TAG_POLICY_DECISION: u16 = RecordKind::PolicyDecision.id();
 
 pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "RunAccepted",
@@ -59,4 +60,5 @@ pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "RunRetried",
     "RunAnswered",
     "AskTimedOutEvent",
+    "PolicyDecisionEvent",
 ];

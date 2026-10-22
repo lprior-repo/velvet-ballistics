@@ -1,0 +1,23 @@
+{
+  "main_base": "0434f64f0f1f4e2ab89ffd49628fcae903f809d3",
+  "scope": "full typed policy decision storage and exact behavioral error assertions",
+  "files": {
+    "crates/vb_storage/src/codec/tests/replay_integrity.rs": "426723989e0879ee4cdb836a2962a9dfc1a0260fb6f5614517b20d289991556e",
+    "crates/vb_storage/src/events.rs": "aa61074194ca348b3f715ae2be2ffbe0e3739e8970c17db4211c18ad53ab3fed",
+    "crates/vb_storage/src/events/event.rs": "c8e8700563de158ed2ff04d8dc80705991d4a994d0e9ef1ea3b4f302bb35a8d1",
+    "crates/vb_storage/src/events/wire_category.rs": "6532ba6a37f43de52aff5b367b3e4d19070faa5efb98c11dd67bd4933edb8a12",
+    "crates/vb_storage/src/events/wire_deserialize.rs": "fa2cd7a3c587079d34f9ad561f10141c8fdd1efb2447f8c78d33c8cc8f76a7e8",
+    "crates/vb_storage/src/events/wire_deserialize_policy.rs": "a5aa5c6a63e12af6a55eb29f8eb4e65608c4d1aff659d70b2890f60b24826e84",
+    "crates/vb_storage/src/events/wire_serialize.rs": "a1cac1fd057f39884ae9ef7569355cef409796e3008f9d5123be94650049c9d1",
+    "crates/vb_storage/src/events/wire_serialize_policy.rs": "ca4ca814134687d51d56661cfb13b227e1d2884fb8898244270f4189e9bd1207",
+    "crates/vb_storage/src/events/wire_tags.rs": "d5f54345b70be720211d70e688b3a538b2548d42b6f8aebcd7a99b61b20781dd",
+    "crates/vb_storage/src/journal/incident.rs": "40453172e68cd803d5ca6ccbeea386fbd6fdeeea0e8ff350445d973ac2ec68fd",
+    "crates/vb_storage/src/records.rs": "7f1267f4114b0e644dfc1dccad8a3174c73fd3720a5811490f224456fad40a30",
+    "crates/vb_storage/src/recovery/hydrate.rs": "647f17a1f7909e184d88ce7a9481dc7a2f330d0a8b75a4f9d1969bae31c5cbad",
+    "crates/vb_storage/src/recovery/recovery_unit_tests.rs": "eab0a5cfe9b46f12e4aa74058d4a6d7ecfee45cd49db5637905c07cac7890f01",
+    "crates/vb_storage/src/recovery/replay/summary/apply.rs": "fb999a977a7d0a2e33e637ece425ea67c6ae88539fdec38074036a72bb0f9f02",
+    "crates/vb_storage/src/recovery/tests.rs": "13c4e7c10a32dfaa500951ff038a74cbbb8fea65ceab33a9d1eeff4f40a6f835",
+    "crates/vb_storage/tests/policy_decision_full_record.rs": "b8c7e72036dcf058056b7d7a78e4e7702edaef1fc386b1c584a8ec0cb4d6ef1a",
+    "crates/vb_storage/tests/policy_decision_full_record/pd_helpers.rs": "e78d97521fb001db37158e321a066fa96333d149bbe412c2221dd8ec35231f1f"
+  }
+}

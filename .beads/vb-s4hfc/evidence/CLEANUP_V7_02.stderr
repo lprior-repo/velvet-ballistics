@@ -1,0 +1,4 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.46s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-ce7dc9c74a468062)
+error: test failed, to rerun pass `-p vb_storage --lib`

@@ -229,13 +229,21 @@ fn kind_28_29_31_through_35_admission_for_journal_magic() {
         );
     }
     // Kinds outside the journal range remain rejected.
-    assert!(!is_known_record_kind(38), "kind 38 must remain unknown");
+    assert!(
+        is_known_record_kind(38),
+        "kind 38 (PolicyDecision) must be known"
+    );
+    assert!(
+        validate_kind_family(MAGIC_JOURNAL_EVENT, 38).is_ok(),
+        "kind 38 must be admitted for journal magic"
+    );
+    assert!(!is_known_record_kind(255), "kind 255 must remain unknown");
     assert!(
         matches!(
-            validate_kind_family(MAGIC_JOURNAL_EVENT, 38),
+            validate_kind_family(MAGIC_JOURNAL_EVENT, 255),
             Err(JournalError::UnknownRecordKind { .. })
         ),
-        "kind 38 must be rejected for journal magic"
+        "kind 255 must be rejected for journal magic"
     );
 }
 

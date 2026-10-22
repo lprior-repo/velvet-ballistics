@@ -1,0 +1,10 @@
+{
+  "gate": "04-policy-pin-durable-recovery",
+  "command": "cargo test -p vb_runtime --test policy_pin_durable_recovery --all-features",
+  "status": "PASS",
+  "exit_code": 0,
+  "elapsed_seconds": 6.56,
+  "timestamp": "2026-10-22 16:14:57 UTC",
+  "stdout_length": 369,
+  "stderr_length": 1377
+}

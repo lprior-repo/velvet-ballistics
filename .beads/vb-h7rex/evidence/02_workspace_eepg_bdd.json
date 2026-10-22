@@ -1,0 +1,10 @@
+{
+  "gate": "02-workspace-eepg",
+  "command": "cargo test -p velvet-ballistics-workspace-tests --test vb_eepg_bdd_tests --all-features",
+  "status": "PASS",
+  "exit_code": 0,
+  "elapsed_seconds": 0.09,
+  "timestamp": "2026-10-22 16:14:48 UTC",
+  "stdout_length": 2425,
+  "stderr_length": 168
+}

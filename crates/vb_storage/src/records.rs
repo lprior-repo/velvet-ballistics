@@ -217,6 +217,8 @@ pub enum RecordKind {
     RunInputs = 4,
     /// Admission receipt carrying a canonical typed input digest.
     RunAdmissionBound = 36,
+    /// Policy decision record.
+    PolicyDecision = 38,
     /// Admission receipt carrying actual policy identity pin (unbound input).
     RunAdmissionPinned = 39,
     /// Admission receipt carrying input digest and actual policy identity pin.
@@ -233,6 +235,7 @@ impl RecordKind {
             Self::RunHeader => 3,
             Self::RunInputs => 4,
             Self::RunAdmissionBound => 36,
+            Self::PolicyDecision => 38,
             Self::RunAccepted => 10,
             Self::StepStarted => 11,
             Self::SlotWritten => 12,
@@ -276,6 +279,7 @@ impl RecordKind {
             3 => Some(Self::RunHeader),
             4 => Some(Self::RunInputs),
             36 => Some(Self::RunAdmissionBound),
+            38 => Some(Self::PolicyDecision),
             10 => Some(Self::RunAccepted),
             11 => Some(Self::StepStarted),
             12 => Some(Self::SlotWritten),
@@ -343,7 +347,8 @@ impl RecordKind {
             | Self::StepSucceeded
             | Self::ActionScheduledTicket
             | Self::ActionCompletedEnvelope
-            | Self::RetryCheckpoint => true,
+            | Self::RetryCheckpoint
+            | Self::PolicyDecision => true,
             Self::WorkflowSource
             | Self::CompiledIr
             | Self::RunHeader

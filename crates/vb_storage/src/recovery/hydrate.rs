@@ -799,7 +799,8 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
         | JournalEvent::AskTimedOutEvent { .. }
         | JournalEvent::WaitResolvedEvent { .. }
         | JournalEvent::AskAnsweredEvent { .. }
-        | JournalEvent::RetryScheduledEvent { .. } => Ok(true),
+        | JournalEvent::RetryScheduledEvent { .. }
+        | JournalEvent::PolicyDecisionEvent { .. } => Ok(true),
         JournalEvent::ActionScheduled { .. }
         | JournalEvent::ActionScheduledTicket { .. }
         | JournalEvent::ActionCompletedEvent { .. }

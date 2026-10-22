@@ -1,0 +1,32 @@
+   Compiling serde_core v1.0.228
+   Compiling log v0.4.29
+   Compiling rustversion v1.0.22
+   Compiling tracing-core v0.1.36
+   Compiling regex-automata v0.4.14
+   Compiling lazy_static v1.5.0
+   Compiling pin-project-lite v0.2.17
+   Compiling thread_local v1.1.9
+   Compiling nu-ansi-term v0.50.3
+   Compiling serde_json v1.0.150
+   Compiling scoped-tls v1.0.1
+   Compiling sharded-slab v0.1.7
+   Compiling sfa v1.0.0
+   Compiling tracing v0.1.44
+   Compiling tracing-log v0.2.0
+   Compiling lsm-tree v3.1.4
+   Compiling matchers v0.2.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling fjall v3.1.4
+   Compiling generator v0.8.8
+   Compiling loom v0.7.2
+   Compiling serde v1.0.228
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling heapless v0.7.17
+   Compiling postcard v1.1.3
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-assembly-v8/crates/vb_core)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-assembly-v8/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-assembly-v8/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-assembly-v8/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.50s
+     Running tests/policy_pin_durable_recovery.rs (target/debug/deps/policy_pin_durable_recovery-f2255707476c4eda)
