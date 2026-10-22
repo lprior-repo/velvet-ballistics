@@ -36,7 +36,7 @@ impl RecordingJournal {
             .strict_calls
             .lock()
             .map_err(|_| RuntimeError::JournalPoisoned)?;
-        calls.clone()
+        Ok(calls.clone())
     }
 
     fn set_strict_error(&self, err: RuntimeError) -> RuntimeResult<()> {
