@@ -1,0 +1,26 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-qz2yn-artifact-counter-impl-v2",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "cargo",
+    "nextest",
+    "run",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "--all-features",
+    "--locked",
+    "-E",
+    "test(acceptance_sequence_tests) | test(accepted_artifact_fields_are_populated) | test(declared_keyspaces_count_matches_opened_keyspaces)"
+  ],
+  "exit_code": 0,
+  "seconds": 15.865,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_ARTIFACT_COUNTER_V10_FOCUSED_TESTS"
+}

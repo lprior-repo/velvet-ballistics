@@ -1,0 +1,64 @@
+{
+  "audit": {
+    "auditor": "local5090-flux-own-audit-v8",
+    "workspace": "vb-fyktj-flux-own-audit-v8",
+    "historical_commit": "56d14ca7878d011d1b12a5c12f230110ca41186a",
+    "current_commit": "0210e36fc8961f7d4454eb4ca53b6a39948a28b8",
+    "date": "2026-10-22"
+  },
+  "hunks_audited": 3,
+  "hunks": [
+    {
+      "id": 1,
+      "file": ".moon/tasks/flux.yml",
+      "change_type": "new_file",
+      "determination": "GENUINELY_MISSING",
+      "historical": "Added Moon tasks flux-check and flux-check-all invoking canonical script",
+      "current": "File does not exist",
+      "evidence": "Path not found at .moon/tasks/flux.yml"
+    },
+    {
+      "id": 2,
+      "file": "scripts/flux-check-package.sh",
+      "change_type": "rewrite",
+      "determination": "GENUINELY_MISSING",
+      "historical": "Rewrote 21-line version to 164-line version with --all, --crates, --dry-run, --help flags and package discovery",
+      "current": "Still the original 21-line minimal version",
+      "evidence": "File has only basic argument parsing and single-package invocation, identical to pre-patch version"
+    },
+    {
+      "id": 3,
+      "file": "xtask/src/lanes.rs",
+      "change_type": "route_to_script",
+      "determination": "GENUINELY_MISSING",
+      "historical": "Changed flux lane to use flux_command() that routes through canonical script",
+      "current": "Flux lane still uses inline 'cargo flux -p' command",
+      "evidence": "lanes.rs contains 'flux' => vec![\"cargo\", \"flux\", \"-p\", crate_name] with no flux_command() function"
+    }
+  ],
+  "summary": {
+    "genuinely_missing": 3,
+    "already_present": 0,
+    "superseded_invalid": 0,
+    "metadata_only": 0,
+    "overall": "All 3 historical own-hunks are genuinely missing. Current workspace predates or is independent of historical patch."
+  },
+  "consequences": [
+    "bash scripts/flux-check-package.sh --all does not work",
+    "bash scripts/flux-check-package.sh --crates does not work",
+    "bash scripts/flux-check-package.sh --dry-run does not work",
+    "moon run :flux-check fails (file missing)",
+    "moon run :flux-check-all fails (file missing)",
+    "xtask flux lane bypasses canonical script"
+  ],
+  "child_bead_proposal": {
+    "title": "Route all Flux verification through canonical scripts/flux-check-package.sh",
+    "scope": "Bounded to 3 files: .moon/tasks/flux.yml, scripts/flux-check-package.sh, xtask/src/lanes.rs",
+    "acceptance_criteria": [
+      "scripts/flux-check-package.sh accepts --all, --crates, --dry-run, --help flags",
+      "scripts/flux-check-package.sh rejects unsupported target selectors",
+      "xtask flux lane uses canonical script via flux_command()",
+      ".moon/tasks/flux.yml defines flux-check and flux-check-all Moon tasks"
+    ]
+  }
+}

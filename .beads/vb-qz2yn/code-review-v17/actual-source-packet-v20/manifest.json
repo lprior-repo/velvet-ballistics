@@ -1,0 +1,81 @@
+{
+  "files": [
+    {
+      "path": "crates/vb_storage/src/admission.rs",
+      "lines": 481,
+      "sha256": "8addf15364e9fff6bedd5c7cc0969efc21b2513e91093d3cbcbbf123c1eabaad"
+    },
+    {
+      "path": "crates/vb_storage/src/constants.rs",
+      "lines": 121,
+      "sha256": "e1407ede456a2bcad06ed0ae92bb32524bb3da4bdd0cf0e9693df669642b10e6"
+    },
+    {
+      "path": "crates/vb_storage/src/journal/artifact_acceptance.rs",
+      "lines": 198,
+      "sha256": "204ec2012500ae9dbd91afefbc3336e686e773a2c78169ea5d6686c0646f89fb"
+    },
+    {
+      "path": "crates/vb_storage/src/journal/core.rs",
+      "lines": 306,
+      "sha256": "0ccf89171a3b4f7b1a0a7e8a133635a3668f6b6522e9a758722d3bfaa3327392"
+    },
+    {
+      "path": "crates/vb_storage/src/journal/mod.rs",
+      "lines": 34,
+      "sha256": "e7d6fd0ee053560e3804b381abac70207ceed52924bac8615ae14af231b228c2"
+    },
+    {
+      "path": "crates/vb_storage/src/journal/readonly.rs",
+      "lines": 101,
+      "sha256": "a135a71622b7a6e7e1f04dbfafcef93af4e1ffb717b9001a7b43686337687034"
+    },
+    {
+      "path": "crates/vb_storage/src/journal/admission.rs",
+      "lines": 36,
+      "sha256": "aadd843bf98fc60eb33b7b79f716998a6e85257293826cf95fb40addeb42d33c"
+    },
+    {
+      "path": "crates/vb_storage/src/batch/commit.rs",
+      "lines": 41,
+      "sha256": "6c33deec925114067a9df00a3deeeaaa2551f28de04ca79001f29e1500ed1701"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/verification.rs",
+      "lines": 272,
+      "sha256": "cd1be552c9c77729c67f6b0e9741baadb647ad15c8fb0f17c936d9f3623100bb"
+    },
+    {
+      "path": "crates/vb_storage/src/error/mod.rs",
+      "lines": 199,
+      "sha256": "cf5e9254a6271801779400b1b4818e8136a3bd2a44d7d5d860562c069af3dd29"
+    },
+    {
+      "path": "/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs",
+      "lines": 183,
+      "sha256": "3345faf8a24e2c2ab016e57500e41ab4f5573533833eda79854fb3b510a5e748"
+    },
+    {
+      "path": "/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/journal/writer.rs",
+      "lines": 380,
+      "sha256": "8a000fcfbc600303105203d748ed6f2845cdb7853ff7cd898d0fb034c1cecd1b"
+    }
+  ],
+  "parts": [
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-01.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-02.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-03.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-04.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-05.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-06.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-07.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-08.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-09.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-10.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-11.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-12.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-13.txt",
+    ".beads/vb-qz2yn/code-review-v17/actual-source-packet-v20/part-14.txt"
+  ],
+  "purpose": "Actual full production plus pinned Fjall3.1.4 source. Originalpath:line anchors. Complete packet, not ASToutline."
+}

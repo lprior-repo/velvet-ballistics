@@ -1,0 +1,180 @@
+crates/vb_storage/src/journal/core.rs:97:             });
+crates/vb_storage/src/journal/core.rs:98:         }
+crates/vb_storage/src/journal/core.rs:99:         let path_ref = path.as_ref();
+crates/vb_storage/src/journal/core.rs:100:         let database = fjall::Database::builder(path_ref)
+crates/vb_storage/src/journal/core.rs:101:             .cache_size(config.cache_size_bytes)
+crates/vb_storage/src/journal/core.rs:102:             .open()?;
+crates/vb_storage/src/journal/core.rs:103:         let workflow_source = database.keyspace(KEYSPACE_WORKFLOW_SOURCE, || {
+crates/vb_storage/src/journal/core.rs:104:             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+crates/vb_storage/src/journal/core.rs:105:         })?;
+crates/vb_storage/src/journal/core.rs:106:         let compiled_ir = database.keyspace(KEYSPACE_COMPILED_IR, || {
+crates/vb_storage/src/journal/core.rs:107:             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+crates/vb_storage/src/journal/core.rs:108:         })?;
+crates/vb_storage/src/journal/core.rs:109:         let run_header = database.keyspace(KEYSPACE_RUN_HEADER, || {
+crates/vb_storage/src/journal/core.rs:110:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:111:         })?;
+crates/vb_storage/src/journal/core.rs:112:         let run_inputs = database.keyspace(KEYSPACE_RUN_INPUTS, || {
+crates/vb_storage/src/journal/core.rs:113:             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+crates/vb_storage/src/journal/core.rs:114:         })?;
+crates/vb_storage/src/journal/core.rs:115:         let events = database.keyspace(KEYSPACE_RUN_EVENT, || {
+crates/vb_storage/src/journal/core.rs:116:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:117:         })?;
+crates/vb_storage/src/journal/core.rs:118:         let run_snapshot = database.keyspace(KEYSPACE_RUN_SNAPSHOT, || {
+crates/vb_storage/src/journal/core.rs:119:             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+crates/vb_storage/src/journal/core.rs:120:         })?;
+crates/vb_storage/src/journal/core.rs:121:         let blob = database.keyspace(KEYSPACE_BLOB, || {
+crates/vb_storage/src/journal/core.rs:122:             crate::types::keyspace_options_for(KeyspaceProfile::Blob)
+crates/vb_storage/src/journal/core.rs:123:         })?;
+crates/vb_storage/src/journal/core.rs:124:         let index_status = database.keyspace(KEYSPACE_INDEX_STATUS, || {
+crates/vb_storage/src/journal/core.rs:125:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:126:         })?;
+crates/vb_storage/src/journal/core.rs:127:         let index_workflow = database.keyspace(KEYSPACE_INDEX_WORKFLOW, || {
+crates/vb_storage/src/journal/core.rs:128:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:129:         })?;
+crates/vb_storage/src/journal/core.rs:130:         let index_action = database.keyspace(KEYSPACE_INDEX_ACTION, || {
+crates/vb_storage/src/journal/core.rs:131:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:132:         })?;
+crates/vb_storage/src/journal/core.rs:133:         let emergency_deny = database.keyspace(KEYSPACE_EMERGENCY_DENY, || {
+crates/vb_storage/src/journal/core.rs:134:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:135:         })?;
+crates/vb_storage/src/journal/core.rs:136:         let artifact_acceptance = database.keyspace(KEYSPACE_ARTIFACT_ACCEPTANCE, || {
+crates/vb_storage/src/journal/core.rs:137:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:138:         })?;
+crates/vb_storage/src/journal/core.rs:139:         let _process_lock = ProcessLock::acquire(path_ref)?;
+crates/vb_storage/src/journal/core.rs:140:         Ok(Self {
+crates/vb_storage/src/journal/core.rs:141:             database,
+crates/vb_storage/src/journal/core.rs:142:             workflow_source,
+crates/vb_storage/src/journal/core.rs:143:             compiled_ir,
+crates/vb_storage/src/journal/core.rs:144:             run_header,
+crates/vb_storage/src/journal/core.rs:145:             run_inputs,
+crates/vb_storage/src/journal/core.rs:146:             events,
+crates/vb_storage/src/journal/core.rs:147:             run_snapshot,
+crates/vb_storage/src/journal/core.rs:148:             blob,
+crates/vb_storage/src/journal/core.rs:149:             index_status,
+crates/vb_storage/src/journal/core.rs:150:             index_workflow,
+crates/vb_storage/src/journal/core.rs:151:             index_action,
+crates/vb_storage/src/journal/core.rs:152:             emergency_deny,
+crates/vb_storage/src/journal/core.rs:153:             artifact_acceptance,
+crates/vb_storage/src/journal/core.rs:154:             #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:155:             fail_next_persist: AtomicBool::new(false),
+crates/vb_storage/src/journal/core.rs:156:             #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:157:             fail_next_compiled_ir_readback: AtomicBool::new(false),
+crates/vb_storage/src/journal/core.rs:158:             #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:159:             fail_next_batch_commit: AtomicBool::new(false),
+crates/vb_storage/src/journal/core.rs:160:             write_lock: Mutex::new(()),
+crates/vb_storage/src/journal/core.rs:161:             _process_lock,
+crates/vb_storage/src/journal/core.rs:162:         })
+crates/vb_storage/src/journal/core.rs:163:     }
+crates/vb_storage/src/journal/core.rs:164: 
+crates/vb_storage/src/journal/core.rs:165:     /// Returns all declared keyspace names after a successful open.
+crates/vb_storage/src/journal/core.rs:166:     #[must_use]
+crates/vb_storage/src/journal/core.rs:167:     pub const fn declared_keyspaces() -> [&'static str; 12] {
+crates/vb_storage/src/journal/core.rs:168:         [
+crates/vb_storage/src/journal/core.rs:169:             KEYSPACE_WORKFLOW_SOURCE,
+crates/vb_storage/src/journal/core.rs:170:             KEYSPACE_COMPILED_IR,
+crates/vb_storage/src/journal/core.rs:171:             KEYSPACE_RUN_HEADER,
+crates/vb_storage/src/journal/core.rs:172:             KEYSPACE_RUN_EVENT,
+crates/vb_storage/src/journal/core.rs:173:             KEYSPACE_RUN_SNAPSHOT,
+crates/vb_storage/src/journal/core.rs:174:             KEYSPACE_BLOB,
+crates/vb_storage/src/journal/core.rs:175:             KEYSPACE_INDEX_STATUS,
+crates/vb_storage/src/journal/core.rs:176:             KEYSPACE_INDEX_WORKFLOW,
+crates/vb_storage/src/journal/core.rs:177:             KEYSPACE_INDEX_ACTION,
+crates/vb_storage/src/journal/core.rs:178:             KEYSPACE_RUN_INPUTS,
+crates/vb_storage/src/journal/core.rs:179:             KEYSPACE_EMERGENCY_DENY,
+crates/vb_storage/src/journal/core.rs:180:             KEYSPACE_ARTIFACT_ACCEPTANCE,
+crates/vb_storage/src/journal/core.rs:181:         ]
+crates/vb_storage/src/journal/core.rs:182:     }
+crates/vb_storage/src/journal/core.rs:183: 
+crates/vb_storage/src/journal/core.rs:184:     /// Returns whether the action index contains an entry for the given key.
+crates/vb_storage/src/journal/core.rs:185:     ///
+crates/vb_storage/src/journal/core.rs:186:     /// This is a public query API to support external verification of index writes
+crates/vb_storage/src/journal/core.rs:187:     /// from outside the `vb_storage` crate (e.g., integration tests).
+crates/vb_storage/src/journal/core.rs:188:     ///
+crates/vb_storage/src/journal/core.rs:189:     /// # Errors
+crates/vb_storage/src/journal/core.rs:190:     ///
+crates/vb_storage/src/journal/core.rs:191:     /// Returns `JournalError` if the underlying keyspace query fails.
+crates/vb_storage/src/journal/core.rs:192:     pub fn has_action_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
+crates/vb_storage/src/journal/core.rs:193:         Ok(self.index_action.contains_key(key.as_ref())?)
+crates/vb_storage/src/journal/core.rs:194:     }
+crates/vb_storage/src/journal/core.rs:195: 
+crates/vb_storage/src/journal/core.rs:196:     /// Returns whether the status index contains an entry for the given key.
+crates/vb_storage/src/journal/core.rs:197:     ///
+crates/vb_storage/src/journal/core.rs:198:     /// This is a public query API to support external verification of index writes
+crates/vb_storage/src/journal/core.rs:199:     /// from outside the `vb_storage` crate (e.g., integration tests).
+crates/vb_storage/src/journal/core.rs:200:     ///
+crates/vb_storage/src/journal/core.rs:201:     /// # Errors
+crates/vb_storage/src/journal/core.rs:202:     ///
+crates/vb_storage/src/journal/core.rs:203:     /// Returns `JournalError` if the underlying keyspace query fails.
+crates/vb_storage/src/journal/core.rs:204:     pub fn has_status_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
+crates/vb_storage/src/journal/core.rs:205:         Ok(self.index_status.contains_key(key.as_ref())?)
+crates/vb_storage/src/journal/core.rs:206:     }
+crates/vb_storage/src/journal/core.rs:207: 
+crates/vb_storage/src/journal/core.rs:208:     /// Returns whether the workflow index contains an entry for the given key.
+crates/vb_storage/src/journal/core.rs:209:     ///
+crates/vb_storage/src/journal/core.rs:210:     /// This is a public query API to support external verification of index writes
+crates/vb_storage/src/journal/core.rs:211:     /// from outside the `vb_storage` crate (e.g., integration tests).
+crates/vb_storage/src/journal/core.rs:212:     ///
+crates/vb_storage/src/journal/core.rs:213:     /// # Errors
+crates/vb_storage/src/journal/core.rs:214:     ///
+crates/vb_storage/src/journal/core.rs:215:     /// Returns `JournalError` if the underlying keyspace query fails.
+crates/vb_storage/src/journal/core.rs:216:     pub fn has_workflow_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
+crates/vb_storage/src/journal/core.rs:217:         Ok(self.index_workflow.contains_key(key.as_ref())?)
+crates/vb_storage/src/journal/core.rs:218:     }
+crates/vb_storage/src/journal/core.rs:219: 
+crates/vb_storage/src/journal/core.rs:220:     /// Performs a read-only health probe across the opened storage keyspaces.
+crates/vb_storage/src/journal/core.rs:221:     ///
+crates/vb_storage/src/journal/core.rs:222:     /// # Errors
+crates/vb_storage/src/journal/core.rs:223:     ///
+crates/vb_storage/src/journal/core.rs:224:     /// Returns `JournalError` if any underlying keyspace cannot be read.
+crates/vb_storage/src/journal/core.rs:225:     pub fn probe_health(&self) -> Result<(), JournalError> {
+crates/vb_storage/src/journal/core.rs:226:         let empty_key: &[u8] = &[];
+crates/vb_storage/src/journal/core.rs:227:         let _ = self.workflow_source.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:228:         let _ = self.compiled_ir.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:229:         let _ = self.run_header.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:230:         let _ = self.run_inputs.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:231:         let _ = self.events.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:232:         let _ = self.run_snapshot.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:233:         let _ = self.blob.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:234:         let _ = self.index_status.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:235:         let _ = self.index_workflow.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:236:         let _ = self.index_action.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:237:         let _ = self.emergency_deny.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:238:         let _ = self.artifact_acceptance.contains_key(empty_key)?;
+crates/vb_storage/src/journal/core.rs:239:         Ok(())
+crates/vb_storage/src/journal/core.rs:240:     }
+crates/vb_storage/src/journal/core.rs:241: 
+crates/vb_storage/src/journal/core.rs:242:     /// Closes the journal, forcing a strict durability barrier before ownership is released.
+crates/vb_storage/src/journal/core.rs:243:     ///
+crates/vb_storage/src/journal/core.rs:244:     /// This method **must** be called explicitly by callers who require durable persistence.
+crates/vb_storage/src/journal/core.rs:245:     /// Drop does NOT call `close()` — it only releases the process lock.
+crates/vb_storage/src/journal/core.rs:246:     /// Errors from `close()` cannot be propagated through Drop, so callers who need
+crates/vb_storage/src/journal/core.rs:247:     /// fail-closed behavior must invoke this method and handle the result.
+crates/vb_storage/src/journal/core.rs:248:     ///
+crates/vb_storage/src/journal/core.rs:249:     /// # Errors
+crates/vb_storage/src/journal/core.rs:250:     ///
+crates/vb_storage/src/journal/core.rs:251:     /// Returns `JournalError` if the underlying storage fails to persist.
+crates/vb_storage/src/journal/core.rs:252:     pub fn close(&mut self) -> Result<(), JournalError> {
+crates/vb_storage/src/journal/core.rs:253:         self.persist_strict()
+crates/vb_storage/src/journal/core.rs:254:     }
+crates/vb_storage/src/journal/core.rs:255: 
+crates/vb_storage/src/journal/core.rs:256:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:257:     pub(crate) fn fail_next_persist_for_test(&self) {
+crates/vb_storage/src/journal/core.rs:258:         self.fail_next_persist.store(true, Ordering::SeqCst);
+crates/vb_storage/src/journal/core.rs:259:     }
+crates/vb_storage/src/journal/core.rs:260: 
+crates/vb_storage/src/journal/core.rs:261:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:262:     pub(crate) fn consume_persist_failure_for_test(&self) -> bool {
+crates/vb_storage/src/journal/core.rs:263:         self.fail_next_persist.swap(false, Ordering::SeqCst)
+crates/vb_storage/src/journal/core.rs:264:     }
+crates/vb_storage/src/journal/core.rs:265: 
+crates/vb_storage/src/journal/core.rs:266:     /// Test-only hook: forces the next `compiled_ir` readback to return
+crates/vb_storage/src/journal/core.rs:267:     /// `Ok(None)`, simulating a silent persistence failure in which the
+crates/vb_storage/src/journal/core.rs:268:     /// `put_compiled_ir` insert succeeded but the value vanished from the
+crates/vb_storage/src/journal/core.rs:269:     /// LSM by the time the readback runs.
+crates/vb_storage/src/journal/core.rs:270:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:271:     pub(crate) fn fail_next_compiled_ir_readback_for_test(&self) {
+crates/vb_storage/src/journal/core.rs:272:         self.fail_next_compiled_ir_readback
+crates/vb_storage/src/journal/core.rs:273:             .store(true, Ordering::SeqCst);
+crates/vb_storage/src/journal/core.rs:274:     }
+crates/vb_storage/src/journal/core.rs:275: 
+crates/vb_storage/src/journal/core.rs:276:     #[cfg(test)]

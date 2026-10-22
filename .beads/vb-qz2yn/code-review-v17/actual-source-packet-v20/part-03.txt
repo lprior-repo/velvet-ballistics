@@ -1,0 +1,180 @@
+crates/vb_storage/src/admission.rs:360:     // Delegate issuance to private journal helper. The helper holds the
+crates/vb_storage/src/admission.rs:361:     // write_lock across the entire RMW sequence: read counter, increment,
+crates/vb_storage/src/admission.rs:362:     // stamp, rebind digest, encode, stage both writes in one batch, commit
+crates/vb_storage/src/admission.rs:363:     // with policy-appropriate durability.
+crates/vb_storage/src/admission.rs:364:     let stamped = crate::journal::artifact_acceptance::issue_next_artifact_sequence(
+crates/vb_storage/src/admission.rs:365:         journal, artifact, policy,
+crates/vb_storage/src/admission.rs:366:     )?;
+crates/vb_storage/src/admission.rs:367: 
+crates/vb_storage/src/admission.rs:368:     // Existing readback verification after commit.
+crates/vb_storage/src/admission.rs:369:     verify_artifact_persisted(journal, stamped.digest)?;
+crates/vb_storage/src/admission.rs:370:     Ok(stamped)
+crates/vb_storage/src/admission.rs:371: }
+crates/vb_storage/src/admission.rs:372: 
+crates/vb_storage/src/admission.rs:373: /// Verifies that the artifact identified by `digest` is actually readable
+crates/vb_storage/src/admission.rs:374: /// from the journal after a `put_compiled_ir` call.
+crates/vb_storage/src/admission.rs:375: ///
+crates/vb_storage/src/admission.rs:376: /// Both persistence layers (Relaxed and Journaled/Strict) rely on this readback
+crates/vb_storage/src/admission.rs:377: /// so that a silent persistence failure surfaces as `ArtifactMalformed` rather
+crates/vb_storage/src/admission.rs:378: /// than as a falsely-accepted artifact in the returned `AcceptedArtifact`.
+crates/vb_storage/src/admission.rs:379: fn verify_artifact_persisted(
+crates/vb_storage/src/admission.rs:380:     journal: &FjallJournal,
+crates/vb_storage/src/admission.rs:381:     digest: vb_core::WorkflowDigest,
+crates/vb_storage/src/admission.rs:382: ) -> Result<(), JournalError> {
+crates/vb_storage/src/admission.rs:383:     // vb-l9jqs: preserve the inner JournalError from the readback via the
+crates/vb_storage/src/admission.rs:384:     // typed CompiledIrReadback wrapper.
+crates/vb_storage/src/admission.rs:385:     let stored = journal
+crates/vb_storage/src/admission.rs:386:         .compiled_ir(digest)
+crates/vb_storage/src/admission.rs:387:         .map_err(|e| JournalError::CompiledIrReadback(Box::new(e)))?;
+crates/vb_storage/src/admission.rs:388:     if stored.is_none() {
+crates/vb_storage/src/admission.rs:389:         return Err(JournalError::ArtifactMalformed);
+crates/vb_storage/src/admission.rs:390:     }
+crates/vb_storage/src/admission.rs:391:     Ok(())
+crates/vb_storage/src/admission.rs:392: }
+crates/vb_storage/src/admission.rs:393: 
+crates/vb_storage/src/admission.rs:394: fn required_capabilities_from_contracts(
+crates/vb_storage/src/admission.rs:395:     action_contracts: &[ActionContract],
+crates/vb_storage/src/admission.rs:396: ) -> Result<Box<[vb_core::capability::Capability]>, JournalError> {
+crates/vb_storage/src/admission.rs:397:     let mut total = 0usize;
+crates/vb_storage/src/admission.rs:398:     for contract in action_contracts {
+crates/vb_storage/src/admission.rs:399:         total = total
+crates/vb_storage/src/admission.rs:400:             .checked_add(contract.required_capabilities.len())
+crates/vb_storage/src/admission.rs:401:             .ok_or(JournalError::ArtifactMalformed)?;
+crates/vb_storage/src/admission.rs:402:     }
+crates/vb_storage/src/admission.rs:403:     let mut required = Vec::new();
+crates/vb_storage/src/admission.rs:404:     required
+crates/vb_storage/src/admission.rs:405:         .try_reserve(total)
+crates/vb_storage/src/admission.rs:406:         .map_err(JournalError::AdmissionAllocationFailed)?;
+crates/vb_storage/src/admission.rs:407:     for contract in action_contracts {
+crates/vb_storage/src/admission.rs:408:         for capability in contract.required_capabilities.iter() {
+crates/vb_storage/src/admission.rs:409:             required.push(capability.clone());
+crates/vb_storage/src/admission.rs:410:         }
+crates/vb_storage/src/admission.rs:411:     }
+crates/vb_storage/src/admission.rs:412:     Ok(required.into_boxed_slice())
+crates/vb_storage/src/admission.rs:413: }
+crates/vb_storage/src/admission.rs:414: 
+crates/vb_storage/src/admission.rs:415: fn validate_idempotency_contracts(action_contracts: &[ActionContract]) -> Result<(), JournalError> {
+crates/vb_storage/src/admission.rs:416:     for contract in action_contracts {
+crates/vb_storage/src/admission.rs:417:         if !is_contract_idempotency_accepted(contract) {
+crates/vb_storage/src/admission.rs:418:             return Err(JournalError::ArtifactMalformed);
+crates/vb_storage/src/admission.rs:419:         }
+crates/vb_storage/src/admission.rs:420:     }
+crates/vb_storage/src/admission.rs:421:     Ok(())
+crates/vb_storage/src/admission.rs:422: }
+crates/vb_storage/src/admission.rs:423: 
+crates/vb_storage/src/admission.rs:424: fn is_contract_idempotency_accepted(contract: &ActionContract) -> bool {
+crates/vb_storage/src/admission.rs:425:     match (
+crates/vb_storage/src/admission.rs:426:         contract.side_effect,
+crates/vb_storage/src/admission.rs:427:         contract.retry_safety,
+crates/vb_storage/src/admission.rs:428:         contract.idempotency,
+crates/vb_storage/src/admission.rs:429:     ) {
+crates/vb_storage/src/admission.rs:430:         (SideEffect::None, _, _) => true,
+crates/vb_storage/src/admission.rs:431:         (_, RetrySafety::Unsafe, _) => false,
+crates/vb_storage/src/admission.rs:432:         (_, _, Idempotency::AtLeastOnceExternal | Idempotency::DeterministicPure) => false,
+crates/vb_storage/src/admission.rs:433:         (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => true,
+crates/vb_storage/src/admission.rs:434:         // `SideEffect`, `RetrySafety`, and `Idempotency` are all `#[non_exhaustive]`.
+crates/vb_storage/src/admission.rs:435:         // Unknown combinations are conservatively rejected.
+crates/vb_storage/src/admission.rs:436:         _ => false,
+crates/vb_storage/src/admission.rs:437:     }
+crates/vb_storage/src/admission.rs:438: }
+crates/vb_storage/src/admission.rs:439: 
+crates/vb_storage/src/admission.rs:440: /// Validates and persists a compiled workflow artifact.
+crates/vb_storage/src/admission.rs:441: ///
+crates/vb_storage/src/admission.rs:442: /// Structure validation ensures the workflow can be reconstructed from its parts.
+crates/vb_storage/src/admission.rs:443: /// Checksum validation recomputes the BLAKE3 digest from the serialized parts
+crates/vb_storage/src/admission.rs:444: /// and compares it to the digest claimed by the workflow.
+crates/vb_storage/src/admission.rs:445: ///
+crates/vb_storage/src/admission.rs:446: /// On success, the artifact is stored in the `compiled_ir` keyspace and its
+crates/vb_storage/src/admission.rs:447: /// digest is returned. On failure, the storage is left unchanged.
+crates/vb_storage/src/admission.rs:448: pub fn admit_compiled_artifact(
+crates/vb_storage/src/admission.rs:449:     journal: &FjallJournal,
+crates/vb_storage/src/admission.rs:450:     workflow: &vb_core::CompiledWorkflow,
+crates/vb_storage/src/admission.rs:451: ) -> Result<vb_core::WorkflowDigest, JournalError> {
+crates/vb_storage/src/admission.rs:452:     let parts = workflow.to_parts();
+crates/vb_storage/src/admission.rs:453: 
+crates/vb_storage/src/admission.rs:454:     // Structure validation: must reconstruct successfully.
+crates/vb_storage/src/admission.rs:455:     vb_core::CompiledWorkflow::try_from_parts(parts.clone())
+crates/vb_storage/src/admission.rs:456:         .map_err(JournalError::WorkflowReconstruction)?;
+crates/vb_storage/src/admission.rs:457: 
+crates/vb_storage/src/admission.rs:458:     // Checksum validation: hash content fields (digest zeroed) and compare
+crates/vb_storage/src/admission.rs:459:     // to the claimed digest to avoid the circular dependency where the digest
+crates/vb_storage/src/admission.rs:460:     // field is part of its own hash input.
+crates/vb_storage/src/admission.rs:461:     let mut parts_for_hash = parts.clone();
+crates/vb_storage/src/admission.rs:462:     parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+crates/vb_storage/src/admission.rs:463:     let hash_bytes =
+crates/vb_storage/src/admission.rs:464:         postcard::to_allocvec(&parts_for_hash).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission.rs:465:     let computed = blake3::hash(&hash_bytes);
+crates/vb_storage/src/admission.rs:466:     if computed.as_bytes() != &workflow.digest().as_bytes() {
+crates/vb_storage/src/admission.rs:467:         return Err(JournalError::ArtifactChecksumMismatch);
+crates/vb_storage/src/admission.rs:468:     }
+crates/vb_storage/src/admission.rs:469: 
+crates/vb_storage/src/admission.rs:470:     // Persist accepted artifact with full serialization (includes digest).
+crates/vb_storage/src/admission.rs:471:     let bytes = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission.rs:472:     let digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&bytes).into());
+crates/vb_storage/src/admission.rs:473:     let record = CompiledIrRecord { digest, ir: bytes };
+crates/vb_storage/src/admission.rs:474:     journal.put_compiled_ir(&record)?;
+crates/vb_storage/src/admission.rs:475: 
+crates/vb_storage/src/admission.rs:476:     Ok(digest)
+crates/vb_storage/src/admission.rs:477: }
+crates/vb_storage/src/admission.rs:478: 
+crates/vb_storage/src/admission.rs:479: #[cfg(test)]
+crates/vb_storage/src/admission.rs:480: #[path = "admission/tests.rs"]
+crates/vb_storage/src/admission.rs:481: mod tests;
+FILE crates/vb_storage/src/constants.rs
+crates/vb_storage/src/constants.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/constants.rs:2: //! Keyspace names, magic constants, and size constants for vb_storage.
+crates/vb_storage/src/constants.rs:3: //!
+crates/vb_storage/src/constants.rs:4: //! These constants define the storage contract between the runtime and
+crates/vb_storage/src/constants.rs:5: //! the durable Fjall key-value backend.
+crates/vb_storage/src/constants.rs:6: 
+crates/vb_storage/src/constants.rs:7: /// Immutable YAML source records by digest.
+crates/vb_storage/src/constants.rs:8: pub const KEYSPACE_WORKFLOW_SOURCE: &str = "workflow_source";
+crates/vb_storage/src/constants.rs:9: /// Compiled workflow IR records by digest.
+crates/vb_storage/src/constants.rs:10: pub const KEYSPACE_COMPILED_IR: &str = "compiled_ir";
+crates/vb_storage/src/constants.rs:11: /// Run metadata and status records.
+crates/vb_storage/src/constants.rs:12: pub const KEYSPACE_RUN_HEADER: &str = "run_header";
+crates/vb_storage/src/constants.rs:13: /// Retained, artifact-bound typed inputs by run.
+crates/vb_storage/src/constants.rs:14: pub const KEYSPACE_RUN_INPUTS: &str = "run_inputs";
+crates/vb_storage/src/constants.rs:15: /// Maximum encoded retained-input payload (1 MiB).
+crates/vb_storage/src/constants.rs:16: pub const MAX_RUN_INPUT_BYTES: u32 = 1_048_576;
+crates/vb_storage/src/constants.rs:17: /// Compact binary event journal records.
+crates/vb_storage/src/constants.rs:18: pub const KEYSPACE_RUN_EVENT: &str = "run_event";
+crates/vb_storage/src/constants.rs:19: /// Compact binary run snapshot records.
+crates/vb_storage/src/constants.rs:20: pub const KEYSPACE_RUN_SNAPSHOT: &str = "run_snapshot";
+crates/vb_storage/src/constants.rs:21: /// Large input, output, and action payload blobs.
+crates/vb_storage/src/constants.rs:22: pub const KEYSPACE_BLOB: &str = "blob";
+crates/vb_storage/src/constants.rs:23: /// Status/time index records.
+crates/vb_storage/src/constants.rs:24: pub const KEYSPACE_INDEX_STATUS: &str = "index_status";
+crates/vb_storage/src/constants.rs:25: /// Workflow/run index records.
+crates/vb_storage/src/constants.rs:26: pub const KEYSPACE_INDEX_WORKFLOW: &str = "index_workflow";
+crates/vb_storage/src/constants.rs:27: /// Pending action index records.
+crates/vb_storage/src/constants.rs:28: pub const KEYSPACE_INDEX_ACTION: &str = "index_action";
+crates/vb_storage/src/constants.rs:29: /// Monotonic emergency-deny overlay marker.
+crates/vb_storage/src/constants.rs:30: pub const KEYSPACE_EMERGENCY_DENY: &str = "emergency_deny";
+crates/vb_storage/src/constants.rs:31: /// Artifact acceptance sequence metadata (last issued counter).
+crates/vb_storage/src/constants.rs:32: pub const KEYSPACE_ARTIFACT_ACCEPTANCE: &str = "artifact_acceptance";
+crates/vb_storage/src/constants.rs:33: 
+crates/vb_storage/src/constants.rs:34: /// `workflow_source` key prefix.
+crates/vb_storage/src/constants.rs:35: pub const PREFIX_WORKFLOW_SOURCE: u8 = 0x01;
+crates/vb_storage/src/constants.rs:36: /// `compiled_ir` key prefix.
+crates/vb_storage/src/constants.rs:37: pub const PREFIX_COMPILED_IR: u8 = 0x02;
+crates/vb_storage/src/constants.rs:38: /// `run_header` key prefix.
+crates/vb_storage/src/constants.rs:39: pub const PREFIX_RUN_HEADER: u8 = 0x10;
+crates/vb_storage/src/constants.rs:40: /// `run_event` key prefix.
+crates/vb_storage/src/constants.rs:41: pub const PREFIX_RUN_EVENT: u8 = 0x11;
+crates/vb_storage/src/constants.rs:42: /// `run_snapshot` key prefix.
+crates/vb_storage/src/constants.rs:43: pub const PREFIX_RUN_SNAPSHOT: u8 = 0x12;
+crates/vb_storage/src/constants.rs:44: /// `blob` key prefix.
+crates/vb_storage/src/constants.rs:45: pub const PREFIX_BLOB: u8 = 0x20;
+crates/vb_storage/src/constants.rs:46: /// `index_status` key prefix.
+crates/vb_storage/src/constants.rs:47: pub const PREFIX_INDEX_STATUS: u8 = 0x30;
+crates/vb_storage/src/constants.rs:48: /// `index_workflow` key prefix.
+crates/vb_storage/src/constants.rs:49: pub const PREFIX_INDEX_WORKFLOW: u8 = 0x31;
+crates/vb_storage/src/constants.rs:50: /// `index_action` key prefix.
+crates/vb_storage/src/constants.rs:51: pub const PREFIX_INDEX_ACTION: u8 = 0x32;
+crates/vb_storage/src/constants.rs:52: 
+crates/vb_storage/src/constants.rs:53: /// Minimum accepted byte value for `IndexStatusState::Other(_)`.
+crates/vb_storage/src/constants.rs:54: ///
+crates/vb_storage/src/constants.rs:55: /// Bytes `0..MIN_OTHER_STATUS_BYTE` collide with the named variants
+crates/vb_storage/src/constants.rs:56: /// `Submitted` (0), `Active` (1), and `Completed` (2). Encoding them
+crates/vb_storage/src/constants.rs:57: /// would round-trip to the wrong variant on read. The

@@ -1,0 +1,39 @@
+{
+  "review_id": "vb-qz2yn-code-review-local3090-v20",
+  "verdict": "APPROVE",
+  "scope": "CODE only; tests and gates pending",
+  "reviewed_files": [
+    {"path": "crates/vb_storage/src/admission.rs", "sha256_prefix": "8addf153"},
+    {"path": "crates/vb_storage/src/constants.rs", "sha256_prefix": "e1407ede"},
+    {"path": "crates/vb_storage/src/journal/artifact_acceptance.rs", "sha256_prefix": "204ec201"},
+    {"path": "crates/vb_storage/src/journal/core.rs", "sha256_prefix": "0ccf8917"},
+    {"path": "crates/vb_storage/src/journal/mod.rs", "sha256_prefix": "e7d6fd0e"},
+    {"path": "crates/vb_storage/src/journal/readonly.rs", "sha256_prefix": "a135a716"},
+    {"path": "crates/vb_storage/src/journal/admission.rs", "sha256_prefix": "aadd843b"},
+    {"path": "crates/vb_storage/src/batch/commit.rs", "sha256_prefix": "6c33deec"},
+    {"path": "crates/vb_storage/src/admission/verification.rs", "sha256_prefix": "cd1be552"},
+    {"path": "crates/vb_storage/src/error/mod.rs", "sha256_prefix": "cf5e9254"},
+    {"path": "fjall-3.1.4/src/batch/mod.rs", "sha256_prefix": "3345faf8"},
+    {"path": "fjall-3.1.4/src/journal/writer.rs", "sha256_prefix": "8a000fcf"}
+  ],
+  "contract_checks": [
+    {"contract": "single_private_batch_and_lock", "result": "PASS", "evidence": "issue_artifact holds write_lock across RMW, single OwnedWriteBatch"},
+    {"contract": "strict_syncall_policy_parity", "result": "PASS", "evidence": "durability(Some(PersistMode::SyncAll)) for Strict only, matches Fjall 3.1.4"},
+    {"contract": "error_variants_and_envelope", "result": "PASS", "evidence": "CompiledIrReadback variant exists and used correctly"},
+    {"contract": "digest_binding", "result": "PASS", "evidence": "bind_artifact_digest sets both digest and verification.digest"},
+    {"contract": "counter_corruption_overflow", "result": "PASS", "evidence": "length check, try_into, checked_add"},
+    {"contract": "keyspaces_probe_readback", "result": "PASS", "evidence": "12 keyspaces, probe includes artifact_acceptance"}
+  ],
+  "findings": [],
+  "informational": [
+    {"file": "artifact_acceptance.rs", "note": "No own #![forbid(unsafe_code)]; inherits from journal/mod.rs. Not a bug."}
+  ],
+  "v17_claims_withdrawn": [
+    "Fjall 3.1.10 claim (actual: 3.1.4)",
+    "CompiledIrReadback invented claim (variant exists)",
+    "Own forbid attribute claim (inherits from parent module)"
+  ],
+  "v17_claims_correct": [
+    "198 line count for artifact_acceptance.rs"
+  ]
+}

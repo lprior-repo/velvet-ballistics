@@ -3,12 +3,6 @@
 //!
 //! Provides the main storage interface for workflow artifacts,
 //! run metadata, journal events, snapshots, and blobs.
-
-use std::path::Path;
-use std::sync::Mutex;
-#[cfg(test)]
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use crate::{
     constants::{
         KEYSPACE_ARTIFACT_ACCEPTANCE, KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_EMERGENCY_DENY,
@@ -19,7 +13,10 @@ use crate::{
     process_lock::ProcessLock,
     types::{FjallConfig, KeyspaceProfile},
 };
-
+use std::path::Path;
+use std::sync::Mutex;
+#[cfg(test)]
+use std::sync::atomic::{AtomicBool, Ordering};
 /// Bounded replay limit for journal event collection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EventReplayLimit {
@@ -46,7 +43,6 @@ impl EventReplayLimit {
         self.max_events
     }
 }
-
 /// Fjall-backed append journal.
 pub struct FjallJournal {
     pub(crate) database: fjall::Database,
@@ -78,7 +74,6 @@ pub struct FjallJournal {
     pub(crate) write_lock: Mutex<()>,
     pub(crate) _process_lock: ProcessLock,
 }
-
 impl FjallJournal {
     /// Opens or creates the journal at `path`.
     ///
@@ -257,12 +252,10 @@ impl FjallJournal {
     pub(crate) fn fail_next_persist_for_test(&self) {
         self.fail_next_persist.store(true, Ordering::SeqCst);
     }
-
     #[cfg(test)]
     pub(crate) fn consume_persist_failure_for_test(&self) -> bool {
         self.fail_next_persist.swap(false, Ordering::SeqCst)
     }
-
     /// Test-only hook: forces the next `compiled_ir` readback to return
     /// `Ok(None)`, simulating a silent persistence failure in which the
     /// `put_compiled_ir` insert succeeded but the value vanished from the
