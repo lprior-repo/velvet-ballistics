@@ -324,21 +324,59 @@ fn split_hunks(diff: &[u8]) -> Vec<Vec<u8>> {
 
 fn hunk_test_path(hunk: &[u8]) -> Option<String> {
     let text = String::from_utf8_lossy(hunk);
+    let mut old_path: Option<String> = None;
+    let mut new_path: Option<String> = None;
     for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("diff --git a/") {
+            let parts: Vec<&str> = rest.split(" b/").collect();
+            if parts.len() == 2 {
+                old_path = Some(parts[0].to_owned());
+                new_path = Some(parts[1].to_owned());
+            }
+        }
+        if let Some(path) = line.strip_prefix("--- a/") {
+            old_path = Some(path.to_owned());
+        }
         if let Some(path) = line.strip_prefix("+++ b/") {
-            if is_test_path(path) {
-                return Some(path.to_owned());
-            }
-        } else if let Some(path) = line.strip_prefix("--- a/") {
-            if is_test_path(path) {
-                return Some(path.to_owned());
-            }
+            new_path = Some(path.to_owned());
+        }
+    }
+    if let Some(path) = &new_path {
+        if is_test_path(path) {
+            return Some(path.clone());
+        }
+    }
+    if let Some(path) = &old_path {
+        if is_test_path(path) {
+            return Some(path.clone());
         }
     }
     None
 }
 
-fn scan_diff_bytes(diff: Vec<u8>) -> Vec<Finding> {
+fn validate_file_utf8(root: &Path, path: &str, base: &str, vcs: Vcs, is_deleted: bool) -> Result<(), String> {
+    let file_path = root.join(path);
+    let contents = if is_deleted {
+        match vcs {
+            Vcs::Git => command_output_allow_fail(&["show", &format!("{base}:{path}")], root),
+            Vcs::Jj => jj_output(&["file", "show", "-r", base, path], root).ok(),
+        }
+    } else {
+        fs::read_to_string(&file_path).ok()
+    };
+    match contents {
+        Some(text) => {
+            let bytes = text.as_bytes();
+            if bytes.len() != text.len() {
+                return Err("non-UTF8 detected via byte-length mismatch".to_owned());
+            }
+            Ok(())
+        }
+        None => Err("file content not available for UTF-8 validation".to_owned()),
+    }
+}
+
+fn scan_diff_bytes(root: &Path, base: &str, vcs: Vcs, diff: Vec<u8>) -> Vec<Finding> {
     let hunks = split_hunks(&diff);
     let mut findings = Vec::new();
     for hunk in hunks {
@@ -349,16 +387,24 @@ fn scan_diff_bytes(diff: Vec<u8>) -> Vec<Finding> {
         if !is_test_path(&path) {
             continue;
         }
-        let text = match String::from_utf8(hunk) {
-            Ok(t) => t,
-            Err(error) => {
+        let is_deleted = base_file_has_tests(root, base, &path, vcs) && {
+            let file_path = root.join(&path);
+            !file_path.exists()
+        };
+        match validate_file_utf8(root, &path, base, vcs, is_deleted) {
+            Ok(()) => {}
+            Err(_detail) => {
                 findings.push(Finding {
                     kind: "NonUtf8TestFile",
                     path,
-                    detail: format!("test file contains non-UTF8 bytes: {error}"),
+                    detail: "relevant test file contains non-UTF8 bytes".to_owned(),
                 });
                 continue;
             }
+        }
+        let text = match String::from_utf8(hunk) {
+            Ok(t) => t,
+            Err(_error) => continue,
         };
         findings.extend(scan_diff(&text));
     }
@@ -366,67 +412,94 @@ fn scan_diff_bytes(diff: Vec<u8>) -> Vec<Finding> {
 }
 
 fn scan_diff(diff: &str) -> Vec<Finding> {
-    let mut current = String::from("<unknown>");
+    let mut old_path = String::from("<unknown>");
+    let mut new_path = String::from("<unknown>");
     let mut removed_test_decl: Vec<(String, String)> = Vec::new();
     let mut added_test_decl: Vec<(String, usize)> = Vec::new();
     let mut removed_exact: Vec<(String, usize)> = Vec::new();
     let mut added_exact: Vec<(String, usize)> = Vec::new();
     let mut added_weak: Vec<(String, usize)> = Vec::new();
     let mut findings = Vec::new();
+    let mut is_rename_out = false;
 
     diff.lines().for_each(|line| {
-        if let Some(path) = line.strip_prefix("+++ b/") {
-            current = path.to_owned();
-            return;
-        }
         if let Some(path) = line.strip_prefix("--- a/") {
-            if current == "<unknown>" {
-                current = path.to_owned();
-            }
+            old_path = path.to_owned();
             return;
         }
-        if !is_test_path(&current) {
+        if let Some(path) = line.strip_prefix("+++ b/") {
+            new_path = path.to_owned();
             return;
         }
+        if !is_test_path(&new_path) && !is_test_path(&old_path) {
+            return;
+        }
+        if is_test_path(&old_path) && !is_test_path(&new_path) && new_path != "<unknown>" {
+            is_rename_out = true;
+        }
+        let effective_path = if is_test_path(&new_path) {
+            new_path.clone()
+        } else {
+            old_path.clone()
+        };
         if line.starts_with('-') && !line.starts_with("---") {
             let Some(payload) = line.strip_prefix('-') else {
                 return;
             };
             if has_test_decl(payload) {
-                removed_test_decl.push((current.clone(), payload.trim().to_owned()));
+                removed_test_decl.push((effective_path.clone(), payload.trim().to_owned()));
             }
             if has_exact_assertion(payload) {
-                removed_exact.push((current.clone(), 1));
+                removed_exact.push((effective_path.clone(), 1));
             }
         } else if line.starts_with('+') && !line.starts_with("+++") {
             let Some(payload) = line.strip_prefix('+') else {
                 return;
             };
             if has_test_decl(payload) {
-                added_test_decl.push((current.clone(), 1));
+                added_test_decl.push((effective_path.clone(), 1));
             }
-            if is_behavior_test_path(&current) && has_ignore_or_skip(payload) {
+            if is_behavior_test_path(&effective_path) && has_ignore_or_skip(payload) {
                 findings.push(Finding {
                     kind: "IgnoredOrSkippedTest",
-                    path: current.clone(),
+                    path: effective_path.clone(),
                     detail: payload.trim().to_owned(),
                 });
             }
-            if is_behavior_test_path(&current) && has_compile_only(payload) {
+            if is_behavior_test_path(&effective_path) && has_compile_only(payload) {
                 findings.push(Finding {
                     kind: "CompileOnlyReplacement",
-                    path: current.clone(),
+                    path: effective_path.clone(),
                     detail: payload.trim().to_owned(),
                 });
             }
             if has_exact_assertion(payload) {
-                added_exact.push((current.clone(), 1));
+                added_exact.push((effective_path.clone(), 1));
             }
             if has_weak_assertion(payload) {
-                added_weak.push((current.clone(), 1));
+                added_weak.push((effective_path.clone(), 1));
             }
         }
     });
+
+    if is_rename_out && is_test_path(&old_path) && !is_test_path(&new_path) {
+        let has_test_content = removed_test_decl
+            .iter()
+            .any(|(path, _)| path == &old_path)
+            || removed_exact
+                .iter()
+                .any(|(path, _)| path == &old_path);
+        if has_test_content {
+            findings.push(Finding {
+                kind: "RenamedTestOutOfDiscovery",
+                path: old_path.clone(),
+                detail: format!(
+                    "test file renamed from {} to {} (outside Cargo test discovery)",
+                    old_path, new_path
+                ),
+            });
+        }
+    }
 
     let paths = removed_exact
         .iter()
@@ -476,7 +549,7 @@ fn scan_diff(diff: &str) -> Vec<Finding> {
 fn check(root: &Path, base: &str, vcs: Vcs) -> Result<i32, String> {
     validate_base_revision(root, base, vcs)?;
     let mut findings = scan_deleted_files(root, base, vcs)?;
-    findings.extend(scan_diff_bytes(diff_bytes(root, base, vcs)?));
+    findings.extend(scan_diff_bytes(root, base, vcs, diff_bytes(root, base, vcs)?));
     if findings.is_empty() {
         println!("test integrity: PASS base={base}");
         Ok(0)
@@ -626,6 +699,142 @@ fn run_self_test_case_with_evidence(label: &str, test_path: &str, mutate: &str, 
     );
     passed
 }
+fn run_rename_out_test() -> bool {
+    let root = std::env::temp_dir().join(format!("test-integrity-{}-rename-out", std::process::id()));
+    let cleanup_result = fs::remove_dir_all(&root);
+    match cleanup_result {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => {
+            eprintln!("SelfTest:rename-out: cleanup failed: {error}");
+            return false;
+        }
+    }
+    let test_file = root.join("crates/workspace_tests/tests/behavior.rs");
+    let base_text = "#[test]\nfn behavior_test() {\n    assert_eq!(2 + 2, 4);\n}\n";
+    let init = fs::create_dir_all(&root)
+        .and_then(|()| write(&test_file, base_text))
+        .map_err(|error| error.to_string())
+        .and_then(|()| command_output_abs("/usr/bin/git", &["init", "-q"], &root).map(|_| ()))
+        .and_then(|()| command_output_abs("/usr/bin/git", &["add", "."], &root).map(|_| ()))
+        .and_then(|()| {
+            command_output_abs("/usr/bin/git", &[
+                "-c", "user.name=guard", "-c", "user.email=guard@example.invalid",
+                "commit", "-q", "-m", "base",
+            ], &root)
+            .map(|_| ())
+        });
+    if let Err(error) = init {
+        eprintln!("SelfTest:rename-out: setup failed: {error}");
+        return false;
+    }
+    let new_path = root.join("crates/workspace_tests/archive/behavior.rs");
+    if let Some(parent) = new_path.parent() {
+        fs::create_dir_all(parent).ok();
+    }
+    fs::rename(&test_file, &new_path).ok();
+    let actual = check(&root, "HEAD", Vcs::Git).unwrap_or(2);
+    let passed = actual == 1;
+    println!(
+        "SelfTest:rename-test-out-of-scope: {} expected=1 actual={actual}",
+        if passed { "PASS" } else { "FAIL" }
+    );
+    passed
+}
+
+fn run_non_utf8_relevant_test() -> bool {
+    let root = std::env::temp_dir().join(format!("test-integrity-{}-non-utf8-relevant", std::process::id()));
+    let cleanup_result = fs::remove_dir_all(&root);
+    match cleanup_result {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => {
+            eprintln!("SelfTest:non-utf8-relevant: cleanup failed: {error}");
+            return false;
+        }
+    }
+    let test_file = root.join("crates/workspace_tests/tests/behavior.rs");
+    fs::create_dir_all(&root).ok();
+    let base_text = "#[test]\nfn behavior_test() {\n    assert_eq!(2 + 2, 4);\n}\n";
+    write(&test_file, base_text).ok();
+    if command_output_abs("/usr/bin/git", &["init", "-q"], &root).is_err() {
+        eprintln!("SelfTest:non-utf8-relevant: git init failed");
+        return false;
+    }
+    if command_output_abs("/usr/bin/git", &["add", "."], &root).is_err() {
+        eprintln!("SelfTest:non-utf8-relevant: git add failed");
+        return false;
+    }
+    if command_output_abs("/usr/bin/git", &[
+        "-c", "user.name=guard", "-c", "user.email=guard@example.invalid",
+        "commit", "-q", "-m", "base",
+    ], &root).is_err() {
+        eprintln!("SelfTest:non-utf8-relevant: git commit failed");
+        return false;
+    }
+    let mutated_bytes: [u8; 55] = [
+        0x23, 0x5b, 0x74, 0x65, 0x73, 0x74, 0x5d, 0xa, 0x66, 0x6e, 0x20, 0x62,
+        0x65, 0x68, 0x61, 0x76, 0x69, 0x6f, 0x72, 0x5f, 0x74, 0x65, 0x73, 0x74,
+        0x28, 0x29, 0x20, 0x7b, 0xa, 0x20, 0x20, 0x20, 0x20, 0x61, 0x73, 0x73,
+        0x65, 0x72, 0x74, 0x5f, 0x65, 0x71, 0x28, 0x64, 0x75, 0x6d, 0x6d, 0x79,
+        0x29, 0x3b, 0xa, 0x7d, 0xa, 0xff, 0x00,
+    ];
+    fs::write(&test_file, &mutated_bytes).ok();
+    let actual = check(&root, "HEAD", Vcs::Git).unwrap_or(2);
+    let passed = actual == 1;
+    println!(
+        "SelfTest:non-utf8-relevant-rust: {} expected=1 actual={actual}",
+        if passed { "PASS" } else { "FAIL" }
+    );
+    passed
+}
+
+fn run_non_utf8_without_nul_test() -> bool {
+    let root = std::env::temp_dir().join(format!("test-integrity-{}-non-utf8-no-nul", std::process::id()));
+    let cleanup_result = fs::remove_dir_all(&root);
+    match cleanup_result {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => {
+            eprintln!("SelfTest:non-utf8-no-nul: cleanup failed: {error}");
+            return false;
+        }
+    }
+    let test_file = root.join("crates/workspace_tests/tests/behavior.rs");
+    fs::create_dir_all(&root).ok();
+    let base_text = "#[test]\nfn behavior_test() {\n    assert_eq!(2 + 2, 4);\n}\n";
+    write(&test_file, base_text).ok();
+    if command_output_abs("/usr/bin/git", &["init", "-q"], &root).is_err() {
+        eprintln!("SelfTest:non-utf8-no-nul: git init failed");
+        return false;
+    }
+    if command_output_abs("/usr/bin/git", &["add", "."], &root).is_err() {
+        eprintln!("SelfTest:non-utf8-no-nul: git add failed");
+        return false;
+    }
+    if command_output_abs("/usr/bin/git", &[
+        "-c", "user.name=guard", "-c", "user.email=guard@example.invalid",
+        "commit", "-q", "-m", "base",
+    ], &root).is_err() {
+        eprintln!("SelfTest:non-utf8-no-nul: git commit failed");
+        return false;
+    }
+    let mutated_bytes: [u8; 55] = [
+        0x23, 0x5b, 0x74, 0x65, 0x73, 0x74, 0x5d, 0xa, 0x66, 0x6e, 0x20, 0x62,
+        0x65, 0x68, 0x61, 0x76, 0x69, 0x6f, 0x72, 0x5f, 0x74, 0x65, 0x73, 0x74,
+        0x28, 0x29, 0x20, 0x7b, 0xa, 0x20, 0x20, 0x20, 0x20, 0x61, 0x73, 0x73,
+        0x65, 0x72, 0x74, 0x5f, 0x65, 0x71, 0x28, 0x64, 0x75, 0x6d, 0x6d, 0x79,
+        0x29, 0x3b, 0xa, 0x7d, 0xa, 0xff, 0xfe,
+    ];
+    fs::write(&test_file, &mutated_bytes).ok();
+    let actual = check(&root, "HEAD", Vcs::Git).unwrap_or(2);
+    let passed = actual == 1;
+    println!(
+        "SelfTest:non-utf8-without-nul: {} expected=1 actual={actual}",
+        if passed { "PASS" } else { "FAIL" }
+    );
+    passed
+}
 
 fn self_test() -> i32 {
     let workspace_test_path = "crates/workspace_tests/tests/behavior.rs";
@@ -671,7 +880,16 @@ fn self_test() -> i32 {
     let binary_pass = run_self_test_case_with_evidence("unrelated-binary-passes", workspace_test_path, "none", 0);
     let binary_fail_delete = run_self_test_case_with_evidence("binary-with-test-delete", workspace_test_path, "delete", 1);
     let binary_fail_weaken = run_self_test_case_with_evidence("binary-with-weak-assertion", workspace_test_path, "weaken", 1);
-    let all_ok = ok && binary_pass && binary_fail_delete && binary_fail_weaken;
+    let rename_out = run_rename_out_test();
+    let non_utf8_relevant = run_non_utf8_relevant_test();
+    let non_utf8_no_nul = run_non_utf8_without_nul_test();
+    let all_ok = ok
+        && binary_pass
+        && binary_fail_delete
+        && binary_fail_weaken
+        && rename_out
+        && non_utf8_relevant
+        && non_utf8_no_nul;
     if all_ok { 0 } else { 1 }
 }
 
