@@ -1,0 +1,11 @@
+{
+  "status": "REJECTED_NOT_ACCEPTED_NOT_COMPILED",
+  "issues": [
+    "Scope violation batch/types.rs public put_raw extension; worker terminated by scope guard.",
+    "New journal helper independently persists counter before artifact; violates samebatch requirement.",
+    "Forbidden unwrap in malformedcounter decode.",
+    "Public next_artifact_sequence lacksprivate nonzero authority type.",
+    "Contract and partial new implementation unaccepted."
+  ],
+  "next": "New local5090 implementation from clean parent using private journal-owned actual Fjall batch; no public batch API extension."
+}

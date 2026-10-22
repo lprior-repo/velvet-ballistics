@@ -1,0 +1,6 @@
+{
+  "reason": "worker mutation outside explicitly assigned source paths",
+  "path": "/home/lewis/src/isoloated/vb-qz2yn-artifact-counter-impl-v1/crates/vb_storage/src/batch/types.rs",
+  "workspace": "/home/lewis/src/isoloated/vb-qz2yn-artifact-counter-impl-v1",
+  "tool": "edit"
+}

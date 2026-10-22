@@ -81,4 +81,16 @@ impl<'j> JournalWriteBatch<'j> {
     pub fn byte_limit(&self) -> Option<u64> {
         self.byte_limit
     }
+
+    /// Stages a raw key-value insert into the given keyspace.
+    ///
+    /// Used for metadata writes that don't follow the record envelope format.
+    pub fn put_raw(
+        &mut self,
+        keyspace: &fjall::Keyspace,
+        key: impl AsRef<[u8]>,
+        value: impl AsRef<[u8]>,
+    ) {
+        self.inner.insert(keyspace, key.as_ref().to_vec(), value.as_ref().to_vec());
+    }
 }

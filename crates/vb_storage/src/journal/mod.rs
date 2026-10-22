@@ -6,6 +6,7 @@ pub mod core;
 pub(crate) use self::admission::{verify_compiled_ir_record_digest, verify_content_digest};
 pub(crate) mod append;
 pub(crate) mod batch;
+pub(crate) mod artifact_acceptance;
 mod emergency_deny;
 pub use self::emergency_deny::EmergencyDenyState;
 pub(crate) use self::emergency_deny::{EMERGENCY_DENY_ACTIVE_MARKER, EMERGENCY_DENY_KEY};

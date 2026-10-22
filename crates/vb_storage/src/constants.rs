@@ -28,6 +28,10 @@ pub const KEYSPACE_INDEX_WORKFLOW: &str = "index_workflow";
 pub const KEYSPACE_INDEX_ACTION: &str = "index_action";
 /// Monotonic emergency-deny overlay marker.
 pub const KEYSPACE_EMERGENCY_DENY: &str = "emergency_deny";
+/// Artifact acceptance metadata including issuance counter.
+pub const KEYSPACE_ARTIFACT_ACCEPTANCE: &str = "artifact_acceptance";
+/// Fixed internal key for the last-issued artifact sequence counter (u64 BE).
+pub const ARTIFACT_LAST_ISSUED_KEY: &str = "last_issued";
 
 /// `workflow_source` key prefix.
 pub const PREFIX_WORKFLOW_SOURCE: u8 = 0x01;
