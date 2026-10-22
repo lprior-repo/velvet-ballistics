@@ -1,0 +1,103 @@
+{
+  "review": {
+    "id": "vb-0qwfq",
+    "role": "RTX5090 HIGH Rust-contract/storage reviewer",
+    "version": "v2",
+    "base_commit": "199b6df2",
+    "worktree": "/home/lewis/src/isoloated/vb-0qwfq-sequence-contract-review-v2"
+  },
+  "findings": [
+    {
+      "id": "F-001",
+      "type": "corrected",
+      "title": "Batch commit vs SyncAll durability",
+      "finding": "Original contract conflated batch commit with SyncAll durability. Actual code: batch.commit() writes to WAL/memtable; batch.strict().commit() adds SyncAll.",
+      "evidence": "crates/vb_storage/src/batch/commit.rs:7-9 — strict() sets PersistMode::SyncAll"
+    },
+    {
+      "id": "F-002",
+      "type": "corrected",
+      "title": "Existing SequenceOverflow variant",
+      "finding": "Original contract proposed adding new SequenceOverflow variant. Actual code: JournalError::SequenceOverflow already exists.",
+      "evidence": "crates/vb_runtime/src/journal/chunk_002.rs:80,84 — checked_add with SequenceOverflow"
+    },
+    {
+      "id": "F-003",
+      "type": "corrected",
+      "title": "Digest integrity vs authorization",
+      "finding": "Original contract claimed hash proves issuance. Actual: digest is integrity only; attacker can rehash. Trust boundary is accepted_at_seq freshness floor.",
+      "evidence": "crates/vb_storage/src/admission/verification.rs:55-91 — recompute checks from hostile bytes"
+    },
+    {
+      "id": "F-004",
+      "type": "corrected",
+      "title": "write_lock is not a write serialization lock",
+      "finding": "Original contract claimed all writes share write_lock. Actual: lock is poison-detection only; Fjall handles internal synchronization.",
+      "evidence": "crates/vb_storage/src/journal/core.rs:74-77 — comment says 'used for poison detection'"
+    },
+    {
+      "id": "F-005",
+      "type": "corrected",
+      "title": "Counter invariant: LAST ISSUED",
+      "finding": "Original contract described counter inconsistently as 'next' vs 'last issued'. Actual: seq starts at 0 for first event, caller increments after each allocation.",
+      "evidence": "crates/vb_storage/src/inputs/submission.rs:130-135 — accepted_event at seq 0, admission_event at seq 1"
+    },
+    {
+      "id": "F-006",
+      "type": "confirmed",
+      "title": "Validation before durable mutation",
+      "finding": "Confirmed: admission validation completes before any durable write. RunSubmission.validate_policy called before commit.",
+      "evidence": "crates/vb_storage/src/inputs/submission.rs:168 — validate_policy before commit"
+    },
+    {
+      "id": "F-007",
+      "type": "corrected",
+      "title": "No rollback on arbitrary I/O errors",
+      "finding": "Original contract claimed rollback on all I/O errors. Actual: only batch commit failure rolls back. Post-commit write failures have no rollback mechanism.",
+      "evidence": "crates/vb_storage/src/batch/commit.rs:20-42 — rollback only if aborted or commit() fails"
+    },
+    {
+      "id": "F-008",
+      "type": "confirmed",
+      "title": "Atomic envelope+events commitment",
+      "finding": "Confirmed: RunSubmission.commit() stages envelope and events in same batch, committed atomically.",
+      "evidence": "crates/vb_storage/src/inputs/submission.rs:79-88 — stage() then stage_acceptance() then commit"
+    },
+    {
+      "id": "F-009",
+      "type": "corrected",
+      "title": "Fjall provides internal locking",
+      "finding": "Original contract overestimated need for application-level write lock. Actual: Fjall's OwnedWriteBatch and WAL provide necessary synchronization.",
+      "evidence": "crates/vb_storage/src/journal/internal.rs:52-55 — write_lock only for poison detection"
+    },
+    {
+      "id": "F-010",
+      "type": "confirmed",
+      "title": "Per-run sequence isolation",
+      "finding": "Confirmed: event keys include run_id; seq numbers are per-run, not global. Cross-run seq collision is not a hazard.",
+      "evidence": "crates/vb_storage/src/keys.rs — run_event_key encodes both run and seq"
+    }
+  ],
+  "implementation_footprint": {
+    "runtime_layer": [
+      "No changes needed: admit_artifact_run_with_certificate_floor already handles seq validation",
+      "shard/lifecycle/chunk_002_parts/chunk_002_drive_core.rs: seq allocation confirmed correct",
+      "journal/chunk_002.rs: sequence_at_offset handles overflow correctly"
+    ],
+    "storage_layer": [
+      "No changes needed: EventSeq::new(0) for new runs is correct",
+      "batch/append_event.rs: duplicate detection at staging time is correct",
+      "inputs/submission.rs: atomic envelope+events commit is correct"
+    ]
+  },
+  "regression_requirements": [
+    "Verify EventSeq::new(0) for first event in new run",
+    "Verify append_strict returns Ok only after SyncAll",
+    "Verify batch retry after failed commit uses same seq successfully",
+    "Verify validation failures produce no durable state",
+    "Verify sequence overflow returns typed error before write",
+    "Verify freshness floor check rejects stale artifacts"
+  ],
+  "unresolved": [],
+  "status": "COMPLETE"
+}

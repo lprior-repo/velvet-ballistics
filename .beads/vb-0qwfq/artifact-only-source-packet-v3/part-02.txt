@@ -1,0 +1,180 @@
+crates/vb_storage/src/admission/verification.rs:88: pub fn verify_accepted_artifact_for_policy(
+crates/vb_storage/src/admission/verification.rs:89:     artifact: &AcceptedArtifact,
+crates/vb_storage/src/admission/verification.rs:90:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/verification.rs:91: ) -> Result<CompiledWorkflow, JournalError> {
+crates/vb_storage/src/admission/verification.rs:92:     let evidence = checked_evidence_schema(&artifact.verification.evidence)?;
+crates/vb_storage/src/admission/verification.rs:93:     if evidence.admission_policy != policy {
+crates/vb_storage/src/admission/verification.rs:94:         return Err(JournalError::ArtifactMalformed);
+crates/vb_storage/src/admission/verification.rs:95:     }
+crates/vb_storage/src/admission/verification.rs:96:     verify_accepted_artifact(artifact)
+crates/vb_storage/src/admission/verification.rs:97: }
+crates/vb_storage/src/admission/verification.rs:98: 
+crates/vb_storage/src/admission/verification.rs:99: fn checked_evidence_schema(
+crates/vb_storage/src/admission/verification.rs:100:     evidence: &ArtifactEvidence,
+crates/vb_storage/src/admission/verification.rs:101: ) -> Result<&ArtifactVerificationEvidence, JournalError> {
+crates/vb_storage/src/admission/verification.rs:102:     match evidence {
+crates/vb_storage/src/admission/verification.rs:103:         ArtifactEvidence::Packed(_) => Err(JournalError::ArtifactMalformed),
+crates/vb_storage/src/admission/verification.rs:104:         ArtifactEvidence::Unverified => Err(JournalError::MigrationRequired {
+crates/vb_storage/src/admission/verification.rs:105:             from: 1,
+crates/vb_storage/src/admission/verification.rs:106:             to: EVIDENCE_VERSION,
+crates/vb_storage/src/admission/verification.rs:107:         }),
+crates/vb_storage/src/admission/verification.rs:108:         ArtifactEvidence::Verified(evidence) if evidence.schema_version == 2 => {
+crates/vb_storage/src/admission/verification.rs:109:             Err(JournalError::MigrationRequired {
+crates/vb_storage/src/admission/verification.rs:110:                 from: 2,
+crates/vb_storage/src/admission/verification.rs:111:                 to: EVIDENCE_VERSION,
+crates/vb_storage/src/admission/verification.rs:112:             })
+crates/vb_storage/src/admission/verification.rs:113:         }
+crates/vb_storage/src/admission/verification.rs:114:         ArtifactEvidence::Verified(evidence) if evidence.schema_version == EVIDENCE_VERSION => {
+crates/vb_storage/src/admission/verification.rs:115:             Ok(evidence)
+crates/vb_storage/src/admission/verification.rs:116:         }
+crates/vb_storage/src/admission/verification.rs:117:         ArtifactEvidence::Verified(evidence) => Err(JournalError::UnsupportedSchemaVersion {
+crates/vb_storage/src/admission/verification.rs:118:             version: evidence.schema_version,
+crates/vb_storage/src/admission/verification.rs:119:         }),
+crates/vb_storage/src/admission/verification.rs:120:     }
+crates/vb_storage/src/admission/verification.rs:121: }
+crates/vb_storage/src/admission/verification.rs:122: 
+crates/vb_storage/src/admission/verification.rs:123: pub(crate) fn verify_expected_bindings(
+crates/vb_storage/src/admission/verification.rs:124:     actual: &AcceptedArtifact,
+crates/vb_storage/src/admission/verification.rs:125:     expected: &AcceptedArtifact,
+crates/vb_storage/src/admission/verification.rs:126: ) -> Result<(), JournalError> {
+crates/vb_storage/src/admission/verification.rs:127:     let mut proof = actual.verification.clone();
+crates/vb_storage/src/admission/verification.rs:128:     proof.digest = expected.verification.digest;
+crates/vb_storage/src/admission/verification.rs:129:     if actual.source_digest != expected.source_digest
+crates/vb_storage/src/admission/verification.rs:130:         || actual.policy_digest != expected.policy_digest
+crates/vb_storage/src/admission/verification.rs:131:         || actual.ir != expected.ir
+crates/vb_storage/src/admission/verification.rs:132:         || proof != expected.verification
+crates/vb_storage/src/admission/verification.rs:133:         || actual.required_capabilities != expected.required_capabilities
+crates/vb_storage/src/admission/verification.rs:134:     {
+crates/vb_storage/src/admission/verification.rs:135:         return Err(JournalError::ArtifactMalformed);
+crates/vb_storage/src/admission/verification.rs:136:     }
+crates/vb_storage/src/admission/verification.rs:137:     Ok(())
+crates/vb_storage/src/admission/verification.rs:138: }
+crates/vb_storage/src/admission/verification.rs:139: 
+crates/vb_storage/src/admission/verification.rs:140: fn checked_parts(
+crates/vb_storage/src/admission/verification.rs:141:     workflow: &CompiledWorkflow,
+crates/vb_storage/src/admission/verification.rs:142:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/verification.rs:143:     contracts: &[ActionContract],
+crates/vb_storage/src/admission/verification.rs:144:     profile: &ExecutorProfile<'_>,
+crates/vb_storage/src/admission/verification.rs:145: ) -> Result<WorkflowParts, JournalError> {
+crates/vb_storage/src/admission/verification.rs:146:     match policy {
+crates/vb_storage/src/admission/verification.rs:147:         RuntimePolicy::Relaxed | RuntimePolicy::Journaled | RuntimePolicy::Strict => {}
+crates/vb_storage/src/admission/verification.rs:148:         _ => return Err(JournalError::ArtifactMalformed),
+crates/vb_storage/src/admission/verification.rs:149:     }
+crates/vb_storage/src/admission/verification.rs:150:     let mut parts = workflow.to_parts();
+crates/vb_storage/src/admission/verification.rs:151:     CompiledWorkflow::try_from_parts(parts.clone())
+crates/vb_storage/src/admission/verification.rs:152:         .map_err(JournalError::WorkflowReconstruction)?;
+crates/vb_storage/src/admission/verification.rs:153:     vb_validate::shared::validate_with_contracts(&parts, contracts)
+crates/vb_storage/src/admission/verification.rs:154:         .map_err(JournalError::ArtifactValidation)?;
+crates/vb_storage/src/admission/verification.rs:155:     vb_core::action::validate_action_registry(contracts)
+crates/vb_storage/src/admission/verification.rs:156:         .map_err(JournalError::ArtifactActionRegistry)?;
+crates/vb_storage/src/admission/verification.rs:157:     validate_idempotency_contracts(contracts)?;
+crates/vb_storage/src/admission/verification.rs:158:     profile.check(policy, contracts)?;
+crates/vb_storage/src/admission/verification.rs:159:     parts.digest = zero_workflow_digest();
+crates/vb_storage/src/admission/verification.rs:160:     let canonical = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission/verification.rs:161:     if digest(&canonical) != workflow.digest() {
+crates/vb_storage/src/admission/verification.rs:162:         return Err(JournalError::ArtifactChecksumMismatch);
+crates/vb_storage/src/admission/verification.rs:163:     }
+crates/vb_storage/src/admission/verification.rs:164:     parts.digest = workflow.digest();
+crates/vb_storage/src/admission/verification.rs:165:     Ok(parts)
+crates/vb_storage/src/admission/verification.rs:166: }
+crates/vb_storage/src/admission/verification.rs:167: 
+crates/vb_storage/src/admission/verification.rs:168: fn build_evidence(
+crates/vb_storage/src/admission/verification.rs:169:     parts: &WorkflowParts,
+crates/vb_storage/src/admission/verification.rs:170:     ir: &[u8],
+crates/vb_storage/src/admission/verification.rs:171:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/verification.rs:172:     contracts: &[ActionContract],
+crates/vb_storage/src/admission/verification.rs:173: ) -> Result<ArtifactVerificationEvidence, JournalError> {
+crates/vb_storage/src/admission/verification.rs:174:     let policy_bytes = postcard::to_allocvec(&parts.resource_contract)
+crates/vb_storage/src/admission/verification.rs:175:         .map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission/verification.rs:176:     let contract_bytes =
+crates/vb_storage/src/admission/verification.rs:177:         postcard::to_allocvec(contracts).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission/verification.rs:178:     let policy_digest = digest(&policy_bytes);
+crates/vb_storage/src/admission/verification.rs:179:     let verifier_digest = verifier_digest();
+crates/vb_storage/src/admission/verification.rs:180:     Ok(ArtifactVerificationEvidence {
+crates/vb_storage/src/journal/core.rs:45:     pub const fn max_events(self) -> usize {
+crates/vb_storage/src/journal/core.rs:46:         self.max_events
+crates/vb_storage/src/journal/core.rs:47:     }
+crates/vb_storage/src/journal/core.rs:48: }
+crates/vb_storage/src/journal/core.rs:49: 
+crates/vb_storage/src/journal/core.rs:50: /// Fjall-backed append journal.
+crates/vb_storage/src/journal/core.rs:51: pub struct FjallJournal {
+crates/vb_storage/src/journal/core.rs:52:     pub(crate) database: fjall::Database,
+crates/vb_storage/src/journal/core.rs:53:     pub(crate) workflow_source: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:54:     pub(crate) compiled_ir: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:55:     pub(crate) run_header: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:56:     pub(crate) run_inputs: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:57:     pub(crate) events: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:58:     pub(crate) run_snapshot: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:59:     pub(crate) blob: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:60:     pub(crate) index_status: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:61:     pub(crate) index_workflow: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:62:     pub(crate) index_action: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:63:     pub(crate) emergency_deny: fjall::Keyspace,
+crates/vb_storage/src/journal/core.rs:64:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:65:     pub(crate) fail_next_persist: AtomicBool,
+crates/vb_storage/src/journal/core.rs:66:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:67:     pub(crate) fail_next_compiled_ir_readback: AtomicBool,
+crates/vb_storage/src/journal/core.rs:68:     /// Test-only fault hook: forces the next `JournalWriteBatch::commit()`
+crates/vb_storage/src/journal/core.rs:69:     /// (the path `append_strict` uses) to return `Err(JournalError::Fjall(..))`
+crates/vb_storage/src/journal/core.rs:70:     /// WITHOUT touching the real Fjall store. This proves the `append_strict`
+crates/vb_storage/src/journal/core.rs:71:     /// commit-failure contract: the staged event is never made visible and a
+crates/vb_storage/src/journal/core.rs:72:     /// retry is idempotent. Consumed exactly once.
+crates/vb_storage/src/journal/core.rs:73:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:74:     pub(crate) fail_next_batch_commit: AtomicBool,
+crates/vb_storage/src/journal/core.rs:75:     // SAFETY: write_lock is used in append_unfsynced() for poison detection.
+crates/vb_storage/src/journal/core.rs:76:     // The lock guard is acquired and dropped, never read directly.
+crates/vb_storage/src/journal/core.rs:77:     pub(crate) write_lock: Mutex<()>,
+crates/vb_storage/src/journal/core.rs:78:     pub(crate) _process_lock: ProcessLock,
+crates/vb_storage/src/journal/core.rs:79: }
+crates/vb_storage/src/journal/core.rs:80: 
+crates/vb_storage/src/journal/core.rs:81: impl FjallJournal {
+crates/vb_storage/src/journal/core.rs:82:     /// Opens or creates the journal at `path`.
+crates/vb_storage/src/journal/core.rs:83:     ///
+crates/vb_storage/src/journal/core.rs:84:     /// When `config` is `Some`, the cache size is validated against the
+crates/vb_storage/src/journal/core.rs:85:     /// bounds in [`FjallConfig::MIN_CACHE_SIZE_BYTES`] /
+crates/vb_storage/src/journal/core.rs:86:     /// [`FjallConfig::MAX_CACHE_SIZE_BYTES`]. Out-of-range values return
+crates/vb_storage/src/journal/core.rs:87:     /// [`JournalError::InvalidConfig`] before any Fjall call.
+crates/vb_storage/src/journal/core.rs:88:     pub fn open(path: impl AsRef<Path>, config: Option<FjallConfig>) -> Result<Self, JournalError> {
+crates/vb_storage/src/journal/core.rs:89:         let config = config.unwrap_or_default();
+crates/vb_storage/src/journal/core.rs:90:         if config.cache_size_bytes < crate::types::FjallConfig::MIN_CACHE_SIZE_BYTES
+crates/vb_storage/src/journal/core.rs:91:             || config.cache_size_bytes > crate::types::FjallConfig::MAX_CACHE_SIZE_BYTES
+crates/vb_storage/src/journal/core.rs:92:         {
+crates/vb_storage/src/journal/core.rs:93:             return Err(JournalError::InvalidConfig {
+crates/vb_storage/src/journal/core.rs:94:                 field: "cache_size_bytes",
+crates/vb_storage/src/journal/core.rs:95:                 reason: "cache size must be in [MIN_CACHE_SIZE_BYTES, MAX_CACHE_SIZE_BYTES]",
+crates/vb_storage/src/journal/core.rs:96:             });
+crates/vb_storage/src/journal/core.rs:97:         }
+crates/vb_storage/src/journal/core.rs:98:         let path_ref = path.as_ref();
+crates/vb_storage/src/journal/core.rs:99:         let database = fjall::Database::builder(path_ref)
+crates/vb_storage/src/journal/core.rs:100:             .cache_size(config.cache_size_bytes)
+crates/vb_storage/src/journal/core.rs:101:             .open()?;
+crates/vb_storage/src/journal/core.rs:102:         let workflow_source = database.keyspace(KEYSPACE_WORKFLOW_SOURCE, || {
+crates/vb_storage/src/journal/core.rs:103:             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+crates/vb_storage/src/journal/core.rs:104:         })?;
+crates/vb_storage/src/journal/core.rs:105:         let compiled_ir = database.keyspace(KEYSPACE_COMPILED_IR, || {
+crates/vb_storage/src/journal/core.rs:106:             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+crates/vb_storage/src/journal/core.rs:107:         })?;
+crates/vb_storage/src/journal/core.rs:108:         let run_header = database.keyspace(KEYSPACE_RUN_HEADER, || {
+crates/vb_storage/src/journal/core.rs:109:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:110:         })?;
+crates/vb_storage/src/journal/core.rs:111:         let run_inputs = database.keyspace(KEYSPACE_RUN_INPUTS, || {
+crates/vb_storage/src/journal/core.rs:112:             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+crates/vb_storage/src/journal/core.rs:113:         })?;
+crates/vb_storage/src/journal/core.rs:114:         let events = database.keyspace(KEYSPACE_RUN_EVENT, || {
+crates/vb_storage/src/journal/core.rs:115:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:116:         })?;
+crates/vb_storage/src/journal/core.rs:117:         let run_snapshot = database.keyspace(KEYSPACE_RUN_SNAPSHOT, || {
+crates/vb_storage/src/journal/core.rs:118:             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+crates/vb_storage/src/journal/core.rs:119:         })?;
+crates/vb_storage/src/journal/core.rs:120:         let blob = database.keyspace(KEYSPACE_BLOB, || {
+crates/vb_storage/src/journal/core.rs:121:             crate::types::keyspace_options_for(KeyspaceProfile::Blob)
+crates/vb_storage/src/journal/core.rs:122:         })?;
+crates/vb_storage/src/journal/core.rs:123:         let index_status = database.keyspace(KEYSPACE_INDEX_STATUS, || {
+crates/vb_storage/src/journal/core.rs:124:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:125:         })?;
+crates/vb_storage/src/journal/core.rs:126:         let index_workflow = database.keyspace(KEYSPACE_INDEX_WORKFLOW, || {
+crates/vb_storage/src/journal/core.rs:127:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:128:         })?;
+crates/vb_storage/src/journal/core.rs:129:         let index_action = database.keyspace(KEYSPACE_INDEX_ACTION, || {
+crates/vb_storage/src/journal/core.rs:130:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:131:         })?;

@@ -1,0 +1,42 @@
+{
+  "contract_version": "v2",
+  "sources": {
+    "storage_layer": {
+      "path": "crates/vb_storage",
+      "files": [
+        "src/types.rs",
+        "src/journal/core.rs",
+        "src/journal/append.rs",
+        "src/journal/internal.rs",
+        "src/batch/types.rs",
+        "src/batch/commit.rs",
+        "src/batch/append_event.rs",
+        "src/inputs/submission.rs",
+        "src/admission/verification.rs"
+      ]
+    },
+    "runtime_layer": {
+      "path": "crates/vb_runtime",
+      "files": [
+        "src/admission.rs",
+        "src/admission/parts/chunk_005_admit_core.rs",
+        "src/journal/chunk_001.rs",
+        "src/journal/chunk_002.rs",
+        "src/shard/lifecycle/chunk_002_parts/chunk_002_drive_core.rs"
+      ]
+    },
+    "core_layer": {
+      "path": "crates/vb_core",
+      "files": [
+        "src/artifact.rs",
+        "src/ids.rs"
+      ]
+    }
+  },
+  "external": {
+    "fjall": {
+      "path": "crates/fjall",
+      "note": "Database, OwnedWriteBatch, PersistMode, ProcessLock"
+    }
+  }
+}

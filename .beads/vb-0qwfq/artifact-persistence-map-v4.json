@@ -1,0 +1,114 @@
+{
+  "version": 4,
+  "note": "actual production callgraph for AcceptedArtifact construction, verification, persistence and seq assignment",
+  "accepted_artifact": {
+    "struct_file": "crates/vb_storage/src/admission.rs",
+    "struct_line": 201,
+    "accepted_at_seq_field": {
+      "line": 214,
+      "current_value": "EventSeq::new(0)",
+      "gaps": ["GAP-007: always zero, no real sequence tracking"]
+    }
+  },
+  "artifact_construction": {
+    "file": "crates/vb_storage/src/admission/verification.rs",
+    "function": "prepare_compiled_artifact",
+    "line": 18,
+    "inner": "prepare_with_profile",
+    "seq_assignment_line": 45,
+    "seq_assignment_value": "EventSeq::new(0)"
+  },
+  "producer_paths": [
+    {
+      "name": "CLI vb submit (RunSubmission)",
+      "entry": "velvet_ballistics/src/submit.rs:prepare_records()",
+      "calls": [
+        "vb_storage::admission::prepare_compiled_artifact() [admission.rs:80]",
+        "RunSubmission::new() [submission.rs:23]",
+        "FjallJournal::commit_run_submission() [submission.rs:137]"
+      ],
+      "locks": ["write_lock acquired at submission.rs:145 before staging"],
+      "persistence": "batch.put_compiled_ir() [submission.rs:88]",
+      "events": ["RunAccepted seq=0 [submission.rs:115]", "RunAdmission seq=1 [submission.rs:125]"],
+      "seq_notes": "events carry hardcoded seq 0/1, not journal-allocated"
+    },
+    {
+      "name": "CLI vb run (submit_artifact)",
+      "entry": "velvet_ballistics/src/run.rs:109",
+      "calls": [
+        "vb_storage::submit_artifact() [admission.rs:341]",
+        "submit_artifact_with_contracts() [admission.rs:346]",
+        "prepare_compiled_artifact() [admission.rs:357]"
+      ],
+      "persistence": "journal.put_compiled_ir() [admission.rs:359]",
+      "events": "none — artifact-only persistence",
+      "seq_notes": "no event seq assigned"
+    },
+    {
+      "name": "FjallJournal.put_compiled_ir (direct)",
+      "file": "crates/vb_storage/src/journal/source.rs",
+      "function": "put_compiled_ir",
+      "line": 55,
+      "envelope_seq": 0,
+      "notes": "encode_record(..., seq=0, ...) at line 58 is hardcoded"
+    },
+    {
+      "name": "JournalWriteBatch.put_compiled_ir",
+      "file": "crates/vb_storage/src/batch/putters.rs",
+      "function": "put_compiled_ir",
+      "line": 71,
+      "notes": "stages for batch commit, no immediate I/O"
+    },
+    {
+      "name": "Executor packed path",
+      "file": "crates/vb_storage/src/executor/packed.rs",
+      "line": 57,
+      "notes": "prepare_artifact() → put_compiled_ir()"
+    }
+  ],
+  "verification_path": {
+    "file": "crates/vb_storage/src/admission/verification.rs",
+    "function": "verify_accepted_artifact",
+    "line": 61,
+    "notes": "cold-path re-verification, does not persist or modify seq"
+  },
+  "reconstruction_path": {
+    "file": "crates/vb_runtime/src/admission/parts/chunk_003_stores.rs",
+    "function": "accepted_artifact_from_record",
+    "line": 67,
+    "seq_value": "EventSeq::new(0)",
+    "notes": "reconstructs from journal records, always sets seq 0"
+  },
+  "runtime_event_seq": {
+    "note": "runtime shard path uses dynamic per-run event seq allocation",
+    "file": "crates/vb_runtime/src/shard/lifecycle/chunk_005.rs",
+    "function": "ask_boundary_sequence",
+    "line": 84,
+    "notes": "journal_sequence_for(run) + checked_add(offset) — run-scoped, not artifact-scoped"
+  },
+  "lock_acquisition": {
+    "write_lock": {
+      "file": "crates/vb_storage/src/inputs/submission.rs",
+      "line": 145,
+      "context": "commit_run_submission acquires before any staging",
+      "other_acquirers": ["journal::internal.rs:53 (append_unfsynced)"]
+    },
+    "recursive_lock_risk": "if counter allocation acquires write_lock while already held → deadlock"
+  },
+  "seq_assignment_candidate": {
+    "location": "crates/vb_storage/src/admission/verification.rs:45",
+    "method": "add journal-wide artifact_seq counter + alloc_artifact_seq()",
+    "timing": "call alloc before prepare_compiled_artifact, pass seq to new variant",
+    "rationale": "seq becomes part of artifact envelope, included in digest binding"
+  },
+  "risks": [
+    "Key space collision if counter stored under compiled IR key prefix",
+    "Type confusion if counter type differs from EventSeq",
+    "Hash integrity broken if seq changed after envelope formation",
+    "Write lock deadlock if counter allocation re-acquires write_lock"
+  ],
+  "legacy_compatibility": {
+    "floor": 0,
+    "note": "all existing artifacts have seq 0; new scheme must remain readable"
+  }
+}

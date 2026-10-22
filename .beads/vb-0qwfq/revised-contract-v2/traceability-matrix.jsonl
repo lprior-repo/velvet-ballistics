@@ -1,0 +1,10 @@
+{"requirement_id":"R-001","requirement":"Per-run EventSeq starting at 0","source":"domain-model.md","target":"storage::types::EventSeq","status":"satisfied"}
+{"requirement_id":"R-002","requirement":"SyncAll for strict durability","source":"contract.md#durability-profile","target":"storage::journal::append::append_strict","status":"satisfied"}
+{"requirement_id":"R-003","requirement":"Atomic batch commit","source":"contract.md#durability-and-failure","target":"storage::batch::commit::JournalWriteBatch::commit","status":"satisfied"}
+{"requirement_id":"R-004","requirement":"Validation before durable mutation","source":"contract.md#sequence-allocation","target":"runtime::admission::admit_artifact_run","status":"satisfied"}
+{"requirement_id":"R-005","requirement":"Sequence overflow typed error","source":"contract.md#sequence-overflow","target":"runtime::journal::chunk_002::sequence_at_offset","status":"satisfied"}
+{"requirement_id":"R-006","requirement":"Freshness floor check","source":"contract.md#freshness-floor","target":"runtime::admission::chunk_005::admit_artifact_run_with_certificate_floor","status":"satisfied"}
+{"requirement_id":"R-007","requirement":"Digest integrity not authorization","source":"contract.md#digest-vs-authorization","target":"storage::admission::verification::verify_accepted_artifact","status":"satisfied"}
+{"requirement_id":"R-008","requirement":"write_lock poison-detection only","source":"contract.md#concurrency-and-locking","target":"storage::journal::internal::append_unfsynced","status":"satisfied"}
+{"requirement_id":"R-009","requirement":"Cross-run sequence independence","source":"contract.md#core-invariant","target":"storage::keys::run_event_key","status":"satisfied"}
+{"requirement_id":"R-010","requirement":"Envelope committed with events","source":"contract.md#durability-profile","target":"storage::inputs::submission::RunSubmission::commit","status":"satisfied"}

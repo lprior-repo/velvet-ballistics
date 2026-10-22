@@ -1,0 +1,8 @@
+{
+  "parts": [
+    ".beads/vb-0qwfq/artifact-only-source-packet-v3/part-01.txt",
+    ".beads/vb-0qwfq/artifact-only-source-packet-v3/part-02.txt",
+    ".beads/vb-0qwfq/artifact-only-source-packet-v3/part-03.txt"
+  ],
+  "note": "Actual current source, not shadow model. Focus only Artifact accepted_at_seq, not run-event sequencing."
+}

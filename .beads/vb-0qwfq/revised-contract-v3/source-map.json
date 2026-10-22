@@ -1,0 +1,28 @@
+{
+  "sources": [
+    "crates/vb_storage/src/admission.rs",
+    "crates/vb_storage/src/admission/verification.rs",
+    "crates/vb_storage/src/journal/core.rs",
+    "crates/vb_storage/src/journal/internal.rs",
+    "crates/vb_storage/src/journal/source.rs",
+    "crates/vb_storage/src/batch/commit.rs",
+    "crates/vb_storage/src/batch/putters.rs",
+    "crates/vb_storage/src/records.rs",
+    "crates/vb_storage/src/constants.rs",
+    "crates/vb_storage/src/types.rs",
+    "crates/vb_storage/src/keys.rs",
+    "crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs"
+  ],
+  "key_lines": {
+    "bug_location": "crates/vb_storage/src/admission/verification.rs:45",
+    "freshness_floor_check": "crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:123",
+    "write_lock_field": "crates/vb_storage/src/journal/core.rs:77",
+    "write_lock_usage": "crates/vb_storage/src/journal/internal.rs:52-55",
+    "batch_commit": "crates/vb_storage/src/batch/commit.rs:20-40",
+    "compiled_ir_put": "crates/vb_storage/src/journal/source.rs:55",
+    "bind_artifact_digest": "crates/vb_storage/src/admission/verification.rs",
+    "verify_expected_bindings": "crates/vb_storage/src/admission/verification.rs:123-138",
+    "EventSeq_type": "crates/vb_storage/src/types.rs:73-78",
+    "SequenceOverflow_error": "crates/vb_storage/src/error/mod.rs:69-70"
+  }
+}

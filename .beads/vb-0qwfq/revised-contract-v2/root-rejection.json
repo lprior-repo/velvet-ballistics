@@ -1,0 +1,11 @@
+{
+  "status": "REJECTED_WRONG_DOMAIN",
+  "reason": "Task is nonzero journal-wide AcceptedArtifact.accepted_at_seq allocation. V2 replaced it with existing per-run journal event sequencing and proposed no artifact fix, leaving actual verification.rs accepted_at_seq=0.",
+  "other_rejected_claims": [
+    "A freshness floor is not an authorization certificate; attacker can choose/rehash seq in an untrusted envelope.",
+    "Fjall batch error rollback and physical powerloss statements exceed actual evidence.",
+    "Actual append_unfsynced and commit_run_submission hold write_lock through batches, contrary to v2 no serialization claim.",
+    "Invented AcceptedArtifact location/type vb_core/src/artifact.rs is incorrect for vb_storage::AcceptedArtifact."
+  ],
+  "next": "Bounded artifact-only single contract revision v3 before any implementation."
+}

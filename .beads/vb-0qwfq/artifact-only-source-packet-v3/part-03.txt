@@ -1,0 +1,165 @@
+crates/vb_storage/src/journal/core.rs:132:         let emergency_deny = database.keyspace(KEYSPACE_EMERGENCY_DENY, || {
+crates/vb_storage/src/journal/core.rs:133:             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+crates/vb_storage/src/journal/core.rs:134:         })?;
+crates/vb_storage/src/journal/core.rs:135:         let _process_lock = ProcessLock::acquire(path_ref)?;
+crates/vb_storage/src/journal/core.rs:136:         Ok(Self {
+crates/vb_storage/src/journal/core.rs:137:             database,
+crates/vb_storage/src/journal/core.rs:138:             workflow_source,
+crates/vb_storage/src/journal/core.rs:139:             compiled_ir,
+crates/vb_storage/src/journal/core.rs:140:             run_header,
+crates/vb_storage/src/journal/core.rs:141:             run_inputs,
+crates/vb_storage/src/journal/core.rs:142:             events,
+crates/vb_storage/src/journal/core.rs:143:             run_snapshot,
+crates/vb_storage/src/journal/core.rs:144:             blob,
+crates/vb_storage/src/journal/core.rs:145:             index_status,
+crates/vb_storage/src/journal/core.rs:146:             index_workflow,
+crates/vb_storage/src/journal/core.rs:147:             index_action,
+crates/vb_storage/src/journal/core.rs:148:             emergency_deny,
+crates/vb_storage/src/journal/core.rs:149:             #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:150:             fail_next_persist: AtomicBool::new(false),
+crates/vb_storage/src/journal/core.rs:151:             #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:152:             fail_next_compiled_ir_readback: AtomicBool::new(false),
+crates/vb_storage/src/journal/core.rs:153:             #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:154:             fail_next_batch_commit: AtomicBool::new(false),
+crates/vb_storage/src/journal/core.rs:155:             write_lock: Mutex::new(()),
+crates/vb_storage/src/journal/core.rs:156:             _process_lock,
+crates/vb_storage/src/journal/core.rs:157:         })
+crates/vb_storage/src/journal/core.rs:158:     }
+crates/vb_storage/src/journal/core.rs:159: 
+crates/vb_storage/src/journal/core.rs:160:     /// Returns all declared keyspace names after a successful open.
+crates/vb_storage/src/batch/commit.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/batch/commit.rs:2: use super::types::JournalWriteBatch;
+crates/vb_storage/src/batch/commit.rs:3: use crate::error::JournalError;
+crates/vb_storage/src/batch/commit.rs:4: 
+crates/vb_storage/src/batch/commit.rs:5: impl<'j> JournalWriteBatch<'j> {
+crates/vb_storage/src/batch/commit.rs:6:     /// Sets strict durability for the commit.
+crates/vb_storage/src/batch/commit.rs:7:     pub fn strict(mut self) -> Self {
+crates/vb_storage/src/batch/commit.rs:8:         self.inner = self.inner.durability(Some(fjall::PersistMode::SyncAll));
+crates/vb_storage/src/batch/commit.rs:9:         self
+crates/vb_storage/src/batch/commit.rs:10:     }
+crates/vb_storage/src/batch/commit.rs:11: 
+crates/vb_storage/src/batch/commit.rs:12:     /// Commits the batch atomically.
+crates/vb_storage/src/batch/commit.rs:13:     ///
+crates/vb_storage/src/batch/commit.rs:14:     /// Returns `Err(JournalError::BatchAborted)` when a prior `put_*` /
+crates/vb_storage/src/batch/commit.rs:15:     /// `append_event` staging step set `self.aborted = true`. The batch
+crates/vb_storage/src/batch/commit.rs:16:     /// is **never** committed in this case — neither the staged records
+crates/vb_storage/src/batch/commit.rs:17:     /// nor any partial state are made durable. Master §49
+crates/vb_storage/src/batch/commit.rs:18:     /// Crash-Consistency Rule forbids silent success on a partial
+crates/vb_storage/src/batch/commit.rs:19:     /// barrier; the typed error is the only honest return value.
+crates/vb_storage/src/batch/commit.rs:20:     pub fn commit(self) -> Result<(), JournalError> {
+crates/vb_storage/src/batch/commit.rs:21:         if self.aborted {
+crates/vb_storage/src/batch/commit.rs:22:             return Err(JournalError::BatchAborted);
+crates/vb_storage/src/batch/commit.rs:23:         }
+crates/vb_storage/src/batch/commit.rs:24:         // Test-only fault injection: return a synthetic `JournalError::Fjall`
+crates/vb_storage/src/batch/commit.rs:25:         // BEFORE the real `OwnedWriteBatch` reaches the storage engine. This
+crates/vb_storage/src/batch/commit.rs:26:         // proves the `append_strict` commit-failure contract (vb-o6qcf.3): the
+crates/vb_storage/src/batch/commit.rs:27:         // staged event is never made visible because the batch never commits,
+crates/vb_storage/src/batch/commit.rs:28:         // and a retry re-stages and commits cleanly (idempotent Ok). The hook
+crates/vb_storage/src/batch/commit.rs:29:         // is consumed exactly once, so a subsequent real commit succeeds.
+crates/vb_storage/src/batch/commit.rs:30:         // cfg(test) guarantees this path is absent from non-test builds.
+crates/vb_storage/src/batch/commit.rs:31:         #[cfg(test)]
+crates/vb_storage/src/batch/commit.rs:32:         if self.journal.consume_batch_commit_failure_for_test() {
+crates/vb_storage/src/batch/commit.rs:33:             return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+crates/vb_storage/src/batch/commit.rs:34:                 std::io::ErrorKind::Other,
+crates/vb_storage/src/batch/commit.rs:35:                 "injected batch commit failure (test hook)",
+crates/vb_storage/src/batch/commit.rs:36:             ))));
+crates/vb_storage/src/batch/commit.rs:37:         }
+crates/vb_storage/src/batch/commit.rs:38:         self.inner.commit()?;
+crates/vb_storage/src/batch/commit.rs:39:         Ok(())
+crates/vb_storage/src/batch/commit.rs:40:     }
+crates/vb_storage/src/batch/commit.rs:41: }
+crates/vb_storage/src/journal/internal.rs:47:     /// derived index mutations are staged into the SAME
+crates/vb_storage/src/journal/internal.rs:48:     /// `fjall::OwnedWriteBatch` as the event write and committed
+crates/vb_storage/src/journal/internal.rs:49:     /// atomically. A process crash between the event insert and an index
+crates/vb_storage/src/journal/internal.rs:50:     /// mutation is impossible because they share one batch.
+crates/vb_storage/src/journal/internal.rs:51:     pub(crate) fn append_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
+crates/vb_storage/src/journal/internal.rs:52:         let _guard = self
+crates/vb_storage/src/journal/internal.rs:53:             .write_lock
+crates/vb_storage/src/journal/internal.rs:54:             .lock()
+crates/vb_storage/src/journal/internal.rs:55:             .map_err(|_| JournalError::WriteLockPoisoned)?;
+crates/vb_storage/src/journal/internal.rs:56:         let key = run_event_key(event.run_id(), event.seq())?;
+crates/vb_storage/src/journal/internal.rs:57:         if !event.is_valid() {
+crates/vb_storage/src/journal/internal.rs:58:             return Err(JournalError::InvalidEvent);
+crates/vb_storage/src/journal/internal.rs:59:         }
+crates/vb_storage/src/journal/internal.rs:60:         if self.events.contains_key(key)? {
+crates/vb_storage/src/journal/internal.rs:61:             return Err(JournalError::DuplicateEvent {
+crates/vb_storage/src/journal/internal.rs:62:                 run: event.run_id(),
+crates/vb_storage/src/journal/internal.rs:63:                 seq: event.seq(),
+crates/vb_storage/src/journal/internal.rs:64:             });
+crates/vb_storage/src/journal/internal.rs:65:         }
+crates/vb_storage/src/journal/internal.rs:66:         let value = encode_record(
+crates/vb_storage/src/journal/internal.rs:67:             MAGIC_JOURNAL_EVENT,
+crates/vb_storage/src/journal/internal.rs:68:             event.record_kind(),
+crates/vb_storage/src/journal/internal.rs:69:             event.seq().get(),
+crates/vb_storage/src/journal/internal.rs:70:             event,
+crates/vb_storage/src/journal/internal.rs:71:             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+crates/vb_storage/src/journal/internal.rs:72:         )?;
+crates/vb_storage/src/journal/internal.rs:73:         // Stage event + recovery indexes on one batch so each derived
+crates/vb_storage/src/journal/internal.rs:74:         // index mutation succeeds or fails with the event write.
+crates/vb_storage/src/journal/internal.rs:75:         let mut batch = self.database.batch();
+crates/vb_storage/src/journal/internal.rs:76:         self.stage_recovery_index_ops(&mut batch, event)?;
+crates/vb_storage/src/journal/internal.rs:77:         batch.insert(&self.events, key, value);
+crates/vb_storage/src/journal/internal.rs:78:         batch.commit()?;
+crates/vb_storage/src/journal/internal.rs:79:         Ok(())
+crates/vb_storage/src/journal/internal.rs:80:     }
+crates/vb_storage/src/journal/internal.rs:81: 
+crates/vb_storage/src/journal/internal.rs:82:     /// Appends a queued event idempotently without forcing an fsync.
+crates/vb_storage/src/journal/internal.rs:83:     ///
+crates/vb_storage/src/journal/internal.rs:84:     /// The event is committed to the LSM memtable and is visible to
+crates/vb_storage/src/journal/internal.rs:85:     /// subsequent readers (replay / `events_for_run`) immediately on
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:79: /// Performs full artifact admission with a caller-supplied certificate freshness floor.
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:80: ///
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:81: /// This preserves relaxed-mode behavior and rejects Strict/Journaled artifacts whose
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:82: /// `accepted_at_seq` is below `required_at_least` after envelope validation.
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83: pub fn admit_artifact_run_with_certificate_floor(
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:84:     store: &dyn AcceptedArtifactStore,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:85:     policy: RuntimePolicy,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:86:     run_id: RunId,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:87:     artifact_digest: WorkflowDigest,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:88:     caps: CapabilitySet,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:89:     required_at_least: EventSeq,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:90: ) -> Result<RunAdmission, AdmissionError> {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:91:     match policy {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:92:         RuntimePolicy::Strict | RuntimePolicy::Journaled => {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:93:             // Load and validate the full artifact.
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:94:             let artifact = store
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:95:                 .load_accepted_artifact(artifact_digest)
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:96:                 .map_err(map_artifact_envelope_error)?;
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:97:             validate_accepted_artifact_envelope(store, &artifact).map_err(map_artifact_envelope_error)?;
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:98:             verify_stored_artifact(store, &artifact, Some(policy)).map_err(
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:99:                 |_| AdmissionError::ArtifactInvalidProofFlag {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:100:                     flag: "admission_policy",
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:101:                 },
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:102:             )?;
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:103: 
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:104:             // INV-002: digest binding must be total. The loaded artifact's digest
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:105:             // must match the requested digest exactly — a crafted artifact with
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:106:             // valid gates but wrong identity must not be admitted.
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:107:             if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108:                 return Err(AdmissionError::ArtifactDigestMismatch {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:109:                     requested: artifact_digest,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:110:                     found: artifact.digest,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:111:                 });
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:112:             }
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:113: 
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:114:             // INV-003: proof digest must match artifact digest. The verification
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:115:             // proof's digest field must bind to the artifact content exactly.
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:116:             if artifact.verification.digest != artifact.digest {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117:                 return Err(AdmissionError::ArtifactDigestMismatch {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:118:                     requested: artifact_digest,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:119:                     found: artifact.verification.digest,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:120:                 });
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:121:             }
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:122: 
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:123:             if artifact.accepted_at_seq < required_at_least {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:124:                 return Err(AdmissionError::ArtifactCertificateStale {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:125:                     digest: artifact_digest,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:126:                     accepted_at_seq: artifact.accepted_at_seq,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:127:                     required_at_least,
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:128:                 });
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:129:             }
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:130: 
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:131:             // spec: VERUS-CARD-003 strict equality (cardinality-exact + membership-exact admission).
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:132:             // F-001 fix: restore strict capability equality (VERUS-CARD-003).
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:133:             //
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:134:             // Strict admission requires that granted capabilities exactly match the

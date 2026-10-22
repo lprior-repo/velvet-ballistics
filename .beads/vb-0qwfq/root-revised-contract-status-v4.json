@@ -1,0 +1,8 @@
+{
+  "status": "REJECTED_DRAFTS_PRESERVED_NOT_IMPLEMENTATION_ACCEPTANCE",
+  "v2": "Wrong domain: replaced artifact acceptance sequence with per-run EventSeq; rejected separately.",
+  "v3": "Artifact domain identified but reserved hash in compiled_ir cannot be claimed collision-free. Draft persists ambiguity about validation/allocation and I/O rollback. Rejected.",
+  "v4": "Call paths useful only as source navigation; recommendations not accepted. Actual default APIs, CLI RunSubmission and ExecutorCatalogpacked all persist artifacts and need separate wiring. No before-validation allocation or allwriterlocking guarantee.",
+  "next": "Child vb-qz2yn default APIs sameactualbatch dedicatedkeyspace current local5090 implementation. Parent staysopen for remainingissuers and actualtests/reviews.",
+  "source_code_modified_here": false
+}

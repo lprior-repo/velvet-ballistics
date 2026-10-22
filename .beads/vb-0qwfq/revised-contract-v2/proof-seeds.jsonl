@@ -1,0 +1,8 @@
+{"seed_id":"PS-001","title":"Per-run sequence starts at zero","statement":"Every run's first event uses EventSeq::new(0)","level":"property","target":"storage::inputs::submission","status":"observed"}
+{"seed_id":"PS-002","title":"Strict append durability","statement":"append_strict returns Ok only after SyncAll","level":"property","target":"storage::journal::append","status":"observed"}
+{"seed_id":"PS-003","title":"Batch atomic commit","statement":"OwnedWriteBatch commits atomically with single SyncAll","level":"property","target":"storage::batch::commit","status":"observed"}
+{"seed_id":"PS-004","title":"No duplicate event from batch retry","statement":"Retry after failed batch commit uses same seq successfully","level":"property","target":"storage::journal::append","status":"observed"}
+{"seed_id":"PS-005","title":"Validation precedes durable mutation","statement":"Pre-flight checks complete before any durable write","level":"property","target":"runtime::admission","status":"observed"}
+{"seed_id":"PS-006","title":"Sequence overflow typed error","statement":"u64::MAX increment returns SequenceOverflow before write","level":"property","target":"runtime::journal","status":"observed"}
+{"seed_id":"PS-007","title":"Cross-run sequence independence","statement":"Multiple runs can each have event at seq 0","level":"property","target":"storage::keys","status":"observed"}
+{"seed_id":"PS-008","title":"write_lock is poison-detection only","statement":"write_lock does not serialize writers; poison detection only","level":"property","target":"storage::journal::core","status":"observed"}
