@@ -146,8 +146,7 @@ fn old_golden_export_all_cases() {
     let mut manifest = Vec::new();
     manifest.push(format!("{{\n  \"oldSHA\": \"{}\",\n  \"cases\": [", OLD_SHA));
 
-    let mut valid_count = 0u32;
-    let mut valid_names = Vec::new();
+let mut valid_names = Vec::new();
 
     for (i, spec) in cases.iter().enumerate() {
         let result = test_case(spec);
@@ -161,7 +160,6 @@ fn old_golden_export_all_cases() {
                     }
                 }
                 let digest = blake3::hash(&bytes);
-                valid_count += 1;
                 valid_names.push(spec.name.to_string());
                 let case_json = format!(
                     "
@@ -250,11 +248,11 @@ fn old_golden_export_all_cases() {
         "export test failed for case(s): {}",
         errors.join("; ")
     );
-    assert_eq!(
-        valid_count,
+assert_eq!(
+        valid_names.len() as u32,
         3,
         "expected 3 valid exported cases, got {}",
-        valid_count
+        valid_names.len()
     );
     assert!(
         valid_names.contains(&"small-canonical".to_string())
