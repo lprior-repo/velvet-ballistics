@@ -5,7 +5,6 @@ use std::process::{Command, Output};
 use tempfile::TempDir;
 
 const WORKSPACE_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
-const WORKSPACE_MANIFEST: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml");
 const TOKENS_FILE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../design/tokens/velvet_ui_tokens.toml"

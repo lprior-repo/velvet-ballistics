@@ -13,15 +13,23 @@
 //! - Current workspace structure (no removed crates as members)
 
 use std::error::Error;
-use std::path::Path;
 use std::process::Command;
 
 const WORKSPACE_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
-const CLI_BINARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/release/velvet-ballistics");
+
 
 fn run_cli(args: &[&str]) -> Result<CommandOutput, Box<dyn Error>> {
-    let output = Command::new(CLI_BINARY)
+    let output = Command::new("cargo")
         .current_dir(WORKSPACE_ROOT)
+        .args([
+            "run",
+            "--quiet",
+            "--manifest-path",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml"),
+            "-p",
+            "velvet-ballistics",
+            "--",
+        ])
         .args(args)
         .output()
         .map_err(|e| format!("failed to run CLI: {e}"))?;
@@ -110,12 +118,10 @@ fn cli_version_prints_version_string() -> Result<(), Box<dyn Error>> {
     );
     Ok(())
 }
-
 #[test]
 fn validate_command_runs_on_valid_workflow() -> Result<(), Box<dyn Error>> {
-    // Create a minimal valid workflow
     let workflow_path = format!("{}/target/vb-nf2u-test-workflow.yaml", WORKSPACE_ROOT);
-    let content = "version: velvet-ballistics/v1\nname: nf2u-test\ntriggers: [manual]\nsteps:\n  - id: hello\n    type: print\n    data:\n      message: test\n";
+    let content = "version: velvet-ballistics/v1\nname: nf2u_test\nwhen:\n  manual: {}\nsteps:\n  - id: hello\n    set:\n      output: msg\n      value: \"1\"\n  - id: done\n    finish:\n      result: msg\n";
     std::fs::write(&workflow_path, content)?;
 
     let output = run_cli(&["validate", &workflow_path])?;

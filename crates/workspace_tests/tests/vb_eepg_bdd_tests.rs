@@ -539,7 +539,7 @@ mod unknown_record_kind_rejection {
             matches!(
                 result,
                 Err(JournalError::RecordKindFamilyMismatch {
-                    magic: vb_storage::constants::MAGIC_COMPILED_ARTIFACT,
+                    magic: vb_storage::constants::MAGIC_JOURNAL_EVENT,
                     kind: 4
                 })
             ),
