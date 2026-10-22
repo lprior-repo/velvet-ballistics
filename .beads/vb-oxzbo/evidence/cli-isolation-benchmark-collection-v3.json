@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-benchmark-measurement",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+    "--root",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-benchmark-measurement",
+    "--commit",
+    "2fea0dcec4bc12c9d8c34fcf894398b3e8f38c9d",
+    "--output-dir",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-8li6d-actual-benchmarks-v3"
+  ],
+  "exit_code": 0,
+  "seconds": 32.261,
+  "timeout_seconds": 1800,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-oxzbo/evidence/cli-isolation-benchmark-collection-v3"
+}

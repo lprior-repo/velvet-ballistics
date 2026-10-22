@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/lewis/src/isoloated/velvet-ballistics-vb-9qdjg-local5090-benchmark-review/.beads/vb-9qdjg/verify_measurements.py", line 173, in <module>
+    Path(tmp_path).unlink()
+         ^^^^^^^^
+NameError: name 'tmp_path' is not defined. Did you mean: 'csv_path'?

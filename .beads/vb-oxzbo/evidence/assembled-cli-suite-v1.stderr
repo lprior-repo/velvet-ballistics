@@ -1,0 +1,7 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.46s
+     Running tests/vb_test_cli_run_lifecycle_behavior.rs (target/debug/deps/vb_test_cli_run_lifecycle_behavior-050672b0334ff7b3)

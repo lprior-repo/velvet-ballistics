@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-benchmark-measurement/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 872, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-benchmark-measurement/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 776, in main
+    commit = check_commit(root, args.commit)
+  File "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-benchmark-measurement/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 445, in check_commit
+    raise CollectorError(f"commit mismatch: expected {expected}, HEAD {head}")
+CollectorError: commit mismatch: expected 9531760cf607cd634f7b82c0916ae9f371d88538, HEAD ea05562217fa35218e59f0061e36816514573ccb

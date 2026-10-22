@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "rustfmt",
+    "--check",
+    "crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs"
+  ],
+  "exit_code": 0,
+  "seconds": 0.009,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-8li6d/evidence/v4-rustfmt-check",
+  "coordinator_message": "REQUIRED BEFORE FINISH: regression STILL uses manifest.parent() wrong cwd. Use std::env::current_dir()? actualinheritedcwd; no manifest.parent. New testfunction STILL exceeds25lines; split status/stdout assertion and location assertions into concise meaningfulhelpers, keep sharedinvocation singlehelper. DBname constant collisions/leak oldmutation: use unique relative ownedfixture name and preserve mutant-created DBexternally, rootpreviouslypreserved old vb-isolation-test.db. Pinnedrustfmt actual touchedfile check mandatory; blankreturnarrow layoutcurrentlyfails. Run actualmutation afterFINALsourceformat/changes, sharedhelper current_dir removal must 1FAILED exit101, restore then all80PASS. Preserve all oldcommandlogs no overwrite. Oldfalsehandoff markhistoricalsuperseded. Do not returnuntilcorrected.\n"
+}

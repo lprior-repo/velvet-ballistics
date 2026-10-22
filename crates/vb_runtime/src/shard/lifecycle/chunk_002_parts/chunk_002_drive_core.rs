@@ -141,35 +141,7 @@ impl Shard {
         let output = crate::shard::helpers::action_output_slot(&state, ticket.step)?;
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
         let action_abi_digest = self.action_abi_digest_for_run_action(run, ticket.action)?;
-        
-        // Evaluate policy at the outbox boundary before dispatching the action.
-        let policy_decision = self
-            .policy_recorder
-            .evaluate_action(&ticket)?;
-        
-        // Journal the policy decision before any effect is dispatched.
         let (mut journal_events, trace_events) = self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
-        Self::push_drive_journal_event(
-            &mut journal_events,
-            RuntimeJournalEvent::PolicyDecision {
-                run,
-                layer: policy_decision.layer,
-                code: policy_decision.code,
-                policy_digest: policy_decision.policy_digest,
-                input_digest: policy_decision.input_digest,
-                emergency_deny_active: policy_decision.emergency_deny_active,
-                compatibility_influence: policy_decision.compatibility_influence,
-            },
-        )?;
-        
-        // If policy denied or suspended, do not dispatch the action.
-        if policy_decision.code != vb_core::policy::DecisionCode::Allowed {
-            return Err(RuntimeError::ActionDeniedByPolicy {
-                run,
-                step,
-                code: policy_decision.code,
-            });
-        }
         Self::push_drive_journal_event(
             &mut journal_events,
             RuntimeJournalEvent::ActionScheduledTicket {

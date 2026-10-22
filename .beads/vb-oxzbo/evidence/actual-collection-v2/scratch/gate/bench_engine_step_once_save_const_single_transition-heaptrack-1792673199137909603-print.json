@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-benchmark-measurement",
+  "argv": [
+    "heaptrack_print",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-8li6d-actual-benchmarks-v2/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst"
+  ],
+  "exit_code": 0,
+  "seconds": 0.152,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-8li6d-actual-benchmarks-v2/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792673199137909603-print"
+}

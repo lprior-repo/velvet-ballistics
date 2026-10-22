@@ -1,0 +1,42 @@
+{
+  "code_and_reviews": "Local RTX5090 author and fresh independent local reviewers; RTX3090 current-gap scout; Sol coordinator VCS/metadata/gates",
+  "source_sha256": "ccac03cccff3787bcd57aab6603dd61709c1be85cd236a89c5a511ce84f1d1ba",
+  "runs": [
+    {
+      "run": "vb-8li6d-local5090-v4",
+      "model": "local-5090-ninfer/qwen3.8-27b-uncensored",
+      "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl",
+      "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-8li6d-local5090-v4.prompt",
+      "cloud_fallback": false,
+      "thinking": "high",
+      "runner": "mise exec -- omp"
+    },
+    {
+      "run": "vb-hz0p6-local5090-v3",
+      "model": "local-5090-ninfer/qwen3.8-27b-uncensored",
+      "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-hz0p6-local5090-review",
+      "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-hz0p6-local5090-v3.prompt",
+      "cloud_fallback": false,
+      "thinking": "high",
+      "runner": "mise exec -- omp"
+    },
+    {
+      "run": "vb-ef0hg-local5090-v1",
+      "model": "local-5090-ninfer/qwen3.8-27b-uncensored",
+      "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-ef0hg-local5090-test-review",
+      "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ef0hg-local5090-v1.prompt",
+      "cloud_fallback": false,
+      "thinking": "high",
+      "runner": "mise exec -- omp"
+    },
+    {
+      "run": "vb-aelha-local3090-v1",
+      "model": "local-3090-llama/qwen3.8-27b-uncensored",
+      "workspace": "/home/lewis/src/isoloated/velvet-ballistics-vb-aelha-local3090-audit",
+      "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-aelha-local3090-v1.prompt",
+      "cloud_fallback": false,
+      "thinking": "high",
+      "runner": "mise exec -- omp"
+    }
+  ]
+}
