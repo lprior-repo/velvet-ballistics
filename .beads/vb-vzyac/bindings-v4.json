@@ -1,0 +1,92 @@
+{
+  "base_commit": "da633fe0bbde9e414173d5f7aabe314a37f8752d",
+  "candidate_commit": "f003129c2e9c1c502c7c236e16c9e72592d4c967",
+  "disposition": ".beads/vb-vzyac/final-precise-coverage-disposition.md",
+  "sections": {
+    "A": {
+      "description": "Deleted digest_duplicate_parity.rs replaced by sensitivity/regression/payload tests",
+      "old_files": [
+        {"path": "crates/vb_compile/tests/digest_duplicate_parity.rs", "blob": "5e67c48082a91c49ac82c03c2991bc56a4fa4478", "tests": 4}
+      ],
+      "new_files": [
+        {"path": "crates/vb_compile/tests/digest_ask_prompt_sensitivity.rs", "blob": "a10680166e54d42a62618d3f22eac5501f466cba", "tests": 6},
+        {"path": "crates/vb_compile/tests/digest_ask_timeout_sensitivity.rs", "blob": "94f1ec10a2ac68692d76cbc21c28a24d367a7d5e", "tests": 6},
+        {"path": "crates/vb_compile/tests/digest_set_finish_regression.rs", "blob": "d158ef38e2de67899c418e066f673ab6fb4ab87b", "tests": 12},
+        {"path": "crates/vb_compile/tests/compiled_digest_payload.rs", "blob": "91320215dfa7809ccd112e520e7fbfb3c0b66fdc", "tests": 3}
+      ],
+      "test_run": {"command": "cargo test -p vb_compile --features test-util --test digest_ask_prompt_sensitivity --test digest_ask_timeout_sensitivity --test digest_set_finish_regression --test compiled_digest_payload", "result": "27 passed, 0 failed", "flags": "-Dwarnings"}
+    },
+    "B": {
+      "description": "v1_primitive_lowering.rs removed obsolete inputs UnsupportedTopLevelDeclaration rows",
+      "old_files": [
+        {"path": "crates/vb_compile/tests/v1_primitive_lowering.rs", "blob": "985e8cc6c5b1b14aec538d0ca32417697641c5cb"}
+      ],
+      "new_files": [
+        {"path": "crates/vb_compile/tests/v1_primitive_lowering.rs", "blob": "e16ca50cab96288b59fccdf195f7afd969d59031"}
+      ],
+      "positive_coverage": [
+        {"path": "crates/workspace_tests/tests/cli/finish_input_execution.rs", "blob": "e76625447c117fdb2499db1ed5b81f073f2c2e03", "test": "finish_input_execution", "description": "End-to-end CLI test using inputs field"}
+      ],
+      "test_run": {"command": "cargo test -p velvet-ballistics --test finish_input_execution", "result": "1 passed, 0 failed", "flags": "-Dwarnings"}
+    },
+    "C": {
+      "description": "vb_wave16_mqa.rs deleted helper function test_digest, imported from support module",
+      "old_files": [
+        {"path": "crates/vb_runtime/tests/vb_wave16_mqa.rs", "blob": "86c1d855aa97369f7f773b3f23bc0d04a907d011"}
+      ],
+      "new_files": [
+        {"path": "crates/vb_runtime/tests/vb_wave16_mqa.rs", "blob": "844335d3e3efed03af644d10381c204c6cd0da59"}
+      ],
+      "retained_tests": [
+        "mqa01_scenario1_rp018_len_counts_registered_not_sparse_slots",
+        "mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5",
+        "mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error"
+      ],
+      "test_run": {"command": "cargo test --test vb_wave16_mqa", "result": "3 passed, 0 failed", "flags": "-Dwarnings"}
+    },
+    "D": {
+      "description": "admission_evidence_integration tests moved from vb_cli to velvet_ballistics",
+      "old_files": [
+        {"path": "crates/vb_cli/tests/admission_evidence_integration/chunk_001.rs", "blob": "d7512ef1692d91e75d19eaee397d14be27e2a697"}
+      ],
+      "new_files": [
+        {"path": "crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs", "blob": "adc2b8264f660d4066ad0dfd4332865e6fbe85a5"}
+      ],
+      "macro_verified": "fail_assert uses assert!(false,...) then unreachable; not skipped tests",
+      "test_run": {"command": "cargo test --test admission_evidence_integration", "result": "25 passed, 0 failed", "flags": "-Dwarnings"}
+    },
+    "E": {
+      "description": "runtime_version_barrier_tests reduced from 19 to 10; architectural shift to evidence-based admission",
+      "old_files": [
+        {"path": "crates/workspace_tests/tests/runtime_version_barrier_tests.rs", "blob": "695cdd2a7f1a13b14413e40c69673cc297c4c882"}
+      ],
+      "new_files": [
+        {"path": "crates/workspace_tests/tests/runtime_version_barrier_tests.rs", "blob": "066b602a83f71bdf3d81a16d46da5000dd5c125f"}
+      ],
+      "old_test_count": 19,
+      "new_test_count": 10,
+      "verification": "changed_proof_claims loops all 6 flags + gate count; any_claimed_gate_count proptest u8::ANY; exact error payloads",
+      "test_run": {"command": "cargo test --test runtime_version_barrier_tests", "result": "10 passed, 0 failed", "flags": "-Dwarnings"}
+    },
+    "F": {
+      "description": "kind_validation.rs assert_eq!(bool, true) to assert!(bool) syntactic change",
+      "old_files": [
+        {"path": "fuzz/fuzz_targets/kind_validation.rs", "blob": "152057e0c564ef139450a5274e48e6e3f9eb0b99"}
+      ],
+      "new_files": [
+        {"path": "fuzz/fuzz_targets/kind_validation.rs", "blob": "c2c9ac24c87e3a00cefeb280a47a9d2509242f5e"}
+      ]
+    },
+    "G": {
+      "description": "UI 662-line test archived; replaced by 6 current-scope CLI tests",
+      "old_files": [
+        {"path": "crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs", "blob": "756e5cbfbbe65cf577bd6d22cec4f7f926432774", "lines": 662}
+      ],
+      "archive": {"path": "docs/history/vb_nf2u_ui_release_acceptance.rs.pre-vb-5aw5i", "blob": "756e5cbfbbe65cf577bd6d22cec4f7f926432774", "byte_exact": true},
+      "new_files": [
+        {"path": "crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs", "blob": "98294c97ffc164e957e3ee9e706fb2a67a467c91", "tests": 6}
+      ],
+      "test_run": {"command": "cargo test --test vb_nf2u_current_scope_tests", "result": "6 passed, 0 failed", "flags": "-Dwarnings"}
+    }
+  }
+}
