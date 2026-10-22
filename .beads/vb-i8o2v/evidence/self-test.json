@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-i8o2v-native5090-records",
+  "argv": [
+    "bash",
+    "scripts/check-test-integrity.sh",
+    "--self-test"
+  ],
+  "exit_code": 0,
+  "seconds": 2.34,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-i8o2v/evidence/self-test"
+}
