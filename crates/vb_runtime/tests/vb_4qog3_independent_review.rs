@@ -12,8 +12,8 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady,
-    ActionTicket, Idempotency, RetryPolicy, RetrySafety, SideEffect,
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+    Idempotency, RetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
@@ -115,7 +115,8 @@ fn pending_ticket(runtime: &Runtime, run: RunId) -> Result<ActionTicket, String>
 }
 
 fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
-    let encoded = postcard::to_allocvec(&value).map_err(|e| format!("slot encoding failed: {e}"))?;
+    let encoded =
+        postcard::to_allocvec(&value).map_err(|e| format!("slot encoding failed: {e}"))?;
     let encoded_len =
         u32::try_from(encoded.len()).map_err(|e| format!("slot length overflowed u32: {e}"))?;
     Ok(ActionOutputReady {
@@ -219,18 +220,20 @@ fn b_independent_verify_strict_durability_barrier() -> Result<(), String> {
     runtime
         .recover_retry(run, checkpoint, next_seq)
         .map_err(|e| format!("recover_retry failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed after recover_retry: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed after recover_retry: {e}"))?;
 
     // Drive to completion
-    if let Some(t) = runtime
-        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-    {
+    if let Some(t) = runtime.lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get())) {
         let output = action_output(SlotValue::I64(42))?;
         runtime
             .complete_action_with_output(t, output)
             .map_err(|e| format!("complete_action failed: {e}"))?;
     }
-    runtime.tick_all().map_err(|e| format!("tick_all failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick_all failed: {e}"))?;
 
     // Verify the run completed and events are visible
     let events = journal
@@ -247,7 +250,9 @@ fn b_independent_verify_strict_durability_barrier() -> Result<(), String> {
         .events_for_run(run)
         .map_err(|e| format!("events_for_run failed: {e}"))?;
     assert!(
-        events2.iter().any(|e| matches!(e, JournalEvent::RunFinished { .. })),
+        events2
+            .iter()
+            .any(|e| matches!(e, JournalEvent::RunFinished { .. })),
         "RunFinished must be visible in journal (SyncAll barrier)"
     );
     assert_eq!(
@@ -275,7 +280,7 @@ fn c_independent_multiple_auto_recovery_calls() -> Result<(), String> {
     // Cold reopen and try automatic recovery multiple times
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
     let events_before = journal
         .events_for_run(run)
@@ -384,18 +389,20 @@ fn d_independent_consumed_checkpoint_reuse_rejected() -> Result<(), String> {
     runtime
         .recover_retry(run, checkpoint.clone(), next_seq)
         .map_err(|e| format!("first recover_retry failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed after first retry: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed after first retry: {e}"))?;
 
     // Drive to completion
-    if let Some(t) = runtime
-        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-    {
+    if let Some(t) = runtime.lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get())) {
         let output = action_output(SlotValue::I64(42))?;
         runtime
             .complete_action_with_output(t, output)
             .map_err(|e| format!("complete_action failed: {e}"))?;
     }
-    runtime.tick_all().map_err(|e| format!("tick_all failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick_all failed: {e}"))?;
 
     // Now try to re-use the same checkpoint - should be rejected
     // because the checkpoint is no longer at the journal head
@@ -430,14 +437,11 @@ fn d_independent_cross_run_checkpoint_rejected() -> Result<(), String> {
 
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
     // Try to use run1's checkpoint for run2
     let result = runtime.recover_retry(run2, checkpoint, next_seq);
-    assert!(
-        result.is_err(),
-        "Cross-run checkpoint should be rejected"
-    );
+    assert!(result.is_err(), "Cross-run checkpoint should be rejected");
 
     // Verify run2 journal is unchanged
     let events = journal
@@ -465,7 +469,7 @@ fn d_independent_wrong_prior_seq_rejected() -> Result<(), String> {
 
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
     let result = runtime.recover_retry(run, tampered, next_seq);
     assert!(
@@ -486,12 +490,12 @@ fn d_independent_wrong_run_attempt_rejected() -> Result<(), String> {
 
     // Tamper with run_attempt
     let mut tampered = checkpoint;
-    let wrong_attempt = std::num::NonZeroU16::new(99).unwrap();
+    let wrong_attempt = std::num::NonZeroU16::new(99).ok_or("99 must be nonzero")?;
     tampered.run_attempt = wrong_attempt;
 
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
     let result = runtime.recover_retry(run, tampered, next_seq);
     assert!(
@@ -519,7 +523,9 @@ fn d_independent_valid_retry_still_works() -> Result<(), String> {
     runtime
         .recover_retry(run, checkpoint, next_seq)
         .map_err(|e| format!("recover_retry failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed after recover_retry: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed after recover_retry: {e}"))?;
 
     // Drive to completion
     let t = runtime
@@ -529,7 +535,9 @@ fn d_independent_valid_retry_still_works() -> Result<(), String> {
     runtime
         .complete_action_with_output(t, output)
         .map_err(|e| format!("complete_action failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick_all failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick_all failed: {e}"))?;
 
     // Verify completion
     let events = journal
@@ -559,7 +567,7 @@ fn cross_independent_no_mutation_on_rejected_retry() -> Result<(), String> {
 
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    let runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
     // Record state before any rejected retry attempts
     let events_before = journal
@@ -569,14 +577,11 @@ fn cross_independent_no_mutation_on_rejected_retry() -> Result<(), String> {
     // Try multiple rejected retry variations
     let tampered_attempt = {
         let mut c = checkpoint.clone();
-        c.run_attempt = std::num::NonZeroU16::new(99).unwrap();
+        c.run_attempt = std::num::NonZeroU16::new(99).ok_or("99 must be nonzero")?;
         c
     };
     let result1 = runtime.recover_retry(run, tampered_attempt, next_seq);
-    assert!(
-        result1.is_err(),
-        "Tampered run_attempt should be rejected"
-    );
+    assert!(result1.is_err(), "Tampered run_attempt should be rejected");
 
     let tampered_prior = {
         let mut c = checkpoint.clone();
@@ -584,10 +589,7 @@ fn cross_independent_no_mutation_on_rejected_retry() -> Result<(), String> {
         c
     };
     let result2 = runtime.recover_retry(run, tampered_prior, next_seq);
-    assert!(
-        result2.is_err(),
-        "Tampered prior_seq should be rejected"
-    );
+    assert!(result2.is_err(), "Tampered prior_seq should be rejected");
 
     // Record state after rejected attempts
     let events_after = journal
@@ -601,8 +603,7 @@ fn cross_independent_no_mutation_on_rejected_retry() -> Result<(), String> {
     );
 
     // Verify all events are identical (not just count)
-    for (i, (before, after)) in events_before.iter().zip(events_after.iter()).enumerate()
-    {
+    for (i, (before, after)) in events_before.iter().zip(events_after.iter()).enumerate() {
         assert_eq!(
             before.seq().get(),
             after.seq().get(),
