@@ -118,7 +118,7 @@ fn recovery_action_ticket(run: RunId, step: StepIdx, action: ActionId) -> Action
         seq,
         action,
         attempt: 1,
-        idempotency_key: compute_action_idempotency_key(run, seq, action),
+        idempotency_key: compute_action_idempotency_key(run, 1, seq, action),
         capacity: 1,
     }
 }
@@ -2457,7 +2457,7 @@ mod hydrate_run_frame_tests {
             seq,
             action,
             attempt: 1,
-            idempotency_key: compute_action_idempotency_key(run, seq, action),
+            idempotency_key: compute_action_idempotency_key(run, 1, seq, action),
             capacity: 1,
         }
     }

@@ -145,6 +145,7 @@ mod tests {
             &mut ev,
             &mut cs,
             &g,
+            1,
         )
         .map_err(|e| format!("{e}"))?;
         match sig {

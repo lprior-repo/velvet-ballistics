@@ -291,7 +291,8 @@ fn runtime_signal_awaiting_action_equality_matches_on_ticket() {
         step: StepIdx::new(0),
         seq: SeqNo::new(0),
         action: ActionId::new(5),
-        attempt: 1,
+            run_attempt: 1,
+            attempt: 1,
         idempotency_key: 42,
         capacity: 1,
     };
@@ -307,7 +308,8 @@ fn runtime_signal_awaiting_action_differs_for_different_ticket() {
         step: StepIdx::ZERO,
         seq: SeqNo::ZERO,
         action: ActionId::new(1),
-        attempt: 1,
+            run_attempt: 1,
+            attempt: 1,
         idempotency_key: 0,
         capacity: 1,
     });
@@ -316,7 +318,8 @@ fn runtime_signal_awaiting_action_differs_for_different_ticket() {
         step: StepIdx::ZERO,
         seq: SeqNo::ZERO,
         action: ActionId::new(1),
-        attempt: 1,
+            run_attempt: 1,
+            attempt: 1,
         idempotency_key: 0,
         capacity: 1,
     });
@@ -494,7 +497,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
         contract_ref,
         &registry_contracts,
         &CapabilitySet::empty(),
-        RetryPolicy::DEFAULT,
+        RetryPolicy::DEFAULT, 1,
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -556,7 +559,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
         contract_ref,
         &registry_contracts,
         &CapabilitySet::empty(),
-        RetryPolicy::DEFAULT,
+        RetryPolicy::DEFAULT, 1,
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -596,7 +599,7 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
         &dummy_contract,
         &empty_contracts,
         &CapabilitySet::empty(),
-        RetryPolicy::DEFAULT,
+        RetryPolicy::DEFAULT, 1,
     );
     assert_eq!(
         result,
@@ -721,7 +724,8 @@ fn resume_action_outcome_suspended_returns_awaiting() {
         step: StepIdx::new(0),
         seq: SeqNo::new(5),
         action: ActionId::new(3),
-        attempt: 2,
+            run_attempt: 1,
+            attempt: 2,
         idempotency_key: 99,
         capacity: 1,
     };
@@ -735,6 +739,7 @@ fn resume_action_outcome_suspended_returns_awaiting() {
             step: StepIdx::new(0),
             seq: SeqNo::new(5),
             action: ActionId::new(3),
+            run_attempt: 1,
             attempt: 2,
             idempotency_key: 99,
             capacity: 1,
@@ -1265,7 +1270,8 @@ fn bh_resume_action_outcome_ready_preserves_secret_taint() {
         step: StepIdx::new(0),
         seq: SeqNo::new(0),
         action: ActionId::new(0),
-        attempt: 1,
+            run_attempt: 1,
+            attempt: 1,
         idempotency_key: 0,
         capacity: 1,
     };
@@ -1287,7 +1293,8 @@ fn bh_resume_action_outcome_ready_preserves_derived_taint() {
         step: StepIdx::new(0),
         seq: SeqNo::new(0),
         action: ActionId::new(0),
-        attempt: 1,
+            run_attempt: 1,
+            attempt: 1,
         idempotency_key: 0,
         capacity: 1,
     };
@@ -1309,7 +1316,8 @@ fn bh_resume_action_outcome_ready_clean_taint_preserved() {
         step: StepIdx::new(0),
         seq: SeqNo::new(0),
         action: ActionId::new(0),
-        attempt: 1,
+            run_attempt: 1,
+            attempt: 1,
         idempotency_key: 0,
         capacity: 1,
     };
@@ -1325,7 +1333,8 @@ fn bh_resume_action_outcome_suspended_preserves_ticket_fields() {
         step: StepIdx::new(3),
         seq: SeqNo::new(11),
         action: ActionId::new(5),
-        attempt: 3,
+            run_attempt: 1,
+            attempt: 3,
         idempotency_key: 12345,
         capacity: 1,
     };
@@ -1368,7 +1377,8 @@ fn bh_resume_action_outcome_failed_retryable_preserves_signal_structure() {
         step: StepIdx::new(2),
         seq: SeqNo::new(5),
         action: ActionId::new(3),
-        attempt: 2,
+            run_attempt: 1,
+            attempt: 2,
         idempotency_key: 100,
         capacity: 4,
     };
@@ -1442,7 +1452,7 @@ fn bh_execute_do_propagates_taint_through_ticket_for_at_least_once() {
         contract_ref,
         &registry,
         &CapabilitySet::empty(),
-        RetryPolicy::DEFAULT,
+        RetryPolicy::DEFAULT, 1,
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -1735,7 +1745,7 @@ mod blackhat_engine {
             RetryPolicy::NEVER,
             &mut evidence,
             &mut cs,
-            &CapabilitySet::empty(),
+            &CapabilitySet::empty(), 1,
         );
         assert!(result.is_ok(), "drive should succeed: {result:?}");
         let events = evidence.drain();
@@ -1886,7 +1896,7 @@ mod blackhat_engine {
             &[],
             RetryPolicy::NEVER,
             &mut cs,
-            &CapabilitySet::empty(),
+            &CapabilitySet::empty(), 1,
         );
         assert!(result.is_ok(), "expected Ok, got {result:?}");
         assert_eq!(
@@ -1961,7 +1971,7 @@ mod blackhat_engine {
             &[],
             RetryPolicy::NEVER,
             &mut cs,
-            &CapabilitySet::empty(),
+            &CapabilitySet::empty(), 1,
         );
         // BH-FIX: TaintViolation is now raised even without contracts.
         assert!(
@@ -2000,7 +2010,7 @@ mod blackhat_engine {
             &[],
             RetryPolicy::NEVER,
             &mut cs,
-            &CapabilitySet::empty(),
+            &CapabilitySet::empty(), 1,
         );
         assert!(matches!(
             result,
@@ -2055,7 +2065,7 @@ mod blackhat_engine {
             &contracts,
             RetryPolicy::NEVER,
             &mut cs,
-            &CapabilitySet::empty(),
+            &CapabilitySet::empty(), 1,
         );
         assert!(
             matches!(result, Err(RuntimeEngineError::TaintViolation { step }) if step == StepIdx::ZERO),
@@ -2103,7 +2113,7 @@ mod blackhat_engine {
             &[],
             RetryPolicy::NEVER,
             &mut cs,
-            &CapabilitySet::empty(),
+            &CapabilitySet::empty(), 1,
         );
         assert!(
             matches!(result, Ok(RuntimeSignal::Continue)),
@@ -2238,6 +2248,7 @@ mod blackhat_engine {
             step: StepIdx::ZERO,
             seq: SeqNo::new(1),
             action: ActionId::new(5),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: 0,
             capacity: 3,
@@ -2317,6 +2328,7 @@ mod blackhat_engine {
             step: StepIdx::new(50),
             seq: SeqNo::new(5),
             action: ActionId::new(99),
+            run_attempt: 1,
             attempt: 3,
             idempotency_key: 99999,
             capacity: 1,
@@ -2326,6 +2338,7 @@ mod blackhat_engine {
             step: StepIdx::ZERO,
             seq: SeqNo::new(1),
             action: ActionId::new(0),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
@@ -2382,7 +2395,7 @@ mod blackhat_engine {
             &contract,
             &registry,
             &CapabilitySet::empty(),
-            RetryPolicy::NEVER,
+            RetryPolicy::NEVER, 1,
         );
         assert!(
             matches!(result, Err(RuntimeEngineError::TaintViolation { .. })),

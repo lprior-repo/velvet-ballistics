@@ -886,7 +886,7 @@ fn execute_together_start_empty_branches_no_panic() {
     // assertion. It verifies that execute_node_full itself does not panic;
     // the inner RuntimeEngineResult is intentionally not asserted here.
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        execute_node_full(
+        let _ = execute_node_full(
             &wf,
             &mut run,
             &mut store,
@@ -1353,7 +1353,7 @@ fn execute_repeat_start_single_attempt_no_panic() {
     // assertion. It verifies that execute_node_full itself does not panic;
     // the inner RuntimeEngineResult is intentionally not asserted here.
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        execute_node_full(
+        let _ = execute_node_full(
             &wf,
             &mut run,
             &mut store,

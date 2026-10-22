@@ -236,36 +236,36 @@ mod tests {
 
     #[test]
     fn idempotency_key_is_deterministic() {
-        let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(2), ActionId::new(3));
-        let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(2), ActionId::new(3));
+        let key1 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(2), ActionId::new(3));
+        let key2 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(2), ActionId::new(3));
         assert_eq!(key1, key2);
     }
 
     #[test]
     fn idempotency_key_differs_for_different_runs() {
-        let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
-        let key2 = compute_idempotency_key(RunId::new(2), SeqNo::new(0), ActionId::new(0));
+        let key1 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0), ActionId::new(0));
+        let key2 = compute_idempotency_key(RunId::new(2), 1, SeqNo::new(0), ActionId::new(0));
         assert_ne!(key1, key2);
     }
 
     #[test]
     fn idempotency_key_differs_for_different_seq() {
-        let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
-        let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(1), ActionId::new(0));
+        let key1 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0), ActionId::new(0));
+        let key2 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(1), ActionId::new(0));
         assert_ne!(key1, key2);
     }
 
     #[test]
     fn idempotency_key_differs_for_different_action() {
-        let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
-        let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(1));
+        let key1 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0), ActionId::new(0));
+        let key2 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0), ActionId::new(1));
         assert_ne!(key1, key2);
     }
 
     #[test]
     fn idempotency_key_with_zero_inputs_is_deterministic() {
-        let key1 = compute_idempotency_key(RunId::new(0), SeqNo::new(0), ActionId::new(0));
-        let key2 = compute_idempotency_key(RunId::new(0), SeqNo::new(0), ActionId::new(0));
+        let key1 = compute_idempotency_key(RunId::new(0), 1, SeqNo::new(0), ActionId::new(0));
+        let key2 = compute_idempotency_key(RunId::new(0), 1, SeqNo::new(0), ActionId::new(0));
         assert_eq!(key1, key2);
     }
 
@@ -275,8 +275,8 @@ mod tests {
     fn idempotency_key_no_overlap_collision() {
         // With the old shifts (seq<<64, action<<80), bits [111:80] overlapped.
         // seq=0x100 action=0 and seq=0 action=0x100 produced the same key.
-        let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0x100), ActionId::new(0));
-        let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0x100));
+        let key1 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0x100), ActionId::new(0));
+        let key2 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0), ActionId::new(0x100));
         assert_ne!(
             key1, key2,
             "hash-based key must distinguish overlapping bit patterns"
@@ -285,14 +285,10 @@ mod tests {
 
     #[test]
     fn idempotency_key_with_large_values() {
-        let key1 = compute_idempotency_key(
-            RunId::new(u64::MAX),
-            SeqNo::new(u64::MAX),
+        let key1 = compute_idempotency_key(RunId::new(u64::MAX), 1, SeqNo::new(u64::MAX),
             ActionId::new(65535),
         );
-        let key2 = compute_idempotency_key(
-            RunId::new(u64::MAX),
-            SeqNo::new(u64::MAX),
+        let key2 = compute_idempotency_key(RunId::new(u64::MAX), 1, SeqNo::new(u64::MAX),
             ActionId::new(65535),
         );
         assert_eq!(key1, key2);
@@ -543,7 +539,7 @@ mod tests {
             &contract,
             &[contract.clone()],
             &granted,
-            RetryPolicy::NEVER,
+            RetryPolicy::NEVER, 1,
         );
 
         assert!(result.is_err());
@@ -576,7 +572,7 @@ mod tests {
             &contract,
             &[contract.clone()],
             &granted,
-            RetryPolicy::DEFAULT,
+            RetryPolicy::DEFAULT, 1,
         );
 
         assert!(result.is_ok());
@@ -594,6 +590,7 @@ mod tests {
             step: StepIdx::new(0),
             seq: SeqNo::new(1),
             action: ActionId::new(5),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: 0,
             capacity: 3,
@@ -626,6 +623,7 @@ mod tests {
             step: StepIdx::new(0),
             seq: SeqNo::new(1),
             action: ActionId::new(5),
+            run_attempt: 1,
             attempt: 3,
             idempotency_key: 0,
             capacity: 3,
@@ -658,6 +656,7 @@ mod tests {
             step: StepIdx::new(0),
             seq: SeqNo::new(1),
             action: ActionId::new(5),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,

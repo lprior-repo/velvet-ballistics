@@ -32,7 +32,7 @@ fn codec_action_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTic
         seq,
         action,
         attempt: 1,
-        idempotency_key: compute_action_idempotency_key(run, seq, action),
+        idempotency_key: compute_action_idempotency_key(run, 1, seq, action),
         capacity: 2,
     }
 }

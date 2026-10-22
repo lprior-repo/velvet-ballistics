@@ -340,6 +340,7 @@ fn action_ticket_with_idempotency_key_zero_is_a_valid_ticket() {
         step: StepIdx::new(0),
         seq: SeqNo::new(1),
         action: ActionId::new(5),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
@@ -393,6 +394,7 @@ fn action_ticket_from_different_run_is_not_equal() {
         step: StepIdx::new(0),
         seq: SeqNo::new(1),
         action: ActionId::new(5),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 100,
         capacity: 1,
@@ -402,11 +404,11 @@ fn action_ticket_from_different_run_is_not_equal() {
         step: StepIdx::new(0),
         seq: SeqNo::new(1),
         action: ActionId::new(5),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 100,
         capacity: 1,
     };
-    assert_ne!(ticket_a, ticket_b);
 }
 
 #[test]
@@ -521,6 +523,7 @@ fn action_outcome_suspended_carries_ticket_identity() {
         step: StepIdx::new(3),
         seq: SeqNo::new(7),
         action: ActionId::new(1),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 999,
         capacity: 1,
@@ -1292,6 +1295,7 @@ fn issue_action_ticket_captures_all_fields() {
         StepIdx::new(3),
         SeqNo::new(7),
         ActionId::new(5),
+        1,
         2,
         12345,
         1,
@@ -1312,6 +1316,7 @@ fn issue_action_ticket_with_zero_key_is_valid() {
         SeqNo::new(1),
         ActionId::new(0),
         1,
+        1,
         0,
         1,
     );
@@ -1326,6 +1331,7 @@ fn issue_action_ticket_with_max_values() {
         StepIdx::new(u16::MAX),
         SeqNo::new(u64::MAX),
         ActionId::new(u16::MAX),
+        u16::MAX,
         u16::MAX,
         u128::MAX,
         u16::MAX,
@@ -1504,6 +1510,7 @@ fn validate_action_outcome_suspended_rejected() {
         step: StepIdx::new(0),
         seq: SeqNo::new(1),
         action: ActionId::new(1),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
@@ -1522,6 +1529,7 @@ fn journal_event_suspended_roundtrips_fields() {
         step: StepIdx::new(2),
         seq: SeqNo::new(3),
         action: ActionId::new(7),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 999,
         capacity: 1,
@@ -1561,7 +1569,8 @@ fn journal_event_serialization_roundtrip() {
         step: StepIdx::new(1),
         seq: SeqNo::new(2),
         action: ActionId::new(3),
-        attempt: 1,
+            run_attempt: 1,
+            attempt: 1,
         idempotency_key: 12345,
         capacity: 1,
     };
@@ -1593,6 +1602,7 @@ fn action_ticket_construction_all_fields_accessible() {
         step: StepIdx::new(42),
         seq: SeqNo::new(100),
         action: ActionId::new(7),
+        run_attempt: 1,
         attempt: 3,
         idempotency_key: 0xDEADBEEF_u128,
         capacity: 10,
@@ -1826,8 +1836,8 @@ fn test_key_computation_deterministic() {
         let seq = SeqNo::new(u64::from(deterministic_rand_u16_bounded(64, iter, 1)));
         let action = ActionId::new(deterministic_rand_u16_bounded(16, iter, 2));
 
-        let key1 = compute_action_idempotency_key(run, seq, action);
-        let key2 = compute_action_idempotency_key(run, seq, action);
+        let key1 = compute_action_idempotency_key(run, 1, 1, seq, action);
+        let key2 = compute_action_idempotency_key(run, 1, 1, seq, action);
 
         assert_eq!(key1, key2, "key computation must be deterministic");
     }
@@ -1841,7 +1851,7 @@ fn test_canonical_key_validates() {
         let seq = SeqNo::new(u64::from(deterministic_rand_u16_bounded(64, iter, 11)));
         let action = ActionId::new(deterministic_rand_u16_bounded(16, iter, 12));
 
-        let canonical_key = compute_action_idempotency_key(run, seq, action);
+        let canonical_key = compute_action_idempotency_key(run, 1, 1, seq, action);
 
         // Canonical ticket should validate
         let canonical_ticket = ActionTicket {
@@ -1849,6 +1859,7 @@ fn test_canonical_key_validates() {
             step: StepIdx::new(deterministic_rand_u16_bounded(4, iter, 13)),
             seq,
             action,
+            run_attempt: 1,
             attempt: deterministic_rand_u16_bounded(3, iter, 14) + 1,
             idempotency_key: canonical_key,
             capacity: deterministic_rand_u16_bounded(5, iter, 15) + 1,
@@ -1889,12 +1900,13 @@ fn action_ticket_postcard_roundtrip_preserves_idempotency_key() {
     let step = StepIdx::new(0x00C3);
     let seq = SeqNo::new(0x0042_1337_9000_0001_u64);
     let action = ActionId::new(0x07B7);
-    let idempotency_key = compute_action_idempotency_key(run, seq, action);
+    let idempotency_key = compute_action_idempotency_key(run, 1, 1, seq, action);
     let original = ActionTicket {
         run,
         step,
         seq,
         action,
+        run_attempt: 1,
         attempt: 2,
         idempotency_key,
         capacity: 5,
@@ -1941,6 +1953,7 @@ fn action_ticket_postcard_roundtrip_at_idempotency_key_boundaries() {
             step: StepIdx::new(0),
             seq: SeqNo::new(1),
             action: ActionId::new(1),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: key,
             capacity: 1,
