@@ -724,21 +724,31 @@ fn runtime_submit_drive_without_action_abi_authority_fails_before_ticket_persist
     let contracts: Box<[ActionContract]> = Box::from([]);
 
     let journal = open_journal(temp.path())?;
-    submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts)
-        .map_err(|err| err.to_string())?;
-    let shared = StorageRuntimeJournal::shared_strict(journal.clone());
-    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
-    runtime
-        .submit_direct_with_inputs_grants_and_contracts(
-            run,
-            workflow,
-            Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
-            CapabilitySet::empty(),
-            contracts,
-        )
-        .map_err(|err| err.to_string())?;
-
-    assert_tick_cannot_resume(runtime.tick_all(), "action_abi_digests_missing")?;
+    // Gate 12 (action contract completeness) is the authoritative fail-closed
+    // boundary: a Do-without-contract artifact is rejected at admission with the
+    // typed error, before any run/ticket mutation. The legacy "submit-ok then
+    // tick action_abi_digests_missing" semantics were superseded by gate 12.
+    let result = submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        RuntimePolicy::Strict,
+        &contracts,
+    );
+    match result {
+        Err(vb_storage::JournalError::ArtifactValidation(
+            vb_validate::ValidationError::ActionContractMissing { action_id, node_index },
+        )) => {
+            assert_eq!(action_id, 0);
+            assert_eq!(node_index, 0);
+        }
+        other => {
+            return Err(format!(
+                "expected ArtifactValidation(ActionContractMissing) at submit, got {other:?}"
+            ));
+        }
+    }
+    // No mutation: the rejected artifact never reaches admission, so no run
+    // events (and no ActionScheduledTicket) are durable.
     let events = journal
         .events_for_run_full(run)
         .map_err(|err| err.to_string())?;

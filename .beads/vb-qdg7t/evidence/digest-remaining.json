@@ -1,0 +1,40 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-qdg7t-digest-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_compile",
+    "--features",
+    "test-util",
+    "--test",
+    "digest_yaml_e2e",
+    "--test",
+    "digest_structural_fields",
+    "--test",
+    "digest_ask_determinism",
+    "--test",
+    "digest_ask_empty_prompt",
+    "--test",
+    "digest_ask_explicit_arm",
+    "--test",
+    "digest_ask_prompt_sensitivity",
+    "--test",
+    "digest_ask_timeout_sensitivity",
+    "--test",
+    "digest_set_finish_regression",
+    "--test",
+    "finish_digest_integration",
+    "--test",
+    "finish_digest_structural",
+    "--test",
+    "together_digest_sensitivity",
+    "--test",
+    "repeat_digest_integration"
+  ],
+  "exit_code": 0,
+  "seconds": 3.98,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  }
+}

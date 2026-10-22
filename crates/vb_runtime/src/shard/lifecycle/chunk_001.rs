@@ -454,10 +454,25 @@ impl Shard {
         match boundary.kind() {
             crate::recovery::RecoveredRunBoundaryKind::None => {}
             crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
-                // Re-inject pending action ticket from boundary
-                let ticket = boundary.pending_action_ticket().map(|t| t.ticket());
-                if let Some(t) = ticket {
+                // Re-inject the durable pending-action ticket and leave the run
+                // suspended at the pending action. Recovery MUST NOT re-drive the
+                // Do node: the action is already durably scheduled
+                // (ActionScheduledTicket) and its input slot may not be re-readable
+                // (legacy unbound admission does not retain inputs). Re-driving would
+                // emit a duplicate StepStarted and, for legacy runs, fail closed on
+                // the un-rehydrated input slot. The recovered run resumes only on the
+                // external action completion/failure signal.
+                if let Some(t) = boundary.pending_action_ticket().map(|t| t.ticket()) {
+                    // Restore the per-step attempt counter so a later completion or
+                    // failure can validate the recovered ticket's attempt
+                    // (validate_ticket_attempt requires action_attempts[step] to
+                    // equal the scheduled ticket's attempt).
+                    if let Some(state) = self.run_state_get_mut(run) {
+                        crate::shard::helpers::record_scheduled_attempt(state, t);
+                    }
                     self.reinject_pending_action(run, t)?;
+                    self.apply(run, crate::shard::types::RuntimeEvent::AwaitAction)?;
+                    return Ok(());
                 }
             }
             crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {

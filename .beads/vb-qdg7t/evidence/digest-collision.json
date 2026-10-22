@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-qdg7t-digest-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_compile",
+    "--test",
+    "digest_framing_collision"
+  ],
+  "exit_code": 0,
+  "seconds": 0.055,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  }
+}

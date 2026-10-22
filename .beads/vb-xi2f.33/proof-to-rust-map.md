@@ -213,6 +213,16 @@ These are traceability-gap items from the proof-plan-review. They reference prod
 | **Contract Clause** | TC-006, INV-ASK-006 |
 | **Repair Note** | PF-VB-XI2F-BRIDGE-001 resolved: PO-UT-003 materialized with inline tests. compile/mod.rs confirmed as dead code (not production path). The critical severity was overstated — no production impact from parity gap. Code review confirms both implementations have identical Ask arms (part_05.rs:158-170, compile/mod.rs:257-269). |
 
+> **Superseded (vb-qdg7t T-1 / vb-s1rry)**: the parity subject `crates/vb_compile/src/compile/mod.rs`
+> was deleted as orphan dead code (`ee7fca189`). Its inline parity tests were first extracted to
+> `crates/vb_compile/tests/digest_duplicate_parity.rs`, which carried a **local mirror** of the
+> deleted unframed `canonical_digest`. That mirror diverged from the live framed `canonical_digest`
+> (introduced at `c789b1b35`, vb-a2l02), so its 4 parity tests were red. PO-UT-003 parity is now a
+> **non-obligation**: there is exactly one live `canonical_digest`; a copy/forwarding parity test is
+> prohibited by repo rules. The mirror file was deleted (not re-pinned to framed encoding) and the
+> real framing contract is covered by `crates/vb_compile/tests/digest_framing_collision.rs` +
+> `digest_*` integration suites.
+
 ## Crate Wiring Verification
 
 ### Kani Harness Module Declarations (`lib.rs:47-58`)

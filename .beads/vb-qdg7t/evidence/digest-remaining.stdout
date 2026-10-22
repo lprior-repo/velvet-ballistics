@@ -1,0 +1,164 @@
+
+running 5 tests
+test canonical_digest_is_deterministic_when_called_multiple_times_with_ask_and_timeout ... ok
+test canonical_digest_is_deterministic_when_called_multiple_times_with_set_finish_source ... ok
+test canonical_digest_produces_same_digest_for_same_fields_different_declaration_order ... ok
+test digest_step_primitive_hashes_ask_fields_in_deterministic_order_same_source_twice ... ok
+test canonical_digest_is_deterministic_when_called_multiple_times_with_ask_empty_prompt_none_timeout ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test canonical_digest_produces_identical_digests_when_both_prompts_are_empty ... ok
+test canonical_digest_empty_prompt_distinct_from_single_char ... ok
+test canonical_digest_produces_distinct_digest_when_ask_prompt_is_empty_vs_nonempty ... ok
+test canonical_digest_returns_valid_hash_when_ask_prompt_is_empty ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 17 tests
+test canonical_digest_does_not_panic_for_ask_with_empty_timeout ... ok
+test canonical_digest_does_not_panic_for_set_finish_source ... ok
+test digest_step_primitive_accepts_empty_prompt_without_panic_some_empty_timeout ... ok
+test digest_step_primitive_ask_produces_different_result_than_catch_all_would ... ok
+test digest_step_primitive_accepts_empty_prompt_without_panic_none_timeout ... ok
+test digest_step_primitive_accepts_empty_prompt_without_panic_some_nonempty_timeout ... ok
+test digest_step_primitive_ask_hashes_prompt_proving_explicit_arm ... ok
+test digest_step_primitive_does_not_panic_for_ask_empty_prompt_none_timeout ... ok
+test digest_step_primitive_does_not_panic_for_ask_large_prompt ... ok
+test digest_step_primitive_does_not_panic_for_ask_prompt_with_all_visible_controls ... ok
+test digest_step_primitive_does_not_panic_for_do_primitive_catch_all ... ok
+test digest_step_primitive_does_not_panic_for_finish_integer_primitive ... ok
+test digest_step_primitive_does_not_panic_for_empty_source ... ok
+test digest_step_primitive_does_not_panic_for_ask_normal_variant ... ok
+test digest_step_primitive_does_not_panic_for_set_primitive ... ok
+test digest_step_primitive_does_not_panic_for_finish_string_primitive ... ok
+test digest_step_primitive_uses_distinct_sentinel_for_none_timeout ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test canonical_digest_produces_distinct_digests_when_ask_prompt_differs_simple ... ok
+test canonical_digest_produces_distinct_digests_when_ask_prompt_has_unicode ... ok
+test canonical_digest_produces_distinct_digests_when_ask_prompt_has_special_chars ... ok
+test canonical_digest_produces_distinct_digests_when_ask_prompt_one_empty_one_nonempty ... ok
+test canonical_digest_produces_identical_digests_when_ask_prompts_match ... ok
+test canonical_digest_produces_distinct_digests_when_ask_prompt_very_long ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test canonical_digest_produces_distinct_digests_when_ask_timeout_none_vs_some ... ok
+test canonical_digest_produces_distinct_digests_when_ask_timeout_special_chars ... ok
+test canonical_digest_produces_distinct_digests_when_ask_timeout_two_different_some_values ... ok
+test canonical_digest_produces_distinct_digests_when_timeout_none_vs_some_empty ... ok
+test canonical_digest_produces_distinct_digests_when_timeout_some_empty_vs_some_value ... ok
+test canonical_digest_produces_identical_digests_when_ask_timeout_same_value ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 12 tests
+test canonical_digest_finish_string_vs_integer_produce_distinct_digests ... ok
+test canonical_digest_is_deterministic_for_set_finish_source ... ok
+test canonical_digest_is_deterministic_for_finish_source ... ok
+test canonical_digest_produces_distinct_digests_when_finish_result_integer_differs ... ok
+test canonical_digest_produces_distinct_digests_when_set_output_differs ... ok
+test canonical_digest_is_deterministic_for_set_only_source ... ok
+test canonical_digest_produces_distinct_digests_when_set_value_differs ... ok
+test canonical_digest_produces_distinct_digests_when_step_order_differs_set_vs_finish ... ok
+test canonical_digest_produces_distinct_digests_when_finish_result_string_differs ... ok
+test canonical_digest_produces_valid_digest_for_finish_integer_only_source ... ok
+test canonical_digest_produces_valid_digest_for_finish_string_only_source ... ok
+test canonical_digest_produces_valid_digest_for_set_only_source ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 11 tests
+test canonical_digest_is_deterministic_when_source_has_no_steps ... ok
+test canonical_digest_produces_distinct_digests_when_step_id_differs ... ok
+test canonical_digest_produces_distinct_digests_when_step_is_added ... ok
+test canonical_digest_produces_distinct_digests_when_name_differs ... ok
+test canonical_digest_produces_distinct_digests_when_trigger_is_manual_vs_event ... ok
+test canonical_digest_produces_distinct_digests_when_step_order_differs_ask_set_vs_set_ask ... ok
+test canonical_digest_produces_distinct_digests_when_trigger_is_manual_vs_webhook ... ok
+test canonical_digest_produces_distinct_digests_when_step_order_differs_within_same_type ... ok
+test canonical_digest_produces_distinct_digests_when_trigger_schedule_cron_differs ... ok
+test canonical_digest_produces_valid_digest_when_source_has_no_steps ... ok
+test canonical_digest_produces_distinct_digests_when_version_differs ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test yaml_with_ask_single_char_prompt_produces_valid_digest ... ok
+test yaml_with_ask_and_timeout_none_vs_some_produces_distinct_digests ... ok
+test yaml_with_ask_prompt_changes_produce_distinct_digests ... ok
+test yaml_same_content_different_layout_produces_identical_digest ... ok
+test yaml_with_ask_and_timeout_produces_semantic_digest_changing_timeout ... ok
+test yaml_with_set_finish_produces_deterministic_digest_unaffected_by_ask_fix ... ok
+test yaml_with_multi_step_ask_workflow_produces_deterministic_digest ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 15 tests
+test canonical_legacy_digest_equivalence ... ignored, BLOCKED: legacy canonical_digest is not accessible from integration test crate
+test digest_is_computed_before_validation_error ... ok
+test finish_step_id_changes_compiled_digest ... ok
+test finish_result_value_changes_compiled_digest_integer ... ok
+test trigger_event_type_changes_compiled_digest ... ok
+test trigger_schedule_param_changes_compiled_digest ... ok
+test finish_result_type_changes_compiled_digest ... ok
+test trigger_type_changes_compiled_digest ... ok
+test trigger_schedule_vs_manual_changes_compiled_digest ... ok
+test workflow_name_changes_compiled_digest ... ok
+test workflow_version_changes_compiled_digest ... ok
+test compiled_digest_stable_across_independent_compilations ... ok
+test multi_step_workflow_step_ordering_changes_compiled_digest ... ok
+test compiled_digest_matches_on_recompile ... ok
+test finish_result_value_changes_compiled_digest_string ... ok
+
+test result: ok. 14 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test audit_digest_has_no_runtime_dependencies ... ok
+test digest_sensitive_to_step_primitive_type ... ok
+test scalarvalue_exhaustiveness_in_digest ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+test test_compile_source_repeat_digest_empty_body ... ok
+test test_repeat_digest_cross_path_equivalent ... ok
+test test_compile_source_repeat_digest_idempotent ... ok
+test test_compile_workflow_repeat_digest_idempotent ... ok
+test test_compile_workflow_repeat_digest_empty_body ... ok
+test test_compile_workflow_repeat_digest_max_u16_boundary ... ok
+test test_compile_source_repeat_digest_min_attempts ... ok
+test test_compile_workflow_repeat_digest_identical_body_different_output_names ... ok
+test test_compile_source_repeat_digest ... ok
+test test_compile_workflow_repeat_digest ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 8 tests
+test proptest_together_branch_ordering_produces_different_digest ... ok
+test proptest_together_sub_step_contents_produce_different_digest ... ok
+test proptest_together_sub_step_output_produces_different_digest ... ok
+test proptest_together_digest_is_deterministic ... ok
+test proptest_together_branch_labels_produce_different_digest ... ok
+test proptest_together_branch_count_produces_different_digest ... ok
+test proptest_branch_label_length_produces_different_digest ... ok
+test proptest_variable_branch_count_produces_different_digest ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.16s
+
