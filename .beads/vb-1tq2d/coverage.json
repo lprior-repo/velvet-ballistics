@@ -1,0 +1,74 @@
+{
+  "bead": "vb-1tq2d",
+  "reviewer": "deepseek-review (independent, source-preservation audit + bounded-fix confirmation)",
+  "status": "IN_PROGRESS",
+  "bead_notes": "OPEN",
+  "final_candidate": "78352490a370",
+  "working_tree_source_equals_final_candidate": true,
+  "generated": "2026-10-21",
+
+  "verdict": {
+    "fixture_migration_review": "REJECTED (bounded) — symbolic_ticket() missing `attempt` (E0063), see code-review.md",
+    "source_preservation_audit": "PASS — all 13 saved SHAs are ancestors of 78352490 with meaningful current counterparts; no meaningful source dropped",
+    "branch_disposition_verification": "PASS — 44 refs + 80 ancestors all accounted; JSON/MD consistent; no unaccounted meaningful source",
+    "assert_ne_bounded_fix_5766dff9": "CONFIRMED correct and bounded (assert_ne restored); tick_all().ok() error-discard NOT approved",
+    "kani_gate_defects": "CONFIRMED still present in HEAD; author-owned, root assigned 5090 repairs"
+  },
+
+  "source_preservation_audit": {
+    "candidate": "78352490a370",
+    "method": "git merge-base --is-ancestor + per-file current-tree existence + key-symbol grep",
+    "sha_checks": [
+      {"source": "reviewed-base", "sha": "e36e4c385b6b", "ancestor": true, "meaningful": "YAML CLI lifecycle test review (merge of 372ad746f)", "counterpart": "crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs + vb_test_runtime_lifecycle_state_behavior.rs", "status": "PRESENT"},
+      {"source": "artifact-fixtures", "sha": "729778e06599", "ancestor": true, "meaningful": "real-evidence integration fixtures + Journaled binding tests (fixes fb0e74d9 Journaled-missing-tuple REJECT)", "counterpart": "crates/vb_runtime/tests/support/verified_artifact.rs; runtime_version_barrier_tests.rs (moved to workspace_tests); vb_wave16_mqa.rs", "status": "PRESENT"},
+      {"source": "admission-serializer", "sha": "6d6ce25c0836", "ancestor": true, "meaningful": "split admission wire serializer", "counterpart": "crates/vb_storage/src/events/wire_serialize_run.rs (serialize_admission*, serialize_retry_checkpoint)", "status": "PRESENT"},
+      {"source": "semantic-source-schema3", "sha": "376979e05670", "ancestor": true, "meaningful": "semantic-source schema3 migration", "counterpart": "crates/vb_storage/src/admission/verification.rs (verify_accepted_artifact); WorkflowParts.semantic_source_identity field", "status": "PRESENT"},
+      {"source": "IPC-helpers", "sha": "521559b3b58c", "ancestor": true, "meaningful": "split reviewed IPC + journal ops into bounded helpers", "counterpart": "crates/vb_ipc/src/server/response_io.rs (write_response_once), connection_io.rs (WriteResult enum), helpers.rs", "status": "PRESENT"},
+      {"source": "shutdown", "sha": "6a5a4d4e9861", "ancestor": true, "meaningful": "pending shutdown authorities + durable journal batch retire", "counterpart": "crates/vb_runtime/src/runtime/shutdown.rs (ShutdownPhase/Report/Failure, quiesce, drain_journal); shutdown_tests.rs DuplicateEvent{run,seq} assertion; vb_storage queue/writer/shutdown.rs", "status": "PRESENT"},
+      {"source": "yaml-event-grammar", "sha": "c849f7bdc173", "ancestor": true, "meaningful": "event type trigger grammar", "counterpart": "crates/vb_yaml/src/yaml_ast/parse_trigger.rs (parse_trigger manual/webhook/ipc/http)", "status": "PRESENT"},
+      {"source": "codex/vb-mdi3w-retained-input-recovery-wip-stop", "sha": "45693ea51b53", "ancestor": true, "meaningful": "actual retained input startup recovery", "counterpart": "crates/vb_runtime/src/recovery/input_binding.rs (retained-input run/digest/binding validation); crates/vb_core/src/action/registry.rs", "status": "PRESENT"},
+      {"source": "codex/vb-clp3q-artifact-fixtures-wip-stop", "sha": "6fc6e0ed1a96", "ancestor": true, "meaningful": "migrate legacy artifact admission fixtures to checked evidence", "counterpart": "crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs + vb_lp2v_proof_admission_bdd.rs", "status": "PRESENT"},
+      {"source": "codex/vb-r5c1c-checkpoint-wip-stop", "sha": "de13504f655d", "ancestor": true, "meaningful": "retry checkpoint + attempt recovery (incomplete, later f6a3631b)", "counterpart": "crates/vb_runtime/src/run_checkpoint.rs (RunCheckpointV1, recover_retry); crates/vb_core/src/frame/checkpoint.rs; value_store/checkpoint.rs", "status": "PRESENT"},
+      {"source": "codex/vb-qzxto-ask-ticket-wip-stop", "sha": "afb002df4493", "ancestor": true, "meaningful": "runtime-issued AskTicket authority", "counterpart": "crates/vb_runtime/src/shard/ask_authority.rs (lookup_pending_ask_ticket, record_pending_ask_authority)", "status": "PRESENT"},
+      {"source": "codex/vb-7r7jv-wip-stop", "sha": "da2da5e2eb72", "ancestor": true, "meaningful": "bounded executor (WIP; later 7ef85214 real executor/recovery)", "counterpart": "crates/vb_storage/src/executor/{authority,catalog,conformance,error,mod,packed,receipt,register}.rs; crates/vb_core/src/action_pack.rs", "status": "PRESENT"},
+      {"source": "codex/vb-idxsn-source-length-wip-20261021", "sha": "eba9e5fe8ae2", "ancestor": true, "meaningful": "source-length split (expression→expr, error/equality split, flux_sequence split)", "counterpart": "crates/vb_runtime/src/error/equality/{admission,core,unit}.rs; crates/vb_storage/src/types/flux_sequence/{,tests}.rs; vb_expr expression.rs→expr_* modules (canonical rename)", "status": "PRESENT"}
+    ],
+    "naive_missing_files_explained": [
+      "crates/vb_expr/src/expression.rs + expression_bytecode.rs → renamed/split to expr_* modules (canonical naming migration; content survives in expr_eval.rs/expr_bytecode/*)",
+      "crates/vb_runtime/tests/runtime_version_barrier_tests.rs + artifact_evidence_support/runtime_cases.rs → moved to crates/workspace_tests/tests/ (canonical workspace_tests crate)"
+    ],
+    "dropped_meaningful_source": "NONE"
+  },
+
+  "branch_disposition_verification": {
+    "artifact": ".beads/vb-1nx31/branch-disposition.json|md",
+    "json_len": 44,
+    "status_counts": {"integrated": 1, "redundant": 2, "superseded": 7, "blocked": 2, "review": 28, "contract": 3, "base": 1},
+    "ancestor_refs": 80,
+    "consistent_json_md": true,
+    "only_genuinely_missing_source": "bb1245638843 (direct-api) — status integrated",
+    "unaccounted_meaningful_source": "NONE"
+  },
+
+  "assert_ne_bounded_fix": {
+    "test": "crates/vb_core/src/action/tests.rs::action_ticket_from_different_run_is_not_equal",
+    "regression": "78352490/c816f6b3/6e3c5375/HEAD construct ticket_a(run=1)+ticket_b(run=2) with NO assert_ne — vacuous test",
+    "restored_in": "f4a405469 (vb-k5936), carried by merge 5766dff91",
+    "assertion": "assert_ne!(ticket_a, ticket_b)",
+    "validity": "ActionTicket derives PartialEq/Eq/Hash/Debug; tickets differ on run (1 vs 2) — assertion is meaningful",
+    "bounded": true,
+    "not_approved": "5766dff91 conflict resolution also changed 2 `let x = runtime.tick_all();` → `runtime.tick_all().ok()` in crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs (lines 264, 314) — discards Result error; root REJECTED"
+  },
+
+  "kani_gate_defects": {
+    "symbolic_ticket_missing_attempt": {"file": "crates/vb_core/src/kani_idempotency_gates.rs:169", "error": "E0063 missing field `attempt`", "introduced_by": "a8452f9e", "status": "present in HEAD, author-owned, 5090-assigned"},
+    "replay_make_minimal_plan_missing_input_slots": {"file": "crates/vb_core/src/replay/kani_harnesses.rs:22", "error": "E0063 missing field `input_slots`", "introduced_by": "31e5182d (pre-existing)", "status": "present in HEAD, GOD-RULE-1 shape, 5090-assigned"},
+    "evidence": ".beads/vb-1tq2d/evidence/kani-ticket-compile.json (exit_code 1)"
+  },
+
+  "not_reviewed_this_turn": [
+    "5090 repairs (6 source files + Kani) — separate frozen checkpoint, review later",
+    "old-main production-inner-drift gate (30 vs 78 DRIFT lines) — root separately triages",
+    "moon-ci baseline (18 completed/11 failed/12 skipped) — NOT accepted CI, interrupted"
+  ]
+}
