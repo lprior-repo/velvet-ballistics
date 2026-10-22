@@ -150,7 +150,7 @@ fn another_grant(grant: &RegisterGrant, seq: u32) -> RegisterGrant {
     let mut ticket = grant.ticket;
     ticket.seq = SeqNo::new(u64::from(seq));
     ticket.idempotency_key =
-        vb_core::action::compute_action_idempotency_key(ticket.run, ticket.seq, ticket.action);
+        vb_core::action::compute_action_idempotency_key(ticket.run, ticket.run_attempt, ticket.seq, ticket.action);
     RegisterGrant {
         ticket,
         ..grant.clone()
@@ -166,8 +166,9 @@ fn scratch_grant() -> RegisterGrant {
         step: StepIdx::new(1),
         seq,
         action,
+        run_attempt: 1,
         attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
         capacity: 2,
     };
     RegisterGrant {

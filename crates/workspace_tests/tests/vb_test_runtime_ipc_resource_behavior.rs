@@ -44,6 +44,7 @@ fn make_ticket(run: RunId, seq: u64) -> ActionTicket {
         step: StepIdx::ZERO,
         seq: SeqNo::new(seq),
         action: ActionId::new(0),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: seq as u128,
         capacity: 1,

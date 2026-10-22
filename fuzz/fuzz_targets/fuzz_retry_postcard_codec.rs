@@ -146,11 +146,11 @@ fn workflow_parts_from_bytes(data: &[u8]) -> Option<WorkflowParts> {
 }
 
 /// Construct an `ActionTicket` from arbitrary input bytes. The 32-byte
-/// minimum covers the run/step/seq/action/attempt/idempotency/capacity
+/// minimum covers the run/step/seq/action/run_attempt/attempt/idempotency/capacity
 /// fields. Falls back to `None` when the slice is too short to seed every
 /// field with a deterministic value.
 fn action_ticket_from_bytes(data: &[u8]) -> Option<ActionTicket> {
-    if data.len() < 32 {
+    if data.len() < 34 {
         return None;
     }
 
@@ -158,20 +158,22 @@ fn action_ticket_from_bytes(data: &[u8]) -> Option<ActionTicket> {
     let step = StepIdx::new(read_u16_le_at(data, 8)?);
     let seq = SeqNo::new(read_u64_le_at(data, 10)?);
     let action = ActionId::new(read_u16_le_at(data, 18)?);
-    let attempt = read_u16_le_at(data, 20)?;
+    let run_attempt = read_u16_le_at(data, 20)?;
+    let attempt = read_u16_le_at(data, 22)?;
     let mut idempotency_bytes = [0u8; 16];
-    let source_key_bytes = data.get(22..32)?;
+    let source_key_bytes = data.get(24..34)?;
     let target_key_bytes = idempotency_bytes.get_mut(..10)?;
     target_key_bytes.copy_from_slice(source_key_bytes);
     let idempotency_key = u128::from_le_bytes(idempotency_bytes);
-    let capacity = read_u16_le_at(data, 32).unwrap_or(1);
+    let capacity = read_u16_le_at(data, 34).unwrap_or(1);
 
     Some(ActionTicket {
         run,
         step,
         seq,
         action,
-        attempt,
+        run_attempt: if run_attempt == 0 { 1 } else { run_attempt },
+        attempt: if attempt == 0 { 1 } else { attempt },
         idempotency_key,
         capacity: if capacity == 0 { 1 } else { capacity },
     })

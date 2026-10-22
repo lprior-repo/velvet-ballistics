@@ -48,9 +48,11 @@ fn evidence_chain_after_execution() {
         step: StepIdx::new(0),
         seq: vb_core::ids::SeqNo::ZERO,
         action: ActionId::new(7),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: compute_action_idempotency_key(
             run_id,
+            1,
             vb_core::ids::SeqNo::ZERO,
             ActionId::new(7),
         ),

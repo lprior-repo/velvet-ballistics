@@ -27,6 +27,7 @@ pub fn execute_do(
     registry_contracts: &[ActionContract],
     granted: &CapabilitySet,
     retry_policy: RetryPolicy,
+    state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let action_index = usize::from(action.get());
     let resolved = registry_contracts
@@ -61,8 +62,9 @@ pub fn execute_do(
         step,
         seq,
         action,
+        run_attempt: state_run_attempt,
         attempt: 1,
-        idempotency_key: compute_idempotency_key(run.run_id(), seq, action),
+        idempotency_key: compute_idempotency_key(run.run_id(), state_run_attempt, seq, action),
         capacity: retry_policy.max_attempts,
     };
 
@@ -165,13 +167,15 @@ pub fn resume_action_outcome(
                                 reason: "attempt_overflow_on_retry",
                             },
                         ))?;
-                let idempotency_key =
-                    compute_idempotency_key(original_ticket.run, next_seq, original_ticket.action);
+                let idempotency_key = compute_idempotency_key(
+                    original_ticket.run, original_ticket.run_attempt, next_seq, original_ticket.action,
+                );
                 Ok(RuntimeSignal::AwaitingAction(ActionTicket {
                     run: original_ticket.run,
                     step: original_ticket.step,
                     seq: next_seq,
                     action: original_ticket.action,
+                    run_attempt: original_ticket.run_attempt,
                     attempt: next_attempt,
                     idempotency_key,
                     capacity: original_ticket.capacity,
@@ -198,13 +202,12 @@ pub fn resume_action_outcome(
         )),
     }
 }
-
 /// Computes a deterministic idempotency key from run, sequence, and action.
 ///
 /// Uses wrapping multiply-add hashing (FNV-1a-inspired) to mix all three
 /// inputs into a u128 without bit-field overlap or silent fallback degradation.
-pub fn compute_idempotency_key(run: RunId, seq: SeqNo, action: ActionId) -> u128 {
-    vb_core::action::compute_action_idempotency_key(run, seq, action)
+pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    vb_core::action::compute_action_idempotency_key(run, run_attempt, seq, action)
 }
 
 /// Resolves an action contract from the registry.

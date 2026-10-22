@@ -90,6 +90,7 @@ fn make_ticket(seq: u32) -> ActionTicket {
         step: StepIdx::new(0),
         seq: SeqNo::new(u64::from(seq)),
         action: ActionId::new(1),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: u128::from(seq),
         capacity: 1,

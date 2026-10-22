@@ -66,6 +66,7 @@ mod tests {
             &mut ev,
             &mut cs,
             &CapabilitySet::empty(),
+            1,
         );
 
         // RE-011 assertion 1: drive must surface the typed

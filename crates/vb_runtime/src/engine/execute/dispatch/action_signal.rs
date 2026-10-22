@@ -14,7 +14,6 @@ use crate::engine::types::{RetryPolicy, RuntimeEngineResult, RuntimeSignal};
 
 use super::family_invariant;
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn dispatch_action_and_signal(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
@@ -23,6 +22,7 @@ pub(super) fn dispatch_action_and_signal(
     contracts: &[ActionContract],
     retry_policy: RetryPolicy,
     granted: &CapabilitySet,
+    state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match &node.kind {
         CompiledNodeKind::WaitUntil { .. }
@@ -32,7 +32,7 @@ pub(super) fn dispatch_action_and_signal(
         CompiledNodeKind::Do { .. }
         | CompiledNodeKind::RetryCheck { .. }
         | CompiledNodeKind::ErrorHandler { .. } => {
-            dispatch_action(run, node, contracts, retry_policy, granted)
+            dispatch_action(run, node, contracts, retry_policy, granted, state_run_attempt)
         }
         _ => handle_core_step_once(plan, run, store),
     }
@@ -63,6 +63,7 @@ fn dispatch_action(
     contracts: &[ActionContract],
     retry_policy: RetryPolicy,
     granted: &CapabilitySet,
+    state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match &node.kind {
         CompiledNodeKind::Do { action, input } => handle_do(
@@ -73,6 +74,7 @@ fn dispatch_action(
             granted,
             retry_policy,
             node.id,
+            state_run_attempt,
         ),
         CompiledNodeKind::RetryCheck {
             policy_slot,

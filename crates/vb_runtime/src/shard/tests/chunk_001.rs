@@ -147,8 +147,9 @@ fn action_ticket(run: super::RunId, step: vb_core::ids::StepIdx) -> vb_core::act
         step,
         seq,
         action,
+        run_attempt: 1,
         attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
         capacity: 1,
     }
 }
@@ -212,6 +213,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         step: vb_core::ids::StepIdx::ZERO,
         seq: vb_core::ids::SeqNo::new(1),
         action: ActionId::new(0),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,

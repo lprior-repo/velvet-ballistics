@@ -64,8 +64,9 @@ fn check(tamper: &StaleTamper, delivery: &Delivery) -> Result<(), Box<dyn std::e
         }
         StaleTamper::Action => {
             stale.action = ActionId::new(99);
+            stale.action = ActionId::new(99);
             stale.idempotency_key =
-                vb_core::action::compute_action_idempotency_key(stale.run, stale.seq, stale.action);
+                vb_core::action::compute_action_idempotency_key(stale.run, stale.run_attempt, stale.seq, stale.action);
         }
         StaleTamper::Capacity => {
             stale.capacity = stale.capacity.checked_add(1).ok_or("cap overflow")?;
@@ -80,8 +81,9 @@ fn check(tamper: &StaleTamper, delivery: &Delivery) -> Result<(), Box<dyn std::e
                 .checked_add(1)
                 .ok_or("seq overflow")?;
             stale.seq = SeqNo::new(seq_plus);
+            stale.seq = SeqNo::new(seq_plus);
             stale.idempotency_key =
-                vb_core::action::compute_action_idempotency_key(stale.run, stale.seq, stale.action);
+                vb_core::action::compute_action_idempotency_key(stale.run, stale.run_attempt, stale.seq, stale.action);
         }
     }
 

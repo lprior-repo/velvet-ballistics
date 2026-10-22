@@ -193,6 +193,7 @@ fn dispatch_generic(input: &ActionInput, contract: &ActionContract) -> ActionRes
         step: input.step,
         seq: input.ticket.seq,
         action: input.action,
+        run_attempt: input.ticket.run_attempt,
         attempt: input.ticket.attempt,
         idempotency_key: input.ticket.idempotency_key,
         capacity: 1,

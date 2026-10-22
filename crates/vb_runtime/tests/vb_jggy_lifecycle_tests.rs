@@ -270,8 +270,9 @@ fn make_ticket(run: RunId, step: StepIdx, attempt: u16, capacity: u16) -> Action
         step,
         seq,
         action,
+        run_attempt: 1,
         attempt,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
         capacity,
     }
 }

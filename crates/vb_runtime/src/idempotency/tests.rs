@@ -11,7 +11,7 @@ fn make_ticket(key: u128) -> ActionTicket {
         step: StepIdx::new(0),
         seq: SeqNo::new(1),
         action: ActionId::new(1),
-        attempt: 1,
+        run_attempt: 1,
         idempotency_key: key,
         capacity: 1,
     }

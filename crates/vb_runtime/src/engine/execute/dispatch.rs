@@ -63,6 +63,7 @@ pub fn execute_node_full(
     retry_policy: RetryPolicy,
     collect_states: &mut CollectStates,
     granted: &CapabilitySet,
+    state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match &node.kind {
         CompiledNodeKind::ForEachStart { .. }
@@ -84,7 +85,7 @@ pub fn execute_node_full(
         | CompiledNodeKind::RepeatAttempt { .. }
         | CompiledNodeKind::RepeatCheck { .. }
         | CompiledNodeKind::RepeatFinish { .. } => dispatch_repeat(run, node),
-        _ => dispatch_action_and_signal(plan, run, store, node, contracts, retry_policy, granted),
+        _ => dispatch_action_and_signal(plan, run, store, node, contracts, retry_policy, granted, state_run_attempt),
     }
 }
 

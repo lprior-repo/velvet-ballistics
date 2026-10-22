@@ -892,6 +892,7 @@ fn drive_step_budget_bounds_each_drive_and_preserves_final_output() -> Result<()
                 &mut evidence,
                 &mut collect_states,
                 &vb_core::capability::CapabilitySet::empty(),
+                1,
             )
             .map_err(|error| format!("workflow drive failed: {error:?}"))?;
             let events = evidence.drain();

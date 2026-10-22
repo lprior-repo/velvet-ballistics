@@ -80,6 +80,7 @@ mod tests {
             &mut evidence,
             &mut collect_states,
             &CapabilitySet::empty(),
+            1,
         )
         .map_err(|e| format!("{e}"))?;
 

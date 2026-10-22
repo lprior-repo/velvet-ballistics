@@ -95,7 +95,7 @@ pub(crate) fn preflight_action_completion(
 
 fn reject_invalid_ticket_key(ticket: ActionTicket) -> RuntimeResult<()> {
     let expected =
-        crate::engine::action::compute_idempotency_key(ticket.run, ticket.seq, ticket.action);
+        crate::engine::action::compute_idempotency_key(ticket.run, ticket.run_attempt, ticket.seq, ticket.action);
     if ticket.idempotency_key == expected {
         Ok(())
     } else {

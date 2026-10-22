@@ -127,6 +127,7 @@ fn action_ticket_from_bytes(data: &[u8]) -> Option<ActionTicket> {
         step: StepIdx::new(u16::from(step_byte)),
         seq: SeqNo::new(u64::from(seq_byte)),
         action: ActionId::new(u16::from(action_byte)),
+        run_attempt: 1,
         attempt,
         idempotency_key: 0,
         capacity: if capacity == 0 { 1 } else { capacity },

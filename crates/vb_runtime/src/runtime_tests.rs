@@ -881,8 +881,9 @@ mod tests {
             step: StepIdx::ZERO,
             seq: SeqNo::ZERO,
             action: ActionId::new(7),
+            run_attempt: 1,
             attempt: 1,
-            idempotency_key: compute_idempotency_key(run, SeqNo::ZERO, ActionId::new(7)),
+            idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, ActionId::new(7)),
             capacity: 1,
         };
         let value = SlotValue::I64(99);
@@ -954,8 +955,9 @@ mod tests {
             step: StepIdx::ZERO,
             seq: SeqNo::ZERO,
             action: ActionId::new(7),
+            run_attempt: 1,
             attempt: 1,
-            idempotency_key: compute_idempotency_key(run, SeqNo::ZERO, ActionId::new(7)),
+            idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, ActionId::new(7)),
             capacity: 1,
         };
         assert_eq!(
@@ -1012,8 +1014,9 @@ mod tests {
             step: StepIdx::ZERO,
             seq: SeqNo::ZERO,
             action: ActionId::new(8),
+            run_attempt: 1,
             attempt: 1,
-            idempotency_key: compute_idempotency_key(run, SeqNo::ZERO, ActionId::new(8)),
+            idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, ActionId::new(8)),
             capacity: 1,
         };
         let output = ActionOutputReady {
@@ -1179,9 +1182,11 @@ mod tests {
             step: StepIdx::ZERO,
             seq: SeqNo::ZERO,
             action: ActionId::new(0),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: compute_idempotency_key(
                 vb_core::ids::RunId::new(1),
+                1,
                 SeqNo::ZERO,
                 ActionId::new(0),
             ),
@@ -1842,9 +1847,11 @@ mod tests {
             step: StepIdx::ZERO,
             seq: SeqNo::ZERO,
             action: ActionId::new(0),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: compute_idempotency_key(
                 vb_core::ids::RunId::new(998),
+                1,
                 SeqNo::ZERO,
                 ActionId::new(0),
             ),
@@ -2087,8 +2094,9 @@ mod tests {
             step: StepIdx::ZERO,
             seq: SeqNo::ZERO,
             action: ActionId::new(0),
+            run_attempt: 1,
             attempt: 1,
-            idempotency_key: compute_idempotency_key(run, SeqNo::ZERO, ActionId::new(0)),
+            idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, ActionId::new(0)),
             capacity: 1,
         };
         let failure = ActionFailureCode::Rejected.into();
@@ -2545,8 +2553,9 @@ mod tests {
             step: StepIdx::ZERO,
             seq: SeqNo::ZERO,
             action: ActionId::new(7),
+            run_attempt: 1,
             attempt: 1,
-            idempotency_key: compute_idempotency_key(run2, SeqNo::ZERO, ActionId::new(7)),
+            idempotency_key: compute_idempotency_key(run2, 1, SeqNo::ZERO, ActionId::new(7)),
             capacity: 1,
         };
         let output = ActionOutputReady {

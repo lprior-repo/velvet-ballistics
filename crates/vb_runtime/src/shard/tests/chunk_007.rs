@@ -275,6 +275,7 @@ fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() {
         step: vb_core::ids::StepIdx::ZERO,
         seq: vb_core::ids::SeqNo::ZERO,
         action: ActionId::new(0),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,

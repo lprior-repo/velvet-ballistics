@@ -29,9 +29,10 @@ fn ticket(seq: u64) -> ActionTicket {
         step: StepIdx::new(1),
         seq,
         action,
+        run_attempt: 1,
         attempt: 1,
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
         capacity: 2,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
     }
 }
 

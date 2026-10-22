@@ -203,6 +203,7 @@ fn slot_written_appears_before_next_step_started_in_evidence_stream() {
         &mut evidence,
         &mut collect_states,
         &CapabilitySet::empty(),
+        1,
     )
     .expect("drive should succeed");
 
@@ -290,6 +291,7 @@ fn evidence_collector_emits_slot_before_next_step_begins() {
         &mut evidence,
         &mut collect_states,
         &CapabilitySet::empty(),
+        1,
     )
     .expect("drive should succeed");
 
@@ -375,6 +377,7 @@ fn multi_slot_node_emit_order_preserved() {
         &mut evidence,
         &mut collect_states,
         &CapabilitySet::empty(),
+        1,
     )
     .expect("drive should succeed");
 
@@ -473,6 +476,7 @@ fn copy_node_emits_slot_written_with_correct_value() {
         &mut evidence,
         &mut collect_states,
         &CapabilitySet::empty(),
+        1,
     )
     .expect("drive should succeed");
 

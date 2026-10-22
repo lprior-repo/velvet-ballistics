@@ -67,6 +67,7 @@ fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
         step: vb_core::ids::StepIdx::ZERO,
         seq: vb_core::ids::SeqNo::ZERO,
         action: ActionId::new(99),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,

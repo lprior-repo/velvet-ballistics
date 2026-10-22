@@ -32,8 +32,9 @@ fn resume_report(rejection: ActionResumeRejection) -> ActionResumeReport {
             step: StepIdx::new(3),
             seq,
             action,
+            run_attempt: 1,
             attempt: 1,
-            idempotency_key: compute_action_idempotency_key(run, seq, action),
+            idempotency_key: compute_action_idempotency_key(run, 1, seq, action),
             capacity: 1,
         },
     )

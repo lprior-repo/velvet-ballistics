@@ -70,6 +70,7 @@ fn shard_command_action_failed_equality() {
         step: vb_core::ids::StepIdx::new(1),
         seq: vb_core::ids::SeqNo::ZERO,
         action: ActionId::new(0),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,

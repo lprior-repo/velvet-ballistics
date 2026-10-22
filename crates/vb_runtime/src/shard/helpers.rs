@@ -132,6 +132,15 @@ fn validate_ticket_attempt(
     state: &crate::shard::types::RunState,
     ticket: ActionTicket,
 ) -> RuntimeResult<()> {
+    // Run attempt authority: ticket must match current run attempt.
+    let expected = state.run_attempt.get();
+    if ticket.run_attempt != expected {
+        return Err(RuntimeError::StaleAttempt {
+            incoming: ticket.run_attempt,
+            current: expected,
+        });
+    }
+    // Per-action attempt bounds.
     if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
         return Err(RuntimeError::AttemptBeyondMax {
             attempt: ticket.attempt,
@@ -150,7 +159,6 @@ fn validate_ticket_attempt(
         });
     }
     // Future-attempt rejection (G005): only the scheduled attempt may complete.
-    // A zero current attempt means no ticket has been issued for this step yet.
     if ticket.attempt > current {
         return Err(RuntimeError::InvalidActionCompletion);
     }

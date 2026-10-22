@@ -306,8 +306,9 @@ fn action_completed_persists_before_ack() {
         step: StepIdx::ZERO,
         seq,
         action,
+        run_attempt: 1,
         attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
         capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
@@ -357,8 +358,9 @@ fn action_failed_persists_before_ack() {
         step: StepIdx::ZERO,
         seq,
         action,
+        run_attempt: 1,
         attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
+        idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
         capacity: 1,
     };
     let failure = vb_core::action::ActionFailure {

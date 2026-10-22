@@ -99,6 +99,7 @@ fn make_ticket(step: StepIdx, attempt: u16, capacity: u16) -> ActionTicket {
         step,
         seq: SeqNo::ZERO,
         action: ActionId::new(0),
+        run_attempt: 1,
         attempt,
         idempotency_key: 0,
         capacity,

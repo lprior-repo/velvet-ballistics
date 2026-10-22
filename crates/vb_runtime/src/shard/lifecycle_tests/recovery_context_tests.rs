@@ -61,6 +61,7 @@
             step: vb_core::ids::StepIdx::new(0),
             seq: vb_core::ids::SeqNo::new(1),
             action: vb_core::ids::ActionId::new(0),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,

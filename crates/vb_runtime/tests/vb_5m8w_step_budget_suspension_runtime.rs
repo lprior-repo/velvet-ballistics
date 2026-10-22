@@ -113,6 +113,7 @@ fn drive_with_evidence(
         evidence,
         &mut collect_states,
         &CapabilitySet::empty(),
+        1,
     )
     .map_err(|error| error.to_string())
 }
@@ -136,6 +137,7 @@ fn drive_with_contracts(
         evidence,
         &mut collect_states,
         &CapabilitySet::empty(),
+        1,
     )
     .map_err(|error| error.to_string())
 }

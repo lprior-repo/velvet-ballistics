@@ -154,6 +154,7 @@ fn corrupted(mut ticket: ActionTicket, case: Tamper, other: RunId) -> TestResult
             ticket.seq = SeqNo::new(ticket.seq.get().checked_add(1).ok_or("sequence overflow")?);
             ticket.idempotency_key = vb_core::action::compute_action_idempotency_key(
                 ticket.run,
+                ticket.run_attempt,
                 ticket.seq,
                 ticket.action,
             );

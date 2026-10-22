@@ -39,19 +39,21 @@ use crate::shard::types::RunState;
 fn arb_ticket() -> impl Strategy<Value = ActionTicket> {
     (
         1u64..u64::MAX,                   // run_id
-        0u16..64,                         // step (bounded, u16 for StepIdx)
+        0u16..64,                         // step
         0u64..u64::MAX,                   // seq
-        0u16..16,                         // action_id (u16 for ActionId)
+        0u16..16,                         // action_id
+        1u16..255,                        // run_attempt (positive)
         1u16..255,                        // attempt (positive)
         proptest::prelude::any::<u128>(), // idempotency_key
         1u16..255,                        // capacity (positive)
     )
         .prop_map(
-            |(run, step, seq, action, attempt, key, capacity)| ActionTicket {
+            |(run, step, seq, action, run_attempt, attempt, key, capacity)| ActionTicket {
                 run: RunId::new(run),
                 step: StepIdx::new(step),
                 seq: SeqNo::new(seq),
                 action: ActionId::new(action),
+                run_attempt,
                 attempt,
                 idempotency_key: key,
                 capacity,
@@ -62,20 +64,22 @@ fn arb_ticket() -> impl Strategy<Value = ActionTicket> {
 /// Strategy for generating a hostile ActionTicket with potential invalid fields.
 fn arb_hostile_ticket() -> impl Strategy<Value = ActionTicket> {
     (
-        proptest::prelude::any::<u64>(),  // run_id (including 0)
-        proptest::prelude::any::<u16>(),  // step (unbounded, u16 for StepIdx)
+        proptest::prelude::any::<u64>(),  // run_id
+        proptest::prelude::any::<u16>(),  // step
         proptest::prelude::any::<u64>(),  // seq
-        proptest::prelude::any::<u16>(),  // action_id (u16 for ActionId)
-        proptest::prelude::any::<u16>(),  // attempt (including 0)
+        proptest::prelude::any::<u16>(),  // action_id
+        proptest::prelude::any::<u16>(),  // run_attempt
+        proptest::prelude::any::<u16>(),  // attempt
         proptest::prelude::any::<u128>(), // idempotency_key
-        proptest::prelude::any::<u16>(),  // capacity (including 0)
+        proptest::prelude::any::<u16>(),  // capacity
     )
         .prop_map(
-            |(run, step, seq, action, attempt, key, capacity)| ActionTicket {
+            |(run, step, seq, action, run_attempt, attempt, key, capacity)| ActionTicket {
                 run: RunId::new(run),
                 step: StepIdx::new(step),
                 seq: SeqNo::new(seq),
                 action: ActionId::new(action),
+                run_attempt,
                 attempt,
                 idempotency_key: key,
                 capacity,

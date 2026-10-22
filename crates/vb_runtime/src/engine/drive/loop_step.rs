@@ -34,6 +34,7 @@ pub fn drive_deterministic_full(
     evidence: &mut EvidenceCollector,
     collect_states: &mut CollectStates,
     granted: &vb_core::capability::CapabilitySet,
+    state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     initialize_drive(run, plan)?;
 
@@ -56,6 +57,7 @@ pub fn drive_deterministic_full(
         collect_states,
         granted,
         &mut drive_state,
+        state_run_attempt,
     )?;
 
     // RE-004 observability follow-up: surface the gap report through
@@ -97,6 +99,7 @@ fn run_drive_loop(
     collect_states: &mut CollectStates,
     granted: &vb_core::capability::CapabilitySet,
     drive_state: &mut DriveState,
+    state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     loop {
         let Some(step) = begin_drive_step(plan, run, budget, evidence)? else {
@@ -111,6 +114,7 @@ fn run_drive_loop(
             retry_policy,
             collect_states,
             granted,
+            state_run_attempt,
         )?;
         finish_drive_step(run, evidence, collect_states, step, &signal, drive_state)?;
         match signal {
@@ -141,6 +145,7 @@ pub fn drive_with_actions(
         &mut evidence,
         &mut collect_states,
         &vb_core::capability::CapabilitySet::empty(),
+        1,
     )
 }
 

@@ -40,6 +40,7 @@ fn ticket(run: u64, step: u16, key: u128) -> ActionTicket {
         step: StepIdx::new(step),
         seq: SeqNo::new(0),
         action: ActionId::new(7),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: key,
         capacity: 3,

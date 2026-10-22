@@ -23,12 +23,13 @@ fn mk_ticket(run: u64, seq: u32, action: u16) -> ActionTicket {
     let run_id = RunId::new(run);
     let seq_no = SeqNo::new(u64::from(seq));
     let action_id = ActionId::new(action);
-    let key = compute_action_idempotency_key(run_id, seq_no, action_id);
+    let key = compute_action_idempotency_key(run_id, 1, seq_no, action_id);
     ActionTicket {
         run: run_id,
         step: StepIdx::new(0),
         seq: seq_no,
         action: action_id,
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: key,
         capacity: 3,

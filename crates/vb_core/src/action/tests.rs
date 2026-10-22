@@ -24,6 +24,7 @@ fn input_len_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTicket
         step,
         seq: SeqNo::ZERO,
         action,
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,

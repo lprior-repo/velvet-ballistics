@@ -65,6 +65,7 @@ pub(super) fn handle_do(
     granted: &CapabilitySet,
     retry_policy: RetryPolicy,
     node_id: StepIdx,
+    state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     let seq = SeqNo::new(run.executed());
     if contracts.is_empty() {
@@ -80,6 +81,7 @@ pub(super) fn handle_do(
             contracts,
             granted,
             retry_policy,
+            state_run_attempt,
         )
     }
 }
