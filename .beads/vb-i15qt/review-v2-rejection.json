@@ -1,0 +1,13 @@
+{
+  "status": "REJECTED",
+  "actual_gate": "ROOT_RECOVERY_FIX_V2_RUNTIME_LIBRARY101/15.978s unused validate_recovered_policy_pin re-export recovery.rs24",
+  "review_blockers": [
+    "Legacy new() fabricates Relaxed policy plus emptycaps then full validates againstartifact: breaks original raw recovery withrequiredcaps. Represent no historical evidence explicitly, derive only unverified admission at shard.",
+    "Validation context runtime_policy uses admission_to_validate.policy() tautologically; independent expected policy must come from shard runtime policy.",
+    "Keep original retry admissionNone semantics and forgedpin validation."
+  ],
+  "scope_expansion": [
+    "crates/vb_runtime/src/recovery.rs",
+    "crates/vb_runtime/src/recovery/full.rs"
+  ]
+}

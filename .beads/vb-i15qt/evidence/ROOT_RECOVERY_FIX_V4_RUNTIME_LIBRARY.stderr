@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:470:62
+    |
+470 |             match self.build_admission(run, artifact_digest, caps)? {
+    |                        ---------------                       ^^^^ expected `CapabilitySet`, found `Box<[Capability]>`
+    |                        |
+    |                        arguments to this method are incorrect
+    |
+    = note: expected struct `vb_core::CapabilitySet`
+               found struct `Box<[vb_core::Capability]>`
+note: method defined here
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:189:8
+    |
+189 |     fn build_admission(
+    |        ^^^^^^^^^^^^^^^
+...
+193 |         caps: CapabilitySet,
+    |         -------------------
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `vb_runtime` (lib test) due to 1 previous error
