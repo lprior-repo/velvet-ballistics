@@ -967,3 +967,6 @@ fn test_direct_api_evidence_target_constant_matches_catalog_contract() {
         "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs"
     );
 }
+
+#[path = "vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs"]
+mod wrong_run_ask;
