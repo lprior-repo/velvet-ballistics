@@ -531,7 +531,7 @@ def criterion_run(binary, metric, root, criterion_home, prefix):
     # (never into base/ which holds historical results)
     match_dir = None
     full_id = None
-    for bj in home.glob("*/new/benchmark.json"):
+    for bj in home.glob("*/**/new/benchmark.json"):
         try:
             data = json.loads(bj.read_text())
         except (ValueError, OSError):

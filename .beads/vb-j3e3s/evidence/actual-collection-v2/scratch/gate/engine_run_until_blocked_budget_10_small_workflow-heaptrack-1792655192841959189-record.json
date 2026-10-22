@@ -1,0 +1,29 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-final-measurements",
+  "argv": [
+    "/usr/bin/env",
+    "CRITERION_HOME=/home/lewis/.cache/velvet-integration-preserved-20261022/actual-benchmark-collection-v2/scratch/criterion-home/heaptrack-engine_run_until_blocked_budget_10_small_workflow",
+    "LC_ALL=C",
+    "heaptrack",
+    "--record-only",
+    "-o",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/actual-benchmark-collection-v2/scratch/heaptrack/ht-engine_run_until_blocked_budget_10_small_workflow",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-final-measurements/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313",
+    "engine_run_until_blocked_budget_10_small_workflow",
+    "--bench",
+    "--sample-size",
+    "10",
+    "--warm-up-time",
+    "1",
+    "--measurement-time",
+    "1"
+  ],
+  "exit_code": 0,
+  "seconds": 2.648,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/actual-benchmark-collection-v2/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792655192841959189-record"
+}
