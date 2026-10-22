@@ -44,8 +44,8 @@ fn xtask_version_prints_package_version_when_requested() -> Result<(), Box<dyn E
 
 #[test]
 #[ignore] // UI commands moved to velvet-optional repo
-fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen(
-) -> Result<(), Box<dyn Error>> {
+fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen()
+-> Result<(), Box<dyn Error>> {
     // Given
     let workspace = TempDir::new()?;
 

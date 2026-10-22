@@ -7,17 +7,17 @@
 // PRODUCTION BINDING (GOD RULE 2 compliance)
 // ============================================================================
 // Target: vb_core::workflow::CompiledWorkflow::try_from_parts
-//   at crates/vb_core/src/workflow/mod.rs:33-51
+//   at crates/vb_core/src/workflow/mod.rs:35-56
 //
-// Production body (workflow/mod.rs:35-51):
+// Production body (workflow/mod.rs:35-56):
 //   pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
 //       validate_parts(&parts)?;
 //       validate_budget(&parts)?;
+//       validate_input_slots(&parts)?;
 //       Ok(Self { ... })
-//   }
 //
 // Production validation sequence:
-//   1. validate_parts (workflow/mod.rs:753-777):
+//   1. validate_parts (workflow/mod.rs:850-874):
 //      - empty nodes,
 //      - validate_resource_contract (834-839),
 //      - validate_entry (945-947),
@@ -31,9 +31,11 @@
 //      - validate_reachability (1403-1472),
 //      - validate_forward_edges (1579-1602),
 //      - validate_no_nested_together.
-//   2. validate_budget (workflow/mod.rs:779-785): whole-workflow
+//   2. validate_budget (workflow/mod.rs:908-914): whole-workflow
 //      boundedness policy via WholeWorkflowBudget::compute +
 //      BoundednessPolicy::DEFAULT.validate.
+//   3. validate_input_slots (workflow/mod.rs:876-906): input slot
+//      bounds, duplicate, and strict-increasing-order checks.
 //
 // Binding mechanism: `#[path = "extern_try_from_parts.rs"]` imports the
 // thin extern surface, which mirrors the production IR types with the
@@ -414,7 +416,7 @@ pub proof fn lemma_bound_violation_in_closed_set(e: SpecWorkflowError)
             || e == SpecWorkflowError::NonCanonicalInputSlotOrder,
 {
     // The closed-set enumeration in spec_workflow_error_is_bound_violation_spec
-    // exactly enumerates these 8 variants.
+    // exactly enumerates these 11 variants.
 }
 
 /// Lemma 4: every structural-failure discriminant is one of the

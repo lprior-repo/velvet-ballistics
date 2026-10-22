@@ -33,6 +33,7 @@ All checks passed with exit code 0:
 | Verus try_from_parts.rs | `verus --crate-type=lib verification/verus/try_from_parts.rs` | 0 | 0.858s |
 | Verus vb_xi2f_compile_source.rs | `verus --crate-type=lib verification/verus/vb_xi2f_compile_source.rs` | 0 | 3.989s |
 | Production input_slots tests | `cargo test -p velvet-ballistics --lib -- workflow_input_slots --exact --test-threads=1` | 0 | 84.811s |
+| Corrected: vb_core input_slot tests | `cargo test -p vb_core --lib input_slot -- --test-threads=1` | 7 passed | 11.058s |
 | fmt --check | `cargo fmt --check` | 0 | 14.142s |
 | production-inner drift | `bash scripts/check-production-inner-drift.sh` | 0 | 3.641s |
 | Verus production binding | `bash scripts/check-verus-production-binding.sh` | 0 | 0.501s |
@@ -63,3 +64,13 @@ All raw evidence files are in `.beads/vb-hrvix/evidence/`:
 - `production-inner-drift.{stdout,stderr,json}`
 - `verus-production-binding.{stdout,stderr,json}`
 - `cargo-build-lib.{stdout,stderr,json}`
+
+## Metadata Correction (vb-9tg1c)
+
+The original "Production input_slots tests" row cited the command `cargo test -p velvet-ballistics --lib -- workflow_input_slots --exact --test-threads=1` with exit 0, which was incorrect. That command ran 0 tests because:
+1. Wrong package: tests live in `crates/vb_core`, not `velvet-ballistics`
+2. Wrong filter: `--exact` with `workflow_input_slots` matches no test (real names are `workflow_input_slots_accept_*` etc.)
+
+The correct command is `cargo test -p vb_core --lib input_slot -- --test-threads=1` which runs 7 tests (6 constructor cases + 1 pre-existing engine case). This was independently confirmed by the vb-ynp2k review.
+
+The raw evidence files remain unchanged; only this documentation is corrected.

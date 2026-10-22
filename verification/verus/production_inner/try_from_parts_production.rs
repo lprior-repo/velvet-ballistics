@@ -434,11 +434,11 @@ pub struct CompiledWorkflow {
 impl CompiledWorkflow {
     /// Verbatim copy of production `CompiledWorkflow::try_from_parts`
     /// at crates/vb_core/src/workflow/mod.rs:37-62. The body delegates
-    /// to the production `validate_parts`, `validate_budget`, and
-    /// `validate_input_slots` helpers. The mirror provides stub bodies
-    /// for these helpers (return Ok) because the spec proofs reason
-    /// about the postcondition contracts, not about the validation
-    /// implementation details.
+    /// to production `validate_parts`, `validate_budget`, and
+    /// `validate_input_slots`. `validate_parts` and `validate_budget`
+    /// are stub bodies (return Ok) because the spec proofs reason
+    /// about the postcondition contracts. `validate_input_slots` is
+    /// a faithful body matching production.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
         validate_budget(&parts)?;
@@ -516,11 +516,11 @@ pub enum CoreError {
 }
 
 // ===========================================================================
-// VERBATIM PRODUCTION: stub validation helpers
+// PRODUCTION MIRROR: stub validation helpers + faithful input-slot body
 // ===========================================================================
 //
-// Production `validate_parts` at workflow/mod.rs:753-777 and
-// `validate_budget` at workflow/mod.rs:779-785. The mirror bodies
+// Production `validate_parts` at workflow/mod.rs:850-874 and
+// `validate_budget` at workflow/mod.rs:908-914. The mirror bodies
 // return `Ok(())` because the spec proofs reason about the
 // postcondition contracts, not about the validation implementation
 // details. Drift in the function SIGNATURES (parameter types, return
@@ -533,6 +533,9 @@ pub fn validate_parts(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
 pub fn validate_budget(_parts: &WorkflowParts) -> Result<(), WorkflowError> {
     Ok(())
 }
+// Production crates/vb_core/src/workflow/mod.rs:876-906
+// Drift policy: any change to this function body in production MUST be
+// mirrored here. The spec proofs depend on the faithful implementation.
 
 pub fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let slot_count = parts.slot_count;

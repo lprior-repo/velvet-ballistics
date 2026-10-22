@@ -297,13 +297,15 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
                     "stale completion (run_attempt=1 vs current=3) must be rejected".to_string(),
                 );
             }
-            Err(e) => {
-                match e {
-                    vb_runtime::RuntimeError::StaleAttempt { incoming, current }
-                        if *incoming == 1 && *current == 3 => {}
-                    _ => return Err(format!("expected StaleAttempt{{incoming:1,current:3}}, got: {e:?}")),
+            Err(e) => match e {
+                vb_runtime::RuntimeError::StaleAttempt { incoming, current }
+                    if *incoming == 1 && *current == 3 => {}
+                _ => {
+                    return Err(format!(
+                        "expected StaleAttempt{{incoming:1,current:3}}, got: {e:?}"
+                    ));
                 }
-            }
+            },
         }
 
         // Immediately after stale completion rejection: journal must be unchanged.
@@ -371,8 +373,7 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
             .snapshot_run(run, correlation)
             .map_err(|e| format!("snapshot after stale tick failed: {e:?}"))?;
         assert_eq!(
-            snapshot_before,
-            snapshot_after_stale_tick,
+            snapshot_before, snapshot_after_stale_tick,
             "public inspect snapshot must be identical after stale rejection and stale tick"
         );
 
@@ -409,7 +410,13 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
 
         // Verify the actual completion output: ticket=current_ticket, output=slot 1, value=I64(42).
         let has_correct_completes_envelope = events_after_completion.iter().any(|e| {
-            if let JournalEvent::ActionCompletedEnvelope { ticket, output, value, .. } = e {
+            if let JournalEvent::ActionCompletedEnvelope {
+                ticket,
+                output,
+                value,
+                ..
+            } = e
+            {
                 if *ticket == current_ticket && *output == SlotIdx::new(1) {
                     if let Ok(slot_value) = postcard::from_bytes::<SlotValue>(value) {
                         return matches!(slot_value, SlotValue::I64(42));
