@@ -1,0 +1,99 @@
+=== Loading evidence records ===
+  PASS evidence record count: 3
+
+=== Loading heaptrack manifest ===
+  PASS heaptrack manifest entry count: 3
+
+=== Check 1: Commit SHA validation ===
+  PASS bench_engine_step_once_save_const_single_transition commit SHA length: 40
+  PASS bench_engine_step_once_save_const_single_transition commit SHA value: 534aa40434b2704ad63666130557937087796259
+  PASS ipc_frame_decode commit SHA length: 40
+  PASS ipc_frame_decode commit SHA value: 534aa40434b2704ad63666130557937087796259
+  PASS engine_run_until_blocked_budget_10_small_workflow commit SHA length: 40
+  PASS engine_run_until_blocked_budget_10_small_workflow commit SHA value: 534aa40434b2704ad63666130557937087796259
+
+=== Check 1b: Commit ancestry (git merge-base) ===
+  PASS measured commit 534aa404 is ancestor of HEAD 33f00081
+
+=== Check 2: Criterion measurements ===
+
+  bench_engine_step_once_save_const_single_transition:
+  PASS bench_engine_step_once_save_const_single_transition sample count: 10
+  PASS bench_engine_step_once_save_const_single_transition mean vs computed: 16.448097026234993 (within 0.1 of 16.448097026234993)
+  PASS bench_engine_step_once_save_const_single_transition result_value picoseconds: 16448
+  PASS bench_engine_step_once_save_const_single_transition baseline_value = result (intentional): 16448
+  PASS bench_engine_step_once_save_const_single_transition p50_latency: 16.440891130011842 (within 1e-06 of 16.440891)
+  PASS bench_engine_step_once_save_const_single_transition p95_latency: 16.483731712488005 (within 1e-06 of 16.483732)
+  PASS bench_engine_step_once_save_const_single_transition p99_latency: 16.48959579069933 (within 1e-06 of 16.489596)
+  PASS bench_engine_step_once_save_const_single_transition metric name present in full_id
+
+  ipc_frame_decode:
+  PASS ipc_frame_decode sample count: 10
+  PASS ipc_frame_decode mean vs computed: 79.98329242548354 (within 0.1 of 79.98329242548354)
+  PASS ipc_frame_decode result_value picoseconds: 79983
+  PASS ipc_frame_decode baseline_value = result (intentional): 79983
+  PASS ipc_frame_decode p50_latency: 79.94788995018251 (within 1e-06 of 79.94789)
+  PASS ipc_frame_decode p95_latency: 80.7254313190068 (within 1e-06 of 80.725431)
+  PASS ipc_frame_decode p99_latency: 80.89351303548155 (within 1e-06 of 80.893513)
+  PASS ipc_frame_decode metric name present in full_id
+
+  engine_run_until_blocked_budget_10_small_workflow:
+  PASS engine_run_until_blocked_budget_10_small_workflow sample count: 10
+  PASS engine_run_until_blocked_budget_10_small_workflow mean vs computed: 16.56112019242286 (within 0.1 of 16.56112019242286)
+  PASS engine_run_until_blocked_budget_10_small_workflow result_value picoseconds: 16561
+  PASS engine_run_until_blocked_budget_10_small_workflow baseline_value = result (intentional): 16561
+  PASS engine_run_until_blocked_budget_10_small_workflow p50_latency: 16.540748683147207 (within 1e-06 of 16.540749)
+  PASS engine_run_until_blocked_budget_10_small_workflow p95_latency: 16.647036122172782 (within 1e-06 of 16.647036)
+  PASS engine_run_until_blocked_budget_10_small_workflow p99_latency: 16.65506082156036 (within 1e-06 of 16.655061)
+  PASS engine_run_until_blocked_budget_10_small_workflow metric name present in full_id
+
+=== Check 3: Perf instruction counts ===
+
+  bench_engine_step_once_save_const_single_transition:
+  PASS bench_engine_step_once_save_const_single_transition instruction_count: 42057614923
+
+  ipc_frame_decode:
+  PASS ipc_frame_decode instruction_count: 55366692311
+
+  engine_run_until_blocked_budget_10_small_workflow:
+  PASS engine_run_until_blocked_budget_10_small_workflow instruction_count: 41875073468
+
+=== Check 4: Heaptrack SHA validation ===
+  PASS ht-bench_engine_step_once_save_const_single_transition.zst SHA256: 6abd0bd0de65cc7971f6a99580345e6c6b146797329d24c64a2a35d2e976ad57
+  PASS ht-ipc_frame_decode.zst SHA256: 7c96b10ca3802e0b7203fece4c4b2b2720fe69156d7ec427c63aaae641e59535
+  PASS ht-engine_run_until_blocked_budget_10_small_workflow.zst SHA256: 953967f1789bb247e21cee5e5eac17b1cbd904b45ca91f697788eecd4edce906
+
+=== Check 5: Heaptrack content validation ===
+
+  bench_engine_step_once_save_const_single_transition:
+  PASS bench_engine_step_once_save_const_single_transition allocation_count vs manifest: 603186
+  PASS bench_engine_step_once_save_const_single_transition bytes_allocated vs manifest: 115639383
+  PASS bench_engine_step_once_save_const_single_transition allocation_count vs record: 603186
+  PASS bench_engine_step_once_save_const_single_transition bytes_allocated vs record: 115639383
+
+  ipc_frame_decode:
+  PASS ipc_frame_decode allocation_count vs manifest: 14173949
+  PASS ipc_frame_decode bytes_allocated vs manifest: 407808347
+  PASS ipc_frame_decode allocation_count vs record: 14173949
+  PASS ipc_frame_decode bytes_allocated vs record: 407808347
+
+  engine_run_until_blocked_budget_10_small_workflow:
+  PASS engine_run_until_blocked_budget_10_small_workflow allocation_count vs manifest: 600322
+  PASS engine_run_until_blocked_budget_10_small_workflow bytes_allocated vs manifest: 115488741
+  PASS engine_run_until_blocked_budget_10_small_workflow allocation_count vs record: 600322
+  PASS engine_run_until_blocked_budget_10_small_workflow bytes_allocated vs record: 115488741
+
+=== Check 6: Threshold validation ===
+  PASS bench_engine_step_once_save_const_single_transition threshold: 3
+  PASS ipc_frame_decode threshold: 5
+  PASS engine_run_until_blocked_budget_10_small_workflow threshold: 3
+
+=== Check 7: Baseline = result (intentional) ===
+  PASS bench_engine_step_once_save_const_single_transition baseline = result: 16448
+  PASS ipc_frame_decode baseline = result: 79983
+  PASS engine_run_until_blocked_budget_10_small_workflow baseline = result: 16561
+
+============================================================
+Total checks: 57
+Errors: 0
+ALL CHECKS PASSED
