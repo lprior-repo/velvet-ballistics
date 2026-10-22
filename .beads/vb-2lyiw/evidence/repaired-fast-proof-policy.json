@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates",
+  "argv": [
+    "moon",
+    "run",
+    ":verify-verus",
+    ":verify-production-inner-drift",
+    ":verify-verus-production-binding",
+    ":supply-chain",
+    ":blocker-closure-evidence",
+    "--concurrency",
+    "2"
+  ],
+  "exit_code": 1,
+  "seconds": 9.886,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/repaired-fast-proof-policy"
+}
