@@ -6,8 +6,8 @@
 
 use crate::shard::types::RunState;
 use crate::{RuntimeError, RuntimeResult};
-use vb_core::action::{ActionOutputReady, ActionTicket};
 use vb_core::CompiledNodeKind;
+use vb_core::action::{ActionOutputReady, ActionTicket};
 use vb_core::{SlotIdx, SlotValue, Taint};
 
 /// Validate the action node, matching action ID, and Clean input taint.

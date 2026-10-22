@@ -1,0 +1,35 @@
+{
+  "status": "Focused15directAPItests green; final lifecycle123 execution, independent TEST review andmain pending",
+  "original_source": "673617ae0e96:crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+  "old_test_retention": "Root byte equality confirms all14oldtests and helpers unchanged; sole parent source delta explicit newchildmodulewire",
+  "new_case": "Genuine issued opaque AskTicket from one Runtime is submitted unchanged to independent receiver with absent issuer run and real unrelated suspendedAsk. ExactRunNotFound, both fullrun snapshots/traces/counters/active/pending/journal unchanged; actual receiver ticket equals capturedbefore",
+  "source_sha256": "69e1d162dd4d609c6ce7cc28d470a8239cf02908430dc70fd02cf7979f60db28",
+  "actual_gate": {
+    "cwd": "/home/lewis/src/isoloated/vb-t36e0-wrong-run-test-v1",
+    "argv": [
+      "env",
+      "RUSTFLAGS=-Dwarnings",
+      "RUSTC_WRAPPER=",
+      "rustup",
+      "run",
+      "nightly-2026-04-28",
+      "cargo",
+      "test",
+      "--quiet",
+      "-p",
+      "velvet-ballistics-workspace-tests",
+      "--all-features",
+      "--test",
+      "vb_vt2f_direct_runtime_api_acceptance"
+    ],
+    "exit_code": 0,
+    "seconds": 32.659,
+    "timeout_seconds": 240,
+    "timed_out": false,
+    "env_overrides": {
+      "CARGO_BUILD_JOBS": "2"
+    },
+    "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_LIFECYCLE_WRONG_RUN_V5_EXISTING_AND_NEW"
+  },
+  "rejected": "Earlierwholefilerewrite droppedoldtests; preservedoutsidecache thenoriginal restoredbyte-identical. InitialfakeXMLdraftdidnoteditfiles, root mechanicallymaterializedlocalmodelauthoreddraft; local5090v5correctedreceiverAsk/fulljournal/tautology withactualedits. No rejectedprototypecountedascoverage."
+}

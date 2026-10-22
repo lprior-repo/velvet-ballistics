@@ -7,7 +7,7 @@ use indexmap::{IndexMap, IndexSet};
 use std::time::Instant;
 use vb_core::action::{ActionContract, ActionTicket};
 use vb_core::capability::CapabilitySet;
-use vb_core::frame::RunFrame;
+use vb_core::frame::{RunFrame, RunFrameCheckpointV1};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
@@ -18,7 +18,7 @@ use crate::RuntimeResult;
 use crate::counters::ShardCounters;
 use crate::frame_pool::FramePool;
 use crate::journal::SharedRuntimeJournal;
-use crate::primitives::collect::CollectStates;
+use crate::primitives::collect::{CollectStates, CollectStatesCheckpointV1};
 
 use crate::trace::TraceRing;
 
@@ -303,6 +303,34 @@ impl RecoverRunCommand {
         self
     }
 
+    /// Restores a RunFrame from checkpoint data.
+    fn restore_retry_frame(frame_data: RunFrameCheckpointV1) -> RuntimeResult<RunFrame> {
+        RunFrame::from_checkpoint_v1(frame_data).map_err(|error| crate::RuntimeError::Recovery {
+            error: format!("retry checkpoint frame restore failed: {error:?}"),
+        })
+    }
+
+    /// Restores CollectStates from checkpoint data.
+    fn restore_retry_collect_states(
+        data: CollectStatesCheckpointV1,
+    ) -> RuntimeResult<CollectStates> {
+        CollectStates::from_checkpoint_v1(data).map_err(|error| crate::RuntimeError::Recovery {
+            error: format!("retry checkpoint collect restore failed: {error:?}"),
+        })
+    }
+
+    fn retry_admission(
+        checkpoint: &crate::run_checkpoint::RunCheckpointV1,
+    ) -> RecoveredAdmissionKind {
+        checkpoint.admission.clone().map_or(
+            RecoveredAdmissionKind::Unverified {
+                run_id: checkpoint.run_id,
+                artifact_digest: checkpoint.artifact_digest,
+            },
+            RecoveredAdmissionKind::Historical,
+        )
+    }
+
     /// Builds a recovery command that restores a full retry checkpoint instead of the
     /// legacy resumable frame seed. The checkpoint's own frame, value store, collect
     /// states, and admission are authoritative; the independently loaded accepted
@@ -314,25 +342,9 @@ impl RecoverRunCommand {
         checkpoint: crate::run_checkpoint::RunCheckpointV1,
         next_seq: EventSeq,
     ) -> RuntimeResult<Self> {
-        let frame = RunFrame::from_checkpoint_v1(checkpoint.frame.clone()).map_err(|error| {
-            crate::RuntimeError::Recovery {
-                error: format!("retry checkpoint frame restore failed: {error:?}"),
-            }
-        })?;
-        let collect_states = CollectStates::from_checkpoint_v1(checkpoint.collect_states.clone())
-            .map_err(|error| crate::RuntimeError::Recovery {
-            error: format!("retry checkpoint collect restore failed: {error:?}"),
-        })?;
-        // Checkpoints may lack a recorded admission (legacy). In that case,
-        // the command carries the Unverified enum variant; the full recovery
-        // validation path remains responsible for policy pin checks.
-        let admission = checkpoint.admission.clone().map_or(
-            RecoveredAdmissionKind::Unverified {
-                run_id: checkpoint.run_id,
-                artifact_digest: checkpoint.artifact_digest,
-            },
-            RecoveredAdmissionKind::Historical,
-        );
+        let frame = Self::restore_retry_frame(checkpoint.frame.clone())?;
+        let collect_states = Self::restore_retry_collect_states(checkpoint.collect_states.clone())?;
+        let admission = Self::retry_admission(&checkpoint);
         Ok(Self {
             run: checkpoint.run_id,
             frame,

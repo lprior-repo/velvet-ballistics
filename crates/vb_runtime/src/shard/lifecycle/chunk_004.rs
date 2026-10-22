@@ -15,14 +15,15 @@ impl Shard {
             RuntimeJournalEvent::RunCancelled {
                 run,
                 reason,
-                attempt,},
+                attempt,
+            },
         )
     }
 
     fn append_kill_terminal_events(&mut self, run: RunId, attempt: u16) -> RuntimeResult<()> {
         self.append_terminal_events_with_pending_action(
             run,
-            RuntimeJournalEvent::RunKilled { run, attempt},
+            RuntimeJournalEvent::RunKilled { run, attempt },
         )
     }
 
@@ -41,7 +42,10 @@ impl Shard {
         }
     }
 
-    pub(super) fn require_pending_action_ownership(&self, ticket: ActionTicket) -> RuntimeResult<()> {
+    pub(super) fn require_pending_action_ownership(
+        &self,
+        ticket: ActionTicket,
+    ) -> RuntimeResult<()> {
         if !self.run_state_contains(ticket.run) {
             return Err(RuntimeError::RunNotFound);
         }
