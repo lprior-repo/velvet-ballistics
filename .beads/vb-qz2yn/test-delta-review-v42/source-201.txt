@@ -1,0 +1,100 @@
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:201: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:202: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:203: fn accepted_artifact_encoder_journaled_gate_count_equals_zero() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:204:     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:205:     assert_eq!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:206:         artifact.verification.gate_count, 0,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:207:         "Journaled must have 0 gates (display-only)"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:208:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:209:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:210: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:211: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:212: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:213: fn accepted_artifact_encoder_strict_gate_count_equals_zero() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:214:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:215:     assert_eq!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:216:         artifact.verification.gate_count, 0,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:217:         "Strict must have 0 gates (display-only)"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:218:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:219:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:220: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:221: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:222: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:223: fn accepted_artifact_validator_accepts_empty_warnings_array() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:224:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:225:     assert!(artifact.verification.warnings.is_empty());
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:226:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:227: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:228: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:229: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:230: fn accepted_artifact_validator_accepts_empty_idempotency_lists() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:231:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:232:     assert!(artifact.verification.idempotency_keyed.is_empty());
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:233:     assert!(artifact.verification.idempotency_attested.is_empty());
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:234:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:235: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:236: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:237: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:238: fn accepted_artifact_encoder_records_empty_required_capabilities() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:239:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:240:     assert!(artifact.required_capabilities.is_empty());
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:241:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:242: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:243: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:244: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:245: fn accepted_artifact_submission_records_first_accepted_at_seq() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:246:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:247:     // Fresh journal submissions start at the first issued artifact sequence.
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:248:     assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:249:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:250: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:251: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:252: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:253: fn accepted_artifact_roundtrip_through_storage_persists_and_loads() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:254:     let journal = temp_journal()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:255:     let workflow = minimal_workflow()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:256:     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:257:         .map_err(|e| format!("submit failed: {e}"))?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:258: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:259:     let stored = journal
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:260:         .compiled_ir(artifact.digest)
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:261:         .map_err(|e| format!("load failed: {e}"))?
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:262:         .ok_or_else(|| String::from("artifact not found after submit"))?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:263: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:264:     assert_eq!(stored.digest, artifact.digest);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:265:     assert!(!stored.ir.is_empty());
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:266:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:267: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:268: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:269: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:270: fn accepted_artifact_stored_bytes_are_postcard_encoded() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:271:     let journal = temp_journal()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:272:     let workflow = minimal_workflow()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:273:     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:274:         .map_err(|e| format!("submit failed: {e}"))?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:275: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:276:     let decoded: WorkflowParts = postcard::from_bytes(&artifact.ir)
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:277:         .map_err(|e| format!("postcard decode of ir field failed: {e}"))?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:278: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:279:     assert_eq!(&*decoded.name, "scope.valid_workflow");
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:280:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:281: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:282: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:283: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:284: fn runtime_admission_requires_artifact_digest_not_raw_workflow() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:285:     let journal = temp_journal()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:286:     let workflow = minimal_workflow()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:287:     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:288:     assert!(result.is_ok(), "Relaxed must be accepted");
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:289:     let artifact = result.unwrap();
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:290:     assert_ne!(artifact.digest, workflow.digest());
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:291:     assert_eq!(artifact.source_digest, workflow.digest());
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:292:     assert_eq!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:293:         accepted_artifact_digest(&artifact).map_err(|e| format!("artifact digest failed: {e}"))?,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:294:         artifact.digest
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:295:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:296:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:297: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:298: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:299: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:300: fn submit_artifact_rejects_missing_workflow_digest() -> Result<(), String> {

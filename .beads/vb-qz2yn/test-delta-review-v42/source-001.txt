@@ -1,0 +1,100 @@
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:2: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:3: use vb_core::value::ConstValue;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:4: use vb_core::workflow::{ResourceContract, WorkflowParts};
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:5: use vb_core::{
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:6:     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx, StepIdx,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:7:     WorkflowDigest,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:8: };
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:9: use vb_storage::FjallJournal;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:10: use vb_storage::admission::{
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:11:     AcceptedArtifact, VerificationWarning, accepted_artifact_digest, submit_artifact,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:12: };
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:13: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:14: fn temp_journal() -> Result<FjallJournal, String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:15:     let dir = tempfile::tempdir().map_err(|error| format!("tempdir failed: {error}"))?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:16:     FjallJournal::open(dir.keep(), None).map_err(|error| format!("journal open failed: {error}"))
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:17: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:18: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:19: fn minimal_workflow() -> Result<CompiledWorkflow, String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:20:     let mut parts = WorkflowParts {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:21:         semantic_source_identity: None,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:22:         input_slots: Box::new([]),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:23:         name: Box::<str>::from("scope.valid_workflow"),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:24:         digest: WorkflowDigest::from_bytes([0_u8; 32]),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:25:         nodes: Box::new([
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:26:             CompiledNode {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:27:                 id: StepIdx::new(0),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:28:                 output: Some(SlotIdx::new(0)),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:29:                 next: Some(StepIdx::new(1)),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:30:                 on_error: None,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:31:                 error_slot: None,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:32:                 kind: CompiledNodeKind::SetConst {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:33:                     value: ConstIdx::new(0),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:34:                 },
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:35:             },
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:36:             CompiledNode {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:37:                 id: StepIdx::new(1),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:38:                 output: None,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:39:                 next: None,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:40:                 on_error: None,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:41:                 error_slot: None,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:42:                 kind: CompiledNodeKind::Finish {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:43:                     result: SlotIdx::new(0),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:44:                 },
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:45:             },
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:46:         ]),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:47:         expressions: Box::new([]),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:48:         accessors: Box::new([]),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:49:         constants: Box::new([ConstValue::I64(42)]),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:50:         slot_count: 1,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:51:         symbols_count: 0,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:52:         entry: StepIdx::new(0),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:53:         resource_contract: ResourceContract::DEFAULT,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:54:         step_names: Box::new([]),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:55:     };
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:56: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:57:     let hash_bytes = postcard::to_allocvec(&parts)
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:58:         .map_err(|error| format!("serialize workflow parts failed: {error}"))?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:59:     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash_bytes).into());
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:60:     CompiledWorkflow::try_from_parts(parts)
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:61:         .map_err(|error| format!("compiled workflow construction failed: {error}"))
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:62: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:63: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:64: fn submit_minimal(policy: RuntimePolicy) -> Result<AcceptedArtifact, String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:65:     let journal = temp_journal()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:66:     let workflow = minimal_workflow()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:67:     submit_artifact(&journal, &workflow, policy)
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:68:         .map_err(|error| format!("submit_artifact failed: {error}"))
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:69: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:70: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:71: fn warning_at(gate: u8) -> VerificationWarning {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:72:     VerificationWarning {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:73:         code: 1,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:74:         message: Box::<str>::from("accepted-artifact v1 warning boundary"),
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:75:         gate,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:76:     }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:77: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:78: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:79: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:80: fn accepted_artifact_validator_accepts_warning_gate_fifteen() {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:81:     let warning = warning_at(15);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:82:     assert_eq!(warning.is_valid(), true);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:83: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:84: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:85: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:86: fn accepted_artifact_validator_rejects_warning_gate_sixteen() {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:87:     let warning = warning_at(16);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:88:     assert_eq!(warning.is_valid(), false);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:89: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:90: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:91: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:92: fn accepted_artifact_validator_uses_fifteen_gate_v1_upper_bound() {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:93:     assert_eq!(VerificationWarning::MAX_GATE, 15);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:94: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:95: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:96: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:97: fn accepted_artifact_validator_rejects_legacy_thirteen_gate_upper_bound() {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:98:     assert_ne!(VerificationWarning::MAX_GATE, 13);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:99: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:100: 

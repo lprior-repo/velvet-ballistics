@@ -1,0 +1,16 @@
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:401:     assert!(!p.durable);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:402:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:403: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:404: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:405: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:406: fn accepted_artifact_validator_has_expected_flags_under_journaled() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:407:     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:408:     let p = &artifact.verification;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:409:     assert!(p.bounded_claimed);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:410:     assert!(p.idempotency_verified_claimed);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:411:     assert!(!p.taint_safe_claimed);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:412:     assert!(!p.retry_safe_claimed);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:413:     assert!(!p.replayable_claimed);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:414:     assert!(!p.durable);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:415:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:416: }

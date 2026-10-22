@@ -1,0 +1,100 @@
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:101: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:102: fn accepted_artifact_encoder_records_gate_proof_when_policy_is_journaled() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:103:     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:104:     assert_eq!(artifact.verification.gate_count, 0);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:105:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:106: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:107: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:108: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:109: fn accepted_artifact_encoder_records_gate_proof_when_policy_is_strict() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:110:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:111:     assert_eq!(artifact.verification.gate_count, 0);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:112:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:113: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:114: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:115: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:116: fn accepted_artifact_encoder_rejects_relaxed_raw_submit_when_accepted_artifacts_are_required()
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:117: -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:118:     let journal = temp_journal()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:119:     let workflow = minimal_workflow()?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:120:     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:121:         .map_err(|error| format!("Relaxed policy must be accepted: {error}"))?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:122:     assert_eq!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:123:         artifact.verification.gate_count, 0,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:124:         "Relaxed must have 0 gates"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:125:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:126:     assert!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:127:         !artifact.verification.durable,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:128:         "Relaxed must not be durable"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:129:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:130:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:131: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:132: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:133: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:134: fn accepted_artifact_store_payload_is_raw_workflow_parts_not_nested_artifact() -> Result<(), String>
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:135: {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:136:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:137:     let decoded_parts = postcard::from_bytes::<WorkflowParts>(&artifact.ir)
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:138:         .map_err(|error| format!("workflow parts decode failed: {error}"))?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:139:     assert_eq!(&*decoded_parts.name, "scope.valid_workflow");
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:140:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:141: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:142: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:143: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:144: fn accepted_artifact_encoder_binds_ir_digest_to_ir_bytes_not_workflow_parts_digest()
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:145: -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:146:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:147:     assert_eq!(artifact.digest, artifact.verification.digest);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:148:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:149: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:150: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:151: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:152: fn accepted_artifact_validator_produces_typed_ledger_with_expected_flags() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:153:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:154:     let proof = &artifact.verification;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:155:     // Display-only flags: gate_count is 0, durable is always false.
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:156:     // Only bounded_claimed and idempotency_verified_claimed are true.
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:157:     assert_eq!(proof.gate_count, 0);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:158:     assert!(proof.bounded_claimed, "bounded_claimed flag must be true");
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:159:     assert!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:160:         proof.idempotency_verified_claimed,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:161:         "idempotency_verified_claimed flag must be true"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:162:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:163:     assert!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:164:         !proof.taint_safe_claimed,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:165:         "taint_safe_claimed flag must be false"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:166:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:167:     assert!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:168:         !proof.retry_safe_claimed,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:169:         "retry_safe_claimed flag must be false"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:170:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:171:     assert!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:172:         !proof.replayable_claimed,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:173:         "replayable_claimed flag must be false"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:174:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:175:     assert!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:176:         !proof.durable,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:177:         "durable flag must be false (producer does not persist)"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:178:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:179:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:180: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:181: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:182: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:183: fn accepted_artifact_encoder_journaled_proof_has_durable_false() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:184:     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:185:     assert!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:186:         !artifact.verification.durable,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:187:         "Journaled policy must not be durable"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:188:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:189:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:190: }
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:191: 
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:192: #[test]
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:193: fn accepted_artifact_encoder_strict_proof_has_durable_false() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:194:     let artifact = submit_minimal(RuntimePolicy::Strict)?;
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:195:     assert!(
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:196:         !artifact.verification.durable,
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:197:         "Strict policy must not be durable (producer does not persist)"
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:198:     );
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:199:     Ok(())
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:200: }
