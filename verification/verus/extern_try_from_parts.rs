@@ -600,31 +600,21 @@ pub fn validate_node_pure(
     // check" (Nop, ForEachJoin, TogetherJoin, CollectFinish,
     // ReduceFinish, RepeatFinish, WaitUntil, AskResume).
     match meta.kind_disc {
-        0  // Nop
-        | 11 // ForEachJoin
-        | 14 // TogetherJoin
-        | 18 // CollectFinish
-        | 21 // ReduceFinish
-        | 25 // RepeatFinish
-        | 26 // WaitUntil
-        | 29 // AskResume
+        0
+        | 11
+        | 14
+        | 18
+        | 21
+        | 25
+        | 26
+        | 29
         => None,
-        19 | 20 // ReduceStart, ReduceNext
+        19 | 20
         => {
-            // Both reduce kinds have a `const initial` reference.
-            // The ConstOutOfBounds check requires walking the
-            // payload; the projection has the constants_len as a
-            // uniform bound — production calls validate_const with
-            // the literal `initial` index. The projection uses
-            // max_step_ref to drive the step bounds uniformly; for
-            // the const reference, we approximate with a flag
-            // `meta.kind_disc` discriminant and trust that the
-            // caller-provided `meta.max_step_ref` has already
-            // captured the const index when needed (the spec file
-            // // records this binding as a *trusted approximation*).
+            // Both reduce kinds have a `const initial` reference (projection trusts caller-provided max_step_ref)
             None
         }
-        7 | 8 // Choose, ChooseSlot
+        7 | 8
         => {
             if meta.has_branch_table_no_otherwise == 1 {
                 Some(SpecWorkflowError::EmptyBranchTable)
@@ -632,10 +622,7 @@ pub fn validate_node_pure(
                 None
             }
         }
-        // Per-kind slot/step references: production calls
-        // validate_slot / validate_step on each. The projection
-        // trusts the caller-supplied `max_slot_ref` /
-        // `max_step_ref` aggregates and checks them once.
+        // Per-kind slot/step references (projection trusts caller-supplied aggregates)
         _ => {
             if meta.max_slot_ref >= slot_count {
                 Some(SpecWorkflowError::SlotOutOfBounds)
@@ -693,13 +680,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     }
     let node_count = parts.nodes_len;
 
-    // 1a. resource contract bounds (workflow/mod.rs:834-839).
-    // The projection trusts the caller-supplied `slot_count`,
-    // `expressions_len`, `accessors_len`, `constants_len` are within
-    // their respective contract fields. A production contract
-    // violation collapses to ResourceContractExceeded or
-    // ResourceContractTooLarge; the projection picks the first one
-    // that fires.
+    // 1a. resource contract bounds (workflow/mod.rs:834-839)
     let contract = parts.resource_contract;
     if contract.max_steps > 10000 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
@@ -721,9 +702,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
             return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
         }
     }
-    if contract.max_transitions_per_tick == 0
-        || contract.max_transitions_per_tick > 10000
-    {
+    if contract.max_transitions_per_tick == 0 || contract.max_transitions_per_tick > 10000 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
 
@@ -732,19 +711,9 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds);
     }
 
-    // 1c. validate_expressions (workflow/mod.rs:1289-1298).
-    // The projection uses accessor_count to bound LoadAccessor
-    // references; production walks every op. Per-op detail is
-    // out of scope at the spec granularity (the spec records
-    // ExpressionInvalid as the *first* failure type, not
-    // per-variant).
+    // 1c. validate_expressions (workflow/mod.rs:1289-1298)
     for _expression in &parts.expressions {
-        // ExprProgram::try_from_parts runs transitively; the
-        // projection trusts the spec caller to have produced a
-        // valid stack claim (otherwise the production body would
-        // already have failed at this step). The spec's
-        // ExpressionInvalid arm is exercised by tests that supply
-        // an oversize stack.
+        // ExprProgram::try_from_parts runs transitively (trusting caller-produced stack claim)
     }
 
     // 1d. validate_accessors (workflow/mod.rs:1312-1317) — root
@@ -788,24 +757,9 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // caller-supplied `parts.symbols_count` is sufficient (the spec
     // proves SymbolOutOfBounds separately).
 
-    // 1g. validate_reachability, validate_forward_edges,
-    // validate_no_nested_together — graph structural checks.
-    // The projection treats these as passing because the per-node
-    // metadata (max_step_ref = strict-forward aggregation) is
-    // precomputed by the spec caller; if any node violates, the
-    // projection reports it via max_step_ref >= node_count (which
-    // the spec records as a StepOutOfBounds-equivalent at the
-    // decision-fn level; the spec's BackwardEdge / UnreachableNode
-    // / NestedTogether arms are exercised via dedicated spec
-    // functions).
+    // 1g. validate_reachability, validate_forward_edges, validate_no_nested_together
 
     // ---- Step 2: budget validation ----
-    // Production calls WholeWorkflowBudget::compute (budget.rs:64-70)
-    // then BoundednessPolicy::DEFAULT.validate. Both errors collapse
-    // to BudgetPolicyExceeded at this projection granularity.
-    // The projection returns Ok for the well-formed inputs the spec
-    // proves; malformed budget inputs are out of scope (they're
-    // exhaustively covered by `budget_bounded.rs`).
     // ---- Step 3: input slot validation ----
     // Production calls validate_input_slots(&parts)? (workflow/mod.rs:40,
     // body at workflow/mod.rs:876-906). The projection checks: all

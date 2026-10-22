@@ -499,36 +499,28 @@ pub fn lower_canonical_step_tag(
             // lower_canonical_finish at part_02.rs:141-160
             Ok(())
         }
-        StepPrimitiveTag::ForEach => {
-            // lower_canonical_for_each at part_02.rs:162-214
+        StepPrimitiveTag::ForEach => { // lower_canonical_for_each at part_02.rs:162-214
             Ok(())
         }
-        StepPrimitiveTag::Together => {
-            // lower_canonical_parallel at part_03.rs:15-...
+        StepPrimitiveTag::Together => { // lower_canonical_parallel at part_03.rs:15-...
             Ok(())
         }
-        StepPrimitiveTag::Collect => {
-            // lower_canonical_collect at part_07 / kani collect
+        StepPrimitiveTag::Collect => { // lower_canonical_collect at part_07 / kani collect
             Ok(())
         }
-        StepPrimitiveTag::Aggregate => {
-            // lower_canonical_aggregate
+        StepPrimitiveTag::Aggregate => { // lower_canonical_aggregate
             Ok(())
         }
-        StepPrimitiveTag::Repeat => {
-            // lower_canonical_repeat
+        StepPrimitiveTag::Repeat => { // lower_canonical_repeat
             Ok(())
         }
-        StepPrimitiveTag::Wait => {
-            // lower_canonical_wait
+        StepPrimitiveTag::Wait => { // lower_canonical_wait
             Ok(())
         }
-        StepPrimitiveTag::Ask => {
-            // lower_canonical_ask
+        StepPrimitiveTag::Ask => { // lower_canonical_ask
             Ok(())
         }
-        StepPrimitiveTag::Choose => {
-            // lower_canonical_choose at part_14
+        StepPrimitiveTag::Choose => { // lower_canonical_choose at part_14
             Ok(())
         }
         StepPrimitiveTag::Other => {
