@@ -1,6 +1,6 @@
 use super::*;
 use std::{num::NonZeroUsize, sync::Arc};
-use vb_core::{RunId, capability::CapabilitySet};
+use vb_core::{RunId, ids::ActionId, capability::CapabilitySet};
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
 use vb_runtime::{RuntimeError, runtime::Runtime};
@@ -54,32 +54,38 @@ fn replacement_contracts_rejected(policy: RuntimePolicy) -> TestResult {
         ),
         Ok(())
     );
-    let mut replacement = contract()?;
-    replacement.idempotency = vb_core::Idempotency::AtLeastOnceExternal;
-    replacement.retry_safety = vb_core::RetrySafety::Unsafe;
-    assert_eq!(
-        runtime.submit_direct_with_grants_and_contracts(
-            RunId::new(32),
-            workflow.clone(),
-            CapabilitySet::empty(),
-            Box::new([replacement.clone()])
-        ),
-        Err(RuntimeError::AdmissionArtifactInvalid {
-            digest: workflow.digest()
-        })
+    // Replacement contracts are detected by the ABI digest check first,
+    // producing AdmissionActionAbiDigestMismatch before artifact invalidity.
+    let replacement_contract = contract()?;
+    let err = runtime.submit_direct_with_grants_and_contracts(
+        RunId::new(32),
+        workflow.clone(),
+        CapabilitySet::empty(),
+        Box::new([replacement_contract]),
     );
-    assert_eq!(
-        runtime.submit_direct_with_inputs_grants_and_contracts(
-            RunId::new(33),
-            workflow.clone(),
-            Box::new([]),
-            CapabilitySet::empty(),
-            Box::new([replacement])
-        ),
-        Err(RuntimeError::AdmissionArtifactInvalid {
-            digest: workflow.digest()
-        })
+    match err {
+        Err(RuntimeError::AdmissionActionAbiDigestMismatch {
+            expected,
+            submitted,
+            ..
+        }) => {
+            assert_ne!(expected, submitted);
+        }
+        other => panic!("expected ABI digest mismatch, got {other:?}"),
+    }
+
+    let err2 = runtime.submit_direct_with_inputs_grants_and_contracts(
+        RunId::new(33),
+        workflow.clone(),
+        Box::new([]),
+        CapabilitySet::empty(),
+        Box::new([contract()?]),
     );
+    match err2 {
+        Err(RuntimeError::AdmissionActionAbiDigestMismatch { .. }) => {}
+        other => panic!("expected ABI digest mismatch, got {other:?}"),
+    }
+
     assert_eq!(
         runtime.submit_direct(RunId::new(34), workflow.clone()),
         Err(RuntimeError::AdmissionArtifactInvalid {
@@ -102,12 +108,14 @@ fn replacement_contracts_rejected(policy: RuntimePolicy) -> TestResult {
         caps: CapabilitySet::empty(),
         action_contracts: Box::new([replacement]),
     })?;
-    assert_eq!(
-        shard.tick(),
-        Err(RuntimeError::AdmissionArtifactInvalid {
-            digest: workflow.digest()
-        })
-    );
+    match shard.tick() {
+        Err(RuntimeError::AdmissionActionAbiDigestMismatch {
+            expected,
+            submitted,
+            ..
+        }) => assert_ne!(expected, submitted),
+        other => panic!("expected ABI digest mismatch, got {other:?}"),
+    }
     assert_eq!(shard.active_run_count(), 0);
     Ok(())
 }
