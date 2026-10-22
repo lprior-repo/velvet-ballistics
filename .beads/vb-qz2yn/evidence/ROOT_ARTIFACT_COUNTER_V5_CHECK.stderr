@@ -1,0 +1,17 @@
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-artifact-counter-impl-v2/crates/vb_storage)
+error: constant `PREFIX_ARTIFACT_ACCEPTANCE` is never used
+  --> crates/vb_storage/src/constants.rs:53:18
+   |
+53 | pub(crate) const PREFIX_ARTIFACT_ACCEPTANCE: u8 = 0x40;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D dead-code` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: constant `ARTIFACT_ACCEPTANCE_LAST_ISSUED` is never used
+   --> crates/vb_storage/src/constants.rs:124:18
+    |
+124 | pub(crate) const ARTIFACT_ACCEPTANCE_LAST_ISSUED: &str = "last_issued";
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not compile `vb_storage` (lib) due to 2 previous errors

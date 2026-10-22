@@ -7,9 +7,9 @@ This bead changes ONLY the default artifact submission APIs:
 - `submit_artifact_with_contracts`
 
 It does NOT change:
-- CLI `RunSubmission` path (parent bead vb-xxxxx)
-- `ExecutorCatalog` packed path (parent bead vb-xxxxx)
-- Raw `put_compiled_ir` (remains raw storage, no counter)
+- CLI `RunSubmission` path (parent bead vb-0qwfq)
+- `ExecutorCatalog` packed path (parent bead vb-0qwfq)
+- Raw `OwnedWriteBatch` insert (remains raw storage, no counter)
 - Existing test suite (tests written after this implementation)
 
 ## Requirements
@@ -40,13 +40,13 @@ It does NOT change:
 ### 4. Issuance Flow
 Within `submit_artifact_with_contracts`:
 1. Prepare and validate artifact (existing logic, pure, seq=0)
-2. Read last issued typed value
+2. Hold actual `write_lock` continuously across read/increment/stamp/encode
 3. Increment and stamp `EventSeq`
 4. Use existing `bind_artifact_digest` to set BOTH `digest` and `verification.digest`
 5. Encode with existing `encode_record` (MAGIC_COMPILED_ARTIFACT, RecordKind::CompiledIr, 0, MAX_COMPILED_IR_BYTES)
-6. Construct proper `CompiledIrRecord` and stage with existing `batch.put_compiled_ir`
+6. Stage raw `OwnedWriteBatch` insert directly (no wrapper `put_compiled_ir`)
 7. Stage the updated counter in the same batch
-8. Commit the batch (durability per policy)
+8. Commit the batch (durability per policy) — only writes are batched, not pretend DB read transaction
 9. Existing readback verification after commit
 
 ### 5. Locking and Concurrency
@@ -84,9 +84,13 @@ Within `submit_artifact_with_contracts`:
 
 ## Acceptance Criteria
 
-1. `cargo build --release --all` succeeds
-2. All existing tests pass unchanged
-3. Counter increments monotonically across repeated submissions
-4. First submission gets EventSeq(1), second gets EventSeq(2), etc.
-5. No public API changes to `submit_artifact` or `submit_artifact_with_contracts`
-6. Readback verification still works after counter integration
+1. Focused V5 compiler check passes on changed crate only (no guessed `cargo build --release --all`)
+2. Actual behavioral tests written and passing for counter increments and EventSeq stamping
+3. Independent code review (CODE) and test review (TEST) completed
+4. Actual source and Moon CI gates run and passing
+5. Counter increments monotonically across repeated submissions
+6. First submission gets EventSeq(1), second gets EventSeq(2), etc.
+7. Pure prepare step stays seq=0, verified separately
+8. No public API changes to `submit_artifact` or `submit_artifact_with_contracts`
+9. Readback verification still works after counter integration
+10. Existing tests preserved except contract-required seq 0→1 and declared 11→12 corrections
