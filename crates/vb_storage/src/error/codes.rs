@@ -80,6 +80,14 @@ impl JournalError {
     /// (`JournalError::ReplayEnvelopeSequenceMismatch`).
     pub const REPLAY_ENVELOPE_SEQUENCE_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4041);
 
+    /// Diagnostic code for emergency-deny marker with unsupported version
+    /// (`JournalError::EmergencyDenyMarkerUnsupportedVersion`).
+    pub const EMERGENCY_DENY_UNSUPPORTED_VERSION_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x4042);
+    /// Diagnostic code for malformed emergency-deny marker
+    /// (`JournalError::EmergencyDenyMarkerMalformed`).
+    pub const EMERGENCY_DENY_MALFORMED_CODE: DiagnosticCode = DiagnosticCode::new(0x4043);
+
     /// Diagnostic code for invalid configuration supplied to journal open.
     pub const INVALID_CONFIG_CODE: DiagnosticCode = DiagnosticCode::new(0x4033);
     /// Diagnostic code for read-only journal open attempt that the
@@ -175,6 +183,10 @@ impl JournalError {
             Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
             Self::BatchAborted => Self::BATCH_ABORTED_CODE,
             Self::IndexStatusStateCollision { .. } => Self::ARTIFACT_MALFORMED_CODE,
+            Self::EmergencyDenyMarkerUnsupportedVersion { .. } => {
+                Self::EMERGENCY_DENY_UNSUPPORTED_VERSION_CODE
+            }
+            Self::EmergencyDenyMarkerMalformed => Self::EMERGENCY_DENY_MALFORMED_CODE,
         }
     }
 
@@ -256,6 +268,10 @@ impl JournalError {
             Self::MalformedKeyspaceRow { .. } => "MALFORMED_KEYSPACE_ROW",
             Self::BatchAborted => "BATCH_ABORTED",
             Self::IndexStatusStateCollision { .. } => "INDEX_STATUS_STATE_COLLISION",
+            Self::EmergencyDenyMarkerUnsupportedVersion { .. } => {
+                "EMERGENCY_DENY_UNSUPPORTED_VERSION"
+            }
+            Self::EmergencyDenyMarkerMalformed => "EMERGENCY_DENY_MALFORMED",
             // SC-009 (vb-1rqz7.28): `Self::Trim(_)` is handled above by
             // the early return. Keep this arm so the match on `&Self`
             // satisfies exhaustiveness; it is not reachable at runtime.

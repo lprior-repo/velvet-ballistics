@@ -290,4 +290,13 @@ impl<'j> JournalWriteBatch<'j> {
         self.inner.remove(&self.journal.index_action, key);
         Ok(())
     }
+
+    /// Inserts the emergency-deny marker into the batch.
+    ///
+    /// Writes the encoded marker value to the emergency_deny keyspace.
+    /// This is committed atomically with other batch operations.
+    pub fn put_emergency_deny(&mut self, key: &[u8], value: [u8; 9]) -> Result<(), JournalError> {
+        self.inner.insert(&self.journal.emergency_deny, key, value);
+        Ok(())
+    }
 }

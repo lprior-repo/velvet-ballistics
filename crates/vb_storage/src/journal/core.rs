@@ -11,14 +11,25 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::{
     constants::{
-        KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
-        KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_INPUTS,
-        KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE,
+        KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_EMERGENCY_DENY, KEYSPACE_INDEX_ACTION,
+        KEYSPACE_INDEX_STATUS, KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER,
+        KEYSPACE_RUN_INPUTS, KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE,
     },
     error::JournalError,
     process_lock::ProcessLock,
     types::{FjallConfig, KeyspaceProfile},
 };
+
+/// Emergency-deny overlay state persisted in the Fjall journal store.
+///
+/// `Inactive` means no emergency-deny marker is present in the journal store.
+/// `Active { seq }` means a valid versioned marker is present; the `seq` field
+/// is the monotonic activation sequence counter from the stored marker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EmergencyDenyState {
+    Inactive,
+    Active { seq: u64 },
+}
 
 /// Bounded replay limit for journal event collection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +71,7 @@ pub struct FjallJournal {
     pub(crate) index_status: fjall::Keyspace,
     pub(crate) index_workflow: fjall::Keyspace,
     pub(crate) index_action: fjall::Keyspace,
+    pub(crate) emergency_deny: fjall::Keyspace,
     #[cfg(test)]
     pub(crate) fail_next_persist: AtomicBool,
     #[cfg(test)]
@@ -128,6 +140,9 @@ impl FjallJournal {
         let index_action = database.keyspace(KEYSPACE_INDEX_ACTION, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
         })?;
+        let emergency_deny = database.keyspace(KEYSPACE_EMERGENCY_DENY, || {
+            crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+        })?;
         let _process_lock = ProcessLock::acquire(path_ref)?;
         Ok(Self {
             database,
@@ -141,6 +156,7 @@ impl FjallJournal {
             index_status,
             index_workflow,
             index_action,
+            emergency_deny,
             #[cfg(test)]
             fail_next_persist: AtomicBool::new(false),
             #[cfg(test)]
@@ -154,7 +170,7 @@ impl FjallJournal {
 
     /// Returns all declared keyspace names after a successful open.
     #[must_use]
-    pub const fn declared_keyspaces() -> [&'static str; 10] {
+    pub const fn declared_keyspaces() -> [&'static str; 11] {
         [
             KEYSPACE_WORKFLOW_SOURCE,
             KEYSPACE_COMPILED_IR,
@@ -166,6 +182,7 @@ impl FjallJournal {
             KEYSPACE_INDEX_WORKFLOW,
             KEYSPACE_INDEX_ACTION,
             KEYSPACE_RUN_INPUTS,
+            KEYSPACE_EMERGENCY_DENY,
         ]
     }
 
@@ -222,6 +239,7 @@ impl FjallJournal {
         let _ = self.index_status.contains_key(empty_key)?;
         let _ = self.index_workflow.contains_key(empty_key)?;
         let _ = self.index_action.contains_key(empty_key)?;
+        let _ = self.emergency_deny.contains_key(empty_key)?;
         Ok(())
     }
 
@@ -280,6 +298,88 @@ impl FjallJournal {
     #[cfg(test)]
     pub(crate) fn consume_batch_commit_failure_for_test(&self) -> bool {
         self.fail_next_batch_commit.swap(false, Ordering::SeqCst)
+    }
+
+    /// Fixed key for the emergency-deny marker.
+    const EMERGENCY_DENY_KEY: &'static [u8] = b"active";
+    /// Current emergency-deny marker version.
+    const EMERGENCY_DENY_VERSION: u8 = 1;
+    /// Total encoded length of a valid emergency-deny marker.
+    const EMERGENCY_DENY_MARKER_LEN: usize = 9;
+
+    /// Returns the current emergency-deny state persisted in this store.
+    ///
+    /// `Inactive` when no marker key exists. `Active { seq }` when a valid
+    /// versioned marker is present. Storage read errors propagate as
+    /// `JournalError::Fjall`, never converted to `Inactive`.
+    /// Malformed markers or unsupported versions return their specific
+    /// typed errors, never `Inactive`.
+    pub fn emergency_deny_state(&self) -> Result<EmergencyDenyState, JournalError> {
+        let result = self
+            .emergency_deny
+            .get(Self::EMERGENCY_DENY_KEY)
+            .map_err(JournalError::Fjall)?;
+        let value = match result {
+            Some(v) => v,
+            None => return Ok(EmergencyDenyState::Inactive),
+        };
+        let bytes = value.to_vec();
+        if bytes.len() != Self::EMERGENCY_DENY_MARKER_LEN {
+            return Err(JournalError::EmergencyDenyMarkerMalformed);
+        }
+        // Validate version byte
+        let version = *bytes.first().ok_or(JournalError::EmergencyDenyMarkerMalformed)?;
+        if version != Self::EMERGENCY_DENY_VERSION {
+            return Err(JournalError::EmergencyDenyMarkerUnsupportedVersion { version });
+        }
+        // Big-endian u64 from bytes 1..9
+        let seq_bytes = bytes
+            .get(1..9)
+            .map(|b| {
+                let mut arr = [0u8; 8];
+                arr.copy_from_slice(b);
+                arr
+            })
+            .ok_or(JournalError::EmergencyDenyMarkerMalformed)?;
+        let seq = u64::from_be_bytes(seq_bytes);
+        Ok(EmergencyDenyState::Active { seq })
+    }
+
+    /// Activates the emergency-deny overlay with strict durability.
+    ///
+    /// Writes a monotonic versioned marker and persists with
+    /// `PersistMode::SyncAll` before returning. Idempotent: repeated
+    /// calls each write a fresh monotonic sequence but the state remains
+    /// `Active`. The new sequence value is always greater than any
+    /// previously stored sequence (or 0 if first activation).
+    /// Returns the new `Active` state.
+    pub fn activate_emergency_deny(&self) -> Result<EmergencyDenyState, JournalError> {
+        // Read current state to derive monotonic sequence
+        let current = self.emergency_deny_state()?;
+        let next_seq = match current {
+            EmergencyDenyState::Inactive => 1,
+            EmergencyDenyState::Active { seq } => seq.checked_add(1).ok_or(
+                JournalError::Fjall(fjall::Error::Io(std::io::Error::other(
+                    "emergency deny sequence overflow",
+                ))),
+            )?,
+        };
+        // Encode marker: 1-byte version + 8-byte big-endian u64 sequence
+        let mut marker = [0u8; Self::EMERGENCY_DENY_MARKER_LEN];
+        marker[0] = Self::EMERGENCY_DENY_VERSION;
+        let seq_bytes = next_seq.to_be_bytes();
+        marker[1..9].copy_from_slice(&seq_bytes);
+        // Atomic strict persist via batch
+        let mut batch = self.batch();
+        batch.put_emergency_deny(Self::EMERGENCY_DENY_KEY, marker)?;
+        batch.strict().commit()?;
+        Ok(EmergencyDenyState::Active { seq: next_seq })
+    }
+
+    /// Returns the emergency-deny keyspace handle for internal operations.
+    #[must_use]
+    pub fn emergency_deny_keyspace(&self) -> &fjall::Keyspace {
+        &self.emergency_deny
     }
 }
 
