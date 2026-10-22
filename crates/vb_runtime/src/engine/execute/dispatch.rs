@@ -288,7 +288,6 @@ fn dispatch_repeat(run: &mut RunFrame, node: &CompiledNode) -> RuntimeEngineResu
         _ => Err(family_invariant()),
     }
 }
-
 /// Defensive typed error for the unreachable `_` arm of every family
 /// dispatcher. The orchestrator ([`execute_node_full`]) routes each
 /// `CompiledNodeKind` to the family that owns it; reaching `_` inside

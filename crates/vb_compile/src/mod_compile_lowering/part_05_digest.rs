@@ -1,4 +1,11 @@
 #![allow(unused_imports)]
+mod part_05_digest_primitive;
+
+pub(crate) use part_05_digest_primitive::digest_step_primitive;
+
+mod part_05_digest_validate;
+
+pub(crate) use part_05_digest_validate::{digest_author_value, validate_branch_counts};
 
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use vb_core::WorkflowDigest;
@@ -12,32 +19,31 @@ use vb_core::WorkflowDigest;
 // encoding) + vb-wlnl4 (integration review repair).
 
 /// Tag for length-prefixed string values.
-const TAG_STRING: u8 = 0x01;
+pub(crate) const TAG_STRING: u8 = 0x01;
 /// Tag for i64 integer values.
-const TAG_I64: u8 = 0x02;
+pub(crate) const TAG_I64: u8 = 0x02;
 /// Tag for u16 values.
-const TAG_U16: u8 = 0x03;
+pub(crate) const TAG_U16: u8 = 0x03;
 /// Tag for u32 values.
-const TAG_U32: u8 = 0x04;
+pub(crate) const TAG_U32: u8 = 0x04;
 /// Tag for Some variant.
-const TAG_SOME: u8 = 0x10;
+pub(crate) const TAG_SOME: u8 = 0x10;
 /// Tag for None variant.
-const TAG_NONE: u8 = 0x11;
+pub(crate) const TAG_NONE: u8 = 0x11;
 /// Tag for container end.
-const TAG_END: u8 = 0x22;
+pub(crate) const TAG_END: u8 = 0x22;
 
 /// Domain separator for the workflow source digest.
 const DOMAIN_SOURCE: &[u8] = b"vb-source-v3:";
 
-fn digest_error(message: &str) -> CompileErrors {
+pub(crate) fn digest_error(message: &str) -> CompileErrors {
     CompileErrors(vec![CompileError::CanonicalYaml {
         category: "digest",
         message: message.into(),
     }])
 }
 
-/// Write a length-prefixed string with explicit tag.
-fn digest_string(hasher: &mut blake3::Hasher, value: &str) -> Result<(), CompileErrors> {
+pub(crate) fn digest_string(hasher: &mut blake3::Hasher, value: &str) -> Result<(), CompileErrors> {
     hasher.update(&[TAG_STRING]);
     let len =
         u32::try_from(value.len()).map_err(|_| digest_error("string length exceeds u32 range"))?;
@@ -47,7 +53,7 @@ fn digest_string(hasher: &mut blake3::Hasher, value: &str) -> Result<(), Compile
 }
 
 /// Write a raw (untagged) container length, failing closed on overflow.
-fn digest_len(hasher: &mut blake3::Hasher, value: usize) -> Result<(), CompileErrors> {
+pub(crate) fn digest_len(hasher: &mut blake3::Hasher, value: usize) -> Result<(), CompileErrors> {
     let len =
         u32::try_from(value).map_err(|_| digest_error("container length exceeds u32 range"))?;
     hasher.update(&len.to_le_bytes());
@@ -55,19 +61,19 @@ fn digest_len(hasher: &mut blake3::Hasher, value: usize) -> Result<(), CompileEr
 }
 
 /// Write an i64 with explicit tag.
-fn digest_i64(hasher: &mut blake3::Hasher, value: i64) {
+pub(crate) fn digest_i64(hasher: &mut blake3::Hasher, value: i64) {
     hasher.update(&[TAG_I64]);
     hasher.update(&value.to_le_bytes());
 }
 
 /// Write a u16 with explicit tag.
-fn digest_u16(hasher: &mut blake3::Hasher, value: u16) {
+pub(crate) fn digest_u16(hasher: &mut blake3::Hasher, value: u16) {
     hasher.update(&[TAG_U16]);
     hasher.update(&value.to_le_bytes());
 }
 
 /// Write a u32 with explicit tag.
-fn digest_u32(hasher: &mut blake3::Hasher, value: u32) {
+pub(crate) fn digest_u32(hasher: &mut blake3::Hasher, value: u32) {
     hasher.update(&[TAG_U32]);
     hasher.update(&value.to_le_bytes());
 }
@@ -77,7 +83,7 @@ fn digest_u32(hasher: &mut blake3::Hasher, value: u32) {
 /// Unlike optional u32 fields, an absent string (`None`) and an empty string
 /// (`Some("")`) are semantically distinct authoring states, so the
 /// discriminant is retained.
-fn digest_optional_string(
+pub(crate) fn digest_optional_string(
     hasher: &mut blake3::Hasher,
     field_tag: &[u8],
     value: Option<&str>,
@@ -102,7 +108,7 @@ fn digest_optional_string(
 /// canonical IR. Hashing the resolved value preserves digest stability:
 /// `None` and `Some(1)` yield identical digests, while `Some(0)` (and every
 /// other explicit value) stays distinct.
-fn digest_optional_u32(
+pub(crate) fn digest_optional_u32(
     hasher: &mut blake3::Hasher,
     field_tag: &[u8],
     value: Option<u32>,
@@ -112,54 +118,6 @@ fn digest_optional_u32(
     Ok(())
 }
 
-/// Hash an AuthorValue recursively with type tags.
-fn digest_author_value(
-    hasher: &mut blake3::Hasher,
-    value: &crate::AuthorValue,
-) -> Result<(), CompileErrors> {
-    match value {
-        crate::AuthorValue::Null => {
-            hasher.update(&[0x00]);
-        }
-        crate::AuthorValue::Bool(b) => {
-            hasher.update(&[0x01]);
-            hasher.update(&[if *b { 1 } else { 0 }]);
-        }
-        crate::AuthorValue::I64(n) => {
-            hasher.update(&[0x02]);
-            digest_i64(hasher, *n);
-        }
-        crate::AuthorValue::Text(s) => {
-            hasher.update(&[0x03]);
-            digest_string(hasher, s)?;
-        }
-        crate::AuthorValue::Sequence(seq) => {
-            hasher.update(&[0x04]);
-            digest_len(hasher, seq.len())?;
-            for item in seq {
-                digest_author_value(hasher, item)?;
-            }
-            hasher.update(&[TAG_END]);
-        }
-        crate::AuthorValue::Mapping(entries) => {
-            hasher.update(&[0x05]);
-            let mut sorted: Vec<&crate::AuthorEntry<crate::AuthorValue>> = entries.iter().collect();
-            sorted.sort_by(|a, b| a.key.cmp(&b.key));
-            digest_len(hasher, sorted.len())?;
-            for entry in sorted {
-                digest_string(hasher, &entry.key)?;
-                digest_author_value(hasher, &entry.value)?;
-            }
-            hasher.update(&[TAG_END]);
-        }
-        _ => {
-            return Err(digest_error(
-                "unknown author value variant cannot be canonicalized",
-            ));
-        }
-    }
-    Ok(())
-}
 
 pub(crate) fn canonical_primitive_name(primitive: &crate::StepPrimitive) -> &'static str {
     match primitive {
@@ -272,7 +230,7 @@ pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest
 }
 
 /// Digest a complete step including all metadata fields.
-fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) -> Result<(), CompileErrors> {
+pub(crate) fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) -> Result<(), CompileErrors> {
     digest_string(hasher, &step.id)?;
     digest_optional_string(hasher, b"step_name:", step.name.as_deref())?;
     digest_optional_string(hasher, b"step_condition:", step.condition.as_deref())?;
@@ -298,54 +256,9 @@ fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) -> Result<(),
     Ok(())
 }
 
-pub(crate) fn validate_branch_counts(source: &crate::WorkflowSource) -> Result<(), CompileErrors> {
-    for step in source.steps() {
-        validate_step_branch_counts(&step.primitive)?;
-    }
-    Ok(())
-}
-
-fn validate_step_branch_counts(primitive: &crate::StepPrimitive) -> Result<(), CompileErrors> {
-    match primitive {
-        crate::StepPrimitive::Together { branches } => {
-            if branches.len() > usize::from(u16::MAX) {
-                return Err(CompileErrors(vec![
-                    CompileError::PrimitiveLoweringLimitExceeded {
-                        primitive: "together",
-                        field: "branches",
-                        value: branches.len(),
-                        limit: usize::from(u16::MAX),
-                    },
-                ]));
-            }
-            for branch in branches.iter() {
-                for step in &branch.steps {
-                    validate_step_branch_counts(&step.primitive)?;
-                }
-            }
-        }
-        crate::StepPrimitive::ForEach { body, .. }
-        | crate::StepPrimitive::Collect { body, .. }
-        | crate::StepPrimitive::Aggregate { body, .. }
-        | crate::StepPrimitive::Repeat { body, .. } => {
-            for step in body {
-                validate_step_branch_counts(&step.primitive)?;
-            }
-        }
-        crate::StepPrimitive::Choose { branches, .. } => {
-            for branch in branches {
-                for step in &branch.steps {
-                    validate_step_branch_counts(&step.primitive)?;
-                }
-            }
-        }
-        _ => {}
-    }
-    Ok(())
-}
 
 /// Hash a `ScalarValue`, failing closed on future unknown variants.
-fn digest_scalar_value(
+pub(crate) fn digest_scalar_value(
     hasher: &mut blake3::Hasher,
     value: &crate::ScalarValue,
 ) -> Result<(), CompileErrors> {
@@ -366,7 +279,7 @@ fn digest_scalar_value(
 }
 
 /// Hash the body steps of a container primitive.
-fn digest_body_steps(
+pub(crate) fn digest_body_steps(
     hasher: &mut blake3::Hasher,
     body: &[crate::StepAst],
 ) -> Result<(), CompileErrors> {
@@ -378,123 +291,3 @@ fn digest_body_steps(
     Ok(())
 }
 
-pub(crate) fn digest_step_primitive(
-    hasher: &mut blake3::Hasher,
-    primitive: &crate::StepPrimitive,
-) -> Result<(), CompileErrors> {
-    match primitive {
-        crate::StepPrimitive::Set { output, value } => {
-            hasher.update(b"set");
-            digest_string(hasher, output)?;
-            digest_string(hasher, value)
-        }
-        crate::StepPrimitive::Save { value } => {
-            hasher.update(b"save");
-            digest_scalar_value(hasher, value)
-        }
-        crate::StepPrimitive::Do { action, input } => {
-            hasher.update(b"do");
-            digest_string(hasher, action)?;
-            digest_string(hasher, input)
-        }
-        crate::StepPrimitive::Choose {
-            branches,
-            otherwise,
-        } => {
-            hasher.update(b"choose");
-            digest_len(hasher, branches.len())?;
-            for branch in branches {
-                digest_string(hasher, &branch.when)?;
-                digest_len(hasher, branch.steps.len())?;
-                for step in &branch.steps {
-                    digest_step(hasher, step)?;
-                }
-                hasher.update(&[TAG_END]);
-            }
-            hasher.update(&[TAG_END]);
-            digest_optional_string(hasher, b"otherwise:", otherwise.as_deref())
-        }
-        crate::StepPrimitive::ForEach {
-            variable,
-            input,
-            at_once,
-            body,
-        } => {
-            hasher.update(b"for_each");
-            digest_string(hasher, variable)?;
-            digest_string(hasher, input)?;
-            digest_optional_u32(hasher, b"at_once:", *at_once)?;
-            digest_body_steps(hasher, body)
-        }
-        crate::StepPrimitive::Together { branches } => {
-            hasher.update(b"together");
-            let count = u16::try_from(branches.len()).map_err(|_| {
-                CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
-                    primitive: "together",
-                    field: "branches",
-                    value: branches.len(),
-                    limit: usize::from(u16::MAX),
-                }])
-            })?;
-            digest_u16(hasher, count);
-            for branch in branches {
-                digest_string(hasher, &branch.label)?;
-                digest_len(hasher, branch.steps.len())?;
-                for step in &branch.steps {
-                    digest_step(hasher, step)?;
-                }
-                hasher.update(&[TAG_END]);
-            }
-            hasher.update(&[TAG_END]);
-            Ok(())
-        }
-        crate::StepPrimitive::Collect {
-            variable,
-            source,
-            pages,
-            items,
-            body,
-        } => {
-            hasher.update(b"collect");
-            digest_string(hasher, variable)?;
-            digest_string(hasher, source)?;
-            digest_optional_u32(hasher, b"pages:", *pages)?;
-            digest_optional_u32(hasher, b"items:", *items)?;
-            digest_body_steps(hasher, body)
-        }
-        crate::StepPrimitive::Aggregate {
-            variable,
-            input,
-            initial,
-            body,
-        } => {
-            hasher.update(b"aggregate");
-            digest_string(hasher, variable)?;
-            digest_string(hasher, input)?;
-            digest_string(hasher, initial)?;
-            digest_body_steps(hasher, body)
-        }
-        crate::StepPrimitive::Wait { event, timeout } => {
-            hasher.update(b"wait");
-            digest_optional_string(hasher, b"event:", event.as_deref())?;
-            digest_optional_string(hasher, b"timeout:", timeout.as_deref())
-        }
-        crate::StepPrimitive::Ask { prompt, timeout } => {
-            hasher.update(b"ask");
-            digest_string(hasher, prompt)?;
-            digest_optional_string(hasher, b"timeout:", timeout.as_deref())
-        }
-        crate::StepPrimitive::Finish { result } => {
-            hasher.update(b"finish");
-            digest_scalar_value(hasher, result)
-        }
-        crate::StepPrimitive::Repeat { max_attempts, body } => {
-            hasher.update(b"repeat");
-            digest_u16(hasher, *max_attempts);
-            digest_body_steps(hasher, body)
-        }
-        _ => Err(digest_error(
-            "unknown step primitive variant cannot be canonicalized",
-        )),
-    }
-}
