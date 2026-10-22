@@ -58,7 +58,6 @@ impl PendingTimer {
 /// Bounded command processed by a shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-#[allow(clippy::large_enum_variant)]
 pub enum ShardCommand {
     /// Submit a new run for execution.
     Submit {
@@ -200,7 +199,7 @@ pub enum ShardCommand {
     /// replay and validated full recovery context. The typed
     /// `RecoverRunCommand` carries artifact verification, journal sequencing,
     /// collect pagination, and boundary classification in a single value.
-    Recover { command: RecoverRunCommand },
+    Recover { command: Box<RecoverRunCommand> },
 }
 
 /// Typed recovery command carrying full recovery context from journal replay.
