@@ -46,7 +46,7 @@ fn storage_adapter_persists_full_policy_decision_event() -> Result<(), Box<dyn s
     let run = RunId::new(1001);
     let decision = fixture_decision(run);
 
-    adapter.append_policy_decision_strict(decision.clone(), EventSeq::new(1))?;
+    adapter.append_policy_decision_strict(decision.clone(), EventSeq::new(0))?;
 
     drop(adapter);
     drop(journal);
@@ -55,7 +55,7 @@ fn storage_adapter_persists_full_policy_decision_event() -> Result<(), Box<dyn s
     let actual = reopened.events_for_run(run)?;
     let expected = vec![JournalEvent::PolicyDecisionEvent {
         run,
-        seq: EventSeq::new(1),
+        seq: EventSeq::new(0),
         decision: decision.clone(),
     }];
     assert_eq!(
@@ -111,7 +111,7 @@ fn queued_adapter_drains_prefix_before_strict_decision() -> Result<(), Box<dyn s
             result: SlotIdx::new(1),
             attempt: 1,
         },
-        EventSeq::new(2),
+        EventSeq::new(0),
     )?;
 
     adapter.drain_all()?;
@@ -119,7 +119,7 @@ fn queued_adapter_drains_prefix_before_strict_decision() -> Result<(), Box<dyn s
     let actual_b = journal.events_for_run(run_b)?;
     let expected_b = vec![JournalEvent::RunFinished {
         run: run_b,
-        seq: EventSeq::new(2),
+        seq: EventSeq::new(0),
         result: SlotIdx::new(1),
         attempt: 1,
     }];
