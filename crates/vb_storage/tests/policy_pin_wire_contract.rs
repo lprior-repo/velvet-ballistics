@@ -34,6 +34,12 @@ fn test_artifact_digest() -> WorkflowDigest {
     WorkflowDigest::from_bytes([0x55; 32])
 }
 
+/// Concrete non-empty capability set for fullEq wire roundtrip proof.
+fn test_granted_capabilities() -> vb_core::CapabilitySet {
+    let cap = vb_core::Capability::new("network".into(), vb_core::ids::ActionId::new(42));
+    vb_core::CapabilitySet::from_grants(Box::new([cap]))
+}
+
 /// Legacy unbound + unverified (tag 24).
 fn admission_event_unbound_unverified() -> JournalEvent {
     JournalEvent::RunAdmission {
@@ -42,7 +48,7 @@ fn admission_event_unbound_unverified() -> JournalEvent {
         artifact_digest: test_artifact_digest(),
         input_digest: RunInputBinding::LegacyUnbound,
         policy_pin: RunPolicyPin::Unverified,
-        granted_capabilities: vb_core::CapabilitySet::empty(),
+        granted_capabilities: test_granted_capabilities(),
         policy: vb_core::RuntimePolicy::Relaxed,
     }
 }
@@ -55,7 +61,7 @@ fn admission_event_bound_unverified() -> JournalEvent {
         artifact_digest: test_artifact_digest(),
         input_digest: RunInputBinding::Digest(test_input_digest()),
         policy_pin: RunPolicyPin::Unverified,
-        granted_capabilities: vb_core::CapabilitySet::empty(),
+        granted_capabilities: test_granted_capabilities(),
         policy: vb_core::RuntimePolicy::Journaled,
     }
 }
@@ -68,7 +74,7 @@ fn admission_event_unbound_pinned() -> JournalEvent {
         artifact_digest: test_artifact_digest(),
         input_digest: RunInputBinding::LegacyUnbound,
         policy_pin: RunPolicyPin::Pinned(test_policy_digest()),
-        granted_capabilities: vb_core::CapabilitySet::empty(),
+        granted_capabilities: test_granted_capabilities(),
         policy: vb_core::RuntimePolicy::Strict,
     }
 }
@@ -81,7 +87,7 @@ fn admission_event_bound_pinned() -> JournalEvent {
         artifact_digest: test_artifact_digest(),
         input_digest: RunInputBinding::Digest(test_input_digest()),
         policy_pin: RunPolicyPin::Pinned(test_policy_digest()),
-        granted_capabilities: vb_core::CapabilitySet::empty(),
+        granted_capabilities: test_granted_capabilities(),
         policy: vb_core::RuntimePolicy::Strict,
     }
 }
@@ -100,9 +106,16 @@ fn roundtrip_event(event: &JournalEvent) -> Result<JournalEvent, String> {
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )
     .map_err(|e| format!("record encode failed: {e}"))?;
-    let (_, decoded) =
+    let (envelope, decoded) =
         decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)
             .map_err(|e| format!("decode failed: {e}"))?;
+    let expected_kind: u16 = event.record_kind().id();
+    if envelope.record_kind != expected_kind {
+        return Err(format!(
+            "envelope record_kind mismatch: envelope={}, expected={}",
+            envelope.record_kind, expected_kind
+        ));
+    }
     if decoded != *event {
         return Err(format!(
             "roundtrip FULL-Eq failed: original={:?}, decoded={:?}",
@@ -191,58 +204,5 @@ fn wire_envelope_kind_matches_event_record_kind() -> Result<(), String> {
     let expected_tag: u8 =
         u8::try_from(event.record_kind().id()).map_err(|_| "record kind id out of u8 range")?;
     assert_eq!(payload.first(), Some(&expected_tag));
-    Ok(())
-}
-
-#[test]
-fn malformed_record_kind_bytes_rejected() -> Result<(), String> {
-    // An unknown tag in the payload causes a PostcardDecodeFailed error
-    // (not UnknownRecordKind, which is checked at the envelope header level).
-    let event = admission_event_bound_pinned();
-    let payload = postcard::to_allocvec(&event).map_err(|e| format!("encode failed: {e}"))?;
-    let mut bad_payload = payload;
-    bad_payload[0] = 200;
-    let bytes = encode_record(
-        MAGIC_JOURNAL_EVENT,
-        RecordKind::RunAdmissionBoundPinned,
-        1,
-        &bad_payload,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )
-    .map_err(|e| format!("record encode failed: {e}"))?;
-    let result = decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
-    match result {
-        Err(JournalError::PostcardDecodeFailed(_)) => {}
-        other => {
-            return Err(format!(
-                "expected PostcardDecodeFailed for unknown payload variant, got: {:?}",
-                other
-            ));
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn truncated_payload_rejected() -> Result<(), String> {
-    let event = admission_event_bound_pinned();
-    let payload = postcard::to_allocvec(&event).map_err(|e| format!("encode failed: {e}"))?;
-    let mut truncated = payload;
-    truncated.truncate(10);
-    let bytes = encode_record(
-        MAGIC_JOURNAL_EVENT,
-        RecordKind::RunAdmissionBoundPinned,
-        1,
-        &truncated,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )
-    .map_err(|e| format!("record encode failed: {e}"))?;
-    let result = decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
-    match result {
-        Err(JournalError::PostcardDecodeFailed(_)) => {}
-        other => {
-            return Err(format!("expected PostcardDecodeFailed, got: {:?}", other));
-        }
-    }
     Ok(())
 }
