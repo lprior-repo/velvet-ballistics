@@ -1,0 +1,56 @@
+error[E0432]: unresolved import `vb_runtime::storage`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:16:17
+   |
+16 | use vb_runtime::storage::StorageRuntimeJournal;
+   |                 ^^^^^^^ could not find `storage` in `vb_runtime`
+
+error: unused import: `vb_runtime::runtime::RegisteredExecutionError`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:10:5
+   |
+10 | use vb_runtime::runtime::RegisteredExecutionError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused import: `FjallConfig`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:11:18
+   |
+11 | use vb_storage::{FjallConfig, FjallJournal};
+   |                  ^^^^^^^^^^^
+
+error: unused import: `StepIdx`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:11:46
+   |
+11 | use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
+   |                                              ^^^^^^^
+
+error: unused import: `vb_runtime::shard::ShardConfig`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:15:5
+   |
+15 | use vb_runtime::shard::ShardConfig;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `AcceptedArtifact`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:19:18
+   |
+19 | use vb_storage::{AcceptedArtifact, FjallConfig, FjallJournal};
+   |                  ^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:161:13
+    |
+160 |         policy_dispatch::admission_pin_from_artifact(
+    |         -------------------------------------------- arguments to this function are incorrect
+161 |             artifact.policy_digest,
+    |             ^^^^^^^^^^^^^^^^^^^^^^ expected `[u8; 32]`, found `WorkflowDigest`
+    |
+note: function defined here
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:142:15
+    |
+142 | pub(super) fn admission_pin_from_artifact(policy_digest: [u8; 32]) -> PinnedAdmissionPolicy {
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ -----------------------
+
+Some errors have detailed explanations: E0308, E0432.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_historical_replay") due to 7 previous errors
