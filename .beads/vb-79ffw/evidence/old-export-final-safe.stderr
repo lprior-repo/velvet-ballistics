@@ -1,0 +1,7 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-79ffw-local3090-old-fixtures/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.33s
+     Running tests/old_ticket_golden_export.rs (target/debug/deps/old_ticket_golden_export-140d27f3a7b9e19a)
+[OK] small-canonical -> 122 bytes
+[OK] high-values -> 135 bytes
+[OK] max-attempt-capacity -> 128 bytes
+[DONE] Manifest written to ../../.beads/vb-79ffw/old-golden/manifest.json

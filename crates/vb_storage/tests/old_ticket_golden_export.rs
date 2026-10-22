@@ -249,7 +249,7 @@ let mut valid_names = Vec::new();
         errors.join("; ")
     );
 assert_eq!(
-        valid_names.len() as u32,
+        valid_names.len(),
         3,
         "expected 3 valid exported cases, got {}",
         valid_names.len()
