@@ -6,9 +6,9 @@ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_runtime::admission::{
-    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, admit_artifact_run,
+    admit_artifact_run, AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
 };
-use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+use vb_storage::admission::{prepare_compiled_artifact, AcceptedArtifact};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -164,12 +164,15 @@ fn test_strict_verify_emits_certificate_when_workflow_is_safe() -> TestResult {
         grants.clone(),
     );
 
-    // Then: the admission certificate carries granted capability and idempotency evidence.
+    // Then: the admission certificate carries granted capability evidence.
+    // IdempotencyClassification is RuntimeValidated (static declaration check), not
+    // OperatorAttested; prepare_compiled_artifact intentionally does not infer
+    // OPERATOR ATTESTATIONS from action declarations.
     assert!(matches!(
         observed,
         Ok(admission)
             if admission.granted_capabilities() == &grants
-                && admission.idempotency_attested() == [action]
+                && admission.idempotency_attested().is_empty()
                 && admission.policy() == RuntimePolicy::Strict
     ));
     Ok(())

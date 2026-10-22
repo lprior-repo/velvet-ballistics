@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ynp2k-deepseek-mirror-review",
+  "argv": [
+    "verus",
+    "--crate-type=lib",
+    "verification/verus/vb_xi2f_compile_source.rs"
+  ],
+  "exit_code": 0,
+  "seconds": 0.425,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ynp2k/evidence/verus-vb-xi2f-compile-source"
+}

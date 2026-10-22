@@ -1,0 +1,16 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+warning: unused import: `ids::ActionId`
+ --> crates/workspace_tests/tests/artifact_evidence_support/runtime_cases.rs:3:22
+  |
+3 | use vb_core::{RunId, ids::ActionId, capability::CapabilitySet};
+  |                      ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `velvet-ballistics-workspace-tests` (test "vb_9agmk_artifact_evidence") generated 1 warning (run `cargo fix --test "vb_9agmk_artifact_evidence" -p velvet-ballistics-workspace-tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running tests/vb_9agmk_artifact_evidence.rs (target/debug/deps/vb_9agmk_artifact_evidence-68659ebf2bf58b97)
+     Running tests/vb_qi37_4_2_strict_runtime_admission.rs (target/debug/deps/vb_qi37_4_2_strict_runtime_admission-804608faee1955be)
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_qi37_4_2_strict_runtime_admission`

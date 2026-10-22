@@ -1,0 +1,17 @@
+[ WARN 2026-10-21 23:34:58.632] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 23:35:04.171] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:check | error: function `accepted_artifact_with_required_capability` is never used
+velvet-ballistics:check |    --> crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:119:4
+velvet-ballistics:check |     |
+velvet-ballistics:check | 119 | fn accepted_artifact_with_required_capability(
+velvet-ballistics:check |     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+velvet-ballistics:check |     |
+velvet-ballistics:check |     = note: `-D dead-code` implied by `-D warnings`
+velvet-ballistics:check |     = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+velvet-ballistics:check | error: could not compile `velvet-ballistics-workspace-tests` (test "vb_core_yaml_e2e_chain_contract") due to 1 previous error
+Error: task_runner::run_failed
+
+  × Task velvet-ballistics:check failed to run.
+  ╰─▶ Process set failed: exit code 101
+

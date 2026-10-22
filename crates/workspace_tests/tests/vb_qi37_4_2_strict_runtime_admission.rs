@@ -5,10 +5,12 @@ use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity};
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
+use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
 use vb_runtime::RuntimeError;
 use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, ArtifactStore,
@@ -470,6 +472,82 @@ fn observed(result: Result<RunAdmission, AdmissionError>) -> ObservedAdmissionDi
         Err(other) => panic!("unexpected admission error: {other:?}"),
     }
 }
+struct ScenarioStore {
+    artifact: AcceptedArtifact,
+}
+
+impl AcceptedArtifactStore for ScenarioStore {
+    fn load_accepted_artifact(
+        &self,
+        _digest: WorkflowDigest,
+    ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
+        Ok(self.artifact.clone())
+    }
+}
+fn build_valid_artifact(
+    capabilities: Box<[Capability]>,
+) -> Result<AcceptedArtifact, Box<dyn std::error::Error>> {
+    let action = ActionId::new(0);
+    let nodes = Box::new([
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: action,
+                input: SlotIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+        },
+    ]);
+
+    let parts = WorkflowParts {
+        name: "admission-test-workflow".into(),
+        digest: WorkflowDigest::from_bytes([0; 32]),
+        semantic_source_identity: None,
+        nodes,
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+        input_slots: Box::new([]),
+    };
+
+    let workflow = CompiledWorkflow::try_from_parts(parts)?;
+
+    let contracts: Vec<ActionContract> = if capabilities.is_empty() {
+        vec![]
+    } else {
+        vec![ActionContract {
+            id: action,
+            name: ActionName::from_static_infallible("admission-test-action"),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: capabilities.clone(),
+        }]
+    };
+
+    Ok(prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &contracts)?)
+}
 
 #[test]
 fn given_missing_artifact_when_strict_run_created_then_artifact_not_found_before_allocation() {
@@ -755,20 +833,13 @@ fn given_required_capability_with_extras_or_duplicates_then_denied() {
 #[test]
 fn given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile()
  {
-    // Given
-    let requested = digest(0xA4);
+    // Given: a valid schema 3 artifact built from the real compiler/verifier path
+    let capability = cap("network.github", 0);
+    let artifact = build_valid_artifact(Box::new([capability.clone()])).expect("artifact build");
+    let requested = artifact.digest;
     let run_id = RunId::new(48);
-    let granted = caps(Box::new([cap("network.github", 7)]));
-    let store = FixedAcceptedStore {
-        result: Ok(accepted_artifact_with_seq(
-            requested,
-            requested,
-            REQUIRED_GATE_COUNT,
-            true,
-            Box::new([cap("network.github", 7)]),
-            1, // non-stale
-        )),
-    };
+    let granted = caps(Box::new([capability]));
+    let store = ScenarioStore { artifact };
 
     // When
     let result = admit_artifact_run(
@@ -779,7 +850,7 @@ fn given_valid_accepted_artifact_when_admitted_then_admission_record_contains_di
         granted.clone(),
     );
 
-    // Then
+    // Then: admitted with matching digest, run_id, and policy
     assert_eq!(
         observed(result),
         ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(
