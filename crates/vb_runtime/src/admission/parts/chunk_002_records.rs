@@ -10,8 +10,6 @@ pub struct RunAdmission {
     /// Admission policy that governed this admission decision.
     policy: RuntimePolicy,
     /// Actual policy identity from the accepted artifact, or explicit absence.
-    /// Defaults to Unverified for compatibility with historical checkpoints.
-    #[serde(default = "run_policy_pin_default")]
     policy_pin: RunPolicyPin,
     /// Aggregate budget admitted for this run, when budget admission is used.
     budget: Option<AggregateResourceBudget>,
@@ -28,12 +26,6 @@ pub struct AdmissionBudgetRequest {
     pub available: AggregateResourceCapacity,
     /// Policy ceiling that the requested budget must satisfy before capacity is reserved.
     pub policy: BoundednessPolicy,
-}
-
-/// Default policy pin for compatibility with historical admission records.
-#[allow(clippy::unused_unit)]
-const fn run_policy_pin_default() -> RunPolicyPin {
-    RunPolicyPin::Unverified
 }
 
 impl RunAdmission {

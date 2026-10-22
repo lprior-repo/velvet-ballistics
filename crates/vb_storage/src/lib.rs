@@ -251,4 +251,4 @@ pub use admission::{
     submit_artifact, submit_artifact_with_contracts,
 };
 
-pub use inputs::{RunInputBinding, RunPolicyPin, RunInputsRecord, RunSubmission};
+pub use inputs::{RunInputBinding, RunInputsRecord, RunPolicyPin, RunSubmission};

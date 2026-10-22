@@ -1,0 +1,4 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-admission-pin/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.55s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-e224a9a5b6f2e68c)
+error: test failed, to rerun pass `-p vb_runtime --lib`

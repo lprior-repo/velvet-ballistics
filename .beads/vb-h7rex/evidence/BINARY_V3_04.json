@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-admission-pin",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 0,
+  "seconds": 0.075,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-h7rex/evidence/BINARY_V3_04",
+  "coordinator_message": "REVIEW REJECTION of currentV2: #[serde(default=run_policy_pin_default)] plus serde_json legacyfixture DOES NOT preserve old POSTCARD layout of RunCheckpointV1 withadmission field! Policy_pin addedINMIDDLE beforebudget; postcardsequence interpretsoldbudget bytesaspin andremainingfields misalign. JSONnamedmaptestpassing isirrelevant andviolatesexplicit no-default instruction. Mustuse actualbinaryoldcheckpoint fixture and realversioneddecode or typedunsupportedversion BEFOREdecodingnewshape, wiredactualrecovery. Remove serde_json devdependency introducedonlytofakebinarycompat; originalrepositoryJSONtestsifanyunchanged. Actualnewcheckpoint Roundtriptest currentlyonlyRunAdmission serialize isNOTRunCheckpointV1. Noacceptance/mergeuntilactualbinaryboundarycovered. Publicwith_policy_pin rawpin shouldcrate-privateortrustedconstructor, recordnotgrant. Stopaddingunrelatedfeatures, correctthisspecificbinarybug orreporthonestunresolvedgap.\n"
+}

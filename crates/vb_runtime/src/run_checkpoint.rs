@@ -84,6 +84,9 @@ pub enum RunCheckpointV1Error {
     /// A nested state DTO failed validation.
     #[error("nested checkpoint validation failed")]
     InvalidNestedState,
+    /// The checkpoint payload could not be decoded from durable bytes.
+    #[error("checkpoint payload decode failed")]
+    DecodeError,
 }
 
 impl RunCheckpointV1 {
@@ -127,7 +130,7 @@ impl RunCheckpointV1 {
         *retry_state = CheckpointStepState::Pending;
         frame.pc = retry_step;
         let checkpoint = Self {
-            version: 1,
+            version: 2,
             run_id,
             artifact_digest,
             workflow_digest: state.workflow.digest(),
@@ -152,7 +155,7 @@ impl RunCheckpointV1 {
         artifact_digest: WorkflowDigest,
         accepted_action_contracts: &[ActionContract],
     ) -> Result<(), RunCheckpointV1Error> {
-        if self.version != 1 {
+        if self.version != 2 {
             return Err(RunCheckpointV1Error::UnsupportedVersion);
         }
         if self.workflow_digest != workflow.digest() {
@@ -238,4 +241,27 @@ fn validate_admission(
         return Err(RunCheckpointV1Error::ArtifactIdentityMismatch);
     }
     Ok(())
+}
+
+/// Decodes a durable checkpoint payload with version-aware validation.
+///
+/// Peeks at the first two bytes to determine the checkpoint format version
+/// before decoding the full payload. Rejects historical version 1 checkpoints
+/// that lack the policy_pin field, which cannot be safely decoded as the
+/// current RunCheckpointV1 layout.
+pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunCheckpointV1Error> {
+    if payload.is_empty() {
+        return Err(RunCheckpointV1Error::UnsupportedVersion);
+    }
+    // Use postcard's streaming decoder to read the version field.
+    // Postcard uses variable-length integer encoding, so we cannot
+    // simply read the first two bytes as a u16.
+    let mut decoder = postcard::Deserializer::from_bytes(payload);
+    let version: u16 = serde::Deserialize::deserialize(&mut decoder)
+        .map_err(|_| RunCheckpointV1Error::UnsupportedVersion)?;
+    match version {
+        1 => Err(RunCheckpointV1Error::UnsupportedVersion),
+        2 => postcard::from_bytes(payload).map_err(|_| RunCheckpointV1Error::DecodeError),
+        _ => Err(RunCheckpointV1Error::UnsupportedVersion),
+    }
 }

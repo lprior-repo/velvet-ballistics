@@ -139,7 +139,15 @@ where
             )
         }
         crate::RunInputBinding::Digest(input_digest) => {
-            let payload = (run, seq, artifact, input_digest, policy_digest, caps, policy);
+            let payload = (
+                run,
+                seq,
+                artifact,
+                input_digest,
+                policy_digest,
+                caps,
+                policy,
+            );
             serialize_record_kind_variant(
                 serializer,
                 TAG_RUN_ADMISSION_BOUND_PINNED,
