@@ -1,0 +1,122 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/codec/flux_validation.rs:57:
+ /// `AskTimedOut` payload implies wire kind 29 exactly.
+ #[flux_rs::trusted]
+ #[sig(fn(run_val: u64{run_val > 0}, seq_val: u64{seq_val < u64::MAX}, attempt_val: u16{attempt_val > 0}) -> bool[true])]
+-fn model_ask_timed_out_payload_kind_is_29(
+-    run_val: u64,
+-    seq_val: u64,
+-    attempt_val: u16,
+-) -> bool {
++fn model_ask_timed_out_payload_kind_is_29(run_val: u64, seq_val: u64, attempt_val: u16) -> bool {
+     let event = crate::JournalEvent::AskTimedOutEvent {
+         run: vb_core::ids::RunId::new(run_val),
+         seq: crate::EventSeq::new(seq_val),
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/codec/flux_validation.rs:238:
+     #[test]
+     fn split_kinds_33_to_35_are_known_record_kinds() {
+         for kind in 33..=35 {
+-            assert!(model_is_known_record_kind(kind), "kind {kind} must be known");
++            assert!(
++                model_is_known_record_kind(kind),
++                "kind {kind} must be known"
++            );
+         }
+     }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/events/wire_serialize_run.rs:2:
+ 
+ use super::super::super::JournalEvent;
+ use super::super::tags::{
+-    TAG_RUN_ACCEPTED, TAG_RUN_ADMISSION, TAG_RUN_ADMISSION_BOUND, TAG_RUN_ANSWERED,
+-    TAG_RUN_CANCELLED, TAG_RUN_FAILED, TAG_RUN_FINISHED, TAG_RUN_KILLED, TAG_RUN_RESUMED,
+-    TAG_RUN_RETRIED, TAG_RETRY_CHECKPOINT,
++    TAG_RETRY_CHECKPOINT, TAG_RUN_ACCEPTED, TAG_RUN_ADMISSION, TAG_RUN_ADMISSION_BOUND,
++    TAG_RUN_ANSWERED, TAG_RUN_CANCELLED, TAG_RUN_FAILED, TAG_RUN_FINISHED, TAG_RUN_KILLED,
++    TAG_RUN_RESUMED, TAG_RUN_RETRIED,
+ };
+ use super::{serialize_record_kind_variant, serialize_routing_error};
+ use serde::Serializer;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/executor/catalog.rs:99:
+         Ok(grant)
+     }
+     /// Recheck an opaque adapter receipt against the exact artifact and logical invocation.
+-    pub fn validate_receipt(&self, artifact: &crate::AcceptedArtifact, ticket: ActionTicket,
+-        value: i64, receipt: &super::RegisterReceipt) -> Result<(), ExecutorError>
+-    {
++    pub fn validate_receipt(
++        &self,
++        artifact: &crate::AcceptedArtifact,
++        ticket: ActionTicket,
++        value: i64,
++        receipt: &super::RegisterReceipt,
++    ) -> Result<(), ExecutorError> {
+         let pack = self.pack_for(artifact, ticket.action)?;
+         let grant = self.issue_register_grant(artifact, ticket, pack.scope)?;
+         let expected = super::receipt::record(&grant, value, receipt.effect_ordinal())?;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/executor/catalog.rs:108:
+         super::receipt::validate_record(&receipt.0)?;
+-        if receipt.0 != expected { return Err(ExecutorError::ReceiptConflict); }
++        if receipt.0 != expected {
++            return Err(ExecutorError::ReceiptConflict);
++        }
+         Ok(())
+     }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/executor/catalog.rs:113:
+     /// Recovery authority is explicit and independent from idempotency enforcement.
+-    pub fn require_receipt_recovery(&self, artifact: &crate::AcceptedArtifact, action: vb_core::ActionId)
+-        -> Result<(), ExecutorError>
+-    {
++    pub fn require_receipt_recovery(
++        &self,
++        artifact: &crate::AcceptedArtifact,
++        action: vb_core::ActionId,
++    ) -> Result<(), ExecutorError> {
+         self.verify_artifact(artifact, vb_core::RuntimePolicy::Strict)?;
+         if self.pack_for(artifact, action)?.recovery != RecoveryClass::ReconcileReceipt {
+             return Err(ExecutorError::PackMismatch);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/executor/catalog.rs:120:
+         }
+         Ok(())
+     }
+-
+ }
+ 
+ fn check_contract(contract: &ActionContract) -> Result<(), ExecutorError> {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/executor/conformance.rs:149:
+ fn another_grant(grant: &RegisterGrant, seq: u32) -> RegisterGrant {
+     let mut ticket = grant.ticket;
+     ticket.seq = SeqNo::new(u64::from(seq));
+-    ticket.idempotency_key =
+-        vb_core::action::compute_action_idempotency_key(ticket.run, ticket.run_attempt, ticket.seq, ticket.action);
++    ticket.idempotency_key = vb_core::action::compute_action_idempotency_key(
++        ticket.run,
++        ticket.run_attempt,
++        ticket.seq,
++        ticket.action,
++    );
+     RegisterGrant {
+         ticket,
+         ..grant.clone()
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/recovery/hydrate.rs:449:
+     Ok(())
+ }
+ 
+-fn snapshot_input_violation_to_error(
+-    violation: SnapshotRecoveryInputViolation,
+-) -> RecoveryError {
++fn snapshot_input_violation_to_error(violation: SnapshotRecoveryInputViolation) -> RecoveryError {
+     match violation {
+         SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+             expected_run,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration/crates/vb_storage/src/tests.rs:7641:
+                 JournalError::PostcardEncodeFailed(_) => "postcard_encode_failed",
+                 JournalError::InvalidEvent => "invalid_event",
+                 JournalError::ArtifactMalformed => "artifact_malformed",
+-                JournalError::ArtifactValidation(_) | JournalError::ArtifactActionRegistry(_) => "artifact_validation",
++                JournalError::ArtifactValidation(_) | JournalError::ArtifactActionRegistry(_) => {
++                    "artifact_validation"
++                }
+                 JournalError::WorkflowReconstruction(_) => "workflow_reconstruction",
+                 JournalError::CompiledIrReadback(_) => "compiled_ir_readback",
+                 JournalError::AdmissionAllocationFailed(_) => "admission_allocation_failed",
