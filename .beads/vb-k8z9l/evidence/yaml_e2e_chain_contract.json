@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-k8z9l-local5090-artifact-fixtures",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_core_yaml_e2e_chain_contract"
+  ],
+  "exit_code": 101,
+  "seconds": 0.471,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-k8z9l/evidence/yaml_e2e_chain_contract",
+  "coordinator_message": "COORDINATOR REVIEW OF IN-PROGRESS DIFF: Renaming tests 'typed ledger' then merely flipping expected gate_count/legacy booleans is INSUFFICIENT and will be REJECTED. Add actual typed ledger/schema/binding/obligation/certificate verification assertions via real production APIs to the formerly blanketflags positive cases. Preserve strong exact tamper negatives using REAL prepared artifact then targeted mutation, not only counterfeit placeholder rejection. Strict producer's durablefalse must be paired with actual persisted journal durability evidence at runtime boundary rather than just 'Strict must not be durable'. Current real CLI production bug concurrently DeepSeek owned, do not blanket accept behavioral denial. READ THE ACTUAL LEDGER/API and MASTER relevant typed evidence section. Complete all scoped tests with immutable JSON, then handoff; no selfapproval. Root has four actual Kani accessor harnesses running; INVALID CLI by priorreviewer is NOT your task.\n"
+}

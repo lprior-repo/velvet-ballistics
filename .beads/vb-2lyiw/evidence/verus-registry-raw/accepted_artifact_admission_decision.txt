@@ -1,0 +1,2 @@
+[verus] verus --crate-type=lib verification/verus/accepted_artifact_admission_decision.rs
+verification results:: 19 verified, 0 errors

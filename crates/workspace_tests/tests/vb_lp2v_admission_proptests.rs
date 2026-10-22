@@ -371,11 +371,14 @@ fn pi_02_antiinvariant_tampered_digest_rejected() {
         result_strict
     );
 
-    // Relaxed accepts any workflow regardless of digest (no checksum gate)
+    // All policies (including Relaxed) check the artifact digest now.
     let result_relaxed = submit_artifact(&journal, &tampered, RuntimePolicy::Relaxed);
     assert!(
-        result_relaxed.is_ok(),
-        "Relaxed must accept tampered digest (no checksum gate), got {:?}",
+        matches!(
+            result_relaxed,
+            Err(vb_storage::JournalError::ArtifactChecksumMismatch)
+        ),
+        "Relaxed must reject tampered digest, got {:?}",
         result_relaxed
     );
 }

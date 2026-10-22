@@ -52,7 +52,8 @@ pub(crate) fn cmd_run(
     match durability {
         DurabilityMode::None => {}
         _ => {
-            if let Err(code) = store_workflow_artifacts(&compiled, &bytes, db, output) {
+            let policy = crate::submit::submission_policy(durability);
+            if let Err(code) = store_workflow_artifacts(&compiled, &bytes, db, output, policy) {
                 return code;
             }
         }
@@ -66,6 +67,7 @@ pub(crate) fn store_workflow_artifacts(
     source: &[u8],
     db: Option<&std::path::Path>,
     output: OutputFormat,
+    policy: vb_core::RuntimePolicy,
 ) -> Result<(), ExitCode> {
     let Some(db) = db else {
         return Ok(());
@@ -88,7 +90,7 @@ pub(crate) fn store_workflow_artifacts(
         report_compiled_ir_store_error(format_args!("workflow source write error: {e}"), output);
         return Err(CliExitCode::StorageError.into());
     }
-    submit_cli_compiled_artifact(&journal, compiled)
+    submit_cli_compiled_artifact(&journal, compiled, policy)
         .map_err(|e| {
             report_compiled_ir_store_error(
                 format_args!("compiled artifact admission error: {e}"),
@@ -102,32 +104,9 @@ pub(crate) fn store_workflow_artifacts(
 pub(crate) fn submit_cli_compiled_artifact(
     journal: &vb_storage::FjallJournal,
     compiled: &vb_core::CompiledWorkflow,
+    policy: vb_core::RuntimePolicy,
 ) -> Result<vb_storage::AcceptedArtifact, vb_storage::JournalError> {
-    let parts = compiled.to_parts();
-    let ir =
-        postcard::to_allocvec(&parts).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
-    let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-    let mut artifact = vb_storage::AcceptedArtifact {
-        digest: zero,
-        source_digest: compiled.digest(),
-        policy_digest: vb_storage::admission::compute_policy_digest(compiled)?,
-        ir,
-        verification: vb_storage::VerificationProof::new(
-            zero,
-            vb_runtime::admission::REQUIRED_GATE_COUNT,
-            true,
-        ),
-        accepted_at_seq: vb_storage::EventSeq::new(0),
-        required_capabilities: Box::new([]),
-        action_contracts: Box::new([]),
-    };
-    let digest = vb_storage::admission::accepted_artifact_digest(&artifact)?;
-    artifact.digest = digest;
-    artifact.verification.digest = digest;
-    let bytes =
-        postcard::to_allocvec(&artifact).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
-    journal.put_compiled_ir(&vb_storage::CompiledIrRecord { digest, ir: bytes })?;
-    Ok(artifact)
+    vb_storage::submit_artifact(journal, compiled, policy)
 }
 
 pub(crate) fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {

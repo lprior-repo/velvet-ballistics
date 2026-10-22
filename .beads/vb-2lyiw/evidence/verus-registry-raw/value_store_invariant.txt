@@ -1,0 +1,10 @@
+[verus] verus --crate-type=lib verification/verus/value_store_invariant.rs
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> verification/verus/value_store_invariant.rs:78:17
+   |
+78 | #[derive(Debug, Clone, PartialEq, Eq)]
+   |                 ^^^^^
+
+verification results:: 20 verified, 0 errors
+warning: 1 warning emitted
+

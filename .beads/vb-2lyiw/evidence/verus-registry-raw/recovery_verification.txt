@@ -1,0 +1,2 @@
+[verus] verus --crate-type=lib verification/verus/recovery_verification.rs
+verification results:: 123 verified, 0 errors

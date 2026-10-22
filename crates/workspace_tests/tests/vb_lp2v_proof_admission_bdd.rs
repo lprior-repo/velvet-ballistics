@@ -77,7 +77,7 @@ fn given_matching_proof_digest_when_strict_admission_runs_then_artifact_is_admit
     persist_artifact(&journal, &artifact)?;
     let store = StorageArtifactStore::new(Arc::new(journal));
     let run = RunId::new(9001);
-    let caps = granted_capabilities(required_capability());
+    let caps = CapabilitySet::empty();
 
     let admission = admit_artifact_run(&store, RuntimePolicy::Strict, run, requested, caps.clone())
         .map_err(|error| error.to_string())?;
@@ -132,7 +132,7 @@ fn given_storage_record_requested_by_source_digest_when_strict_admission_runs_th
         RuntimePolicy::Strict,
         RunId::new(9003),
         requested,
-        granted_capabilities(required_capability()),
+        CapabilitySet::empty(),
     )
     .map_err(|error| error.to_string())?;
 

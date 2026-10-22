@@ -4,14 +4,20 @@ use std::sync::Arc;
 
 use proptest::prelude::*;
 use vb_core::{
-    ActionId, Capability, CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
+    ActionId, ActionContract, Capability, CapabilitySet, CompiledNode, CompiledNodeKind,
+    CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx,
+    WorkflowDigest,
 };
+use vb_core::action::ActionName;
+use vb_core::workflow::WorkflowParts;
+use vb_core::artifact::{ArtifactEvidence, ObligationClosure};
 use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, REQUIRED_GATE_COUNT,
     StorageArtifactStore, admit_artifact_run,
 };
 use vb_storage::admission::{
-    AcceptedArtifact, VerificationProof, accepted_artifact_digest, submit_artifact,
+    AcceptedArtifact, VerificationProof, accepted_artifact_digest, prepare_compiled_artifact,
+    submit_artifact,
 };
 use vb_storage::recovery::{
     RecoveryError, recover_runtime_frame_seed_from_events, summarize_recovery_events,
@@ -195,7 +201,7 @@ fn run_finished_event(run: RunId, seq: u64) -> JournalEvent {
 }
 
 #[test]
-fn storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_when_yaml_origin_run_is_submitted()
+fn storage_produced_strict_accepted_artifact_has_typed_ledger_when_yaml_origin_run_is_submitted()
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let workflow = compile_valid_yaml()?;
@@ -209,12 +215,36 @@ fn storage_produced_strict_accepted_artifact_has_runtime_required_gate_count_whe
         accepted_artifact_digest(&artifact).map_err(|error| error.to_string())?,
         artifact.digest
     );
-    assert_eq!(artifact.verification.durable, true);
+    assert_eq!(artifact.verification.durable, false);
     assert_eq!(artifact.verification.bounded_claimed, true);
-    assert_eq!(artifact.verification.taint_safe_claimed, true);
-    assert_eq!(artifact.verification.retry_safe_claimed, true);
-    assert_eq!(artifact.verification.replayable_claimed, true);
-    assert_eq!(artifact.verification.gate_count, REQUIRED_GATE_COUNT);
+    assert_eq!(artifact.verification.idempotency_verified_claimed, true);
+    assert_eq!(artifact.verification.taint_safe_claimed, false);
+    assert_eq!(artifact.verification.retry_safe_claimed, false);
+    assert_eq!(artifact.verification.replayable_claimed, false);
+    assert_eq!(artifact.verification.gate_count, 0);
+
+    // Verify typed ledger is schema 3 with proper binding
+    let evidence = &artifact.verification.evidence;
+    match evidence {
+        ArtifactEvidence::Verified(verified) => {
+            assert_eq!(verified.schema_version, 3, "ledger must be schema 3");
+            // payload_digest binds to the IR bytes, not the full artifact
+            let expected_payload_digest =
+                WorkflowDigest::from_bytes(blake3::hash(&artifact.ir).into());
+            assert_eq!(
+                verified.payload_digest,
+                expected_payload_digest,
+                "payload digest must bind to artifact IR"
+            );
+            // Verify at least one RuntimeValidated obligation closure
+            let has_validated = verified.ledger.iter().any(|entry| {
+                matches!(entry.closure, ObligationClosure::RuntimeValidated { .. })
+            });
+            assert!(has_validated, "ledger must contain RuntimeValidated closures");
+        }
+        other => panic!("expected Verified evidence with typed ledger, got {other:?}"),
+    }
+
     Ok(())
 }
 
@@ -336,15 +366,13 @@ fn persist_source_and_artifact_returns_durability_failure_and_no_ref_when_flush_
 }
 
 #[test]
-fn admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_gate_count_matches_required()
+fn admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_ledger_valid()
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
-    let artifact = accepted_artifact_with_gate_count(
-        WorkflowDigest::from_bytes([0x31; 32]),
-        REQUIRED_GATE_COUNT,
-    );
+    let workflow = compile_valid_yaml()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+        .map_err(|error| error.to_string())?;
     let digest = artifact.digest;
-    persist_accepted_artifact(&journal, &artifact)?;
     let store = StorageArtifactStore::new(Arc::new(journal));
     let run = RunId::new(8001);
 
@@ -381,7 +409,7 @@ fn admit_strict_artifact_run_returns_accepted_artifact_missing_when_envelope_abs
 }
 
 #[test]
-fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_under_required()
+fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_ledger_unverified()
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let artifact = accepted_artifact_with_gate_count(WorkflowDigest::from_bytes([0x33; 32]), 14);
@@ -399,9 +427,8 @@ fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_u
 
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidGateCount {
-            found: 14,
-            required: REQUIRED_GATE_COUNT
+        Err(AdmissionError::ArtifactInvalidProofFlag {
+            flag: "evidence"
         })
     );
     Ok(())
@@ -410,12 +437,73 @@ fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_gate_count_u
 #[test]
 fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted()
 -> Result<(), String> {
-    let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
-    let required = Capability::new("net.fetch".into(), ActionId::new(9));
-    let artifact = accepted_artifact_with_required_capability(
-        WorkflowDigest::from_bytes([0x34; 32]),
-        required.clone(),
+    use vb_core::action::{Idempotency, RetrySafety, SideEffect};
+    let required = Capability::new("net.fetch".into(), ActionId::new(0));
+    let contract = ActionContract {
+        id: ActionId::new(0),
+        name: ActionName::from_static_infallible("http.fetch"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([required.clone()]),
+    };
+
+    // Build workflow with a Do node for the action
+    let mut parts = WorkflowParts {
+        semantic_source_identity: None,
+        input_slots: Box::new([]),
+        name: Box::<str>::from("cap_test"),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::new([]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    let mut nodes = Vec::new();
+    nodes.push(CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        },
+    });
+    nodes.push(CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    });
+    parts.nodes = nodes.into_boxed_slice();
+    parts.digest = WorkflowDigest::from_bytes(
+        blake3::hash(&postcard::to_allocvec(&parts).map_err(|e| e.to_string())?).into(),
     );
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+
+    let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
+    let artifact = prepare_compiled_artifact(
+        &workflow,
+        RuntimePolicy::Strict,
+        &vec![contract],
+    )
+    .map_err(|error| error.to_string())?;
     let digest = artifact.digest;
     persist_accepted_artifact(&journal, &artifact)?;
     let store = StorageArtifactStore::new(Arc::new(journal));
@@ -431,7 +519,7 @@ fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capabilit
     assert_eq!(
         result,
         Err(AdmissionError::CapabilityDenied {
-            action: ActionId::new(9),
+            action: ActionId::new(0),
             required,
             granted: CapabilitySet::empty()
         })
@@ -469,7 +557,7 @@ fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_acce
 }
 
 #[test]
-fn runtime_storage_artifact_store_rejects_storage_gate_count_mismatch_with_exact_variant()
+fn runtime_storage_artifact_store_rejects_unverified_ledger_via_storage_verification()
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let artifact = accepted_artifact_with_gate_count(WorkflowDigest::from_bytes([0xA5; 32]), 2);
@@ -482,17 +570,14 @@ fn runtime_storage_artifact_store_rejects_storage_gate_count_mismatch_with_exact
     assert_eq!(
         result,
         Err(
-            vb_runtime::admission::ArtifactEnvelopeError::InvalidGateCount {
-                found: 2,
-                required: REQUIRED_GATE_COUNT
-            }
+            vb_runtime::admission::ArtifactEnvelopeError::ArtifactEvidenceInvalid
         )
     );
     Ok(())
 }
 
 #[test]
-fn strict_runtime_admission_rejects_storage_gate_count_mismatch_with_exact_variant()
+fn strict_runtime_admission_rejects_unverified_ledger_via_storage_verification()
 -> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let artifact = accepted_artifact_with_gate_count(WorkflowDigest::from_bytes([0x5A; 32]), 2);
@@ -510,9 +595,8 @@ fn strict_runtime_admission_rejects_storage_gate_count_mismatch_with_exact_varia
 
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidGateCount {
-            found: 2,
-            required: REQUIRED_GATE_COUNT
+        Err(AdmissionError::ArtifactInvalidProofFlag {
+            flag: "evidence"
         })
     );
     Ok(())

@@ -50,7 +50,7 @@ pub(crate) fn run_compiled_workflow(
     let config = runtime_config_for_durability(durability);
     if durability != DurabilityMode::None
         && let Some(db_path) = db
-        && let Err(code) = store_compiled_artifact(compiled, db_path, output)
+        && let Err(code) = store_compiled_artifact(compiled, db_path, output, config.policy)
     {
         return code;
     }
@@ -127,6 +127,7 @@ pub(crate) fn store_compiled_artifact(
     compiled: &vb_core::CompiledWorkflow,
     db: &std::path::Path,
     output: OutputFormat,
+    policy: vb_core::RuntimePolicy,
 ) -> Result<(), ExitCode> {
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(journal) => journal,
@@ -138,7 +139,7 @@ pub(crate) fn store_compiled_artifact(
             return Err(CliExitCode::StorageError.into());
         }
     };
-    crate::run::submit_cli_compiled_artifact(&journal, compiled)
+    crate::run::submit_cli_compiled_artifact(&journal, compiled, policy)
         .map_err(|e| {
             report_compiled_ir_store_error(
                 format_args!("compiled artifact admission error: {e}"),

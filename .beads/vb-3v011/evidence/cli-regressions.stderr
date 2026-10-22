@@ -1,0 +1,5 @@
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3v011-deepseek-cli-admission/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.61s
+     Running tests/admission_evidence_integration.rs (target/debug/deps/admission_evidence_integration-15b17442771b511c)
+     Running tests/cli_integration.rs (target/debug/deps/cli_integration-dc7a15df71779605)
+     Running ../workspace_tests/tests/cli/finish_input_execution.rs (target/debug/deps/finish_input_execution-b67d2c657d594dd3)
