@@ -1,0 +1,13 @@
+{
+  "base": "0210e36fc8961f7d4454eb4ca53b6a39948a28b8",
+  "source": "xtask/src/lanes.rs",
+  "sha256": "fa8156e137bc105653fa03455d4d2498bae813eb65fafc01eff6617b6c1bf149",
+  "lines": 265,
+  "new_tests": 4,
+  "actual_tests": {
+    "passed": 7,
+    "filtered": 64,
+    "ignored": 0
+  },
+  "scope": "actual library lane tests only; independent reviews/full integration pending"
+}

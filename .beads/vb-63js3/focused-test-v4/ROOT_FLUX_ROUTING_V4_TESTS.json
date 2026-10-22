@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-63js3-contract-local3090-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "cargo",
+    "test",
+    "--manifest-path",
+    "xtask/Cargo.toml",
+    "--lib",
+    "lanes::tests",
+    "--locked"
+  ],
+  "exit_code": 0,
+  "seconds": 23.84,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_FLUX_ROUTING_V4_TESTS"
+}

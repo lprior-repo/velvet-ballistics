@@ -78,12 +78,7 @@ pub fn lane_command(lane: &Lane, crate_name: &str, workspace_root: &Path) -> Vec
         ],
         "verus" => verus_command(crate_name, workspace_root),
         "tla" => tla_command(crate_name, workspace_root),
-        "flux" => vec![
-            "cargo".into(),
-            "flux".into(),
-            "-p".into(),
-            crate_name.into(),
-        ],
+        "flux" => flux_command(crate_name, workspace_root),
         _ => vec!["echo".into(), format!("unknown lane: {}", lane.name)],
     }
 }
@@ -102,6 +97,15 @@ fn tla_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
         .join("tla")
         .join(format!("{crate_name}.tla"));
     vec!["tla2tools".into(), format!("{}", tla_file.display())]
+}
+
+fn flux_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
+    let script_path = workspace_root.join("scripts").join("flux-check-package.sh");
+    vec![
+        "bash".into(),
+        script_path.display().to_string(),
+        crate_name.into(),
+    ]
 }
 
 pub fn detect_available_lanes(workspace_root: &Path) -> Vec<Lane> {
@@ -197,5 +201,65 @@ mod tests {
         let lanes = detect_available_lanes(Path::new("/workspace"));
         let required: Vec<_> = lanes.iter().filter(|l| l.required).collect();
         assert!(!required.is_empty());
+    }
+
+    #[test]
+    fn test_flux_command_uses_wrapper_script() {
+        let lane = Lane {
+            name: "flux".to_string(),
+            required: false,
+        };
+        let cmd = lane_command(&lane, "vb_core", Path::new("/workspace"));
+        let expected = vec![
+            "bash".to_string(),
+            "/workspace/scripts/flux-check-package.sh".to_string(),
+            "vb_core".to_string(),
+        ];
+        assert_eq!(cmd, expected);
+    }
+
+    #[test]
+    fn test_flux_command_workspace_root_with_spaces() {
+        let lane = Lane {
+            name: "flux".to_string(),
+            required: false,
+        };
+        let cmd = lane_command(&lane, "vb_core", Path::new("/home/user/my workspace"));
+        let expected = vec![
+            "bash".to_string(),
+            "/home/user/my workspace/scripts/flux-check-package.sh".to_string(),
+            "vb_core".to_string(),
+        ];
+        assert_eq!(cmd, expected);
+    }
+
+    #[test]
+    fn test_flux_command_workspace_root_with_metacharacters() {
+        let lane = Lane {
+            name: "flux".to_string(),
+            required: false,
+        };
+        let cmd = lane_command(&lane, "vb_core", Path::new("/tmp/$HOME (test) & co"));
+        let expected = vec![
+            "bash".to_string(),
+            "/tmp/$HOME (test) & co/scripts/flux-check-package.sh".to_string(),
+            "vb_core".to_string(),
+        ];
+        assert_eq!(cmd, expected);
+    }
+
+    #[test]
+    fn test_flux_command_package_metacharacters_retained_as_one_argv() {
+        let lane = Lane {
+            name: "flux".to_string(),
+            required: false,
+        };
+        let cmd = lane_command(&lane, "vb_core;$(printf nope)", Path::new("/workspace"));
+        let expected = vec![
+            "bash".to_string(),
+            "/workspace/scripts/flux-check-package.sh".to_string(),
+            "vb_core;$(printf nope)".to_string(),
+        ];
+        assert_eq!(cmd, expected);
     }
 }
