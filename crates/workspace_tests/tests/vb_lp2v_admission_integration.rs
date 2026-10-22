@@ -14,7 +14,7 @@ use vb_core::{
     ActionId, AggregateResourceBudget, AggregateResourceCapacity, Capability, CapabilitySet, RunId,
     RuntimePolicy, WorkflowDigest,
 };
-use vb_runtime::admission::{ArtifactStore, admit_artifact_run, admit_run, admit_run_with_budget};
+use vb_runtime::admission::{AdmissionError, ArtifactStore, admit_artifact_run, admit_run, admit_run_with_budget};
 use vb_storage::EventSeq;
 use vb_storage::admission::{AcceptedArtifact, VerificationProof};
 
@@ -460,7 +460,7 @@ fn given_postcard_failure_when_strict_admission_runs_then_decode_failed() -> Res
 
 /// R-04: admit_artifact_run rejects wrong gate_count
 ///
-/// ### Behavior: admit_artifact_run_rejects_wrong_gate_count
+/// ### Behavior: admit_artifact_run_rejects_unverified_ledger_via_storage_verification
 /// Given: an AcceptedArtifactStore that returns artifact with gate_count=7
 /// When: admit_artifact_run is called with RuntimePolicy::Strict
 /// Then: Err(AdmissionError::ArtifactInvalidGateCount { found: 7, required: 15 }) is returned
@@ -507,18 +507,12 @@ fn given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count() -
 
     let result = admit_artifact_run(&store, RuntimePolicy::Strict, run_id, digest, caps);
 
-    assert!(
-        matches!(
-            result,
-            Err(
-                vb_runtime::admission::AdmissionError::ArtifactInvalidGateCount {
-                    found: 7,
-                    required: 15,
-                }
-            )
-        ),
-        "Strict must reject wrong gate_count=7, got {:?}",
-        result
+    // Unverified ledger is rejected by storage verification, not runtime gate count check.
+    assert_eq!(
+        result,
+        Err(AdmissionError::ArtifactInvalidProofFlag {
+            flag: "evidence"
+        })
     );
     Ok(())
 }

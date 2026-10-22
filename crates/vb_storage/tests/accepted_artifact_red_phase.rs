@@ -99,18 +99,18 @@ fn accepted_artifact_validator_rejects_legacy_thirteen_gate_upper_bound() {
 }
 
 #[test]
-fn accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled()
+fn accepted_artifact_encoder_records_gate_proof_when_policy_is_journaled()
 -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
-    assert_eq!(artifact.verification.gate_count, 15);
+    assert_eq!(artifact.verification.gate_count, 0);
     Ok(())
 }
 
 #[test]
-fn accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict() -> Result<(), String>
+fn accepted_artifact_encoder_records_gate_proof_when_policy_is_strict() -> Result<(), String>
 {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert_eq!(artifact.verification.gate_count, 15);
+    assert_eq!(artifact.verification.gate_count, 0);
     Ok(())
 }
 
@@ -151,25 +151,34 @@ fn accepted_artifact_encoder_binds_ir_digest_to_ir_bytes_not_workflow_parts_dige
 }
 
 #[test]
-fn accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_true()
+fn accepted_artifact_validator_produces_typed_ledger_with_expected_flags()
 -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     let proof = &artifact.verification;
-    assert_eq!(proof.gate_count, 15);
+    // Display-only flags: gate_count is 0, durable is always false.
+    // Only bounded_claimed and idempotency_verified_claimed are true.
+    assert_eq!(proof.gate_count, 0);
     assert!(proof.bounded_claimed, "bounded_claimed flag must be true");
     assert!(
-        proof.taint_safe_claimed,
-        "taint_safe_claimed flag must be true"
+        proof.idempotency_verified_claimed,
+        "idempotency_verified_claimed flag must be true"
     );
     assert!(
-        proof.retry_safe_claimed,
-        "retry_safe_claimed flag must be true"
+        !proof.taint_safe_claimed,
+        "taint_safe_claimed flag must be false"
     );
     assert!(
-        proof.replayable_claimed,
-        "replayable_claimed flag must be true"
+        !proof.retry_safe_claimed,
+        "retry_safe_claimed flag must be false"
     );
-    assert!(proof.durable, "durable flag must be true for Strict policy");
+    assert!(
+        !proof.replayable_claimed,
+        "replayable_claimed flag must be false"
+    );
+    assert!(
+        !proof.durable,
+        "durable flag must be false (producer does not persist)"
+    );
     Ok(())
 }
 
@@ -184,31 +193,31 @@ fn accepted_artifact_encoder_journaled_proof_has_durable_false() -> Result<(), S
 }
 
 #[test]
-fn accepted_artifact_encoder_strict_proof_has_durable_true() -> Result<(), String> {
+fn accepted_artifact_encoder_strict_proof_has_durable_false() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     assert!(
-        artifact.verification.durable,
-        "Strict policy must be durable"
+        !artifact.verification.durable,
+        "Strict policy must not be durable (producer does not persist)"
     );
     Ok(())
 }
 
 #[test]
-fn accepted_artifact_encoder_journaled_gate_count_equals_fifteen() -> Result<(), String> {
+fn accepted_artifact_encoder_journaled_gate_count_equals_zero() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
     assert_eq!(
-        artifact.verification.gate_count, 15,
-        "Journaled must have 15 gates"
+        artifact.verification.gate_count, 0,
+        "Journaled must have 0 gates (display-only)"
     );
     Ok(())
 }
 
 #[test]
-fn accepted_artifact_encoder_strict_gate_count_equals_fifteen() -> Result<(), String> {
+fn accepted_artifact_encoder_strict_gate_count_equals_zero() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     assert_eq!(
-        artifact.verification.gate_count, 15,
-        "Strict must have 15 gates"
+        artifact.verification.gate_count, 0,
+        "Strict must have 0 gates (display-only)"
     );
     Ok(())
 }
@@ -384,30 +393,28 @@ fn accepted_artifact_proof_contains_artifact_digest() -> Result<(), String> {
 }
 
 #[test]
-fn accepted_artifact_validator_requires_all_proof_flags_true_under_strict() -> Result<(), String> {
+fn accepted_artifact_validator_has_expected_flags_under_strict() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     let p = &artifact.verification;
-    assert!(
-        p.bounded_claimed
-            && p.taint_safe_claimed
-            && p.retry_safe_claimed
-            && p.replayable_claimed
-            && p.durable
-    );
+    assert!(p.bounded_claimed);
+    assert!(p.idempotency_verified_claimed);
+    assert!(!p.taint_safe_claimed);
+    assert!(!p.retry_safe_claimed);
+    assert!(!p.replayable_claimed);
+    assert!(!p.durable);
     Ok(())
 }
 
 #[test]
-fn accepted_artifact_validator_requires_all_proof_flags_true_under_journaled() -> Result<(), String>
+fn accepted_artifact_validator_has_expected_flags_under_journaled() -> Result<(), String>
 {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
     let p = &artifact.verification;
-    assert!(
-        p.bounded_claimed
-            && p.taint_safe_claimed
-            && p.retry_safe_claimed
-            && p.replayable_claimed
-            && !p.durable
-    );
+    assert!(p.bounded_claimed);
+    assert!(p.idempotency_verified_claimed);
+    assert!(!p.taint_safe_claimed);
+    assert!(!p.retry_safe_claimed);
+    assert!(!p.replayable_claimed);
+    assert!(!p.durable);
     Ok(())
 }

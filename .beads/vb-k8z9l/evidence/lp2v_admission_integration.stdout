@@ -1,0 +1,14 @@
+
+running 9 tests
+test given_budget_within_capacity_and_artifact_missing_when_strict_then_artifact_not_found ... ok
+test given_excessive_budget_when_strict_admit_run_with_budget_then_capacity_exceeded ... ok
+test given_excessive_budget_when_relaxed_admit_run_with_budget_then_capacity_exceeded ... ok
+test given_missing_artifact_when_relaxed_admit_run_then_succeeds ... ok
+test given_missing_artifact_when_strict_admission_runs_then_artifact_not_found ... ok
+test given_missing_artifact_with_required_caps_when_relaxed_admission_runs_then_succeeds ... ok
+test given_never_present_store_when_relaxed_admission_runs_then_succeeds ... ok
+test given_postcard_failure_when_strict_admission_runs_then_decode_failed ... ok
+test given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

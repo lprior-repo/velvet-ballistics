@@ -1,0 +1,34 @@
+
+running 29 tests
+test accepted_artifact_validator_rejects_warning_gate_sixteen ... ok
+test accepted_artifact_validator_uses_fifteen_gate_v1_upper_bound ... ok
+test accepted_artifact_validator_rejects_legacy_thirteen_gate_upper_bound ... ok
+test accepted_artifact_validator_accepts_warning_gate_fifteen ... ok
+test submit_artifact_returns_artifact_with_correct_digest ... ok
+test accepted_artifact_validator_accepts_empty_warnings_array ... ok
+test accepted_artifact_encoder_records_empty_required_capabilities ... ok
+test accepted_artifact_validator_has_expected_flags_under_journaled ... ok
+test accepted_artifact_validator_has_expected_flags_under_strict ... ok
+test accepted_artifact_encoder_records_gate_proof_when_policy_is_journaled ... ok
+test accepted_artifact_encoder_records_zero_accepted_at_seq ... ok
+test accepted_artifact_encoder_journaled_proof_has_durable_false ... ok
+test submit_artifact_rejects_missing_workflow_digest ... ok
+test accepted_artifact_encoder_binds_ir_digest_to_ir_bytes_not_workflow_parts_digest ... ok
+test submit_artifact_validates_workflow_structure ... ok
+test accepted_artifact_encoder_strict_proof_has_durable_false ... ok
+test accepted_artifact_roundtrip_through_storage_persists_and_loads ... ok
+test accepted_artifact_encoder_journaled_gate_count_equals_zero ... ok
+test submit_artifact_persists_artifact_to_journal ... ok
+test submit_artifact_journaled_does_not_persist_strictly ... ok
+test accepted_artifact_stored_bytes_are_postcard_encoded ... ok
+test accepted_artifact_encoder_strict_gate_count_equals_zero ... ok
+test accepted_artifact_encoder_records_gate_proof_when_policy_is_strict ... ok
+test accepted_artifact_store_payload_is_raw_workflow_parts_not_nested_artifact ... ok
+test accepted_artifact_validator_accepts_empty_idempotency_lists ... ok
+test accepted_artifact_encoder_rejects_relaxed_raw_submit_when_accepted_artifacts_are_required ... ok
+test runtime_admission_requires_artifact_digest_not_raw_workflow ... ok
+test accepted_artifact_validator_produces_typed_ledger_with_expected_flags ... ok
+test accepted_artifact_proof_contains_artifact_digest ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+

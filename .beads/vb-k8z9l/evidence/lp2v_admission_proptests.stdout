@@ -1,0 +1,14 @@
+
+running 9 tests
+test pi_01_gate_boundary_max_is_valid ... ok
+test pi_01_gate_boundary_min_is_valid ... ok
+test pi_01_gate_zero_is_invalid ... ok
+test pi_01_gate_one_past_max_is_invalid ... ok
+test pi_01_verification_warning_gate_range_exhaustive ... ok
+test pi_02_antiinvariant_tampered_digest_rejected ... ok
+test pi_02_digest_roundtrip_relaxed ... ok
+test pi_02_digest_roundtrip_journaled ... ok
+test pi_02_digest_roundtrip_strict ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.66s
+

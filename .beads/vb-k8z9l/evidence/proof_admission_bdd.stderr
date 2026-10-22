@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-k8z9l-local5090-artifact-fixtures/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running tests/vb_lp2v_proof_admission_bdd.rs (target/debug/deps/vb_lp2v_proof_admission_bdd-b0efa0eb782cdd83)
