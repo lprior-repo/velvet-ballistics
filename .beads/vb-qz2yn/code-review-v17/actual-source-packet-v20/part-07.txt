@@ -1,0 +1,180 @@
+crates/vb_storage/src/journal/core.rs:277:     pub(crate) fn consume_compiled_ir_readback_failure_for_test(&self) -> bool {
+crates/vb_storage/src/journal/core.rs:278:         self.fail_next_compiled_ir_readback
+crates/vb_storage/src/journal/core.rs:279:             .swap(false, Ordering::SeqCst)
+crates/vb_storage/src/journal/core.rs:280:     }
+crates/vb_storage/src/journal/core.rs:281: 
+crates/vb_storage/src/journal/core.rs:282:     /// Test-only setter: forces the next `JournalWriteBatch::commit()` to
+crates/vb_storage/src/journal/core.rs:283:     /// return `Err(JournalError::Fjall(..))` before reaching Fjall. Mirrors
+crates/vb_storage/src/journal/core.rs:284:     /// `fail_next_persist_for_test` but targets the batched strict-commit
+crates/vb_storage/src/journal/core.rs:285:     /// path used by `append_strict`.
+crates/vb_storage/src/journal/core.rs:286:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:287:     pub(crate) fn fail_next_batch_commit_for_test(&self) {
+crates/vb_storage/src/journal/core.rs:288:         self.fail_next_batch_commit.store(true, Ordering::SeqCst);
+crates/vb_storage/src/journal/core.rs:289:     }
+crates/vb_storage/src/journal/core.rs:290: 
+crates/vb_storage/src/journal/core.rs:291:     /// Test-only consumer: returns and clears the batch-commit fault flag.
+crates/vb_storage/src/journal/core.rs:292:     /// Called by `JournalWriteBatch::commit()` so the injected failure fires
+crates/vb_storage/src/journal/core.rs:293:     /// exactly once; a subsequent real commit succeeds normally.
+crates/vb_storage/src/journal/core.rs:294:     #[cfg(test)]
+crates/vb_storage/src/journal/core.rs:295:     pub(crate) fn consume_batch_commit_failure_for_test(&self) -> bool {
+crates/vb_storage/src/journal/core.rs:296:         self.fail_next_batch_commit.swap(false, Ordering::SeqCst)
+crates/vb_storage/src/journal/core.rs:297:     }
+crates/vb_storage/src/journal/core.rs:298: }
+crates/vb_storage/src/journal/core.rs:299: 
+crates/vb_storage/src/journal/core.rs:300: impl Drop for FjallJournal {
+crates/vb_storage/src/journal/core.rs:301:     fn drop(&mut self) {
+crates/vb_storage/src/journal/core.rs:302:         // Drop cannot propagate errors from close(), so callers who need
+crates/vb_storage/src/journal/core.rs:303:         // guaranteed durability must call close() explicitly.
+crates/vb_storage/src/journal/core.rs:304:         // Drop only releases the process lock here.
+crates/vb_storage/src/journal/core.rs:305:     }
+crates/vb_storage/src/journal/core.rs:306: }
+FILE crates/vb_storage/src/journal/mod.rs
+crates/vb_storage/src/journal/mod.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/journal/mod.rs:2: //! Fjall-backed journal implementation.
+crates/vb_storage/src/journal/mod.rs:3: 
+crates/vb_storage/src/journal/mod.rs:4: pub(crate) mod admission;
+crates/vb_storage/src/journal/mod.rs:5: pub mod core;
+crates/vb_storage/src/journal/mod.rs:6: pub(crate) use self::admission::{verify_compiled_ir_record_digest, verify_content_digest};
+crates/vb_storage/src/journal/mod.rs:7: pub(crate) mod append;
+crates/vb_storage/src/journal/mod.rs:8: pub(crate) mod artifact_acceptance;
+crates/vb_storage/src/journal/mod.rs:9: pub(crate) mod batch;
+crates/vb_storage/src/journal/mod.rs:10: mod emergency_deny;
+crates/vb_storage/src/journal/mod.rs:11: pub use self::emergency_deny::EmergencyDenyState;
+crates/vb_storage/src/journal/mod.rs:12: pub(crate) use self::emergency_deny::{EMERGENCY_DENY_ACTIVE_MARKER, EMERGENCY_DENY_KEY};
+crates/vb_storage/src/journal/mod.rs:13: pub mod incident;
+crates/vb_storage/src/journal/mod.rs:14: pub(crate) mod injection;
+crates/vb_storage/src/journal/mod.rs:15: pub(crate) mod internal;
+crates/vb_storage/src/journal/mod.rs:16: pub mod parse;
+crates/vb_storage/src/journal/mod.rs:17: pub mod readonly;
+crates/vb_storage/src/journal/mod.rs:18: pub(crate) mod replay;
+crates/vb_storage/src/journal/mod.rs:19: pub(crate) mod source;
+crates/vb_storage/src/journal/mod.rs:20: 
+crates/vb_storage/src/journal/mod.rs:21: #[cfg(test)]
+crates/vb_storage/src/journal/mod.rs:22: mod emergency_deny_tests;
+crates/vb_storage/src/journal/mod.rs:23: #[cfg(test)]
+crates/vb_storage/src/journal/mod.rs:24: mod journal_event_tests;
+crates/vb_storage/src/journal/mod.rs:25: #[cfg(test)]
+crates/vb_storage/src/journal/mod.rs:26: mod regression_tests_vb_1rqz7;
+crates/vb_storage/src/journal/mod.rs:27: #[cfg(test)]
+crates/vb_storage/src/journal/mod.rs:28: mod regression_tests_vb_xsu4g;
+crates/vb_storage/src/journal/mod.rs:29: #[cfg(test)]
+crates/vb_storage/src/journal/mod.rs:30: mod tests;
+crates/vb_storage/src/journal/mod.rs:31: 
+crates/vb_storage/src/journal/mod.rs:32: pub use self::core::{EventReplayLimit, FjallJournal};
+crates/vb_storage/src/journal/mod.rs:33: pub use self::parse::parse_event;
+crates/vb_storage/src/journal/mod.rs:34: pub use self::readonly::ReadOnlyJournal;
+FILE crates/vb_storage/src/journal/readonly.rs
+crates/vb_storage/src/journal/readonly.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/journal/readonly.rs:2: //! Read-only journal wrapper.
+crates/vb_storage/src/journal/readonly.rs:3: //!
+crates/vb_storage/src/journal/readonly.rs:4: //! `ReadOnlyJournal` wraps `FjallJournal` and exposes only its read methods.
+crates/vb_storage/src/journal/readonly.rs:5: //! The inner journal is private and cannot be accessed mutably through the
+crates/vb_storage/src/journal/readonly.rs:6: //! wrapper. Rust's type system enforces this at compile time;
+crates/vb_storage/src/journal/readonly.rs:7: //! the crate also uses `#![forbid(unsafe_code)]` to prevent circumvention.
+crates/vb_storage/src/journal/readonly.rs:8: 
+crates/vb_storage/src/journal/readonly.rs:9: use crate::error::JournalError;
+crates/vb_storage/src/journal/readonly.rs:10: use crate::events::JournalEvent;
+crates/vb_storage/src/journal/readonly.rs:11: use crate::journal::core::FjallJournal;
+crates/vb_storage/src/journal/readonly.rs:12: use vb_core::RunId;
+crates/vb_storage/src/journal/readonly.rs:13: 
+crates/vb_storage/src/journal/readonly.rs:14: /// A newtype wrapper that exposes only read methods of the underlying journal.
+crates/vb_storage/src/journal/readonly.rs:15: ///
+crates/vb_storage/src/journal/readonly.rs:16: /// The inner `FjallJournal` is private. External modules cannot access it
+crates/vb_storage/src/journal/readonly.rs:17: /// directly. All public methods take `&self` (shared reference), preventing
+crates/vb_storage/src/journal/readonly.rs:18: /// mutation through this wrapper.
+crates/vb_storage/src/journal/readonly.rs:19: ///
+crates/vb_storage/src/journal/readonly.rs:20: /// Write methods (`append_journaled`, `persist_strict`, `put_workflow_source`,
+crates/vb_storage/src/journal/readonly.rs:21: /// `put_compiled_ir`, `put_run_header`, `put_snapshot`, `put_blob`) are NOT
+crates/vb_storage/src/journal/readonly.rs:22: /// exposed through this wrapper.
+crates/vb_storage/src/journal/readonly.rs:23: pub struct ReadOnlyJournal(pub(crate) FjallJournal);
+crates/vb_storage/src/journal/readonly.rs:24: 
+crates/vb_storage/src/journal/readonly.rs:25: impl core::fmt::Debug for ReadOnlyJournal {
+crates/vb_storage/src/journal/readonly.rs:26:     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+crates/vb_storage/src/journal/readonly.rs:27:         f.debug_struct("ReadOnlyJournal").finish_non_exhaustive()
+crates/vb_storage/src/journal/readonly.rs:28:     }
+crates/vb_storage/src/journal/readonly.rs:29: }
+crates/vb_storage/src/journal/readonly.rs:30: 
+crates/vb_storage/src/journal/readonly.rs:31: impl ReadOnlyJournal {
+crates/vb_storage/src/journal/readonly.rs:32:     /// Wraps an existing `FjallJournal`.
+crates/vb_storage/src/journal/readonly.rs:33:     #[must_use]
+crates/vb_storage/src/journal/readonly.rs:34:     #[expect(dead_code)]
+crates/vb_storage/src/journal/readonly.rs:35:     pub(crate) fn new(inner: FjallJournal) -> Self {
+crates/vb_storage/src/journal/readonly.rs:36:         Self(inner)
+crates/vb_storage/src/journal/readonly.rs:37:     }
+crates/vb_storage/src/journal/readonly.rs:38: 
+crates/vb_storage/src/journal/readonly.rs:39:     /// Opens an inspect-view journal at `path`.
+crates/vb_storage/src/journal/readonly.rs:40:     ///
+crates/vb_storage/src/journal/readonly.rs:41:     /// **This is not a true read-only open.** Fjall does not expose a
+crates/vb_storage/src/journal/readonly.rs:42:     /// read-only `Database::open` mode; every open performs LSM-tree
+crates/vb_storage/src/journal/readonly.rs:43:     /// recovery and acquires the process-level write lock
+crates/vb_storage/src/journal/readonly.rs:44:     /// (see `ProcessLock::acquire`). When another writer currently
+crates/vb_storage/src/journal/readonly.rs:45:     /// holds that lock, this call returns
+crates/vb_storage/src/journal/readonly.rs:46:     /// [`JournalError::ProcessLockHeld`] — that is the honest contract.
+crates/vb_storage/src/journal/readonly.rs:47:     ///
+crates/vb_storage/src/journal/readonly.rs:48:     /// The wrapper type still enforces a read-only surface: callers
+crates/vb_storage/src/journal/readonly.rs:49:     /// cannot invoke any write method through `ReadOnlyJournal`. If you
+crates/vb_storage/src/journal/readonly.rs:50:     /// need a true read-only open, you must close the writer first;
+crates/vb_storage/src/journal/readonly.rs:51:     /// after drop the lock is released and a follow-up call here
+crates/vb_storage/src/journal/readonly.rs:52:     /// succeeds with the writer's eventual consistency visible.
+crates/vb_storage/src/journal/readonly.rs:53:     ///
+crates/vb_storage/src/journal/readonly.rs:54:     /// For callers that want a guaranteed read facade without acquiring
+crates/vb_storage/src/journal/readonly.rs:55:     /// the writer lock, construct a writer context first
+crates/vb_storage/src/journal/readonly.rs:56:     /// (`FjallJournal::open`) and call `.into_read_only()` only after
+crates/vb_storage/src/journal/readonly.rs:57:     /// writes have quiesced.
+crates/vb_storage/src/journal/readonly.rs:58:     pub fn open_inspect_view(path: impl AsRef<std::path::Path>) -> Result<Self, JournalError> {
+crates/vb_storage/src/journal/readonly.rs:59:         let journal = FjallJournal::open(path, None)?;
+crates/vb_storage/src/journal/readonly.rs:60:         Ok(Self(journal))
+crates/vb_storage/src/journal/readonly.rs:61:     }
+crates/vb_storage/src/journal/readonly.rs:62: 
+crates/vb_storage/src/journal/readonly.rs:63:     /// Returns all declared keyspace names.
+crates/vb_storage/src/journal/readonly.rs:64:     #[must_use]
+crates/vb_storage/src/journal/readonly.rs:65:     pub const fn declared_keyspaces() -> [&'static str; 12] {
+crates/vb_storage/src/journal/readonly.rs:66:         FjallJournal::declared_keyspaces()
+crates/vb_storage/src/journal/readonly.rs:67:     }
+crates/vb_storage/src/journal/readonly.rs:68: 
+crates/vb_storage/src/journal/readonly.rs:69:     /// Replays events for a single run, returning them in sequence order.
+crates/vb_storage/src/journal/readonly.rs:70:     pub fn events_for_run(&self, run: RunId) -> Result<Vec<JournalEvent>, JournalError> {
+crates/vb_storage/src/journal/readonly.rs:71:         self.0.events_for_run(run)
+crates/vb_storage/src/journal/readonly.rs:72:     }
+crates/vb_storage/src/journal/readonly.rs:73: 
+crates/vb_storage/src/journal/readonly.rs:74:     /// Reads retained, checksummed typed run inputs.
+crates/vb_storage/src/journal/readonly.rs:75:     pub fn run_inputs(&self, run: RunId) -> Result<Option<crate::RunInputsRecord>, JournalError> {
+crates/vb_storage/src/journal/readonly.rs:76:         self.0.run_inputs(run)
+crates/vb_storage/src/journal/readonly.rs:77:     }
+crates/vb_storage/src/journal/readonly.rs:78: 
+crates/vb_storage/src/journal/readonly.rs:79:     /// Reads a stored blob by digest.
+crates/vb_storage/src/journal/readonly.rs:80:     pub fn blob(
+crates/vb_storage/src/journal/readonly.rs:81:         &self,
+crates/vb_storage/src/journal/readonly.rs:82:         digest: [u8; crate::constants::DIGEST_BYTES],
+crates/vb_storage/src/journal/readonly.rs:83:     ) -> Result<Option<crate::records::BlobRecord>, JournalError> {
+crates/vb_storage/src/journal/readonly.rs:84:         self.0.blob(digest)
+crates/vb_storage/src/journal/readonly.rs:85:     }
+crates/vb_storage/src/journal/readonly.rs:86: 
+crates/vb_storage/src/journal/readonly.rs:87:     /// Returns whether the action index contains an entry for the given key.
+crates/vb_storage/src/journal/readonly.rs:88:     pub fn has_action_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
+crates/vb_storage/src/journal/readonly.rs:89:         self.0.has_action_index_entry(key)
+crates/vb_storage/src/journal/readonly.rs:90:     }
+crates/vb_storage/src/journal/readonly.rs:91: 
+crates/vb_storage/src/journal/readonly.rs:92:     /// Returns whether the status index contains an entry for the given key.
+crates/vb_storage/src/journal/readonly.rs:93:     pub fn has_status_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
+crates/vb_storage/src/journal/readonly.rs:94:         self.0.has_status_index_entry(key)
+crates/vb_storage/src/journal/readonly.rs:95:     }
+crates/vb_storage/src/journal/readonly.rs:96: 
+crates/vb_storage/src/journal/readonly.rs:97:     /// Returns whether the workflow index contains an entry for the given key.
+crates/vb_storage/src/journal/readonly.rs:98:     pub fn has_workflow_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
+crates/vb_storage/src/journal/readonly.rs:99:         self.0.has_workflow_index_entry(key)
+crates/vb_storage/src/journal/readonly.rs:100:     }
+crates/vb_storage/src/journal/readonly.rs:101: }
+FILE crates/vb_storage/src/journal/admission.rs
+crates/vb_storage/src/journal/admission.rs:1: use crate::{
+crates/vb_storage/src/journal/admission.rs:2:     admission::{AcceptedArtifact, accepted_artifact_digest},
+crates/vb_storage/src/journal/admission.rs:3:     error::JournalError,
+crates/vb_storage/src/journal/admission.rs:4:     records::CompiledIrRecord,
+crates/vb_storage/src/journal/admission.rs:5: };
+crates/vb_storage/src/journal/admission.rs:6: 
+crates/vb_storage/src/journal/admission.rs:7: /// Verifies that content bytes hash to the expected digest.
+crates/vb_storage/src/journal/admission.rs:8: /// Used at admission time to prevent digest forgery.
+crates/vb_storage/src/journal/admission.rs:9: pub(crate) fn verify_content_digest(content: &[u8], expected: &[u8]) -> Result<(), JournalError> {
+crates/vb_storage/src/journal/admission.rs:10:     let computed = blake3::hash(content);
+crates/vb_storage/src/journal/admission.rs:11:     if computed.as_bytes() == expected {
+crates/vb_storage/src/journal/admission.rs:12:         Ok(())

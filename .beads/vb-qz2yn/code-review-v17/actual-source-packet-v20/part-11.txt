@@ -1,0 +1,180 @@
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:1: // Copyright (c) 2024-present, fjall-rs
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:2: // This source code is licensed under both the Apache 2.0 and MIT License
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:3: // (found in the LICENSE-* files in the repository)
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:4: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:5: pub mod item;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:6: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:7: use crate::{Database, Keyspace, PersistMode};
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:8: use item::Item;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:9: use lsm_tree::{AbstractTree, UserKey, UserValue, ValueType};
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:10: use std::collections::HashSet;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:11: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:12: /// An atomic write batch
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:13: ///
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:14: /// Allows atomically writing across keyspaces inside the [`Database`].
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:15: pub struct WriteBatch {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:16:     pub(crate) data: Vec<Item>,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:17:     db: Database,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:18:     durability: Option<PersistMode>,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:19: }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:20: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:21: impl WriteBatch {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:22:     /// Initializes a new write batch.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:23:     ///
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:24:     /// This function is called by [`Database::batch`].
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:25:     pub(crate) fn new(db: Database) -> Self {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:26:         Self {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:27:             data: Vec::new(),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:28:             db,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:29:             durability: None,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:30:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:31:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:32: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:33:     /// Initializes a new write batch with preallocated capacity.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:34:     ///
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:35:     /// ### Note
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:36:     ///
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:37:     /// "Capacity" refers to the number of batch item slots, not their size in memory.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:38:     #[must_use]
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:39:     pub fn with_capacity(db: Database, capacity: usize) -> Self {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:40:         Self {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:41:             data: Vec::with_capacity(capacity),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:42:             db,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:43:             durability: None,
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:44:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:45:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:46: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:47:     /// Gets the number of batched items.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:48:     #[must_use]
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:49:     pub fn len(&self) -> usize {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:50:         self.data.len()
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:51:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:52: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:53:     /// Returns `true` if there are no batches items (yet).
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:54:     #[must_use]
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:55:     pub fn is_empty(&self) -> bool {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:56:         self.len() == 0
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:57:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:58: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:59:     /// Sets the durability level.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:60:     #[must_use]
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:61:     pub fn durability(mut self, mode: Option<PersistMode>) -> Self {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:62:         self.durability = mode;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:63:         self
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:64:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:65: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:66:     /// Inserts a key-value pair into the batch.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:67:     pub fn insert<K: Into<UserKey>, V: Into<UserValue>>(&mut self, p: &Keyspace, key: K, value: V) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:68:         self.data
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:69:             .push(Item::new(p.clone(), key, value, ValueType::Value));
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:70:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:71: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:72:     /// Removes a key-value pair.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:73:     pub fn remove<K: Into<UserKey>>(&mut self, p: &Keyspace, key: K) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:74:         self.data
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:75:             .push(Item::new(p.clone(), key, vec![], ValueType::Tombstone));
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:76:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:77: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:78:     /// Adds a weak tombstone marker for a key.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:79:     ///
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:80:     /// The tombstone marker of this delete operation will vanish when it
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:81:     /// collides with its corresponding insertion.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:82:     /// This may cause older versions of the value to be resurrected, so it should
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:83:     /// only be used and preferred in scenarios where a key is only ever written once.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:84:     ///
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:85:     /// # Experimental
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:86:     ///
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:87:     /// This function is currently experimental.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:88:     #[doc(hidden)]
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:89:     pub fn remove_weak<K: Into<UserKey>>(&mut self, p: &Keyspace, key: K) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:90:         self.data
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:91:             .push(Item::new(p.clone(), key, vec![], ValueType::WeakTombstone));
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:92:     }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:93: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:94:     /// Commits the batch to the [`Database`] atomically.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:95:     ///
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:96:     /// # Errors
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:97:     ///
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:98:     /// Will return `Err` if an IO error occurs.
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:99:     #[allow(clippy::missing_panics_doc)]
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:100:     pub fn commit(mut self) -> crate::Result<()> {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:101:         use std::sync::atomic::Ordering;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:102: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:103:         if self.is_empty() {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:104:             return Ok(());
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:105:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:106: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:107:         log::trace!("batch: Acquiring journal writer");
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:108:         let mut journal_writer = self.db.supervisor.journal.get_writer();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:109: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:110:         // IMPORTANT: Check the poisoned flag after getting journal mutex, otherwise TOCTOU
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:111:         if self.db.is_poisoned.load(Ordering::Relaxed) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:112:             return Err(crate::Error::Poisoned);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:113:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:114: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:115:         let batch_seqno = self.db.supervisor.seqno.next();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:116: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:117:         let _ = journal_writer.write_batch(self.data.iter(), self.data.len(), batch_seqno);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:118: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:119:         if let Some(mode) = self.durability {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:120:             if let Err(e) = journal_writer.persist(mode) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:121:                 self.db.is_poisoned.store(true, Ordering::Release);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:122: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:123:                 log::error!(
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:124:                     "persist failed, which is a FATAL, and possibly hardware-related, failure: {e:?}"
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:125:                 );
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:126: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:127:                 return Err(crate::Error::Poisoned);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:128:             }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:129:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:130: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:131:         // TODO: maybe we can use a stack alloc hashset/vec here, such as smallset
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:132:         #[expect(clippy::mutable_key_type)]
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:133:         let mut keyspaces_with_possible_stall = HashSet::new();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:134: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:135:         #[expect(clippy::expect_used)]
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:136:         let keyspaces = self
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:137:             .db
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:138:             .supervisor
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:139:             .keyspaces
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:140:             .read()
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:141:             .expect("lock is poisoned");
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:142: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:143:         let mut batch_size = 0u64;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:144: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:145:         log::trace!("Applying batch (size={}) to memtable(s)", self.data.len());
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:146: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:147:         for item in std::mem::take(&mut self.data) {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:148:             // TODO: need a better, generic write op
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:149:             let (item_size, _) = match item.value_type {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:150:                 ValueType::Value => item.keyspace.tree.insert(item.key, item.value, batch_seqno),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:151:                 ValueType::Tombstone => item.keyspace.tree.remove(item.key, batch_seqno),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:152:                 ValueType::WeakTombstone => item.keyspace.tree.remove_weak(item.key, batch_seqno),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:153:                 ValueType::Indirection => unreachable!(),
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:154:             };
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:155: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:156:             batch_size += item_size;
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:157: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:158:             // IMPORTANT: Clone the handle, because we don't want to keep the keyspaces lock open
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:159:             keyspaces_with_possible_stall.insert(item.keyspace.clone());
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:160:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:161: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:162:         self.db.supervisor.snapshot_tracker.publish(batch_seqno);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:163: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:164:         drop(journal_writer);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:165: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:166:         log::trace!("batch: Freed journal writer");
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:167: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:168:         drop(keyspaces);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:169: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:170:         // IMPORTANT: Add batch size to current write buffer size
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:171:         // Otherwise write buffer growth is unbounded when using batches
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:172:         self.db.supervisor.write_buffer_size.allocate(batch_size);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:173: 
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:174:         // Check each affected keyspace for write stall/halt
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:175:         for keyspace in &keyspaces_with_possible_stall {
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:176:             let memtable_size = keyspace.tree.active_memtable().size();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:177:             keyspace.check_memtable_rotate(memtable_size);
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:178:             keyspace.local_backpressure();
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:179:         }
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/batch/mod.rs:180: 

@@ -1,0 +1,13 @@
+{
+  "base_main": "0210e36fc8961f7d4454eb4ca53b6a39948a28b8",
+  "original_v6": "783b184f9c36b12e97abab3d40f35a97aba483e4",
+  "production_files": [
+    "crates/vb_storage/src/admission.rs",
+    "crates/vb_storage/src/constants.rs",
+    "crates/vb_storage/src/journal/artifact_acceptance.rs",
+    "crates/vb_storage/src/journal/core.rs",
+    "crates/vb_storage/src/journal/mod.rs",
+    "crates/vb_storage/src/journal/readonly.rs"
+  ],
+  "kind": "Independent CODE review only; no test-suite approval"
+}

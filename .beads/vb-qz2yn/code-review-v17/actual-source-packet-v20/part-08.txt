@@ -1,0 +1,180 @@
+crates/vb_storage/src/journal/admission.rs:13:     } else {
+crates/vb_storage/src/journal/admission.rs:14:         Err(JournalError::PayloadDigestMismatch)
+crates/vb_storage/src/journal/admission.rs:15:     }
+crates/vb_storage/src/journal/admission.rs:16: }
+crates/vb_storage/src/journal/admission.rs:17: 
+crates/vb_storage/src/journal/admission.rs:18: pub(crate) fn verify_compiled_ir_record_digest(
+crates/vb_storage/src/journal/admission.rs:19:     record: &CompiledIrRecord,
+crates/vb_storage/src/journal/admission.rs:20: ) -> Result<(), JournalError> {
+crates/vb_storage/src/journal/admission.rs:21:     if verify_content_digest(&record.ir, &record.digest.as_bytes()).is_ok() {
+crates/vb_storage/src/journal/admission.rs:22:         return Ok(());
+crates/vb_storage/src/journal/admission.rs:23:     }
+crates/vb_storage/src/journal/admission.rs:24: 
+crates/vb_storage/src/journal/admission.rs:25:     let artifact = postcard::from_bytes::<AcceptedArtifact>(&record.ir)
+crates/vb_storage/src/journal/admission.rs:26:         .map_err(|_| JournalError::PayloadDigestMismatch)?;
+crates/vb_storage/src/journal/admission.rs:27:     let digest = accepted_artifact_digest(&artifact)?;
+crates/vb_storage/src/journal/admission.rs:28:     if digest == record.digest
+crates/vb_storage/src/journal/admission.rs:29:         && artifact.digest == record.digest
+crates/vb_storage/src/journal/admission.rs:30:         && artifact.verification.digest == record.digest
+crates/vb_storage/src/journal/admission.rs:31:     {
+crates/vb_storage/src/journal/admission.rs:32:         Ok(())
+crates/vb_storage/src/journal/admission.rs:33:     } else {
+crates/vb_storage/src/journal/admission.rs:34:         Err(JournalError::PayloadDigestMismatch)
+crates/vb_storage/src/journal/admission.rs:35:     }
+crates/vb_storage/src/journal/admission.rs:36: }
+FILE crates/vb_storage/src/batch/commit.rs
+crates/vb_storage/src/batch/commit.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/batch/commit.rs:2: use super::types::JournalWriteBatch;
+crates/vb_storage/src/batch/commit.rs:3: use crate::error::JournalError;
+crates/vb_storage/src/batch/commit.rs:4: 
+crates/vb_storage/src/batch/commit.rs:5: impl<'j> JournalWriteBatch<'j> {
+crates/vb_storage/src/batch/commit.rs:6:     /// Sets strict durability for the commit.
+crates/vb_storage/src/batch/commit.rs:7:     pub fn strict(mut self) -> Self {
+crates/vb_storage/src/batch/commit.rs:8:         self.inner = self.inner.durability(Some(fjall::PersistMode::SyncAll));
+crates/vb_storage/src/batch/commit.rs:9:         self
+crates/vb_storage/src/batch/commit.rs:10:     }
+crates/vb_storage/src/batch/commit.rs:11: 
+crates/vb_storage/src/batch/commit.rs:12:     /// Commits the batch atomically.
+crates/vb_storage/src/batch/commit.rs:13:     ///
+crates/vb_storage/src/batch/commit.rs:14:     /// Returns `Err(JournalError::BatchAborted)` when a prior `put_*` /
+crates/vb_storage/src/batch/commit.rs:15:     /// `append_event` staging step set `self.aborted = true`. The batch
+crates/vb_storage/src/batch/commit.rs:16:     /// is **never** committed in this case — neither the staged records
+crates/vb_storage/src/batch/commit.rs:17:     /// nor any partial state are made durable. Master §49
+crates/vb_storage/src/batch/commit.rs:18:     /// Crash-Consistency Rule forbids silent success on a partial
+crates/vb_storage/src/batch/commit.rs:19:     /// barrier; the typed error is the only honest return value.
+crates/vb_storage/src/batch/commit.rs:20:     pub fn commit(self) -> Result<(), JournalError> {
+crates/vb_storage/src/batch/commit.rs:21:         if self.aborted {
+crates/vb_storage/src/batch/commit.rs:22:             return Err(JournalError::BatchAborted);
+crates/vb_storage/src/batch/commit.rs:23:         }
+crates/vb_storage/src/batch/commit.rs:24:         // Test-only fault injection: return a synthetic `JournalError::Fjall`
+crates/vb_storage/src/batch/commit.rs:25:         // BEFORE the real `OwnedWriteBatch` reaches the storage engine. This
+crates/vb_storage/src/batch/commit.rs:26:         // proves the `append_strict` commit-failure contract (vb-o6qcf.3): the
+crates/vb_storage/src/batch/commit.rs:27:         // staged event is never made visible because the batch never commits,
+crates/vb_storage/src/batch/commit.rs:28:         // and a retry re-stages and commits cleanly (idempotent Ok). The hook
+crates/vb_storage/src/batch/commit.rs:29:         // is consumed exactly once, so a subsequent real commit succeeds.
+crates/vb_storage/src/batch/commit.rs:30:         // cfg(test) guarantees this path is absent from non-test builds.
+crates/vb_storage/src/batch/commit.rs:31:         #[cfg(test)]
+crates/vb_storage/src/batch/commit.rs:32:         if self.journal.consume_batch_commit_failure_for_test() {
+crates/vb_storage/src/batch/commit.rs:33:             return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+crates/vb_storage/src/batch/commit.rs:34:                 std::io::ErrorKind::Other,
+crates/vb_storage/src/batch/commit.rs:35:                 "injected batch commit failure (test hook)",
+crates/vb_storage/src/batch/commit.rs:36:             ))));
+crates/vb_storage/src/batch/commit.rs:37:         }
+crates/vb_storage/src/batch/commit.rs:38:         self.inner.commit()?;
+crates/vb_storage/src/batch/commit.rs:39:         Ok(())
+crates/vb_storage/src/batch/commit.rs:40:     }
+crates/vb_storage/src/batch/commit.rs:41: }
+FILE crates/vb_storage/src/admission/verification.rs
+crates/vb_storage/src/admission/verification.rs:1: //! Independent cold-path IR verifier. No compiler or source-language dependency.
+crates/vb_storage/src/admission/verification.rs:2: 
+crates/vb_storage/src/admission/verification.rs:3: use super::*;
+crates/vb_storage/src/admission/verification.rs:4: use vb_core::artifact::{
+crates/vb_storage/src/admission/verification.rs:5:     ArtifactEvidence, ArtifactVerificationEvidence, AssumptionId, ObligationClosure,
+crates/vb_storage/src/admission/verification.rs:6:     ObligationKind, VerificationLedgerEntry,
+crates/vb_storage/src/admission/verification.rs:7: };
+crates/vb_storage/src/admission/verification.rs:8: use vb_core::{CompiledWorkflow, RuntimePolicy, WorkflowDigest, WorkflowParts};
+crates/vb_storage/src/admission/verification.rs:9: 
+crates/vb_storage/src/admission/verification.rs:10: pub(crate) const EVIDENCE_VERSION: u16 = 3;
+crates/vb_storage/src/admission/verification.rs:11: 
+crates/vb_storage/src/admission/verification.rs:12: #[path = "verification/executor_profile.rs"]
+crates/vb_storage/src/admission/verification.rs:13: mod executor_profile;
+crates/vb_storage/src/admission/verification.rs:14: pub(crate) use executor_profile::ExecutorProfile;
+crates/vb_storage/src/admission/verification.rs:15: 
+crates/vb_storage/src/admission/verification.rs:16: /// Prepare a checked envelope without writing a journal or claiming a durable ack.
+crates/vb_storage/src/admission/verification.rs:17: /// External assumptions in the ledger remain assumptions, not executed evidence.
+crates/vb_storage/src/admission/verification.rs:18: pub fn prepare_compiled_artifact(
+crates/vb_storage/src/admission/verification.rs:19:     workflow: &CompiledWorkflow,
+crates/vb_storage/src/admission/verification.rs:20:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/verification.rs:21:     contracts: &[ActionContract],
+crates/vb_storage/src/admission/verification.rs:22: ) -> Result<AcceptedArtifact, JournalError> {
+crates/vb_storage/src/admission/verification.rs:23:     prepare_with_profile(workflow, policy, contracts, ExecutorProfile::Legacy)
+crates/vb_storage/src/admission/verification.rs:24: }
+crates/vb_storage/src/admission/verification.rs:25: 
+crates/vb_storage/src/admission/verification.rs:26: pub(crate) fn prepare_with_profile(
+crates/vb_storage/src/admission/verification.rs:27:     workflow: &CompiledWorkflow,
+crates/vb_storage/src/admission/verification.rs:28:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/verification.rs:29:     contracts: &[ActionContract],
+crates/vb_storage/src/admission/verification.rs:30:     profile: ExecutorProfile<'_>,
+crates/vb_storage/src/admission/verification.rs:31: ) -> Result<AcceptedArtifact, JournalError> {
+crates/vb_storage/src/admission/verification.rs:32:     let parts = checked_parts(workflow, policy, contracts, &profile)?;
+crates/vb_storage/src/admission/verification.rs:33:     let ir = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission/verification.rs:34:     let evidence = build_evidence(&parts, &ir, policy, contracts)?;
+crates/vb_storage/src/admission/verification.rs:35:     let mut proof = VerificationProof::new(zero_workflow_digest(), 0, false);
+crates/vb_storage/src/admission/verification.rs:36:     proof.bounded_claimed = true;
+crates/vb_storage/src/admission/verification.rs:37:     proof.idempotency_verified_claimed = true;
+crates/vb_storage/src/admission/verification.rs:38:     proof.evidence = profile.wrap(evidence);
+crates/vb_storage/src/admission/verification.rs:39:     let mut artifact = AcceptedArtifact {
+crates/vb_storage/src/admission/verification.rs:40:         digest: zero_workflow_digest(),
+crates/vb_storage/src/admission/verification.rs:41:         source_digest: workflow.digest(),
+crates/vb_storage/src/admission/verification.rs:42:         policy_digest: compute_policy_digest(workflow)?,
+crates/vb_storage/src/admission/verification.rs:43:         ir,
+crates/vb_storage/src/admission/verification.rs:44:         verification: proof,
+crates/vb_storage/src/admission/verification.rs:45:         accepted_at_seq: EventSeq::new(0),
+crates/vb_storage/src/admission/verification.rs:46:         required_capabilities: required_capabilities_from_contracts(contracts)?,
+crates/vb_storage/src/admission/verification.rs:47:         action_contracts: contracts.to_vec().into_boxed_slice(),
+crates/vb_storage/src/admission/verification.rs:48:     };
+crates/vb_storage/src/admission/verification.rs:49:     bind_artifact_digest(&mut artifact)?;
+crates/vb_storage/src/admission/verification.rs:50:     Ok(artifact)
+crates/vb_storage/src/admission/verification.rs:51: }
+crates/vb_storage/src/admission/verification.rs:52: 
+crates/vb_storage/src/admission/verification.rs:53: /// Recompute checks and evidence from hostile artifact bytes before runtime use.
+crates/vb_storage/src/admission/verification.rs:54: /// Legacy claims require regeneration; a rehashed forged ledger is still rejected.
+crates/vb_storage/src/admission/verification.rs:55: pub fn verify_accepted_artifact(
+crates/vb_storage/src/admission/verification.rs:56:     artifact: &AcceptedArtifact,
+crates/vb_storage/src/admission/verification.rs:57: ) -> Result<CompiledWorkflow, JournalError> {
+crates/vb_storage/src/admission/verification.rs:58:     let len = u32::try_from(artifact.ir.len()).map_err(|_| JournalError::ArtifactMalformed)?;
+crates/vb_storage/src/admission/verification.rs:59:     if len > crate::constants::MAX_COMPILED_IR_BYTES {
+crates/vb_storage/src/admission/verification.rs:60:         return Err(JournalError::PayloadTooLarge {
+crates/vb_storage/src/admission/verification.rs:61:             len,
+crates/vb_storage/src/admission/verification.rs:62:             max: crate::constants::MAX_COMPILED_IR_BYTES,
+crates/vb_storage/src/admission/verification.rs:63:         });
+crates/vb_storage/src/admission/verification.rs:64:     }
+crates/vb_storage/src/admission/verification.rs:65:     let evidence = checked_evidence_schema(&artifact.verification.evidence)?;
+crates/vb_storage/src/admission/verification.rs:66:     if accepted_artifact_digest(artifact)? != artifact.digest
+crates/vb_storage/src/admission/verification.rs:67:         || artifact.verification.digest != artifact.digest
+crates/vb_storage/src/admission/verification.rs:68:     {
+crates/vb_storage/src/admission/verification.rs:69:         return Err(JournalError::ArtifactChecksumMismatch);
+crates/vb_storage/src/admission/verification.rs:70:     }
+crates/vb_storage/src/admission/verification.rs:71:     let (parts, trailing) = postcard::take_from_bytes::<WorkflowParts>(&artifact.ir)
+crates/vb_storage/src/admission/verification.rs:72:         .map_err(JournalError::PostcardDecodeFailed)?;
+crates/vb_storage/src/admission/verification.rs:73:     if !trailing.is_empty() {
+crates/vb_storage/src/admission/verification.rs:74:         return Err(JournalError::ArtifactMalformed);
+crates/vb_storage/src/admission/verification.rs:75:     }
+crates/vb_storage/src/admission/verification.rs:76:     let workflow =
+crates/vb_storage/src/admission/verification.rs:77:         CompiledWorkflow::try_from_parts(parts).map_err(JournalError::WorkflowReconstruction)?;
+crates/vb_storage/src/admission/verification.rs:78:     let expected = prepare_compiled_artifact(
+crates/vb_storage/src/admission/verification.rs:79:         &workflow,
+crates/vb_storage/src/admission/verification.rs:80:         evidence.admission_policy,
+crates/vb_storage/src/admission/verification.rs:81:         &artifact.action_contracts,
+crates/vb_storage/src/admission/verification.rs:82:     )?;
+crates/vb_storage/src/admission/verification.rs:83:     verify_expected_bindings(artifact, &expected)?;
+crates/vb_storage/src/admission/verification.rs:84:     Ok(workflow)
+crates/vb_storage/src/admission/verification.rs:85: }
+crates/vb_storage/src/admission/verification.rs:86: 
+crates/vb_storage/src/admission/verification.rs:87: /// Verify that a caller cannot upgrade a weaker artifact to a stronger policy.
+crates/vb_storage/src/admission/verification.rs:88: pub fn verify_accepted_artifact_for_policy(
+crates/vb_storage/src/admission/verification.rs:89:     artifact: &AcceptedArtifact,
+crates/vb_storage/src/admission/verification.rs:90:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/verification.rs:91: ) -> Result<CompiledWorkflow, JournalError> {
+crates/vb_storage/src/admission/verification.rs:92:     let evidence = checked_evidence_schema(&artifact.verification.evidence)?;
+crates/vb_storage/src/admission/verification.rs:93:     if evidence.admission_policy != policy {
+crates/vb_storage/src/admission/verification.rs:94:         return Err(JournalError::ArtifactMalformed);
+crates/vb_storage/src/admission/verification.rs:95:     }
+crates/vb_storage/src/admission/verification.rs:96:     verify_accepted_artifact(artifact)
+crates/vb_storage/src/admission/verification.rs:97: }
+crates/vb_storage/src/admission/verification.rs:98: 
+crates/vb_storage/src/admission/verification.rs:99: fn checked_evidence_schema(
+crates/vb_storage/src/admission/verification.rs:100:     evidence: &ArtifactEvidence,
+crates/vb_storage/src/admission/verification.rs:101: ) -> Result<&ArtifactVerificationEvidence, JournalError> {
+crates/vb_storage/src/admission/verification.rs:102:     match evidence {
+crates/vb_storage/src/admission/verification.rs:103:         ArtifactEvidence::Packed(_) => Err(JournalError::ArtifactMalformed),
+crates/vb_storage/src/admission/verification.rs:104:         ArtifactEvidence::Unverified => Err(JournalError::MigrationRequired {
+crates/vb_storage/src/admission/verification.rs:105:             from: 1,
+crates/vb_storage/src/admission/verification.rs:106:             to: EVIDENCE_VERSION,
+crates/vb_storage/src/admission/verification.rs:107:         }),
+crates/vb_storage/src/admission/verification.rs:108:         ArtifactEvidence::Verified(evidence) if evidence.schema_version == 2 => {
+crates/vb_storage/src/admission/verification.rs:109:             Err(JournalError::MigrationRequired {
+crates/vb_storage/src/admission/verification.rs:110:                 from: 2,
+crates/vb_storage/src/admission/verification.rs:111:                 to: EVIDENCE_VERSION,
+crates/vb_storage/src/admission/verification.rs:112:             })
+crates/vb_storage/src/admission/verification.rs:113:         }
