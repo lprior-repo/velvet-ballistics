@@ -342,7 +342,8 @@ impl Shard {
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);
-        self.fail_run_state_after_journaled(run, state)
+        let retry_step = state.frame.pc();
+        self.fail_run_state_with_retry_checkpoint(run, retry_step, state)
             .map_err(DriveApplyFailure::AfterCommit)?;
         self.apply(run, RuntimeEvent::Fail)
             .map_err(DriveApplyFailure::AfterCommit)

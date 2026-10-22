@@ -228,7 +228,8 @@ impl Shard {
         }) {
             return self.rollback_run_state_preserving_error("fail_run_state", run, state, error);
         }
-        self.fail_run_state_after_journaled(run, state)
+        let retry_step = state.frame.pc();
+        self.fail_run_state_with_retry_checkpoint(run, retry_step, state)
     }
 
     /// Completes failed-run cleanup after `RunFailed` is already durably

@@ -9,7 +9,7 @@
     "durable_retry_cli"
   ],
   "exit_code": 0,
-  "seconds": 0.114,
+  "seconds": 0.086,
   "env_overrides": {
     "CARGO_BUILD_JOBS": "2"
   }

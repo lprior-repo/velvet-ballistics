@@ -235,6 +235,7 @@ fn load_latest_retry_checkpoint(
     let vb_storage::JournalEvent::RetryCheckpoint {
         run: checkpoint_run,
         step,
+        payload_digest,
         payload,
         ..
     } = latest.ok_or_else(|| "run has no durable retry checkpoint".to_string())?
@@ -254,6 +255,13 @@ fn load_latest_retry_checkpoint(
             "retry checkpoint step {} does not match requested step {requested_step}",
             step.get()
         ));
+    }
+
+    // Reject a tampered payload before decoding: the durable digest must match the
+    // recorded payload bytes (fail-closed integrity check).
+    let observed_digest = *blake3::hash(payload).as_bytes();
+    if observed_digest != *payload_digest {
+        return Err("retry checkpoint payload digest mismatch".to_string());
     }
 
     let checkpoint: vb_runtime::run_checkpoint::RunCheckpointV1 =

@@ -8,7 +8,7 @@
     "--lib"
   ],
   "exit_code": 0,
-  "seconds": 0.241,
+  "seconds": 0.297,
   "env_overrides": {
     "CARGO_BUILD_JOBS": "2"
   }

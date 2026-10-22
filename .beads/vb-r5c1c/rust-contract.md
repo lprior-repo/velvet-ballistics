@@ -6,9 +6,11 @@ runtime round-trip tests in `crates/vb_runtime/src/run_checkpoint.rs`.
 
 ## Producer (runtime failure boundary)
 
-- When `Shard::handle_action_failure` reaches `ActionFailureOutcome::FailRun`, the
-  selected failed step `preflight.ticket.step` is marked `Failed` in the live frame
-  and `RunCheckpointV1::capture` is invoked with:
+- When a run reaches a failed terminal boundary — either `Shard::handle_action_failure`
+  with `ActionFailureOutcome::FailRun` (step `preflight.ticket.step`) or the engine
+  failure path `apply_terminal_failed` (step `state.frame.pc()`) — the selected
+  failed step is marked `Failed` in the live frame and `RunCheckpointV1::capture`
+  is invoked with:
   - `run_id` = the failed run,
   - `artifact_digest` = `state.admission.artifact_digest()` (missing admission ⇒ no
     checkpoint; fail-closed),
@@ -37,8 +39,9 @@ runtime round-trip tests in `crates/vb_runtime/src/run_checkpoint.rs`.
 4. `observed_failed_step` (from the journal) must equal `requested_step`; otherwise
    lifecycle exit with `observed_failed_step`/`requested_step` in the payload. No
    `saturating_add`/`MAX` inference.
-5. Find the **latest** `JournalEvent::RetryCheckpoint`; decode payload into
-   `RunCheckpointV1`. Missing/undecodable ⇒ lifecycle exit. Reject if
+5. Find the **latest** `JournalEvent::RetryCheckpoint`; verify the recorded BLAKE3
+   `payload_digest` matches the payload bytes (tamper rejection), then decode into
+   `RunCheckpointV1`. Missing/undecodable/tampered ⇒ lifecycle exit. Reject if
    `checkpoint.run_id != run` or `checkpoint.retry_step != requested_step`.
 6. `next_seq = last_event.seq() + 1` (checked).
 7. Build a `StorageRuntimeJournal` over the opened journal and a default

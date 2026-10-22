@@ -64,7 +64,7 @@ fn queued_storage_runtime_journal_rejects_unsequenced_append() -> Result<(), Str
 #[test]
 fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), String> {
     let (_dir, journal) = temp_journal()?;
-    let queue = journal_queue(4, 1)?;
+    let queue = journal_queue(8, 1)?;
     let runtime_journal = Arc::new(QueuedStorageRuntimeJournal::journaled(
         journal.clone(),
         queue.clone(),
@@ -86,18 +86,20 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), String>
     let mut runtime = runtime;
     assert_eq!(runtime.tick_all(), Ok(true));
     // The run header is already drained before acknowledgement; shutdown drains
-    // only post-admission execution evidence for this single Finish step.
+    // the post-admission execution evidence (including the retry checkpoint
+    // captured at the failure boundary of this uninitialized-result Finish step).
     assert!(matches!(
         queue.pending_profile_counts(),
-        Ok(ref c) if c.journaled >= 2 && c.strict == 0
+        Ok(c) if c.journaled >= 2 && c.strict == 0
     ));
     assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
     assert!(matches!(
         queue.pending_profile_counts(),
         Ok(counts) if counts.journaled == 0 && counts.strict == 0
     ));
-    // At minimum RunSubmitted + RunAdmission + StepSucceeded + RunFinished are stored.
-    assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() >= 4));
+    // At minimum RunSubmitted + RunAdmission + failure evidence + RunFailed and a
+    // durable retry checkpoint are stored.
+    assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() >= 5));
     Ok(())
 }
 
