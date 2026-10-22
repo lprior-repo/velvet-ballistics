@@ -1,0 +1,180 @@
+181: +#[test]
+182: +fn frame_pool_new_preallocates_capacity_frames() {
+183: +    let pool = new_pool(2, 1, 8);
+184: +    assert_eq!(pool.capacity(), 8);
+185: +    assert_eq!(pool.available(), 8, "all 8 frames pre-allocated at construction");
+186: +    assert_eq!(pool.is_empty(), false);
+187: +}
+188: +
+189: +#[test]
+190: +fn frame_pool_no_runtime_allocation_after_construction() {
+191: +    // Given a freshly-constructed pool
+192: +    let mut pool = new_pool(2, 1, 4);
+193: +    // When taking and releasing 100 frames (rapid cycle)
+194: +    for i in 1u64..=100 {
+195: +        let frame = match pool.take(RunId::new(i), StepIdx::new(0)) {
+196: +            Ok(f) => f,
+197: +            Err(e) => panic!("take should never fail when pool not exhausted: {e}"),
+198: +        };
+199: +        pool.release(frame);
+200: +    }
+201: +    // Then available stays at capacity (no fresh allocation happened)
+202: +    assert_eq!(pool.available(), 4);
+203: +}
+204: +
+205: +#[test]
+206: +fn frame_pool_exhausted_take_returns_error() {
+207: +    // Given a pool with capacity 2
+208: +    let mut pool = new_pool(2, 1, 2);
+209: +    // When taking all 2 frames without releasing
+210: +    let _f1 = pool.take(RunId::new(1), StepIdx::new(0)).expect("first take");
+211: +    let _f2 = pool.take(RunId::new(2), StepIdx::new(0)).expect("second take");
+212: +    // Then a third take fails (no fresh allocation as fallback)
+213: +    let result = pool.take(RunId::new(3), StepIdx::new(0));
+214: +    assert!(matches!(
+215: +        result,
+216: +        Err(vb_core::errors::CoreError::AllocationFailed)
+217: +    ));
+218:  }
+219:  
+220:  #[test]
+221: @@ -114,9 +154,9 @@ fn frame_pool_new_creates_pool_with_capacity() {
+222:      // Given a new pool with capacity 8
+223:      let pool = new_pool(2, 1, 8);
+224:      // When checking capacity and availability
+225: -    // Then capacity is 8 and available is 0 (empty pool)
+226: +    // Then capacity is 8 and available is 8 (all pre-allocated)
+227:      assert_eq!(pool.capacity(), 8);
+228: -    assert_eq!(pool.available(), 0);
+229: +    assert_eq!(pool.available(), 8);
+230:  }
+231:  
+232:  #[test]
+233: @@ -141,7 +181,7 @@ fn frame_pool_release_returns_frame_to_pool() {
+234:      };
+235:      // When releasing the frame back
+236:      pool.release(frame);
+237: -    assert_eq!(pool.available(), 1);
+238: +    assert_eq!(pool.available(), 4);
+239:      // Then it can be re-acquired
+240:      let reused = pool.take(RunId::new(2), StepIdx::new(0));
+241:      assert_eq!(reused.is_ok(), true);
+242: @@ -153,7 +193,7 @@ fn frame_pool_is_empty_when_all_acquired() {
+243:      let mut pool = new_pool(2, 1, 1);
+244:      // When taking the only frame
+245:      let frame = pool.take(RunId::new(1), StepIdx::new(0));
+246: -    // Then the pool is empty (no recycled frames)
+247: +    // Then the pool is empty
+248:      assert_eq!(pool.is_empty(), true);
+249:      // Clean up: release frame so pool is no longer empty
+250:      let frame = match frame {
+251: @@ -176,7 +216,7 @@ fn frame_pool_is_not_empty_after_release() {
+252:      // When checking is_empty
+253:      // Then it is not empty
+254:      assert_eq!(pool.is_empty(), false);
+255: -    assert_eq!(pool.available(), 1);
+256: +    assert_eq!(pool.available(), 4);
+257:  }
+258:  
+259:  #[test]
+260: @@ -238,11 +278,11 @@ fn frame_pool_multiple_release_and_take_cycle() {
+261:      // When releasing both and taking one back
+262:      pool.release(f1);
+263:      pool.release(f2);
+264: -    assert_eq!(pool.available(), 2);
+265: +    assert_eq!(pool.available(), 4);
+266:      let recycled = pool.take(RunId::new(3), StepIdx::new(0));
+267:      // Then the recycled frame is available
+268:      assert_eq!(recycled.is_ok(), true);
+269: -    assert_eq!(pool.available(), 1);
+270: +    assert_eq!(pool.available(), 3);
+271:  }
+272:  
+273:  #[test]
+274: @@ -275,13 +315,13 @@ fn frame_pool_new_with_different_slot_counts() {
+275:  }
+276:  
+277:  #[test]
+278: -fn frame_pool_take_allocates_fresh_when_no_recycled() {
+279: -    // Given a fresh pool (empty)
+280: +fn frame_pool_take_returns_preallocated_frame_when_no_recycled() {
+281: +    // Given a fresh pool (all frames pre-allocated)
+282:      let mut pool = new_pool(2, 1, 4);
+283: -    assert_eq!(pool.available(), 0);
+284: +    assert_eq!(pool.available(), 4);
+285:      // When taking a frame
+286:      let frame = pool.take(RunId::new(42), StepIdx::new(0));
+287: -    // Then a new frame is allocated with the correct run_id
+288: +    // Then a pre-allocated frame is returned with the correct run_id
+289:      match frame {
+290:          Ok(f) => {
+291:              assert_eq!(f.run_id(), RunId::new(42));
+292: @@ -420,12 +460,12 @@ fn frame_pool_reused_frame_clears_prior_state() {
+293:  }
+294:  
+295:  #[test]
+296: -fn frame_pool_available_starts_at_zero() {
+297: +fn frame_pool_available_starts_at_capacity() {
+298:      // Given a new pool
+299:      let pool = new_pool(2, 1, 4);
+300:      // When checking available
+301: -    // Then it is 0
+302: -    assert_eq!(pool.available(), 0);
+303: +    // Then it equals capacity (all pre-allocated)
+304: +    assert_eq!(pool.available(), 4);
+305:  }
+306:  
+307:  #[test]
+308: @@ -442,33 +482,42 @@ fn frame_pool_capacity_is_const() {
+309:  // =======================================================================
+310:  
+311:  #[test]
+312: -fn frame_pool_exhaust_then_take_still_succeeds_via_fresh_alloc() {
+313: -    // Given a pool with capacity 2 and no recycled frames
+314: +fn frame_pool_exhausted_take_returns_error_no_fresh_alloc() {
+315: +    // Given a pool with capacity 2
+316:      let mut pool = new_pool(2, 1, 2);
+317: -    // When taking 3 frames (pool capacity only limits recycled count, not live allocs)
+318: +    // When taking 2 frames without releasing
+319:      let f1 = pool.take(RunId::new(1), StepIdx::new(0));
+320:      let f2 = pool.take(RunId::new(2), StepIdx::new(0));
+321: +    // Then both succeed (we have 2 pre-allocated frames)
+322: +    assert!(f1.is_ok());
+323: +    assert!(f2.is_ok());
+324: +    // When taking a 3rd frame (no recycled frames, no fresh allocation)
+325:      let f3 = pool.take(RunId::new(3), StepIdx::new(0));
+326: -    // Then all three succeed — the pool always allocates fresh when empty
+327: -    assert_eq!(f1.as_ref().map(|f| f.run_id()), Ok(RunId::new(1)));
+328: -    assert_eq!(f2.as_ref().map(|f| f.run_id()), Ok(RunId::new(2)));
+329: -    assert_eq!(f3.as_ref().map(|f| f.run_id()), Ok(RunId::new(3)));
+330: +    // Then it fails with AllocationFailed (no fresh allocation fallback)
+331: +    assert!(matches!(
+332: +        f3,
+333: +        Err(vb_core::errors::CoreError::AllocationFailed)
+334: +    ));
+335:  }
+336:  
+337:  #[test]
+338:  fn frame_pool_release_wrong_dimension_frame_is_silently_dropped() {
+339: -    // Given a pool configured for (step_count=2, slot_count=1)
+340: +    // Given a pool configured for (step_count=2, slot_count=1) pre-allocated to capacity
+341:      let mut pool_a = new_pool(2, 1, 4);
+342: +    assert_eq!(pool_a.available(), 4);
+343:      // And a different pool for (step_count=4, slot_count=2)
+344:      let mut pool_b = new_pool(4, 2, 4);
+345: +    assert_eq!(pool_b.available(), 4);
+346:      // When taking a frame from pool_b and releasing it into pool_a
+347:      let frame = match pool_b.take(RunId::new(1), StepIdx::new(0)) {
+348:          Ok(f) => f,
+349:          Err(_) => return,
+350:      };
+351: +    assert_eq!(pool_a.available(), 4);
+352:      pool_a.release(frame);
+353: -    // Then pool_a is still empty — mismatched dimensions are silently dropped
+354: -    assert_eq!(pool_a.available(), 0);
+355: +    // Then pool_a is unchanged — mismatched dimensions are silently dropped
+356: +    assert_eq!(pool_a.available(), 4);
+357: +    assert_eq!(pool_b.available(), 3);
+358:  }
+359:  
+360:  #[test]

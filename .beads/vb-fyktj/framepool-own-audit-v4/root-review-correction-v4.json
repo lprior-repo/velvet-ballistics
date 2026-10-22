@@ -1,0 +1,10 @@
+{
+  "status": "REQUIRES_REVIEW_METADATA_CORRECTION_NO_SOURCE_RESTORATION_YET",
+  "issues": [
+    "Actual Git own diff has23unified hunks, not30; currentJSON lists31semanticrows while summary30. Distinguishsemanticrowcount fromunifiedhunks.",
+    "Framepoolproductionwholefileequalsoldcommit byte-for-byte; test files notwholefileequal,4nonempty addedlinesnotexact current chieflyformatting. Do not call all exactbodypresent or nodrift.",
+    "Most cited actualcurrentlinenumbers differ. Example chunk024 actual179enqueue, poolSome3actual190-194. zero-step testactual552, not545.",
+    "Neither allocationproof nor testquality accepted by name: framepoolnoallocationcycletestdoesnotmeasureallocator and several oldtests early-return onsetupfail. Theseareexistinglimitations notmissinghunk restorationneed.",
+    "Provisionalcomparisononly: no wholehistoricalbranch/inheriteddelta acceptance."
+  ]
+}

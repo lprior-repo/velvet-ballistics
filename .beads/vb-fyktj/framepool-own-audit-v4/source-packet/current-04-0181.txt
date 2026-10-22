@@ -1,0 +1,133 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/shard/tests/chunk_010.rs
+181:             correlation: 2,
+182:         }),
+183:         Ok(())
+184:     );
+185:     assert_eq!(shard.tick(), Ok(true));
+186:     // Then only the last inspect response is available (first was overwritten)
+187:     let response = shard.take_inspect_response();
+188:     match response {
+189:         Some(InspectResponse::Found(snap)) => {
+190:             assert_eq!(snap.run, run2);
+191:             assert_eq!(snap.correlation, 2);
+192:         }
+193:         other => {
+194:             assert_eq!(other, None);
+195:         }
+196:     }
+197: }
+198: 
+199: // =========================================================================
+200: // Phase 2 adversarial BDD tests — shard resource exhaustion & security
+201: // =========================================================================
+202: 
+203: #[test]
+204: fn shard_queue_full_prevents_further_command_submission() {
+205:     // Given a shard with command queue capacity of 2
+206:     let config = ShardConfig {
+207:         command_queue_capacity: 2,
+208:         trace_capacity: 4,
+209:         step_budget_per_tick: 4,
+210:         max_active_runs: 4,
+211:         policy: vb_core::policy::RuntimePolicy::Relaxed,
+212:     };
+213:     let shard = Shard::new(config);
+214:     // When filling the queue with 2 commands
+215:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+216:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+217:     // Then the third command is rejected with QueueFull
+218:     assert_eq!(
+219:         shard.enqueue(ShardCommand::Shutdown),
+220:         Err(RuntimeError::QueueFull)
+221:     );
+222: }
+223: 
+224: #[test]
+225: fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() {
+226:     // Given a shard with max_active_runs = 2
+227:     let config = ShardConfig {
+228:         command_queue_capacity: 16,
+229:         trace_capacity: 16,
+230:         step_budget_per_tick: 4,
+231:         max_active_runs: 2,
+232:         policy: vb_core::policy::RuntimePolicy::Relaxed,
+233:     };
+234:     let mut shard = Shard::new(config);
+235:     let Some(wf1) = suspended_workflow() else {
+236:         return;
+237:     };
+238:     let Some(wf2) = suspended_workflow() else {
+239:         return;
+240:     };
+241:     let Some(wf3) = suspended_workflow() else {
+242:         return;
+243:     };
+244: 
+245:     // When submitting 2 runs (both suspend on Do, so stay active)
+246:     assert_eq!(
+247:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+248:             run: super::RunId::new(1),
+249:             workflow: wf1,
+250:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+251:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+252:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+253:         }),
+254:         Ok(())
+255:     );
+256:     assert_eq!(shard.tick(), Ok(true));
+257:     assert_eq!(
+258:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+259:             run: super::RunId::new(2),
+260:             workflow: wf2,
+261:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+262:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+263:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+264:         }),
+265:         Ok(())
+266:     );
+267:     assert_eq!(shard.tick(), Ok(true));
+268:     // Then the third submit is rejected with capacity 2
+269:     assert_eq!(
+270:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+271:             run: super::RunId::new(3),
+272:             workflow: wf3,
+273:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+274:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+275:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+276:         }),
+277:         Ok(())
+278:     );
+279:     assert_eq!(
+280:         shard.tick(),
+281:         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 2 })
+282:     );
+283: }
+284: 
+285: #[test]
+286: fn shard_action_completed_for_wrong_run_returns_run_not_found() {
+287:     // Given a shard with an active suspended run
+288:     let config = small_config();
+289:     let mut shard = Shard::new(config);
+290:     let Some(workflow) = suspended_workflow() else {
+291:         return;
+292:     };
+293:     assert_eq!(
+294:         shard.enqueue(ShardCommand::Submit {
+295:             run: super::RunId::new(1),
+296:             workflow: workflow,
+297:             caps: vb_core::capability::CapabilitySet::empty()
+298:         }),
+299:         Ok(())
+300:     );
+301:     assert_eq!(shard.tick(), Ok(true));
+302:     // When completing an action for a different run
+303:     assert_eq!(
+304:         shard.enqueue(ShardCommand::ActionCompletedLegacy {
+305:             run: super::RunId::new(999),
+306:             step: vb_core::ids::StepIdx::new(0),
+307:         }),
+308:         Ok(())
+309:     );
+310:     // Then tick returns RunNotFound
+311:     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+312: }

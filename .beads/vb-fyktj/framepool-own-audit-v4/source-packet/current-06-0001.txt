@@ -1,0 +1,181 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/shard/tests/chunk_024.rs
+1: // =========================================================================
+2: // vb-1u88: Graceful Shutdown and Cancellation Edges — RED PHASE TESTS
+3: // These tests compile but fail assertions until implementation matches spec.
+4: // =========================================================================
+5: 
+6: // ---------------------------------------------------------------------------
+7: // Section 2: Tick and Shutdown — Postconditions
+8: // ---------------------------------------------------------------------------
+9: 
+10: #[test]
+11: fn vb1u88_tick_multiple_times_after_shutdown_all_false() {
+12:     let config = small_config();
+13:     let mut shard = Shard::new(config);
+14:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+15:     assert_eq!(shard.tick(), Ok(false));
+16:     assert_eq!(shard.tick(), Ok(false));
+17:     assert_eq!(shard.tick(), Ok(false));
+18:     assert_eq!(shard.is_shutting_down(), true);
+19: }
+20: 
+21: #[test]
+22: fn vb1u88_drain_for_shutdown_processes_submit_then_shutdown() {
+23:     let config = small_config();
+24:     let mut shard = Shard::new(config);
+25:     let Some(workflow) = finished_workflow() else {
+26:         return;
+27:     };
+28:     assert_eq!(
+29:         shard.enqueue(ShardCommand::Submit {
+30:             run: super::RunId::new(1),
+31:             workflow: workflow,
+32:             caps: vb_core::capability::CapabilitySet::empty()
+33:         }),
+34:         Ok(())
+35:     );
+36:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+37:     assert_eq!(shard.drain_for_shutdown(), Ok(()));
+38:     assert_eq!(shard.is_shutting_down(), true);
+39:     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+40: }
+41: 
+42: #[test]
+43: fn vb1u88_drain_for_shutdown_on_already_shutting_down() {
+44:     let config = small_config();
+45:     let mut shard = Shard::new(config);
+46:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+47:     assert_eq!(shard.tick(), Ok(false));
+48:     assert_eq!(shard.drain_for_shutdown(), Ok(()));
+49: }
+50: 
+51: #[test]
+52: fn vb1u88_drain_for_shutdown_empty_queue_returns_shutdown_in_progress() {
+53:     let config = small_config();
+54:     let mut shard = Shard::new(config);
+55:     assert_eq!(
+56:         shard.drain_for_shutdown(),
+57:         Err(RuntimeError::ShutdownInProgress)
+58:     );
+59: }
+60: 
+61: // ---------------------------------------------------------------------------
+62: // Section 3: Handle Cancel — Postconditions
+63: // ---------------------------------------------------------------------------
+64: 
+65: #[test]
+66: fn vb1u88_cancel_unknown_run_returns_ok() {
+67:     let config = small_config();
+68:     let mut shard = Shard::new(config);
+69:     assert_eq!(
+70:         shard.enqueue(ShardCommand::Cancel {
+71:             run: super::RunId::new(9999),
+72:             reason: None
+73:         }),
+74:         Ok(())
+75:     );
+76:     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+77: }
+78: 
+79: #[test]
+80: fn vb1u88_cancel_emits_run_cancelled_journal_event() {
+81:     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+82:     let shared: SharedRuntimeJournal = journal.clone();
+83:     let mut shard = Shard::new_with_journal(small_config(), shared);
+84:     let Some(workflow) = suspended_workflow() else {
+85:         return;
+86:     };
+87:     let run = super::RunId::new(1001);
+88:     assert_eq!(
+89:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+90:             run: run,
+91:             workflow: workflow,
+92:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+93:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+94:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+95:         }),
+96:         Ok(())
+97:     );
+98:     assert_eq!(shard.tick(), Ok(true));
+99:     assert_eq!(
+100:         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+101:         Ok(())
+102:     );
+103:     assert_eq!(shard.tick(), Ok(true));
+104:     let events = journal.snapshot().expect("journal snapshot should succeed");
+105:     assert!(
+106:         events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None, attempt: 1}),
+107:         "journal should contain RunCancelled event"
+108:     );
+109: }
+110: 
+111: #[test]
+112: fn vb1u88_cancel_emits_run_cancelled_trace_event() {
+113:     let config = small_config();
+114:     let mut shard = Shard::new(config);
+115:     let Some(workflow) = suspended_workflow() else {
+116:         return;
+117:     };
+118:     let run = super::RunId::new(1002);
+119:     assert_eq!(
+120:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+121:             run: run,
+122:             workflow: workflow,
+123:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+124:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+125:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+126:         }),
+127:         Ok(())
+128:     );
+129:     assert_eq!(shard.tick(), Ok(true));
+130:     assert_eq!(
+131:         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+132:         Ok(())
+133:     );
+134:     assert_eq!(shard.tick(), Ok(true));
+135:     let events = shard.trace_ring_mut().drain();
+136:     assert!(
+137:         events.contains(&TraceEvent::RunCancelled { run }),
+138:         "trace should contain RunCancelled event"
+139:     );
+140: }
+141: 
+142: #[test]
+143: fn vb1u88_cancel_unknown_run_does_not_emit_events() {
+144:     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+145:     let shared: SharedRuntimeJournal = journal.clone();
+146:     let mut shard = Shard::new_with_journal(small_config(), shared);
+147:     let before = journal.snapshot().expect("journal snapshot should succeed");
+148:     assert_eq!(
+149:         shard.enqueue(ShardCommand::Cancel {
+150:             run: super::RunId::new(8888),
+151:             reason: None
+152:         }),
+153:         Ok(())
+154:     );
+155:     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+156:     let after = journal.snapshot().expect("journal snapshot should succeed");
+157:     assert_eq!(
+158:         before, after,
+159:         "no journal events should be emitted for unknown run cancel"
+160:     );
+161:     let trace_events = shard.trace_ring_mut().drain();
+162:     let unknown_run = super::RunId::new(8888);
+163:     assert!(
+164:         !trace_events
+165:             .iter()
+166:             .any(|e| matches!(e, TraceEvent::RunCancelled { run } if *run == unknown_run)),
+167:         "no trace RunCancelled event for unknown run"
+168:     );
+169: }
+170: 
+171: #[test]
+172: fn vb1u88_cancel_removes_run_and_releases_frame() {
+173:     let config = small_config();
+174:     let mut shard = Shard::new(config);
+175:     let Some(workflow) = suspended_workflow() else {
+176:         return;
+177:     };
+178:     let run = super::RunId::new(1003);
+179:     assert_eq!(
+180:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {

@@ -1,0 +1,119 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/shard/tests/chunk_024.rs
+181:             run: run,
+182:             workflow: workflow,
+183:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+184:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+185:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+186:         }),
+187:         Ok(())
+188:     );
+189:     assert_eq!(shard.tick(), Ok(true));
+190:     // Pool pre-allocated to capacity (4); one frame in use
+191:     assert_eq!(
+192:         shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+193:         Some(3)
+194:     );
+195:     assert_eq!(
+196:         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+197:         Ok(())
+198:     );
+199:     assert_eq!(shard.tick(), Ok(true));
+200:     assert_eq!(shard.run_state_get(run), None);
+201:     // After cancel, frame returned to pool; all 4 available
+202:     assert_eq!(
+203:         shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+204:         Some(4)
+205:     );
+206:     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+207: }
+208: 
+209: #[test]
+210: fn vb1u88_cancel_removes_pending_timer() {
+211:     let config = small_config();
+212:     let mut shard = Shard::new(config);
+213:     let Some(workflow) = timed_wait_then_finish_workflow() else {
+214:         return;
+215:     };
+216:     let run = super::RunId::new(1004);
+217:     assert_eq!(
+218:         shard.enqueue(ShardCommand::SubmitWithContracts {
+219:             run: run,
+220:             workflow: workflow,
+221:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+222:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+223:         }),
+224:         Ok(())
+225:     );
+226:     assert_eq!(shard.tick(), Ok(true));
+227:     assert_eq!(shard.pending_timer_count(), 1);
+228:     assert_eq!(
+229:         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+230:         Ok(())
+231:     );
+232:     assert_eq!(shard.tick(), Ok(true));
+233:     assert_eq!(shard.pending_timer_count(), 0);
+234: }
+235: 
+236: // ---------------------------------------------------------------------------
+237: // Section 4: Status and Health Reporting
+238: // ---------------------------------------------------------------------------
+239: 
+240: #[test]
+241: fn vb1u88_status_running_when_not_shutting_down() {
+242:     let config = small_config();
+243:     let shard = Shard::new(config);
+244:     let status = shard.status();
+245:     assert_eq!(status.health, super::ShardHealth::Running);
+246:     assert_eq!(status.running, true);
+247:     assert_eq!(status.shutting_down, false);
+248: }
+249: 
+250: #[test]
+251: fn vb1u88_status_shutting_down_after_shutdown_tick() {
+252:     let config = small_config();
+253:     let mut shard = Shard::new(config);
+254:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+255:     assert_eq!(shard.tick(), Ok(false));
+256:     let status = shard.status();
+257:     assert_eq!(status.health, super::ShardHealth::ShuttingDown);
+258:     assert_eq!(status.running, false);
+259:     assert_eq!(status.shutting_down, true);
+260: }
+261: 
+262: #[test]
+263: fn vb1u88_status_command_queue_depth_correct() {
+264:     let config = small_config();
+265:     let shard = Shard::new(config);
+266:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+267:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+268:     let status = shard.status();
+269:     assert_eq!(status.command_queue_depth, 2);
+270:     assert_eq!(status.command_queue_capacity, 16);
+271: }
+272: 
+273: #[test]
+274: fn vb1u88_status_immutable_during_shutdown() {
+275:     let config = small_config();
+276:     let shard = Shard::new(config);
+277:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+278:     let status1 = shard.status();
+279:     let status2 = shard.status();
+280:     assert_eq!(status1.command_queue_depth, status2.command_queue_depth);
+281:     assert_eq!(status1.active_runs, status2.active_runs);
+282: }
+283: 
+284: #[test]
+285: fn vb1u88_is_shutting_down_false_on_new_shard() {
+286:     let config = small_config();
+287:     let shard = Shard::new(config);
+288:     assert_eq!(shard.is_shutting_down(), false);
+289: }
+290: 
+291: #[test]
+292: fn vb1u88_is_shutting_down_true_after_shutdown() {
+293:     let config = small_config();
+294:     let mut shard = Shard::new(config);
+295:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+296:     assert_eq!(shard.tick(), Ok(false));
+297:     assert_eq!(shard.is_shutting_down(), true);
+298: }

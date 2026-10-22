@@ -1,0 +1,181 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/shard/tests/chunk_010.rs
+1: #[test]
+2: fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() {
+3:     // Given a shard where a run finished and returned its frame to the pool
+4:     let config = small_config();
+5:     let mut shard = Shard::new(config);
+6:     let Some(workflow) = finished_workflow() else {
+7:         return;
+8:     };
+9:     assert_eq!(
+10:         shard.enqueue(ShardCommand::Submit {
+11:             run: super::RunId::new(401),
+12:             workflow: workflow,
+13:             caps: vb_core::capability::CapabilitySet::empty()
+14:         }),
+15:         Ok(())
+16:     );
+17:     assert_eq!(shard.tick(), Ok(true));
+18:     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+19:     // When submitting a new run with the same workflow dimensions
+20:     let Some(workflow2) = finished_workflow() else {
+21:         return;
+22:     };
+23:     assert_eq!(
+24:         shard.enqueue(ShardCommand::SubmitWithContracts {
+25:             run: super::RunId::new(402),
+26:             workflow: workflow2,
+27:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+28:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+29:         }),
+30:         Ok(())
+31:     );
+32:     assert_eq!(shard.tick(), Ok(true));
+33:     // Then the second run also completes
+34:     assert_eq!(shard.counters().snapshot().runs_completed, 2);
+35:     // Both runs are finished; pool has all pre-allocated frames available
+36:     assert_eq!(
+37:         shard.frame_pools.get(&(2, 1)).map(FramePool::available),
+38:         Some(4)
+39:     );
+40: }
+41: 
+42: #[test]
+43: fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
+44:     // Given a shard with max_active_runs = 3
+45:     let config = ShardConfig {
+46:         command_queue_capacity: 16,
+47:         trace_capacity: 16,
+48:         step_budget_per_tick: 4,
+49:         max_active_runs: 3,
+50:         policy: vb_core::policy::RuntimePolicy::Relaxed,
+51:     };
+52:     let mut shard = Shard::new(config);
+53:     // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
+54:     let Some(workflow) = suspended_workflow() else {
+55:         return;
+56:     };
+57:     assert_eq!(
+58:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+59:             run: super::RunId::new(501),
+60:             workflow: workflow,
+61:             caps: crate::shard::tests::test_fixtures::contract_capability_for(
+62:                 vb_core::ActionId::new(0)
+63:             ),
+64:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+65:             action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+66:                 vb_core::ActionId::new(0)
+67:             )
+68:         }),
+69:         Ok(())
+70:     );
+71:     assert_eq!(shard.tick(), Ok(true));
+72:     let Some(workflow) = suspended_workflow() else {
+73:         return;
+74:     };
+75:     assert_eq!(
+76:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+77:             run: super::RunId::new(502),
+78:             workflow: workflow,
+79:             caps: crate::shard::tests::test_fixtures::contract_capability_for(
+80:                 vb_core::ActionId::new(0)
+81:             ),
+82:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+83:             action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+84:                 vb_core::ActionId::new(0)
+85:             )
+86:         }),
+87:         Ok(())
+88:     );
+89:     assert_eq!(shard.tick(), Ok(true));
+90:     let Some(workflow) = suspended_workflow() else {
+91:         return;
+92:     };
+93:     assert_eq!(
+94:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+95:             run: super::RunId::new(503),
+96:             workflow: workflow,
+97:             caps: crate::shard::tests::test_fixtures::contract_capability_for(
+98:                 vb_core::ActionId::new(0)
+99:             ),
+100:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+101:             action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+102:                 vb_core::ActionId::new(0)
+103:             )
+104:         }),
+105:         Ok(())
+106:     );
+107:     assert_eq!(shard.tick(), Ok(true));
+108:     // Then all 3 are submitted successfully
+109:     assert_eq!(shard.counters().snapshot().runs_submitted, 3);
+110:     // And submitting a 4th returns ActiveRunCapacityExceeded
+111:     let Some(workflow) = suspended_workflow() else {
+112:         return;
+113:     };
+114:     assert_eq!(
+115:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+116:             run: super::RunId::new(504),
+117:             workflow: workflow,
+118:             caps: crate::shard::tests::test_fixtures::contract_capability_for(
+119:                 vb_core::ActionId::new(0)
+120:             ),
+121:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+122:             action_contracts: crate::shard::tests::test_fixtures::contracts_through(
+123:                 vb_core::ActionId::new(0)
+124:             )
+125:         }),
+126:         Ok(())
+127:     );
+128:     assert_eq!(
+129:         shard.tick(),
+130:         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 3 })
+131:     );
+132: }
+133: 
+134: #[test]
+135: fn shard_inspect_preserves_latest_response_overwriting_previous() {
+136:     // Given a shard with two active runs
+137:     let config = small_config();
+138:     let mut shard = Shard::new(config);
+139:     let Some(wf1) = suspended_workflow() else {
+140:         return;
+141:     };
+142:     let Some(wf2) = suspended_workflow() else {
+143:         return;
+144:     };
+145:     let run1 = super::RunId::new(600);
+146:     let run2 = super::RunId::new(601);
+147:     assert_eq!(
+148:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+149:             run: run1,
+150:             workflow: wf1,
+151:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+152:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+153:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+154:         }),
+155:         Ok(())
+156:     );
+157:     assert_eq!(shard.tick(), Ok(true));
+158:     assert_eq!(
+159:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+160:             run: run2,
+161:             workflow: wf2,
+162:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+163:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+164:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+165:         }),
+166:         Ok(())
+167:     );
+168:     assert_eq!(shard.tick(), Ok(true));
+169:     // When inspecting run1 then run2 without taking the first response
+170:     assert_eq!(
+171:         shard.enqueue(ShardCommand::Inspect {
+172:             run: run1,
+173:             correlation: 1,
+174:         }),
+175:         Ok(())
+176:     );
+177:     assert_eq!(shard.tick(), Ok(true));
+178:     assert_eq!(
+179:         shard.enqueue(ShardCommand::Inspect {
+180:             run: run2,

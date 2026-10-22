@@ -1,0 +1,129 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/shard/tests/chunk_003.rs
+181: 
+182: #[test]
+183: fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), String> {
+184:     let config = small_config();
+185:     let mut shard = Shard::new(config);
+186:     let workflow = workflow_fixture(timed_wait_then_finish_workflow(), "timed_wait_then_finish")?;
+187:     let run = super::RunId::new(13);
+188: 
+189:     assert_eq!(
+190:         shard.enqueue(ShardCommand::SubmitWithContracts {
+191:             run: run,
+192:             workflow: workflow,
+193:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+194:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+195:         }),
+196:         Ok(())
+197:     );
+198:     assert_eq!(shard.tick(), Ok(true));
+199:     assert_eq!(shard.pending_timer_count(), 1);
+200:     assert_eq!(
+201:         timer_command(&shard, run).map(|command| shard.enqueue(command)),
+202:         Some(Ok(()))
+203:     );
+204:     assert_eq!(shard.tick(), Ok(true));
+205: 
+206:     assert_eq!(shard.pending_timer_count(), 0);
+207:     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+208:     Ok(())
+209: }
+210: 
+211: #[test]
+212: fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), String> {
+213:     let config = small_config();
+214:     let mut shard = Shard::new(config);
+215:     let workflow = workflow_fixture(
+216:         timed_ask_without_answer_workflow(),
+217:         "timed_ask_without_answer",
+218:     )?;
+219:     let run = super::RunId::new(14);
+220: 
+221:     assert_eq!(
+222:         shard.enqueue(ShardCommand::SubmitWithContracts {
+223:             run: run,
+224:             workflow: workflow,
+225:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+226:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+227:         }),
+228:         Ok(())
+229:     );
+230:     assert_eq!(shard.tick(), Ok(true));
+231:     assert_eq!(shard.pending_timer_count(), 1);
+232:     assert_eq!(
+233:         timer_command(&shard, run).map(|command| shard.enqueue(command)),
+234:         Some(Ok(()))
+235:     );
+236:     assert_eq!(shard.tick(), Ok(true));
+237: 
+238:     assert_eq!(shard.pending_timer_count(), 0);
+239:     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+240:     Ok(())
+241: }
+242: 
+243: #[test]
+244: fn enqueue_returns_queue_full_when_capacity_exceeded() {
+245:     // Given a shard with very small command queue
+246:     let config = ShardConfig {
+247:         command_queue_capacity: 2,
+248:         trace_capacity: 4,
+249:         step_budget_per_tick: 4,
+250:         max_active_runs: 4,
+251:         policy: vb_core::policy::RuntimePolicy::Relaxed,
+252:     };
+253:     let shard = Shard::new(config);
+254:     // When enqueuing more commands than capacity allows
+255:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+256:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+257:     // Then the third enqueue returns QueueFull
+258:     assert_eq!(
+259:         shard.enqueue(ShardCommand::Shutdown),
+260:         Err(RuntimeError::QueueFull)
+261:     );
+262: }
+263: 
+264: #[test]
+265: fn tick_after_shutdown_returns_false() {
+266:     // Given a shard that has received a shutdown command
+267:     let config = small_config();
+268:     let mut shard = Shard::new(config);
+269:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+270:     // When ticking after shutdown
+271:     assert_eq!(shard.tick(), Ok(false));
+272:     // Then subsequent tick also returns false (shutting_down flag is set)
+273:     assert_eq!(shard.tick(), Ok(false));
+274: }
+275: 
+276: #[test]
+277: fn submit_returns_run_already_exists_for_duplicate() -> Result<(), String> {
+278:     // Given a shard with an active run
+279:     let config = small_config();
+280:     let mut shard = Shard::new(config);
+281:     let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
+282:     let run = super::RunId::new(42);
+283:     assert_eq!(
+284:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+285:             run,
+286:             workflow: workflow.clone(),
+287:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+288:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+289:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+290:         }),
+291:         Ok(())
+292:     );
+293:     assert_eq!(shard.tick(), Ok(true));
+294:     // When submitting the same run ID again
+295:     assert_eq!(
+296:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+297:             run: run,
+298:             workflow: workflow,
+299:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+300:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+301:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+302:         }),
+303:         Ok(())
+304:     );
+305:     // Then tick returns RunAlreadyExists
+306:     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+307:     Ok(())
+308: }
