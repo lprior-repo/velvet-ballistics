@@ -22,6 +22,7 @@ use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
+use vb_runtime::RuntimeError;
 use vb_runtime::admission::RunAdmission;
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::run_checkpoint;
@@ -623,30 +624,13 @@ fn tampered_policy_pin_rejected_by_recover_retry() -> Result<(), String> {
     Ok(())
 }
 
-/// Gap 1 (vb-h7rex): The checkpoint validation in
-/// validate_retry_checkpoint_against_durable_chain checks that the supplied
-/// checkpoint matches the durable checkpoint by value equality. The admission
-/// validation (validate_recovered_policy_pin) is a separate check that hydrates
-/// the admission from the journal's RunAdmission events.
-///
-/// To trigger admission_policy_pin_mismatch, the journal's RunAdmission event
-/// would need a wrong pin while the checkpoint validation passes. But since
-/// the RunAdmission event is written before the checkpoint and cannot be
-/// modified with the PUBLIC append_strict API, this test scenario is not
-/// constructible with the current journal semantics.
-///
-/// This test documents the limitation: we forge the checkpoint's admission pin
-/// and persist it as the durable checkpoint. The checkpoint validation passes
-/// (supplied matches durable). But because the admission validation hydrates
-/// from the journal's RunAdmission event (which has the correct pin), recovery
-/// succeeds — the admission_policy_pin_mismatch path is never reached.
-///
-/// This suggests the validate_retry_checkpoint_against_durable_chain should
-/// additionally validate the checkpoint's admission policy pin, or the recovery
-/// flow should re-derive the admission from the checkpoint rather than the
-/// journal events.
+/// vb-h7rex: A retry checkpoint whose admission policy pin differs from the
+/// durable artifact's policy_digest must be rejected by recover_retry with
+/// the admission_policy_pin_mismatch reason. The checkpoint validation
+/// validates value equality, but the shard must additionally validate the
+/// admission policy pin before restoring run state.
 #[test]
-fn admission_policy_pin_mismatch_not_reachable_with_current_semantics() -> Result<(), String> {
+fn admission_policy_pin_mismatch_rejected_by_recover_retry() -> Result<(), String> {
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let path = dir.path().to_path_buf();
 
@@ -654,12 +638,12 @@ fn admission_policy_pin_mismatch_not_reachable_with_current_semantics() -> Resul
     let policy_digest =
         vb_storage::admission::compute_policy_digest(&workflow).map_err(|e| e.to_string())?;
     let contracts = contracts()?;
-    let run = RunId::new(100_004);
+    let run = RunId::new(100_005);
 
     // Build shard config for strict policy.
     let config = shard_config_for(RuntimePolicy::Strict);
 
-    // ---- Scope A: produce durable failure + checkpoint with real pin ----
+    // ---- Scope A: produce durable failure + checkpoint with correct pin ----
     let original_checkpoint = {
         let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
 
@@ -717,6 +701,10 @@ fn admission_policy_pin_mismatch_not_reachable_with_current_semantics() -> Resul
     };
 
     // ---- Scope B: forge a checkpoint with a wrong policy pin ----
+    // We use the original pin as the forged pin value because the shard will
+    // validate the checkpoint's policy pin against the artifact's policy_digest.
+    // The checkpoint validation validates value equality (supplied matches durable),
+    // so we must persist the forged checkpoint as the durable checkpoint.
     let original_admission = original_checkpoint
         .admission
         .as_ref()
@@ -729,66 +717,118 @@ fn admission_policy_pin_mismatch_not_reachable_with_current_semantics() -> Resul
         return Err("forged pin must differ from the real policy digest".to_string());
     }
 
+    // Verify the forged admission has the correct pin.
+    match forged_admission.policy_pin() {
+        vb_storage::RunPolicyPin::Pinned(pin) => {
+            if pin != forged_pin {
+                return Err(format!(
+                    "forged admission pin {:?} != expected {:?}",
+                    pin, forged_pin
+                ));
+            }
+        }
+        other => {
+            return Err(format!(
+                "forged admission policy_pin is not Pinned: {other:?}"
+            ));
+        }
+    }
+
+    // The forged checkpoint must have an incremented run_attempt and prior_seq
+    // pointing to a new RunFailed event, so the durable chain validation passes.
+    let next_attempt = original_checkpoint
+        .run_attempt
+        .checked_add(1)
+        .ok_or_else(|| "run_attempt overflow".to_string())?;
     let mut forged_checkpoint = original_checkpoint.clone();
     forged_checkpoint.admission = Some(forged_admission);
+    forged_checkpoint.run_attempt = next_attempt;
 
     // ---- Scope C: persist the forged checkpoint as the durable checkpoint ----
     let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
     let next_seq = next_seq_after(&events)?;
 
-    // Update the forged checkpoint's prior_seq to match its journal position.
-    forged_checkpoint.prior_seq = next_seq.get().saturating_sub(1);
+    // Construct the new RunFailed event (attempt = original run_attempt).
+    let run_failed_seq = next_seq;
+    let run_failed_event = JournalEvent::RunFailedEvent {
+        run,
+        seq: run_failed_seq,
+        attempt: original_checkpoint.run_attempt.get(),
+    };
+    journal
+        .append_strict(&run_failed_event)
+        .map_err(|e| format!("failed to append new RunFailed event: {e}"))?;
 
+    // Update the forged checkpoint's prior_seq to the new RunFailed seq.
+    forged_checkpoint.prior_seq = run_failed_seq.get();
+
+    // Append the forged checkpoint.
+    let checkpoint_seq = next_seq_after(&journal.events_for_run(run).map_err(|e| e.to_string())?)?;
     let forged_payload =
         postcard::to_allocvec(&forged_checkpoint).map_err(|e| format!("encode failed: {e}"))?;
     let forged_payload_digest = blake3::hash(&forged_payload);
-
     let forged_checkpoint_event = JournalEvent::RetryCheckpoint {
         run,
-        seq: next_seq,
-        attempt: original_checkpoint.run_attempt.get(),
-        step: original_checkpoint.retry_step,
+        seq: checkpoint_seq,
+        attempt: next_attempt.get(),
+        step: forged_checkpoint.retry_step,
         payload_digest: *forged_payload_digest.as_bytes(),
         payload: forged_payload,
     };
-
     journal
         .append_strict(&forged_checkpoint_event)
         .map_err(|e| format!("failed to append forged checkpoint: {e}"))?;
 
-    let next_seq_value = next_seq.get().checked_add(1).ok_or("sequence overflow")?;
-    let next_seq_after_forged = EventSeq::new(next_seq_value);
+    let next_seq_for_recovery =
+        next_seq_after(&journal.events_for_run(run).map_err(|e| e.to_string())?)?;
+
+    // Record the journal state before recovery to verify no mutation on rejection.
+    let events_before = journal.events_for_run(run).map_err(|e| e.to_string())?;
+    let event_count_before = events_before.len();
 
     {
         let shared = runtime_journal_for_policy(journal.clone(), RuntimePolicy::Strict)?;
-        let runtime = Runtime::new(shard_count()?, config, shared);
+        let mut runtime = Runtime::new(shard_count()?, config, shared);
 
-        // Call recover_retry with the forged checkpoint. The checkpoint
-        // validation passes (supplied matches durable). Recovery proceeds
-        // and hydrates the admission from the journal's RunAdmission event,
-        // which has the correct pin — so the admission_policy_pin_mismatch
-        // path is never reached.
-        let result = runtime.recover_retry(run, forged_checkpoint, next_seq_after_forged);
+        // recover_retry enqueues the command; shard validates on processing.
+        runtime
+            .recover_retry(run, forged_checkpoint, next_seq_for_recovery)
+            .map_err(|e| format!("recover_retry failed: {e}"))?;
 
-        // The result is success (or a different error), not
-        // admission_policy_pin_mismatch. This documents the production
-        // limitation.
-        match result {
-            Ok(()) => {
-                // Recovery succeeded because the hydrated admission
-                // (from journal's RunAdmission event) has the correct pin.
-            }
-            Err(runtime_error) => {
-                let error_debug = format!("{runtime_error:?}");
-                if error_debug.contains("admission_policy_pin_mismatch") {
-                    // If we ever reach here, the production bug is fixed.
+        // The forged checkpoint matches the durable checkpoint (value equality),
+        // so validate_retry_checkpoint_against_durable_chain passes. But the shard
+        // must reject it during tick processing due to the admission policy pin mismatch.
+        let result = runtime.tick_all();
+        let Err(runtime_error) = result else {
+            return Err("forged policy pin must be rejected during tick processing".to_string());
+        };
+
+        // Verify the error is RecoveryCannotResume with the exact expected reason.
+        match runtime_error {
+            RuntimeError::RecoveryCannotResume { reason } => {
+                if reason != "admission_policy_pin_mismatch" {
+                    return Err(format!(
+                        "expected reason 'admission_policy_pin_mismatch', got: {reason}"
+                    ));
                 }
+            }
+            other => {
+                return Err(format!(
+                    "expected RecoveryCannotResume error, got: {other:?}"
+                ));
             }
         }
     }
 
-    drop(journal);
+    // Verify the journal was not mutated by the failed recovery.
+    let events_after = journal.events_for_run(run).map_err(|e| e.to_string())?;
+    if events_after.len() != event_count_before {
+        return Err(format!(
+            "journal must not be mutated by rejected recovery; before={event_count_before}, after={}",
+            events_after.len()
+        ));
+    }
 
     Ok(())
 }

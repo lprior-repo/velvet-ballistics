@@ -7,7 +7,7 @@
 
 use vb_core::{RunId, WorkflowDigest};
 use vb_storage::{
-    JournalError, RecordKind, RunPolicyPin,
+    RecordKind, RunPolicyPin,
     codec::{decode_journal_event, encode_record},
     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
     events::JournalEvent,

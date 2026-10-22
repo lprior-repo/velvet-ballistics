@@ -399,10 +399,32 @@ impl Shard {
             });
         }
 
-        // Step 4: Seed journal sequence from recovered next_seq
+        // Step 4: Validate the checkpoint's admission policy pin against the
+        // loaded artifact's durable policy_digest before any restore mutation.
+        // This catches admission_policy_pin_mismatch that the separate full
+        // recovery flow validates via validate_recovered_admission_evidence.
+        if let Some(checkpoint) = &retry_checkpoint {
+            if let Some(admission) = &checkpoint.admission {
+                match admission.policy_pin() {
+                    vb_storage::RunPolicyPin::Unverified => {
+                        // Legacy or relaxed admission: no actual policy identity bound.
+                        // Accept as historical record; cannot authorize live effects.
+                    }
+                    vb_storage::RunPolicyPin::Pinned(pin_digest) => {
+                        if pin_digest != artifact.policy_digest {
+                            return Err(RuntimeError::RecoveryCannotResume {
+                                reason: String::from("admission_policy_pin_mismatch"),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 5: Seed journal sequence from recovered next_seq
         self.seed_journal_sequence(run, next_seq)?;
 
-        // Step 5: Restore the full validated checkpoint when this is a retry.
+        // Step 6: Restore the full validated checkpoint when this is a retry.
         // The checkpoint's accepted artifact digest and action registry are
         // checked against the independently loaded artifact before run state mutates.
         let registered_execution = if boundary.kind()
@@ -426,7 +448,7 @@ impl Shard {
             self.prepare_run_slots(run)?;
             state
         } else {
-            // Step 6: Build initial admission and recover the legacy resumable frame.
+            // Step 7: Build initial admission and recover the legacy resumable frame.
             let granted_caps = vb_core::capability::CapabilitySet::from_grants(
                 artifact.required_capabilities.clone(),
             );
