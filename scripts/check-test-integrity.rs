@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -26,6 +26,12 @@ struct RootInfo {
 #[derive(Debug, Clone)]
 struct ChangedEntry {
     status: u8,
+    old_path: String,
+    new_path: String,
+}
+
+#[derive(Debug, Clone)]
+struct RenamePair {
     old_path: String,
     new_path: String,
 }
@@ -226,6 +232,31 @@ fn validate_base_revision(root: &Path, base: &str, vcs: Vcs) -> Result<(), Strin
     .map_err(|error| format!("invalid base revision {base:?}: {error}"))
 }
 
+fn resolve_base_hash(root: &Path, base: &str, vcs: Vcs) -> Result<String, String> {
+    validate_base_revision(root, base, vcs)?;
+    match vcs {
+        Vcs::Git => {
+            let commit = format!("{base}^{{commit}}");
+            let hash = git_output(&["rev-parse", "--verify", &commit], root)?
+                .trim()
+                .to_owned();
+            if hash.is_empty() {
+                return Err(format!("could not resolve base {base:?} to a commit hash"));
+            }
+            Ok(hash)
+        }
+        Vcs::Jj => {
+            let hash = jj_output(&["log", "--no-graph", "-r", base, "-T", "commit_id"], root)?
+                .trim()
+                .to_owned();
+            if hash.is_empty() {
+                return Err(format!("could not resolve base {base:?} to a commit hash"));
+            }
+            Ok(hash)
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Path classification
 // ---------------------------------------------------------------------------
@@ -422,6 +453,125 @@ fn changed_files(root: &Path, base: &str, vcs: Vcs) -> Result<Vec<ChangedEntry>,
 }
 
 // ---------------------------------------------------------------------------
+// Rename-pair enumeration (sound old/new mapping via --find-renames)
+// ---------------------------------------------------------------------------
+
+fn git_rename_pairs(root: &Path, base: &str) -> Result<Vec<RenamePair>, String> {
+    let bytes = git_output_bytes(
+        &["diff", "--name-status", "-z", "--find-renames", base, "--"],
+        root,
+    )?;
+    let mut segments = bytes.split(|&byte| byte == 0);
+    let mut pairs = Vec::new();
+    while let Some(status_seg) = segments.next() {
+        if status_seg.is_empty() {
+            continue;
+        }
+        let status = match status_seg.first() {
+            Some(&byte) => byte,
+            None => continue,
+        };
+        match status {
+            b'R' => {
+                let old_seg = segments.next().ok_or_else(|| {
+                    "malformed git rename output: missing old path".to_owned()
+                })?;
+                let new_seg = segments.next().ok_or_else(|| {
+                    "malformed git rename output: missing new path".to_owned()
+                })?;
+                if old_seg.is_empty() || new_seg.is_empty() {
+                    return Err("malformed git rename output: empty path".to_owned());
+                }
+                let old_path = String::from_utf8(old_seg.to_vec())
+                    .map_err(|_| "rename old path is not UTF-8".to_owned())?;
+                let new_path = String::from_utf8(new_seg.to_vec())
+                    .map_err(|_| "rename new path is not UTF-8".to_owned())?;
+                pairs.push(RenamePair {
+                    old_path,
+                    new_path,
+                });
+            }
+            b'A' | b'M' | b'D' | b'T' | b'U' | b'X' | b'B' => {
+                let _ = segments.next().ok_or_else(|| {
+                    "malformed git name-status output: missing path".to_owned()
+                })?;
+            }
+            other => {
+                return Err(format!(
+                    "unsupported git name-status status byte 0x{other:02x} (fail-closed)"
+                ));
+            }
+        }
+    }
+    // Ambiguity guard: a rename source/destination must be unique.
+    let mut seen_old = BTreeSet::new();
+    let mut seen_new = BTreeSet::new();
+    for pair in &pairs {
+        if !seen_old.insert(pair.old_path.clone()) {
+            return Err(format!(
+                "ambiguous rename: old path {} appears in multiple rename pairs",
+                pair.old_path
+            ));
+        }
+        if !seen_new.insert(pair.new_path.clone()) {
+            return Err(format!(
+                "ambiguous rename: new path {} appears in multiple rename pairs",
+                pair.new_path
+            ));
+        }
+    }
+    Ok(pairs)
+}
+
+fn jj_rename_pairs(root: &Path, base: &str) -> Result<Vec<RenamePair>, String> {
+    let text = jj_output(&["diff", "--types", "--from", base, "--to", "@"], root)?;
+    let mut pairs = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if trimmed.contains('{') || trimmed.contains('}') || trimmed.contains("=>") {
+            // jj renames surface as `{old => new}` (optionally after a type code).
+            let Some((old, new)) = trimmed.rsplit_once("=>") else {
+                return Err(format!(
+                    "ambiguous jj --types rename syntax: {trimmed:?} (fail-closed)"
+                ));
+            };
+            let old = old.trim();
+            let new = new.trim();
+            let old_path = old
+                .strip_prefix('{')
+                .map(str::trim)
+                .or_else(|| old.split_whitespace().last())
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| {
+                    format!("malformed jj --types rename old path: {trimmed:?}")
+                })?;
+            let new_path = new
+                .strip_suffix('}')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| {
+                    format!("malformed jj --types rename new path: {trimmed:?}")
+                })?;
+            pairs.push(RenamePair {
+                old_path: old_path.to_owned(),
+                new_path: new_path.to_owned(),
+            });
+        }
+    }
+    Ok(pairs)
+}
+
+fn rename_pairs(root: &Path, base: &str, vcs: Vcs) -> Result<Vec<RenamePair>, String> {
+    match vcs {
+        Vcs::Git => git_rename_pairs(root, base),
+        Vcs::Jj => jj_rename_pairs(root, base),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // File content access (raw bytes) and blob resolution
 // ---------------------------------------------------------------------------
 
@@ -434,16 +584,6 @@ fn base_file_bytes(root: &Path, base: &str, path: &str, vcs: Vcs) -> Option<Vec<
 
 fn current_file_bytes(root: &Path, path: &str) -> Option<Vec<u8>> {
     fs::read(root.join(path)).ok()
-}
-
-fn base_file_has_tests(root: &Path, base: &str, path: &str, vcs: Vcs) -> bool {
-    let Some(bytes) = base_file_bytes(root, base, path, vcs) else {
-        return false;
-    };
-    let Ok(text) = String::from_utf8(bytes) else {
-        return false;
-    };
-    has_test_decl(&text) || has_exact_assertion(&text)
 }
 
 fn resolve_base_blob(root: &Path, base: &str, path: &str) -> Result<Option<String>, String> {
@@ -508,7 +648,7 @@ fn path_diff_bytes(root: &Path, base: &str, path: &str, vcs: Vcs) -> Result<Vec<
     }
 }
 
-fn scan_diff(diff: &str, path: &str) -> Vec<Finding> {
+fn scan_diff(diff: &str, removed_path: &str, added_path: &str) -> Vec<Finding> {
     let mut removed_test_decl = 0usize;
     let mut added_test_decl = 0usize;
     let mut removed_exact = 0usize;
@@ -531,17 +671,17 @@ fn scan_diff(diff: &str, path: &str) -> Vec<Finding> {
                 if has_test_decl(payload) {
                     added_test_decl += 1;
                 }
-                if is_behavior_test_path(path) && has_ignore_or_skip(payload) {
+                if is_behavior_test_path(added_path) && has_ignore_or_skip(payload) {
                     findings.push(Finding {
                         kind: "IgnoredOrSkippedTest",
-                        path: path.to_owned(),
+                        path: added_path.to_owned(),
                         detail: payload.trim().to_owned(),
                     });
                 }
-                if is_behavior_test_path(path) && has_compile_only(payload) {
+                if is_behavior_test_path(added_path) && has_compile_only(payload) {
                     findings.push(Finding {
                         kind: "CompileOnlyReplacement",
-                        path: path.to_owned(),
+                        path: added_path.to_owned(),
                         detail: payload.trim().to_owned(),
                     });
                 }
@@ -558,7 +698,7 @@ fn scan_diff(diff: &str, path: &str) -> Vec<Finding> {
     if added_test_decl < removed_test_decl {
         findings.push(Finding {
             kind: "DeletedTestDeclaration",
-            path: path.to_owned(),
+            path: removed_path.to_owned(),
             detail: format!(
                 "removed_declarations={removed_test_decl} added_declarations={added_test_decl}"
             ),
@@ -567,7 +707,7 @@ fn scan_diff(diff: &str, path: &str) -> Vec<Finding> {
     if added_weak > 0 || added_exact < removed_exact {
         findings.push(Finding {
             kind: "WeakenedAssertion",
-            path: path.to_owned(),
+            path: removed_path.to_owned(),
             detail: format!(
                 "removed_exact={removed_exact} added_exact={added_exact} added_weak={added_weak}"
             ),
@@ -583,19 +723,29 @@ fn scan_changed_entry(
     entry: &ChangedEntry,
     vcs: Vcs,
 ) -> Result<Vec<Finding>, String> {
-    let path = if entry.status == b'D' {
+    let is_delete = entry.status == b'D';
+    let path = if is_delete {
         entry.old_path.as_str()
     } else {
         entry.new_path.as_str()
     };
     let is_test = is_test_path(path);
-    let base_has_tests = base_file_has_tests(root, base, path, vcs);
+
+    // An added path has no base content; only delete/modify read the base blob.
+    let base_bytes = if entry.status == b'A' {
+        None
+    } else {
+        base_file_bytes(root, base, path, vcs)
+    };
+    let base_has_tests = base_bytes.as_ref().map_or(false, |bytes| {
+        std::str::from_utf8(bytes)
+            .map_or(false, |text| has_test_decl(text) || has_exact_assertion(text))
+    });
     if !is_test && !base_has_tests {
         return Ok(Vec::new());
     }
 
-    let base_bytes = base_file_bytes(root, base, path, vcs);
-    let current_bytes = if entry.status == b'D' {
+    let current_bytes = if is_delete {
         None
     } else {
         current_file_bytes(root, path)
@@ -625,108 +775,172 @@ fn scan_changed_entry(
             }]);
         }
     };
-    Ok(scan_diff(&text, path))
-}
-
-fn scan_deleted_files(
-    root: &Path,
-    base: &str,
-    entries: &[ChangedEntry],
-    relocated_old: &BTreeSet<String>,
-    vcs: Vcs,
-) -> Vec<Finding> {
-    entries
-        .iter()
-        .filter(|entry| entry.status == b'D')
-        .filter(|entry| !relocated_old.contains(&entry.old_path))
-        .filter(|entry| {
-            is_test_path(&entry.old_path) || base_file_has_tests(root, base, &entry.old_path, vcs)
-        })
-        .map(|entry| Finding {
+    let mut findings = scan_diff(&text, path, path);
+    if is_delete {
+        findings.push(Finding {
             kind: "DeletedTestFile",
-            path: entry.old_path.clone(),
+            path: path.to_owned(),
             detail: "deleted file contained tests or test assertions".to_owned(),
-        })
-        .collect()
+        });
+    }
+    Ok(findings)
 }
 
-// A byte-identical move that preserves the path's test classification is a
-// relocation, not a deletion: the test still exists, unchanged, at the new
-// path. Only exact byte identity plus preserved classification counts; a
-// modified rename must still surface its weakening/skip findings, and a move
-// out of a test path into a non-test path still fails.
-fn collect_relocations(
+fn content_has_tests(bytes: &[u8]) -> bool {
+    std::str::from_utf8(bytes)
+        .map_or(false, |text| has_test_decl(text) || has_exact_assertion(text))
+}
+
+fn count_signals(text: &str) -> (usize, usize) {
+    let mut decls = 0usize;
+    let mut exact = 0usize;
+    for line in text.lines() {
+        if has_test_decl(line) {
+            decls += 1;
+        }
+        if has_exact_assertion(line) {
+            exact += 1;
+        }
+    }
+    (decls, exact)
+}
+
+fn deletion_findings(path: &str, base_bytes: Option<&[u8]>) -> Vec<Finding> {
+    let mut findings = vec![Finding {
+        kind: "DeletedTestFile",
+        path: path.to_owned(),
+        detail: "deleted file contained tests or test assertions".to_owned(),
+    }];
+    if let Some(bytes) = base_bytes {
+        if let Ok(text) = std::str::from_utf8(bytes) {
+            let (decls, exact) = count_signals(text);
+            if decls > 0 {
+                findings.push(Finding {
+                    kind: "DeletedTestDeclaration",
+                    path: path.to_owned(),
+                    detail: format!("removed_declarations={decls} added_declarations=0"),
+                });
+            }
+            if exact > 0 {
+                findings.push(Finding {
+                    kind: "WeakenedAssertion",
+                    path: path.to_owned(),
+                    detail: format!("removed_exact={exact} added_exact=0 added_weak=0"),
+                });
+            }
+        }
+    }
+    findings
+}
+
+fn rename_pair_diff_bytes(
     root: &Path,
     base: &str,
-    entries: &[ChangedEntry],
+    old: &str,
+    new: &str,
     vcs: Vcs,
-) -> (BTreeSet<String>, BTreeSet<String>) {
-    // Cache raw bytes up front so the byte-identity comparison never re-reads
-    // a file or re-spawns git inside the O(D * A) pairing loop.
-    let mut deleted: Vec<(String, bool, Vec<u8>)> = Vec::new();
-    for entry in entries.iter().filter(|entry| entry.status == b'D') {
-        if !is_test_path(&entry.old_path) && !base_file_has_tests(root, base, &entry.old_path, vcs)
-        {
-            continue;
-        }
-        if let Some(bytes) = base_file_bytes(root, base, &entry.old_path, vcs) {
-            deleted.push((entry.old_path.clone(), is_test_path(&entry.old_path), bytes));
-        }
+) -> Result<Vec<u8>, String> {
+    match vcs {
+        Vcs::Git => git_output_bytes(
+            &[
+                "diff",
+                "--find-renames",
+                "--text",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--unified=0",
+                base,
+                "--",
+                old,
+                new,
+            ],
+            root,
+        ),
+        Vcs::Jj => Err(format!(
+            "jj per-pair rename diff for {old} -> {new} is unsupported (fail-closed)"
+        )),
     }
-    let mut added: Vec<(String, bool, Vec<u8>)> = Vec::new();
-    for entry in entries.iter().filter(|entry| entry.status == b'A') {
-        if let Some(bytes) = current_file_bytes(root, &entry.new_path) {
-            added.push((entry.new_path.clone(), is_test_path(&entry.new_path), bytes));
-        }
+}
+
+fn scan_rename_pair(
+    root: &Path,
+    base: &str,
+    pair: &RenamePair,
+    vcs: Vcs,
+) -> Result<Vec<Finding>, String> {
+    let old = &pair.old_path;
+    let new = &pair.new_path;
+    let old_is_test = is_test_path(old);
+    let old_bytes = base_file_bytes(root, base, old, vcs);
+    let old_has_tests = old_bytes.as_ref().map_or(false, |b| content_has_tests(b));
+    if !old_is_test && !old_has_tests {
+        // Nothing on the old side to protect: a pure non-test move or a test
+        // promotion whose source had no tests.
+        return Ok(Vec::new());
     }
 
-    let mut old_matches: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    let mut new_matches: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for (old_path, old_is_test, old_bytes) in &deleted {
-        for (new_path, new_is_test, new_bytes) in &added {
-            if old_is_test != new_is_test {
-                continue;
-            }
-            if old_bytes != new_bytes {
-                continue;
-            }
-            old_matches
-                .entry(old_path.clone())
-                .or_default()
-                .push(new_path.clone());
-            new_matches
-                .entry(new_path.clone())
-                .or_default()
-                .push(old_path.clone());
-        }
+    let new_bytes = current_file_bytes(root, new);
+    let new_is_test = is_test_path(new);
+
+    // Strict UTF-8/NUL validation BEFORE any relocation skip, so an identical
+    // invalid-Rust move still fails rather than being silently dropped.
+    let old_invalid = old_bytes
+        .as_ref()
+        .map_or(false, |b| std::str::from_utf8(b).is_err());
+    let new_invalid = new_bytes
+        .as_ref()
+        .map_or(false, |b| std::str::from_utf8(b).is_err());
+    if old_invalid || new_invalid {
+        return Ok(vec![Finding {
+            kind: "NonUtf8TestFile",
+            path: old.clone(),
+            detail: "relevant test file contains non-UTF8 bytes".to_owned(),
+        }]);
     }
-    let mut relocated_old = BTreeSet::new();
-    let mut relocated_new = BTreeSet::new();
-    for (old, news) in &old_matches {
-        if news.len() != 1 {
-            continue;
-        }
-        let new = &news[0];
-        if new_matches.get(new).is_some_and(|olds| olds.len() == 1) {
-            relocated_old.insert(old.clone());
-            relocated_new.insert(new.clone());
-        }
+
+    // A move out of a test path into a non-test path (archive) always loses
+    // the test's location, even at 100% similarity or with no body hunks.
+    if old_is_test && !new_is_test {
+        return Ok(deletion_findings(old, old_bytes.as_deref()));
     }
-    (relocated_old, relocated_new)
+
+    // Test-to-test relocation (or inline-test move): an exact byte move is a
+    // pure relocation; a modified move is scanned via its actual per-pair
+    // hunks so unchanged return/comments/assertions are not re-flagged.
+    if old_bytes == new_bytes {
+        return Ok(Vec::new());
+    }
+    let patch = rename_pair_diff_bytes(root, base, old, new, vcs)?;
+    let text = String::from_utf8(patch)
+        .map_err(|_| format!("non-UTF8 rename diff for {old} -> {new} (fail-closed)"))?;
+    if !text.contains("rename from") || !text.contains("rename to") {
+        return Err(format!(
+            "rename pair {old} -> {new} could not be resolved as a rename (fail-closed)"
+        ));
+    }
+    Ok(scan_diff(&text, old, new))
 }
 
 fn collect_findings(root: &Path, base: &str, vcs: Vcs) -> Result<Vec<Finding>, String> {
     validate_base_revision(root, base, vcs)?;
     let entries = changed_files(root, base, vcs)?;
-    let (relocated_old, relocated_new) = collect_relocations(root, base, &entries, vcs);
-    let mut findings = scan_deleted_files(root, base, &entries, &relocated_old, vcs);
+    let renames = rename_pairs(root, base, vcs)?;
+    let rename_old: BTreeSet<String> =
+        renames.iter().map(|pair| pair.old_path.clone()).collect();
+    let rename_new: BTreeSet<String> =
+        renames.iter().map(|pair| pair.new_path.clone()).collect();
+
+    let mut findings = Vec::new();
+    for pair in &renames {
+        findings.extend(scan_rename_pair(root, base, pair, vcs)?);
+    }
     for entry in &entries {
-        let relocated = match entry.status {
-            b'D' => relocated_old.contains(&entry.old_path),
-            b'A' => relocated_new.contains(&entry.new_path),
+        let participates_in_rename = match entry.status {
+            b'D' => rename_old.contains(&entry.old_path),
+            b'A' | b'M' => rename_new.contains(&entry.new_path),
             _ => false,
         };
-        if relocated {
+        if participates_in_rename {
             continue;
         }
         findings.extend(scan_changed_entry(root, base, entry, vcs)?);
@@ -899,11 +1113,10 @@ fn parse_justifications(text: &str) -> Result<Vec<JustificationRecord>, String> 
 }
 
 impl JustificationRecord {
-    fn matches_identity(&self, base: &str, finding: &Finding) -> bool {
+    fn matches_identity(&self, finding: &Finding) -> bool {
         self.finding_kind == finding.kind
             && self.finding_detail == finding.detail
             && self.old_path == finding.path
-            && self.base_commit == base
     }
 
     fn hashes_valid(&self, root: &Path, base: &str) -> Result<bool, String> {
@@ -916,17 +1129,34 @@ impl JustificationRecord {
             return Ok(false);
         }
 
-        let actual_new = if self.new_path == "ABSENT" {
-            None
-        } else {
-            resolve_current_blob(root, &self.new_path)?
-        };
-        if self.new_blob == "ABSENT" {
-            if actual_new.is_some() {
+        // The record must bind the ACTUAL current state of the finding's
+        // location (old_path). An unrelated new_path or ABSENT while the file
+        // still exists must not waive the finding.
+        let actual_current_old = resolve_current_blob(root, &self.old_path)?;
+        if actual_current_old.is_some() {
+            // Original still exists: new_path must be the same path and its
+            // exact current hash must match.
+            if self.new_path != self.old_path || self.new_blob == "ABSENT" {
                 return Ok(false);
             }
-        } else if actual_new.as_deref() != Some(self.new_blob.as_str()) {
-            return Ok(false);
+            if actual_current_old.as_deref() != Some(self.new_blob.as_str()) {
+                return Ok(false);
+            }
+        } else {
+            // Original is actually absent: only a real relocation/replacement
+            // (different path, exact blob) or an explicit ABSENT is allowed.
+            if self.new_path == "ABSENT" {
+                if self.new_blob != "ABSENT" {
+                    return Ok(false);
+                }
+            } else if self.new_path == self.old_path || self.new_blob == "ABSENT" {
+                return Ok(false);
+            } else {
+                let actual_new = resolve_current_blob(root, &self.new_path)?;
+                if actual_new.as_deref() != Some(self.new_blob.as_str()) {
+                    return Ok(false);
+                }
+            }
         }
 
         let actual_review = resolve_current_blob(root, &self.review_artifact_path)?;
@@ -958,7 +1188,7 @@ fn load_justifications(root: &Path) -> Result<Vec<JustificationRecord>, String> 
 
 fn apply_justifications(
     root: &Path,
-    base: &str,
+    resolved_base: &str,
     findings: &[Finding],
 ) -> Result<(Vec<(Finding, String)>, Vec<Finding>), String> {
     let records = load_justifications(root)?;
@@ -973,11 +1203,16 @@ fn apply_justifications(
     for finding in findings {
         let mut matched_record: Option<&JustificationRecord> = None;
         for (index, record) in records.iter().enumerate() {
-            if !record.matches_identity(base, finding) {
+            // Inactive records (a different full base commit) can neither waive
+            // nor error; only records for the resolved base are applied.
+            if record.base_commit != resolved_base {
+                continue;
+            }
+            if !record.matches_identity(finding) {
                 continue;
             }
             matched_indices.insert(index);
-            if record.hashes_valid(root, base)? {
+            if record.hashes_valid(root, resolved_base)? {
                 matched_record = Some(record);
             }
             break;
@@ -988,10 +1223,13 @@ fn apply_justifications(
         }
     }
 
+    // Only ACTIVE records (matching the resolved base) that reference no
+    // finding are stale errors. Inactive other-base records are ignored.
     let unmatched: Vec<&JustificationRecord> = records
         .iter()
         .enumerate()
         .filter(|(index, _)| !matched_indices.contains(index))
+        .filter(|(_, record)| record.base_commit == resolved_base)
         .map(|(_, record)| record)
         .collect();
     if !unmatched.is_empty() {
@@ -1018,8 +1256,9 @@ fn apply_justifications(
 // ---------------------------------------------------------------------------
 
 fn check(root: &Path, base: &str, vcs: Vcs) -> Result<i32, String> {
+    let resolved = resolve_base_hash(root, base, vcs)?;
     let findings = collect_findings(root, base, vcs)?;
-    let (justified, remaining) = apply_justifications(root, base, &findings)?;
+    let (justified, remaining) = apply_justifications(root, &resolved, &findings)?;
     for (finding, bead_id) in &justified {
         println!(
             "JUSTIFIED|{}|{}|{}|bead={bead_id}",
@@ -1132,6 +1371,10 @@ impl Fixture {
         check(&self.root, "HEAD", Vcs::Git)
     }
 
+    fn head_hash(&self) -> Result<String, String> {
+        resolve_base_hash(&self.root, "HEAD", Vcs::Git)
+    }
+
     fn base_blob(&self, path: &str) -> Result<Option<String>, String> {
         resolve_base_blob(&self.root, "HEAD", path)
     }
@@ -1175,6 +1418,35 @@ fn report_failure(label: &str, message: &str) -> bool {
 // ---------------------------------------------------------------------------
 
 const BASE_TEXT: &str = "#[test]\nfn behavior_test() {\n    assert_eq!(2 + 2, 4);\n}\n";
+
+// Large-enough test bodies so `git --find-renames` detects modified renames
+// (small files fall below git's rename-similarity size floor).
+fn large_test_text() -> String {
+    let mut out = String::from("#[test]\nfn behavior_test() {\n");
+    for i in 0..30 {
+        out.push_str(&format!("    let value_{i}: u32 = {i};\n"));
+    }
+    out.push_str("    assert_eq!(2 + 2, 4);\n}\n");
+    out
+}
+
+fn large_test_weakened() -> String {
+    let mut out = String::from("#[test]\nfn behavior_test() {\n");
+    for i in 0..30 {
+        out.push_str(&format!("    let value_{i}: u32 = {i};\n"));
+    }
+    out.push_str("    assert!((2 + 2).checked_sub(4).is_some());\n}\n");
+    out
+}
+
+fn large_test_retained_modified() -> String {
+    let mut out = String::from("#[test]\n// relocated: coverage retained\nfn behavior_test() {\n");
+    for i in 0..30 {
+        out.push_str(&format!("    let value_{i}: u32 = {i};\n"));
+    }
+    out.push_str("    assert_eq!(2 + 2, 4);\n}\n");
+    out
+}
 
 fn run_delete_case(label: &str, path: &str) -> bool {
     let fixture = match Fixture::new(label) {
@@ -1392,20 +1664,18 @@ fn run_relocate_case(label: &str) -> bool {
     findings_ok && exit == 0
 }
 
-fn run_relocate_modified_case(label: &str) -> bool {
+fn run_relocate_modified_retained_case(label: &str) -> bool {
     let from = "crates/workspace_tests/tests/behavior.rs";
     let to = "crates/workspace_tests/tests/behavior_relocated.rs";
-    let weakened =
-        "#[test]\nfn behavior_test() {\n    assert!((2 + 2).checked_sub(4).is_some());\n}\n";
     let fixture = match Fixture::new(label) {
         Ok(fixture) => fixture,
         Err(error) => return report_failure(label, &format!("fixture setup: {error}")),
     };
     let setup = fixture
-        .write(from, BASE_TEXT)
+        .write(from, &large_test_text())
         .and_then(|()| fixture.commit_base())
         .and_then(|()| fixture.rename(from, to))
-        .and_then(|()| fixture.write(to, weakened))
+        .and_then(|()| fixture.write(to, &large_test_retained_modified()))
         .and_then(|()| fixture.stage_all());
     if let Err(error) = setup {
         return report_failure(label, &format!("setup: {error}"));
@@ -1418,12 +1688,97 @@ fn run_relocate_modified_case(label: &str) -> bool {
         Ok(code) => code,
         Err(error) => return report_failure(label, &format!("check: {error}")),
     };
-    let expected = [
-        ("DeletedTestFile", from),
-        ("DeletedTestDeclaration", from),
-        ("WeakenedAssertion", from),
-        ("WeakenedAssertion", to),
-    ];
+    let expected: [(&str, &str); 0] = [];
+    let findings_ok = expect_findings(label, &findings, &expected);
+    println!("SelfTest:{label}: exit expected=0 actual={exit}");
+    findings_ok && exit == 0
+}
+
+fn run_relocate_weakened_case(label: &str) -> bool {
+    let from = "crates/workspace_tests/tests/behavior.rs";
+    let to = "crates/workspace_tests/tests/behavior_relocated.rs";
+    let fixture = match Fixture::new(label) {
+        Ok(fixture) => fixture,
+        Err(error) => return report_failure(label, &format!("fixture setup: {error}")),
+    };
+    let setup = fixture
+        .write(from, &large_test_text())
+        .and_then(|()| fixture.commit_base())
+        .and_then(|()| fixture.rename(from, to))
+        .and_then(|()| fixture.write(to, &large_test_weakened()))
+        .and_then(|()| fixture.stage_all());
+    if let Err(error) = setup {
+        return report_failure(label, &format!("setup: {error}"));
+    }
+    let findings = match fixture.collect() {
+        Ok(findings) => findings,
+        Err(error) => return report_failure(label, &format!("collect: {error}")),
+    };
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => return report_failure(label, &format!("check: {error}")),
+    };
+    let expected = [("WeakenedAssertion", from)];
+    let findings_ok = expect_findings(label, &findings, &expected);
+    println!("SelfTest:{label}: exit expected=1 actual={exit}");
+    findings_ok && exit == 1
+}
+
+fn run_relocate_spaces_case(label: &str) -> bool {
+    let from = "crates/workspace_tests/tests/behavior with spaces.rs";
+    let to = "crates/workspace_tests/tests/behavior moved.rs";
+    let fixture = match Fixture::new(label) {
+        Ok(fixture) => fixture,
+        Err(error) => return report_failure(label, &format!("fixture setup: {error}")),
+    };
+    let setup = fixture
+        .write(from, BASE_TEXT)
+        .and_then(|()| fixture.commit_base())
+        .and_then(|()| fixture.rename(from, to))
+        .and_then(|()| fixture.stage_all());
+    if let Err(error) = setup {
+        return report_failure(label, &format!("setup: {error}"));
+    }
+    let findings = match fixture.collect() {
+        Ok(findings) => findings,
+        Err(error) => return report_failure(label, &format!("collect: {error}")),
+    };
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => return report_failure(label, &format!("check: {error}")),
+    };
+    let expected: [(&str, &str); 0] = [];
+    let findings_ok = expect_findings(label, &findings, &expected);
+    println!("SelfTest:{label}: exit expected=0 actual={exit}");
+    findings_ok && exit == 0
+}
+
+fn run_relocate_invalid_utf8_case(label: &str) -> bool {
+    let from = "crates/workspace_tests/tests/behavior.rs";
+    let to = "crates/workspace_tests/tests/behavior_relocated.rs";
+    let mut invalid = BASE_TEXT.as_bytes().to_vec();
+    invalid.extend_from_slice(&[0xff, 0x00]);
+    let fixture = match Fixture::new(label) {
+        Ok(fixture) => fixture,
+        Err(error) => return report_failure(label, &format!("fixture setup: {error}")),
+    };
+    let setup = fixture
+        .write_bytes(from, &invalid)
+        .and_then(|()| fixture.commit_base())
+        .and_then(|()| fixture.rename(from, to))
+        .and_then(|()| fixture.stage_all());
+    if let Err(error) = setup {
+        return report_failure(label, &format!("setup: {error}"));
+    }
+    let findings = match fixture.collect() {
+        Ok(findings) => findings,
+        Err(error) => return report_failure(label, &format!("collect: {error}")),
+    };
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => return report_failure(label, &format!("check: {error}")),
+    };
+    let expected = [("NonUtf8TestFile", from)];
     let findings_ok = expect_findings(label, &findings, &expected);
     println!("SelfTest:{label}: exit expected=1 actual={exit}");
     findings_ok && exit == 1
@@ -1591,12 +1946,15 @@ fn justification_record(
 }
 
 fn run_justification_tests() -> bool {
-    let base_commit = "HEAD";
     let (fixture, test_path, base_blob, new_blob, replacement_entry) =
         match justification_fixture("justify") {
             Ok(values) => values,
             Err(error) => return report_failure("justify", &format!("fixture setup: {error}")),
         };
+    let base_commit = match fixture.head_hash() {
+        Ok(hash) => hash,
+        Err(error) => return report_failure("justify", &format!("head hash: {error}")),
+    };
 
     let review_path = ".beads/vb-test-fixture/test-review.md";
     let review_blob = match fixture.current_blob(review_path) {
@@ -1620,7 +1978,7 @@ fn run_justification_tests() -> bool {
 
     // 1. Valid record passes (finding justified).
     let valid_tsv = justification_record(
-        base_commit,
+        &base_commit,
         &test_path,
         &base_blob,
         &new_blob,
@@ -1648,7 +2006,7 @@ fn run_justification_tests() -> bool {
     // 2. Stale current test blob -> finding stays -> FAIL (exit 1).
     let stale_new = "0".repeat(40);
     let stale_test_tsv = justification_record(
-        base_commit,
+        &base_commit,
         &test_path,
         &base_blob,
         &stale_new,
@@ -1675,7 +2033,7 @@ fn run_justification_tests() -> bool {
     // 3. Stale base blob -> finding stays -> FAIL (exit 1).
     let stale_base = "0".repeat(40);
     let stale_base_tsv = justification_record(
-        base_commit,
+        &base_commit,
         &test_path,
         &stale_base,
         &new_blob,
@@ -1703,7 +2061,7 @@ fn run_justification_tests() -> bool {
     let replacement_path = "crates/workspace_tests/tests/replacement_coverage.rs";
     let stale_replacement_entry = format!("{replacement_path}:{}", "0".repeat(40));
     let stale_replacement_tsv = justification_record(
-        base_commit,
+        &base_commit,
         &test_path,
         &base_blob,
         &new_blob,
@@ -1730,7 +2088,7 @@ fn run_justification_tests() -> bool {
     // 5. Stale review artifact blob -> finding stays -> FAIL (exit 1).
     let stale_review = "0".repeat(40);
     let stale_review_tsv = justification_record(
-        base_commit,
+        &base_commit,
         &test_path,
         &base_blob,
         &new_blob,
@@ -1754,7 +2112,8 @@ fn run_justification_tests() -> bool {
     );
     ok = ok && exit == 1;
 
-    // 6. Wrong base commit -> record matches no finding -> error (exit 2).
+    // 6. Wrong base commit -> inactive record is ignored, so the real current
+    //    finding stays un-justified -> FAIL (exit 1), not a stale error.
     let wrong_base_tsv = justification_record(
         "0000000000000000000000000000000000000000",
         &test_path,
@@ -1764,20 +2123,21 @@ fn run_justification_tests() -> bool {
         &review_blob,
     );
     if let Err(error) = fixture.write(JUSTIFICATIONS_REL, &wrong_base_tsv) {
-        return report_failure("justify-unknown-base", &format!("write tsv: {error}"));
+        return report_failure("justify-wrong-base", &format!("write tsv: {error}"));
     }
     let exit = match fixture.check() {
         Ok(code) => code,
         Err(error) => {
-            eprintln!("SelfTest:justify-unknown-base: rejected with: {error}");
+            ok = false;
+            eprintln!("SelfTest:justify-wrong-base: check error: {error}");
             2
         }
     };
     println!(
-        "SelfTest:justify-unknown-base: {} expected=2 actual={exit}",
-        if exit == 2 { "PASS" } else { "FAIL" }
+        "SelfTest:justify-wrong-base: {} expected=1 actual={exit}",
+        if exit == 1 { "PASS" } else { "FAIL" }
     );
-    ok = ok && exit == 2;
+    ok = ok && exit == 1;
 
     // 7. Unknown path -> no matching finding -> error (exit 2).
     let unknown_path_tsv = format!(
@@ -1878,6 +2238,171 @@ fn run_justification_tests() -> bool {
     ok
 }
 
+fn run_justification_bypass_tests() -> bool {
+    let (fixture, test_path, base_blob, _new_blob, _replacement_entry) =
+        match justification_fixture("bypass") {
+            Ok(values) => values,
+            Err(error) => return report_failure("bypass", &format!("fixture setup: {error}")),
+        };
+    let base_commit = match fixture.head_hash() {
+        Ok(hash) => hash,
+        Err(error) => return report_failure("bypass", &format!("head hash: {error}")),
+    };
+    let review_path = ".beads/vb-test-fixture/test-review.md";
+    let review_blob = match fixture.current_blob(review_path) {
+        Ok(Some(blob)) => blob,
+        Ok(None) => return report_failure("bypass", "review blob missing"),
+        Err(error) => return report_failure("bypass", &format!("review blob: {error}")),
+    };
+
+    let mut ok = true;
+
+    // Bypass #1: old_path still exists (weakened) but new_path binds an
+    // unrelated file. The finding must stay un-justified (exit 1).
+    if let Err(error) = fixture.write("README.md", "# Unrelated\n") {
+        return report_failure("bypass-unrelated", &format!("write README: {error}"));
+    }
+    let unrelated_blob = match fixture.current_blob("README.md") {
+        Ok(Some(blob)) => blob,
+        _ => return report_failure("bypass-unrelated", "unrelated blob missing"),
+    };
+    let unrelated_tsv = format!(
+        "{base_commit}\t{test_path}\t{base_blob}\tREADME.md\t{unrelated_blob}\tWeakenedAssertion\t{WEAKEN_DETAIL}\t-\t{review_path}\t{review_blob}\tvb-test-fixture\n"
+    );
+    if let Err(error) = fixture.write(JUSTIFICATIONS_REL, &unrelated_tsv) {
+        return report_failure("bypass-unrelated", &format!("write tsv: {error}"));
+    }
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => {
+            ok = false;
+            eprintln!("SelfTest:bypass-unrelated: check error: {error}");
+            2
+        }
+    };
+    println!(
+        "SelfTest:bypass-unrelated: {} expected=1 actual={exit}",
+        if exit == 1 { "PASS" } else { "FAIL" }
+    );
+    ok = ok && exit == 1;
+
+    // Bypass #2: new_path=ABSENT while the original still exists. The finding
+    // must stay un-justified (exit 1).
+    let absent_tsv = format!(
+        "{base_commit}\t{test_path}\t{base_blob}\tABSENT\tABSENT\tWeakenedAssertion\t{WEAKEN_DETAIL}\t-\t{review_path}\t{review_blob}\tvb-test-fixture\n"
+    );
+    if let Err(error) = fixture.write(JUSTIFICATIONS_REL, &absent_tsv) {
+        return report_failure("bypass-absent", &format!("write tsv: {error}"));
+    }
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => {
+            ok = false;
+            eprintln!("SelfTest:bypass-absent: check error: {error}");
+            2
+        }
+    };
+    println!(
+        "SelfTest:bypass-absent: {} expected=1 actual={exit}",
+        if exit == 1 { "PASS" } else { "FAIL" }
+    );
+    ok = ok && exit == 1;
+
+    // A subsequent actual test change is still caught (exit 1) with the bypass
+    // record present: the record cannot track or waive the changed file.
+    if let Err(error) = fixture.write(
+        &test_path,
+        "#[test]\nfn behavior_test() {\n    assert!((2 + 2).checked_sub(4).is_some());\n}\n// changed\n",
+    ) {
+        return report_failure("bypass-changed", &format!("write changed test: {error}"));
+    }
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => {
+            ok = false;
+            eprintln!("SelfTest:bypass-changed: check error: {error}");
+            2
+        }
+    };
+    println!(
+        "SelfTest:bypass-changed: {} expected=1 actual={exit}",
+        if exit == 1 { "PASS" } else { "FAIL" }
+    );
+    ok = ok && exit == 1;
+
+    ok
+}
+
+fn run_justification_lifecycle_tests() -> bool {
+    let mut ok = true;
+
+    // A stale record for an older base commit must not fail a clean future
+    // main: after advancing to a new base with zero findings, the inactive
+    // record is ignored and the gate passes (exit 0).
+    let fixture = match Fixture::new("lifecycle-clean") {
+        Ok(fixture) => fixture,
+        Err(error) => return report_failure("lifecycle-clean", &format!("fixture setup: {error}")),
+    };
+    let test_path = "crates/workspace_tests/tests/behavior.rs";
+    let review_path = ".beads/vb-test-fixture/test-review.md";
+    let setup = fixture
+        .write(test_path, BASE_TEXT)
+        .and_then(|()| fixture.commit_base());
+    if let Err(error) = setup {
+        return report_failure("lifecycle-clean", &format!("setup: {error}"));
+    }
+    let old_base = match fixture.head_hash() {
+        Ok(hash) => hash,
+        Err(error) => return report_failure("lifecycle-clean", &format!("head hash: {error}")),
+    };
+    let base_blob = match fixture.base_blob(test_path) {
+        Ok(Some(blob)) => blob,
+        _ => return report_failure("lifecycle-clean", "base blob missing"),
+    };
+    let weakened =
+        "#[test]\nfn behavior_test() {\n    assert!((2 + 2).checked_sub(4).is_some());\n}\n";
+    let setup = fixture
+        .write(test_path, weakened)
+        .and_then(|()| fixture.write(review_path, "# review\n"));
+    if let Err(error) = setup {
+        return report_failure("lifecycle-clean", &format!("weaken: {error}"));
+    }
+    let new_blob = match fixture.current_blob(test_path) {
+        Ok(Some(blob)) => blob,
+        _ => return report_failure("lifecycle-clean", "new blob missing"),
+    };
+    let review_blob = match fixture.current_blob(review_path) {
+        Ok(Some(blob)) => blob,
+        _ => return report_failure("lifecycle-clean", "review blob missing"),
+    };
+    let record = format!(
+        "{old_base}\t{test_path}\t{base_blob}\t{test_path}\t{new_blob}\tWeakenedAssertion\t{WEAKEN_DETAIL}\t-\t{review_path}\t{review_blob}\tvb-test-fixture\n"
+    );
+    if let Err(error) = fixture.write(JUSTIFICATIONS_REL, &record) {
+        return report_failure("lifecycle-clean", &format!("write tsv: {error}"));
+    }
+    // Advance to a clean "next main" base: the weakened state is committed and
+    // the working tree is clean, so there are no current findings.
+    if let Err(error) = fixture.commit_base() {
+        return report_failure("lifecycle-clean", &format!("commit clean: {error}"));
+    }
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => {
+            ok = false;
+            eprintln!("SelfTest:lifecycle-clean: check error: {error}");
+            2
+        }
+    };
+    println!(
+        "SelfTest:lifecycle-clean: {} expected=0 actual={exit}",
+        if exit == 0 { "PASS" } else { "FAIL" }
+    );
+    ok = ok && exit == 0;
+
+    ok
+}
+
 // ---------------------------------------------------------------------------
 // Self-test entry point
 // ---------------------------------------------------------------------------
@@ -1897,7 +2422,10 @@ fn self_test() -> i32 {
     all &= run_weaken_case("module-dir-weaken", module_child_path);
     all &= run_rename_out_case("rename-out");
     all &= run_relocate_case("relocate-identical");
-    all &= run_relocate_modified_case("relocate-modified");
+    all &= run_relocate_modified_retained_case("relocate-modified-retained");
+    all &= run_relocate_weakened_case("relocate-weakened");
+    all &= run_relocate_spaces_case("relocate-spaces");
+    all &= run_relocate_invalid_utf8_case("relocate-invalid-utf8");
     all &= run_delete_case(
         "space-delete",
         "crates/workspace_tests/tests/behavior with spaces.rs",
@@ -1906,6 +2434,8 @@ fn self_test() -> i32 {
     all &= run_unrelated_binary_pass_case("unrelated-binary-passes");
     all &= run_binary_with_test_delete_case("binary-with-test-delete");
     all &= run_justification_tests();
+    all &= run_justification_bypass_tests();
+    all &= run_justification_lifecycle_tests();
 
     if all { 0 } else { 1 }
 }
