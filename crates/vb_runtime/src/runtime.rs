@@ -191,6 +191,7 @@ pub struct Runtime {
     shard_count: usize,
     journal: SharedRuntimeJournal,
     policy: vb_core::policy::RuntimePolicy,
+    live_policy: crate::policy::LivePolicy,
 }
 
 impl Runtime {
@@ -223,6 +224,7 @@ impl Runtime {
             shard_count: count,
             journal,
             policy: config.policy,
+            live_policy: crate::policy::LivePolicy::new(),
         }
     }
 
@@ -242,6 +244,27 @@ impl Runtime {
             config,
             crate::journal::VolatileRuntimeJournal::shared(),
         )
+    }
+
+    /// Configures the live policy with a verified artifact and rule.
+    ///
+    /// Updates actor-owned runtime state; does not persist to durable storage.
+    pub fn configure_live_policy(
+        &mut self,
+        digest: vb_core::policy::PolicyDigest,
+        rule: vb_core::policy::PolicyRule,
+    ) -> RuntimeResult<()> {
+        self.configure_live_policy_helper(digest, rule);
+        Ok(())
+    }
+
+    /// Activates the emergency deny overlay with strict durability.
+    ///
+    /// Persists the emergency marker, verifies the returned state is Active,
+    /// then mirrors into owned live policy state. Fails on corruption or
+    /// unsupported marker versions.
+    pub fn activate_emergency_deny(&mut self) -> RuntimeResult<()> {
+        self.activate_emergency_deny_helper()
     }
 
     /// Submits a run using a compiled workflow.

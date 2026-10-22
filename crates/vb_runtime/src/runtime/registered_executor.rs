@@ -1,7 +1,11 @@
 use super::Runtime;
 use crate::{RuntimeError, shard::ShardCommand};
+use vb_core::policy::DecisionRecord;
 use vb_core::{ActionTicket, RunId};
 use vb_storage::executor::{ExecutorError, FjallRegister, RegisterGrant, RegisterReceipt};
+
+#[path = "live_policy_dispatch.rs"]
+mod live_policy_dispatch;
 
 /// Runtime authority failures and uncertain adapter outcomes remain distinct.
 #[derive(Debug, thiserror::Error)]
@@ -12,6 +16,9 @@ pub enum RegisteredExecutionError {
     /// Executor rejected authority or requires receipt reconciliation.
     #[error("registered executor: {0}")]
     Executor(#[from] ExecutorError),
+    /// Live policy rejected execution before any adapter effect.
+    #[error("policy denied execution: {0:?}")]
+    PolicyDenied(DecisionRecord),
 }
 
 impl Runtime {
@@ -27,6 +34,18 @@ impl Runtime {
         let (ticket, context) = self.registered_context(run, wire_step, grant)?;
         if context.mode != crate::shard::types::RegisteredExecutionMode::Live {
             return Err(ExecutorError::Unauthorized.into());
+        }
+        let eval_ctx = live_policy_dispatch::AdmissionEvalContext {
+            ticket: ticket.clone(),
+            admission_pin: context.admission_pin,
+            encoded_bytes: context.encoded_bytes.clone(),
+            input_taint: context.input_taint,
+        };
+        match self.evaluate_admission_and_persist(eval_ctx) {
+            Ok(_decision) => {}
+            Err(decision) => {
+                return Err(RegisteredExecutionError::PolicyDenied(decision));
+            }
         }
         let receipt = adapter.execute(grant, ticket, context.value)?;
         self.enqueue_registered_completion(ticket, context.output, receipt.clone())?;

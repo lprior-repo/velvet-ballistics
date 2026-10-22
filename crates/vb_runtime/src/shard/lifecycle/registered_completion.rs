@@ -1,6 +1,7 @@
 use crate::shard::Shard;
 use crate::{RuntimeError, RuntimeResult};
 use vb_core::action::ActionOutputReady;
+use vb_core::policy::{PinnedAdmissionPolicy, PolicyDigest};
 use vb_core::{ActionTicket, CompiledNodeKind, SlotValue, Taint};
 use vb_storage::executor::RegisterReceipt;
 
@@ -9,6 +10,12 @@ pub(crate) struct RegisteredActionContext {
     pub output: ActionOutputReady,
     pub value: i64,
     pub mode: crate::shard::types::RegisteredExecutionMode,
+    /// Admission policy pin converted from RunPolicyPin.
+    pub admission_pin: PinnedAdmissionPolicy,
+    /// Canonical serialized bytes of the action input value.
+    pub encoded_bytes: Vec<u8>,
+    /// Actual frame input taint at evaluation time.
+    pub input_taint: Taint,
 }
 
 impl Shard {
@@ -35,13 +42,11 @@ impl Shard {
         let CompiledNodeKind::Do { action, input } = node.kind else {
             return Err(RuntimeError::InvalidActionCompletion);
         };
-        if action != ticket.action
-            || state
-                .frame
-                .read_taint(input)
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?
-                != Taint::Clean
-        {
+        let input_taint = state
+            .frame
+            .read_taint(input)
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+        if action != ticket.action || input_taint != Taint::Clean {
             return Err(RuntimeError::InvalidActionCompletion);
         }
         let SlotValue::I64(value) = state
@@ -62,11 +67,20 @@ impl Shard {
             encoded_len,
         };
         super::preflight_action_completion(state, ticket, output)?;
+        let admission_pin = match admission.policy_pin() {
+            vb_storage::RunPolicyPin::Pinned(digest) => {
+                PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(digest.as_bytes()))
+            }
+            vb_storage::RunPolicyPin::Unverified => PinnedAdmissionPolicy::Unverified,
+        };
         Ok(RegisteredActionContext {
             artifact,
             output,
             value: *value,
             mode: state.registered_execution,
+            admission_pin,
+            encoded_bytes: encoded,
+            input_taint,
         })
     }
 
