@@ -38,7 +38,7 @@ impl IpcFrameHeader {
     /// Encodes the header using the §21 little-endian wire layout.
     pub fn encode(self) -> Result<[u8; IPC_HEADER_LEN], IpcError> {
         let mut bytes = [0u8; IPC_HEADER_LEN];
-        let mut cursor = std::io::Cursor::new(&mut bytes[..]);
+        let mut cursor = std::io::Cursor::new(bytes.as_mut_slice());
         cursor
             .write_u32::<LittleEndian>(IPC_MAGIC)
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
