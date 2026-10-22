@@ -1,23 +1,27 @@
+#![forbid(unsafe_code)]
+
 use std::sync::Arc;
 
-use proptest::prelude::*;
+use proptest::{prelude::*, test_runner::TestCaseError};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+use vb_core::artifact::{ArtifactEvidence, ObligationClosure, ObligationKind};
 use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity};
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
-use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
-use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
 use vb_runtime::RuntimeError;
 use vb_runtime::admission::{
-    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, ArtifactStore,
-    REQUIRED_GATE_COUNT, RunAdmission, admit_artifact_run, admit_run_with_budget,
+    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, ArtifactStore, RunAdmission,
+    admit_artifact_run, admit_artifact_run_with_certificate_floor, admit_run_with_budget,
 };
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+use vb_storage::types::EventSeq;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ObservedAdmissionDiagnostic {
@@ -26,10 +30,6 @@ enum ObservedAdmissionDiagnostic {
         digest: WorkflowDigest,
     },
     DecodeFailed,
-    InvalidGateCount {
-        found: u8,
-        required: u8,
-    },
     InvalidProofFlag {
         flag: &'static str,
     },
@@ -49,11 +49,13 @@ enum ObservedAdmissionDiagnostic {
     },
     DigestMismatch {
         requested: WorkflowDigest,
-        record: WorkflowDigest,
-        envelope: WorkflowDigest,
+        found: WorkflowDigest,
     },
     StaleCertificate {
         digest: WorkflowDigest,
+    },
+    Unexpected {
+        error: AdmissionError,
     },
 }
 
@@ -71,22 +73,16 @@ struct DenialStateSnapshot {
     command_queue_len: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum InvalidEnvelopeCase {
-    GateCount { found: u8 },
-    ProofFlag { flag: &'static str },
-}
-
 #[derive(Clone)]
 struct FixedAcceptedStore {
-    result: Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>,
+    result: Result<AcceptedArtifact, ArtifactEnvelopeError>,
 }
 
 impl AcceptedArtifactStore for FixedAcceptedStore {
     fn load_accepted_artifact(
         &self,
         _artifact_digest: WorkflowDigest,
-    ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+    ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
         self.result.clone()
     }
 }
@@ -96,6 +92,19 @@ struct PresentArtifactStore;
 impl ArtifactStore for PresentArtifactStore {
     fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
         true
+    }
+}
+
+struct ScenarioStore {
+    artifact: AcceptedArtifact,
+}
+
+impl AcceptedArtifactStore for ScenarioStore {
+    fn load_accepted_artifact(
+        &self,
+        _digest: WorkflowDigest,
+    ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
+        Ok(self.artifact.clone())
     }
 }
 
@@ -111,120 +120,20 @@ fn caps(values: Box<[Capability]>) -> CapabilitySet {
     CapabilitySet::from_grants(values)
 }
 
-fn accepted_artifact(
-    artifact_digest: WorkflowDigest,
-    proof_digest: WorkflowDigest,
-    gate_count: u8,
-    durable: bool,
-    required_capabilities: Box<[Capability]>,
-) -> vb_storage::admission::AcceptedArtifact {
-    accepted_artifact_with_seq(
-        artifact_digest,
-        proof_digest,
-        gate_count,
-        durable,
-        required_capabilities,
-        0,
-    )
+/// Canonicalizes a `WorkflowParts` value: recomputes the self-zeroed content
+/// digest before reconstructing a validated `CompiledWorkflow`. This mirrors
+/// the digest derivation the cold-path artifact verifier performs, so the
+/// resulting workflow satisfies `prepare_compiled_artifact`'s checksum binding.
+fn canonicalize_parts(mut parts: WorkflowParts) -> Result<CompiledWorkflow, String> {
+    parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+    let bytes = postcard::to_allocvec(&parts).map_err(|error| error.to_string())?;
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&bytes).into());
+    CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
 }
 
-fn accepted_artifact_with_seq(
-    artifact_digest: WorkflowDigest,
-    proof_digest: WorkflowDigest,
-    gate_count: u8,
-    durable: bool,
-    required_capabilities: Box<[Capability]>,
-    accepted_at_seq: u64,
-) -> vb_storage::admission::AcceptedArtifact {
-    vb_storage::admission::AcceptedArtifact {
-        digest: artifact_digest,
-        source_digest: artifact_digest,
-        policy_digest: artifact_digest,
-        ir: Vec::new(),
-        verification: vb_storage::admission::VerificationProof {
-            digest: proof_digest,
-            gate_count,
-            durable,
-            bounded_claimed: true,
-            taint_safe_claimed: true,
-            retry_safe_claimed: true,
-            idempotency_verified_claimed: true,
-            replayable_claimed: true,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
-        },
-        accepted_at_seq: vb_storage::types::EventSeq::new(accepted_at_seq),
-        required_capabilities,
-        action_contracts: Box::new([]),
-    }
-}
-
-fn accepted_artifact_with_flags(
-    artifact_digest: WorkflowDigest,
-    proof_digest: WorkflowDigest,
-    gate_count: u8,
-    durable: bool,
-    bounded_claimed: bool,
-    taint_safe_claimed: bool,
-    retry_safe_claimed: bool,
-    replayable_claimed: bool,
-    required_capabilities: Box<[Capability]>,
-) -> vb_storage::admission::AcceptedArtifact {
-    accepted_artifact_with_flags_and_seq(
-        artifact_digest,
-        proof_digest,
-        gate_count,
-        durable,
-        bounded_claimed,
-        taint_safe_claimed,
-        retry_safe_claimed,
-        replayable_claimed,
-        required_capabilities,
-        0,
-    )
-}
-
-fn accepted_artifact_with_flags_and_seq(
-    artifact_digest: WorkflowDigest,
-    proof_digest: WorkflowDigest,
-    gate_count: u8,
-    durable: bool,
-    bounded_claimed: bool,
-    taint_safe_claimed: bool,
-    retry_safe_claimed: bool,
-    replayable_claimed: bool,
-    required_capabilities: Box<[Capability]>,
-    accepted_at_seq: u64,
-) -> vb_storage::admission::AcceptedArtifact {
-    vb_storage::admission::AcceptedArtifact {
-        digest: artifact_digest,
-        source_digest: artifact_digest,
-        policy_digest: artifact_digest,
-        ir: Vec::new(),
-        verification: vb_storage::admission::VerificationProof {
-            digest: proof_digest,
-            gate_count,
-            durable,
-            bounded_claimed,
-            taint_safe_claimed,
-            retry_safe_claimed,
-            idempotency_verified_claimed: true,
-            replayable_claimed,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-            evidence: vb_core::artifact::ArtifactEvidence::Unverified,
-        },
-        accepted_at_seq: vb_storage::types::EventSeq::new(accepted_at_seq),
-        required_capabilities,
-        action_contracts: Box::new([]),
-    }
-}
-
+/// A minimal action-free workflow: a single constant then a finish.
 fn minimal_workflow() -> Result<CompiledWorkflow, String> {
-    let mut parts = WorkflowParts {
+    let parts = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),
         name: Box::<str>::from("vb_qi37_4_2_runtime_admission_test"),
@@ -260,9 +169,92 @@ fn minimal_workflow() -> Result<CompiledWorkflow, String> {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let hash_bytes = postcard::to_allocvec(&parts).map_err(|error| error.to_string())?;
-    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash_bytes).into());
-    CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
+    canonicalize_parts(parts)
+}
+
+/// A workflow with one dispatched action (action 0) preceded by a constant
+/// producer and followed by a finish. Used for capability-bound admission.
+fn do_workflow() -> Result<CompiledWorkflow, String> {
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        input_slots: Box::new([]),
+        name: Box::<str>::from("vb_qi37_4_2_do_admission_test"),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::new([
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(1)),
+                next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(0),
+                    input: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(1),
+                },
+            },
+        ]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([ConstValue::I64(42)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    canonicalize_parts(parts)
+}
+
+fn do_contract(required_capabilities: Box<[Capability]>) -> ActionContract {
+    ActionContract {
+        id: ActionId::new(0),
+        name: ActionName::from_static_infallible("admission-test-action"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities,
+    }
+}
+
+/// Builds a checked artifact for the `do_workflow` using the real verifier path.
+fn build_do_artifact(
+    required_capabilities: Box<[Capability]>,
+    policy: RuntimePolicy,
+) -> Result<AcceptedArtifact, String> {
+    let workflow = do_workflow()?;
+    let contracts = [do_contract(required_capabilities)];
+    prepare_compiled_artifact(&workflow, policy, &contracts).map_err(|error| error.to_string())
+}
+
+/// Builds a checked artifact for the action-free `minimal_workflow`.
+fn build_minimal_artifact(policy: RuntimePolicy) -> Result<AcceptedArtifact, String> {
+    let workflow = minimal_workflow()?;
+    prepare_compiled_artifact(&workflow, policy, &[]).map_err(|error| error.to_string())
 }
 
 fn runtime_diagnostic(
@@ -294,6 +286,11 @@ fn runtime_diagnostic(
             digest: Some(fallback_digest),
             cause: "capability_profile_mismatch",
         },
+        RuntimeError::AdmissionCapabilityCountMismatch { .. } => PublicAdmissionDiagnostic {
+            category: "capability_count_mismatch",
+            digest: Some(fallback_digest),
+            cause: "capability_cardinality_mismatch",
+        },
         RuntimeError::AdmissionArtifactDigestMismatch { requested, .. } => {
             PublicAdmissionDiagnostic {
                 category: "digest_mismatch",
@@ -305,6 +302,11 @@ fn runtime_diagnostic(
             category: "digest_mismatch",
             digest: Some(requested),
             cause: "requested_record_envelope_mismatch",
+        },
+        RuntimeError::AdmissionArtifactStale { digest } => PublicAdmissionDiagnostic {
+            category: "stale",
+            digest: Some(digest),
+            cause: "stale_certificate",
         },
         RuntimeError::ActiveRunCapacityExceeded { .. } => PublicAdmissionDiagnostic {
             category: "resource_capacity_exceeded",
@@ -377,11 +379,6 @@ fn public_diagnostic_from_observed(
             digest: None,
             cause: "artifact_envelope_decode_failed",
         },
-        ObservedAdmissionDiagnostic::InvalidGateCount { .. } => PublicAdmissionDiagnostic {
-            category: "gate_mismatch",
-            digest: None,
-            cause: "invalid_gate_count",
-        },
         ObservedAdmissionDiagnostic::InvalidProofFlag { flag } => PublicAdmissionDiagnostic {
             category: "invalid_envelope",
             digest: None,
@@ -419,6 +416,22 @@ fn public_diagnostic_from_observed(
             digest: None,
             cause: "none",
         },
+        ObservedAdmissionDiagnostic::Unexpected { error } => PublicAdmissionDiagnostic {
+            category: "unexpected_runtime_error",
+            digest: None,
+            cause: match error {
+                AdmissionError::ArtifactInvalidGateCount { .. } => "invalid_gate_count",
+                AdmissionError::BudgetPolicyExceeded { .. } => "budget_policy_exceeded",
+                AdmissionError::ResourceBudgetOverflow { .. } => "budget_overflow",
+                AdmissionError::ResourceBudgetUnderflow { .. } => "budget_underflow",
+                AdmissionError::ResourceBudgetInvalidCapacity { .. } => "budget_invalid_capacity",
+                AdmissionError::ResourceStepCeilingExceeded { .. } => "step_ceiling_exceeded",
+                AdmissionError::ResourcePerTickCeilingExceeded { .. } => {
+                    "per_tick_ceiling_exceeded"
+                }
+                _ => "unexpected",
+            },
+        },
     }
 }
 
@@ -430,9 +443,6 @@ fn observed(result: Result<RunAdmission, AdmissionError>) -> ObservedAdmissionDi
         }
         Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
             ObservedAdmissionDiagnostic::DecodeFailed
-        }
-        Err(AdmissionError::ArtifactInvalidGateCount { found, required }) => {
-            ObservedAdmissionDiagnostic::InvalidGateCount { found, required }
         }
         Err(AdmissionError::ArtifactInvalidProofFlag { flag }) => {
             ObservedAdmissionDiagnostic::InvalidProofFlag { flag }
@@ -463,101 +473,22 @@ fn observed(result: Result<RunAdmission, AdmissionError>) -> ObservedAdmissionDi
             available,
         },
         Err(AdmissionError::ArtifactDigestMismatch { requested, found }) => {
-            ObservedAdmissionDiagnostic::DigestMismatch {
-                requested,
-                record: found,
-                envelope: found,
-            }
+            ObservedAdmissionDiagnostic::DigestMismatch { requested, found }
         }
-        Err(other) => panic!("unexpected admission error: {other:?}"),
+        Err(AdmissionError::ArtifactCertificateStale { digest, .. }) => {
+            ObservedAdmissionDiagnostic::StaleCertificate { digest }
+        }
+        Err(other) => ObservedAdmissionDiagnostic::Unexpected { error: other },
     }
-}
-struct ScenarioStore {
-    artifact: AcceptedArtifact,
-}
-
-impl AcceptedArtifactStore for ScenarioStore {
-    fn load_accepted_artifact(
-        &self,
-        _digest: WorkflowDigest,
-    ) -> Result<AcceptedArtifact, ArtifactEnvelopeError> {
-        Ok(self.artifact.clone())
-    }
-}
-fn build_valid_artifact(
-    capabilities: Box<[Capability]>,
-) -> Result<AcceptedArtifact, Box<dyn std::error::Error>> {
-    let action = ActionId::new(0);
-    let nodes = Box::new([
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
-                action: action,
-                input: SlotIdx::new(0),
-            },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
-        },
-    ]);
-
-    let parts = WorkflowParts {
-        name: "admission-test-workflow".into(),
-        digest: WorkflowDigest::from_bytes([0; 32]),
-        semantic_source_identity: None,
-        nodes,
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-        input_slots: Box::new([]),
-    };
-
-    let workflow = CompiledWorkflow::try_from_parts(parts)?;
-
-    let contracts: Vec<ActionContract> = if capabilities.is_empty() {
-        vec![]
-    } else {
-        vec![ActionContract {
-            id: action,
-            name: ActionName::from_static_infallible("admission-test-action"),
-            input_slot_count: 1,
-            output_slot_count: 1,
-            max_input_bytes: 1024,
-            max_output_bytes: 1024,
-            timeout_ms: 5000,
-            idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
-            retry_safety: RetrySafety::Safe,
-            required_capabilities: capabilities.clone(),
-        }]
-    };
-
-    Ok(prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &contracts)?)
 }
 
 #[test]
 fn given_missing_artifact_when_strict_run_created_then_artifact_not_found_before_allocation() {
-    // Given
     let requested = digest(0xA1);
     let store = FixedAcceptedStore {
         result: Err(ArtifactEnvelopeError::ArtifactNotFound { digest: requested }),
     };
 
-    // When
     let result = admit_artifact_run(
         &store,
         RuntimePolicy::Strict,
@@ -566,7 +497,6 @@ fn given_missing_artifact_when_strict_run_created_then_artifact_not_found_before
         CapabilitySet::empty(),
     );
 
-    // Then
     assert_eq!(
         observed(result),
         ObservedAdmissionDiagnostic::NotFound { digest: requested }
@@ -575,13 +505,11 @@ fn given_missing_artifact_when_strict_run_created_then_artifact_not_found_before
 
 #[test]
 fn given_malformed_bytes_when_strict_run_created_then_decode_failed_with_rejected_digest() {
-    // Given
     let requested = digest(0xA2);
     let store = FixedAcceptedStore {
         result: Err(ArtifactEnvelopeError::PostcardDecodeFailed),
     };
 
-    // When
     let result = admit_artifact_run(
         &store,
         RuntimePolicy::Strict,
@@ -590,62 +518,22 @@ fn given_malformed_bytes_when_strict_run_created_then_decode_failed_with_rejecte
         CapabilitySet::empty(),
     );
 
-    // Then
     assert_eq!(observed(result), ObservedAdmissionDiagnostic::DecodeFailed);
 }
 
 #[test]
-fn given_gate_count_zero_two_fourteen_or_sixteen_when_strict_run_created_then_gate_mismatch_denies()
-{
-    // Given / When / Then
-    for found in [0, 2, 14, 16] {
-        let requested = digest(found);
-        let store = FixedAcceptedStore {
-            result: Ok(accepted_artifact_with_seq(
-                requested,
-                requested,
-                found,
-                true,
-                Box::new([]),
-                1, // non-stale
-            )),
-        };
-
-        let result = admit_artifact_run(
-            &store,
-            RuntimePolicy::Strict,
-            RunId::new(u64::from(found)),
-            requested,
-            CapabilitySet::empty(),
-        );
-
-        assert_eq!(
-            observed(result),
-            ObservedAdmissionDiagnostic::InvalidGateCount {
-                found,
-                required: REQUIRED_GATE_COUNT,
-            },
-            "gate_count={found} must deny with observed and required gate counts"
-        );
-    }
-}
-
-#[test]
-fn given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_denies() {
-    // Given
+fn given_unverified_legacy_evidence_when_strict_run_created_then_evidence_denies()
+-> Result<(), String> {
+    // Legacy all-true flags (gate_count, durable, claimed booleans) with
+    // `Unverified` evidence cannot mint admission authority. The runtime
+    // artifact verifier must reject the legacy wire state.
     let requested = digest(0xA3);
+    let mut artifact = build_minimal_artifact(RuntimePolicy::Strict)?;
+    artifact.verification.evidence = ArtifactEvidence::Unverified;
     let store = FixedAcceptedStore {
-        result: Ok(accepted_artifact_with_seq(
-            requested,
-            requested,
-            REQUIRED_GATE_COUNT,
-            false,
-            Box::new([]),
-            1, // non-stale
-        )),
+        result: Ok(artifact.clone()),
     };
 
-    // When
     let result = admit_artifact_run(
         &store,
         RuntimePolicy::Strict,
@@ -654,141 +542,238 @@ fn given_non_durable_artifact_when_strict_run_created_then_durable_proof_flag_de
         CapabilitySet::empty(),
     );
 
-    // Then
     assert_eq!(
         observed(result),
-        ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "durable" }
+        ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "evidence" }
     );
+    Ok(())
 }
 
 #[test]
-fn given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies() {
-    // Given
-    let requested = digest(0xD1);
-    let envelope = digest(0xD2);
-    let record = envelope;
-    let store = FixedAcceptedStore {
-        result: Ok(accepted_artifact_with_seq(
-            envelope,
-            record,
-            REQUIRED_GATE_COUNT,
-            true,
-            Box::new([]),
-            1, // non-stale
-        )),
-    };
-
-    // When
+fn given_checked_artifact_when_prepared_then_gate_count_and_durability_are_not_admission_authority()
+-> Result<(), String> {
+    // The checked producer never mints a gate count or a durable flag; typed
+    // evidence is the admission authority, not the legacy display fields.
+    let artifact = build_minimal_artifact(RuntimePolicy::Strict)?;
+    assert_eq!(artifact.verification.gate_count, 0);
+    assert_eq!(artifact.verification.durable, false);
+    let store = ScenarioStore { artifact };
     let result = admit_artifact_run(
         &store,
         RuntimePolicy::Strict,
         RunId::new(45),
-        requested,
+        store.artifact.digest,
         CapabilitySet::empty(),
     );
-
-    // Then
-    assert_eq!(
-        observed(result),
-        ObservedAdmissionDiagnostic::DigestMismatch {
-            requested,
-            record,
-            envelope,
-        }
+    assert!(
+        matches!(result, Ok(_)),
+        "checked artifact must admit: {result:?}"
     );
+    Ok(())
 }
 
 #[test]
-fn given_stale_artifact_when_strict_run_created_then_stale_certificate_denies() {
-    // Given: the only available stale proxy in the current public model is an accepted_at_seq of 0.
-    let requested = digest(0x51);
-    let store = FixedAcceptedStore {
-        result: Ok(accepted_artifact(
-            requested,
-            requested,
-            REQUIRED_GATE_COUNT,
-            true,
-            Box::new([]),
-        )),
-    };
+fn accepted_ledger_distinguishes_runtime_validated_from_operator_attested() -> Result<(), String> {
+    // Declaration-only `RuntimeValidated` closures mark checks the artifact
+    // verifier actually ran. `OperatorAttested` is a distinct external
+    // attestation and remains intentionally absent from a checked ledger.
+    for policy in [
+        RuntimePolicy::Relaxed,
+        RuntimePolicy::Journaled,
+        RuntimePolicy::Strict,
+    ] {
+        let artifact = build_minimal_artifact(policy)?;
+        let ArtifactEvidence::Verified(evidence) = &artifact.verification.evidence else {
+            return Err("missing typed ledger".into());
+        };
+        assert_eq!(evidence.schema_version, 3);
+        assert_eq!(
+            evidence.ledger.map(|entry| entry.obligation),
+            [
+                ObligationKind::Determinism,
+                ObligationKind::EffectSafety,
+                ObligationKind::CapabilityNonMinting,
+                ObligationKind::Boundedness,
+                ObligationKind::ReplayEffectSeparation,
+                ObligationKind::ArtifactValidity,
+                ObligationKind::IdempotencyClassification,
+                ObligationKind::RecoveryClassification,
+                ObligationKind::TaintHandling,
+                ObligationKind::PolicyBinding,
+            ]
+        );
+        for entry in &evidence.ledger {
+            assert!(
+                !matches!(entry.closure, ObligationClosure::OperatorAttested { .. }),
+                "operator attestation must remain empty"
+            );
+            match entry.obligation {
+                ObligationKind::Determinism
+                | ObligationKind::EffectSafety
+                | ObligationKind::CapabilityNonMinting
+                | ObligationKind::Boundedness
+                | ObligationKind::ArtifactValidity
+                | ObligationKind::IdempotencyClassification
+                | ObligationKind::PolicyBinding => {
+                    assert!(
+                        matches!(entry.closure, ObligationClosure::RuntimeValidated { .. }),
+                        "{:?} must be declaration-only RuntimeValidated",
+                        entry.obligation
+                    );
+                }
+                ObligationKind::ReplayEffectSeparation
+                | ObligationKind::RecoveryClassification
+                | ObligationKind::TaintHandling => {
+                    assert!(
+                        matches!(entry.closure, ObligationClosure::ExternalAssumption { .. }),
+                        "{:?} must remain an explicit external assumption",
+                        entry.obligation
+                    );
+                }
+            }
+        }
+    }
 
-    // When
+    // Effect safety for a workflow with a dispatched action is an external
+    // executor-honors-contracts assumption, not a declaration-only validation.
+    let action_artifact = build_do_artifact(Box::new([]), RuntimePolicy::Strict)?;
+    let ArtifactEvidence::Verified(evidence) = &action_artifact.verification.evidence else {
+        return Err("missing typed ledger for action workflow".into());
+    };
+    let effect_entry = evidence
+        .ledger
+        .iter()
+        .find(|entry| entry.obligation == ObligationKind::EffectSafety)
+        .ok_or("missing effect-safety obligation")?;
+    assert!(matches!(
+        effect_entry.closure,
+        ObligationClosure::ExternalAssumption { .. }
+    ));
+    Ok(())
+}
+
+#[test]
+fn given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies() -> Result<(), String>
+{
+    let artifact = build_minimal_artifact(RuntimePolicy::Strict)?;
+    let artifact_digest = artifact.digest;
+
+    // (a) proof digest tampered while the envelope digest stays intact.
+    let mut tampered = artifact.clone();
+    let bad = digest(0xD2);
+    tampered.verification.digest = bad;
+    let store = FixedAcceptedStore {
+        result: Ok(tampered),
+    };
     let result = admit_artifact_run(
         &store,
         RuntimePolicy::Strict,
         RunId::new(46),
+        artifact_digest,
+        CapabilitySet::empty(),
+    );
+    assert_eq!(
+        observed(result),
+        ObservedAdmissionDiagnostic::DigestMismatch {
+            requested: artifact_digest,
+            found: bad,
+        }
+    );
+
+    // (b) caller requests a digest bound to neither the artifact nor its source.
+    let requested = digest(0xD1);
+    let store = FixedAcceptedStore {
+        result: Ok(artifact),
+    };
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(47),
         requested,
         CapabilitySet::empty(),
     );
-
-    // Then
     assert_eq!(
         observed(result),
-        ObservedAdmissionDiagnostic::Admitted(RunAdmission::with_idempotency_evidence(
+        ObservedAdmissionDiagnostic::DigestMismatch {
             requested,
-            RunId::new(46),
-            CapabilitySet::empty(),
-            RuntimePolicy::Strict,
-            Box::new([]),
-        ))
+            found: artifact_digest,
+        }
     );
+    Ok(())
 }
 
 #[test]
-fn given_missing_prefix_or_action_mismatched_capability_then_capability_denied() {
-    // Given
-    let requested = digest(0xC1);
-    let action = ActionId::new(7);
-    let required = cap("network.github", 7);
+fn given_stale_artifact_when_strict_run_created_then_stale_certificate_denies() -> Result<(), String>
+{
+    // A checked artifact is accepted at sequence zero; a freshness floor above
+    // zero must reject it as stale after envelope validation succeeds.
+    let artifact = build_minimal_artifact(RuntimePolicy::Strict)?;
+    let artifact_digest = artifact.digest;
+    let store = ScenarioStore { artifact };
+
+    let result = admit_artifact_run_with_certificate_floor(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(48),
+        artifact_digest,
+        CapabilitySet::empty(),
+        EventSeq::new(1),
+    );
+
+    assert_eq!(
+        observed(result),
+        ObservedAdmissionDiagnostic::StaleCertificate {
+            digest: artifact_digest,
+        }
+    );
+    Ok(())
+}
+
+#[test]
+fn given_missing_prefix_or_action_mismatched_capability_then_capability_denied()
+-> Result<(), String> {
+    let required = cap("network.github", 0);
+    let artifact = build_do_artifact(Box::new([required.clone()]), RuntimePolicy::Strict)?;
+    let artifact_digest = artifact.digest;
     let cases = [
         ("missing", CapabilitySet::empty()),
-        ("prefix-only", caps(Box::new([cap("network", 7)]))),
-        ("partial-prefix", caps(Box::new([cap("net", 7)]))),
-        ("wrong-action", caps(Box::new([cap("network.github", 8)]))),
+        ("prefix-only", caps(Box::new([cap("network", 0)]))),
+        ("partial-prefix", caps(Box::new([cap("net", 0)]))),
+        ("wrong-action", caps(Box::new([cap("network.github", 1)]))),
     ];
 
-    // When / Then
     for (label, granted) in cases {
-        let store = FixedAcceptedStore {
-            result: Ok(accepted_artifact_with_seq(
-                requested,
-                requested,
-                REQUIRED_GATE_COUNT,
-                true,
-                Box::new([required.clone()]),
-                1, // non-stale
-            )),
+        let store = ScenarioStore {
+            artifact: artifact.clone(),
         };
         let result = admit_artifact_run(
             &store,
             RuntimePolicy::Strict,
-            RunId::new(47),
-            requested,
+            RunId::new(49),
+            artifact_digest,
             granted.clone(),
         );
         assert_eq!(
             observed(result),
             ObservedAdmissionDiagnostic::CapabilityDenied {
-                action,
+                action: ActionId::new(0),
                 required: required.clone(),
                 granted,
             },
             "capability mismatch case {label} must preserve action, required, and granted"
         );
     }
+    Ok(())
 }
 
 #[test]
-fn given_required_capability_with_extras_or_duplicates_then_denied() {
-    // F-001 fix: strict admission rejects both cardinality-mismatch shapes
-    // (excess grants and duplicate grants) per VERUS-CARD-003.
-    // Previously admitted under subset-allowed semantics; now rejected
-    // to enforce least-privilege: the runtime re-checks per-action against
-    // `RunAdmission::granted_capabilities`, so extras would authorize
-    // actions beyond the artifact's declared requirement set.
-    // Given
-    let requested = digest(0xC1);
-    let required = cap("network.github", 7);
+fn given_required_capability_with_extras_or_duplicates_then_denied() -> Result<(), String> {
+    // Strict admission rejects cardinality-mismatch shapes (extras and
+    // duplicates) with a typed count mismatch instead of fabricating a
+    // `CapabilityDenied` for a capability that is actually granted.
+    let required = cap("network.github", 0);
+    let artifact = build_do_artifact(Box::new([required.clone()]), RuntimePolicy::Strict)?;
+    let artifact_digest = artifact.digest;
     let cases = [
         (
             "excess",
@@ -800,23 +785,15 @@ fn given_required_capability_with_extras_or_duplicates_then_denied() {
         ),
     ];
 
-    // When / Then
     for (label, granted) in cases {
-        let store = FixedAcceptedStore {
-            result: Ok(accepted_artifact_with_seq(
-                requested,
-                requested,
-                REQUIRED_GATE_COUNT,
-                true,
-                Box::new([required.clone()]),
-                1, // non-stale
-            )),
+        let store = ScenarioStore {
+            artifact: artifact.clone(),
         };
         let result = admit_artifact_run(
             &store,
             RuntimePolicy::Strict,
-            RunId::new(47),
-            requested,
+            RunId::new(50),
+            artifact_digest,
             granted.clone(),
         );
         assert_eq!(
@@ -828,20 +805,21 @@ fn given_required_capability_with_extras_or_duplicates_then_denied() {
             "capability cardinality-mismatch case {label} must deny closed"
         );
     }
+    Ok(())
 }
 
 #[test]
 fn given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile()
- {
-    // Given: a valid schema 3 artifact built from the real compiler/verifier path
+-> Result<(), String> {
+    // A valid schema-3 artifact built from the real verifier path admits with
+    // a record carrying the matched digest, run id, policy, and exact grants.
     let capability = cap("network.github", 0);
-    let artifact = build_valid_artifact(Box::new([capability.clone()])).expect("artifact build");
+    let artifact = build_do_artifact(Box::new([capability.clone()]), RuntimePolicy::Journaled)?;
     let requested = artifact.digest;
-    let run_id = RunId::new(48);
+    let run_id = RunId::new(51);
     let granted = caps(Box::new([capability]));
     let store = ScenarioStore { artifact };
 
-    // When
     let result = admit_artifact_run(
         &store,
         RuntimePolicy::Journaled,
@@ -850,7 +828,6 @@ fn given_valid_accepted_artifact_when_admitted_then_admission_record_contains_di
         granted.clone(),
     );
 
-    // Then: admitted with matching digest, run_id, and policy
     assert_eq!(
         observed(result),
         ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(
@@ -860,12 +837,12 @@ fn given_valid_accepted_artifact_when_admitted_then_admission_record_contains_di
             RuntimePolicy::Journaled,
         ))
     );
+    Ok(())
 }
 
 #[test]
 fn given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capacity_error_is_preserved()
  {
-    // Given
     let requested_budget = AggregateResourceBudget {
         max_steps_executable: 2,
         max_action_tickets: 0,
@@ -909,18 +886,16 @@ fn given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capa
         max_transitions_per_tick: 0,
     };
 
-    // When
     let result = admit_run_with_budget(
         &PresentArtifactStore,
         RuntimePolicy::Strict,
         digest(0xB1),
-        RunId::new(49),
+        RunId::new(52),
         CapabilitySet::empty(),
         requested_budget,
         available_capacity,
     );
 
-    // Then
     assert_eq!(
         observed(result),
         ObservedAdmissionDiagnostic::ResourceCapacityExceeded {
@@ -931,58 +906,9 @@ fn given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capa
     );
 }
 
-proptest! {
-    #[test]
-    fn proptest_gate_count_acceptance_is_singleton_canonical_15(found in any::<u8>()) {
-        // Given
-        let requested = digest(0xF0);
-        let store = FixedAcceptedStore {
-            result: Ok(accepted_artifact_with_seq(
-                requested,
-                requested,
-                found,
-                true,
-                Box::new([]),
-                1, // non-stale
-            )),
-        };
-
-        // When
-        let result = admit_artifact_run(
-            &store,
-            RuntimePolicy::Strict,
-            RunId::new(50),
-            requested,
-            CapabilitySet::empty(),
-        );
-
-        // Then
-        if found == REQUIRED_GATE_COUNT {
-            prop_assert_eq!(
-                observed(result),
-                ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(
-                    requested,
-                    RunId::new(50),
-                    CapabilitySet::empty(),
-                    RuntimePolicy::Strict,
-                ))
-            );
-        } else {
-            prop_assert_eq!(
-                observed(result),
-                ObservedAdmissionDiagnostic::InvalidGateCount {
-                    found,
-                    required: REQUIRED_GATE_COUNT,
-                }
-            );
-        }
-    }
-}
-
 #[test]
 fn given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_failed_matrix_denies()
 -> Result<(), String> {
-    // Given / When / Then
     let cases: [(&str, Vec<u8>); 6] = [
         (
             "raw-workflow-parts",
@@ -1033,160 +959,122 @@ fn given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_fail
 }
 
 #[test]
-fn given_invalid_envelope_semantic_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies()
- {
-    // Given / When / Then
-    let cases = [
-        InvalidEnvelopeCase::GateCount { found: 0 },
-        InvalidEnvelopeCase::GateCount { found: 2 },
-        InvalidEnvelopeCase::GateCount { found: 14 },
-        InvalidEnvelopeCase::GateCount { found: 16 },
-        InvalidEnvelopeCase::GateCount { found: 255 },
-        InvalidEnvelopeCase::ProofFlag { flag: "bounded" },
-        InvalidEnvelopeCase::ProofFlag { flag: "taint_safe" },
-        InvalidEnvelopeCase::ProofFlag { flag: "retry_safe" },
-        InvalidEnvelopeCase::ProofFlag { flag: "durable" },
-        InvalidEnvelopeCase::ProofFlag { flag: "replayable" },
-    ];
+fn given_evidence_schema_tamper_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies()
+-> Result<(), String> {
+    // Each hostile mutation of the typed evidence must fail closed with the
+    // exact mapped flag rather than decoding an untrusted payload.
+    #[derive(Debug)]
+    enum EvidenceTamper {
+        Unverified,
+        SchemaVersion(u16),
+        IrFlip,
+        PolicyUpgrade,
+    }
 
-    for case in cases {
-        let requested = digest(0xE1);
-        let artifact = match case {
-            InvalidEnvelopeCase::GateCount { found } => accepted_artifact_with_flags_and_seq(
-                requested,
-                requested,
-                found,
-                true,
-                true,
-                true,
-                true,
-                true,
-                Box::new([]),
-                1, // non-stale
-            ),
-            InvalidEnvelopeCase::ProofFlag { flag: "bounded" } => {
-                accepted_artifact_with_flags_and_seq(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    false,
-                    true,
-                    true,
-                    true,
-                    Box::new([]),
-                    1, // non-stale
-                )
+    let base = build_minimal_artifact(RuntimePolicy::Strict)?;
+    let base_digest = base.digest;
+    let journaled = build_minimal_artifact(RuntimePolicy::Journaled)?;
+
+    let mut cases: Vec<(EvidenceTamper, AcceptedArtifact)> = Vec::new();
+    for (tamper, artifact) in [
+        (EvidenceTamper::Unverified, {
+            let mut a = base.clone();
+            a.verification.evidence = ArtifactEvidence::Unverified;
+            a
+        }),
+        (EvidenceTamper::SchemaVersion(2), {
+            let mut a = base.clone();
+            let ArtifactEvidence::Verified(evidence) = &mut a.verification.evidence else {
+                return Err("missing evidence".into());
+            };
+            evidence.schema_version = 2;
+            a
+        }),
+        (EvidenceTamper::SchemaVersion(999), {
+            let mut a = base.clone();
+            let ArtifactEvidence::Verified(evidence) = &mut a.verification.evidence else {
+                return Err("missing evidence".into());
+            };
+            evidence.schema_version = 999;
+            a
+        }),
+        (EvidenceTamper::IrFlip, {
+            let mut a = base.clone();
+            if let Some(first) = a.ir.first_mut() {
+                *first ^= 0xFF;
             }
-            InvalidEnvelopeCase::ProofFlag { flag: "taint_safe" } => {
-                accepted_artifact_with_flags_and_seq(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    true,
-                    false,
-                    true,
-                    true,
-                    Box::new([]),
-                    1, // non-stale
-                )
-            }
-            InvalidEnvelopeCase::ProofFlag { flag: "retry_safe" } => {
-                accepted_artifact_with_flags_and_seq(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    true,
-                    true,
-                    false,
-                    true,
-                    Box::new([]),
-                    1, // non-stale
-                )
-            }
-            InvalidEnvelopeCase::ProofFlag { flag: "durable" } => {
-                accepted_artifact_with_flags_and_seq(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    false,
-                    true,
-                    true,
-                    true,
-                    true,
-                    Box::new([]),
-                    1, // non-stale
-                )
-            }
-            InvalidEnvelopeCase::ProofFlag { flag: "replayable" } => {
-                accepted_artifact_with_flags_and_seq(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    true,
-                    true,
-                    true,
-                    false,
-                    Box::new([]),
-                    1, // non-stale
-                )
-            }
-            InvalidEnvelopeCase::ProofFlag { flag } => accepted_artifact_with_flags_and_seq(
-                requested,
-                requested,
-                REQUIRED_GATE_COUNT,
-                true,
-                true,
-                true,
-                true,
-                true,
-                Box::new([cap(flag, 1)]),
-                1, // non-stale
-            ),
-        };
+            a
+        }),
+        (EvidenceTamper::PolicyUpgrade, journaled.clone()),
+    ] {
+        cases.push((tamper, artifact));
+    }
+
+    for (tamper, artifact) in cases {
         let store = FixedAcceptedStore {
             result: Ok(artifact),
         };
+        let (requested, policy, expected) = match &tamper {
+            EvidenceTamper::PolicyUpgrade => (
+                journaled.digest,
+                RuntimePolicy::Strict,
+                ObservedAdmissionDiagnostic::InvalidProofFlag {
+                    flag: "admission_policy",
+                },
+            ),
+            EvidenceTamper::SchemaVersion(version) => {
+                assert!(
+                    *version != 3,
+                    "tamper matrix must use a non-current schema version, got {version}"
+                );
+                (
+                    base_digest,
+                    RuntimePolicy::Strict,
+                    ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "evidence" },
+                )
+            }
+            EvidenceTamper::Unverified | EvidenceTamper::IrFlip => (
+                base_digest,
+                RuntimePolicy::Strict,
+                ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "evidence" },
+            ),
+        };
         let result = admit_artifact_run(
             &store,
-            RuntimePolicy::Strict,
+            policy,
             RunId::new(101),
             requested,
             CapabilitySet::empty(),
         );
-
-        let expected = match case {
-            InvalidEnvelopeCase::GateCount { found } => {
-                ObservedAdmissionDiagnostic::InvalidGateCount {
-                    found,
-                    required: REQUIRED_GATE_COUNT,
-                }
-            }
-            InvalidEnvelopeCase::ProofFlag { flag } => {
-                ObservedAdmissionDiagnostic::InvalidProofFlag { flag }
-            }
-        };
-        assert_eq!(observed(result), expected, "invalid envelope case {case:?}");
+        assert_eq!(
+            observed(result),
+            expected,
+            "evidence tamper case {tamper:?}"
+        );
     }
+    Ok(())
 }
 
 #[test]
 fn given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved()
 -> Result<(), String> {
-    // Given
+    // The shard maps admission errors to typed RuntimeError variants; the
+    // public diagnostic surface preserves category, digest, and cause for the
+    // reachable Strict admission failure classes.
     let workflow = minimal_workflow()?;
     let requested = workflow.digest();
-    let capability = cap("network.github", 7);
+    let artifact = build_minimal_artifact(RuntimePolicy::Strict)?;
+    let artifact_digest = artifact.digest;
+    let mut unverified = artifact.clone();
+    unverified.verification.evidence = ArtifactEvidence::Unverified;
+    let mut digest_tampered = artifact.clone();
+    digest_tampered.verification.digest = digest(0xD3);
     let cases = [
         (
             "not_found",
             FixedAcceptedStore {
                 result: Err(ArtifactEnvelopeError::ArtifactNotFound { digest: requested }),
             },
-            CapabilitySet::empty(),
             PublicAdmissionDiagnostic {
                 category: "not_found",
                 digest: Some(requested),
@@ -1194,120 +1082,35 @@ fn given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_diges
             },
         ),
         (
-            "decode_failed",
-            FixedAcceptedStore {
-                result: Err(ArtifactEnvelopeError::PostcardDecodeFailed),
-            },
-            CapabilitySet::empty(),
-            PublicAdmissionDiagnostic {
-                category: "decode_failed",
-                digest: Some(requested),
-                cause: "artifact_envelope_decode_failed",
-            },
-        ),
-        (
             "invalid_envelope",
             FixedAcceptedStore {
-                result: Ok(accepted_artifact_with_flags(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    false,
-                    true,
-                    true,
-                    true,
-                    true,
-                    Box::new([]),
-                )),
+                result: Ok(unverified),
             },
-            CapabilitySet::empty(),
             PublicAdmissionDiagnostic {
                 category: "invalid_envelope",
                 digest: Some(requested),
                 cause: "artifact_envelope_invalid",
-            },
-        ),
-        (
-            "gate_mismatch",
-            FixedAcceptedStore {
-                result: Ok(accepted_artifact(
-                    requested,
-                    requested,
-                    2,
-                    true,
-                    Box::new([]),
-                )),
-            },
-            CapabilitySet::empty(),
-            PublicAdmissionDiagnostic {
-                category: "invalid_envelope",
-                digest: Some(requested),
-                cause: "artifact_envelope_invalid",
-            },
-        ),
-        (
-            "capability_denied",
-            FixedAcceptedStore {
-                result: Ok(accepted_artifact(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    Box::new([capability.clone()]),
-                )),
-            },
-            CapabilitySet::empty(),
-            PublicAdmissionDiagnostic {
-                category: "capability_denied",
-                digest: Some(requested),
-                cause: "capability_profile_mismatch",
             },
         ),
         (
             "digest_mismatch",
             FixedAcceptedStore {
-                result: Ok(accepted_artifact(
-                    digest(0xD2),
-                    digest(0xD2),
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    Box::new([]),
-                )),
+                result: Ok(digest_tampered),
             },
-            CapabilitySet::empty(),
             PublicAdmissionDiagnostic {
                 category: "digest_mismatch",
-                digest: Some(requested),
+                digest: Some(artifact_digest),
                 cause: "requested_record_envelope_mismatch",
-            },
-        ),
-        (
-            "stale",
-            FixedAcceptedStore {
-                result: Ok(accepted_artifact(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    Box::new([]),
-                )),
-            },
-            CapabilitySet::empty(),
-            PublicAdmissionDiagnostic {
-                category: "admitted",
-                digest: Some(requested),
-                cause: "none",
             },
         ),
     ];
 
-    for (index, (label, store, caps, expected)) in cases.into_iter().enumerate() {
-        // When
+    for (index, (label, store, expected)) in cases.into_iter().enumerate() {
         let (tick_result, _before, _after) = run_strict_submit_with_store(
             store,
             RunId::new(200 + u64::try_from(index).map_err(|error| error.to_string())?),
             workflow.clone(),
-            caps,
+            CapabilitySet::empty(),
         )
         .map_err(|error| format!("strict submit probe failed: {error:?}"))?;
         let actual = match tick_result {
@@ -1318,8 +1121,6 @@ fn given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_diges
             },
             Err(error) => runtime_diagnostic(error, requested),
         };
-
-        // Then
         assert_eq!(actual, expected, "public diagnostic case {label}");
     }
     Ok(())
@@ -1328,17 +1129,24 @@ fn given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_diges
 #[test]
 fn given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated()
 -> Result<(), String> {
-    // Given
+    // Every rejected admission must leave the shard without allocating a run
+    // frame, inserting run state, or emitting an admission journal event, and
+    // the submit command must be consumed without leaving runnable work.
     let workflow = minimal_workflow()?;
     let requested = workflow.digest();
-    let required = cap("filesystem.read", 9);
+    let artifact = build_minimal_artifact(RuntimePolicy::Strict)?;
+    let artifact_digest = artifact.digest;
+    let mut unverified = artifact.clone();
+    unverified.verification.evidence = ArtifactEvidence::Unverified;
+    let mut digest_tampered = artifact.clone();
+    digest_tampered.verification.digest = digest(0xD4);
+
     let cases = [
         (
             "not_found",
             FixedAcceptedStore {
                 result: Err(ArtifactEnvelopeError::ArtifactNotFound { digest: requested }),
             },
-            CapabilitySet::empty(),
             PublicAdmissionDiagnostic {
                 category: "not_found",
                 digest: Some(requested),
@@ -1346,47 +1154,10 @@ fn given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_sta
             },
         ),
         (
-            "decode_failed",
+            "invalid_envelope",
             FixedAcceptedStore {
-                result: Err(ArtifactEnvelopeError::PostcardDecodeFailed),
+                result: Ok(unverified),
             },
-            CapabilitySet::empty(),
-            PublicAdmissionDiagnostic {
-                category: "decode_failed",
-                digest: Some(requested),
-                cause: "artifact_envelope_decode_failed",
-            },
-        ),
-        (
-            "gate_mismatch",
-            FixedAcceptedStore {
-                result: Ok(accepted_artifact(
-                    requested,
-                    requested,
-                    0,
-                    true,
-                    Box::new([]),
-                )),
-            },
-            CapabilitySet::empty(),
-            PublicAdmissionDiagnostic {
-                category: "invalid_envelope",
-                digest: Some(requested),
-                cause: "artifact_envelope_invalid",
-            },
-        ),
-        (
-            "invalid_flag",
-            FixedAcceptedStore {
-                result: Ok(accepted_artifact(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    false,
-                    Box::new([]),
-                )),
-            },
-            CapabilitySet::empty(),
             PublicAdmissionDiagnostic {
                 category: "invalid_envelope",
                 digest: Some(requested),
@@ -1396,66 +1167,22 @@ fn given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_sta
         (
             "digest_mismatch",
             FixedAcceptedStore {
-                result: Ok(accepted_artifact(
-                    digest(0xD4),
-                    digest(0xD4),
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    Box::new([]),
-                )),
+                result: Ok(digest_tampered),
             },
-            CapabilitySet::empty(),
             PublicAdmissionDiagnostic {
                 category: "digest_mismatch",
-                digest: Some(requested),
+                digest: Some(artifact_digest),
                 cause: "requested_record_envelope_mismatch",
-            },
-        ),
-        (
-            "stale",
-            FixedAcceptedStore {
-                result: Ok(accepted_artifact(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    Box::new([]),
-                )),
-            },
-            CapabilitySet::empty(),
-            PublicAdmissionDiagnostic {
-                category: "admitted",
-                digest: Some(requested),
-                cause: "none",
-            },
-        ),
-        (
-            "capability_denied",
-            FixedAcceptedStore {
-                result: Ok(accepted_artifact(
-                    requested,
-                    requested,
-                    REQUIRED_GATE_COUNT,
-                    true,
-                    Box::new([required]),
-                )),
-            },
-            CapabilitySet::empty(),
-            PublicAdmissionDiagnostic {
-                category: "capability_denied",
-                digest: Some(requested),
-                cause: "capability_profile_mismatch",
             },
         ),
     ];
 
-    for (index, (label, store, caps, expected)) in cases.into_iter().enumerate() {
-        // When
+    for (index, (label, store, expected)) in cases.into_iter().enumerate() {
         let (tick_result, before, after) = run_strict_submit_with_store(
             store,
             RunId::new(300 + u64::try_from(index).map_err(|error| error.to_string())?),
             workflow.clone(),
-            caps,
+            CapabilitySet::empty(),
         )
         .map_err(|error| format!("strict submit probe failed: {error:?}"))?;
         let actual = match tick_result {
@@ -1466,19 +1193,15 @@ fn given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_sta
             },
             Err(error) => runtime_diagnostic(error, requested),
         };
-
-        // Then
         assert_eq!(actual, expected, "denial diagnostic case {label}");
         assert_eq!(
             after.active_runs, before.active_runs,
             "case {label} must not allocate a run"
         );
-        if label != "stale" {
-            assert_eq!(
-                after.journal_events, before.journal_events,
-                "case {label} must not emit RunAccepted/RunAdmission/drive events"
-            );
-        }
+        assert_eq!(
+            after.journal_events, before.journal_events,
+            "case {label} must not emit RunAccepted/RunAdmission/drive events"
+        );
         assert_eq!(
             after.command_queue_len, 0,
             "case {label} command must be consumed without leaving runnable work"
@@ -1490,15 +1213,19 @@ fn given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_sta
 #[test]
 fn given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required()
 -> Result<(), String> {
-    // Given: default strict construction still wires the dummy AlwaysPresent accepted-artifact store.
+    // Direct Strict construction without a storage-backed journal wires the
+    // `MissingAcceptedArtifactStore`, so submission rejects instead of silently
+    // accepting an unbacked artifact. A real storage-backed store is required.
     let workflow = minimal_workflow()?;
     let run_id = RunId::new(401);
-    let mut shard = Shard::new(ShardConfig {
-        policy: RuntimePolicy::Strict,
-        ..ShardConfig::default()
-    });
+    let mut shard = Shard::new_with_journal(
+        ShardConfig {
+            policy: RuntimePolicy::Strict,
+            ..ShardConfig::default()
+        },
+        VolatileRuntimeJournal::shared(),
+    );
 
-    // When
     shard
         .enqueue(ShardCommand::SubmitPrePersisted {
             run: run_id,
@@ -1508,15 +1235,20 @@ fn given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_
         .map_err(|error| format!("enqueue failed: {error:?}"))?;
     let result = shard.tick();
 
-    // Then
-    assert_eq!(result, Ok(true));
+    assert_eq!(
+        result,
+        Err(RuntimeError::AdmissionArtifactNotFound {
+            digest: workflow.digest()
+        })
+    );
     assert_eq!(shard.active_run_count(), 0);
     Ok(())
 }
 
 #[test]
 fn given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_not_called() {
-    // Given / When: static guard over the strict runtime admission implementation.
+    // Static guard: strict runtime admission never invokes YAML/JSON or
+    // workflow-parts decode on the admission path.
     let admission_source = include_str!("../../../crates/vb_runtime/src/admission.rs");
     let strict_path_start = admission_source.find("pub fn admit_artifact_run");
     let strict_path = match strict_path_start {
@@ -1527,7 +1259,6 @@ fn given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_n
         None => admission_source,
     };
 
-    // Then
     assert_eq!(strict_path.contains("serde_yaml"), false);
     assert_eq!(strict_path.contains("serde_json"), false);
     assert_eq!(strict_path.contains("WorkflowParts"), false);
@@ -1535,13 +1266,9 @@ fn given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_n
 
 #[test]
 fn given_existence_only_artifact_check_when_strict_admission_then_bypass_is_denied() {
-    // Given / When
-    // The strict-admission module is composed via `include!` of focused
-    // chunk files under `admission/parts/`. We concatenate the shell +
-    // every chunk so that literal-source assertions still cover the
-    // full module surface (impl blocks live in `chunk_003_stores`,
-    // the `compiled_ir_exists` trait method lives in `chunk_001`, and
-    // its call site is in `chunk_006_admit_budget`).
+    // Static guard: strict admission is not existence-only; the full accepted
+    // artifact store surface and the `compiled_ir_exists` existence probe are
+    // wired so that a fabricated always-present view cannot admit.
     let admission_source = concat!(
         include_str!("../../../crates/vb_runtime/src/admission.rs"),
         include_str!(
@@ -1555,7 +1282,6 @@ fn given_existence_only_artifact_check_when_strict_admission_then_bypass_is_deni
     );
     let shard_source = include_str!("../../../crates/vb_runtime/src/shard/impl_parts/chunk_001.rs");
 
-    // Then
     assert_eq!(
         admission_source.contains("impl AcceptedArtifactStore for AlwaysPresentArtifactStore"),
         true
@@ -1573,34 +1299,42 @@ fn given_existence_only_artifact_check_when_strict_admission_then_bypass_is_deni
 proptest! {
     #[test]
     fn proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted(
-        required_action in 1u16..20,
-        _granted_action in 1u16..20,
         name_suffix in 1u8..10,
         mutation in 0u8..6,
     ) {
-        // F-001 fix: strict admission rejects cardinality mismatch (VERUS-CARD-003).
-        // Mutation 0 (exact match) admits; every other shape denies.
-        let requested = digest(0xFA);
-        let required_name = format!("network.service.{name_suffix}");
-        let required = cap(&required_name, required_action);
-        let wrong_action = if required_action == 19 { 1 } else { required_action.saturating_add(1) };
+        let required_name = format!("network.service{name_suffix}");
+        let required = cap(&required_name, 0);
+        let artifact = build_do_artifact(Box::new([required.clone()]), RuntimePolicy::Strict)
+            .map_err(|error| TestCaseError::fail(format!("artifact build failed: {error}")))?;
+        let artifact_digest = artifact.digest;
         let granted = match mutation {
-            0 => caps(Box::new([cap(&required_name, required_action)])),
+            0 => caps(Box::new([required.clone()])),
             1 => CapabilitySet::empty(),
-            2 => caps(Box::new([cap(&required_name, required_action), cap("extra.capability", 99)])),
-            3 => caps(Box::new([cap("network.service", required_action)])),
-            4 => caps(Box::new([cap(&required_name, wrong_action)])),
-            _ => caps(Box::new([cap(&required_name, required_action), cap(&required_name, required_action)])),
+            2 => caps(Box::new([required.clone(), cap("extra.capability", 99)])),
+            3 => caps(Box::new([cap("network.service", 0)])),
+            4 => caps(Box::new([cap(&required_name, 1)])),
+            _ => caps(Box::new([required.clone(), required.clone()])),
         };
-        let store = FixedAcceptedStore { result: Ok(accepted_artifact_with_seq(requested, requested, REQUIRED_GATE_COUNT, true, Box::new([required.clone()]), 1)) };
-
-        let result = observed(admit_artifact_run(&store, RuntimePolicy::Strict, RunId::new(501), requested, granted.clone()));
+        let store = ScenarioStore { artifact };
+        let result = observed(admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(501),
+            artifact_digest,
+            granted.clone(),
+        ));
 
         if mutation == 0 {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(requested, RunId::new(501), granted, RuntimePolicy::Strict)));
+            prop_assert_eq!(
+                result,
+                ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(
+                    artifact_digest,
+                    RunId::new(501),
+                    granted,
+                    RuntimePolicy::Strict,
+                ))
+            );
         } else if mutation == 2 || mutation == 5 {
-            // Cardinality differs but the required capability is granted (or duplicated).
-            // Surfaces as typed CapabilityCountMismatch (RA-023 honesty fix).
             prop_assert_eq!(
                 result,
                 ObservedAdmissionDiagnostic::CapabilityCountMismatch {
@@ -1609,86 +1343,128 @@ proptest! {
                 }
             );
         } else {
-            // mutation 1: empty set (required missing)
-            // mutation 3: wrong name (required missing)
-            // mutation 4: wrong action (required missing)
-            // All surface as CapabilityDenied (required capability not covered).
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::CapabilityDenied { action: required.action_id(), required, granted });
+            prop_assert_eq!(
+                result,
+                ObservedAdmissionDiagnostic::CapabilityDenied {
+                    action: ActionId::new(0),
+                    required,
+                    granted,
+                }
+            );
         }
     }
 
     #[test]
-    fn proptest_fail_closed_envelope_predicate_denies_any_invalid_field(
-        gate_count in any::<u8>(),
-        durable in any::<bool>(),
-        bounded in any::<bool>(),
-        taint_safe in any::<bool>(),
-        retry_safe in any::<bool>(),
-        replayable in any::<bool>(),
-    ) {
-        let requested = digest(0xFB);
-        let store = FixedAcceptedStore { result: Ok(accepted_artifact_with_flags_and_seq(
-            requested, requested, gate_count, durable, bounded, taint_safe, retry_safe, replayable, Box::new([]), 1
-        ))};
+    fn proptest_evidence_schema_version_fails_closed(schema_version in any::<u16>()) {
+        let mut artifact = build_minimal_artifact(RuntimePolicy::Strict)
+            .map_err(|error| TestCaseError::fail(format!("artifact build failed: {error}")))?;
+        let artifact_digest = artifact.digest;
+        let is_verified = match &mut artifact.verification.evidence {
+            ArtifactEvidence::Verified(evidence) => {
+                evidence.schema_version = schema_version;
+                true
+            }
+            _ => false,
+        };
+        prop_assert!(is_verified, "checked artifact must carry typed evidence");
+        let store = ScenarioStore { artifact };
+        let result = observed(admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(502),
+            artifact_digest,
+            CapabilitySet::empty(),
+        ));
 
-        let result = observed(admit_artifact_run(&store, RuntimePolicy::Strict, RunId::new(502), requested, CapabilitySet::empty()));
-
-        if gate_count != REQUIRED_GATE_COUNT {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::InvalidGateCount { found: gate_count, required: REQUIRED_GATE_COUNT });
-        } else if !bounded {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "bounded" });
-        } else if !taint_safe {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "taint_safe" });
-        } else if !retry_safe {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "retry_safe" });
-        } else if !durable {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "durable" });
-        } else if !replayable {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "replayable" });
+        if schema_version == 3 {
+            prop_assert!(matches!(result, ObservedAdmissionDiagnostic::Admitted(_)));
         } else {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(requested, RunId::new(502), CapabilitySet::empty(), RuntimePolicy::Strict)));
+            prop_assert_eq!(
+                result,
+                ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "evidence" }
+            );
         }
     }
 
     #[test]
-    fn proptest_digest_equality_is_required_across_requested_record_and_envelope(
-        requested_byte in any::<u8>(),
-        record_byte in any::<u8>(),
-        envelope_byte in any::<u8>(),
-    ) {
-        let requested = digest(requested_byte);
-        let record = digest(record_byte);
-        let envelope = digest(envelope_byte);
-        let store = FixedAcceptedStore { result: Ok(accepted_artifact_with_seq(envelope, record, REQUIRED_GATE_COUNT, true, Box::new([]), 1)) };
+    fn proptest_verification_digest_must_equal_artifact_digest(a in any::<u8>(), b in any::<u8>()) {
+        let mut tampered = build_minimal_artifact(RuntimePolicy::Strict)
+            .map_err(|error| TestCaseError::fail(format!("artifact build failed: {error}")))?;
+        tampered.digest = WorkflowDigest::from_bytes([a; 32]);
+        tampered.verification.digest = WorkflowDigest::from_bytes([b; 32]);
+        let requested = tampered.digest;
+        let store = ScenarioStore {
+            artifact: tampered.clone(),
+        };
+        let result = observed(admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(503),
+            requested,
+            CapabilitySet::empty(),
+        ));
 
-        let result = observed(admit_artifact_run(&store, RuntimePolicy::Strict, RunId::new(503), requested, CapabilitySet::empty()));
-
-        if requested == envelope && record == envelope {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(requested, RunId::new(503), CapabilitySet::empty(), RuntimePolicy::Strict)));
-        } else if record != envelope {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested: envelope, record, envelope: record });
-        } else if requested != envelope {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record: envelope, envelope: envelope });
+        if a == b {
+            prop_assert_eq!(
+                result,
+                ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "evidence" }
+            );
         } else {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(requested, RunId::new(503), CapabilitySet::empty(), RuntimePolicy::Strict)));
+            prop_assert_eq!(
+                result,
+                ObservedAdmissionDiagnostic::DigestMismatch {
+                    requested,
+                    found: tampered.verification.digest,
+                }
+            );
         }
     }
 
     #[test]
-    fn proptest_diagnostic_mapping_is_injective_over_admission_error_categories(category in 0u8..8) {
+    fn proptest_diagnostic_mapping_is_injective_over_admission_error_categories(category in 0u8..9) {
         let requested = digest(0xFC);
         let observed = match category {
             0 => ObservedAdmissionDiagnostic::NotFound { digest: requested },
             1 => ObservedAdmissionDiagnostic::DecodeFailed,
-            2 => ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "schema" },
-            3 => ObservedAdmissionDiagnostic::InvalidGateCount { found: 2, required: REQUIRED_GATE_COUNT },
-            4 => ObservedAdmissionDiagnostic::DigestMismatch { requested, record: digest(0x01), envelope: digest(0x02) },
-            5 => ObservedAdmissionDiagnostic::StaleCertificate { digest: requested },
-            6 => ObservedAdmissionDiagnostic::CapabilityDenied { action: ActionId::new(1), required: cap("network", 1), granted: CapabilitySet::empty() },
-            _ => ObservedAdmissionDiagnostic::ResourceCapacityExceeded { resource: "max_steps_executable", requested: 2, available: 1 },
+            2 => ObservedAdmissionDiagnostic::InvalidProofFlag { flag: "evidence" },
+            3 => ObservedAdmissionDiagnostic::CapabilityDenied {
+                action: ActionId::new(1),
+                required: cap("network", 1),
+                granted: CapabilitySet::empty(),
+            },
+            4 => ObservedAdmissionDiagnostic::CapabilityCountMismatch {
+                required_count: 1,
+                granted_count: 2,
+            },
+            5 => ObservedAdmissionDiagnostic::DigestMismatch {
+                requested,
+                found: digest(0x01),
+            },
+            6 => ObservedAdmissionDiagnostic::StaleCertificate { digest: requested },
+            7 => ObservedAdmissionDiagnostic::ResourceCapacityExceeded {
+                resource: "max_steps_executable",
+                requested: 2,
+                available: 1,
+            },
+            _ => ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(
+                requested,
+                RunId::new(504),
+                CapabilitySet::empty(),
+                RuntimePolicy::Strict,
+            )),
         };
         let diagnostic = public_diagnostic_from_observed(observed);
-        let categories = ["not_found", "decode_failed", "invalid_envelope", "gate_mismatch", "digest_mismatch", "stale", "capability_denied", "resource_capacity_exceeded"];
+        let categories = [
+            "not_found",
+            "decode_failed",
+            "invalid_envelope",
+            "capability_denied",
+            "capability_count_mismatch",
+            "digest_mismatch",
+            "stale",
+            "resource_capacity_exceeded",
+            "admitted",
+        ];
         let expected_index = usize::from(category);
         for (index, expected_category) in categories.into_iter().enumerate() {
             if index == expected_index {
