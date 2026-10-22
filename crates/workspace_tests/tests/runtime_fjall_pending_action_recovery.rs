@@ -199,7 +199,7 @@ fn workflow_from_parts(
 }
 
 fn required_capability(action: ActionId) -> Capability {
-    Capability::new(Box::from("fjall.pending-action.recovery"), action)
+    Capability::new(Box::from("fjall.pending_action.recovery"), action)
 }
 
 fn action_contract(action: ActionId) -> Result<ActionContract, String> {

@@ -351,7 +351,7 @@ fn direct_digest_collect_pages_field() {
 // ─────────────────────────────────────────────────────────────────
 
 #[test]
-fn direct_digest_collect_pages_none_vs_some() {
+fn direct_digest_collect_pages_none_equiv_some1() {
     // pages: None vs pages: Some(1)
     let collect_a = make_collect("x", "items", None, Some(50), vec![]);
     let collect_b = make_collect("x", "items", Some(1), Some(50), vec![]);
@@ -359,9 +359,11 @@ fn direct_digest_collect_pages_none_vs_some() {
     let digest_a = digest_primitive(&collect_a);
     let digest_b = digest_primitive(&collect_b);
 
-    assert_ne!(
+    // None and Some(1) both lower to `limit = pages.unwrap_or(1)` and must
+    // share a digest (canonical equivalence).
+    assert_eq!(
         digest_a, digest_b,
-        "pages None vs Some(1) must produce different digests via digest_step_primitive"
+        "pages None and Some(1) lower to limit=1 and must share a digest"
     );
 }
 
@@ -390,7 +392,7 @@ fn direct_digest_collect_items_field() {
 // ─────────────────────────────────────────────────────────────────
 
 #[test]
-fn direct_digest_collect_items_none_vs_some() {
+fn direct_digest_collect_items_none_equiv_some1() {
     // items: None vs items: Some(1)
     let collect_a = make_collect("x", "items", Some(10), None, vec![]);
     let collect_b = make_collect("x", "items", Some(10), Some(1), vec![]);
@@ -398,9 +400,11 @@ fn direct_digest_collect_items_none_vs_some() {
     let digest_a = digest_primitive(&collect_a);
     let digest_b = digest_primitive(&collect_b);
 
-    assert_ne!(
+    // None and Some(1) both lower to `page_size = items.unwrap_or(1)` and
+    // must share a digest (canonical equivalence).
+    assert_eq!(
         digest_a, digest_b,
-        "items None vs Some(1) must produce different digests via digest_step_primitive"
+        "items None and Some(1) lower to page_size=1 and must share a digest"
     );
 }
 

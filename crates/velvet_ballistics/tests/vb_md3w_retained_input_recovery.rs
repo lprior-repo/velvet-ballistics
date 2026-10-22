@@ -15,13 +15,13 @@ fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
 }
 
-fn strict_config() -> ShardConfig {
+fn journaled_config() -> ShardConfig {
     ShardConfig {
         command_queue_capacity: 32,
         trace_capacity: 64,
         step_budget_per_tick: 16,
         max_active_runs: 8,
-        policy: RuntimePolicy::Strict,
+        policy: RuntimePolicy::Journaled,
     }
 }
 
@@ -46,7 +46,8 @@ fn submit(
         "submit failed: {}",
         String::from_utf8_lossy(&result.stderr)
     );
-    let receipt: serde_json::Value = serde_json::from_str(&String::from_utf8(result.stdout)?)?;
+    let receipt: serde_json::Value =
+        serde_saphyr::from_str(&String::from_utf8(result.stdout)?)?;
     assert_eq!(
         receipt.get("status").and_then(serde_json::Value::as_str),
         Some("submitted")
@@ -105,7 +106,7 @@ fn retained_inputs_recovered_from_cold_storage_with_runtime_api() -> TestResult 
 
         // Create a runtime with the storage journal and recover the run
         let storage_journal = Arc::new(StorageRuntimeJournal::journaled(fjall_journal.clone()));
-        let runtime = Runtime::new(shard_count(1)?, strict_config(), storage_journal);
+        let runtime = Runtime::new(shard_count(1)?, journaled_config(), storage_journal);
 
         // Recover via the public API - this should load retained inputs
         // and restore the initial input slots before applying journal overlays
