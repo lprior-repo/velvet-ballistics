@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+    "--root",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests",
+    "--commit",
+    "af97dc3217486887b89ff036ac6a4bbaf4f47120",
+    "--output-dir",
+    ".beads/vb-s4hfc/evidence/actual-collection-v10"
+  ],
+  "exit_code": 0,
+  "seconds": 87.122,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/FINAL_V10_MEASUREMENT"
+}

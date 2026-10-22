@@ -1,0 +1,16 @@
+{
+  "CODE_review_commit": "8df0c0a346ddf352f2b6e340e11ddd2fecf0b45d",
+  "source_freeze": "af97dc3217486887b89ff036ac6a4bbaf4f47120",
+  "production_files": 12,
+  "exact_hash_match": 9,
+  "format_only_files": [
+    "crates/vb_storage/src/events/wire_deserialize.rs",
+    "crates/vb_storage/src/events/wire_serialize.rs",
+    "crates/vb_storage/src/journal/incident.rs"
+  ],
+  "format_scope": "two module declarations moved alphabetically and one import reordered; no production function bodies changed",
+  "source_manifest": "final-source-v10.json",
+  "CODE_report_limits": "see .beads/vb-84im6/coordinator-review-limits.md",
+  "TEST_review_branch": "codex/vb-o0fgl-test-review-accepted-v10",
+  "scope": "complete decision storage only; runtime dispatch, admission pins and durable emergency control remain separate unaccepted children"
+}

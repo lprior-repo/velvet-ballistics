@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests",
+  "argv": [
+    "zstd",
+    "-dc",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/.beads/vb-s4hfc/evidence/actual-collection-v10/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst"
+  ],
+  "exit_code": 0,
+  "seconds": 0.016,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/.beads/vb-s4hfc/evidence/actual-collection-v10/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792683224075262676-zstd"
+}

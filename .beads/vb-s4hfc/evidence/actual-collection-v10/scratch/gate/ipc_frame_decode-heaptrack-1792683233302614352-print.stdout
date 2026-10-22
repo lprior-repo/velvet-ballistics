@@ -1,0 +1,1471 @@
+reading file "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/.beads/vb-s4hfc/evidence/actual-collection-v10/scratch/heaptrack/ht-ipc_frame_decode.zst" - please wait, this might take some time...
+Debuggee command was: /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313 ipc_frame_decode --bench --sample-size 10 --warm-up-time 1 --measurement-time 1
+finished reading file, now analyzing data:
+
+MOST CALLS TO ALLOCATION FUNCTIONS
+13999274 calls to allocation functions with 5.61M peak consumption from
+0x55c171ca3a5b
+  in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+4194302 calls with 0B peak consumption from:
+    0x55c171e2ef6e
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e57aaa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd114e
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+4194302 calls with 0B peak consumption from:
+    0x55c171d24049
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171d22f38
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171db36cd
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e2ef6e
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e57aaa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd114e
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+2487155 calls with 0B peak consumption from:
+    0x55c171d24049
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171d22f38
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171db36cd
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dad0a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e97fca
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e2ed5b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e5831d
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd114e
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+2487155 calls with 0B peak consumption from:
+    0x55c171dad0a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e97fca
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e2ed5b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e5831d
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd114e
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+3000 calls with 0B peak consumption from:
+    0x55c1719d6022
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171d2d5bf
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171d460fa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ded227
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+  and 633360 from 199832 other places
+
+108 calls to allocation functions with 0B peak consumption from
+0x7fddb8c81d0f
+  in /usr/lib/libc.so.6
+40 calls with 0B peak consumption from:
+    pthread_attr_setaffinity_np
+      in /usr/lib/libc.so.6
+    pthread_getattr_np
+      in /usr/lib/libc.so.6
+    0x55c171ca4ece
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5629
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+16 calls with 0B peak consumption from:
+    fdopendir
+      in /usr/lib/libc.so.6
+    0x55c171ca1ff4
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9cc47
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171cb232d
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df382e
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+16 calls with 0B peak consumption from:
+    fdopendir
+      in /usr/lib/libc.so.6
+    0x55c171ca1ff4
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9cc47
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171cb232d
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df3890
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+11 calls with 0B peak consumption from:
+    fdopendir
+      in /usr/lib/libc.so.6
+    0x55c171ca1ff4
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9cc47
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171cb232d
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df382e
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+11 calls with 0B peak consumption from:
+    fdopendir
+      in /usr/lib/libc.so.6
+    0x55c171ca1ff4
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca218f
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9cc47
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171cb232d
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df3890
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+  and 14 from 9 other places
+
+74 calls to allocation functions with 2.37K peak consumption from
+__cxa_thread_atexit_impl
+  in /usr/lib/libc.so.6
+32 calls with 1.02K peak consumption from:
+    0x55c171c916e7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2d4c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd32ec
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+32 calls with 1.02K peak consumption from:
+    0x55c171bd01cf
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd41dc
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd438a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd4452
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd3741
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2d66
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd32fa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+8 calls with 256B peak consumption from:
+    0x55c171c916e7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b0292c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b0cd83
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+1 calls with 32B peak consumption from:
+    0x55c171ca0032
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33400
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20393
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dece65
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+1 calls with 32B peak consumption from:
+    0x55c171b416ef
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b45cc6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b5ba65
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b760e1
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b9ea00
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171d45f4a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ded227
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+
+41 calls to allocation functions with 0B peak consumption from
+pthread_getattr_np
+  in /usr/lib/libc.so.6
+40 calls with 0B peak consumption from:
+    0x55c171ca4ece
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5629
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+1 calls with 0B peak consumption from:
+    0x55c171c9a8ed
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+
+41 calls to allocation functions with 0B peak consumption from
+pthread_attr_setaffinity_np
+  in /usr/lib/libc.so.6
+40 calls with 0B peak consumption from:
+    pthread_getattr_np
+      in /usr/lib/libc.so.6
+    0x55c171ca4ece
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5629
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+1 calls with 0B peak consumption from:
+    pthread_getattr_np
+      in /usr/lib/libc.so.6
+    0x55c171c9a8ed
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+
+40 calls to allocation functions with 14.08K peak consumption from
+0x7fddb90234df
+  in /lib64/ld-linux-x86-64.so.2
+32 calls with 11.26K peak consumption from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd53b8
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd0e42
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2f56
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c88a78
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd4e7b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171aa868b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd1f6b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+3 calls with 1.06K peak consumption from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33621
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20490
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dece65
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+3 calls with 1.06K peak consumption from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33621
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20490
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ded075
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+1 calls with 352B peak consumption from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33621
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20393
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dece65
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+1 calls with 352B peak consumption from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33621
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20393
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ded075
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+
+2 calls to allocation functions with 0B peak consumption from
+__getdelim
+  in /usr/lib/libc.so.6
+1 calls with 0B peak consumption from:
+    pthread_getattr_np
+      in /usr/lib/libc.so.6
+    0x55c171c9a8ed
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+1 calls with 0B peak consumption from:
+    pthread_getattr_np
+      in /usr/lib/libc.so.6
+    0x55c171c9a8ed
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+
+1 calls to allocation functions with 0B peak consumption from
+_IO_file_doallocate
+  in /usr/lib/libc.so.6
+1 calls with 0B peak consumption from:
+    _IO_doallocbuf
+      in /usr/lib/libc.so.6
+    _IO_file_underflow
+      in /usr/lib/libc.so.6
+    __getdelim
+      in /usr/lib/libc.so.6
+    pthread_getattr_np
+      in /usr/lib/libc.so.6
+    0x55c171c9a8ed
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+
+1 calls to allocation functions with 73.73K peak consumption from
+0x7fddb88b194f
+  in /usr/lib/libstdc++.so.6
+1 calls with 73.73K peak consumption from:
+    0x7fddb90151ee
+      in /lib64/ld-linux-x86-64.so.2
+    0x7fddb90152cc
+      in /lib64/ld-linux-x86-64.so.2
+    0x7fddb90308bf
+      in /lib64/ld-linux-x86-64.so.2
+
+
+PEAK MEMORY CONSUMERS
+5.61M peak memory consumed over 13999274 calls from
+0x55c171ca3a5b
+  in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+800.00K consumed over 1 calls from:
+    0x55c171a62a7c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a64569
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171aa7263
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd20d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+800.00K consumed over 7 calls from:
+    0x55c171ae15ea
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd31a2
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+800.00K consumed over 1 calls from:
+    0x55c171a62a7c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a85c8b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a63578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171aa86c8
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd1f6b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+800.00K consumed over 1 calls from:
+    0x55c171a62a7c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a85cae
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a63578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171aa86c8
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd1f6b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+800.00K consumed over 1 calls from:
+    0x55c171a62a7c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a85c45
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a63578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171aa86c8
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd1f6b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+  and 1.61M from 199832 other places
+
+73.73K peak memory consumed over 1 calls from
+0x7fddb88b194f
+  in /usr/lib/libstdc++.so.6
+73.73K consumed over 1 calls from:
+    0x7fddb90151ee
+      in /lib64/ld-linux-x86-64.so.2
+    0x7fddb90152cc
+      in /lib64/ld-linux-x86-64.so.2
+    0x7fddb90308bf
+      in /lib64/ld-linux-x86-64.so.2
+
+14.08K peak memory consumed over 40 calls from
+0x7fddb90234df
+  in /lib64/ld-linux-x86-64.so.2
+11.26K consumed over 32 calls from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd53b8
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd0e42
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2f56
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c88a78
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd4e7b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171aa868b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd1f6b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171df21a7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+1.06K consumed over 3 calls from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33621
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20490
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dece65
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+1.06K consumed over 3 calls from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33621
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20490
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ded075
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+352B consumed over 1 calls from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33621
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20393
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dece65
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+352B consumed over 1 calls from:
+    _dl_allocate_tls
+      in /lib64/ld-linux-x86-64.so.2
+    pthread_create
+      in /usr/lib/libc.so.6
+    0x55c171c887d3
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33621
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20393
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ded075
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+
+2.37K peak memory consumed over 74 calls from
+__cxa_thread_atexit_impl
+  in /usr/lib/libc.so.6
+1.02K consumed over 32 calls from:
+    0x55c171c916e7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2d4c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd32ec
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+1.02K consumed over 32 calls from:
+    0x55c171bd01cf
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd41dc
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd438a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd4452
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd3741
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2d66
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd32fa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+256B consumed over 8 calls from:
+    0x55c171c916e7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b0292c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b0cd83
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+32B consumed over 1 calls from:
+    0x55c171ca0032
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b33400
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b20393
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17639
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17dc7
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b17f14
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dc5156
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dece65
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+32B consumed over 1 calls from:
+    0x55c171b416ef
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b45cc6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b5ba65
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b760e1
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171b9ea00
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171d45f4a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ded227
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+
+
+MOST TEMPORARY ALLOCATIONS
+112132 temporary allocations of 13999274 allocations in total (0.80%) from
+0x55c171ca3a5b
+  in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+2000 temporary allocations of 3000 allocations in total (66.67%) from:
+    0x55c1719d6022
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171d2d5bf
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171d460fa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ded227
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e005a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+1571 temporary allocations of 1697 allocations in total (92.58%) from:
+    0x55c171a62f3c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a88754
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171adacd2
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd4575
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd3741
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2d66
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd32fa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+1519 temporary allocations of 1685 allocations in total (90.15%) from:
+    0x55c171a62f3c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171adacd2
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd4575
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd3741
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2d66
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd32fa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+1226 temporary allocations of 1324 allocations in total (92.60%) from:
+    0x55c171a62f3c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a88754
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a88754
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a88754
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171adacd2
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd4575
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd3741
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2d66
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd32fa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+1226 temporary allocations of 1305 allocations in total (93.95%) from:
+    0x55c171a62f3c
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a88754
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a88754
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a8850a
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a634a0
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171adacd2
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd4575
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd3741
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd2d66
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171bd32fa
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ca5633
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c980a1
+      in /usr/lib/libc.so.6
+    0x7fddb8d2080b
+      in /usr/lib/libc.so.6
+  and 104.59K from 199832 other places
+
+1 temporary allocations of 1 allocations in total (100.00%) from
+0x7fddb88b194f
+  in /usr/lib/libstdc++.so.6
+1 temporary allocations of 1 allocations in total (100.00%) from:
+    0x7fddb90151ee
+      in /lib64/ld-linux-x86-64.so.2
+    0x7fddb90152cc
+      in /lib64/ld-linux-x86-64.so.2
+    0x7fddb90308bf
+      in /lib64/ld-linux-x86-64.so.2
+
+1 temporary allocations of 108 allocations in total (0.93%) from
+0x7fddb8c81d0f
+  in /usr/lib/libc.so.6
+1 temporary allocations of 1 allocations in total (100.00%) from:
+    posix_spawn_file_actions_adddup2
+      in /usr/lib/libc.so.6
+    0x55c171c8748b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c99366
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171aef4c8
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a864d1
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c88a78
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a30153
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a86546
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c88a78
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171a301a5
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171ad7a57
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa371
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dfa240
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dd9802
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171dde578
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171c9aae6
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+  and 0B from 9 other places
+
+1 temporary allocations of 2 allocations in total (50.00%) from
+__getdelim
+  in /usr/lib/libc.so.6
+1 temporary allocations of 1 allocations in total (100.00%) from:
+    pthread_getattr_np
+      in /usr/lib/libc.so.6
+    0x55c171c9a8ed
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x55c171e8077b
+      in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313
+    0x7fddb8c27780
+      in /usr/lib/libc.so.6
+    __libc_start_main
+      in /usr/lib/libc.so.6
+
+
+total runtime: 3.26s.
+calls to allocation functions: 13999582 (4293033/s)
+temporary memory allocations: 112135 (34386/s)
+peak heap memory consumption: 5.70M
+peak RSS (including heaptrack overhead): 70.02M
+total memory leaked: 311.64K

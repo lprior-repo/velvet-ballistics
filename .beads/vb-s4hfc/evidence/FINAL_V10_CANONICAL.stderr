@@ -1,0 +1,48 @@
+[ WARN 2026-10-22 10:36:48.217] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:36:48.235] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:36:49.832] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:36:50.139] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:36:52.100] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:36:57.445] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:36:58.313] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:36:59.606] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID 5ae6d6bc-c67b-42ae-8c61-ea7a9a2601e5 with nextest profile: default
+                       velvet-ballistics:test |     Starting 14415 tests across 291 binaries (27 tests skipped)
+[ WARN 10:37:19.044] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:38:12.157] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:38:12.329] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test |         FAIL [   1.349s] (11651/14415) velvet-ballistics::bin/velvet-ballistics ipc_serve::tests::failed_owned_shutdown_reports_wire_error_and_typed_storage_failure
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ipc_serve::tests::failed_owned_shutdown_reports_wire_error_and_typed_storage_failure ... FAILED
+
+                       velvet-ballistics:test |     failures:
+
+                       velvet-ballistics:test |     failures:
+                       velvet-ballistics:test |         ipc_serve::tests::failed_owned_shutdown_reports_wire_error_and_typed_storage_failure
+
+                       velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 360 filtered out; finished in 1.35s
+
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     Error: BindFailed { source: Error { kind: InvalidInput, message: "path must be shorter than SUN_LEN" } }
+
+                       velvet-ballistics:test |   Cancelling due to test failure: 31 tests still running
+[ WARN 10:38:26.518] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+              velvet-ballistics:source-length | source-length gate summary:
+              velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+              velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+              velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+              velvet-ballistics:source-length |   test_in_src        scanned=312   warn=48   over_limit=0    limit=1500 warn_at=1200
+              velvet-ballistics:source-length |   test_top_level     scanned=388   warn=6    over_limit=0    limit=3000 warn_at=2400
+              velvet-ballistics:source-length |   production         scanned=949   warn=197  over_limit=0    limit=300 warn_at=240
+              velvet-ballistics:source-length |   ledger rows used:    383
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 368.582s] 11682/14415 tests run: 11681 passed (18 slow), 1 failed, 27 skipped
+                       velvet-ballistics:test |         FAIL [   1.349s] (11651/14415) velvet-ballistics::bin/velvet-ballistics ipc_serve::tests::failed_owned_shutdown_reports_wire_error_and_typed_storage_failure
+                       velvet-ballistics:test | warning: 2733/14415 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+                       velvet-ballistics:test | error: test run failed

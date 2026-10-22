@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests",
+  "argv": [
+    "cargo",
+    "bench",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--bench",
+    "velvet_ballistics",
+    "--no-run",
+    "--message-format=json",
+    "--locked"
+  ],
+  "exit_code": 0,
+  "seconds": 54.513,
+  "timeout_seconds": 1800,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests/.beads/vb-s4hfc/evidence/actual-collection-v10/gate/cargo-build-1792683164614146332"
+}
