@@ -109,7 +109,7 @@ fn non_retryable_failure() -> ActionFailure {
         code: ActionFailureCode::Timeout,
         retry_policy: RetryPolicy::NonRetryable,
         taint: Taint::Clean,
-        detail: Box::from("non-retryable failure"),
+        detail: None,
         encoded_len: 0,
     }
 }
@@ -121,7 +121,8 @@ fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
         output_slot: SlotIdx::new(1),
         value,
         taint: Taint::Clean,
-        encoded_len: encoded.len() as u32,
+        encoded_len: u32::try_from(encoded.len())
+            .map_err(|_| "encoded length too large for u32".to_string())?,
     })
 }
 
@@ -136,21 +137,22 @@ fn latest_pending_ticket(events: &[JournalEvent]) -> Result<ActionTicket, String
 }
 
 fn latest_retry_checkpoint(events: &[JournalEvent]) -> Result<RunCheckpointV1, String> {
-    let last = events
+    let payload = events
         .iter()
         .rev()
         .find_map(|e| match e {
-            JournalEvent::RetryCheckpoint { checkpoint, .. } => Some(checkpoint.clone()),
+            JournalEvent::RetryCheckpoint { payload, .. } => Some(payload.clone()),
             _ => None,
         })
         .ok_or("no retry checkpoint event found".to_string())?;
-    Ok(last)
+    postcard::from_bytes(&payload)
+        .map_err(|e| format!("checkpoint decode failed: {e}"))
 }
 
 fn next_seq_after(events: &[JournalEvent]) -> Result<EventSeq, String> {
     let max_seq = events.iter().map(|e| e.seq().get()).max()
         .ok_or("no events to derive sequence from".to_string())?;
-    EventSeq::new(max_seq + 1).ok_or("sequence overflow".to_string())
+    Ok(EventSeq::new(max_seq + 1))
 }
 
 /// Serialize events for exact comparison.
@@ -259,16 +261,16 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
         let serialized_before = serialize_events(&events_before)?;
         eprintln!("Events before stale rejection: {}", events_before.len());
 
-        // Craft a stale ticket with run_attempt=1
+        // Craft a stale ticket with attempt=1 (older than current attempt=3)
         let stale_ticket = ActionTicket {
             run: current_ticket.run,
             step: current_ticket.step,
             seq: current_ticket.seq,
             action: current_ticket.action,
-            run_attempt: 1,
+            run_attempt: current_ticket.run_attempt,
             attempt: 1,
             idempotency_key: compute_action_idempotency_key(
-                current_ticket.run, 1, current_ticket.seq, current_ticket.action),
+                current_ticket.run, current_ticket.run_attempt, current_ticket.seq, current_ticket.action),
             capacity: current_ticket.capacity,
         };
 

@@ -71,16 +71,19 @@ fn load_manifest() -> Result<serde_json::Value, String> {
 
 /// Verify a golden fixture's length and BLAKE3 digest against the manifest.
 fn verify_fixture(name: &str, bytes: &[u8], manifest: &serde_json::Value) -> Result<(), String> {
-    let cases = manifest["cases"].as_array()
+    let cases = manifest.get("cases")
+        .and_then(|v| v.as_array())
         .ok_or("manifest missing cases array")?;
     
     let case = cases.iter().find(|c| {
-        c["name"].as_str() == Some(name)
+        c.get("name").and_then(|v| v.as_str()) == Some(name)
     }).ok_or(format!("manifest missing case {}", name))?;
     
-    let expected_length = case["length"].as_u64()
+    let expected_length = case.get("length")
+        .and_then(|v| v.as_u64())
         .ok_or(format!("manifest case {} missing length", name))?;
-    let actual_length = bytes.len() as u64;
+    let actual_length = u64::try_from(bytes.len())
+        .map_err(|_| format!("fixture {} length too large for u64", name))?;
     if actual_length != expected_length {
         return Err(format!(
             "fixture {} length mismatch: expected {}, got {}",
@@ -88,7 +91,8 @@ fn verify_fixture(name: &str, bytes: &[u8], manifest: &serde_json::Value) -> Res
         ));
     }
     
-    let expected_digest = case["blake3"].as_str()
+    let expected_digest = case.get("blake3")
+        .and_then(|v| v.as_str())
         .ok_or(format!("manifest case {} missing blake3", name))?;
     let actual_digest = blake3::hash(bytes).to_hex().to_string();
     if actual_digest != expected_digest {
