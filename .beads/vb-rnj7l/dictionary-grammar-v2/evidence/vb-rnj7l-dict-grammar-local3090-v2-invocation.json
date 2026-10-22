@@ -1,0 +1,11 @@
+{
+  "model": "local-3090-llama/qwen3.8-27b-uncensored",
+  "workspace": "/home/lewis/src/isoloated/vb-rnj7l-dictionary-grammar-fix-v2",
+  "prompt": "/tmp/vb-rnj7l-dict-grammar-local3090-v2.txt",
+  "cloud_fallback": false,
+  "thinking": "high",
+  "runner": "mise exec -- omp",
+  "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+  "tools": "native text read exact replace edit write grep glob; NO shell",
+  "images_blocked": true
+}

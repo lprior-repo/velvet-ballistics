@@ -1,0 +1,160 @@
+diff --git a/fuzz/fuzz_targets/decode_record.dict b/fuzz/fuzz_targets/decode_record.dict
+index 1bcb94a92..49a7b67ff 100644
+--- a/fuzz/fuzz_targets/decode_record.dict
++++ b/fuzz/fuzz_targets/decode_record.dict
+@@ -1,17 +1,17 @@
+-"MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56
+-"MAGIC_BLOB_LE="\x4c\x42\x42\x56
+-"MAGIC_SNAPSHOT_LE="\x4e\x53\x42\x56
+-"MAGIC_COMPILED_ARTIFACT_LE="\x52\x49\x42\x56
+-"MAGIC_WORKFLOW_SOURCE_LE="\x52\x53\x42\x56
+-"MAGIC_INDEX_RECORD_LE="\x58\x49\x42\x56
+-"MAGIC_IPC_FRAME_LE="\x54\x4c\x42\x56
+-"BOUNDARY_ZERO_MAGIC="\x00\x00\x00\x00
+-"BOUNDARY_MAX_MAGIC="\xff\xff\xff\xff
+-"KIND_RunAccepted_LE="\x0a\x00
+-"KIND_RunCancelled_LE="\x15\x00
+-"KIND_RunFailed_LE="\x17\x00
+-"KIND_RunKilled_LE="\x1c\x00
+-"KIND_Snapshot_LE="\x1e\x00
+-"KIND_Blob_LE="\x28\x00
+-"HEADER_LEN_60_LE="\x3c\x00\x00\x00
+-"MAX_PAYLOAD_1MB_LE="\x00\x00\x10\x00
++MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56"
++MAGIC_BLOB_LE="\x4c\x42\x42\x56"
++MAGIC_SNAPSHOT_LE="\x4e\x53\x42\x56"
++MAGIC_COMPILED_ARTIFACT_LE="\x52\x49\x42\x56"
++MAGIC_WORKFLOW_SOURCE_LE="\x52\x53\x42\x56"
++MAGIC_INDEX_RECORD_LE="\x58\x49\x42\x56"
++MAGIC_IPC_FRAME_LE="\x54\x4c\x42\x56"
++BOUNDARY_ZERO_MAGIC="\x00\x00\x00\x00"
++BOUNDARY_MAX_MAGIC="\xff\xff\xff\xff"
++KIND_RunAccepted_LE="\x0a\x00"
++KIND_RunCancelled_LE="\x15\x00"
++KIND_RunFailed_LE="\x17\x00"
++KIND_RunKilled_LE="\x1c\x00"
++KIND_Snapshot_LE="\x1e\x00"
++KIND_Blob_LE="\x28\x00"
++HEADER_LEN_60_LE="\x3c\x00\x00\x00"
++MAX_PAYLOAD_1MB_LE="\x00\x00\x10\x00"
+diff --git a/fuzz/fuzz_targets/ipc_frame.dict b/fuzz/fuzz_targets/ipc_frame.dict
+index 939714157..e58448db7 100644
+--- a/fuzz/fuzz_targets/ipc_frame.dict
++++ b/fuzz/fuzz_targets/ipc_frame.dict
+@@ -1,16 +1,16 @@
+-"MAGIC_VBLT_LE="\x54\x4c\x42\x56
+-"VERSION_LE_1="\x01\x00
+-"CMD_SubmitRun_LE="\x01\x00
+-"CMD_SubmitRunInline_LE="\x02\x00
+-"CMD_CancelRun_LE="\x03\x00
+-"CMD_InspectRun_LE="\x04\x00
+-"CMD_ListEvents_LE="\x05\x00
+-"CMD_AnswerAsk_LE="\x06\x00
+-"CMD_CompleteAction_LE="\x07\x00
+-"CMD_FailAction_LE="\x08\x00
+-"CMD_DrainTrace_LE="\x09\x00
+-"CMD_Health_LE="\x0a\x00
+-"CMD_Shutdown_LE="\x0b\x00
+-"FLAG_PAYLOAD_PRESENT_LE="\x01\x00
+-"LEN_24_LE="\x18\x00\x00\x00
+-"ZERO_8B="\x00\x00\x00\x00\x00\x00\x00\x00
++MAGIC_VBLT_LE="\x54\x4c\x42\x56"
++VERSION_LE_1="\x01\x00"
++CMD_SubmitRun_LE="\x01\x00"
++CMD_SubmitRunInline_LE="\x02\x00"
++CMD_CancelRun_LE="\x03\x00"
++CMD_InspectRun_LE="\x04\x00"
++CMD_ListEvents_LE="\x05\x00"
++CMD_AnswerAsk_LE="\x06\x00"
++CMD_CompleteAction_LE="\x07\x00"
++CMD_FailAction_LE="\x08\x00"
++CMD_DrainTrace_LE="\x09\x00"
++CMD_Health_LE="\x0a\x00"
++CMD_Shutdown_LE="\x0b\x00"
++FLAG_PAYLOAD_PRESENT_LE="\x01\x00"
++LEN_24_LE="\x18\x00\x00\x00"
++ZERO_8B="\x00\x00\x00\x00\x00\x00\x00\x00"
+diff --git a/fuzz/fuzz_targets/journal_decode.dict b/fuzz/fuzz_targets/journal_decode.dict
+index 1e8887a20..e3e90bf8a 100644
+--- a/fuzz/fuzz_targets/journal_decode.dict
++++ b/fuzz/fuzz_targets/journal_decode.dict
+@@ -1,10 +1,10 @@
+-"MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56
+-"MAGIC_BLOB_LE="\x4c\x42\x42\x56
+-"MAGIC_SNAPSHOT_LE="\x4e\x53\x42\x56
+-"MAGIC_COMPILED_ARTIFACT_LE="\x52\x49\x42\x56
+-"MAGIC_WORKFLOW_SOURCE_LE="\x52\x53\x42\x56
+-"MAGIC_INDEX_RECORD_LE="\x58\x49\x42\x56
+-"KIND_RunKilled_LE="\x1c\x00
+-"KIND_AskTimedOut_LE="\x1d\x00
+-"KIND_WaitResolved_LE="\x1f\x00
+-"KIND_ActionAbandoned_LE="\x20\x00
++MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56"
++MAGIC_BLOB_LE="\x4c\x42\x42\x56"
++MAGIC_SNAPSHOT_LE="\x4e\x53\x42\x56"
++MAGIC_COMPILED_ARTIFACT_LE="\x52\x49\x42\x56"
++MAGIC_WORKFLOW_SOURCE_LE="\x52\x53\x42\x56"
++MAGIC_INDEX_RECORD_LE="\x58\x49\x42\x56"
++KIND_RunKilled_LE="\x1c\x00"
++KIND_AskTimedOut_LE="\x1d\x00"
++KIND_WaitResolved_LE="\x1f\x00"
++KIND_ActionAbandoned_LE="\x20\x00"
+diff --git a/fuzz/fuzz_targets/journal_event.dict b/fuzz/fuzz_targets/journal_event.dict
+index cf20383b9..45a60fcea 100644
+--- a/fuzz/fuzz_targets/journal_event.dict
++++ b/fuzz/fuzz_targets/journal_event.dict
+@@ -1,3 +1,3 @@
+-"MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56
+-"KIND_RunAccepted_LE="\x0a\x00
+-"KIND_StepStarted_LE="\x0b\x00
++MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56"
++KIND_RunAccepted_LE="\x0a\x00"
++KIND_StepStarted_LE="\x0b\x00"
+diff --git a/fuzz/fuzz_targets/kind_validation.dict b/fuzz/fuzz_targets/kind_validation.dict
+index 55d72d220..1dff6d8c4 100644
+--- a/fuzz/fuzz_targets/kind_validation.dict
++++ b/fuzz/fuzz_targets/kind_validation.dict
+@@ -1,10 +1,10 @@
+-"MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56
+-"MAGIC_BLOB_LE="\x4c\x42\x42\x56
+-"MAGIC_SNAPSHOT_LE="\x4e\x53\x42\x56
+-"MAGIC_COMPILED_ARTIFACT_LE="\x52\x49\x42\x56
+-"MAGIC_WORKFLOW_SOURCE_LE="\x52\x53\x42\x56
+-"MAGIC_INDEX_RECORD_LE="\x58\x49\x42\x56
+-"BOUNDARY_KIND_28_LE="\x1c\x00
+-"BOUNDARY_KIND_30_LE="\x1e\x00
+-"BOUNDARY_KIND_40_LE="\x28\x00
+-"BOUNDARY_KIND_UNKNOWN_999_LE="\xe7\x03
++MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56"
++MAGIC_BLOB_LE="\x4c\x42\x42\x56"
++MAGIC_SNAPSHOT_LE="\x4e\x53\x42\x56"
++MAGIC_COMPILED_ARTIFACT_LE="\x52\x49\x42\x56"
++MAGIC_WORKFLOW_SOURCE_LE="\x52\x53\x42\x56"
++MAGIC_INDEX_RECORD_LE="\x58\x49\x42\x56"
++BOUNDARY_KIND_28_LE="\x1c\x00"
++BOUNDARY_KIND_30_LE="\x1e\x00"
++BOUNDARY_KIND_40_LE="\x28\x00"
++BOUNDARY_KIND_UNKNOWN_999_LE="\xe7\x03"
+diff --git a/fuzz/fuzz_targets/vb_storage_codec.dict b/fuzz/fuzz_targets/vb_storage_codec.dict
+index 8d25f65d9..1ea0b2aa2 100644
+--- a/fuzz/fuzz_targets/vb_storage_codec.dict
++++ b/fuzz/fuzz_targets/vb_storage_codec.dict
+@@ -1,9 +1,9 @@
+-"MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56
+-"MAGIC_BLOB_LE="\x4c\x42\x42\x56
+-"MAGIC_SNAPSHOT_LE="\x4e\x53\x42\x56
+-"MAGIC_COMPILED_ARTIFACT_LE="\x52\x49\x42\x56
+-"MAGIC_WORKFLOW_SOURCE_LE="\x52\x53\x42\x56
+-"MAGIC_INDEX_RECORD_LE="\x58\x49\x42\x56
+-"BOUNDARY_ZERO_MAGIC="\x00\x00\x00\x00
+-"BOUNDARY_MAX_MAGIC="\xff\xff\xff\xff
+-"DEADBEEF_LE="\xef\xbe\xad\xde
++MAGIC_JOURNAL_EVENT_LE="\x45\x4a\x42\x56"
++MAGIC_BLOB_LE="\x4c\x42\x42\x56"
++MAGIC_SNAPSHOT_LE="\x4e\x53\x42\x56"
++MAGIC_COMPILED_ARTIFACT_LE="\x52\x49\x42\x56"
++MAGIC_WORKFLOW_SOURCE_LE="\x52\x53\x42\x56"
++MAGIC_INDEX_RECORD_LE="\x58\x49\x42\x56"
++BOUNDARY_ZERO_MAGIC="\x00\x00\x00\x00"
++BOUNDARY_MAX_MAGIC="\xff\xff\xff\xff"
++DEADBEEF_LE="\xef\xbe\xad\xde"
