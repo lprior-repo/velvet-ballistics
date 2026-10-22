@@ -1,0 +1,20 @@
+{
+  "candidate": "81315959b5275099f7d6265b6576ac95478c181b",
+  "all8_dictionary_source_hashes_unchanged": true,
+  "named_hex_token_bytes_preserved": 65,
+  "independent_source_review_accepted": true,
+  "resolved_P2_documentation_counts": {
+    "ipc_frame": 16,
+    "expression": 28,
+    "vb_f04l_yaml_compiler_compile": 36
+  },
+  "rejected_review_prose": [
+    "There is NO libFuzzer automatic fallback decoder or production mapping for unmatched dictionary basenames. Root deliberately selected decode_record for generic parser checks only; production exact-name matching leaves expression/ipc_frame/journal_event unused.",
+    "Reviewer listed nonexisting exact target files. Those mappings are not accepted or evidence of wiring.",
+    "Actual Moon loop loads only exact-match dictionaries, not all8. All8 are covered separately by explicit actual parser checks.",
+    "Unnamed values are quoted string literals; reviewer unquoted literal phrase is incorrect."
+  ],
+  "actual_parser_evidence": "parse-after/summary.json all8exit0/100runs each; matching5targetnames actualtargetsmoke, other3genericparseronly",
+  "final_integrated_fuzz_smoke": "still required before main",
+  "scope": "Six grammar quote-boundary changes only, no flags/target aliases/deadlines/source code changed."
+}

@@ -1,0 +1,91 @@
+{
+  "review_id": "vb-rnj7l-independe-review-v2",
+  "reviewer": "RTX 5090 HIGH",
+  "date": "2026-10-22",
+  "candidate_commit": "81315959b5275099f7d6265b6576ac95478c181b",
+  "base_commit": "42fd94f21c3615c8fbe322806a76beea671b6d16",
+  "workspace": "/home/lewis/src/isoloated/vb-rnj7l-dictionary-grammar-review-v2",
+  "verdict": "APPROVED",
+  "fixed_files": [
+    {
+      "path": "fuzz/fuzz_targets/decode_record.dict",
+      "entries": 17,
+      "grammar_valid": true,
+      "bytes_preserved": true
+    },
+    {
+      "path": "fuzz/fuzz_targets/ipc_frame.dict",
+      "entries": 16,
+      "grammar_valid": true,
+      "bytes_preserved": true
+    },
+    {
+      "path": "fuzz/fuzz_targets/journal_decode.dict",
+      "entries": 10,
+      "grammar_valid": true,
+      "bytes_preserved": true
+    },
+    {
+      "path": "fuzz/fuzz_targets/journal_event.dict",
+      "entries": 3,
+      "grammar_valid": true,
+      "bytes_preserved": true
+    },
+    {
+      "path": "fuzz/fuzz_targets/kind_validation.dict",
+      "entries": 10,
+      "grammar_valid": true,
+      "bytes_preserved": true
+    },
+    {
+      "path": "fuzz/fuzz_targets/vb_storage_codec.dict",
+      "entries": 9,
+      "grammar_valid": true,
+      "bytes_preserved": true
+    }
+  ],
+  "unchanged_files": [
+    {
+      "path": "fuzz/fuzz_targets/expression.dict",
+      "entries": 28,
+      "grammar_valid": true,
+      "note": "already correct syntax"
+    },
+    {
+      "path": "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.dict",
+      "entries": 36,
+      "grammar_valid": true,
+      "note": "already correct syntax"
+    }
+  ],
+  "total_named_tokens_preserved": 65,
+  "documentation_corrections": [
+    {
+      "file": "contract.md",
+      "field": "ipc_frame entries",
+      "stated": 17,
+      "actual": 16,
+      "severity": "P2"
+    },
+    {
+      "file": "contract.md",
+      "field": "expression entries",
+      "stated": 29,
+      "actual": 28,
+      "severity": "P2"
+    },
+    {
+      "file": "contract.md",
+      "field": "vb_f04l_yaml entries",
+      "stated": 37,
+      "actual": 36,
+      "severity": "P2"
+    }
+  ],
+  "source_issues": [],
+  "next_steps": [
+    "Update contract.md with correct entry counts (P2)",
+    "Root runs actual Moon loop over all 8 dictionaries before main integration",
+    "Consider adding dictionary grammar regression test to moon ci"
+  ]
+}

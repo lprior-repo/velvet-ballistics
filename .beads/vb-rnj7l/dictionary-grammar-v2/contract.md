@@ -23,7 +23,7 @@ Where the name is unquoted, the `=` separates name from value, and the value is 
 All in `fuzz/fuzz_targets/`:
 
 1. `decode_record.dict` — 17 entries
-2. `ipc_frame.dict` — 17 entries
+2. `ipc_frame.dict` — 16 entries
 3. `journal_decode.dict` — 10 entries
 4. `journal_event.dict` — 3 entries
 5. `kind_validation.dict` — 10 entries
@@ -33,8 +33,8 @@ All in `fuzz/fuzz_targets/`:
 
 These already use correct syntax (quoted string literals without names or `=`):
 
-- `expression.dict` — 29 entries (all `NAME="value"` format with plain ASCII values)
-- `vb_f04l_yaml_compiler_compile.dict` — 37 entries (all `NAME="value"` format with plain ASCII values)
+- `expression.dict` — 28 unnamed quoted value entries
+- `vb_f04l_yaml_compiler_compile.dict` — 36 unnamed quoted value entries
 
 ## Fix Mechanism
 
