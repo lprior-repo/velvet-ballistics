@@ -93,7 +93,6 @@ pub fn admit_run_with_budget_policy(
         run_id,
         caps,
         policy,
-        RunPolicyPin::Unverified,
         budget.requested,
     ))
 }

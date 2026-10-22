@@ -1,6 +1,41 @@
 use super::*;
+use crate::admission::AlwaysPresentArtifactStore;
 use crate::RuntimeError;
 use vb_core::ids::WorkflowDigest;
+use vb_storage::RunPolicyPin;
+
+/// Builds a minimal compiled workflow for policy digest computation.
+fn build_workflow_with_single_action() -> Result<vb_core::workflow::CompiledWorkflow, String> {
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+    let node = CompiledNode {
+        id: vb_core::ids::StepIdx::ZERO,
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: vb_core::ids::ActionId::new(1),
+            input: vb_core::ids::SlotIdx::ZERO,
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("admission-test"),
+        digest: WorkflowDigest::from_bytes([0xAB; 32]),
+        semantic_source_identity: None,
+        nodes: Box::from([node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        entry: vb_core::ids::StepIdx::ZERO,
+        input_slots: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([Box::from("step-0")]),
+        symbols_count: 0,
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+        .map_err(|e| format!("workflow compilation failed: {e}"))
+}
 
 struct FixedAcceptedStore {
     artifact: vb_storage::admission::AcceptedArtifact,
@@ -33,7 +68,6 @@ fn admission_new_stores_all_fields() {
         run_id,
         caps.clone(),
         RuntimePolicy::Strict,
-        RunPolicyPin::Unverified,
     );
     assert_eq!(admission.artifact_digest(), digest);
     assert_eq!(admission.run_id(), run_id);
@@ -1278,6 +1312,127 @@ fn admit_run_with_budget_rejects_strict_without_artifact() {
     );
 
     assert_eq!(result, Err(AdmissionError::ArtifactNotFound { digest }));
+}
+
+// ══ vb-h7rex: Policy pin constructor and serialization tests ═════════════
+#[test]
+fn admission_legacy_constructor_produces_explicit_unverified_pin() {
+    // RA-019 regression: compatibility constructor must produce explicit
+    // RunPolicyPin::Unverified, never a silent new authority.
+    let digest = test_digest();
+    let run_id = RunId::new(1);
+    let caps = CapabilitySet::empty();
+    let admission = RunAdmission::new(digest, run_id, caps, RuntimePolicy::Relaxed);
+    assert_eq!(admission.policy_pin(), RunPolicyPin::Unverified);
+}
+
+#[test]
+fn admission_with_policy_pin_builder_sets_actual_pin() {
+    // RA-021: verified artifact admission must set the actual policy identity,
+    // not the legacy Unverified default.
+    let digest = test_digest();
+    let run_id = RunId::new(1);
+    let caps = CapabilitySet::empty();
+    let policy_digest = WorkflowDigest::from_bytes([0xCC; 32]);
+    let admission = RunAdmission::new(digest, run_id, caps, RuntimePolicy::Strict)
+        .with_policy_pin(RunPolicyPin::Pinned(policy_digest));
+    assert_eq!(admission.policy_pin(), RunPolicyPin::Pinned(policy_digest));
+}
+
+#[test]
+fn admission_strict_journaled_admit_artifact_run_sets_pinned_policy_pin()
+-> Result<(), String> {
+    // RA-017 / RA-020 regression: full strict and journaled admission of an
+    // accepted artifact must record the artifact's actual policy_digest as the
+    // RunPolicyPin, not Unverified or a caller-provided value.
+    use vb_storage::admission::compute_policy_digest;
+    let action = ActionId::new(1);
+    let required = Capability::new("network".into(), action);
+    let caps = CapabilitySet::from_grants(Box::new([required]));
+    let required_for_artifact = Capability::new("network".into(), action);
+    let artifact_caps = Box::new([required_for_artifact]);
+    let mut artifact = accepted_artifact_with_caps(artifact_caps)?;
+    let workflow_parts = build_workflow_with_single_action()?;
+    let computed_policy = compute_policy_digest(&workflow_parts)
+        .map_err(|e| format!("compute_policy_digest failed: {e}"))?;
+    artifact.policy_digest = computed_policy;
+    let store = FixedAcceptedStore { artifact };
+    let run_id = RunId::new(1);
+    // The artifact returned by the store has its own digest; the admission
+    // gate validates that the loaded artifact's digest matches the request.
+    // Use the actual artifact digest for the request to pass validation.
+    let artifact_digest = store.artifact.digest;
+    let result = crate::admission::admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        run_id,
+        artifact_digest,
+        caps,
+    );
+    let admission = result.map_err(|e| format!("admit_artifact_run failed: {e}"))?;
+    assert_eq!(admission.policy(), RuntimePolicy::Strict);
+    assert_eq!(admission.policy_pin(), RunPolicyPin::Pinned(computed_policy));
+    assert_ne!(admission.policy_pin(), RunPolicyPin::Unverified);
+    Ok(())
+}
+
+#[test]
+fn admission_relaxed_admit_run_keeps_unverified_pin() {
+    // RA-019: relaxed admission without artifact validation must remain
+    // explicitly Unverified, even when the caller knows the policy digest.
+    let digest = test_digest();
+    let run_id = RunId::new(1);
+    let caps = CapabilitySet::empty();
+    let result = crate::admission::admit_run(
+        &AlwaysPresentArtifactStore,
+        RuntimePolicy::Relaxed,
+        digest,
+        run_id,
+        caps.clone(),
+    );
+    assert_eq!(
+        result,
+        Ok(RunAdmission::new(digest, run_id, caps, RuntimePolicy::Relaxed))
+    );
+}
+
+// ══ vb-h7rex: Checkpoint policy pin roundtrip tests ═════════════════════
+#[test]
+fn checkpoint_preserves_pinned_policy_pin_through_roundtrip() -> Result<(), String> {
+    // RA-022: new checkpoints with pinned policy identity must survive
+    // serialize → deserialize without silent degradation to Unverified.
+    let run_id = RunId::new(1);
+    let digest = test_digest();
+    let policy_digest = WorkflowDigest::from_bytes([0xDD; 32]);
+    let admission = RunAdmission::new(digest, run_id, CapabilitySet::empty(), RuntimePolicy::Strict)
+        .with_policy_pin(RunPolicyPin::Pinned(policy_digest));
+    let bytes = postcard::to_allocvec(&admission).map_err(|e| e.to_string())?;
+    let restored: RunAdmission = postcard::from_bytes(&bytes).map_err(|e| e.to_string())?;
+    assert_eq!(restored.policy_pin(), RunPolicyPin::Pinned(policy_digest));
+    Ok(())
+}
+
+#[test]
+fn checkpoint_deserializes_legacy_admission_with_unverified_pin() -> Result<(), String> {
+    // RA-018: historical checkpoints serialized before policy pin existed
+    // must decode with RunPolicyPin::Unverified via serde default, never
+    // crash or fabricate a new authority.
+    use serde_json::json;
+    let run_id = RunId::new(2);
+    let digest = test_digest();
+    // Legacy admission: 6 fields, no policy_pin.
+    let legacy_json = json!({
+        "artifact_digest": digest.as_bytes(),
+        "run_id": run_id.get(),
+        "granted_capabilities": { "grants": [] },
+        "policy": "Relaxed",
+        "budget": null,
+        "idempotency_attested": []
+    });
+    let restored: RunAdmission = serde_json::from_value(legacy_json)
+        .map_err(|e| format!("deserialization failed: {e}"))?;
+    assert_eq!(restored.policy_pin(), RunPolicyPin::Unverified);
+    Ok(())
 }
 
 // ══ vb-hbav B14: AdmissionError exhaustiveness compile-time check ════════

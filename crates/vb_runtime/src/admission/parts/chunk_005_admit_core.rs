@@ -42,7 +42,6 @@ pub fn admit_run(
         run_id,
         caps,
         policy,
-        RunPolicyPin::Unverified,
     ))
 }
 
@@ -168,9 +167,9 @@ pub fn admit_artifact_run_with_certificate_floor(
                 run_id,
                 caps,
                 policy,
-                RunPolicyPin::Pinned(artifact.policy_digest),
                 artifact.verification.idempotency_attested,
-            ))
+            )
+            .with_policy_pin(RunPolicyPin::Pinned(artifact.policy_digest)))
         }
         RuntimePolicy::Relaxed => {
             // Relaxed: skip artifact loading and capability checking.
@@ -179,7 +178,6 @@ pub fn admit_artifact_run_with_certificate_floor(
                 run_id,
                 caps,
                 policy,
-                RunPolicyPin::Unverified,
             ))
         }
         _ => Err(AdmissionError::ArtifactInvalidProofFlag {

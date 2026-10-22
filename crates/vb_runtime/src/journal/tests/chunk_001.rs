@@ -229,6 +229,7 @@ fn storage_runtime_journal_maps_run_admission_event() {
             run,
             seq: EventSeq::new(0),
             artifact_digest: workflow,
+            policy_pin: vb_storage::RunPolicyPin::Unverified,
             granted_capabilities: vb_core::capability::CapabilitySet::empty(),
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         }]

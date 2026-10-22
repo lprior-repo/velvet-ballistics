@@ -11,6 +11,7 @@ use vb_core::ids::{RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 
 use crate::admission::RunAdmission;
+
 use crate::shard::ShardStatus;
 use crate::shard::timer_wheel::TimerWheel;
 use crate::shard::types::{
@@ -213,7 +214,6 @@ mod tests {
             run,
             CapabilitySet::empty(),
             policy,
-            RunPolicyPin::Unverified,
         );
 
         let refined = strict_admission_refinement(&admission, digest, run, policy);

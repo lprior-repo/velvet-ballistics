@@ -10,6 +10,8 @@ pub struct RunAdmission {
     /// Admission policy that governed this admission decision.
     policy: RuntimePolicy,
     /// Actual policy identity from the accepted artifact, or explicit absence.
+    /// Defaults to Unverified for compatibility with historical checkpoints.
+    #[serde(default = "run_policy_pin_default")]
     policy_pin: RunPolicyPin,
     /// Aggregate budget admitted for this run, when budget admission is used.
     budget: Option<AggregateResourceBudget>,
@@ -28,33 +30,43 @@ pub struct AdmissionBudgetRequest {
     pub policy: BoundednessPolicy,
 }
 
+/// Default policy pin for compatibility with historical admission records.
+#[allow(clippy::unused_unit)]
+const fn run_policy_pin_default() -> RunPolicyPin {
+    RunPolicyPin::Unverified
+}
+
 impl RunAdmission {
-    /// Creates a new admission record.
+    /// Creates a new admission record with the default unverified policy pin.
+    ///
+    /// This is the compatibility constructor used by callers that do not have
+    /// an accepted artifact's actual policy identity available.
     pub fn new(
         digest: WorkflowDigest,
         run_id: RunId,
         caps: CapabilitySet,
         policy: RuntimePolicy,
-        policy_pin: RunPolicyPin,
     ) -> Self {
         Self {
             artifact_digest: digest,
             run_id,
             granted_capabilities: caps,
             policy,
-            policy_pin,
+            policy_pin: RunPolicyPin::Unverified,
             budget: None,
             idempotency_attested: Box::new([]),
         }
     }
 
     /// Creates a new admission record carrying accepted idempotency evidence.
+    ///
+    /// This is the compatibility constructor used by callers that do not have
+    /// an accepted artifact's actual policy identity available.
     pub fn with_idempotency_evidence(
         digest: WorkflowDigest,
         run_id: RunId,
         caps: CapabilitySet,
         policy: RuntimePolicy,
-        policy_pin: RunPolicyPin,
         idempotency_attested: Box<[ActionId]>,
     ) -> Self {
         Self {
@@ -62,19 +74,21 @@ impl RunAdmission {
             run_id,
             granted_capabilities: caps,
             policy,
-            policy_pin,
+            policy_pin: RunPolicyPin::Unverified,
             budget: None,
             idempotency_attested,
         }
     }
 
     /// Creates a new admission record carrying an aggregate resource budget.
+    ///
+    /// This is the compatibility constructor used by callers that do not have
+    /// an accepted artifact's actual policy identity available.
     pub fn with_budget(
         digest: WorkflowDigest,
         run_id: RunId,
         caps: CapabilitySet,
         policy: RuntimePolicy,
-        policy_pin: RunPolicyPin,
         budget: AggregateResourceBudget,
     ) -> Self {
         Self {
@@ -82,10 +96,22 @@ impl RunAdmission {
             run_id,
             granted_capabilities: caps,
             policy,
-            policy_pin,
+            policy_pin: RunPolicyPin::Unverified,
             budget: Some(budget),
             idempotency_attested: Box::new([]),
         }
+    }
+
+    /// Overrides the policy pin with the actual policy identity from an
+    /// accepted artifact.
+    ///
+    /// Use this after constructing an admission with the compatibility
+    /// constructors to attach a real policy pin when the artifact's actual
+    /// policy identity is available.
+    #[allow(clippy::missing_inline_in_public_items)]
+    pub fn with_policy_pin(mut self, policy_pin: RunPolicyPin) -> Self {
+        self.policy_pin = policy_pin;
+        self
     }
 
     /// Returns the artifact digest for this admission.

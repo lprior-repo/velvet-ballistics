@@ -1,0 +1,52 @@
+warning: unused import: `vb_storage::RunPolicyPin`
+  --> crates/vb_runtime/src/ipc_refinement.rs:14:5
+   |
+14 | use vb_storage::RunPolicyPin;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 1 warning (run `cargo fix --lib -p vb_runtime` to apply 1 suggestion)
+warning: `vb_runtime` (lib test) generated 1 warning (1 duplicate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-587f05e248b6b0c2)
+     Running tests/atomic_fire_enqueue_test.rs (target/debug/deps/atomic_fire_enqueue_test-96815453c675b45d)
+     Running tests/authority_validation_test.rs (target/debug/deps/authority_validation_test-e44504e5d1b91683)
+     Running tests/capacity_bounds_test.rs (target/debug/deps/capacity_bounds_test-0da407b1953fcad9)
+     Running tests/clock_advancement_test.rs (target/debug/deps/clock_advancement_test-684e31cbed958d17)
+     Running tests/duplicate_key_test.rs (target/debug/deps/duplicate_key_test-eeeabfa1e529b6fd)
+     Running tests/durability_matrix_integration.rs (target/debug/deps/durability_matrix_integration-d3b7bfb821ad2561)
+     Running tests/durable_resume_red_phase.rs (target/debug/deps/durable_resume_red_phase-e726204227b9180b)
+     Running tests/durable_retry_boundary.rs (target/debug/deps/durable_retry_boundary-816854c4a162bad9)
+     Running tests/durable_retry_execution.rs (target/debug/deps/durable_retry_execution-87f57438a6a3a0eb)
+     Running tests/durable_retry_red_phase.rs (target/debug/deps/durable_retry_red_phase-feff92066cb45a2c)
+     Running tests/durable_retry_run_attempt_authority.rs (target/debug/deps/durable_retry_run_attempt_authority-fbcfb13f6851e806)
+     Running tests/generation_exhaustion_test.rs (target/debug/deps/generation_exhaustion_test-9200553edefd9489)
+     Running tests/numeric_timer_state_test.rs (target/debug/deps/numeric_timer_state_test-41f006064b5479d6)
+     Running tests/proptest_admission_error_paths.rs (target/debug/deps/proptest_admission_error_paths-51904959fb66ecd1)
+     Running tests/proptest_runtime_error_codes.rs (target/debug/deps/proptest_runtime_error_codes-d197654d2e47e467)
+     Running tests/rb_r7o2a_phantom.rs (target/debug/deps/rb_r7o2a_phantom-242098d567f8d3e3)
+     Running tests/recovery_bdd_tests.rs (target/debug/deps/recovery_bdd_tests-5192dec6666a0d81)
+     Running tests/recovery_hydration_tests.rs (target/debug/deps/recovery_hydration_tests-08a03f81825a3e17)
+     Running tests/recovery_integration.rs (target/debug/deps/recovery_integration-d6269bc7614791df)
+     Running tests/replay_resume.rs (target/debug/deps/replay_resume-e93a601f2feb56a3)
+     Running tests/rs_026_phantom.rs (target/debug/deps/rs_026_phantom-6db2034e9bb96afe)
+     Running tests/slot_validation_test.rs (target/debug/deps/slot_validation_test-edc798c9f27607d9)
+     Running tests/static_analysis_gates_test.rs (target/debug/deps/static_analysis_gates_test-584f6f295940ab3f)
+     Running tests/ticket_authority_matrix.rs (target/debug/deps/ticket_authority_matrix-1e4b2f35d3b75361)
+     Running tests/timer_deadline_safety_test.rs (target/debug/deps/timer_deadline_safety_test-40b3394896fe89f6)
+     Running tests/timer_lifecycle_e2e_test.rs (target/debug/deps/timer_lifecycle_e2e_test-041340702d85486e)
+     Running tests/timer_wheel_behavior_tests.rs (target/debug/deps/timer_wheel_behavior_tests-4f6587e15febd856)
+     Running tests/vb_4qog3_independent_review.rs (target/debug/deps/vb_4qog3_independent_review-9d65673eec27b6d4)
+     Running tests/vb_5m8w_step_budget_suspension_runtime.rs (target/debug/deps/vb_5m8w_step_budget_suspension_runtime-2905dda56629670c)
+     Running tests/vb_h6ix_integration.rs (target/debug/deps/vb_h6ix_integration-d19bf2bb2aaa6a6e)
+     Running tests/vb_jggy_journal_event_tests.rs (target/debug/deps/vb_jggy_journal_event_tests-904bbc549bd1c482)
+     Running tests/vb_jggy_lifecycle_tests.rs (target/debug/deps/vb_jggy_lifecycle_tests-cce8eb882f306477)
+     Running tests/vb_jggy_property_tests.rs (target/debug/deps/vb_jggy_property_tests-d8bd7a2e290d750a)
+     Running tests/vb_ko29_7_idempotency_miri.rs (target/debug/deps/vb_ko29_7_idempotency_miri-aebef270d9ab907d)
+     Running tests/vb_l2d7_joined_taint_propagation_red.rs (target/debug/deps/vb_l2d7_joined_taint_propagation_red-8a465736799a6088)
+     Running tests/vb_qi37_12_2_resume_error_propagation.rs (target/debug/deps/vb_qi37_12_2_resume_error_propagation-ff8f867df990530c)
+     Running tests/vb_r4fm9_event_generation.rs (target/debug/deps/vb_r4fm9_event_generation-e31904f0009a46c5)
+     Running tests/vb_wave16_mqa.rs (target/debug/deps/vb_wave16_mqa-d0b899c9059e29c0)
+     Running tests/zero_duration_test.rs (target/debug/deps/zero_duration_test-46b30ade741156a1)
+   Doc-tests vb_runtime

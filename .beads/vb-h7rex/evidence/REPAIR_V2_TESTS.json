@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-admission-pin",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime"
+  ],
+  "exit_code": 0,
+  "seconds": 2.68,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-h7rex/evidence/REPAIR_V2_TESTS",
+  "coordinator_message": "ROOT SOURCE REVIEW: New field policy_pin in RunAdmission changes derivedSerde layout stored inside RunCheckpointV1.admission. Existing RunCheckpointV1 serialized with postcard. New tag39 admissionevent alone doesNOT version thissnapshot. Must preserve historical decode explicitUnverified or typedversionreject via realversionedcheckpointboundary. No serde-default newauthority. Core already PinnedAdmissionPolicy type, duplicatestorageRunPolicyPin musthaveexplicitconversion. New API RunAdmission::new fiftharg forcesmanyoriginaltestedits; prefercompatiblelegacyconstructorUnverified plus explicitverifiedconstructor typedrequest. EndscopeunacceptedifnoactualfullRuntime/Fjalltest. Runner existsmode555;nohelperwrite. Rawuniquegateprefix actualtests notbarepiped. RootwillpreserveWIPatboundedendandassignfreshfocusedrepair.\n"
+}

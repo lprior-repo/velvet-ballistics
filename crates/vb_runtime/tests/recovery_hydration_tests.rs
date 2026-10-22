@@ -97,6 +97,7 @@ fn test_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> Jo
         run,
         seq,
         artifact_digest: digest,
+        policy_pin: vb_storage::RunPolicyPin::Unverified,
         granted_capabilities: CapabilitySet::empty(),
         policy: RuntimePolicy::Relaxed,
     }
