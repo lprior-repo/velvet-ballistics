@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:61:     if decoded.verification.digest != decoded.digest {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:62:         return Err("verification.digest mismatch".to_string());
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:63:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:64:     if decoded != *expected {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:65:         return Err("decoded artifact does not match expected".to_string());
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:66:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:67:     verify_accepted_artifact_for_policy(&decoded, policy)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:68:         .map_err(|e| format!("verify_accepted_artifact_for_policy failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:69:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:70: }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:71: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:72: /// Strict durability failure is precommit; counter must remain at 0.
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:73: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:74: fn strict_persist_failure_is_precommit_counter_unchanged() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:75:     let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:76:     let workflow = minimal_workflow()?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:77: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:78:     journal.fail_next_persist_for_test();
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:79: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:80:     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:81:     match result {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:82:         Err(JournalError::StrictDurabilityFailed) => {}
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:83:         other => return Err(format!("expected StrictDurabilityFailed, got: {other:?}")),
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:84:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:85: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:86:     let counter = counter_value(&journal)?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:87:     if counter.is_some() {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:88:         return Err(format!(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:89:             "counter should be 0 after strict failure, got: {counter:?}"
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:90:         ));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:91:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:92:     compiled_empty(&journal)?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:93: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:94:     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:95:         .map_err(|e| format!("retry submission failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:96:     if artifact.accepted_at_seq.get() != 1 {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:97:         return Err(format!(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:98:             "retry artifact should have seq 1, got {}",
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:99:             artifact.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:100:         ));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:101:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:102:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:103: }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:104: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:105: /// Batch commit failure is precommit; counter and artifact keyspace must remain unchanged.
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:106: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:107: fn batch_commit_failure_is_precommit_no_state_change() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:108:     let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:109:     let workflow = minimal_workflow()?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:110: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:111:     journal.fail_next_batch_commit_for_test();
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:112: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:113:     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:114:     let got_fjall_io = matches!(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:115:         &result,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:116:         Err(JournalError::Fjall(e)) if matches!(e, fjall::Error::Io(io) if io.kind() == std::io::ErrorKind::Other)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:117:     );
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:118:     if !got_fjall_io {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:119:         return Err(format!("expected Fjall(Io(Other)) error, got: {result:?}"));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:120:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:121: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:122:     let counter = counter_value(&journal)?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:123:     if counter.is_some() {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:124:         return Err(format!(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:125:             "counter should be 0 after batch failure, got: {counter:?}"
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:126:         ));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:127:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:128:     compiled_empty(&journal)?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:129: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:130:     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:131:         .map_err(|e| format!("retry submission failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:132:     if artifact.accepted_at_seq.get() != 1 {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:133:         return Err(format!(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:134:             "retry artifact should have seq 1, got {}",
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:135:             artifact.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:136:         ));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:137:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:138:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:139: }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:140: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:141: /// Compiled-IR readback failure occurs AFTER commit; counter advances and
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:142: /// artifact record exists despite the error.
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:143: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:144: fn compiled_ir_readback_failure_is_postcommit_artifact_exists() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:145:     let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:146:     let workflow = minimal_workflow()?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:147: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:148:     let mut expected = prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:149:         .map_err(|e| format!("prepare failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:150:     expected.accepted_at_seq = EventSeq::new(1);
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:151:     expected.digest = accepted_artifact_digest(&expected)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:152:         .map_err(|e| format!("expected digest recompute failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:153:     expected.verification.digest = expected.digest;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:154: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:155:     journal.fail_next_compiled_ir_readback_for_test();
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:156: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:157:     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:158:     match result {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:159:         Err(JournalError::ArtifactMalformed) => {}
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:160:         other => {

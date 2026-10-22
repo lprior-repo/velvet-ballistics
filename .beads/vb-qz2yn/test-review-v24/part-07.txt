@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:79:         RuntimePolicy::Strict,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:80:     ];
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:81: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:82:     for policy in policies {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:83:         let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:84:         let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:85:         let accepted = submit_artifact(&tj.journal, &workflow, policy)
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:86:             .map_err(|e| format!("submit_artifact policy={policy:?}: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:87: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:88:         assert_first_seq(&accepted);
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:89:         assert_nonzero_digest(&accepted);
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:90:         assert_readback_verified(&tj.journal, &accepted, policy)?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:91:     }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:92: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:93:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:94: }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:95: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:96: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:97: fn repeated_submissions_get_distinct_digests_and_both_readback() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:98:     let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:99:     let journal = &tj.journal;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:100:     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:101: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:102:     let first = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed)
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:103:         .map_err(|e| format!("first submit: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:104:     assert_first_seq(&first);
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:105: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:106:     let second = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed)
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:107:         .map_err(|e| format!("second submit: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:108:     assert_second_seq(&second);
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:109: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:110:     assert_ne!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:111:         first.digest, second.digest,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:112:         "repeated submissions must have distinct artifact digests"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:113:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:114: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:115:     assert_readback_verified(journal, &first, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:116:     assert_readback_verified(journal, &second, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:117: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:118:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:119: }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:120: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:121: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:122: fn pure_prepare_stays_seq_0_submit_after_gets_seq_1() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:123:     let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:124:     let journal = &tj.journal;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:125:     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:126: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:127:     let prepared = prepare_compiled_artifact(&workflow, RuntimePolicy::Relaxed, &[])
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:128:         .map_err(|e| format!("prepare_compiled_artifact: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:129:     assert_eq!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:130:         prepared.accepted_at_seq.get(),
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:131:         0,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:132:         "pure prepare should be seq 0"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:133:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:134: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:135:     let counter_bytes = journal
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:136:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:137:         .get(b"last_issued")
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:138:         .map_err(|e| format!("counter read: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:139:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:140:         counter_bytes.is_none(),
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:141:         "counter should be absent after pure prepare"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:142:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:143: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:144:     let accepted = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed)
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:145:         .map_err(|e| format!("submit_artifact: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:146:     assert_first_seq(&accepted);
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:147: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:148:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:149: }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:150: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:151: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:152: fn counter_persists_across_reopen() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:153:     let dir = tempfile::tempdir().map_err(|e| format!("tempdir: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:154:     let journal_path = dir.path().to_path_buf();
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:155:     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:156: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:157:     let first;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:158:     {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:159:         let journal =
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:160:             FjallJournal::open(&journal_path, None).map_err(|e| format!("journal open: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:161:         first = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:162:             .map_err(|e| format!("first submit: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:163:         assert_first_seq(&first);
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:164:     }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:165: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:166:     {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:167:         let journal =
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:168:             FjallJournal::open(&journal_path, None).map_err(|e| format!("journal reopen: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:169: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:170:         let counter_bytes = journal
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:171:             .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:172:             .get(b"last_issued")
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:173:             .map_err(|e| format!("counter read: {e}"))?
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:174:             .ok_or_else(|| "counter should be present after first submit")?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:175:         assert_eq!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:176:             counter_bytes,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:177:             [0, 0, 0, 0, 0, 0, 0, 1],
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:178:             "counter should be exactly 1 (u64 BE)"

@@ -1,0 +1,85 @@
+{
+  "new_declared_tests": [
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs",
+      "line": 10,
+      "name": "corrupted_counter_length_7_causes_malformed_row"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs",
+      "line": 54,
+      "name": "corrupted_counter_length_9_causes_malformed_row"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs",
+      "line": 98,
+      "name": "counter_at_u64_max_causes_sequence_overflow"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs",
+      "line": 15,
+      "name": "eight_concurrent_submissions_get_unique_sequences_1_through_8"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs",
+      "line": 74,
+      "name": "strict_persist_failure_is_precommit_counter_unchanged"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs",
+      "line": 107,
+      "name": "batch_commit_failure_is_precommit_no_state_change"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs",
+      "line": 144,
+      "name": "compiled_ir_readback_failure_is_postcommit_artifact_exists"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs",
+      "line": 190,
+      "name": "invalid_workflow_canonical_digest_rejected_before_mutation"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs",
+      "line": 227,
+      "name": "counter_overflow_at_u64_max"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_tests.rs",
+      "line": 75,
+      "name": "first_submission_is_seq_1_for_all_policies"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_tests.rs",
+      "line": 97,
+      "name": "repeated_submissions_get_distinct_digests_and_both_readback"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_tests.rs",
+      "line": 122,
+      "name": "pure_prepare_stays_seq_0_submit_after_gets_seq_1"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/acceptance_sequence_tests.rs",
+      "line": 152,
+      "name": "counter_persists_across_reopen"
+    }
+  ],
+  "actual_new_test_count": 13,
+  "actual_storage_executed": 1643,
+  "actual_storage_passed": 1643,
+  "actual_storage_skipped": 0,
+  "actual_crosscrate_executed": 71,
+  "actual_crosscrate_passed": 71,
+  "actual_crosscrate_skipped": 0,
+  "root_requests": [
+    "Do not invent owner approval. Positive observations are not findings; no owner_approved_no_action dispositions unless actual owner authorization exists.",
+    "13new tests:4basic+3boundary+5failure+1concurrency; no extra2 phantom basic tests.",
+    "Storage suite now includes13new tests; do not claim count unchanged.",
+    "Crosscrate71 actual tests ran and passed V23; supplied rawlogs authoritative.",
+    "8concurrent calls successful is bounded evidence, not a proof of all interleavings or lock correctness under arbitrary load.",
+    "Every successful submission fullreadback is overbroad; identify cases actually invoking helper/readback; setup success alone notsame.",
+    "Use actualpath:line anchors and exactscope; do not claim inheritedtests/fullv1/formal/durabilitypowerloss closure."
+  ]
+}

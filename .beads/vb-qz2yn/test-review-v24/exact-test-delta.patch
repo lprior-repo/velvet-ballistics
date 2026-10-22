@@ -1,0 +1,887 @@
+diff --git a/crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs b/crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs
+new file mode 100644
+index 000000000..88fd36201
+--- /dev/null
++++ b/crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs
+@@ -0,0 +1,128 @@
++//! Boundary tests for sequence counter corruption and overflow conditions.
++
++use crate::admission::*;
++use crate::error::JournalError;
++use vb_core::RuntimePolicy;
++
++use super::{minimal_workflow, temp_journal};
++
++#[test]
++fn corrupted_counter_length_7_causes_malformed_row() -> Result<(), String> {
++    let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let journal = &tj.journal;
++
++    journal
++        .artifact_acceptance
++        .insert(b"last_issued", &[0, 0, 0, 0, 0, 0, 0])
++        .map_err(|e| format!("insert 7-byte counter: {e}"))?;
++
++    let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
++    let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
++
++    let matches_malformed = matches!(
++        result,
++        Err(JournalError::MalformedKeyspaceRow {
++            prefix: 0,
++            expected_len: 8,
++            actual_len: 7
++        })
++    );
++    assert!(
++        matches_malformed,
++        "expected MalformedKeyspaceRow actual=7, got {result:?}"
++    );
++
++    let counter = journal
++        .artifact_acceptance
++        .get(b"last_issued")
++        .map_err(|e| format!("read counter: {e}"))?
++        .ok_or_else(|| "counter should still exist")?;
++    assert_eq!(
++        counter,
++        &[0, 0, 0, 0, 0, 0, 0],
++        "counter should be unchanged"
++    );
++    assert!(
++        journal.compiled_ir.iter().next().is_none(),
++        "no compiled_ir written"
++    );
++
++    Ok(())
++}
++
++#[test]
++fn corrupted_counter_length_9_causes_malformed_row() -> Result<(), String> {
++    let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let journal = &tj.journal;
++
++    journal
++        .artifact_acceptance
++        .insert(b"last_issued", &[0, 0, 0, 0, 0, 0, 0, 0, 0])
++        .map_err(|e| format!("insert 9-byte counter: {e}"))?;
++
++    let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
++    let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
++
++    let matches_malformed = matches!(
++        result,
++        Err(JournalError::MalformedKeyspaceRow {
++            prefix: 0,
++            expected_len: 8,
++            actual_len: 9
++        })
++    );
++    assert!(
++        matches_malformed,
++        "expected MalformedKeyspaceRow actual=9, got {result:?}"
++    );
++
++    let counter = journal
++        .artifact_acceptance
++        .get(b"last_issued")
++        .map_err(|e| format!("read counter: {e}"))?
++        .ok_or_else(|| "counter should still exist")?;
++    assert_eq!(
++        counter,
++        &[0, 0, 0, 0, 0, 0, 0, 0, 0],
++        "counter should be unchanged"
++    );
++    assert!(
++        journal.compiled_ir.iter().next().is_none(),
++        "no compiled_ir written"
++    );
++
++    Ok(())
++}
++
++#[test]
++fn counter_at_u64_max_causes_sequence_overflow() -> Result<(), String> {
++    let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let journal = &tj.journal;
++
++    let max_bytes = u64::MAX.to_be_bytes();
++    journal
++        .artifact_acceptance
++        .insert(b"last_issued", &max_bytes)
++        .map_err(|e| format!("insert u64::MAX counter: {e}"))?;
++
++    let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
++    let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
++
++    assert!(
++        matches!(result, Err(JournalError::SequenceOverflow)),
++        "expected SequenceOverflow, got {result:?}"
++    );
++
++    let counter = journal
++        .artifact_acceptance
++        .get(b"last_issued")
++        .map_err(|e| format!("read counter: {e}"))?
++        .ok_or_else(|| "counter should still exist")?;
++    assert_eq!(counter, &max_bytes, "counter should be unchanged");
++    assert!(
++        journal.compiled_ir.iter().next().is_none(),
++        "no compiled_ir written"
++    );
++
++    Ok(())
++}
+diff --git a/crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs b/crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs
+new file mode 100644
+index 000000000..0c0e4ebe6
+--- /dev/null
++++ b/crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs
+@@ -0,0 +1,109 @@
++//! Concurrency test for the artifact acceptance sequence counter.
++//!
++//! Tests that 8 concurrent submissions to the same journal each receive a
++//! unique sequence number (1-8), proving the write_lock serialization and
++//! counter atomicity. Status: PENDING compiler and test execution by coordinator.
++
++use std::collections::HashSet;
++use vb_core::RuntimePolicy;
++
++use super::{minimal_workflow, temp_journal};
++use crate::admission::*;
++
++/// 8 concurrent submissions must all succeed with unique sequences 1-8.
++#[test]
++fn eight_concurrent_submissions_get_unique_sequences_1_through_8() -> Result<(), String> {
++    let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let workflow = minimal_workflow()?;
++
++    let journal_ref = &journal;
++    let artifacts = std::thread::scope(|scope| -> Result<Vec<AcceptedArtifact>, String> {
++        let mut handles = Vec::with_capacity(8);
++        for _ in 0..8 {
++            let wf = workflow.clone();
++            let handle = scope.spawn(move || {
++                submit_artifact(journal_ref, &wf, RuntimePolicy::Relaxed)
++                    .map_err(|e| format!("submit_artifact failed: {e}"))
++            });
++            handles.push(handle);
++        }
++
++        let mut results = Vec::with_capacity(8);
++        for handle in handles {
++            let artifact = handle
++                .join()
++                .map_err(|e| format!("thread join failed: {e:?}"))??;
++            results.push(artifact);
++        }
++        Ok(results)
++    })?;
++
++    if artifacts.len() != 8 {
++        return Err(format!("expected 8 artifacts, got {}", artifacts.len()));
++    }
++
++    // Sequences must be unique and form the set {1, 2, 3, 4, 5, 6, 7, 8}.
++    let mut seqs = Vec::with_capacity(8);
++    for artifact in &artifacts {
++        seqs.push(artifact.accepted_at_seq.get());
++    }
++    let mut sorted_seqs = seqs.clone();
++    sorted_seqs.sort();
++    let expected: Vec<u64> = (1..=8).collect();
++    if sorted_seqs != expected {
++        return Err(format!("sequences must be 1..=8, got {:?}", sorted_seqs));
++    }
++
++    // All digests must be unique (HashSet, not Ord sort).
++    let mut digests = HashSet::new();
++    for artifact in &artifacts {
++        digests.insert(artifact.digest);
++    }
++    if digests.len() != 8 {
++        return Err(format!("expected 8 unique digests, got {}", digests.len()));
++    }
++
++    // Full readback: decode each artifact and verify identity.
++    for (i, artifact) in artifacts.iter().enumerate() {
++        let record = journal
++            .compiled_ir(artifact.digest)
++            .map_err(|e| format!("compiled_ir read failed for artifact {i}: {e}"))?
++            .ok_or_else(|| format!("artifact {i} not found in journal"))?;
++        if record.digest != artifact.digest {
++            return Err(format!("record digest mismatch for artifact {i}"));
++        }
++        let decoded: AcceptedArtifact = postcard::from_bytes(&record.ir)
++            .map_err(|e| format!("postcard decode failed for artifact {i}: {e}"))?;
++        if decoded != *artifact {
++            return Err(format!("decoded artifact differs from original at {i}"));
++        }
++        if record.digest != artifact.digest {
++            return Err(format!("record digest mismatch for artifact {i}"));
++        }
++
++        // Canonical verification assertions.
++        verify_accepted_artifact_for_policy(artifact, RuntimePolicy::Relaxed)
++            .map_err(|e| format!("verify failed for artifact {i}: {e}"))?;
++        let computed = accepted_artifact_digest(artifact)
++            .map_err(|e| format!("accepted_artifact_digest failed for {i}: {e}"))?;
++        if computed != artifact.digest {
++            return Err(format!("digest mismatch for artifact {i}"));
++        }
++        if computed != artifact.verification.digest {
++            return Err(format!("verification digest mismatch for artifact {i}"));
++        }
++    }
++
++    // Verify next submission gets seq 9.
++    let workflow = minimal_workflow()?;
++    let next = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
++        .map_err(|e| format!("seq 9 submission failed: {e}"))?;
++    if next.accepted_at_seq.get() != 9 {
++        return Err(format!(
++            "next artifact should have seq 9, got {}",
++            next.accepted_at_seq.get()
++        ));
++    }
++
++    Ok(())
++}
+diff --git a/crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs b/crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs
+new file mode 100644
+index 000000000..a7b4e04bf
+--- /dev/null
++++ b/crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs
+@@ -0,0 +1,281 @@
++//! Failure-mode tests for the artifact acceptance sequence counter and issuance path.
++
++use crate::admission::*;
++use crate::error::JournalError;
++use crate::types::EventSeq;
++use vb_core::RuntimePolicy;
++
++use super::{minimal_workflow, temp_journal};
++
++/// Shared helper: read counter value or report error/absent.
++fn counter_value(journal: &crate::FjallJournal) -> Result<Option<u64>, String> {
++    let raw = journal
++        .artifact_acceptance
++        .get(b"last_issued")
++        .map_err(|e| format!("counter read failed: {e}"))?;
++    match raw {
++        None => Ok(None),
++        Some(slice) => {
++            let bytes = slice.as_ref();
++            if bytes.len() != 8 {
++                return Err(format!("counter wrong length: {}", bytes.len()));
++            }
++            let arr: [u8; 8] = bytes
++                .try_into()
++                .map_err(|_| "counter slice conversion failed".to_string())?;
++            Ok(Some(u64::from_be_bytes(arr)))
++        }
++    }
++}
++
++/// Shared helper: verify compiled-IR keyspace is empty.
++fn compiled_empty(journal: &crate::FjallJournal) -> Result<(), String> {
++    if journal.compiled_ir.iter().next().is_some() {
++        return Err("compiled_ir should be empty but has entries".to_string());
++    }
++    Ok(())
++}
++
++/// Shared helper: full artifact readback and verification.
++fn verify_artifact_readback(
++    journal: &crate::FjallJournal,
++    digest: vb_core::WorkflowDigest,
++    expected: &AcceptedArtifact,
++    policy: RuntimePolicy,
++) -> Result<(), String> {
++    let record = journal
++        .compiled_ir(digest)
++        .map_err(|e| format!("compiled_ir readback failed: {e}"))?
++        .ok_or_else(|| "artifact record not found".to_string())?;
++    if record.digest != digest {
++        return Err("record digest does not match expected".to_string());
++    }
++    let decoded: AcceptedArtifact =
++        postcard::from_bytes(&record.ir).map_err(|e| format!("postcard decode failed: {e}"))?;
++    if accepted_artifact_digest(&decoded)
++        .map_err(|e| format!("accepted_artifact_digest failed: {e}"))?
++        != decoded.digest
++    {
++        return Err("decoded artifact digest is inconsistent".to_string());
++    }
++    if decoded.verification.digest != decoded.digest {
++        return Err("verification.digest mismatch".to_string());
++    }
++    if decoded != *expected {
++        return Err("decoded artifact does not match expected".to_string());
++    }
++    verify_accepted_artifact_for_policy(&decoded, policy)
++        .map_err(|e| format!("verify_accepted_artifact_for_policy failed: {e}"))?;
++    Ok(())
++}
++
++/// Strict durability failure is precommit; counter must remain at 0.
++#[test]
++fn strict_persist_failure_is_precommit_counter_unchanged() -> Result<(), String> {
++    let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let workflow = minimal_workflow()?;
++
++    journal.fail_next_persist_for_test();
++
++    let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
++    match result {
++        Err(JournalError::StrictDurabilityFailed) => {}
++        other => return Err(format!("expected StrictDurabilityFailed, got: {other:?}")),
++    }
++
++    let counter = counter_value(&journal)?;
++    if counter.is_some() {
++        return Err(format!(
++            "counter should be 0 after strict failure, got: {counter:?}"
++        ));
++    }
++    compiled_empty(&journal)?;
++
++    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
++        .map_err(|e| format!("retry submission failed: {e}"))?;
++    if artifact.accepted_at_seq.get() != 1 {
++        return Err(format!(
++            "retry artifact should have seq 1, got {}",
++            artifact.accepted_at_seq.get()
++        ));
++    }
++    Ok(())
++}
++
++/// Batch commit failure is precommit; counter and artifact keyspace must remain unchanged.
++#[test]
++fn batch_commit_failure_is_precommit_no_state_change() -> Result<(), String> {
++    let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let workflow = minimal_workflow()?;
++
++    journal.fail_next_batch_commit_for_test();
++
++    let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
++    let got_fjall_io = matches!(
++        &result,
++        Err(JournalError::Fjall(e)) if matches!(e, fjall::Error::Io(io) if io.kind() == std::io::ErrorKind::Other)
++    );
++    if !got_fjall_io {
++        return Err(format!("expected Fjall(Io(Other)) error, got: {result:?}"));
++    }
++
++    let counter = counter_value(&journal)?;
++    if counter.is_some() {
++        return Err(format!(
++            "counter should be 0 after batch failure, got: {counter:?}"
++        ));
++    }
++    compiled_empty(&journal)?;
++
++    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
++        .map_err(|e| format!("retry submission failed: {e}"))?;
++    if artifact.accepted_at_seq.get() != 1 {
++        return Err(format!(
++            "retry artifact should have seq 1, got {}",
++            artifact.accepted_at_seq.get()
++        ));
++    }
++    Ok(())
++}
++
++/// Compiled-IR readback failure occurs AFTER commit; counter advances and
++/// artifact record exists despite the error.
++#[test]
++fn compiled_ir_readback_failure_is_postcommit_artifact_exists() -> Result<(), String> {
++    let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let workflow = minimal_workflow()?;
++
++    let mut expected = prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])
++        .map_err(|e| format!("prepare failed: {e}"))?;
++    expected.accepted_at_seq = EventSeq::new(1);
++    expected.digest = accepted_artifact_digest(&expected)
++        .map_err(|e| format!("expected digest recompute failed: {e}"))?;
++    expected.verification.digest = expected.digest;
++
++    journal.fail_next_compiled_ir_readback_for_test();
++
++    let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
++    match result {
++        Err(JournalError::ArtifactMalformed) => {}
++        other => {
++            return Err(format!(
++                "expected ArtifactMalformed after readback failure, got: {other:?}"
++            ));
++        }
++    }
++
++    let counter = counter_value(&journal)?;
++    if counter != Some(1) {
++        return Err(format!(
++            "counter should be 1 after postcommit failure, got: {counter:?}"
++        ));
++    }
++
++    verify_artifact_readback(&journal, expected.digest, &expected, RuntimePolicy::Strict)?;
++
++    let artifact2 = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
++        .map_err(|e| format!("followup submission failed: {e}"))?;
++    if artifact2.accepted_at_seq.get() != 2 {
++        return Err(format!(
++            "followup artifact should have seq 2, got {}",
++            artifact2.accepted_at_seq.get()
++        ));
++    }
++    Ok(())
++}
++
++/// Invalid workflow canonical digest is rejected before any counter or artifact
++/// mutation. This tests the checksum validation gate.
++#[test]
++fn invalid_workflow_canonical_digest_rejected_before_mutation() -> Result<(), String> {
++    let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++
++    let mut parts = minimal_workflow()?.to_parts();
++    parts.digest = vb_core::WorkflowDigest::from_bytes([0xFF; 32]);
++    let invalid = vb_core::CompiledWorkflow::try_from_parts(parts)
++        .map_err(|e| format!("expected forged-digest workflow to reconstruct, got: {e}"))?;
++
++    let result = submit_artifact(&journal, &invalid, RuntimePolicy::Relaxed);
++    match result {
++        Err(JournalError::ArtifactChecksumMismatch) => {}
++        other => return Err(format!("expected ArtifactChecksumMismatch, got: {other:?}")),
++    }
++
++    let counter = counter_value(&journal)?;
++    if counter.is_some() {
++        return Err(format!(
++            "counter should be 0 after digest rejection, got: {counter:?}"
++        ));
++    }
++    compiled_empty(&journal)?;
++
++    let valid_workflow = minimal_workflow()?;
++    let artifact = submit_artifact(&journal, &valid_workflow, RuntimePolicy::Relaxed)
++        .map_err(|e| format!("valid workflow submission failed: {e}"))?;
++    if artifact.accepted_at_seq.get() != 1 {
++        return Err(format!(
++            "valid workflow should get seq 1, got {}",
++            artifact.accepted_at_seq.get()
++        ));
++    }
++    Ok(())
++}
++
++/// Counter overflow: at u64::MAX - 1, one more submission succeeds at u64::MAX,
++/// then the next fails with SequenceOverflow.
++#[test]
++fn counter_overflow_at_u64_max() -> Result<(), String> {
++    let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let workflow = minimal_workflow()?;
++
++    let near_max = u64::MAX
++        .checked_sub(1)
++        .ok_or_else(|| "u64::MAX - 1 underflow".to_string())?;
++    journal
++        .artifact_acceptance
++        .insert(b"last_issued", &near_max.to_be_bytes())
++        .map_err(|e| format!("insert counter failed: {e}"))?;
++
++    let artifact1 = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
++        .map_err(|e| format!("submission at near-max failed: {e}"))?;
++    if artifact1.accepted_at_seq.get() != u64::MAX {
++        return Err(format!(
++            "first artifact should have seq u64::MAX, got {}",
++            artifact1.accepted_at_seq.get()
++        ));
++    }
++
++    let counter = counter_value(&journal)?;
++    if counter != Some(u64::MAX) {
++        return Err(format!("counter should be u64::MAX, got: {counter:?}"));
++    }
++
++    verify_artifact_readback(
++        &journal,
++        artifact1.digest,
++        &artifact1,
++        RuntimePolicy::Relaxed,
++    )?;
++
++    let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
++    match result {
++        Err(JournalError::SequenceOverflow) => {}
++        other => return Err(format!("expected SequenceOverflow, got: {other:?}")),
++    }
++
++    let counter_after = counter_value(&journal)?;
++    if counter_after != Some(u64::MAX) {
++        return Err(format!(
++            "counter should remain u64::MAX after overflow, got: {counter_after:?}"
++        ));
++    }
++
++    verify_artifact_readback(
++        &journal,
++        artifact1.digest,
++        &artifact1,
++        RuntimePolicy::Relaxed,
++    )?;
++
++    Ok(())
++}
+diff --git a/crates/vb_storage/src/admission/acceptance_sequence_tests.rs b/crates/vb_storage/src/admission/acceptance_sequence_tests.rs
+new file mode 100644
+index 000000000..a89b082d5
+--- /dev/null
++++ b/crates/vb_storage/src/admission/acceptance_sequence_tests.rs
+@@ -0,0 +1,193 @@
++//! Behavioral tests for default artifact submission sequence counter.
++
++use crate::FjallJournal;
++use crate::admission::*;
++use vb_core::RuntimePolicy;
++
++use super::{minimal_workflow, temp_journal};
++
++fn assert_readback_verified(
++    journal: &FjallJournal,
++    artifact: &AcceptedArtifact,
++    policy: RuntimePolicy,
++) -> Result<(), String> {
++    let record = journal
++        .compiled_ir(artifact.digest)
++        .map_err(|e| format!("compiled_ir read: {e}"))?
++        .ok_or_else(|| "compiled_ir read returned None")?;
++
++    let computed =
++        accepted_artifact_digest(artifact).map_err(|e| format!("accepted_artifact_digest: {e}"))?;
++    assert_eq!(
++        computed, artifact.digest,
++        "readback digest must match artifact digest"
++    );
++
++    assert_eq!(
++        artifact.verification.digest, artifact.digest,
++        "verification proof digest must match artifact digest"
++    );
++
++    let compiled = verify_accepted_artifact_for_policy(artifact, policy)
++        .map_err(|e| format!("verify_accepted_artifact_for_policy: {e}"))?;
++    assert!(
++        compiled.node_count() > 0,
++        "compiled workflow must have nodes"
++    );
++
++    let stamped: AcceptedArtifact =
++        postcard::from_bytes(&record.ir).map_err(|e| format!("postcard decode: {e}"))?;
++    assert_eq!(stamped, *artifact, "stamped artifact should roundtrip");
++
++    Ok(())
++}
++
++fn assert_first_seq(accepted: &AcceptedArtifact) {
++    assert_eq!(
++        accepted.accepted_at_seq.get(),
++        1,
++        "first submission should be seq 1"
++    );
++}
++
++fn assert_second_seq(accepted: &AcceptedArtifact) {
++    assert_eq!(
++        accepted.accepted_at_seq.get(),
++        2,
++        "second submission should be seq 2"
++    );
++}
++
++fn assert_nonzero_digest(accepted: &AcceptedArtifact) {
++    assert_ne!(
++        accepted.digest.as_bytes(),
++        [0u8; 32],
++        "digest must be non-zero"
++    );
++    assert_ne!(
++        accepted.source_digest.as_bytes(),
++        [0u8; 32],
++        "source_digest must be non-zero"
++    );
++}
++
++#[test]
++fn first_submission_is_seq_1_for_all_policies() -> Result<(), String> {
++    let policies = [
++        RuntimePolicy::Relaxed,
++        RuntimePolicy::Journaled,
++        RuntimePolicy::Strict,
++    ];
++
++    for policy in policies {
++        let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++        let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
++        let accepted = submit_artifact(&tj.journal, &workflow, policy)
++            .map_err(|e| format!("submit_artifact policy={policy:?}: {e}"))?;
++
++        assert_first_seq(&accepted);
++        assert_nonzero_digest(&accepted);
++        assert_readback_verified(&tj.journal, &accepted, policy)?;
++    }
++
++    Ok(())
++}
++
++#[test]
++fn repeated_submissions_get_distinct_digests_and_both_readback() -> Result<(), String> {
++    let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let journal = &tj.journal;
++    let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
++
++    let first = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed)
++        .map_err(|e| format!("first submit: {e}"))?;
++    assert_first_seq(&first);
++
++    let second = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed)
++        .map_err(|e| format!("second submit: {e}"))?;
++    assert_second_seq(&second);
++
++    assert_ne!(
++        first.digest, second.digest,
++        "repeated submissions must have distinct artifact digests"
++    );
++
++    assert_readback_verified(journal, &first, RuntimePolicy::Relaxed)?;
++    assert_readback_verified(journal, &second, RuntimePolicy::Relaxed)?;
++
++    Ok(())
++}
++
++#[test]
++fn pure_prepare_stays_seq_0_submit_after_gets_seq_1() -> Result<(), String> {
++    let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
++    let journal = &tj.journal;
++    let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
++
++    let prepared = prepare_compiled_artifact(&workflow, RuntimePolicy::Relaxed, &[])
++        .map_err(|e| format!("prepare_compiled_artifact: {e}"))?;
++    assert_eq!(
++        prepared.accepted_at_seq.get(),
++        0,
++        "pure prepare should be seq 0"
++    );
++
++    let counter_bytes = journal
++        .artifact_acceptance
++        .get(b"last_issued")
++        .map_err(|e| format!("counter read: {e}"))?;
++    assert!(
++        counter_bytes.is_none(),
++        "counter should be absent after pure prepare"
++    );
++
++    let accepted = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed)
++        .map_err(|e| format!("submit_artifact: {e}"))?;
++    assert_first_seq(&accepted);
++
++    Ok(())
++}
++
++#[test]
++fn counter_persists_across_reopen() -> Result<(), String> {
++    let dir = tempfile::tempdir().map_err(|e| format!("tempdir: {e}"))?;
++    let journal_path = dir.path().to_path_buf();
++    let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
++
++    let first;
++    {
++        let journal =
++            FjallJournal::open(&journal_path, None).map_err(|e| format!("journal open: {e}"))?;
++        first = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
++            .map_err(|e| format!("first submit: {e}"))?;
++        assert_first_seq(&first);
++    }
++
++    {
++        let journal =
++            FjallJournal::open(&journal_path, None).map_err(|e| format!("journal reopen: {e}"))?;
++
++        let counter_bytes = journal
++            .artifact_acceptance
++            .get(b"last_issued")
++            .map_err(|e| format!("counter read: {e}"))?
++            .ok_or_else(|| "counter should be present after first submit")?;
++        assert_eq!(
++            counter_bytes,
++            [0, 0, 0, 0, 0, 0, 0, 1],
++            "counter should be exactly 1 (u64 BE)"
++        );
++
++        assert_readback_verified(&journal, &first, RuntimePolicy::Strict)?;
++
++        let second = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
++            .map_err(|e| format!("second submit: {e}"))?;
++        assert_second_seq(&second);
++        assert_readback_verified(&journal, &second, RuntimePolicy::Strict)?;
++    }
++
++    Ok(())
++}
++
++#[path = "acceptance_sequence_boundary_tests.rs"]
++mod boundary_tests;
+diff --git a/crates/vb_storage/src/admission/tests.rs b/crates/vb_storage/src/admission/tests.rs
+index 1918f0bf2..9056bfc10 100644
+--- a/crates/vb_storage/src/admission/tests.rs
++++ b/crates/vb_storage/src/admission/tests.rs
+@@ -467,11 +467,11 @@ fn accepted_artifact_fields_are_populated() -> Result<(), String> {
+     let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+         .map_err(|e| format!("submit failed: {e}"))?;
+ 
+-    // accepted_at_seq should be 0 (no journal sequence tracking in current impl).
++    // accepted_at_seq should be 1 (first submission gets sequence 1).
+     assert_eq!(
+         artifact.accepted_at_seq.get(),
+-        0,
+-        "accepted_at_seq must be 0"
++        1,
++        "accepted_at_seq must be 1"
+     );
+     // required_capabilities should be empty for minimal workflow.
+     assert!(
+@@ -1187,3 +1187,11 @@ fn admission_postcard_encode_failed_surfaces_typed_variant() {
+         "`From<postcard::Error>` for `JournalError` must continue to produce the Encode variant"
+     );
+ }
++#[path = "acceptance_sequence_tests.rs"]
++mod acceptance_sequence_tests;
++
++#[path = "acceptance_sequence_failure_tests.rs"]
++mod acceptance_sequence_failure_tests;
++
++#[path = "acceptance_sequence_concurrency_tests.rs"]
++mod acceptance_sequence_concurrency_tests;
+diff --git a/crates/vb_storage/src/journal/tests.rs b/crates/vb_storage/src/journal/tests.rs
+index e2ef2664b..e1647fc4a 100644
+--- a/crates/vb_storage/src/journal/tests.rs
++++ b/crates/vb_storage/src/journal/tests.rs
+@@ -964,7 +964,7 @@ fn append_strict_batch_on_empty_is_ok() {
+ #[test]
+ fn declared_keyspaces_count_matches_opened_keyspaces() {
+     let declared = FjallJournal::declared_keyspaces();
+-    assert_eq!(declared.len(), 11, "there should be 11 declared keyspaces");
++    assert_eq!(declared.len(), 12, "there should be 12 declared keyspaces");
+     let (_temp, _journal) = temp_journal();
+     // If we got here, all keyspaces opened successfully
+ }
+diff --git a/crates/vb_storage/src/tests.rs b/crates/vb_storage/src/tests.rs
+index 767328c31..1a1011920 100644
+--- a/crates/vb_storage/src/tests.rs
++++ b/crates/vb_storage/src/tests.rs
+@@ -723,7 +723,7 @@ mod tests {
+     fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
+         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+-        assert_eq!(FjallJournal::declared_keyspaces().len(), 11);
++        assert_eq!(FjallJournal::declared_keyspaces().len(), 12);
+ 
+         let source_bytes = vec![b'n', b'a', b'm', b'e'];
+         let workflow_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
+@@ -1648,7 +1648,7 @@ mod tests {
+ 
+         let reopened = init_keyspaces(temp_dir.path());
+         assert!(reopened.is_ok(), "init_keyspaces should succeed");
+-        assert_eq!(FjallJournal::declared_keyspaces().len(), 11);
++        assert_eq!(FjallJournal::declared_keyspaces().len(), 12);
+     }
+ 
+     #[test]
+@@ -2264,12 +2264,12 @@ mod tests {
+     }
+ 
+     #[test]
+-    fn declared_keyspaces_returns_eleven_entries() {
++    fn declared_keyspaces_returns_twelve_entries() {
+         // Given FjallJournal::declared_keyspaces()
+         // When called
+-        // Then it returns exactly 11 keyspace names including emergency_deny
++        // Then it returns exactly 12 keyspace names including artifact_acceptance
+         let keyspaces = FjallJournal::declared_keyspaces();
+-        assert_eq!(keyspaces.len(), 11);
++        assert_eq!(keyspaces.len(), 12);
+         assert_eq!(keyspaces[0], "workflow_source");
+         assert_eq!(keyspaces[1], "compiled_ir");
+         assert_eq!(keyspaces[2], "run_header");
+@@ -2281,6 +2281,7 @@ mod tests {
+         assert_eq!(keyspaces[8], "index_action");
+         assert_eq!(keyspaces.get(9), Some(&"run_inputs"));
+         assert_eq!(keyspaces.get(10), Some(&"emergency_deny"));
++        assert_eq!(keyspaces.get(11), Some(&"artifact_acceptance"));
+     }
+ 
+     #[test]
+diff --git a/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs b/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
+index 3d0faaec2..3284d4c81 100644
+--- a/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
++++ b/crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
+@@ -265,8 +265,8 @@ mod durability_gate_tests {
+         // accepted_at_seq must be a valid EventSeq (non-null, properly constructed)
+         assert_eq!(
+             result.accepted_at_seq.get(),
+-            0,
+-            "accepted_at_seq should be initialized to 0 in current implementation"
++            1,
++            "accepted_at_seq should be the first issued sequence number (1)"
+         );
+         Ok(())
+     }
+diff --git a/crates/workspace_tests/tests/fjall_keyspace_manifest_tests.rs b/crates/workspace_tests/tests/fjall_keyspace_manifest_tests.rs
+index 6d77de7d6..bbfb0c0aa 100644
+--- a/crates/workspace_tests/tests/fjall_keyspace_manifest_tests.rs
++++ b/crates/workspace_tests/tests/fjall_keyspace_manifest_tests.rs
+@@ -187,8 +187,8 @@ fn declared_keyspaces_count() {
+     let keyspaces = FjallJournal::declared_keyspaces();
+     assert_eq!(
+         keyspaces.len(),
+-        11,
+-        "declared_keyspaces must return exactly 11 entries"
++        12,
++        "declared_keyspaces must return exactly 12 entries"
+     );
+ }
+ 
+@@ -207,6 +207,7 @@ fn declared_keyspaces_contains_required_names() {
+         "index_workflow",
+         "index_action",
+         "emergency_deny",
++        "artifact_acceptance",
+     ];
+ 
+     for name in required {
+diff --git a/crates/workspace_tests/tests/restate_doctor_key_decode_tests.rs b/crates/workspace_tests/tests/restate_doctor_key_decode_tests.rs
+index 83de5a914..1d5e91d39 100644
+--- a/crates/workspace_tests/tests/restate_doctor_key_decode_tests.rs
++++ b/crates/workspace_tests/tests/restate_doctor_key_decode_tests.rs
+@@ -477,15 +477,16 @@ fn readonly_journal_is_debug() {
+ }
+ 
+ #[test]
+-fn readonly_journal_declared_keyspaces_returns_eleven() {
++fn readonly_journal_declared_keyspaces_returns_twelve() {
+     // Static method — proves the type is accessible.
+-    // Actual count is 11 after emergency_deny keyspace was added (vb-h7rex).
++    // Actual count is 12 after artifact_acceptance keyspace was added (vb-qz2yn).
+     let spaces = ReadOnlyJournal::declared_keyspaces();
+-    assert_eq!(spaces.len(), 11);
++    assert_eq!(spaces.len(), 12);
+     // Verify all keyspace names are non-empty (cold path — no JSON/YAML).
+     for &name in &spaces {
+         assert!(!name.is_empty(), "keyspace name must not be empty");
+     }
++    assert!(spaces.contains(&"artifact_acceptance"));
+ }
+ 
+ /// Verify that no write methods exist on ReadOnlyJournal by checking
