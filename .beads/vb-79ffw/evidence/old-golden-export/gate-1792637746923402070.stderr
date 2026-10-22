@@ -1,0 +1,9 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-79ffw-local3090-old-fixtures/crates/vb_storage)
+error[E0425]: cannot find value `OLD_SHA` in this scope
+   --> crates/vb_storage/tests/old_ticket_golden_export.rs:140:72
+    |
+140 |     manifest.push(format!("{{\n  \"oldSHA\": \"{}\",\n  \"cases\": [", OLD_SHA));
+    |                                                                        ^^^^^^^ not found in this scope
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `vb_storage` (test "old_ticket_golden_export") due to 1 previous error
