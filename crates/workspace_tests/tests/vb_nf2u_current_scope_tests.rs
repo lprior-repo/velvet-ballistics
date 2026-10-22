@@ -13,15 +13,22 @@
 //! - Current workspace structure (no removed crates as members)
 
 use std::error::Error;
-use std::path::Path;
 use std::process::Command;
 
 const WORKSPACE_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
-const CLI_BINARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/release/velvet-ballistics");
 
 fn run_cli(args: &[&str]) -> Result<CommandOutput, Box<dyn Error>> {
-    let output = Command::new(CLI_BINARY)
+    let output = Command::new("cargo")
         .current_dir(WORKSPACE_ROOT)
+        .args([
+            "run",
+            "--quiet",
+            "--manifest-path",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml"),
+            "-p",
+            "velvet-ballistics",
+            "--",
+        ])
         .args(args)
         .output()
         .map_err(|e| format!("failed to run CLI: {e}"))?;
@@ -96,7 +103,10 @@ fn cli_help_lists_current_command_surface() -> Result<(), Box<dyn Error>> {
 
     // Removed UI commands should not be in the list
     assert!(!stdout.contains("  ui "), "ui command should not be listed");
-    assert!(!stdout.contains("  ui-release "), "ui-release command should not be listed");
+    assert!(
+        !stdout.contains("  ui-release "),
+        "ui-release command should not be listed"
+    );
     Ok(())
 }
 
@@ -110,16 +120,18 @@ fn cli_version_prints_version_string() -> Result<(), Box<dyn Error>> {
     );
     Ok(())
 }
-
 #[test]
 fn validate_command_runs_on_valid_workflow() -> Result<(), Box<dyn Error>> {
-    // Create a minimal valid workflow
     let workflow_path = format!("{}/target/vb-nf2u-test-workflow.yaml", WORKSPACE_ROOT);
-    let content = "version: velvet-ballistics/v1\nname: nf2u-test\ntriggers: [manual]\nsteps:\n  - id: hello\n    type: print\n    data:\n      message: test\n";
+    let content = "version: velvet-ballistics/v1\nname: nf2u_test\nwhen:\n  manual: {}\nsteps:\n  - id: hello\n    set:\n      output: msg\n      value: \"1\"\n  - id: done\n    finish:\n      result: msg\n";
     std::fs::write(&workflow_path, content)?;
 
     let output = run_cli(&["validate", &workflow_path])?;
-    assert!(output.success(), "validate should succeed: {}", output.all_output());
+    assert!(
+        output.success(),
+        "validate should succeed: {}",
+        output.all_output()
+    );
     Ok(())
 }
 
@@ -142,7 +154,10 @@ fn removed_codegen_ui_crates_are_not_workspace_members() -> Result<(), Box<dyn E
     );
 
     // Current scope crates must be members
-    assert!(cargo_toml.contains("\"crates/vb_core\""), "vb_core must be a member");
+    assert!(
+        cargo_toml.contains("\"crates/vb_core\""),
+        "vb_core must be a member"
+    );
     assert!(
         cargo_toml.contains("\"crates/vb_runtime\""),
         "vb_runtime must be a member"

@@ -6,10 +6,10 @@
 
 use vb_core::{ActionId, RunId, SeqNo, StepIdx, WorkflowId};
 use vb_storage::{
-    JournalError, RecordKind,
     codec::{decode_record_header, encode_record},
     keys,
     types::EventSeq,
+    JournalError, RecordKind,
 };
 // =============================================================================
 // Helper Functions
@@ -495,13 +495,7 @@ mod unknown_record_kind_rejection {
         // Known kinds: 1,2,3,4,10-29,30,31-37,36,37,40,50
         // 36 (RunAdmissionBound) and 37 (RetryCheckpoint) are journal-event kinds.
         let truly_unknown_kinds: Vec<u16> = vec![
-            0,
-            5, 6, 7, 8, 9,
-            38, 39,
-            41, 42, 43, 44, 45, 46, 47, 48, 49,
-            51, 52,
-            100, 255,
-            65535,
+            0, 5, 6, 7, 8, 9, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 51, 52, 100, 255, 65535,
         ];
         for &kind in &truly_unknown_kinds {
             let mut header = make_header_with_kind(kind);
@@ -539,7 +533,7 @@ mod unknown_record_kind_rejection {
             matches!(
                 result,
                 Err(JournalError::RecordKindFamilyMismatch {
-                    magic: vb_storage::constants::MAGIC_COMPILED_ARTIFACT,
+                    magic: vb_storage::constants::MAGIC_JOURNAL_EVENT,
                     kind: 4
                 })
             ),
