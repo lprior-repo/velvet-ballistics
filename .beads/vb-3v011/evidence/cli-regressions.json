@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-3v011-deepseek-cli-admission",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics",
+    "--test",
+    "cli_integration",
+    "--test",
+    "finish_input_execution",
+    "--test",
+    "admission_evidence_integration"
+  ],
+  "exit_code": 0,
+  "seconds": 1.274,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-3v011/evidence/cli-regressions"
+}

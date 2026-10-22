@@ -161,11 +161,10 @@ pub(crate) fn runtime_journal_for_mode(
 pub(crate) fn runtime_config_for_durability(
     durability: DurabilityMode,
 ) -> vb_runtime::shard::ShardConfig {
-    let mut config = vb_runtime::shard::ShardConfig::default();
-    if durability == DurabilityMode::None {
-        config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+    vb_runtime::shard::ShardConfig {
+        policy: crate::submit::submission_policy(durability),
+        ..vb_runtime::shard::ShardConfig::default()
     }
-    config
 }
 
 #[cfg(test)]

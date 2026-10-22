@@ -67,6 +67,17 @@ fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow>
     CompiledWorkflow::try_from_parts(parts).ok()
 }
 
+/// Compiles a genuine set-const → finish workflow through the real compiler so
+/// the canonical digest matches the serialized IR. Distinct from
+/// `set_const_finish_workflow`, which forges a placeholder digest and is only
+/// valid for tests asserting hostile-digest rejection.
+fn compile_set_const_finish(name: &str) -> Option<CompiledWorkflow> {
+    let yaml = format!(
+        "version: velvet-ballistics/v1\nname: {name}\nwhen:\n  manual: {{}}\nsteps:\n  - id: build\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n"
+    );
+    vb_compile::compile_workflow(yaml.as_bytes()).ok()
+}
+
 /// Creates a workflow with a Do node requiring action 7.
 fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
     let node0 = CompiledNode {
@@ -274,11 +285,11 @@ fn storage_failure_before_header_prevents_ack() {
 
 #[test]
 fn restart_lookup_finds_persisted_header() {
-    let digest = WorkflowDigest::from_bytes([0x42u8; 32]);
-    let Some(workflow) = set_const_finish_workflow(digest) else {
-        fail_assert!("workflow construction failed");
+    let Some(workflow) = compile_set_const_finish("restart_lookup") else {
+        fail_assert!("workflow compilation failed");
         return;
     };
+    let digest = workflow.digest();
     let Some((_dir, journal)) = temp_journal() else {
         fail_assert!("temp journal open failed");
         return;
@@ -520,11 +531,11 @@ fn submit_with_tainted_input_propagates_taint_through_runtime() {
 
 #[test]
 fn journal_persistence_survives_runtime_drop_and_reopen() {
-    let digest = WorkflowDigest::from_bytes([0x47u8; 32]);
-    let Some(workflow) = set_const_finish_workflow(digest) else {
-        fail_assert!("workflow construction failed");
+    let Some(workflow) = compile_set_const_finish("journal_persistence") else {
+        fail_assert!("workflow compilation failed");
         return;
     };
+    let digest = workflow.digest();
     let Some((dir, journal)) = temp_journal() else {
         fail_assert!("temp journal open failed");
         return;

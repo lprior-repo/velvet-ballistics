@@ -128,7 +128,7 @@ fn commit_submission(
     journal.commit_run_submission(submission, submission_policy(durability))
 }
 
-fn submission_policy(mode: DurabilityMode) -> vb_core::RuntimePolicy {
+pub(crate) fn submission_policy(mode: DurabilityMode) -> vb_core::RuntimePolicy {
     match mode {
         DurabilityMode::Strict => vb_core::RuntimePolicy::Strict,
         DurabilityMode::Journaled => vb_core::RuntimePolicy::Journaled,

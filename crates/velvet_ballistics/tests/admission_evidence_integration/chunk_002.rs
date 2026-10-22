@@ -110,18 +110,20 @@ fn submit_artifact_then_run_succeeds() {
 
 #[test]
 fn run_without_artifact_under_relaxed_policy() {
-    // Given: a compiled workflow and a relaxed policy
+    // Given: a genuinely compiled workflow and a relaxed policy.
+    // Relaxed admission skips artifact loading, but submit_artifact still
+    // checksum-validates the canonical IR, so a genuine digest is required.
     let Some((_dir, journal)) = temp_journal() else {
         fail_assert!("temp journal open failed");
         return;
     };
-    let digest = WorkflowDigest::from_bytes([2u8; 32]);
-    let Some(workflow) = set_const_finish_workflow(digest) else {
-        fail_assert!("workflow construction failed");
+    let Some(workflow) = compile_set_const_finish("relaxed_no_artifact") else {
+        fail_assert!("workflow compilation failed");
         return;
     };
+    let digest = workflow.digest();
 
-    // When: submitting under Relaxed policy (no verification required)
+    // When: submitting under Relaxed policy
     let result = vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
     match result {
         Ok(artifact) => {
@@ -243,5 +245,37 @@ fn run_without_artifact_under_strict_policy_rejects_unverified_workflow() {
             !err.to_string().is_empty(),
             "strict policy should reject unverified workflow: {err}"
         );
+    }
+}
+
+#[test]
+fn forged_digest_workflow_rejects_across_relaxed_and_strict() {
+    // Hostile forged workflow: placeholder digest does not match the canonical
+    // serialized IR. submit_artifact must reject under BOTH Relaxed and Strict
+    // (typed evidence contract supersedes "relaxed skips checksum").
+    let forged_digest = WorkflowDigest::from_bytes([0xE1u8; 32]);
+    let Some(workflow) = set_const_finish_workflow(forged_digest) else {
+        fail_assert!("workflow construction failed");
+        return;
+    };
+
+    let Some((_dir, journal)) = temp_journal() else {
+        fail_assert!("temp journal open failed");
+        return;
+    };
+
+    let relaxed =
+        vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
+    match relaxed {
+        Err(vb_storage::JournalError::ArtifactChecksumMismatch) => {}
+        Err(err) => fail_assert!("relaxed forged submit must reject checksum: {err}"),
+        Ok(_) => fail_assert!("relaxed forged submit must reject, got Ok"),
+    }
+
+    let strict = vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict);
+    match strict {
+        Err(vb_storage::JournalError::ArtifactChecksumMismatch) => {}
+        Err(err) => fail_assert!("strict forged submit must reject checksum: {err}"),
+        Ok(_) => fail_assert!("strict forged submit must reject, got Ok"),
     }
 }
