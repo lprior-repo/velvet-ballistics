@@ -66,4 +66,25 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
     ) -> RuntimeResult<vb_storage::JournalEvent> {
         StorageRuntimeJournal::storage_event(event, seq)
     }
+
+    fn append_policy_decision_strict(
+        &self,
+        decision: vb_core::policy::DecisionRecord,
+        seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        self.queue
+            .probe_accepting_writes()
+            .map_err(RuntimeError::from)?;
+        self.queue
+            .drain_all(self.journal.as_ref())
+            .map_err(RuntimeError::from)?;
+        let storage_event = JournalEvent::PolicyDecisionEvent {
+            run: decision.ticket.run,
+            seq,
+            decision,
+        };
+        self.journal
+            .append_strict(&storage_event)
+            .map_err(RuntimeError::from)
+    }
 }

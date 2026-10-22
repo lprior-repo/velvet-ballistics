@@ -41,7 +41,7 @@ impl Shard {
         }
     }
 
-    fn require_pending_action_ownership(&self, ticket: ActionTicket) -> RuntimeResult<()> {
+    pub(super) fn require_pending_action_ownership(&self, ticket: ActionTicket) -> RuntimeResult<()> {
         if !self.run_state_contains(ticket.run) {
             return Err(RuntimeError::RunNotFound);
         }

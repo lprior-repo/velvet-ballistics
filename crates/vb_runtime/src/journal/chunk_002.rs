@@ -453,6 +453,21 @@ impl RuntimeJournal for StorageRuntimeJournal {
         Self::storage_event(event, seq)
     }
 
+    fn append_policy_decision_strict(
+        &self,
+        decision: vb_core::policy::DecisionRecord,
+        seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        let storage_event = JournalEvent::PolicyDecisionEvent {
+            run: decision.ticket.run,
+            seq,
+            decision,
+        };
+        self.journal
+            .append_strict(&storage_event)
+            .map_err(RuntimeError::from)
+    }
+
     fn append_sequenced_batch(
         &self,
         events: &[RuntimeJournalEvent],
