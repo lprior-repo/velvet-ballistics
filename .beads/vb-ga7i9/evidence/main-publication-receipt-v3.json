@@ -1,0 +1,16 @@
+{
+  "origin_main": "0434f64f0f1f4e2ab89ffd49628fcae903f809d3\trefs/heads/main",
+  "coordination_head": "0434f64f0f1f4e2ab89ffd49628fcae903f809d3",
+  "coordination_clean": true,
+  "closed_beads": [
+    "vb-tphef",
+    "vb-kbjwj",
+    "vb-g6d0j",
+    "vb-kwsk1",
+    "vb-tjnjt",
+    "vb-ga7i9"
+  ],
+  "beads_dolt_push": "Push complete",
+  "parent_vb_ny068": "in_progress",
+  "full_v1_complete": false
+}
