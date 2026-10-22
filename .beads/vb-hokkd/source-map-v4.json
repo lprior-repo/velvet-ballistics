@@ -1,0 +1,117 @@
+{
+  "contract_version": 4,
+  "workspace": "/home/lewis/src/isoloated/vb-hokkd-contract-v4",
+  "generated_at": "2026-10-22",
+  "sources": [
+    {
+      "file": "crates/vb_runtime/src/runtime/registered_executor.rs",
+      "sha256": "42cebc4f6cbd4b2d5e1d70a0d730fb30064cbd13924630f95da235e6ef7acdfb",
+      "role": "Runtime execute/reconcile entry points",
+      "status": "current"
+    },
+    {
+      "file": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+      "sha256": "e2b041e1ce48911842ac8c7388ec76fed3cd9ff57aa1b74f892c87840dd0de5d",
+      "role": "RegisteredActionContext construction and validation",
+      "status": "current"
+    },
+    {
+      "file": "crates/vb_runtime/src/policy.rs",
+      "sha256": "2c11370fc1d07ae5edfd6c8e608126eaea6d6dc91f14d7e3b4c0c3bf8a159e50",
+      "role": "LivePolicy evaluator and decision logic",
+      "status": "current"
+    },
+    {
+      "file": "crates/vb_core/src/policy.rs",
+      "sha256": "35a38e9a64854755b76b72b12e7b30cd2d4184479dfc7dba19a91551c4633fdc",
+      "role": "DecisionRecord, PolicyDigest, PinnedAdmissionPolicy types",
+      "status": "current"
+    },
+    {
+      "file": "crates/vb_runtime/src/runtime.rs",
+      "sha256": "999426cb8402d738fc4d801e208c04fd10d8543a6b4e0025d6ea4927a733d793",
+      "role": "Runtime struct definition and shard dispatch",
+      "status": "current"
+    },
+    {
+      "file": "crates/vb_runtime/src/shard/types.rs",
+      "sha256": "a8f9ff224310810a08dea1a52b6bd97bd4d9dd22c7b34b69700a11fcce9aee45",
+      "role": "RunState, RegisteredExecutionMode, admission field",
+      "status": "current"
+    },
+    {
+      "file": "crates/vb_storage/src/executor/register.rs",
+      "sha256": "78e07824071d7b7f47da988eb7bdbe6b6755afe795c5c9cf3afde2857b83cd8b",
+      "role": "FjallRegister execute/reconcile and idempotency",
+      "status": "current"
+    },
+    {
+      "file": "crates/vb_runtime/src/admission/parts/chunk_002_records.rs",
+      "sha256": "4bcf2ea1926fcc751c90fd64c188573e8006362290e9cbc2d45a0b50caa143e3",
+      "role": "RunAdmission record (per-run artifact pin)",
+      "status": "current"
+    },
+    {
+      "file": "crates/vb_storage/src/events/event.rs",
+      "sha256": "c8e8700563de158ed2ff04d8dc80705991d4a994d0e9ef1ea3b4f302bb35a8d1",
+      "role": "JournalEvent::PolicyDecisionEvent variant",
+      "status": "current"
+    },
+    {
+      "file": "crates/vb_runtime/src/journal/chunk_001.rs",
+      "sha256": "d2f915e6ad5217194c8a9704361628173ccc09c4a8234de4833662fe87b80aff",
+      "role": "RuntimeJournalEvent enum, append_sequenced API",
+      "status": "current"
+    }
+  ],
+  "master_sections": [
+    {
+      "section": "77.3",
+      "title": "Formal Execution and Dispatch Model",
+      "role": "Separates transition from dispatch; defines L context"
+    },
+    {
+      "section": "77.11",
+      "title": "Policy Versioning, Replay, and Emergency Override",
+      "role": "Admission pin vs live-effect policy; replay rules"
+    }
+  ],
+  "proposed_additions": [
+    {
+      "target": "RegisteredActionContext",
+      "field": "pinned_admission",
+      "type": "PinnedAdmissionPolicy",
+      "purpose": "Retain per-run admission pin from state.admission"
+    },
+    {
+      "target": "RegisteredActionContext",
+      "field": "input_bytes",
+      "type": "Vec<u8>",
+      "purpose": "Actual serialized I64 input for digest computation"
+    },
+    {
+      "target": "RegisteredActionContext",
+      "field": "input_taint",
+      "type": "Taint",
+      "purpose": "Actual frame taint at dispatch time"
+    },
+    {
+      "target": "execute_registered_action",
+      "step": "policy evaluation",
+      "position": "immediately before adapter.execute",
+      "purpose": "Evaluate live policy with retained pin and actual input identity"
+    },
+    {
+      "target": "execute_registered_action",
+      "step": "journal decision",
+      "position": "after policy evaluation, before adapter.execute",
+      "purpose": "Durable append of full 9-field DecisionRecord with SyncAll"
+    }
+  ],
+  "unresolved": [
+    "Full grant revocation and expiry lifecycle",
+    "Per-target capability granularity",
+    "Multi-rule policy evaluation",
+    "Runtime instance restart recovery of policy state"
+  ]
+}
