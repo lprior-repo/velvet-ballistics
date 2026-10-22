@@ -1,0 +1,75 @@
+{
+  "bead": "vb-hokkd",
+  "description": "Live policy dispatch and durable control seams",
+  "source_files": {
+    "live_policy_evaluator": {
+      "path": "crates/vb_runtime/src/policy.rs",
+      "role": "Actor-owned pure policy evaluator. configure(digest, rule), activate_emergency_deny(), evaluate(ticket, pinned, input_bytes, taint) -> DecisionRecord."
+    },
+    "policy_core_types": {
+      "path": "crates/vb_core/src/policy.rs",
+      "role": "DecisionCode, PolicyRule, PolicyDigest, DecisionRecord, PinnedAdmissionPolicy, CurrentLivePolicy, InfluenceState."
+    },
+    "registered_executor": {
+      "path": "crates/vb_runtime/src/runtime/registered_executor.rs",
+      "role": "execute_registered_action() and reconcile_registered_action(). Missing: policy evaluation before adapter.execute()."
+    },
+    "runtime_struct": {
+      "path": "crates/vb_runtime/src/runtime.rs",
+      "role": "Runtime struct with policy: vb_core::policy::RuntimePolicy (durability). Missing: live_policy: LivePolicy field."
+    },
+    "runtime_journal_trait": {
+      "path": "crates/vb_runtime/src/journal/chunk_001.rs",
+      "role": "RuntimeJournalEvent enum and RuntimeJournal trait (append, append_sequenced, append_sequenced_batch, convert_to_storage_event)."
+    },
+    "journal_event_mapping": {
+      "path": "crates/vb_runtime/src/journal/chunk_002.rs",
+      "role": "convert_to_storage_event() mapping from RuntimeJournalEvent to vb_storage::JournalEvent."
+    },
+    "registered_action_context": {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+      "role": "registered_action_context() returns RegisteredActionContext with admitted artifact — source for admitted policy pin."
+    },
+    "execution_binding": {
+      "path": "crates/vb_runtime/src/shard/lifecycle/execution_binding.rs",
+      "role": "validate() verifies execution tuple against accepted artifact."
+    },
+    "run_state_struct": {
+      "path": "crates/vb_runtime/src/shard/types.rs",
+      "role": "RunState with admission: Option<RunAdmission> field."
+    },
+    "fjall_adapter": {
+      "path": "crates/vb_storage/src/executor/register.rs",
+      "role": "FjallRegister::execute(grant, ticket, value) and reconcile(). Calls grant.validate(ticket) internally."
+    },
+    "accepted_artifact": {
+      "path": "crates/vb_storage/src/admission.rs",
+      "role": "AcceptedArtifact struct with policy_digest field. compute_policy_digest(&CompiledWorkflow)."
+    },
+    "policy_decision_event": {
+      "path": "crates/vb_storage/src/events/event.rs",
+      "role": "JournalEvent::PolicyDecisionEvent { run, seq, decision } (from vb-s4hfc)."
+    },
+    "policy_event_wire": {
+      "path": "crates/vb_storage/src/events/wire_serialize_policy.rs",
+      "role": "Wire serialization for PolicyDecisionEvent (from vb-s4hfc)."
+    },
+    "policy_event_deser": {
+      "path": "crates/vb_storage/src/events/wire_deserialize_policy.rs",
+      "role": "Wire deserialization for PolicyDecisionEvent (from vb-s4hfc)."
+    }
+  },
+  "storage_child": {
+    "path": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local5090-full-record",
+    "commit": "3e9f0454d",
+    "role": "Full stable DecisionRecord storage API (tag38, frozen production1a231a9f). Provides PolicyDecisionEvent wire format."
+  },
+  "admission_pin_child": {
+    "bead": "vb-h7rex",
+    "role": "Repairing AcceptedArtifact.policy_digest admission/recovery. Must complete before this contract can use the actual admitted pin."
+  },
+  "master_sections": [
+    "velvet-ballistics-MASTER.md:5018 (77.3 Formal Execution and Dispatch Model)",
+    "velvet-ballistics-MASTER.md:5207 (77.11 Policy Versioning, Replay, and Emergency Override)"
+  ]
+}
