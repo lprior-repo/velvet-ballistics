@@ -1,0 +1,9 @@
+{
+  "own_commit": "dec0e41e26902e5418cf972d6aa7d104d09f1d9c",
+  "current_base": "42fd94f21c3615c8fbe322806a76beea671b6d16",
+  "parts": [
+    ".beads/vb-0qwfq/historical-prototype-part-01.txt",
+    ".beads/vb-0qwfq/historical-prototype-part-02.txt"
+  ],
+  "note": "Historical prototype unverified, not acceptance; do not blindly apply."
+}

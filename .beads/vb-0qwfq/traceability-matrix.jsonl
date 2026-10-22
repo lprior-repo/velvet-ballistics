@@ -1,0 +1,10 @@
+{"id":"tm-001","requirement":"accept_artifact returns nonzero accepted_at_seq","source":"crates/vb_storage/src/admission.rs:submit_artifact","status":"planned","evidence":"accept_seq_allocate called before prepare_compiled_artifact"}
+{"id":"tm-002","requirement":"counter is durable across reopen","source":"crates/vb_storage/src/journal/core.rs:accept_seq_allocate","status":"planned","evidence":"system keyspace write via batch.commit()"}
+{"id":"tm-003","requirement":"concurrent allocations return distinct values","source":"crates/vb_storage/src/journal/core.rs:accept_seq_allocate","status":"planned","evidence":"write_lock Mutex serialization"}
+{"id":"tm-004","requirement":"overflow produces typed error","source":"crates/vb_storage/src/journal/core.rs:accept_seq_allocate","status":"planned","evidence":"checked_add returns None → SequenceOverflow"}
+{"id":"tm-005","requirement":"digest includes accepted_at_seq","source":"crates/vb_storage/src/admission.rs:accepted_artifact_digest","status":"existing","evidence":"digest computed over full artifact struct"}
+{"id":"tm-006","requirement":"freshness check rejects stale artifacts","source":"crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs","status":"existing","evidence":"accepted_at_seq < required_at_least comparison"}
+{"id":"tm-007","requirement":"Relaxed policy also receives nonzero sequence","source":"crates/vb_storage/src/admission.rs:submit_artifact","status":"planned","evidence":"seq allocation is policy-agnostic"}
+{"id":"tm-008","requirement":"old zero-seq artifacts remain readable","source":"crates/vb_storage/src/admission/verification.rs:verify_accepted_artifact","status":"existing","evidence":"verification recomputes from stored artifact including its seq=0"}
+{"id":"tm-009","requirement":"declared_keyspaces includes system","source":"crates/vb_storage/src/journal/core.rs:declared_keyspaces","status":"planned","evidence":"array length 11 → 12"}
+{"id":"tm-010","requirement":"probe_health probes system keyspace","source":"crates/vb_storage/src/journal/core.rs:probe_health","status":"planned","evidence":"contains_key check added for system"}

@@ -1,0 +1,102 @@
+{
+  "version": "1",
+  "bead_id": "vb-0qwfq",
+  "base_commit": "42fd94f2",
+  "prototype_commit": "dec0e41e",
+  "actual_files_read": {
+    "skill_files": [
+      "/home/lewis/.agents/skills/rust-contract/SKILL.md",
+      "/home/lewis/.agents/skills/fjall/SKILL.md"
+    ],
+    "bead_context": [
+      ".beads/vb-0qwfq/live-bead-context.json",
+      ".beads/vb-0qwfq/historical-prototype-manifest.json"
+    ],
+    "prototype_patches": [
+      ".beads/vb-0qwfq/historical-prototype-part-01.txt",
+      ".beads/vb-0qwfq/historical-prototype-part-02.txt"
+    ],
+    "docs": [
+      "docs/fjall-storage.md"
+    ],
+    "current_source": [
+      "crates/vb_storage/src/admission.rs",
+      "crates/vb_storage/src/admission/verification.rs",
+      "crates/vb_storage/src/journal/core.rs",
+      "crates/vb_storage/src/types.rs",
+      "crates/vb_storage/src/constants.rs",
+      "crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs",
+      "crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs",
+      "crates/vb_storage/tests/vb_core_atomic_admission_red.rs",
+      "crates/vb_storage/src/admission.rs:350-450",
+      "crates/vb_storage/src/journal/core.rs:50-170",
+      "crates/vb_storage/src/journal/core.rs:174-299"
+    ]
+  },
+  "callers_of_submit_artifact": [
+    "crates/vb_cli/src/run.rs:submit_cli_compiled_artifact",
+    "crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:admit_artifact_run",
+    "crates/vb_runtime/tests/durable_retry_boundary.rs",
+    "crates/vb_runtime/tests/durable_retry_execution.rs",
+    "crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs",
+    "crates/vb_runtime/tests/policy_pin_durable_recovery.rs",
+    "crates/vb_runtime/tests/vb_4qog3_independent_review.rs",
+    "crates/vb_runtime/tests/vb_r4fm9_event_generation.rs",
+    "crates/vb_storage/src/kani_admission.rs",
+    "crates/vb_storage/tests/accepted_artifact_red_phase.rs",
+    "crates/vb_storage/tests/vb_core_atomic_admission_red.rs",
+    "crates/velvet_ballistics/src/run.rs",
+    "crates/velvet_ballistics/tests/durable_retry_cli.rs",
+    "crates/velvet_ballistics/tests/admission_evidence_integration/*.rs",
+    "workspace_tests/benches/velvet_ballistics.rs"
+  ],
+  "callers_of_admit_artifact_run": [
+    "crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:admit_run",
+    "crates/vb_runtime/src/shard/lifecycle.rs:submit_run"
+  ],
+  "historical_prototype_gaps": [
+    "Prototype prepared artifact with seq=0 then reassigned; contract requires seq assigned before digest",
+    "Prototype exposed submit_artifact_at_seq variants allowing caller-specified seq; contract rejects this",
+    "Prototype did not address sequence leakage on artifact write failure",
+    "Prototype did not discuss Relaxed policy compatibility",
+    "Prototype did not discuss backward compatibility with existing seq=0 artifacts"
+  ],
+  "implementation_footprint": {
+    "modified_files": [
+      "crates/vb_storage/src/constants.rs",
+      "crates/vb_storage/src/journal/core.rs",
+      "crates/vb_storage/src/admission.rs"
+    ],
+    "new_files": [],
+    "new_keyspace": "system",
+    "new_constants": [
+      "KEYSPACE_SYSTEM",
+      "PREFIX_SYSTEM",
+      "SYSTEM_ACCEPT_SEQ_KEY",
+      "MAGIC_SYSTEM_RECORD"
+    ],
+    "new_methods": [
+      "FjallJournal::accept_seq_allocate"
+    ],
+    "modified_methods": [
+      "FjallJournal::declared_keyspaces",
+      "FjallJournal::probe_health",
+      "submit_artifact",
+      "submit_artifact_with_contracts"
+    ]
+  },
+  "regression_scenarios": [
+    "Submit artifact under Relaxed policy; verify accepted_at_seq >= 1",
+    "Submit artifact under Journaled policy; verify accepted_at_seq >= 1",
+    "Submit artifact under Strict policy; verify accepted_at_seq >= 1",
+    "Submit two artifacts in succession; verify distinct acceptance sequences",
+    "Submit artifact, close journal, reopen, submit another; verify counter continues from persisted value",
+    "Submit artifact with forged high accepted_at_seq; verify verification fails due to digest mismatch",
+    "Load old artifact with accepted_at_seq=0; verify it is still readable and verifiable",
+    "Admit run with freshness floor higher than artifact's accepted_at_seq; verify ArtifactCertificateStale error",
+    "Admit run with freshness floor lower than or equal to artifact's accepted_at_seq; verify admission succeeds",
+    "Submit artifact under Strict; verify counter update is durable before artifact write returns",
+    "Call accept_seq_allocate 2^64 times; verify SequenceOverflow error (theoretical)",
+    "Concurrent accept_seq_allocate calls from multiple threads; verify all return distinct values"
+  ]
+}

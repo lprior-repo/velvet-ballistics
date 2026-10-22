@@ -1,0 +1,16 @@
+{
+  "status": "DRAFT_REQUIRES_CORRECTION_BEFORE_IMPLEMENTATION",
+  "base": "42fd94f21c3615c8fbe322806a76beea671b6d16",
+  "issues": [
+    "Batch commit alone must not be called durable SyncAll; policy and actual Fjall operations determine durability.",
+    "Digest recomputation is integrity, not authorization: attacker can rehash a modified sequence; define actual trust boundary without cryptographic forgery claims.",
+    "Existing JournalError::SequenceOverflow already exists; do not add duplicate variant.",
+    "Do not claim all writes serialized by write_lock without actual call-graph evidence.",
+    "Counter value described inconsistently as next and last issued; choose exact invariant first0to1 checked.",
+    "Policy behavior must match current checked_parts/evidence/submit code, not guessed Relaxed bypass.",
+    "Allocator before validation may persist mutation for rejected artifact; define validation-before-I/O and counter/artifact atomicity exactly.",
+    "Production footprint misses admission/verification.rs preparation/binding path.",
+    "Current new-keyspace count/probe fixtures require actual inspected evidence; do not invent APIs."
+  ],
+  "next": "Independent local5090 contract correction/review, no Rust implementation based on this draft."
+}

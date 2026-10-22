@@ -1,0 +1,11 @@
+{
+  "model": "local-3090-llama/qwen3.8-27b-uncensored",
+  "workspace": "/home/lewis/src/isoloated/vb-0qwfq-acceptance-sequence-contract-v1",
+  "prompt": "/tmp/vb-0qwfq-contract-local3090-v1.txt",
+  "cloud_fallback": false,
+  "thinking": "high",
+  "runner": "mise exec -- omp",
+  "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+  "tools": "native text read exact replace edit bash write grep glob",
+  "images_blocked": true
+}
