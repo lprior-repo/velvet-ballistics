@@ -264,11 +264,14 @@ fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
 }
 
 fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
+    let encoded = postcard::to_allocvec(&value)
+        .map_err(|_| 8)
+        .unwrap_or_else(|_| vec![0]);
     ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint,
-        encoded_len: 8,
+        encoded_len: encoded.len() as u32,
     }
 }
 
@@ -460,7 +463,6 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
 }
 
 #[test]
-#[ignore]
 fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String> {
     // Given: SCN-VT2F-004 two suspended runs and a public action ticket for one run.
     let journal = Arc::new(VolatileRuntimeJournal::new());
@@ -483,16 +485,15 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
     let expected_taint = Taint::DerivedFromSecret;
     let expected_bytes = encoded(&expected_value)?;
 
-    // When: the matching ticket completes with exact output value and taint.
+    // When: the matching runtime-issued ticket completes with exact output value and taint.
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or("suspended action must have a runtime-issued ticket")?;
     assert_eq!(
-        runtime.complete_action_with_output(
-            action_ticket(run, ActionId::new(7)),
-            action_output(expected_value, expected_taint)
-        ),
+        runtime.complete_action_with_output(ticket, action_output(expected_value, expected_taint)),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
-
     // Then: only the matching run completes and writes the exact output.
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
     assert_eq!(runtime.snapshot_run(unrelated, 44), unrelated_before);
@@ -570,8 +571,8 @@ fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> 
 }
 
 #[test]
-fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run()
--> Result<(), String> {
+fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run(
+) -> Result<(), String> {
     // Given: SCN-VT2F-005 / ERR-003 one unrelated suspended action run and an absent-run ticket.
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let unrelated = RunId::new(2505);
@@ -671,8 +672,8 @@ fn test_direct_api_answer_ask_resumes_suspended_run() -> Result<(), String> {
 }
 
 #[test]
-fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run()
--> Result<(), String> {
+fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run(
+) -> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 a terminal stale run id and one unrelated suspended run.
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let stale = RunId::new(1606);
@@ -744,8 +745,8 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_ru
 }
 
 #[test]
-fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted()
--> Result<(), String> {
+fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted(
+) -> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 a terminal stale run whose bounded trace ring cannot retain
     // terminal evidence, plus one unrelated suspended run that must remain unchanged.
     let mut runtime =
@@ -821,8 +822,8 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
 }
 
 #[test]
-fn test_direct_api_answer_ask_rejects_answer_slot_mismatch_without_mutating_unrelated_run()
--> Result<(), String> {
+fn test_direct_api_answer_ask_rejects_answer_slot_mismatch_without_mutating_unrelated_run(
+) -> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 an absent wrong-run ask ticket and one unrelated suspended run.
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let unrelated = RunId::new(2607);
