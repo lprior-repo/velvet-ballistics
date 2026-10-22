@@ -14,6 +14,7 @@ use vb_core::action::{
     ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
     Idempotency, RetryPolicy, RetrySafety, SideEffect,
 };
+use vb_core::budget::AggregateResourceBudget;
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
@@ -21,7 +22,6 @@ use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
-use vb_core::budget::AggregateResourceBudget;
 use vb_runtime::admission::RunAdmission;
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::run_checkpoint;
@@ -81,8 +81,7 @@ fn single_action_workflow() -> Result<CompiledWorkflow, String> {
         input_slots: Box::from([]),
     };
     parts.digest = canonical_workflow_digest(&parts)?;
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|e| format!("workflow invalid: {e:?}"))
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("workflow invalid: {e:?}"))
 }
 
 fn action_contract() -> Result<ActionContract, String> {
@@ -144,7 +143,7 @@ struct ForgedRunAdmission {
 fn forge_admission_with_pin(
     original: &RunAdmission,
     forged_pin: WorkflowDigest,
-) -> RunAdmission {
+) -> Result<RunAdmission, String> {
     let dto = ForgedRunAdmission {
         artifact_digest: original.artifact_digest(),
         run_id: original.run_id(),
@@ -154,15 +153,30 @@ fn forge_admission_with_pin(
         budget: None,
         idempotency_attested: Box::new([]),
     };
-    let bytes =
-        postcard::to_allocvec(&dto).expect("forged admission serialization must succeed");
-    postcard::from_bytes::<RunAdmission>(&bytes).expect("forged admission deserialization must succeed")
+    let bytes = postcard::to_allocvec(&dto)
+        .map_err(|e| format!("forged admission serialization failed: {e}"))?;
+    postcard::from_bytes::<RunAdmission>(&bytes)
+        .map_err(|e| format!("forged admission deserialization failed: {e}"))
 }
 
 fn shard_config_for(policy: RuntimePolicy) -> ShardConfig {
     ShardConfig {
         policy,
         ..ShardConfig::default()
+    }
+}
+
+/// Creates a shared runtime journal matching the specified durability policy.
+/// Strict uses shared_strict; Journaled uses shared_journaled.
+/// Unsupported profiles are explicitly rejected.
+fn runtime_journal_for_policy(
+    journal: Arc<FjallJournal>,
+    policy: RuntimePolicy,
+) -> Result<vb_runtime::journal::SharedRuntimeJournal, String> {
+    match policy {
+        RuntimePolicy::Strict => Ok(StorageRuntimeJournal::shared_strict(journal)),
+        RuntimePolicy::Journaled => Ok(StorageRuntimeJournal::shared_journaled(journal)),
+        other => Err(format!("unsupported RuntimePolicy: {other:?}")),
     }
 }
 
@@ -194,10 +208,8 @@ fn get_latest_checkpoint(
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
     for event in events.iter().rev() {
         if let JournalEvent::RetryCheckpoint { payload, .. } = event {
-            let decoded =
-                run_checkpoint::decode_checkpoint_payload(payload).map_err(|e| {
-                    format!("checkpoint decode failed: {e}")
-                })?;
+            let decoded = run_checkpoint::decode_checkpoint_payload(payload)
+                .map_err(|e| format!("checkpoint decode failed: {e}"))?;
             return Ok(Some(decoded));
         }
     }
@@ -218,10 +230,7 @@ fn next_seq_after(events: &[JournalEvent]) -> Result<EventSeq, String> {
 /// Shared positive scenario for policy pin durable recovery.
 /// Both Strict and Journaled must produce a pinned policy pin that survives
 /// checkpoint capture, journal persistence, cold reopen, and recover_retry.
-fn policy_pin_survives_recovery_scenario(
-    policy: RuntimePolicy,
-    run: RunId,
-) -> Result<(), String> {
+fn policy_pin_survives_recovery_scenario(policy: RuntimePolicy, run: RunId) -> Result<(), String> {
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let path = dir.path().to_path_buf();
 
@@ -238,16 +247,11 @@ fn policy_pin_survives_recovery_scenario(
         let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
 
         // Submit the artifact first; strict/journaled policies require it.
-        vb_storage::submit_artifact_with_contracts(
-            &journal,
-            &workflow,
-            policy,
-            &contracts,
-        )
-        .map_err(|e| format!("artifact submit failed: {e}"))?;
+        vb_storage::submit_artifact_with_contracts(&journal, &workflow, policy, &contracts)
+            .map_err(|e| format!("artifact submit failed: {e}"))?;
 
         // Create runtime with matching policy.
-        let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
+        let shared = runtime_journal_for_policy(journal.clone(), policy)?;
         let mut runtime = Runtime::new(shard_count()?, config, shared);
 
         runtime
@@ -273,8 +277,8 @@ fn policy_pin_survives_recovery_scenario(
 
         // Verify RunAdmission has the actual policy pin.
         let admission_pin = get_run_admission_pin(&journal, run)?;
-        let RunPolicyPin::Pinned(recorded_pin) = admission_pin
-            .ok_or_else(|| "no RunPolicyPin found in journal")?
+        let RunPolicyPin::Pinned(recorded_pin) =
+            admission_pin.ok_or_else(|| "no RunPolicyPin found in journal")?
         else {
             return Err("admission must produce Pinned, not Unverified".to_string());
         };
@@ -323,8 +327,8 @@ fn policy_pin_survives_recovery_scenario(
 
         // Re-verify evidence survives journal reopen.
         let reopened_pin = get_run_admission_pin(&journal, run)?;
-        let RunPolicyPin::Pinned(reopened_recorded) = reopened_pin
-            .ok_or_else(|| "reopened journal must still have admission pin")?
+        let RunPolicyPin::Pinned(reopened_recorded) =
+            reopened_pin.ok_or_else(|| "reopened journal must still have admission pin")?
         else {
             return Err("reopened pin must be Pinned".to_string());
         };
@@ -340,8 +344,7 @@ fn policy_pin_survives_recovery_scenario(
             .admission
             .as_ref()
             .ok_or_else(|| "reopened checkpoint must contain RunAdmission")?;
-        let RunPolicyPin::Pinned(reopened_checkpoint_recorded) = reopened_admission
-            .policy_pin()
+        let RunPolicyPin::Pinned(reopened_checkpoint_recorded) = reopened_admission.policy_pin()
         else {
             return Err("reopened checkpoint pin must be Pinned".to_string());
         };
@@ -352,7 +355,7 @@ fn policy_pin_survives_recovery_scenario(
         }
 
         // Create fresh runtime with matching policy for recovery.
-        let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
+        let shared = runtime_journal_for_policy(journal.clone(), policy)?;
         let mut runtime = Runtime::new(shard_count()?, config, shared);
 
         // Recover from the checkpoint captured in Scope A.
@@ -409,8 +412,7 @@ fn policy_pin_survives_recovery_scenario(
             .admission
             .as_ref()
             .ok_or_else(|| "post-recovery checkpoint must contain RunAdmission")?;
-        let RunPolicyPin::Pinned(post_recovery_recorded) = post_recovery_admission
-            .policy_pin()
+        let RunPolicyPin::Pinned(post_recovery_recorded) = post_recovery_admission.policy_pin()
         else {
             return Err("post-recovery policy pin must be Pinned".to_string());
         };
@@ -424,11 +426,13 @@ fn policy_pin_survives_recovery_scenario(
         // the original RunAdmission (seq 1) must still be present alongside
         // any new events.
         let final_events = journal.events_for_run(run).map_err(|e| e.to_string())?;
-        let admission_found = final_events.iter().any(|e| {
-            matches!(e, JournalEvent::RunAdmission { seq, .. } if *seq == EventSeq::new(1))
-        });
+        let admission_found = final_events.iter().any(
+            |e| matches!(e, JournalEvent::RunAdmission { seq, .. } if *seq == EventSeq::new(1)),
+        );
         if !admission_found {
-            return Err("original RunAdmission event must still be present in final journal".to_string());
+            return Err(
+                "original RunAdmission event must still be present in final journal".to_string(),
+            );
         }
 
         drop(runtime);
@@ -443,20 +447,14 @@ fn policy_pin_survives_recovery_scenario(
 /// cold reopen, and recover_retry.
 #[test]
 fn strict_admission_policy_pin_survives_durable_recovery() -> Result<(), String> {
-    policy_pin_survives_recovery_scenario(
-        RuntimePolicy::Strict,
-        RunId::new(100_001),
-    )
+    policy_pin_survives_recovery_scenario(RuntimePolicy::Strict, RunId::new(100_001))
 }
 
 /// Positive scenario: Journaled admission also captures and preserves the
 /// policy pin through durable recovery.
 #[test]
 fn journaled_admission_policy_pin_survives_durable_recovery() -> Result<(), String> {
-    policy_pin_survives_recovery_scenario(
-        RuntimePolicy::Journaled,
-        RunId::new(100_002),
-    )
+    policy_pin_survives_recovery_scenario(RuntimePolicy::Journaled, RunId::new(100_002))
 }
 
 /// Verify that version 1 (legacy) checkpoint payloads are rejected by the
@@ -471,9 +469,7 @@ fn legacy_version_1_checkpoint_is_explicitly_rejected() -> Result<(), String> {
     match result {
         Err(run_checkpoint::RunCheckpointV1Error::UnsupportedVersion) => {}
         Err(other) => {
-            return Err(format!(
-                "expected UnsupportedVersion error, got: {other}"
-            ));
+            return Err(format!("expected UnsupportedVersion error, got: {other}"));
         }
         Ok(decoded) => {
             return Err(format!(
@@ -514,7 +510,7 @@ fn tampered_policy_pin_rejected_by_recover_retry() -> Result<(), String> {
         )
         .map_err(|e| format!("artifact submit failed: {e}"))?;
 
-        let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
+        let shared = runtime_journal_for_policy(journal.clone(), RuntimePolicy::Strict)?;
         let mut runtime = Runtime::new(shard_count()?, config, shared);
 
         runtime
@@ -570,7 +566,7 @@ fn tampered_policy_pin_rejected_by_recover_retry() -> Result<(), String> {
         .as_ref()
         .ok_or_else(|| "original checkpoint must have admission")?;
     let forged_pin = WorkflowDigest::from_bytes([0xFF; 32]);
-    let forged_admission = forge_admission_with_pin(original_admission, forged_pin);
+    let forged_admission = forge_admission_with_pin(original_admission, forged_pin)?;
 
     let mut forged_checkpoint = original_checkpoint.clone();
     forged_checkpoint.admission = Some(forged_admission);
@@ -581,7 +577,7 @@ fn tampered_policy_pin_rejected_by_recover_retry() -> Result<(), String> {
     let event_count_before = events_before.len();
 
     {
-        let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
+        let shared = runtime_journal_for_policy(journal.clone(), RuntimePolicy::Strict)?;
         let runtime = Runtime::new(shard_count()?, config, shared);
 
         // The forged checkpoint should be rejected because its pin differs
@@ -591,8 +587,7 @@ fn tampered_policy_pin_rejected_by_recover_retry() -> Result<(), String> {
             return Err("tampered policy pin must be rejected by recover_retry".to_string());
         };
         let error_debug = format!("{runtime_error:?}");
-        if !error_debug
-            .contains("retry checkpoint does not match durable RetryCheckpoint evidence")
+        if !error_debug.contains("retry checkpoint does not match durable RetryCheckpoint evidence")
         {
             return Err(format!(
                 "expected evidence mismatch error, got: {error_debug}"

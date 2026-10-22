@@ -1,0 +1,232 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/src/run_checkpoint_tests.rs:206:
+ 
+     // Now truncate the valid bytes by removing the last byte.
+     let truncated = bytes.clone();
+-    let truncated_len = bytes.len()
++    let truncated_len = bytes
++        .len()
+         .checked_sub(1)
+         .ok_or_else(|| "bytes length underflow".to_string())?;
+     let mut truncated_bytes = truncated;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/src/run_checkpoint_tests.rs:216:
+     let result = decode_checkpoint_payload(&truncated_bytes);
+     match result {
+         Err(RunCheckpointV1Error::DecodeError) => Ok(()),
+-        Err(other) => Err(format!("expected DecodeError for truncated payload, got {other}")),
++        Err(other) => Err(format!(
++            "expected DecodeError for truncated payload, got {other}"
++        )),
+         Ok(cp) => Err(format!(
+             "expected failure for truncated payload, got checkpoint with version {}",
+             cp.version
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/src/run_checkpoint_tests.rs:228:
+ fn versioned_decoder_rejects_malformed_payload() -> Result<(), String> {
+     // Version 2 header (VARINT 2) but garbage body that cannot decode as RunCheckpointV1.
+     let payload = [
+-        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0,
+     ];
+     let result = decode_checkpoint_payload(&payload);
+     match result {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/src/run_checkpoint_tests.rs:247:
+     let result = decode_checkpoint_payload(&[]);
+     match result {
+         Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
+-        Err(other) => Err(format!("expected UnsupportedVersion for empty payload, got {other}")),
++        Err(other) => Err(format!(
++            "expected UnsupportedVersion for empty payload, got {other}"
++        )),
+         Ok(cp) => Err(format!(
+             "expected failure for empty payload, got checkpoint with version {}",
+             cp.version
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/src/run_checkpoint_tests.rs:354:
+     );
+ 
+     // Verify the entire checkpoint is preserved, not just the policy pin.
+-    assert_eq!(decoded, checkpoint, "full checkpoint must roundtrip exactly");
++    assert_eq!(
++        decoded, checkpoint,
++        "full checkpoint must roundtrip exactly"
++    );
+     Ok(())
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:14:
+     ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+     Idempotency, RetryPolicy, RetrySafety, SideEffect,
+ };
++use vb_core::budget::AggregateResourceBudget;
+ use vb_core::capability::CapabilitySet;
+ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+ use vb_core::policy::RuntimePolicy;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:21:
+ use vb_core::workflow::{
+     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+ };
+-use vb_core::budget::AggregateResourceBudget;
+ use vb_runtime::admission::RunAdmission;
+ use vb_runtime::journal::StorageRuntimeJournal;
+ use vb_runtime::run_checkpoint;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:81:
+         input_slots: Box::from([]),
+     };
+     parts.digest = canonical_workflow_digest(&parts)?;
+-    CompiledWorkflow::try_from_parts(parts)
+-        .map_err(|e| format!("workflow invalid: {e:?}"))
++    CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("workflow invalid: {e:?}"))
+ }
+ 
+ fn action_contract() -> Result<ActionContract, String> {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:209:
+     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
+     for event in events.iter().rev() {
+         if let JournalEvent::RetryCheckpoint { payload, .. } = event {
+-            let decoded =
+-                run_checkpoint::decode_checkpoint_payload(payload).map_err(|e| {
+-                    format!("checkpoint decode failed: {e}")
+-                })?;
++            let decoded = run_checkpoint::decode_checkpoint_payload(payload)
++                .map_err(|e| format!("checkpoint decode failed: {e}"))?;
+             return Ok(Some(decoded));
+         }
+     }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:233:
+ /// Shared positive scenario for policy pin durable recovery.
+ /// Both Strict and Journaled must produce a pinned policy pin that survives
+ /// checkpoint capture, journal persistence, cold reopen, and recover_retry.
+-fn policy_pin_survives_recovery_scenario(
+-    policy: RuntimePolicy,
+-    run: RunId,
+-) -> Result<(), String> {
++fn policy_pin_survives_recovery_scenario(policy: RuntimePolicy, run: RunId) -> Result<(), String> {
+     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+     let path = dir.path().to_path_buf();
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:253:
+         let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
+ 
+         // Submit the artifact first; strict/journaled policies require it.
+-        vb_storage::submit_artifact_with_contracts(
+-            &journal,
+-            &workflow,
+-            policy,
+-            &contracts,
+-        )
+-        .map_err(|e| format!("artifact submit failed: {e}"))?;
++        vb_storage::submit_artifact_with_contracts(&journal, &workflow, policy, &contracts)
++            .map_err(|e| format!("artifact submit failed: {e}"))?;
+ 
+         // Create runtime with matching policy.
+         let shared = runtime_journal_for_policy(journal.clone(), policy)?;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:288:
+ 
+         // Verify RunAdmission has the actual policy pin.
+         let admission_pin = get_run_admission_pin(&journal, run)?;
+-        let RunPolicyPin::Pinned(recorded_pin) = admission_pin
+-            .ok_or_else(|| "no RunPolicyPin found in journal")?
++        let RunPolicyPin::Pinned(recorded_pin) =
++            admission_pin.ok_or_else(|| "no RunPolicyPin found in journal")?
+         else {
+             return Err("admission must produce Pinned, not Unverified".to_string());
+         };
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:338:
+ 
+         // Re-verify evidence survives journal reopen.
+         let reopened_pin = get_run_admission_pin(&journal, run)?;
+-        let RunPolicyPin::Pinned(reopened_recorded) = reopened_pin
+-            .ok_or_else(|| "reopened journal must still have admission pin")?
++        let RunPolicyPin::Pinned(reopened_recorded) =
++            reopened_pin.ok_or_else(|| "reopened journal must still have admission pin")?
+         else {
+             return Err("reopened pin must be Pinned".to_string());
+         };
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:355:
+             .admission
+             .as_ref()
+             .ok_or_else(|| "reopened checkpoint must contain RunAdmission")?;
+-        let RunPolicyPin::Pinned(reopened_checkpoint_recorded) = reopened_admission
+-            .policy_pin()
++        let RunPolicyPin::Pinned(reopened_checkpoint_recorded) = reopened_admission.policy_pin()
+         else {
+             return Err("reopened checkpoint pin must be Pinned".to_string());
+         };
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:424:
+             .admission
+             .as_ref()
+             .ok_or_else(|| "post-recovery checkpoint must contain RunAdmission")?;
+-        let RunPolicyPin::Pinned(post_recovery_recorded) = post_recovery_admission
+-            .policy_pin()
++        let RunPolicyPin::Pinned(post_recovery_recorded) = post_recovery_admission.policy_pin()
+         else {
+             return Err("post-recovery policy pin must be Pinned".to_string());
+         };
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:439:
+         // the original RunAdmission (seq 1) must still be present alongside
+         // any new events.
+         let final_events = journal.events_for_run(run).map_err(|e| e.to_string())?;
+-        let admission_found = final_events.iter().any(|e| {
+-            matches!(e, JournalEvent::RunAdmission { seq, .. } if *seq == EventSeq::new(1))
+-        });
++        let admission_found = final_events.iter().any(
++            |e| matches!(e, JournalEvent::RunAdmission { seq, .. } if *seq == EventSeq::new(1)),
++        );
+         if !admission_found {
+-            return Err("original RunAdmission event must still be present in final journal".to_string());
++            return Err(
++                "original RunAdmission event must still be present in final journal".to_string(),
++            );
+         }
+ 
+         drop(runtime);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:458:
+ /// cold reopen, and recover_retry.
+ #[test]
+ fn strict_admission_policy_pin_survives_durable_recovery() -> Result<(), String> {
+-    policy_pin_survives_recovery_scenario(
+-        RuntimePolicy::Strict,
+-        RunId::new(100_001),
+-    )
++    policy_pin_survives_recovery_scenario(RuntimePolicy::Strict, RunId::new(100_001))
+ }
+ 
+ /// Positive scenario: Journaled admission also captures and preserves the
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:468:
+ /// policy pin through durable recovery.
+ #[test]
+ fn journaled_admission_policy_pin_survives_durable_recovery() -> Result<(), String> {
+-    policy_pin_survives_recovery_scenario(
+-        RuntimePolicy::Journaled,
+-        RunId::new(100_002),
+-    )
++    policy_pin_survives_recovery_scenario(RuntimePolicy::Journaled, RunId::new(100_002))
+ }
+ 
+ /// Verify that version 1 (legacy) checkpoint payloads are rejected by the
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:486:
+     match result {
+         Err(run_checkpoint::RunCheckpointV1Error::UnsupportedVersion) => {}
+         Err(other) => {
+-            return Err(format!(
+-                "expected UnsupportedVersion error, got: {other}"
+-            ));
++            return Err(format!("expected UnsupportedVersion error, got: {other}"));
+         }
+         Ok(decoded) => {
+             return Err(format!(
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:606:
+             return Err("tampered policy pin must be rejected by recover_retry".to_string());
+         };
+         let error_debug = format!("{runtime_error:?}");
+-        if !error_debug
+-            .contains("retry checkpoint does not match durable RetryCheckpoint evidence")
++        if !error_debug.contains("retry checkpoint does not match durable RetryCheckpoint evidence")
+         {
+             return Err(format!(
+                 "expected evidence mismatch error, got: {error_debug}"
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-h7rex-local5090-public-recovery/crates/vb_runtime/tests/policy_pin_durable_recovery.rs:642:
+ 
+     Ok(())
+ }
++

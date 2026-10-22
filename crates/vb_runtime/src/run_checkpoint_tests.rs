@@ -206,7 +206,8 @@ fn versioned_decoder_rejects_truncated_valid_checkpoint() -> Result<(), String> 
 
     // Now truncate the valid bytes by removing the last byte.
     let truncated = bytes.clone();
-    let truncated_len = bytes.len()
+    let truncated_len = bytes
+        .len()
         .checked_sub(1)
         .ok_or_else(|| "bytes length underflow".to_string())?;
     let mut truncated_bytes = truncated;
@@ -216,7 +217,9 @@ fn versioned_decoder_rejects_truncated_valid_checkpoint() -> Result<(), String> 
     let result = decode_checkpoint_payload(&truncated_bytes);
     match result {
         Err(RunCheckpointV1Error::DecodeError) => Ok(()),
-        Err(other) => Err(format!("expected DecodeError for truncated payload, got {other}")),
+        Err(other) => Err(format!(
+            "expected DecodeError for truncated payload, got {other}"
+        )),
         Ok(cp) => Err(format!(
             "expected failure for truncated payload, got checkpoint with version {}",
             cp.version
@@ -228,8 +231,9 @@ fn versioned_decoder_rejects_truncated_valid_checkpoint() -> Result<(), String> 
 fn versioned_decoder_rejects_malformed_payload() -> Result<(), String> {
     // Version 2 header (VARINT 2) but garbage body that cannot decode as RunCheckpointV1.
     let payload = [
-        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0,
     ];
     let result = decode_checkpoint_payload(&payload);
     match result {
@@ -247,7 +251,9 @@ fn versioned_decoder_rejects_empty_payload() -> Result<(), String> {
     let result = decode_checkpoint_payload(&[]);
     match result {
         Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
-        Err(other) => Err(format!("expected UnsupportedVersion for empty payload, got {other}")),
+        Err(other) => Err(format!(
+            "expected UnsupportedVersion for empty payload, got {other}"
+        )),
         Ok(cp) => Err(format!(
             "expected failure for empty payload, got checkpoint with version {}",
             cp.version
@@ -354,6 +360,9 @@ fn versioned_decoder_preserves_pinned_admission_through_roundtrip() -> Result<()
     );
 
     // Verify the entire checkpoint is preserved, not just the policy pin.
-    assert_eq!(decoded, checkpoint, "full checkpoint must roundtrip exactly");
+    assert_eq!(
+        decoded, checkpoint,
+        "full checkpoint must roundtrip exactly"
+    );
     Ok(())
 }
