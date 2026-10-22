@@ -252,7 +252,11 @@ fn unconfigured_policy_denies_execution() -> TestResult {
 
     // Exact stored decision list: exactly 1 decision matching oracle
     let stored_decisions = read_journal_decision_events(&journal, run)?;
-    assert_eq!(stored_decisions.len(), 1, "exactly one policy decision must be stored");
+    assert_eq!(
+        stored_decisions.len(),
+        1,
+        "exactly one policy decision must be stored"
+    );
     assert_eq!(
         stored_decisions[0], expected_decision,
         "stored DecisionRecord must match oracle for unconfigured deny"
@@ -262,7 +266,10 @@ fn unconfigured_policy_denies_execution() -> TestResult {
     let after_ticket = runtime
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("pending ticket must remain after policy denial")?;
-    assert_eq!(after_ticket, ticket, "exact full ticket must be preserved after denial");
+    assert_eq!(
+        after_ticket, ticket,
+        "exact full ticket must be preserved after denial"
+    );
     Ok(())
 }
 
@@ -358,7 +365,10 @@ fn after_scheduling_policy_change_to_deny() -> TestResult {
             // Distinct digests: admission differs from both manual live digests
             match decision.admission {
                 PinnedAdmissionPolicy::Artifact(admitted) => {
-                    assert_ne!(admitted, denied_digest, "admission must differ from current denied");
+                    assert_ne!(
+                        admitted, denied_digest,
+                        "admission must differ from current denied"
+                    );
                     assert_ne!(
                         admitted, allowed_digest,
                         "admission must differ from original allowed"
@@ -380,7 +390,11 @@ fn after_scheduling_policy_change_to_deny() -> TestResult {
 
     // Exact stored decision list: exactly 1 decision matching oracle
     let stored_decisions = read_journal_decision_events(&journal, run)?;
-    assert_eq!(stored_decisions.len(), 1, "exactly one policy decision must be stored");
+    assert_eq!(
+        stored_decisions.len(),
+        1,
+        "exactly one policy decision must be stored"
+    );
     assert_eq!(
         stored_decisions[0], expected_decision,
         "stored DecisionRecord must match oracle for policy-change deny"
@@ -466,7 +480,11 @@ fn allowed_policy_permits_effect_and_records_decision() -> TestResult {
     );
 
     let stored_decisions = read_journal_decision_events(&journal, run)?;
-    assert_eq!(stored_decisions.len(), 1, "exactly one policy decision must be stored");
+    assert_eq!(
+        stored_decisions.len(),
+        1,
+        "exactly one policy decision must be stored"
+    );
     assert_eq!(
         stored_decisions[0], expected_decision,
         "full stored DecisionRecord must match oracle for allowed policy"
@@ -558,8 +576,7 @@ fn reconcile_ignores_policy_change_after_effect() -> TestResult {
         "exactly one allowed decision must be stored before reconcile"
     );
     assert_eq!(
-        decisions_before_reconcile[0],
-        expected_allowed_decision,
+        decisions_before_reconcile[0], expected_allowed_decision,
         "stored allowed DecisionRecord must match oracle"
     );
 
@@ -581,7 +598,10 @@ fn reconcile_ignores_policy_change_after_effect() -> TestResult {
         &grant,
     )?;
     // Full receipt exact equality
-    assert_eq!(reconciled, first, "reconciled receipt must exactly match original");
+    assert_eq!(
+        reconciled, first,
+        "reconciled receipt must exactly match original"
+    );
     assert_eq!(reconciled.value(), 55);
     assert_eq!(adapter.effect_count()?, 1);
 
