@@ -50,10 +50,10 @@ fn expected_emergency_decision(
     }
 }
 
-#[test]
-fn emergency_deny_survives_journal_reopen() -> TestResult {
-    let dir = tempfile::tempdir()?;
-    let action = ActionId::new(0);
+fn prepare_artifact(
+    dir: &tempfile::TempDir,
+    action: ActionId,
+) -> Result<(ExecutorCatalog, vb_storage::AcceptedArtifact), Box<dyn std::error::Error>> {
     let workflow = build_workflow()?;
     let contract = build_contract(action)?;
     let catalog = ExecutorCatalog::run_registered_conformance()?;
@@ -71,6 +71,18 @@ fn emergency_deny_survives_journal_reopen() -> TestResult {
         &[pack],
     )?;
 
+    Ok((catalog, artifact))
+}
+
+fn trigger_emergency_deny(
+    dir: &tempfile::TempDir,
+    catalog: &ExecutorCatalog,
+    action: ActionId,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let journal = Arc::new(FjallJournal::open(
+        dir.path(),
+        Some(FjallConfig::default()),
+    )?);
     let storage = StorageRuntimeJournal::shared_strict_with_catalog(
         journal.clone(),
         Arc::new(catalog.clone()),
@@ -88,10 +100,19 @@ fn emergency_deny_survives_journal_reopen() -> TestResult {
 
     runtime.activate_emergency_deny()?;
 
-    // Drop all handles to force process-level close
     drop(runtime);
     drop(storage);
     drop(journal);
+    Ok(())
+}
+
+#[test]
+fn emergency_deny_survives_journal_reopen() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let action = ActionId::new(0);
+
+    let (catalog, artifact) = prepare_artifact(&dir, action)?;
+    trigger_emergency_deny(&dir, &catalog, action)?;
 
     // Reopen and verify emergency state persisted
     let journal_reopen = Arc::new(FjallJournal::open(
@@ -113,6 +134,7 @@ fn emergency_deny_survives_journal_reopen() -> TestResult {
 
     // Submit a NEW legal run and attempt execution
     let run = RunId::new(9_201);
+    let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
     runtime_reopen.configure_live_policy(
         allowed_digest,
         PolicyRule {
