@@ -85,10 +85,11 @@ impl RuntimeJournal for RecordingJournal {
 fn test_decision_record(ticket: ActionTicket) -> DecisionRecord {
     DecisionRecord {
         ticket,
-        admission: PinnedAdmissionPolicy::Unverified,
-        current_live: CurrentPolicyIdentity::Unconfigured,
+        admission: PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes([3; 32])),
+        current_live: CurrentPolicyIdentity::Configured {
+            digest: PolicyDigest::from_bytes([2; 32]),
+        },
         input_digest: PolicyDigest::from_bytes([1; 32]),
-        current_digest: PolicyDigest::from_bytes([2; 32]),
         taint: Taint::Clean,
         outcome: DecisionCode::Allowed,
         layer: PolicyLayer::Live,
@@ -99,7 +100,7 @@ fn test_decision_record(ticket: ActionTicket) -> DecisionRecord {
 
 fn make_shard_with_journal(
     run: RunId,
-) -> RuntimeResult<(Shard, Arc<RecordingJournal>, ActionTicket)> {
+) -> Result<(Shard, Arc<RecordingJournal>, ActionTicket), Box<dyn std::error::Error>> {
     let journal = RecordingJournal::shared();
     let mut shard = Shard::new_with_journal(small_config(), journal.clone());
     let workflow = require_workflow("suspended", suspended_workflow())?;
@@ -122,7 +123,7 @@ fn make_shard_with_journal(
 #[test]
 fn successful_strict_policy_port() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(90001);
-    let (shard, journal, ticket) = make_shard_with_journal(run)?;
+    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
 
     shard.seed_journal_sequence(run, vb_storage::EventSeq::new(5))?;
     let seq_before = shard.journal_sequence_for(run);
@@ -152,7 +153,7 @@ fn successful_strict_policy_port() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn typed_strict_policy_port_failure() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(90002);
-    let (shard, journal, ticket) = make_shard_with_journal(run)?;
+    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
 
     let seq_before = shard.journal_sequence_for(run);
 
@@ -190,7 +191,7 @@ fn typed_strict_policy_port_failure() -> Result<(), Box<dyn std::error::Error>> 
 #[test]
 fn overflow_at_u64_max() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(90003);
-    let (shard, journal, ticket) = make_shard_with_journal(run)?;
+    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
 
     shard.seed_journal_sequence(run, vb_storage::EventSeq::new(u64::MAX))?;
     let seq_max = shard.journal_sequence_for(run);
@@ -225,7 +226,7 @@ fn overflow_at_u64_max() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn wrong_ticket_rejected() -> Result<(), Box<dyn std::error::Error>> {
     let run = RunId::new(90004);
-    let (shard, journal, ticket) = make_shard_with_journal(run)?;
+    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
 
     let seq_before = shard.journal_sequence_for(run);
 
