@@ -1,45 +1,48 @@
-# Bead Contract: vb-k8z9l
+# vb-k8z9l Artifact Fixture Tests - Contract and Oracle Map
 
-**Migrate obsolete artifact-claim and capability fixtures to the accepted evidence contract.**
+## Scope
 
-## Producer/Admission Contract
+Fix compilation and runtime failures in 5 existing test files only.
+No production code changes. No test file additions or deletions.
 
-### Storage Producer (vb_storage::admission::prepare_compiled_artifact)
-- Creates typed ArtifactEvidence with schema_version=3
-- VerificationProof fields are display-only:
-  - gate_count: always 0 (not verification authority)
-  - durable: always false (determined by submit, not producer)
-  - bounded_claimed: true
-  - taint_safe_claimed: false
-  - retry_safe_claimed: false
-  - replayable_claimed: false
-  - idempotency_verified_claimed: true
-- Actual verification authority: typed ledger in ArtifactEvidence
-- Ledger has 10 entries (not 15); mix of RuntimeValidated and ExternalAssumption closures
+## Files
 
-### Runtime Admission (vb_runtime::admission::admit_artifact_run)
-- Relaxed: no store lookup, returns admission immediately
-- Strict/Journaled: load artifact, validate envelope, call verify_stored_artifact
-- verify_stored_artifact calls vb_storage::admission::verify_accepted_artifact
-- All gate/flag validation happens in storage verification, NOT runtime admission
-- Runtime admission only maps storage errors to AdmissionError variants
-- Capability check: strict equality (cardinality + membership)
+1. `crates/vb_storage/tests/accepted_artifact_red_phase.rs`
+2. `crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs`
+3. `crates/workspace_tests/tests/vb_lp2v_admission_integration.rs`
+4. `crates/workspace_tests/tests/vb_lp2v_admission_proptests.rs`
+5. `crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs`
 
-## Before → After Oracle Mapping
+## Known Compile Errors (vb_core_yaml_e2e_chain_contract.rs)
 
-| Test File | Old Assertion | New Assertion |
-|-----------|---------------|---------------|
-| accepted_artifact_red_phase | gate_count==15, all flags true, durable true/false | gate_count==0, bounded+idempotency true, others false, durable always false |
-| vb_core_yaml_e2e_chain_contract | gate_count==15, all flags true | gate_count==0, typed ledger assertions |
-| vb_qi37_4_2_strict_runtime_admission | fake artifacts with gate_count 0/2/14/16 | real prepared artifacts; type-based rejection tests |
-| vb_lp2v_admission_integration | gate_count=7 rejects with ArtifactInvalidGateCount | ArtifactInvalidProofFlag (flag="admission_policy") |
-| vb_lp2v_admission_proptests | Relaxed accepts tampered digest | All policies reject tampered digest |
-| vb_lp2v_proof_admission_bdd | grants 1 cap to 0-cap workflow | grants 0 caps (strict equality) |
-| vb_9agmk_artifact_evidence* | legacy gate count assertions | typed ActionAbiDigestMismatch assertions |
-| vb_ssei_verification_admission_acceptance | legacy assertions | inspect actual error |
+1. `ObligationClosure` imported from `vb_core` root; actual location: `vb_core::artifact`
+2. `ActionName("http.fetch".into())` tuple struct constructor not visible; use `ActionName::from_static_infallible("http.fetch")`
+
+## Evidence Requirements
+
+For accepted-artifact verification, the test must assert:
+- `verify_accepted_artifact(artifact)` returns `Ok(CompiledWorkflow)` (positive typed proof)
+- `verification.evidence` is `ArtifactEvidence::Verified(Box<ArtifactVerificationEvidence>)` (not Unverified/Packed)
+- `ArtifactVerificationEvidence.ledger` has 10 entries (`VerificationLedgerEntry`)
+- At least one entry has `ObligationKind::TypedLedger`
+- Binding predicates: `verification.digest == artifact.digest`
+- For tampered digests: `verify_accepted_artifact` returns `Err(JournalError::ArtifactChecksumMismatch)`
+
+## Oracle Map (actual APIs)
+
+| Assertion | Actual API |
+|-----------|------------|
+| Producer creates valid artifact | `prepare_compiled_artifact(workflow, policy, contracts)` |
+| Runtime verifies artifact | `verify_accepted_artifact(artifact)` |
+| Typed evidence structure | `artifact.verification.evidence` -> `ArtifactEvidence::Verified` -> `ArtifactVerificationEvidence` |
+| Typed ledger | `evidence.ledger: [VerificationLedgerEntry; 10]` |
+| Obligation kind | `VerificationLedgerEntry::kind` -> `ObligationKind` enum |
+| Binding | `artifact.digest == artifact.verification.digest` |
 
 ## Verification Strategy
-- Use real prepare_compiled_artifact for positive fixtures
-- Mutate specific fields for targeted negative tests
-- Never assert on display-only flags as verification authority
-- Keep all negative/rejection test strength
+
+- Build positive cases with `prepare_compiled_artifact` then targeted mutation
+- No weak generic `is_err` replacing exact typed diagnostic
+- Relaxed MUST reject tampered digest
+- No-action workflow requires 0 caps not 1
+- Do not turn desired successful strict admission into expected failure

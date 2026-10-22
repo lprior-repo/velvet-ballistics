@@ -4,11 +4,13 @@ use std::sync::Arc;
 
 use proptest::prelude::*;
 use vb_core::{
-    ActionId, ActionContract, Capability, CapabilitySet, CompiledWorkflow,
-    ObligationClosure, RunId, RuntimePolicy, SlotIdx, StepIdx,
+    ActionId, ActionContract, Capability, CapabilitySet, CompiledNode, CompiledNodeKind,
+    CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx,
     WorkflowDigest,
 };
-use vb_core::artifact::ArtifactEvidence;
+use vb_core::action::ActionName;
+use vb_core::workflow::WorkflowParts;
+use vb_core::artifact::{ArtifactEvidence, ObligationClosure};
 use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, REQUIRED_GATE_COUNT,
     StorageArtifactStore, admit_artifact_run,
@@ -224,20 +226,23 @@ fn storage_produced_strict_accepted_artifact_has_typed_ledger_when_yaml_origin_r
     // Verify typed ledger is schema 3 with proper binding
     let evidence = &artifact.verification.evidence;
     match evidence {
-        ArtifactEvidence::Packed(packed) => {
-            assert_eq!(packed.base.schema_version, 3, "ledger must be schema 3");
+        ArtifactEvidence::Verified(verified) => {
+            assert_eq!(verified.schema_version, 3, "ledger must be schema 3");
+            // payload_digest binds to the IR bytes, not the full artifact
+            let expected_payload_digest =
+                WorkflowDigest::from_bytes(blake3::hash(&artifact.ir).into());
             assert_eq!(
-                packed.base.payload_digest,
-                artifact.digest,
-                "payload digest must bind to artifact"
+                verified.payload_digest,
+                expected_payload_digest,
+                "payload digest must bind to artifact IR"
             );
             // Verify at least one RuntimeValidated obligation closure
-            let has_validated = packed.base.ledger.iter().any(|entry| {
+            let has_validated = verified.ledger.iter().any(|entry| {
                 matches!(entry.closure, ObligationClosure::RuntimeValidated { .. })
             });
             assert!(has_validated, "ledger must contain RuntimeValidated closures");
         }
-        _ => panic!("expected Packed evidence with typed ledger"),
+        other => panic!("expected Verified evidence with typed ledger, got {other:?}"),
     }
 
     Ok(())
@@ -432,14 +437,13 @@ fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_ledger_unver
 #[test]
 fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted()
 -> Result<(), String> {
-    // Create a real artifact with an action contract that requires a capability.
     use vb_core::action::{Idempotency, RetrySafety, SideEffect};
-    let required = Capability::new("net.fetch".into(), ActionId::new(9));
+    let required = Capability::new("net.fetch".into(), ActionId::new(0));
     let contract = ActionContract {
-        id: ActionId::new(9),
-        name: vb_core::action::ActionName("http.fetch".into()),
-        input_slot_count: 0,
-        output_slot_count: 0,
+        id: ActionId::new(0),
+        name: ActionName::from_static_infallible("http.fetch"),
+        input_slot_count: 1,
+        output_slot_count: 1,
         max_input_bytes: 1024,
         max_output_bytes: 1024,
         timeout_ms: 1000,
@@ -448,8 +452,52 @@ fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capabilit
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([required.clone()]),
     };
+
+    // Build workflow with a Do node for the action
+    let mut parts = WorkflowParts {
+        semantic_source_identity: None,
+        input_slots: Box::new([]),
+        name: Box::<str>::from("cap_test"),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::new([]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    let mut nodes = Vec::new();
+    nodes.push(CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
+        },
+    });
+    nodes.push(CompiledNode {
+        id: StepIdx::new(1),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    });
+    parts.nodes = nodes.into_boxed_slice();
+    parts.digest = WorkflowDigest::from_bytes(
+        blake3::hash(&postcard::to_allocvec(&parts).map_err(|e| e.to_string())?).into(),
+    );
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
-    let workflow = compile_valid_yaml()?;
     let artifact = prepare_compiled_artifact(
         &workflow,
         RuntimePolicy::Strict,
@@ -471,7 +519,7 @@ fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capabilit
     assert_eq!(
         result,
         Err(AdmissionError::CapabilityDenied {
-            action: ActionId::new(9),
+            action: ActionId::new(0),
             required,
             granted: CapabilitySet::empty()
         })
