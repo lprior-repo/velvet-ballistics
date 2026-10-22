@@ -3,7 +3,7 @@
 
 use std::time::Instant;
 use vb_core::action::ActionTicket;
-use vb_core::ids::{RunId, SlotIdx, StepIdx};
+use vb_core::ids::{RunId, SlotIdx};
 
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
@@ -96,7 +96,6 @@ impl Shard {
         }
         self.finish_run_after_journaled(run, state)
     }
-
 
     /// Transitions a run to awaiting an external action response.
     pub(crate) fn await_action(

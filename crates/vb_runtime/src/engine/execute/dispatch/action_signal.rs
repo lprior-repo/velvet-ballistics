@@ -13,7 +13,6 @@ use crate::engine::execute::signals::handle_core_step_once;
 use crate::engine::types::{RetryPolicy, RuntimeEngineResult, RuntimeSignal};
 
 use super::family_invariant;
-
 /// Context for dispatching action and signal nodes.
 /// Groups the 7 environment parameters into a single typed value.
 pub(crate) struct ActionDispatchContext<'a> {

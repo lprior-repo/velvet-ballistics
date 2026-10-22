@@ -1,8 +1,11 @@
 #![allow(unused_imports)]
+
+#[path = "part_05_digest_primitive.rs"]
 mod part_05_digest_primitive;
 
 pub(crate) use part_05_digest_primitive::digest_step_primitive;
 
+#[path = "part_05_digest_validate.rs"]
 mod part_05_digest_validate;
 
 pub(crate) use part_05_digest_validate::{digest_author_value, validate_branch_counts};
@@ -19,31 +22,32 @@ use vb_core::WorkflowDigest;
 // encoding) + vb-wlnl4 (integration review repair).
 
 /// Tag for length-prefixed string values.
-pub(crate) const TAG_STRING: u8 = 0x01;
+const TAG_STRING: u8 = 0x01;
 /// Tag for i64 integer values.
-pub(crate) const TAG_I64: u8 = 0x02;
+const TAG_I64: u8 = 0x02;
 /// Tag for u16 values.
-pub(crate) const TAG_U16: u8 = 0x03;
+const TAG_U16: u8 = 0x03;
 /// Tag for u32 values.
-pub(crate) const TAG_U32: u8 = 0x04;
+const TAG_U32: u8 = 0x04;
 /// Tag for Some variant.
-pub(crate) const TAG_SOME: u8 = 0x10;
+const TAG_SOME: u8 = 0x10;
 /// Tag for None variant.
-pub(crate) const TAG_NONE: u8 = 0x11;
+const TAG_NONE: u8 = 0x11;
 /// Tag for container end.
-pub(crate) const TAG_END: u8 = 0x22;
+const TAG_END: u8 = 0x22;
 
 /// Domain separator for the workflow source digest.
 const DOMAIN_SOURCE: &[u8] = b"vb-source-v3:";
 
-pub(crate) fn digest_error(message: &str) -> CompileErrors {
+fn digest_error(message: &str) -> CompileErrors {
     CompileErrors(vec![CompileError::CanonicalYaml {
         category: "digest",
         message: message.into(),
     }])
 }
 
-pub(crate) fn digest_string(hasher: &mut blake3::Hasher, value: &str) -> Result<(), CompileErrors> {
+/// Write a length-prefixed string with explicit tag.
+fn digest_string(hasher: &mut blake3::Hasher, value: &str) -> Result<(), CompileErrors> {
     hasher.update(&[TAG_STRING]);
     let len =
         u32::try_from(value.len()).map_err(|_| digest_error("string length exceeds u32 range"))?;
@@ -53,7 +57,7 @@ pub(crate) fn digest_string(hasher: &mut blake3::Hasher, value: &str) -> Result<
 }
 
 /// Write a raw (untagged) container length, failing closed on overflow.
-pub(crate) fn digest_len(hasher: &mut blake3::Hasher, value: usize) -> Result<(), CompileErrors> {
+fn digest_len(hasher: &mut blake3::Hasher, value: usize) -> Result<(), CompileErrors> {
     let len =
         u32::try_from(value).map_err(|_| digest_error("container length exceeds u32 range"))?;
     hasher.update(&len.to_le_bytes());
@@ -61,19 +65,19 @@ pub(crate) fn digest_len(hasher: &mut blake3::Hasher, value: usize) -> Result<()
 }
 
 /// Write an i64 with explicit tag.
-pub(crate) fn digest_i64(hasher: &mut blake3::Hasher, value: i64) {
+fn digest_i64(hasher: &mut blake3::Hasher, value: i64) {
     hasher.update(&[TAG_I64]);
     hasher.update(&value.to_le_bytes());
 }
 
 /// Write a u16 with explicit tag.
-pub(crate) fn digest_u16(hasher: &mut blake3::Hasher, value: u16) {
+fn digest_u16(hasher: &mut blake3::Hasher, value: u16) {
     hasher.update(&[TAG_U16]);
     hasher.update(&value.to_le_bytes());
 }
 
 /// Write a u32 with explicit tag.
-pub(crate) fn digest_u32(hasher: &mut blake3::Hasher, value: u32) {
+fn digest_u32(hasher: &mut blake3::Hasher, value: u32) {
     hasher.update(&[TAG_U32]);
     hasher.update(&value.to_le_bytes());
 }
@@ -83,7 +87,7 @@ pub(crate) fn digest_u32(hasher: &mut blake3::Hasher, value: u32) {
 /// Unlike optional u32 fields, an absent string (`None`) and an empty string
 /// (`Some("")`) are semantically distinct authoring states, so the
 /// discriminant is retained.
-pub(crate) fn digest_optional_string(
+fn digest_optional_string(
     hasher: &mut blake3::Hasher,
     field_tag: &[u8],
     value: Option<&str>,
@@ -108,7 +112,7 @@ pub(crate) fn digest_optional_string(
 /// canonical IR. Hashing the resolved value preserves digest stability:
 /// `None` and `Some(1)` yield identical digests, while `Some(0)` (and every
 /// other explicit value) stays distinct.
-pub(crate) fn digest_optional_u32(
+fn digest_optional_u32(
     hasher: &mut blake3::Hasher,
     field_tag: &[u8],
     value: Option<u32>,
@@ -117,7 +121,6 @@ pub(crate) fn digest_optional_u32(
     digest_u32(hasher, value.unwrap_or(1));
     Ok(())
 }
-
 
 pub(crate) fn canonical_primitive_name(primitive: &crate::StepPrimitive) -> &'static str {
     match primitive {
@@ -230,7 +233,7 @@ pub fn canonical_digest(source: &crate::WorkflowSource) -> Result<WorkflowDigest
 }
 
 /// Digest a complete step including all metadata fields.
-pub(crate) fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) -> Result<(), CompileErrors> {
+fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) -> Result<(), CompileErrors> {
     digest_string(hasher, &step.id)?;
     digest_optional_string(hasher, b"step_name:", step.name.as_deref())?;
     digest_optional_string(hasher, b"step_condition:", step.condition.as_deref())?;
@@ -256,9 +259,8 @@ pub(crate) fn digest_step(hasher: &mut blake3::Hasher, step: &crate::StepAst) ->
     Ok(())
 }
 
-
 /// Hash a `ScalarValue`, failing closed on future unknown variants.
-pub(crate) fn digest_scalar_value(
+fn digest_scalar_value(
     hasher: &mut blake3::Hasher,
     value: &crate::ScalarValue,
 ) -> Result<(), CompileErrors> {
@@ -279,7 +281,7 @@ pub(crate) fn digest_scalar_value(
 }
 
 /// Hash the body steps of a container primitive.
-pub(crate) fn digest_body_steps(
+fn digest_body_steps(
     hasher: &mut blake3::Hasher,
     body: &[crate::StepAst],
 ) -> Result<(), CompileErrors> {
@@ -290,4 +292,3 @@ pub(crate) fn digest_body_steps(
     hasher.update(&[TAG_END]);
     Ok(())
 }
-

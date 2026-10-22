@@ -1,11 +1,5 @@
 use vb_core::ids::ActionId;
 
-use crate::journal::RuntimeJournalEvent;
-use crate::trace::TraceEvent;
-use crate::{RuntimeError, RuntimeResult};
-
-use super::types::{PendingTimerKind, RunState};
-
 fn schedule_action_abi_digest(
     state: &RunState,
     action: ActionId,

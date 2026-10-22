@@ -4,7 +4,7 @@ use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
-use crate::shard::types::{PendingTimer, PendingTimerKind, RunState};
+use crate::shard::types::RunState;
 
 impl crate::shard::Shard {
     /// Completes successful-run cleanup after `RunFinished` is already

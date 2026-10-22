@@ -15,33 +15,33 @@ pub(crate) fn digest_author_value(
         }
         crate::AuthorValue::I64(n) => {
             hasher.update(&[0x02]);
-            crate::mod_compile_lowering::part_05_digest::digest_i64(hasher, *n);
+            super::digest_i64(hasher, *n);
         }
         crate::AuthorValue::Text(s) => {
             hasher.update(&[0x03]);
-            crate::mod_compile_lowering::part_05_digest::digest_string(hasher, s)?;
+            super::digest_string(hasher, s)?;
         }
         crate::AuthorValue::Sequence(seq) => {
             hasher.update(&[0x04]);
-            crate::mod_compile_lowering::part_05_digest::digest_len(hasher, seq.len())?;
+            super::digest_len(hasher, seq.len())?;
             for item in seq {
                 digest_author_value(hasher, item)?;
             }
-            hasher.update(&[crate::mod_compile_lowering::part_05_digest::TAG_END]);
+            hasher.update(&[super::TAG_END]);
         }
         crate::AuthorValue::Mapping(entries) => {
             hasher.update(&[0x05]);
             let mut sorted: Vec<&crate::AuthorEntry<crate::AuthorValue>> = entries.iter().collect();
             sorted.sort_by(|a, b| a.key.cmp(&b.key));
-            crate::mod_compile_lowering::part_05_digest::digest_len(hasher, sorted.len())?;
+            super::digest_len(hasher, sorted.len())?;
             for entry in sorted {
-                crate::mod_compile_lowering::part_05_digest::digest_string(hasher, &entry.key)?;
+                super::digest_string(hasher, &entry.key)?;
                 digest_author_value(hasher, &entry.value)?;
             }
-            hasher.update(&[crate::mod_compile_lowering::part_05_digest::TAG_END]);
+            hasher.update(&[super::TAG_END]);
         }
         _ => {
-            return Err(crate::mod_compile_lowering::part_05_digest::digest_error(
+            return Err(super::digest_error(
                 "unknown author value variant cannot be canonicalized",
             ));
         }

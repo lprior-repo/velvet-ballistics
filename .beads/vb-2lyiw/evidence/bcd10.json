@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "durable_retry_boundary"
+  ],
+  "exit_code": 0,
+  "seconds": 0.123,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/bcd10",
+  "coordinator_message": "Root inspected actual libcheck/clippy-lib/srclen JSON: all true0. Good bounded progress; clippy-lib only -D warnings is NOT canonical full strict production flags/all features, still required later. testcompile failed E0432 WorkflowSourceParts from vb_compile tests: investigate feature gating/unification before changing production exports. Canonical Moon check/test uses --all-features and earlier c816 wholeworkspace test compile passed; package-only test without feature unification can differ. Prefer correct scoped --all-features/test-support command as contract requires, don't broaden API merely to satisfy incorrectly selected lane. Root applies test-reviewer skill to new reviewer probes: v3 legacy fixture was malformed (no JournalEvent wire tag), count>= was falsely claimed fullbytes, root rejected both. Fresh3090 now actual OLD serializer/decoder golden provenance then will rewrite proper current probes. Do not duplicate them. Keep your task faithful six-file splitting and three ignored tick Results, exact preserved function bodies vs5766, strong current completion. Local5090 ticket Kani actual proof succeeded506s, four cover properties; replay separate is pending/time-bounded, no general proof closure. New mirror drift is separate vb-bbf56, root handles followup. Every acceptance gate via actual runner metadata. No full moon CI from worker. Once scoped gates all pass, write handoff with exact source/body preservation and remaining gaps, leaveOPEN for independent review and root publication."
+}

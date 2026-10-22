@@ -40,10 +40,7 @@ fn workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     .ok()
 }
 
-fn failed_state(
-    workflow: vb_core::workflow::CompiledWorkflow,
-    run_id: RunId,
-) -> Option<RunState> {
+fn failed_state(workflow: vb_core::workflow::CompiledWorkflow, run_id: RunId) -> Option<RunState> {
     let mut frame = RunFrame::new(run_id, StepIdx::ZERO, 1, 1).ok()?;
     frame.mark_running(StepIdx::ZERO).ok()?;
     frame.mark_failed(StepIdx::ZERO).ok()?;
@@ -69,8 +66,8 @@ fn failed_state(
 fn capture_resets_only_retry_step_and_preserves_action_attempts() -> Result<(), String> {
     let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
     let run_id = RunId::new(41);
-    let state = failed_state(workflow, run_id)
-        .ok_or_else(|| "failed state setup failed".to_string())?;
+    let state =
+        failed_state(workflow, run_id).ok_or_else(|| "failed state setup failed".to_string())?;
     let checkpoint = RunCheckpointV1::capture(
         run_id,
         WorkflowDigest::from_bytes([7; 32]),

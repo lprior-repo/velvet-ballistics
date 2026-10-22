@@ -1,10 +1,11 @@
 #![forbid(unsafe_code)]
 
 mod admission;
+mod full_ask_schedule;
 mod pending;
 mod product;
-mod full_ask_schedule;
-use crate::recovery::full::full_ask_schedule::pending_ask_schedule_for_step;
+
+use full_ask_schedule::pending_ask_schedule_for_step;
 
 use vb_core::action::ActionTicket;
 use vb_core::frame::RunFrame;
@@ -276,7 +277,6 @@ fn recoverable_open_ask(
         _ => None,
     }
 }
-
 
 fn cannot_resume_error(reason: &'static str) -> RuntimeError {
     RuntimeError::RecoveryCannotResume {
