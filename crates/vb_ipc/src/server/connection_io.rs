@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 //! Single-flight framing and bounded partial I/O.
 use super::dispatch::dispatch_command_with_resolver;
-use super::helpers::{validate_magic_early, MagicValidationState};
+use super::helpers::{MagicValidationState, validate_magic_early};
 use super::{
     ClientConnection, ClosePolicy, IpcResponse, IpcServer, IpcServerError, WorkflowResolver,
 };
-use crate::{IpcError, IpcFrameHeader, MaxPayloadBytes, IPC_HEADER_LEN};
+use crate::{IPC_HEADER_LEN, IpcError, IpcFrameHeader, MaxPayloadBytes};
 use mio::{Interest, Token};
 use std::io::{Read, Write};
 use vb_runtime::runtime::Runtime;

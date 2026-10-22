@@ -430,7 +430,9 @@ impl Runtime {
         }
         let command = crate::shard::types::RecoverRunCommand::for_retry(checkpoint, next_seq)?;
         let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::Recover { command: Box::new(command) })
+        shard.enqueue(ShardCommand::Recover {
+            command: Box::new(command),
+        })
     }
 
     fn rejected_recovery_product_error(
@@ -756,7 +758,9 @@ impl Runtime {
         let run = product.run_id();
         let command = product.into_recover_command();
         let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::Recover { command: Box::new(command) })
+        shard.enqueue(ShardCommand::Recover {
+            command: Box::new(command),
+        })
     }
 
     fn load_recovery_artifact_and_workflow(

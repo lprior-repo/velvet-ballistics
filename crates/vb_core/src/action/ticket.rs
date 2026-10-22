@@ -21,11 +21,36 @@ pub struct ActionTicket {
     /// Maximum per-action attempts allowed (capacity bound from retry policy).
     pub capacity: u16,
 }
+/// Parameters for creating a new action ticket via `issue_action_ticket`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NewActionTicket {
+    /// Owning run.
+    pub run: RunId,
+    /// Step that issued the action.
+    pub step: StepIdx,
+    /// Monotonic sequence within the run.
+    pub seq: SeqNo,
+    /// Action being invoked.
+    pub action: ActionId,
+    /// Durable run attempt number (1-indexed).
+    pub run_attempt: u16,
+    /// Current per-action attempt number (1-indexed).
+    pub attempt: u16,
+    /// Idempotency key for deduplication and replay.
+    pub idempotency_key: u128,
+    /// Maximum per-action attempts allowed.
+    pub capacity: u16,
+}
 
 /// Computes the canonical deterministic idempotency key for an action ticket.
 /// Includes run_attempt to differentiate authority across run retries.
 #[must_use]
-pub fn compute_action_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+pub fn compute_action_idempotency_key(
+    run: RunId,
+    run_attempt: u16,
+    seq: SeqNo,
+    action: ActionId,
+) -> u128 {
     let run_part = u128::from(run.get());
     let attempt_part = u128::from(run_attempt);
     let seq_part = u128::from(seq.get());
@@ -48,27 +73,17 @@ pub fn action_ticket_has_valid_key(ticket: ActionTicket) -> bool {
 
 /// Issues an action ticket for a Do-node suspension.
 ///
-/// Constructs a new `ActionTicket` from the run metadata, action contract,
-/// and current attempt counter. The ticket tracks this invocation across
-/// suspension boundaries.
-pub fn issue_action_ticket(
-    run: RunId,
-    step: StepIdx,
-    seq: SeqNo,
-    action: ActionId,
-    run_attempt: u16,
-    attempt: u16,
-    idempotency_key: u128,
-    capacity: u16,
-) -> ActionTicket {
+/// Constructs a new `ActionTicket` from the provided spec. The ticket tracks this
+/// invocation across suspension boundaries.
+pub fn issue_action_ticket(spec: NewActionTicket) -> ActionTicket {
     ActionTicket {
-        run,
-        step,
-        seq,
-        action,
-        run_attempt,
-        attempt,
-        idempotency_key,
-        capacity,
+        run: spec.run,
+        step: spec.step,
+        seq: spec.seq,
+        action: spec.action,
+        run_attempt: spec.run_attempt,
+        attempt: spec.attempt,
+        idempotency_key: spec.idempotency_key,
+        capacity: spec.capacity,
     }
 }

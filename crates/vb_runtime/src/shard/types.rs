@@ -273,12 +273,10 @@ impl RecoverRunCommand {
                 error: format!("retry checkpoint frame restore failed: {error:?}"),
             }
         })?;
-        let collect_states =
-            CollectStates::from_checkpoint_v1(checkpoint.collect_states.clone()).map_err(
-                |error| crate::RuntimeError::Recovery {
-                    error: format!("retry checkpoint collect restore failed: {error:?}"),
-                },
-            )?;
+        let collect_states = CollectStates::from_checkpoint_v1(checkpoint.collect_states.clone())
+            .map_err(|error| crate::RuntimeError::Recovery {
+            error: format!("retry checkpoint collect restore failed: {error:?}"),
+        })?;
         Ok(Self {
             run: checkpoint.run_id,
             frame,

@@ -168,7 +168,10 @@ pub fn resume_action_outcome(
                             },
                         ))?;
                 let idempotency_key = compute_idempotency_key(
-                    original_ticket.run, original_ticket.run_attempt, next_seq, original_ticket.action,
+                    original_ticket.run,
+                    original_ticket.run_attempt,
+                    next_seq,
+                    original_ticket.action,
                 );
                 Ok(RuntimeSignal::AwaitingAction(ActionTicket {
                     run: original_ticket.run,

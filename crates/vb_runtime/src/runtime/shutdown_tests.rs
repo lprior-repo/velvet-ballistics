@@ -105,9 +105,11 @@ fn successful_shutdown_reports_suspended_authority_without_cancelling_run() -> T
     );
     let events = journal.events_for_run(run)?;
     assert!(!events.is_empty());
-    assert!(events
-        .iter()
-        .any(|event| matches!(event, JournalEvent::WaitScheduledEvent { .. })));
+    assert!(
+        events
+            .iter()
+            .any(|event| matches!(event, JournalEvent::WaitScheduledEvent { .. }))
+    );
     assert!(!events.iter().any(|event| matches!(
         event,
         JournalEvent::RunCancelled { .. } | JournalEvent::RunFinished { .. }
@@ -141,9 +143,11 @@ fn full_command_queue_drains_exact_count_and_completes_real_runs() -> TestResult
     for run in [RunId::new(710), RunId::new(711)] {
         runtime.submit_direct(run, finished_workflow()?)?;
     }
-    assert!(runtime
-        .submit_direct(RunId::new(712), finished_workflow()?)
-        .is_err());
+    assert!(
+        runtime
+            .submit_direct(RunId::new(712), finished_workflow()?)
+            .is_err()
+    );
     assert_eq!(
         runtime.pending_boundary_snapshot(64).command_queue_depth(),
         2
@@ -153,10 +157,12 @@ fn full_command_queue_drains_exact_count_and_completes_real_runs() -> TestResult
     assert_eq!(report.remaining().command_queue_depth(), 0);
     assert_eq!(report.remaining().active_run_count(), 0);
     for run in [RunId::new(710), RunId::new(711)] {
-        assert!(journal
-            .events_for_run(run)?
-            .iter()
-            .any(|event| matches!(event, JournalEvent::RunFinished { .. })));
+        assert!(
+            journal
+                .events_for_run(run)?
+                .iter()
+                .any(|event| matches!(event, JournalEvent::RunFinished { .. }))
+        );
     }
     assert_eq!(queue.pending_profile_counts()?.journaled, 0);
     Ok(())

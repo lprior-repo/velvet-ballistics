@@ -5,8 +5,8 @@ use crate::runtime::{Runtime, ShutdownPhase};
 use crate::{RuntimeError, RuntimeResult};
 use std::num::NonZeroUsize;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 use vb_core::RunId;
 use vb_storage::{EventSeq, JournalEvent, JournalWriterFlushReport};

@@ -6,10 +6,10 @@ use proptest::{prop_assert_eq, proptest};
 use vb_core::artifact::ArtifactEvidence;
 use vb_core::{CapabilitySet, RunId, RuntimePolicy, WorkflowDigest};
 use vb_runtime::admission::{
-    admit_artifact_run, AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
-    MissingAcceptedArtifactStore,
+    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, MissingAcceptedArtifactStore,
+    admit_artifact_run,
 };
-use vb_storage::admission::{prepare_compiled_artifact, AcceptedArtifact};
+use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 const SOURCE: &[u8] = b"version: velvet-ballistics/v1\nname: version_barrier\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";

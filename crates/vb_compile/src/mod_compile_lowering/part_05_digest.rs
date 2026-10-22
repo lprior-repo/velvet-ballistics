@@ -39,8 +39,8 @@ fn digest_error(message: &str) -> CompileErrors {
 /// Write a length-prefixed string with explicit tag.
 fn digest_string(hasher: &mut blake3::Hasher, value: &str) -> Result<(), CompileErrors> {
     hasher.update(&[TAG_STRING]);
-    let len = u32::try_from(value.len())
-        .map_err(|_| digest_error("string length exceeds u32 range"))?;
+    let len =
+        u32::try_from(value.len()).map_err(|_| digest_error("string length exceeds u32 range"))?;
     hasher.update(&len.to_le_bytes());
     hasher.update(value.as_bytes());
     Ok(())
@@ -48,8 +48,8 @@ fn digest_string(hasher: &mut blake3::Hasher, value: &str) -> Result<(), Compile
 
 /// Write a raw (untagged) container length, failing closed on overflow.
 fn digest_len(hasher: &mut blake3::Hasher, value: usize) -> Result<(), CompileErrors> {
-    let len = u32::try_from(value)
-        .map_err(|_| digest_error("container length exceeds u32 range"))?;
+    let len =
+        u32::try_from(value).map_err(|_| digest_error("container length exceeds u32 range"))?;
     hasher.update(&len.to_le_bytes());
     Ok(())
 }
@@ -359,7 +359,9 @@ fn digest_scalar_value(
             digest_i64(hasher, *n);
             Ok(())
         }
-        _ => Err(digest_error("unknown scalar value variant cannot be canonicalized")),
+        _ => Err(digest_error(
+            "unknown scalar value variant cannot be canonicalized",
+        )),
     }
 }
 

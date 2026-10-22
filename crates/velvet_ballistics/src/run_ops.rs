@@ -264,9 +264,8 @@ fn load_latest_retry_checkpoint(
         return Err("retry checkpoint payload digest mismatch".to_string());
     }
 
-    let checkpoint: vb_runtime::run_checkpoint::RunCheckpointV1 =
-        postcard::from_bytes(payload)
-            .map_err(|e| format!("retry checkpoint decode failed: {e}"))?;
+    let checkpoint: vb_runtime::run_checkpoint::RunCheckpointV1 = postcard::from_bytes(payload)
+        .map_err(|e| format!("retry checkpoint decode failed: {e}"))?;
 
     if checkpoint.run_id != run {
         return Err(format!(

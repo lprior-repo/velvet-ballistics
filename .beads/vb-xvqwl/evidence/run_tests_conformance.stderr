@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xvqwl-local5090-review/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.33s
+     Running tests/vb_7r7jv_executor_conformance.rs (target/debug/deps/vb_7r7jv_executor_conformance-6cae62a46b934199)

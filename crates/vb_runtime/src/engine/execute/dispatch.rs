@@ -49,8 +49,9 @@ use crate::engine::execute::handlers_compound::{
 use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 use crate::primitives::collect::CollectStates;
 
-mod action_signal;
+pub(super) mod action_signal;
 
+use self::action_signal::ActionDispatchContext;
 use self::action_signal::dispatch_action_and_signal;
 
 #[allow(clippy::too_many_arguments)]
@@ -85,7 +86,19 @@ pub fn execute_node_full(
         | CompiledNodeKind::RepeatAttempt { .. }
         | CompiledNodeKind::RepeatCheck { .. }
         | CompiledNodeKind::RepeatFinish { .. } => dispatch_repeat(run, node),
-        _ => dispatch_action_and_signal(plan, run, store, node, contracts, retry_policy, granted, state_run_attempt),
+        _ => {
+            let mut ctx = ActionDispatchContext {
+                plan,
+                run,
+                store,
+                node,
+                contracts,
+                retry_policy,
+                granted,
+                state_run_attempt,
+            };
+            dispatch_action_and_signal(&mut ctx)
+        }
     }
 }
 

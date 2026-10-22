@@ -571,8 +571,8 @@ fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> 
 }
 
 #[test]
-fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run(
-) -> Result<(), String> {
+fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run()
+-> Result<(), String> {
     // Given: SCN-VT2F-005 / ERR-003 one unrelated suspended action run and an absent-run ticket.
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let unrelated = RunId::new(2505);
@@ -672,8 +672,8 @@ fn test_direct_api_answer_ask_resumes_suspended_run() -> Result<(), String> {
 }
 
 #[test]
-fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run(
-) -> Result<(), String> {
+fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run()
+-> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 a terminal stale run id and one unrelated suspended run.
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let stale = RunId::new(1606);
@@ -745,8 +745,8 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_ru
 }
 
 #[test]
-fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted(
-) -> Result<(), String> {
+fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted()
+-> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 a terminal stale run whose bounded trace ring cannot retain
     // terminal evidence, plus one unrelated suspended run that must remain unchanged.
     let mut runtime =
@@ -822,8 +822,8 @@ fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evict
 }
 
 #[test]
-fn test_direct_api_answer_ask_rejects_answer_slot_mismatch_without_mutating_unrelated_run(
-) -> Result<(), String> {
+fn test_direct_api_answer_ask_rejects_answer_slot_mismatch_without_mutating_unrelated_run()
+-> Result<(), String> {
     // Given: SCN-VT2F-006 / ERR-004 an absent wrong-run ask ticket and one unrelated suspended run.
     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
     let unrelated = RunId::new(2607);

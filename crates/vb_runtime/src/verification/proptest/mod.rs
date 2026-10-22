@@ -22,10 +22,10 @@ mod proptest_idempotency {
             0u16..32,
             0u64..1000,
             0u16..64,
-            1u16..10,   // run_attempt
-            1u16..10,   // attempt
+            1u16..10, // run_attempt
+            1u16..10, // attempt
             any::<u128>(),
-            1u16..10,   // capacity
+            1u16..10, // capacity
         )
             .prop_map(
                 |(run, step, seq, action, run_attempt, attempt, key, capacity)| ActionTicket {

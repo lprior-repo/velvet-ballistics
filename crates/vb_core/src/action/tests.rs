@@ -1287,49 +1287,54 @@ fn validate_action_dispatch_succeeds_with_zero_output_count() {
 
 #[test]
 fn issue_action_ticket_captures_all_fields() {
-    let ticket = issue_action_ticket(
-        RunId::new(42),
-        StepIdx::new(3),
-        SeqNo::new(7),
-        ActionId::new(5),
-        2,
-        12345,
-        1,
-    );
+    let ticket = issue_action_ticket(NewActionTicket {
+        run: RunId::new(42),
+        step: StepIdx::new(3),
+        seq: SeqNo::new(7),
+        action: ActionId::new(5),
+        run_attempt: 2,
+        attempt: 3,
+        idempotency_key: 12345,
+        capacity: 10,
+    });
     assert_eq!(ticket.run, RunId::new(42));
     assert_eq!(ticket.step, StepIdx::new(3));
     assert_eq!(ticket.seq, SeqNo::new(7));
     assert_eq!(ticket.action, ActionId::new(5));
-    assert_eq!(ticket.attempt, 2);
+    assert_eq!(ticket.attempt, 3);
+    assert_eq!(ticket.run_attempt, 2);
     assert_eq!(ticket.idempotency_key, 12345);
+    assert_eq!(ticket.capacity, 10);
 }
 
 #[test]
 fn issue_action_ticket_with_zero_key_is_valid() {
-    let ticket = issue_action_ticket(
-        RunId::new(1),
-        StepIdx::new(0),
-        SeqNo::new(1),
-        ActionId::new(0),
-        1,
-        0,
-        1,
-    );
+    let ticket = issue_action_ticket(NewActionTicket {
+        run: RunId::new(1),
+        step: StepIdx::new(0),
+        seq: SeqNo::new(1),
+        action: ActionId::new(0),
+        run_attempt: 1,
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    });
     assert_eq!(ticket.idempotency_key, 0);
     assert_eq!(ticket.attempt, 1);
 }
 
 #[test]
 fn issue_action_ticket_with_max_values() {
-    let ticket = issue_action_ticket(
-        RunId::new(u64::MAX),
-        StepIdx::new(u16::MAX),
-        SeqNo::new(u64::MAX),
-        ActionId::new(u16::MAX),
-        u16::MAX,
-        u128::MAX,
-        u16::MAX,
-    );
+    let ticket = issue_action_ticket(NewActionTicket {
+        run: RunId::new(u64::MAX),
+        step: StepIdx::new(u16::MAX),
+        seq: SeqNo::new(u64::MAX),
+        action: ActionId::new(u16::MAX),
+        run_attempt: u16::MAX,
+        attempt: u16::MAX,
+        idempotency_key: u128::MAX,
+        capacity: u16::MAX,
+    });
     assert_eq!(ticket.run, RunId::new(u64::MAX));
     assert_eq!(ticket.step, StepIdx::new(u16::MAX));
     assert_eq!(ticket.seq, SeqNo::new(u64::MAX));

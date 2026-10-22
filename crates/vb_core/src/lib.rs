@@ -94,8 +94,9 @@ pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionFailureReport,
     ActionInput, ActionJournalEvent, ActionOutcome, ActionOutput, ActionOutputReady, ActionResult,
     ActionResumeRejection, ActionResumeReport, ActionTicket, Idempotency, IdempotencyViolation,
-    RetrySafety, SideEffect, issue_action_ticket, propagate_action_taint, validate_action_dispatch,
-    validate_action_outcome, validate_idempotency_key_ingredients, verify_idempotency,
+    NewActionTicket, RetrySafety, SideEffect, issue_action_ticket, propagate_action_taint,
+    validate_action_dispatch, validate_action_outcome, validate_idempotency_key_ingredients,
+    verify_idempotency,
 };
 pub use budget::{
     AggregateBudgetError, AggregateReservation, AggregateResourceBudget, AggregateResourceCapacity,

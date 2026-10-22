@@ -189,13 +189,17 @@ fn produce_failed_attempt(
             contracts,
         )
         .map_err(|e| format!("submit failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let old_ticket = pending_ticket(&runtime, run)?;
     runtime
         .fail_action(old_ticket, non_retryable_failure())
         .map_err(|e| format!("fail_action failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
     let checkpoint = latest_retry_checkpoint(&events)?;
@@ -216,7 +220,9 @@ fn recover_and_schedule(
     runtime
         .recover_retry(run, checkpoint, next_seq)
         .map_err(|e| format!("recover_retry failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
     Ok(runtime)
 }
 
@@ -260,10 +266,8 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
 
     // Replay the OLD completion against the NEW attempt. Must be rejected
     // with StaleAttempt carrying the exact expected/found values.
-    let result = runtime.complete_action_with_output(
-        old_ticket,
-        action_output(SlotValue::I64(42))?,
-    );
+    let result =
+        runtime.complete_action_with_output(old_ticket, action_output(SlotValue::I64(42))?);
 
     match result {
         Ok(()) => {
@@ -317,10 +321,8 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
     );
 
     // Now complete with the NEW ticket — must succeed.
-    let result = runtime.complete_action_with_output(
-        new_ticket,
-        action_output(SlotValue::I64(42))?,
-    );
+    let result =
+        runtime.complete_action_with_output(new_ticket, action_output(SlotValue::I64(42))?);
     assert!(result.is_ok(), "new ticket completion must succeed");
     runtime.tick_all().ok();
     let counters_new = runtime.counters_snapshot();
@@ -355,7 +357,10 @@ fn run_attempt_advances_but_per_action_attempt_does_not() -> Result<(), String> 
     // The checkpoint captures action_attempts verbatim and resets the step PC,
     // so the re-executed action gets a fresh per-action attempt counter.
     assert_eq!(new_ticket.run_attempt, 2);
-    assert_eq!(new_ticket.attempt, 1, "per-action attempt must reset on run retry");
+    assert_eq!(
+        new_ticket.attempt, 1,
+        "per-action attempt must reset on run retry"
+    );
 
     Ok(())
 }
@@ -389,10 +394,8 @@ fn future_run_attempt_ticket_rejected() -> Result<(), String> {
         capacity: current_ticket.capacity,
     };
 
-    let result = runtime.complete_action_with_output(
-        future_ticket,
-        action_output(SlotValue::I64(42))?,
-    );
+    let result =
+        runtime.complete_action_with_output(future_ticket, action_output(SlotValue::I64(42))?);
     match result {
         Ok(()) => Err("DEFECT: future run_attempt ticket was accepted".to_string()),
         Err(e) => {
@@ -431,10 +434,8 @@ fn zero_run_attempt_ticket_rejected() -> Result<(), String> {
         capacity: current_ticket.capacity,
     };
 
-    let result = runtime.complete_action_with_output(
-        zero_ticket,
-        action_output(SlotValue::I64(42))?,
-    );
+    let result =
+        runtime.complete_action_with_output(zero_ticket, action_output(SlotValue::I64(42))?);
     match result {
         Ok(()) => Err("DEFECT: zero run_attempt ticket was accepted".to_string()),
         Err(e) => {

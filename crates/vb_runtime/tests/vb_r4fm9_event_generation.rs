@@ -77,14 +77,13 @@ fn retry_action_workflow() -> Result<CompiledWorkflow, String> {
         input_slots: Box::from([]),
     };
     parts.digest = canonical_workflow_digest(&parts)?;
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|e| format!("retry workflow invalid: {e:?}"))
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("retry workflow invalid: {e:?}"))
 }
 
-fn action_contract() -> ActionContract {
-    ActionContract {
+fn action_contract() -> Result<ActionContract, String> {
+    Ok(ActionContract {
         id: ActionId::new(0),
-        name: ActionName::new("vb-r4fm9-action").expect("valid action name"),
+        name: ActionName::new("vb-r4fm9-action").map_err(|e| e.to_string())?,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -94,7 +93,7 @@ fn action_contract() -> ActionContract {
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::from([]),
-    }
+    })
 }
 
 fn non_retryable_failure() -> ActionFailure {
@@ -107,27 +106,30 @@ fn non_retryable_failure() -> ActionFailure {
     }
 }
 
-fn action_output(value: SlotValue) -> ActionOutputReady {
-    let encoded = postcard::to_allocvec(&value).expect("slot encoding");
-    let encoded_len = u32::try_from(encoded.len()).expect("slot length fits u32");
-    ActionOutputReady {
+fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
+    let encoded = postcard::to_allocvec(&value).map_err(|e| e.to_string())?;
+    let encoded_len = u32::try_from(encoded.len())
+        .map_err(|_| format!("slot length {} does not fit u32", encoded.len()))?;
+    Ok(ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint: Taint::Clean,
         encoded_len,
-    }
+    })
 }
 
-fn latest_retry_checkpoint(events: &[JournalEvent]) -> RunCheckpointV1 {
-    let JournalEvent::RetryCheckpoint { payload, .. } = events
+fn latest_retry_checkpoint(events: &[JournalEvent]) -> Result<RunCheckpointV1, String> {
+    let checkpoint_event = events
         .iter()
         .rev()
         .find(|e| matches!(e, JournalEvent::RetryCheckpoint { .. }))
-        .expect("no durable retry checkpoint in journal")
-    else {
-        panic!("no durable retry checkpoint in journal");
+        .ok_or_else(|| "no durable retry checkpoint in journal")?;
+    let payload = match checkpoint_event {
+        JournalEvent::RetryCheckpoint { payload, .. } => payload,
+        _ => unreachable!("filter guarantees RetryCheckpoint variant"),
     };
-    postcard::from_bytes::<RunCheckpointV1>(payload).expect("checkpoint decode")
+    postcard::from_bytes::<RunCheckpointV1>(payload)
+        .map_err(|e| format!("checkpoint decode failed: {e}"))
 }
 
 fn next_seq_after(events: &[JournalEvent]) -> EventSeq {
@@ -140,12 +142,20 @@ fn next_seq_after(events: &[JournalEvent]) -> EventSeq {
 }
 
 /// Produces a durable failed run attempt 1 and captures the old ticket.
-fn produce_failed_attempt(path: &std::path::Path, run: RunId) -> Result<(RunCheckpointV1, EventSeq, ActionTicket), String> {
+fn produce_failed_attempt(
+    path: &std::path::Path,
+    run: RunId,
+) -> Result<(RunCheckpointV1, EventSeq, ActionTicket), String> {
     let journal = Arc::new(FjallJournal::open(path, None).map_err(|e| e.to_string())?);
     let workflow = retry_action_workflow()?;
-    let contracts = Box::from([action_contract()]);
-    vb_storage::submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts)
-        .map_err(|e| format!("artifact submit failed: {e}"))?;
+    let contracts = Box::from([action_contract()?]);
+    vb_storage::submit_artifact_with_contracts(
+        &journal,
+        &workflow,
+        RuntimePolicy::Strict,
+        &contracts,
+    )
+    .map_err(|e| format!("artifact submit failed: {e}"))?;
 
     let shared = vb_runtime::journal::StorageRuntimeJournal::shared_journaled(journal.clone());
     let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
@@ -158,7 +168,9 @@ fn produce_failed_attempt(path: &std::path::Path, run: RunId) -> Result<(RunChec
             contracts,
         )
         .map_err(|e| format!("submit failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let old_ticket = runtime
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
@@ -166,10 +178,12 @@ fn produce_failed_attempt(path: &std::path::Path, run: RunId) -> Result<(RunChec
     runtime
         .fail_action(old_ticket, non_retryable_failure())
         .map_err(|e| format!("fail_action failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
-    let checkpoint = latest_retry_checkpoint(&events);
+    let checkpoint = latest_retry_checkpoint(&events)?;
     let next_seq = next_seq_after(&events);
     Ok((checkpoint, next_seq, old_ticket))
 }
@@ -187,7 +201,9 @@ fn recover_and_schedule(
     runtime
         .recover_retry(run, checkpoint, next_seq)
         .map_err(|e| format!("recover_retry failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
     Ok(runtime)
 }
 
@@ -200,7 +216,10 @@ fn ticket_events_report_run_attempt_on_retry() -> Result<(), String> {
     let run = RunId::new(42);
 
     let (checkpoint, next_seq, old_ticket) = produce_failed_attempt(&path, run)?;
-    assert_eq!(old_ticket.run_attempt, 1, "old ticket must be run_attempt=1");
+    assert_eq!(
+        old_ticket.run_attempt, 1,
+        "old ticket must be run_attempt=1"
+    );
 
     recover_and_schedule(&path, run, checkpoint, next_seq)?;
 
@@ -211,12 +230,14 @@ fn ticket_events_report_run_attempt_on_retry() -> Result<(), String> {
     // Find ticket-bearing events from run attempt 2.
     let ticket_events: Vec<&JournalEvent> = events
         .iter()
-        .filter(|e| matches!(
-            e,
-            JournalEvent::ActionScheduledTicket { .. }
-                | JournalEvent::ActionCompletedEnvelope { .. }
-                | JournalEvent::ActionAbandoned { .. }
-        ))
+        .filter(|e| {
+            matches!(
+                e,
+                JournalEvent::ActionScheduledTicket { .. }
+                    | JournalEvent::ActionCompletedEnvelope { .. }
+                    | JournalEvent::ActionAbandoned { .. }
+            )
+        })
         .collect();
 
     assert!(
@@ -225,15 +246,15 @@ fn ticket_events_report_run_attempt_on_retry() -> Result<(), String> {
     );
 
     // The second ticket-bearing event should be from run attempt 2.
-    let attempt2_ticket_event = ticket_events
-        .iter()
-        .find(|e| match e {
-            JournalEvent::ActionScheduledTicket { ticket, .. }
-            | JournalEvent::ActionCompletedEnvelope { ticket, .. }
-            | JournalEvent::ActionAbandoned { ticket, .. } => ticket.run_attempt == 2,
-            _ => false,
-        })
-        .expect("expected ActionScheduledTicket with run_attempt=2");
+    let attempt2_ticket_event = match ticket_events.iter().find(|e| match e {
+        JournalEvent::ActionScheduledTicket { ticket, .. }
+        | JournalEvent::ActionCompletedEnvelope { ticket, .. }
+        | JournalEvent::ActionAbandoned { ticket, .. } => ticket.run_attempt == 2,
+        _ => false,
+    }) {
+        Some(e) => e,
+        None => return Err("expected ActionScheduledTicket with run_attempt=2".to_string()),
+    };
 
     // This is the assertion that fails before the fix:
     // attempt() returns ticket.attempt (per-action, 1) instead of ticket.run_attempt (run-level, 2).
@@ -265,14 +286,19 @@ fn cold_replay_preserves_run_attempt_2_ticket_events() -> Result<(), String> {
         let new_ticket = runtime
             .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
             .ok_or_else(|| "run attempt 2 has no pending ticket")?;
-        assert_eq!(new_ticket.run_attempt, 2, "new ticket must be run_attempt=2");
+        assert_eq!(
+            new_ticket.run_attempt, 2,
+            "new ticket must be run_attempt=2"
+        );
         assert_eq!(new_ticket.attempt, 1, "per-action attempt must be 1");
 
         // Complete the action on run attempt 2
         runtime
-            .complete_action_with_output(new_ticket, action_output(SlotValue::I64(42)))
+            .complete_action_with_output(new_ticket, action_output(SlotValue::I64(42))?)
             .map_err(|e| format!("complete_action failed: {e}"))?;
-        runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+        runtime
+            .tick_all()
+            .map_err(|e| format!("tick failed: {e}"))?;
     }
 
     // Now cold-replay the journal from scratch
@@ -280,10 +306,8 @@ fn cold_replay_preserves_run_attempt_2_ticket_events() -> Result<(), String> {
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
 
     // Verify that ticket-bearing events from run attempt 2 are present
-    let attempt2_events: Vec<&JournalEvent> = events
-        .iter()
-        .filter(|e| e.attempt() == Some(2))
-        .collect();
+    let attempt2_events: Vec<&JournalEvent> =
+        events.iter().filter(|e| e.attempt() == Some(2)).collect();
 
     assert!(
         !attempt2_events.is_empty(),
@@ -291,18 +315,28 @@ fn cold_replay_preserves_run_attempt_2_ticket_events() -> Result<(), String> {
     );
 
     // Verify ActionScheduledTicket for run attempt 2 is present
-    let has_scheduled_ticket = events.iter().any(|e| matches!(
-        e,
-        JournalEvent::ActionScheduledTicket { ticket, .. } if ticket.run_attempt == 2
-    ));
-    assert!(has_scheduled_ticket, "ActionScheduledTicket for run attempt 2 must be present");
+    let has_scheduled_ticket = events.iter().any(|e| {
+        matches!(
+            e,
+            JournalEvent::ActionScheduledTicket { ticket, .. } if ticket.run_attempt == 2
+        )
+    });
+    assert!(
+        has_scheduled_ticket,
+        "ActionScheduledTicket for run attempt 2 must be present"
+    );
 
     // Verify ActionCompletedEnvelope for run attempt 2 is present
-    let has_completed = events.iter().any(|e| matches!(
-        e,
-        JournalEvent::ActionCompletedEnvelope { ticket, .. } if ticket.run_attempt == 2
-    ));
-    assert!(has_completed, "ActionCompletedEnvelope for run attempt 2 must be present");
+    let has_completed = events.iter().any(|e| {
+        matches!(
+            e,
+            JournalEvent::ActionCompletedEnvelope { ticket, .. } if ticket.run_attempt == 2
+        )
+    });
+    assert!(
+        has_completed,
+        "ActionCompletedEnvelope for run attempt 2 must be present"
+    );
 
     Ok(())
 }
@@ -326,9 +360,11 @@ fn completed_retry_replays_as_completed() -> Result<(), String> {
             .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
             .ok_or_else(|| "run attempt 2 has no pending ticket")?;
         runtime
-            .complete_action_with_output(new_ticket, action_output(SlotValue::I64(99)))
+            .complete_action_with_output(new_ticket, action_output(SlotValue::I64(99))?)
             .map_err(|e| format!("complete_action failed: {e}"))?;
-        runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+        runtime
+            .tick_all()
+            .map_err(|e| format!("tick failed: {e}"))?;
     }
 
     // Cold-replay from scratch
@@ -336,15 +372,19 @@ fn completed_retry_replays_as_completed() -> Result<(), String> {
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
 
     // The run should replay as completed (not failed or pending)
-    let has_finished = events.iter().any(|e| matches!(e, JournalEvent::RunFinished { .. }));
+    let has_finished = events
+        .iter()
+        .any(|e| matches!(e, JournalEvent::RunFinished { .. }));
     assert!(has_finished, "replayed run must be finished");
 
     // The ActionCompletedEnvelope must be present (not filtered as stale)
-    let has_completed_envelope = events.iter().any(|e| matches!(
-        e,
-        JournalEvent::ActionCompletedEnvelope { .. }
-    ));
-    assert!(has_completed_envelope, "ActionCompletedEnvelope must survive replay");
+    let has_completed_envelope = events
+        .iter()
+        .any(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. }));
+    assert!(
+        has_completed_envelope,
+        "ActionCompletedEnvelope must survive replay"
+    );
 
     Ok(())
 }

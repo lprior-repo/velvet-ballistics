@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-xvqwl-local5090-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "bdd_idempotency"
+  ],
+  "exit_code": 0,
+  "seconds": 12.626,
+  "timeout_seconds": 420,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-xvqwl/evidence/run_tests_workspace"
+}

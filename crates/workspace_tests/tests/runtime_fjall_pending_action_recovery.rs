@@ -728,15 +728,14 @@ fn runtime_submit_drive_without_action_abi_authority_fails_before_ticket_persist
     // boundary: a Do-without-contract artifact is rejected at admission with the
     // typed error, before any run/ticket mutation. The legacy "submit-ok then
     // tick action_abi_digests_missing" semantics were superseded by gate 12.
-    let result = submit_artifact_with_contracts(
-        &journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        &contracts,
-    );
+    let result =
+        submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts);
     match result {
         Err(vb_storage::JournalError::ArtifactValidation(
-            vb_validate::ValidationError::ActionContractMissing { action_id, node_index },
+            vb_validate::ValidationError::ActionContractMissing {
+                action_id,
+                node_index,
+            },
         )) => {
             assert_eq!(action_id, 0);
             assert_eq!(node_index, 0);

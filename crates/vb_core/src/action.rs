@@ -33,7 +33,8 @@ pub use payload::{
 };
 pub use registry::{ActionRegistryError, validate_action_registry};
 pub use ticket::{
-    ActionTicket, action_ticket_has_valid_key, compute_action_idempotency_key, issue_action_ticket,
+    ActionTicket, NewActionTicket, action_ticket_has_valid_key, compute_action_idempotency_key,
+    issue_action_ticket,
 };
 pub use validation::{
     propagate_action_taint, validate_action_dispatch, validate_action_outcome,

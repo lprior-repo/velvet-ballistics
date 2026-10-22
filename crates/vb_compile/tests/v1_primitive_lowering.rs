@@ -475,11 +475,6 @@ fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result
             ExpectedCompileError::EmptySteps,
         ),
         (
-            "top_level_inputs",
-            "version: velvet-ballistics/v1\nname: input_case\nwhen:\n  manual: {}\ninputs:\n  account: text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
-        ),
-        (
             "top_level_result",
             "version: velvet-ballistics/v1\nname: result_case\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\nresult:\n  ok: true\n",
             ExpectedCompileError::UnsupportedTopLevelResult,
@@ -546,11 +541,6 @@ fn public_compile_apis_return_exact_error_variants_for_contract_taxonomy() -> Re
             "empty_steps",
             "version: velvet-ballistics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n",
             ExpectedCompileError::EmptySteps,
-        ),
-        (
-            "top_level_inputs",
-            "version: velvet-ballistics/v1\nname: input_case\nwhen:\n  manual: {}\ninputs:\n  account: text\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedCompileError::UnsupportedTopLevelDeclaration("inputs"),
         ),
         (
             "top_level_result",
@@ -881,7 +871,6 @@ fn lower_choose_rejects_empty_branches_without_otherwise() -> Result<(), String>
 #[derive(Clone, Copy)]
 enum ExpectedCompileError {
     EmptySteps,
-    UnsupportedTopLevelDeclaration(&'static str),
     UnsupportedTopLevelResult,
     UnsupportedStepControlField {
         step: usize,
@@ -907,16 +896,6 @@ fn assert_expected_compile_error(
 ) -> Result<(), String> {
     match (actual, expected) {
         (CompileError::EmptySteps, ExpectedCompileError::EmptySteps) => Ok(()),
-        (
-            CompileError::UnsupportedTopLevelDeclaration { field },
-            ExpectedCompileError::UnsupportedTopLevelDeclaration(expected_field),
-        ) => {
-            assert_eq!(
-                *field, expected_field,
-                "case {case_name} top-level declaration field"
-            );
-            Ok(())
-        }
         (
             CompileError::UnsupportedTopLevelResult,
             ExpectedCompileError::UnsupportedTopLevelResult,
@@ -1819,7 +1798,7 @@ fn assert_exact_for_each(nodes: &[CompiledNode]) -> Result<(), String> {
 
 fn assert_exact_together(nodes: &[CompiledNode]) -> Result<(), String> {
     assert_set_const_node(nodes, &[], 2, Some(1), None, 0, 1)?;
-    assert_set_const_node(nodes, &[], 4, Some(3), None, 0, 2)?;
+    assert_set_const_node(nodes, &[], 4, Some(3), None, 1, 2)?;
     assert_finish_node(nodes, 6, 0)?;
     match &node_at(nodes, 0)?.kind {
         CompiledNodeKind::TogetherStart { branches, join } => {

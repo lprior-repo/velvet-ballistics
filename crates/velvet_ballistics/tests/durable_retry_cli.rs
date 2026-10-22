@@ -177,12 +177,16 @@ fn produce_failed_run(path: &std::path::Path, run: RunId) -> Result<usize, Strin
             contracts,
         )
         .map_err(|e| format!("submit failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
     let ticket = pending_ticket(&runtime, run)?;
     runtime
         .fail_action(ticket, non_retryable_failure())
         .map_err(|e| format!("fail_action failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
     assert!(
@@ -197,20 +201,17 @@ fn produce_failed_run(path: &std::path::Path, run: RunId) -> Result<usize, Strin
 fn produce_completed_run(path: &std::path::Path, run: RunId) -> Result<usize, String> {
     let journal = Arc::new(FjallJournal::open(path, None).map_err(|e| e.to_string())?);
     let workflow = completed_workflow()?;
-    vb_storage::submit_artifact_with_contracts(
-        &journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        &[],
-    )
-    .map_err(|e| format!("artifact submit failed: {e}"))?;
+    vb_storage::submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &[])
+        .map_err(|e| format!("artifact submit failed: {e}"))?;
 
     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
     let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
     runtime
         .submit_direct(run, workflow.clone())
         .map_err(|e| format!("submit failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
@@ -226,7 +227,10 @@ fn run_cli(args: &[&std::ffi::OsStr]) -> Output {
 
 fn events_count(path: &std::path::Path, run: RunId) -> Result<usize, String> {
     let journal = FjallJournal::open(path, None).map_err(|e| e.to_string())?;
-    journal.events_for_run(run).map(|e| e.len()).map_err(|e| e.to_string())
+    journal
+        .events_for_run(run)
+        .map(|e| e.len())
+        .map_err(|e| e.to_string())
 }
 
 #[test]

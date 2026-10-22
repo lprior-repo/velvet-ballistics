@@ -1,0 +1,21 @@
+
+running 2 tests
+test checkpoint_roundtrips_full_retry_authority ... ok
+test durable_retry_reopens_and_completes_failed_step ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 9 tests
+test record_retry_attempt_integration_gap ... ok
+test action_failure_preserves_action_completed_slots_integration_gap ... ok
+test ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata ... ok
+test apply_action_failure_to_state_resets_pc_to_failed_step_on_retry ... ok
+test ticket_with_retry_capacity_increases_capacity_to_max_attempts ... ok
+test apply_error_handler_writes_step_index_to_error_slot_integration_gap ... ok
+test retry_is_available_returns_false_when_no_retry_metadata ... ok
+test retry_is_available_returns_false_for_nonretryable_policy ... ok
+test journal_replay_idempotent_action_failed ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

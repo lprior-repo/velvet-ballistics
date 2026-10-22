@@ -11,8 +11,8 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady,
-    ActionTicket, Idempotency, RetryPolicy, RetrySafety, SideEffect,
+    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
+    Idempotency, RetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
@@ -80,7 +80,8 @@ fn retry_action_workflow() -> Result<CompiledWorkflow, String> {
         input_slots: Box::from([]),
     };
     parts.digest = canonical_workflow_digest(&parts)?;
-    CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("retry-action workflow invalid: {e:?}"))
+    CompiledWorkflow::try_from_parts(parts)
+        .map_err(|e| format!("retry-action workflow invalid: {e:?}"))
 }
 
 fn action_contract() -> Result<ActionContract, String> {
@@ -191,13 +192,17 @@ fn durable_retry_reopens_and_completes_failed_step() -> Result<(), String> {
                 contracts.clone(),
             )
             .map_err(|e| format!("submit failed: {e}"))?;
-        runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+        runtime
+            .tick_all()
+            .map_err(|e| format!("tick failed: {e}"))?;
 
         let ticket = pending_ticket(&runtime, run)?;
         runtime
             .fail_action(ticket, non_retryable_failure())
             .map_err(|e| format!("fail_action failed: {e}"))?;
-        runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+        runtime
+            .tick_all()
+            .map_err(|e| format!("tick failed: {e}"))?;
 
         let counters = runtime.counters_snapshot();
         assert_eq!(counters.runs_failed, 1, "first attempt must fail");
@@ -225,7 +230,9 @@ fn durable_retry_reopens_and_completes_failed_step() -> Result<(), String> {
     runtime
         .recover_retry(run, checkpoint, next_seq)
         .map_err(|e| format!("recover_retry failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     // The failed step is re-executed: a new action ticket is scheduled for the
     // new run attempt.
@@ -235,13 +242,21 @@ fn durable_retry_reopens_and_completes_failed_step() -> Result<(), String> {
         StepIdx::ZERO,
         "retry must re-execute the failed step"
     );
-    assert_eq!(retry_ticket.attempt, 1, "re-executed action is its first action attempt");
-    assert_eq!(retry_ticket.run_attempt, 2, "retry must carry new run attempt number");
+    assert_eq!(
+        retry_ticket.attempt, 1,
+        "re-executed action is its first action attempt"
+    );
+    assert_eq!(
+        retry_ticket.run_attempt, 2,
+        "retry must carry new run attempt number"
+    );
 
     runtime
         .complete_action_with_output(retry_ticket, action_output(SlotValue::I64(42))?)
         .map_err(|e| format!("complete_action failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let counters = runtime.counters_snapshot();
     assert_eq!(counters.runs_completed, 1, "retry must complete the run");
@@ -261,10 +276,15 @@ fn durable_retry_reopens_and_completes_failed_step() -> Result<(), String> {
     // The retry re-executes the failed action exactly once after the checkpoint.
     let scheduled = events
         .iter()
-        .filter(|e| matches!(e, JournalEvent::ActionScheduledTicket { ticket, .. }
-            if ticket.run == run && ticket.step == StepIdx::ZERO))
+        .filter(|e| {
+            matches!(e, JournalEvent::ActionScheduledTicket { ticket, .. }
+            if ticket.run == run && ticket.step == StepIdx::ZERO)
+        })
         .count();
-    assert_eq!(scheduled, 2, "first attempt and retry attempt each schedule the action once");
+    assert_eq!(
+        scheduled, 2,
+        "first attempt and retry attempt each schedule the action once"
+    );
 
     let finished = events
         .iter()
@@ -305,18 +325,26 @@ fn checkpoint_roundtrips_full_retry_authority() -> Result<(), String> {
             contracts.clone(),
         )
         .map_err(|e| format!("submit failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
     let ticket = pending_ticket(&runtime, run)?;
     runtime
         .fail_action(ticket, non_retryable_failure())
         .map_err(|e| format!("fail_action failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
     let checkpoint = latest_retry_checkpoint(&events)?;
 
     assert_eq!(checkpoint.run_id, run);
-    assert_eq!(checkpoint.run_attempt.get(), 2, "checkpoint authorizes next attempt");
+    assert_eq!(
+        checkpoint.run_attempt.get(),
+        2,
+        "checkpoint authorizes next attempt"
+    );
     assert_eq!(checkpoint.retry_step, StepIdx::ZERO);
     assert_eq!(
         checkpoint.artifact_digest, artifact.digest,
@@ -341,7 +369,10 @@ fn checkpoint_roundtrips_full_retry_authority() -> Result<(), String> {
 
     // The successful prefix (Do is step 0, nothing succeeded before it) and the
     // value store are captured verbatim; admission and contracts are retained.
-    assert!(checkpoint.admission.is_some(), "admission authority retained");
+    assert!(
+        checkpoint.admission.is_some(),
+        "admission authority retained"
+    );
     assert_eq!(checkpoint.action_contracts.as_ref(), contracts.as_ref());
 
     // prior_seq points at the audited RunFailed event immediately before the checkpoint.

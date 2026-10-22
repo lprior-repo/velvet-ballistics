@@ -46,8 +46,7 @@ fn submit(
         "submit failed: {}",
         String::from_utf8_lossy(&result.stderr)
     );
-    let receipt: serde_json::Value =
-        serde_saphyr::from_str(&String::from_utf8(result.stdout)?)?;
+    let receipt: serde_json::Value = serde_saphyr::from_str(&String::from_utf8(result.stdout)?)?;
     assert_eq!(
         receipt.get("status").and_then(serde_json::Value::as_str),
         Some("submitted")

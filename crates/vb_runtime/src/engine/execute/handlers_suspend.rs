@@ -1,18 +1,16 @@
 #![forbid(unsafe_code)]
 
-//! Suspension and action handlers: Wait/Ask, Do, ErrorHandler. These
-//! handlers produce the runtime signals that suspend the drive loop
-//! (`AwaitingWait`, `AwaitingAsk`, `AwaitingAction`) or route execution
-//! to an error-handler body.
+//! Suspension and action handlers: Wait/Ask, Do, ErrorHandler.
+//! These produce runtime signals that suspend the drive loop
+//! or route execution to an error-handler body.
 
-use vb_core::action::ActionContract;
-use vb_core::capability::CapabilitySet;
+use crate::engine::execute::dispatch::action_signal::ActionDispatchContext;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, SeqNo, SlotIdx, StepIdx};
 
 use crate::engine::action::{execute_do, execute_do_without_contract, resolve_contract};
 use crate::engine::signal::runtime_from_core;
-use crate::engine::types::{RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
+use crate::engine::types::{RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
 
 // ── Wait/Ask handlers ────────────────────────────────────────────
 pub(super) fn handle_wait_until(
@@ -58,30 +56,34 @@ pub(super) fn handle_ask_resume(
 
 // ── Do handler ───────────────────────────────────────────────────
 pub(super) fn handle_do(
-    run: &mut RunFrame,
+    ctx: &ActionDispatchContext<'_>,
     action: ActionId,
     input: SlotIdx,
-    contracts: &[ActionContract],
-    granted: &CapabilitySet,
-    retry_policy: RetryPolicy,
     node_id: StepIdx,
-    state_run_attempt: u16,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    let seq = SeqNo::new(run.executed());
-    if contracts.is_empty() {
-        execute_do_without_contract(run, node_id, action, input, seq, granted, retry_policy)
-    } else {
-        execute_do(
-            run,
+    let seq = SeqNo::new(ctx.run.executed());
+    if ctx.contracts.is_empty() {
+        execute_do_without_contract(
+            ctx.run,
             node_id,
             action,
             input,
             seq,
-            resolve_contract(action, contracts)?,
-            contracts,
-            granted,
-            retry_policy,
-            state_run_attempt,
+            ctx.granted,
+            ctx.retry_policy,
+        )
+    } else {
+        execute_do(
+            ctx.run,
+            node_id,
+            action,
+            input,
+            seq,
+            resolve_contract(action, ctx.contracts)?,
+            ctx.contracts,
+            ctx.granted,
+            ctx.retry_policy,
+            ctx.state_run_attempt,
         )
     }
 }
