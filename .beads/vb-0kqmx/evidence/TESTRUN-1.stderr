@@ -1,0 +1,2 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/policy_pin_durable_recovery.rs (target/debug/deps/policy_pin_durable_recovery-d7f0628bd3dccd46)

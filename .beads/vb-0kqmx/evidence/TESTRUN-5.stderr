@@ -1,0 +1,2 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/recovery_bdd_tests.rs (target/debug/deps/recovery_bdd_tests-4e23ea4d29c0a60c)

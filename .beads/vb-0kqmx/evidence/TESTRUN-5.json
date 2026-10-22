@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-0kqmx-tests",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "recovery_bdd_tests"
+  ],
+  "exit_code": 0,
+  "seconds": 0.112,
+  "timeout_seconds": 20,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/vb-0kqmx-tests/.beads/vb-0kqmx/evidence/TESTRUN-5"
+}

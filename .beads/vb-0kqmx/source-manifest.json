@@ -1,0 +1,60 @@
+{
+  "candidate": "24cadba9a9bc",
+  "baseline": "0434f64f0f1f4e2ab89ffd49628fcae903f809d3",
+  "test_file": {
+    "path": "crates/vb_runtime/tests/policy_pin_durable_recovery.rs",
+    "sha256": "1f7eda4afc25a56bcdba10456320a1ab719f12dfde6aa58cfdee9178b1852670",
+    "lines": 624,
+    "tests": 4
+  },
+  "implementation_files": [
+    {
+      "path": "crates/vb_runtime/src/run_checkpoint.rs",
+      "sha256": "143586a102a2e32b22f2adeed85389e9566211f6a14e435a4e572d03d8cb0ab0"
+    },
+    {
+      "path": "crates/vb_runtime/src/recovery/full/admission.rs",
+      "sha256": "ccc2b1c56101e5f5ddba7fcba729b47e1b313ea57483333a7dd786e0bab13740"
+    },
+    {
+      "path": "crates/vb_storage/src/events.rs",
+      "sha256": "957f8576cc94072884ad940e50c853a725f84ada0345ae679f15df2a897e391a"
+    }
+  ],
+  "test_results": [
+    {
+      "suite": "policy_pin_durable_recovery",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "run_checkpoint_units",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "admission",
+      "passed": 95,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "recovery_hydration",
+      "passed": 43,
+      "failed": 0,
+      "ignored": 1
+    },
+    {
+      "suite": "recovery_bdd",
+      "passed": 82,
+      "failed": 0,
+      "ignored": 0
+    }
+  ],
+  "format_check": {
+    "command": "cargo fmt --all --check",
+    "passed": true
+  }
+}

@@ -1,0 +1,15 @@
+
+running 10 tests
+test run_checkpoint_tests::versioned_decoder_rejects_empty_payload ... ok
+test run_checkpoint_tests::versioned_decoder_rejects_version_1_header_before_layout_decode ... ok
+test run_checkpoint_tests::versioned_decoder_rejects_unrecognized_future_version ... ok
+test run_checkpoint_tests::versioned_decoder_rejects_truncated_varint_version ... ok
+test run_checkpoint_tests::versioned_decoder_rejects_malformed_payload ... ok
+test run_checkpoint_tests::restore_rejects_a_checkpoint_for_a_different_workflow ... ok
+test run_checkpoint_tests::versioned_checkpoint_roundtrips_version_2_through_decoder ... ok
+test run_checkpoint_tests::capture_resets_only_retry_step_and_preserves_action_attempts ... ok
+test run_checkpoint_tests::versioned_decoder_preserves_pinned_admission_through_roundtrip ... ok
+test run_checkpoint_tests::versioned_decoder_rejects_truncated_valid_checkpoint ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 1971 filtered out; finished in 0.00s
+
