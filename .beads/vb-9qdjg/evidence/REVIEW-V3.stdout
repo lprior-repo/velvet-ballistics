@@ -1,0 +1,25 @@
+=== Loading evidence records ===
+
+=== Loading heaptrack manifest ===
+
+=== Check 1: Commit SHA validation ===
+
+=== Check 1b: Commit ancestry (git merge-base) ===
+
+=== Check 2: Criterion measurements ===
+
+  bench_engine_step_once_save_const_single_transition:
+
+  ipc_frame_decode:
+
+  engine_run_until_blocked_budget_10_small_workflow:
+
+=== Check 3: Perf instruction counts ===
+
+  bench_engine_step_once_save_const_single_transition:
+
+  ipc_frame_decode:
+
+  engine_run_until_blocked_budget_10_small_workflow:
+
+=== Check 4: Heaptrack SHA validation ===
