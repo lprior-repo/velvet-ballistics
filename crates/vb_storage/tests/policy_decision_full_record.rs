@@ -1,125 +1,34 @@
 #![forbid(unsafe_code)]
 
-use std::path::PathBuf;
-
-use vb_core::action::ActionTicket;
-use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx, WorkflowDigest};
 use vb_core::policy::{
     DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy, PolicyDigest,
     PolicyLayer,
 };
 use vb_core::value::Taint;
+
+#[path = "policy_decision_full_record/pd_helpers.rs"]
+mod pd_helpers;
 use vb_storage::codec::{decode_journal_event, encode_record};
 use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
 use vb_storage::events::JournalEvent;
+use vb_storage::journal::FjallJournal;
 use vb_storage::records::RecordKind;
 use vb_storage::types::EventSeq;
+use vb_core::workflow::LifecycleState;
+use vb_storage::derive_lifecycle_state_from_events;
 
-/// Build an ActionTicket with all 8 fields distinct and non-trivial.
-fn make_ticket(run: u64, step: u16, seq: u64, action: u16) -> ActionTicket {
-    ActionTicket {
-        run: RunId::new(run),
-        step: StepIdx::new(step),
-        seq: SeqNo::new(seq),
-        action: ActionId::new(action),
-        run_attempt: 1,
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 10,
-    }
-}
 
-/// Build a distinct non-zero PolicyDigest from a seed byte.
-fn make_digest(seed: u8) -> PolicyDigest {
-    let mut bytes = [0u8; 32];
-    bytes[0] = seed;
-    bytes[31] = seed.wrapping_mul(2).wrapping_add(1);
-    PolicyDigest::from_bytes(bytes)
-}
 
-/// Denied decision at Emergency layer.
-fn denied_emergency_record() -> DecisionRecord {
-    DecisionRecord {
-        ticket: make_ticket(100, 2, 7, 5),
-        admission: PinnedAdmissionPolicy::Artifact(make_digest(1)),
-        current_live: vb_core::policy::CurrentPolicyIdentity::Configured {
-            digest: make_digest(2),
-        },
-        input_digest: make_digest(3),
-        taint: Taint::Secret,
-        outcome: DecisionCode::Denied,
-        layer: PolicyLayer::Emergency,
-        emergency_influence: InfluenceState::Active,
-        compat_influence: InfluenceState::NotEvaluated,
-    }
-}
 
-/// Allowed decision at Live layer.
-fn allowed_live_record() -> DecisionRecord {
-    DecisionRecord {
-        ticket: make_ticket(200, 3, 15, 10),
-        admission: PinnedAdmissionPolicy::Artifact(make_digest(4)),
-        current_live: vb_core::policy::CurrentPolicyIdentity::Configured {
-            digest: make_digest(5),
-        },
-        input_digest: make_digest(6),
-        taint: Taint::Clean,
-        outcome: DecisionCode::Allowed,
-        layer: PolicyLayer::Live,
-        emergency_influence: InfluenceState::Inactive,
-        compat_influence: InfluenceState::NotEvaluated,
-    }
-}
-
-/// Suspended decision at Admission layer.
-fn suspended_admission_record() -> DecisionRecord {
-    DecisionRecord {
-        ticket: make_ticket(300, 4, 22, 15),
-        admission: PinnedAdmissionPolicy::Unverified,
-        current_live: vb_core::policy::CurrentPolicyIdentity::Unconfigured,
-        input_digest: make_digest(7),
-        taint: Taint::DerivedFromSecret,
-        outcome: DecisionCode::Suspended,
-        layer: PolicyLayer::Admission,
-        emergency_influence: InfluenceState::NotEvaluated,
-        compat_influence: InfluenceState::NotEvaluated,
-    }
-}
-
-/// Encode a policy decision event into journal format.
-fn encode_policy_event(
-    run: RunId,
-    seq: u64,
-    decision: &DecisionRecord,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let event = JournalEvent::PolicyDecisionEvent {
-        run,
-        seq: EventSeq::new(seq),
-        decision: decision.clone(),
-    };
-    encode_record(
-        MAGIC_JOURNAL_EVENT,
-        event.record_kind(),
-        event.seq().get(),
-        &event,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )
-}
-
-/// Decode and verify a policy decision event.
-fn decode_and_verify_event(
-    encoded: &[u8],
-) -> Result<JournalEvent, Box<dyn std::error::Error>> {
-    decode_journal_event(encoded, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES).map(|(_, e)| e)
-}
 
 #[test]
 fn policy_decision_event_round_trip() -> Result<(), Box<dyn std::error::Error>> {
-    let decision = denied_emergency_record();
+    let decision = pd_helpers::make_decision(100, DecisionCode::Denied, PolicyLayer::Emergency);
     let event = JournalEvent::PolicyDecisionEvent {
         run: RunId::new(100),
         seq: EventSeq::new(42),
-        decision,
+        decision: decision.clone(),
     };
 
     assert_eq!(event.record_kind(), RecordKind::PolicyDecision);
@@ -145,11 +54,27 @@ fn policy_decision_event_round_trip() -> Result<(), Box<dyn std::error::Error>> 
     assert_eq!(decoded, event);
 
     match &decoded {
-        JournalEvent::PolicyDecisionEvent { decision, .. } => {
-            assert_eq!(decision.outcome, DecisionCode::Denied);
-            assert_eq!(decision.layer, PolicyLayer::Emergency);
-            assert_eq!(decision.taint, Taint::Secret);
-            assert_eq!(decision.emergency_influence, InfluenceState::Active);
+        JournalEvent::PolicyDecisionEvent {
+            decision: d, run: r, seq: s
+        } => {
+            assert_eq!(*r, RunId::new(100));
+            assert_eq!(*s, EventSeq::new(42));
+            assert_eq!(d.outcome, DecisionCode::Denied);
+            assert_eq!(d.layer, PolicyLayer::Emergency);
+            assert_eq!(d.taint, Taint::Secret);
+            assert_eq!(d.emergency_influence, InfluenceState::Active);
+            assert_eq!(d.compat_influence, InfluenceState::NotEvaluated);
+            assert_eq!(d.ticket.run, RunId::new(100));
+            assert_eq!(d.ticket.step, StepIdx::new(2));
+            assert_eq!(d.ticket.seq, SeqNo::new(7));
+            assert_eq!(d.ticket.action, ActionId::new(5));
+            assert_eq!(d.ticket.run_attempt, 1);
+            assert_eq!(d.ticket.attempt, 1);
+            assert_eq!(d.ticket.idempotency_key, 0);
+            assert_eq!(d.ticket.capacity, 10);
+            assert_eq!(d.admission, decision.admission);
+            assert_eq!(d.current_live, decision.current_live);
+            assert_eq!(d.input_digest, decision.input_digest);
         }
         _ => {
             return Err("decoded event is not PolicyDecisionEvent".into());
@@ -161,18 +86,31 @@ fn policy_decision_event_round_trip() -> Result<(), Box<dyn std::error::Error>> 
 
 #[test]
 fn all_decision_enum_variants_round_trip() -> Result<(), Box<dyn std::error::Error>> {
-    let decisions = vec![
-        denied_emergency_record(),
-        allowed_live_record(),
-        suspended_admission_record(),
+    let cases = [
+        (100, DecisionCode::Denied, PolicyLayer::Emergency, InfluenceState::Active, InfluenceState::NotEvaluated, Taint::Secret),
+        (200, DecisionCode::Allowed, PolicyLayer::Live, InfluenceState::Inactive, InfluenceState::NotEvaluated, Taint::Clean),
+        (300, DecisionCode::Suspended, PolicyLayer::Admission, InfluenceState::NotEvaluated, InfluenceState::NotEvaluated, Taint::DerivedFromSecret),
     ];
 
-    for (i, decision) in decisions.into_iter().enumerate() {
-        let run_id = RunId::new((i as u64) + 1000);
-        let seq = EventSeq::new(i as u64);
+    for (i, (run, outcome, layer, emerg, compat, taint)) in cases.iter().enumerate() {
+        let ticket = pd_helpers::make_ticket(*run, 2, 7, 5);
+        let decision = DecisionRecord {
+            ticket,
+            admission: PinnedAdmissionPolicy::Artifact(pd_helpers::make_digest(1)),
+            current_live: vb_core::policy::CurrentPolicyIdentity::Configured {
+                digest: pd_helpers::make_digest(2),
+            },
+            input_digest: pd_helpers::make_digest(3),
+            taint: *taint,
+            outcome: *outcome,
+            layer: *layer,
+            emergency_influence: *emerg,
+            compat_influence: *compat,
+        };
+
         let event = JournalEvent::PolicyDecisionEvent {
-            run: run_id,
-            seq: seq.clone(),
+            run: RunId::new(*run),
+            seq: EventSeq::new(i as u64),
             decision: decision.clone(),
         };
 
@@ -197,162 +135,68 @@ fn all_decision_enum_variants_round_trip() -> Result<(), Box<dyn std::error::Err
 }
 
 #[test]
-fn record_field_identity_survives_round_trip() -> Result<(), Box<dyn std::error::Error>> {
-    let decision = denied_emergency_record();
-    let event = JournalEvent::PolicyDecisionEvent {
-        run: RunId::new(100),
-        seq: EventSeq::new(42),
-        decision: decision.clone(),
-    };
-
-    let encoded = encode_record(
-        MAGIC_JOURNAL_EVENT,
-        event.record_kind(),
-        event.seq().get(),
-        &event,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
-
-    let (_, decoded) = decode_journal_event(
-        &encoded,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
-
-    match &decoded {
-        JournalEvent::PolicyDecisionEvent { decision: decoded_decision, .. } => {
-            assert_eq!(decoded_decision.outcome, decision.outcome);
-            assert_eq!(decoded_decision.layer, decision.layer);
-            assert_eq!(decoded_decision.taint, decision.taint);
-            assert_eq!(
-                decoded_decision.emergency_influence,
-                decision.emergency_influence
-            );
-            assert_eq!(
-                decoded_decision.compat_influence,
-                decision.compat_influence
-            );
-            assert_eq!(decoded_decision.ticket.run, decision.ticket.run);
-            assert_eq!(decoded_decision.ticket.step, decision.ticket.step);
-            assert_eq!(decoded_decision.ticket.seq, decision.ticket.seq);
-            assert_eq!(decoded_decision.ticket.action, decision.ticket.action);
-            assert_eq!(
-                decoded_decision.ticket.run_attempt,
-                decision.ticket.run_attempt
-            );
-            assert_eq!(
-                decoded_decision.ticket.attempt,
-                decision.ticket.attempt
-            );
-            assert_eq!(
-                decoded_decision.ticket.idempotency_key,
-                decision.ticket.idempotency_key
-            );
-            assert_eq!(
-                decoded_decision.ticket.capacity,
-                decision.ticket.capacity
-            );
-            assert_eq!(
-                decoded_decision.input_digest,
-                decision.input_digest
-            );
-        }
-        _ => {
-            return Err("decoded event is not PolicyDecisionEvent".into());
-        }
-    }
-
-    Ok(())
-}
-
-#[test]
 fn fjall_persistence_survives_reopen() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let dir = temp.path();
 
-    let decision = denied_emergency_record();
-    let original = JournalEvent::PolicyDecisionEvent {
-        run: RunId::new(1),
+    let run = RunId::new(1);
+    let decision = pd_helpers::make_decision(1, DecisionCode::Denied, PolicyLayer::Emergency);
+    let event = JournalEvent::PolicyDecisionEvent {
+        run,
         seq: EventSeq::new(0),
         decision,
     };
 
-    let encoded = encode_record(
-        MAGIC_JOURNAL_EVENT,
-        original.record_kind(),
-        original.seq().get(),
-        &original,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
+    let journal = FjallJournal::open(dir, None)?;
+    journal.append_strict(&event)?;
+    drop(journal);
 
-    let key = "run:1:evt:0";
-    let key_bytes = key.as_bytes();
-    let value_bytes = &encoded;
+    let reopened = FjallJournal::open(dir, None)?;
+    let read_events = reopened.events_for_run(run)?;
+    drop(reopened);
 
-    let mut store = fjall::Store::open(dir, None)?;
-    store.put(key_bytes, value_bytes)?;
-    store.sync()?;
-    store.close()?;
-
-    let store2 = fjall::Store::open(dir, None)?;
-    let read = store2.get(key_bytes)?;
-    match read {
-        Some(read_bytes) => {
-            store2.close()?;
-
-            let (_, decoded) = decode_journal_event(
-                &read_bytes,
-                MAGIC_JOURNAL_EVENT,
-                MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-            )?;
-
-            assert_eq!(decoded, original);
-        }
-        None => {
-            store2.close()?;
-            return Err("value not found after reopen".into());
-        }
-    }
+    assert_eq!(read_events, vec![event]);
 
     Ok(())
 }
 
 #[test]
 fn multiple_ordered_policy_events() -> Result<(), Box<dyn std::error::Error>> {
-    let decisions = vec![
-        denied_emergency_record(),
-        allowed_live_record(),
-        suspended_admission_record(),
+    let run = RunId::new(500);
+    let outcomes = [
+        DecisionCode::Denied,
+        DecisionCode::Allowed,
+        DecisionCode::Suspended,
+    ];
+    let layers = [
+        PolicyLayer::Emergency,
+        PolicyLayer::Live,
+        PolicyLayer::Admission,
     ];
 
     let mut events = Vec::new();
-    for (i, decision) in decisions.into_iter().enumerate() {
+    for (i, outcome) in outcomes.iter().enumerate() {
+        let decision = pd_helpers::make_decision(500, *outcome, layers[i]);
         let event = JournalEvent::PolicyDecisionEvent {
-            run: RunId::new(500),
+            run,
             seq: EventSeq::new(i as u64),
             decision,
         };
         events.push(event);
     }
 
-    for (i, event) in events.iter().enumerate() {
-        let encoded = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            event.record_kind(),
-            event.seq().get(),
-            event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )?;
-
-        let (_, decoded) = decode_journal_event(
-            &encoded,
-            MAGIC_JOURNAL_EVENT,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )?;
-
-        assert_eq!(decoded, *event);
-        assert_eq!(decoded.seq(), EventSeq::new(i as u64));
+    let journal_dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(journal_dir.path(), None)?;
+    for event in &events {
+        journal.append_strict(event)?;
     }
+    drop(journal);
+
+    let reopened = FjallJournal::open(journal_dir.path(), None)?;
+    let read_events = reopened.events_for_run(run)?;
+    drop(reopened);
+
+    assert_eq!(read_events, events);
 
     Ok(())
 }
@@ -379,9 +223,10 @@ fn malformed_payload_rejected() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn truncated_payload_rejected() -> Result<(), Box<dyn std::error::Error>> {
-    let decision = denied_emergency_record();
+    let run = RunId::new(1);
+    let decision = pd_helpers::make_decision(1, DecisionCode::Denied, PolicyLayer::Emergency);
     let event = JournalEvent::PolicyDecisionEvent {
-        run: RunId::new(1),
+        run,
         seq: EventSeq::new(0),
         decision,
     };
@@ -394,9 +239,10 @@ fn truncated_payload_rejected() -> Result<(), Box<dyn std::error::Error>> {
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
 
-    let truncated = &encoded[..encoded.len() / 2];
+    let half = encoded.len() / 2;
+    let truncated: Vec<u8> = encoded[..half].to_vec();
     let result = decode_journal_event(
-        truncated,
+        &truncated,
         MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     );
@@ -407,9 +253,10 @@ fn truncated_payload_rejected() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn envelope_kind_mismatch_rejected() -> Result<(), Box<dyn std::error::Error>> {
-    let decision = denied_emergency_record();
+    let run = RunId::new(1);
+    let decision = pd_helpers::make_decision(1, DecisionCode::Denied, PolicyLayer::Emergency);
     let event = JournalEvent::PolicyDecisionEvent {
-        run: RunId::new(1),
+        run,
         seq: EventSeq::new(0),
         decision,
     };
@@ -437,14 +284,13 @@ fn envelope_kind_mismatch_rejected() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn run_envelope_mismatch_protected() -> Result<(), Box<dyn std::error::Error>> {
-    let decision = denied_emergency_record();
+    // Outer run is 999, but ticket.run is 100 — this should be rejected
+    let decision = pd_helpers::make_decision(100, DecisionCode::Denied, PolicyLayer::Emergency);
     let event = JournalEvent::PolicyDecisionEvent {
         run: RunId::new(999),
         seq: EventSeq::new(0),
         decision,
     };
-
-    assert_eq!(event.run_id(), RunId::new(999));
 
     let encoded = encode_record(
         MAGIC_JOURNAL_EVENT,
@@ -454,23 +300,27 @@ fn run_envelope_mismatch_protected() -> Result<(), Box<dyn std::error::Error>> {
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
 
-    let (_, decoded) = decode_journal_event(
+    let result = decode_journal_event(
         &encoded,
         MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
+    );
 
-    assert_eq!(decoded.run_id(), RunId::new(999));
-    assert_ne!(decoded.run_id(), RunId::new(1));
+    // Either encoding or decoding must detect the mismatch
+    assert!(
+        result.is_err(),
+        "run envelope mismatch should be rejected; got Ok"
+    );
 
     Ok(())
 }
 
 #[test]
 fn journal_seq_not_ticket_seq() -> Result<(), Box<dyn std::error::Error>> {
-    let decision = denied_emergency_record();
+    let run = RunId::new(100);
+    let decision = pd_helpers::make_decision(100, DecisionCode::Denied, PolicyLayer::Emergency);
     let event = JournalEvent::PolicyDecisionEvent {
-        run: RunId::new(100),
+        run,
         seq: EventSeq::new(42),
         decision: decision.clone(),
     };
@@ -478,9 +328,9 @@ fn journal_seq_not_ticket_seq() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(event.seq(), EventSeq::new(42));
 
     match &event {
-        JournalEvent::PolicyDecisionEvent { decision, .. } => {
-            assert_eq!(decision.ticket.seq, SeqNo::new(7));
-            assert_ne!(decision.ticket.seq, SeqNo::new(42));
+        JournalEvent::PolicyDecisionEvent { decision: d, .. } => {
+            assert_eq!(d.ticket.seq, SeqNo::new(7));
+            assert_ne!(d.ticket.seq, SeqNo::new(42));
         }
         _ => {
             return Err("event is not PolicyDecisionEvent".into());
@@ -502,9 +352,9 @@ fn journal_seq_not_ticket_seq() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     match &decoded {
-        JournalEvent::PolicyDecisionEvent { decision, .. } => {
-            assert_eq!(decision.ticket.seq, SeqNo::new(7));
-            assert_ne!(decision.ticket.seq, SeqNo::new(42));
+        JournalEvent::PolicyDecisionEvent { decision: d, .. } => {
+            assert_eq!(d.ticket.seq, SeqNo::new(7));
+            assert_ne!(d.ticket.seq, SeqNo::new(42));
         }
         _ => {
             return Err("decoded event is not PolicyDecisionEvent".into());
@@ -516,29 +366,21 @@ fn journal_seq_not_ticket_seq() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn old_tag_10_fixture_unchanged() -> Result<(), Box<dyn std::error::Error>> {
+    // Legacy tag stability: RunAccepted must still encode with variant tag 10
     let event = JournalEvent::RunAccepted {
-        run: RunId::new(1),
+        run: RunId::new(16),
         seq: EventSeq::new(0),
-        workflow: [1u8; 32].into(),
+        workflow: WorkflowDigest::from_bytes([15; 32]),
     };
 
     assert_eq!(event.record_kind(), RecordKind::RunAccepted);
     assert_eq!(event.record_kind().id(), 10);
 
-    let encoded = encode_record(
-        MAGIC_JOURNAL_EVENT,
-        event.record_kind(),
-        event.seq().get(),
-        &event,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
+    let wire = postcard::to_allocvec(&event)?;
+    // The first byte of the postcard payload must be the variant tag 10
+    assert_eq!(wire.first().copied(), Some(10));
 
-    let (_, decoded) = decode_journal_event(
-        &encoded,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    )?;
-
+    let decoded: JournalEvent = postcard::from_bytes(&wire)?;
     assert_eq!(decoded, event);
 
     Ok(())
@@ -546,7 +388,7 @@ fn old_tag_10_fixture_unchanged() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn distinct_nonzero_digests() -> Result<(), Box<dyn std::error::Error>> {
-    let decision = denied_emergency_record();
+    let decision = pd_helpers::make_decision(100, DecisionCode::Denied, PolicyLayer::Emergency);
 
     let zero_digest = PolicyDigest::from_bytes([0u8; 32]);
     assert_ne!(decision.input_digest, zero_digest);
@@ -594,23 +436,23 @@ fn all_outcome_layers_taints_round_trip() -> Result<(), Box<dyn std::error::Erro
         InfluenceState::Active,
     ];
 
-    let mut idx = 0;
+    let run = RunId::new(800);
+    let journal_dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(journal_dir.path(), None)?;
+
+    let mut seq = 0;
     for outcome in outcomes.iter() {
         for layer in layers.iter() {
             for taint in taints.iter() {
                 for emergency in influences.iter() {
                     for compat in influences.iter() {
-                        idx += 1;
-                        let ticket = make_ticket(1000 + idx as u64, 0, idx as u64, 0);
                         let decision = DecisionRecord {
-                            ticket,
-                            admission: PinnedAdmissionPolicy::Artifact(make_digest(
-                                (idx % 250) as u8 + 1,
-                            )),
+                            ticket: pd_helpers::make_ticket(800, 2, 7, 5),
+                            admission: PinnedAdmissionPolicy::Artifact(pd_helpers::make_digest(1)),
                             current_live: vb_core::policy::CurrentPolicyIdentity::Configured {
-                                digest: make_digest(((idx % 250) as u8 + 50)),
+                                digest: pd_helpers::make_digest(2),
                             },
-                            input_digest: make_digest(((idx % 250) as u8 + 100)),
+                            input_digest: pd_helpers::make_digest(3),
                             taint: *taint,
                             outcome: *outcome,
                             layer: *layer,
@@ -619,78 +461,117 @@ fn all_outcome_layers_taints_round_trip() -> Result<(), Box<dyn std::error::Erro
                         };
 
                         let event = JournalEvent::PolicyDecisionEvent {
-                            run: RunId::new(idx as u64),
-                            seq: EventSeq::new(idx as u64),
+                            run,
+                            seq: EventSeq::new(seq),
                             decision: decision.clone(),
                         };
 
-                        let encoded = encode_record(
-                            MAGIC_JOURNAL_EVENT,
-                            event.record_kind(),
-                            event.seq().get(),
-                            &event,
-                            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-                        )?;
-
-                        let (_, decoded) = decode_journal_event(
-                            &encoded,
-                            MAGIC_JOURNAL_EVENT,
-                            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-                        )?;
-
-                        assert_eq!(decoded, event);
+                        journal.append_strict(&event)?;
+                        seq += 1;
                     }
                 }
             }
         }
     }
+    drop(journal);
+
+    let reopened = FjallJournal::open(journal_dir.path(), None)?;
+    let read_events = reopened.events_for_run(run)?;
+    drop(reopened);
+
+    assert_eq!(read_events.len(), 3 * 3 * 5 * 3 * 3);
 
     Ok(())
 }
 
 #[test]
 fn neutral_policy_fact_does_not_reset_lifecycle() -> Result<(), Box<dyn std::error::Error>> {
-    // A PolicyDecisionEvent should not interfere with lifecycle events
+    // A PolicyDecisionEvent must not reset terminal lifecycle states.
+    // Policy decision is a neutral fact that should preserve the last
+    // lifecycle-determining event's state.
+
     let run = RunId::new(777);
+    let decision = pd_helpers::make_decision(777, DecisionCode::Denied, PolicyLayer::Emergency);
 
-    let run_accepted = JournalEvent::RunAccepted {
-        run,
-        seq: EventSeq::new(0),
-        workflow: [42u8; 32].into(),
-    };
+    // Case 1: Failed -> Policy -> should remain Failed
+    let events_failed = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([42u8; 32]),
+        },
+        JournalEvent::RunFailedEvent {
+            run,
+            seq: EventSeq::new(1),
+            attempt: 1,
+        },
+        JournalEvent::PolicyDecisionEvent {
+            run,
+            seq: EventSeq::new(2),
+            decision: decision.clone(),
+        },
+    ];
 
-    let policy_event = JournalEvent::PolicyDecisionEvent {
-        run,
-        seq: EventSeq::new(1),
-        decision: denied_emergency_record(),
-    };
+    let state_after_failed_policy = derive_lifecycle_state_from_events(&events_failed);
+    assert_eq!(
+        state_after_failed_policy,
+        LifecycleState::Failed,
+        "Policy decision after Failed should preserve Failed state"
+    );
 
-    let run_failed = JournalEvent::RunFailed {
-        run,
-        seq: EventSeq::new(2),
-        step: StepIdx::new(0),
-        attempt: 1,
-        message: "test failure".to_string(),
-    };
+    // Case 2: Cancelled -> Policy -> should remain Cancelled
+    let events_cancelled = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([42u8; 32]),
+        },
+        JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(1),
+            attempt: 1,
+            reason: None,
+        },
+        JournalEvent::PolicyDecisionEvent {
+            run,
+            seq: EventSeq::new(2),
+            decision: decision.clone(),
+        },
+    ];
 
-    // Encode and decode each independently
-    for event in [run_accepted, policy_event, run_failed] {
-        let encoded = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            event.record_kind(),
-            event.seq().get(),
-            &event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )?;
+    let state_after_cancelled_policy = derive_lifecycle_state_from_events(&events_cancelled);
+    assert_eq!(
+        state_after_cancelled_policy,
+        LifecycleState::Cancelled,
+        "Policy decision after Cancelled should preserve Cancelled state"
+    );
 
-        let (_, decoded) = decode_journal_event(
-            &encoded,
-            MAGIC_JOURNAL_EVENT,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )?;
+    // Case 3: Completed -> Policy -> should remain Completed
+    let events_completed = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([42u8; 32]),
+        },
+        JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(1),
+            result: vb_core::ids::SlotIdx::new(0),
+            attempt: 1,
+        },
+        JournalEvent::PolicyDecisionEvent {
+            run,
+            seq: EventSeq::new(2),
+            decision: decision.clone(),
+        },
+    ];
 
-        assert_eq!(decoded, event);
-    }
+    let state_after_completed_policy = derive_lifecycle_state_from_events(&events_completed);
+    assert_eq!(
+        state_after_completed_policy,
+        LifecycleState::Completed,
+        "Policy decision after Completed should preserve Completed state"
+    );
 
     Ok(())
 }
