@@ -172,6 +172,7 @@ fn symbolic_ticket() -> ActionTicket {
         seq: SeqNo::new(kani::any()),
         action: ActionId::new(kani::any()),
         run_attempt: kani::any(),
+        attempt: kani::any(),
         idempotency_key: kani::any(),
         capacity: kani::any(),
     }
