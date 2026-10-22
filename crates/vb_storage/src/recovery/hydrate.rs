@@ -812,7 +812,7 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
         | JournalEvent::RunCancelled { .. }
         | JournalEvent::RunKilled { .. }
         | JournalEvent::RunFinished { .. }
-| JournalEvent::PolicyDecisionEvent { .. }
+        | JournalEvent::PolicyDecisionEvent { .. }
         | JournalEvent::RunFailedEvent { .. }
         | JournalEvent::RunResumed { .. }
         | JournalEvent::RunRetried { .. }

@@ -1,0 +1,104 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage)
+warning: unused import: `PolicyDigest`
+  --> crates/vb_storage/src/events/wire_serialize_action.rs:11:29
+   |
+11 | use vb_core::{ActionTicket, PolicyDigest, RunId, SlotIdx, Taint, WorkflowDigest};
+   |                             ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: type alias `PolicyDecisionFields` is never used
+  --> crates/vb_storage/src/events/wire_deserialize_action.rs:21:6
+   |
+21 | type PolicyDecisionFields = (
+   |      ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_storage` (lib) generated 2 warnings (run `cargo fix --lib -p vb_storage` to apply 1 suggestion)
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+  --> crates/vb_storage/tests/policy_decision_wire.rs:16:39
+   |
+16 |     let policy_digest = PolicyDigest::from_bytes([1; 32]);
+   |                                       ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+  --> crates/vb_storage/tests/policy_decision_wire.rs:17:38
+   |
+17 |     let input_digest = PolicyDigest::from_bytes([2; 32]);
+   |                                      ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+  --> crates/vb_storage/tests/policy_decision_wire.rs:57:39
+   |
+57 |     let policy_digest = PolicyDigest::from_bytes([3; 32]);
+   |                                       ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+  --> crates/vb_storage/tests/policy_decision_wire.rs:58:38
+   |
+58 |     let input_digest = PolicyDigest::from_bytes([4; 32]);
+   |                                      ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+  --> crates/vb_storage/tests/policy_decision_wire.rs:97:39
+   |
+97 |     let policy_digest = PolicyDigest::from_bytes([5; 32]);
+   |                                       ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+  --> crates/vb_storage/tests/policy_decision_wire.rs:98:38
+   |
+98 |     let input_digest = PolicyDigest::from_bytes([6; 32]);
+   |                                      ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+   --> crates/vb_storage/tests/policy_decision_wire.rs:146:39
+    |
+146 |     let policy_digest = PolicyDigest::from_bytes([7; 32]);
+    |                                       ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+   --> crates/vb_storage/tests/policy_decision_wire.rs:147:38
+    |
+147 |     let input_digest = PolicyDigest::from_bytes([8; 32]);
+    |                                      ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+   --> crates/vb_storage/tests/policy_decision_wire.rs:213:42
+    |
+213 |             policy_digest: PolicyDigest::from_bytes([9; 32]),
+    |                                          ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+   --> crates/vb_storage/tests/policy_decision_wire.rs:214:41
+    |
+214 |             input_digest: PolicyDigest::from_bytes([10; 32]),
+    |                                         ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+   --> crates/vb_storage/tests/policy_decision_wire.rs:223:42
+    |
+223 |             policy_digest: PolicyDigest::from_bytes([11; 32]),
+    |                                          ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+   --> crates/vb_storage/tests/policy_decision_wire.rs:224:41
+    |
+224 |             input_digest: PolicyDigest::from_bytes([12; 32]),
+    |                                         ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+   --> crates/vb_storage/tests/policy_decision_wire.rs:282:38
+    |
+282 |         policy_digest: PolicyDigest::from_bytes([13; 32]),
+    |                                      ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+error[E0599]: no associated function or constant named `from_bytes` found for struct `PolicyDigest` in the current scope
+   --> crates/vb_storage/tests/policy_decision_wire.rs:283:37
+    |
+283 |         input_digest: PolicyDigest::from_bytes([14; 32]),
+    |                                     ^^^^^^^^^^ associated function or constant not found in `PolicyDigest`
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `vb_storage` (test "policy_decision_wire") due to 14 previous errors

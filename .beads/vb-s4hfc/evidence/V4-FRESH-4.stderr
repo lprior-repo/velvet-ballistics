@@ -1,0 +1,3 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running tests/policy_decision_wire.rs (target/debug/deps/policy_decision_wire-c3a9f0fd3b48cd9b)

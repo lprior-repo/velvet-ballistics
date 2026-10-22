@@ -202,7 +202,7 @@ impl JournalEvent {
             | Self::StepSucceeded { .. }
             | Self::RunResumed { .. }
             | Self::RunRetried { .. }
-| Self::PolicyDecisionEvent { .. }
+            | Self::PolicyDecisionEvent { .. }
             | Self::RunAnswered { .. } => None,
         }
     }
@@ -253,12 +253,8 @@ impl JournalEvent {
             | Self::StepSucceeded { .. }
             | Self::RunResumed { .. }
             | Self::RunRetried { .. }
-| Self::PolicyDecisionEvent { .. }
+            | Self::PolicyDecisionEvent { .. }
             | Self::RunAnswered { .. } => true,
         }
     }
 }
-
-#[cfg(test)]
-#[path = "events/wire_policy_decision_tests.rs"]
-mod wire_policy_decision_tests;

@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 0,
+  "seconds": 4.548,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/coordinator-frozen-strict-lint-v1"
+}

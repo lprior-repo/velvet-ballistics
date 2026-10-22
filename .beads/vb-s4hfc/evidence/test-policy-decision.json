@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "events::wire_policy_decision_tests",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 101,
+  "seconds": 7.311,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/test-policy-decision"
+}

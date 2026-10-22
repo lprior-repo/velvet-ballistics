@@ -1,0 +1,20 @@
+warning: unused import: `PolicyDigest`
+  --> crates/vb_storage/src/events/wire_serialize_action.rs:11:29
+   |
+11 | use vb_core::{ActionTicket, PolicyDigest, RunId, SlotIdx, Taint, WorkflowDigest};
+   |                             ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: type alias `PolicyDecisionFields` is never used
+  --> crates/vb_storage/src/events/wire_deserialize_action.rs:21:6
+   |
+21 | type PolicyDecisionFields = (
+   |      ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_storage` (lib) generated 2 warnings (run `cargo fix --lib -p vb_storage` to apply 1 suggestion)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.31s
+     Running tests/policy_decision_wire.rs (target/debug/deps/policy_decision_wire-c3a9f0fd3b48cd9b)

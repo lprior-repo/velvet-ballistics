@@ -1,0 +1,13 @@
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_core)
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_validate)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage)
+error: unused import: `PolicyDigest`
+ --> crates/vb_storage/src/events/wire_deserialize_action.rs:6:29
+  |
+6 | use vb_core::{ActionTicket, PolicyDigest, RunId, SlotIdx, Taint, WorkflowDigest};
+  |                             ^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: could not compile `vb_storage` (lib) due to 1 previous error

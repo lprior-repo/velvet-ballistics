@@ -1,0 +1,15 @@
+{
+  "base": "5fff342a74d5483f58a92c467c7356c69f3b7793",
+  "scope": "storage codec only; prototype parent unaccepted",
+  "files": {
+    "crates/vb_storage/src/events/event.rs": "d06d84f2b851b31ca4bd661728fe98c9e3022d722f2aacc9886e989bd2cfc551",
+    "crates/vb_storage/src/events/wire_category.rs": "00ddd41fac7f37ef420e84ff5e77f41b01211515512429682560f92072226ec5",
+    "crates/vb_storage/src/events/wire_deserialize_action.rs": "587c6f9ce949310cc9ccb36b116c24909d4c0d9d8b6cb720e25ca9190786ce17",
+    "crates/vb_storage/src/events/wire_serialize_action.rs": "c5af59450494be263d03658030e9a51053cb3eb61b688e74bebf4fdd54a7677f",
+    "crates/vb_storage/src/events/wire_tags.rs": "d5f54345b70be720211d70e688b3a538b2548d42b6f8aebcd7a99b61b20781dd",
+    "crates/vb_storage/src/events.rs": "d5596411343f86398e6fbd9cb65f32deff6b9229afce48a9c930b44532ed6c33",
+    "crates/vb_storage/src/journal/incident.rs": "3d278b622e852b25844689459b39119619fc4779d0c6b2cb4b8a2a536f84e0d5",
+    "crates/vb_storage/src/recovery/hydrate.rs": "dddcbc1d38f8b9e5166617a5f3e32bb0d150089f0585aadfacc445a0fc1ad081",
+    "crates/vb_storage/tests/policy_decision_wire.rs": "065ab3d2103114f2931cdd2757f68be0dcf0038b3b2ccd484764014bf11f5a33"
+  }
+}

@@ -1,0 +1,3719 @@
+   Compiling libc v0.2.186
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.228
+   Compiling once_cell v1.21.4
+   Compiling getrandom v0.3.4
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling num-traits v0.2.19
+   Compiling bitflags v2.11.1
+   Compiling linux-raw-sys v0.12.1
+   Compiling equivalent v1.0.2
+   Compiling rustix v1.1.4
+   Compiling crossbeam-utils v0.8.21
+   Compiling getrandom v0.4.2
+   Compiling fastrand v2.4.1
+   Compiling zerocopy v0.8.48
+   Compiling tempfile v3.27.0
+   Compiling thiserror v2.0.18
+   Compiling rand_core v0.9.5
+   Compiling spin v0.9.8
+   Compiling crossbeam-epoch v0.9.20
+   Compiling serde v1.0.228
+   Compiling byteorder-lite v0.1.0
+   Compiling xxhash-rust v0.8.15
+   Compiling smallvec v1.15.1
+   Compiling log v0.4.29
+   Compiling hashbrown v0.16.1
+   Compiling hashbrown v0.17.1
+   Compiling compare v0.0.6
+   Compiling iana-time-zone v0.1.65
+   Compiling byteorder v1.5.0
+   Compiling twox-hash v2.1.2
+   Compiling hash32 v0.2.1
+   Compiling lz4_flex v0.13.1
+   Compiling chrono v0.4.44
+   Compiling indexmap v2.14.0
+   Compiling interval-heap v0.0.5
+   Compiling bytes v1.11.1
+   Compiling quick_cache v0.6.22
+   Compiling sfa v1.0.0
+   Compiling parking_lot_core v0.9.12
+   Compiling ppv-lite86 v0.2.21
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling enum_dispatch v0.3.13
+   Compiling wait-timeout v0.2.1
+   Compiling fnv v1.0.7
+   Compiling bit-vec v0.8.0
+   Compiling quick-error v1.2.3
+   Compiling rustc-hash v2.1.2
+   Compiling self_cell v1.2.2
+   Compiling stable_deref_trait v1.2.1
+   Compiling hashbrown v0.14.5
+   Compiling varint-rs v2.2.0
+   Compiling byteview v0.10.1
+   Compiling dashmap v6.2.1
+   Compiling lsm-tree v3.1.4
+   Compiling heapless v0.7.17
+   Compiling rusty-fork v0.3.1
+   Compiling bit-set v0.8.0
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_core)
+   Compiling rand_chacha v0.9.0
+   Compiling flume v0.12.0
+   Compiling rand v0.9.4
+   Compiling rand_xorshift v0.4.0
+   Compiling cobs v0.3.0
+   Compiling arrayvec v0.7.6
+   Compiling unarray v0.1.4
+   Compiling regex-syntax v0.8.10
+   Compiling arrayref v0.3.9
+   Compiling constant_time_eq v0.4.2
+   Compiling cpufeatures v0.3.0
+   Compiling blake3 v1.8.5
+   Compiling proptest v1.11.0
+   Compiling postcard v1.1.3
+   Compiling fjall v3.1.4
+   Compiling crc32c v0.6.8
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage)
+warning: unused imports: `JournalError` and `RecordKind`
+ --> crates/vb_storage/src/events.rs:9:13
+  |
+9 | use crate::{JournalError, RecordKind};
+  |             ^^^^^^^^^^^^  ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `RunId` and `SlotValue`
+  --> crates/vb_storage/src/events.rs:10:15
+   |
+10 | use vb_core::{RunId, SlotValue};
+   |               ^^^^^  ^^^^^^^^^
+
+warning: unused import: `PolicyDigest`
+  --> crates/vb_storage/src/events/wire_serialize_action.rs:11:29
+   |
+11 | use vb_core::{ActionTicket, PolicyDigest, RunId, SlotIdx, Taint, WorkflowDigest};
+   |                             ^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/batch/append_event.rs:43:39
+   |
+43 |         let key = run_event_key(event.run_id(), event.seq())?;
+   |                                       ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/batch/append_event.rs:43:55
+    |
+ 43 |         let key = run_event_key(event.run_id(), event.seq())?;
+    |                                                       ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `is_valid` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/batch/append_event.rs:44:19
+   |
+44 |         if !event.is_valid() {
+   |                   ^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/batch/append_event.rs:57:28
+   |
+57 |                 run: event.run_id(),
+   |                            ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/batch/append_event.rs:58:28
+    |
+ 58 |                 seq: event.seq(),
+    |                            ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/batch/append_event.rs:64:28
+   |
+64 |                 run: event.run_id(),
+   |                            ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/batch/append_event.rs:65:28
+    |
+ 65 |                 seq: event.seq(),
+    |                            ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/batch/append_event.rs:73:19
+   |
+73 |             event.record_kind(),
+   |                   ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/batch/append_event.rs:74:19
+    |
+ 74 |             event.seq().get(),
+    |                   ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/batch/t_byte_accounting_part4.rs:73:26
+   |
+73 |     assert_eq!(events[0].run_id(), run);
+   |                          ^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `is_valid` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/codec/kind_parity.rs:78:19
+   |
+78 |         if !value.is_valid() {
+   |                   ^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:107:30
+    |
+107 |     let payload_kind = event.record_kind().id();
+    |                              ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:122:30
+    |
+122 |     let payload_kind = event.record_kind().id();
+    |                              ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:159:15
+    |
+159 |     if !event.is_valid() {
+    |               ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:166:35
+    |
+166 |     if envelope.sequence != event.seq().get() {
+    |                                   ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:168:24
+    |
+168 |             run: event.run_id(),
+    |                        ^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:170:32
+    |
+170 |             payload_seq: event.seq().get(),
+    |                                ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:188:14
+    |
+188 |     if event.run_id() != run {
+    |              ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:191:27
+    |
+191 |             actual: event.run_id(),
+    |                           ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:194:14
+    |
+194 |     if event.seq() != expected {
+    |              ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/mod.rs:197:27
+    |
+197 |             actual: event.seq(),
+    |                           ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/codec/tests/admission_receipt.rs:25:26
+   |
+25 |         assert_eq!(event.record_kind().id(), u16::from(tag));
+   |                          ^^^^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/codec/tests/admission_receipt.rs:28:19
+   |
+28 |             event.record_kind(),
+   |                   ^^^^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/kill_kind_admission.rs:121:15
+    |
+121 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/kill_kind_admission.rs:151:18
+    |
+151 |         original.seq().get(),
+    |                  ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/kill_kind_admission.rs:184:18
+    |
+184 |         original.seq().get(),
+    |                  ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/kill_kind_admission.rs:213:15
+    |
+213 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/kill_kind_admission.rs:241:15
+    |
+241 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:111:22
+    |
+111 |     assert_eq!(event.seq(), seq);
+    |                      ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:253:19
+    |
+253 |     assert!(event.is_valid());
+    |                   ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:263:20
+    |
+263 |     assert!(!event.is_valid(), "RunKilled with RunId(0) must be invalid");
+    |                    ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:274:16
+    |
+274 |         !event.is_valid(),
+    |                ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:286:20
+    |
+286 |     assert!(!event.is_valid(), "RunKilled with seq=MAX must be invalid");
+    |                    ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:300:22
+    |
+300 |     assert_eq!(event.record_kind(), RecordKind::RunKilled);
+    |                      ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:310:22
+    |
+310 |     assert_eq!(event.run_id(), RunId::new(77));
+    |                      ^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `attempt` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:320:22
+    |
+320 |     assert_eq!(event.attempt(), Some(7));
+    |                      ^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `attempt` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:345:16
+    |
+345 |         killed.record_kind(),
+    |                ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/codec/tests/replay_integrity.rs:346:19
+    |
+346 |         cancelled.record_kind(),
+    |                   ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1073:15
+     |
+1073 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1100:15
+     |
+1100 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1124:15
+     |
+1124 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1152:15
+     |
+1152 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1176:15
+     |
+1176 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1200:15
+     |
+1200 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1225:15
+     |
+1225 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1249:15
+     |
+1249 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1274:15
+     |
+1274 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1319:15
+     |
+1319 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1362:15
+     |
+1362 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1405:15
+     |
+1405 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1444:15
+     |
+1444 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:1466:15
+     |
+1466 |         event.seq().get(),
+     |               ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2028:15
+     |
+2028 |         event.record_kind(),
+     |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2029:15
+     |
+2029 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2054:15
+     |
+2054 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2079:15
+     |
+2079 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2103:15
+     |
+2103 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2127:15
+     |
+2127 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2151:15
+     |
+2151 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2175:15
+     |
+2175 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2202:15
+     |
+2202 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2235:15
+     |
+2235 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2261:15
+     |
+2261 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2287:15
+     |
+2287 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:2836:15
+     |
+2836 |         event.record_kind(),
+     |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3036:19
+     |
+3036 |             event.seq().get(),
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3085:19
+     |
+3085 |             event.record_kind(),
+     |                   ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3086:19
+     |
+3086 |             event.seq().get(),
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3112:19
+     |
+3112 |             event.seq().get(),
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3210:26
+     |
+3210 |         let kind = event.record_kind();
+     |                          ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3215:19
+     |
+3215 |             event.seq().get(),
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3240:19
+     |
+3240 |             event.seq().get(),
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3253:48
+     |
+3253 |         if case.envelope_kind != case.expected.record_kind() {
+     |                                                ^^^^^^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3259:27
+     |
+3259 |             case.expected.seq(),
+     |                           ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3290:48
+     |
+3290 |         if case.envelope_kind == case.expected.record_kind() {
+     |                                                ^^^^^^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3296:27
+     |
+3296 |             case.expected.seq(),
+     |                           ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3329:27
+     |
+3329 |             case.expected.seq(),
+     |                           ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3371:93
+     |
+3371 |     let bytes = encode_schema_one_payload_bytes(&payload, case.envelope_kind, case.expected.seq())?;
+     |                                                                                             ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3393:48
+     |
+3393 |         if case.envelope_kind == case.expected.record_kind() {
+     |                                                ^^^^^^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3399:89
+     |
+3399 |             encode_schema_one_payload_bytes(&payload, case.envelope_kind, case.expected.seq())?;
+     |                                                                                         ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3429:89
+     |
+3429 |             encode_schema_one_payload_bytes(&payload, case.envelope_kind, case.expected.seq())?;
+     |                                                                                         ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/codec/tests.rs:3807:15
+     |
+3807 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/events/wire_deserialize.rs:78:41
+   |
+78 |         Ok((event, remainder)) if event.record_kind().id() == envelope.record_kind => {
+   |                                         ^^^^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/events/wire_deserialize.rs:95:40
+   |
+95 |             payload_kind: stable_event.record_kind().id(),
+   |                                        ^^^^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/events/wire_legacy.rs:193:14
+    |
+193 |     if event.record_kind().id() == envelope.record_kind
+    |              ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/events/wire_legacy.rs:200:33
+    |
+200 |             payload_kind: event.record_kind().id(),
+    |                                 ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/events/wire_serialize.rs:51:41
+   |
+51 |     match journal_record_category(event.record_kind()) {
+   |                                         ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/events/wire_policy_decision_tests.rs:40:22
+   |
+40 |     assert_eq!(event.record_kind(), RecordKind::PolicyDecision);
+   |                      ^^^^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/events/wire_policy_decision_tests.rs:41:22
+   |
+41 |     assert_eq!(event.record_kind().id(), 38);
+   |                      ^^^^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/events/wire_policy_decision_tests.rs:53:24
+   |
+53 |     assert_eq!(decoded.run_id(), RunId::new(1));
+   |                        ^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/events/wire_policy_decision_tests.rs:54:24
+    |
+ 54 |     assert_eq!(decoded.seq().get(), 42);
+    |                        ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `is_valid` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/append.rs:42:19
+   |
+42 |         if !event.is_valid() {
+   |                   ^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/append.rs:51:39
+   |
+51 |         let key = run_event_key(event.run_id(), event.seq())?;
+   |                                       ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/append.rs:51:55
+    |
+ 51 |         let key = run_event_key(event.run_id(), event.seq())?;
+    |                                                       ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/append.rs:54:28
+   |
+54 |                 run: event.run_id(),
+   |                            ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/append.rs:55:28
+    |
+ 55 |                 seq: event.seq(),
+    |                            ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/internal.rs:56:39
+   |
+56 |         let key = run_event_key(event.run_id(), event.seq())?;
+   |                                       ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/internal.rs:56:55
+    |
+ 56 |         let key = run_event_key(event.run_id(), event.seq())?;
+    |                                                       ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `is_valid` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/internal.rs:57:19
+   |
+57 |         if !event.is_valid() {
+   |                   ^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/internal.rs:62:28
+   |
+62 |                 run: event.run_id(),
+   |                            ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/internal.rs:63:28
+    |
+ 63 |                 seq: event.seq(),
+    |                            ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/internal.rs:68:19
+   |
+68 |             event.record_kind(),
+   |                   ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/internal.rs:69:19
+    |
+ 69 |             event.seq().get(),
+    |                   ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/replay.rs:172:58
+    |
+172 |     if key_seq.get() == envelope_seq && key_seq == event.seq() {
+    |                                                          ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/replay.rs:178:28
+    |
+178 |         payload_seq: event.seq().get(),
+    |                            ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/replay.rs:189:23
+    |
+189 |         None => event.seq(),
+    |                       ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/journal_event_tests.rs:37:15
+   |
+37 |         event.record_kind(),
+   |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:38:15
+    |
+ 38 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/journal_event_tests.rs:79:15
+   |
+79 |         event.record_kind(),
+   |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:80:15
+    |
+ 80 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/journal_event_tests.rs:91:23
+   |
+91 |     assert_eq!(parsed.run_id(), RunId::new(100));
+   |                       ^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:92:23
+    |
+ 92 |     assert_eq!(parsed.seq(), EventSeq::new(0));
+    |                       ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/journal_event_tests.rs:93:20
+   |
+93 |     assert!(parsed.is_valid());
+   |                    ^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:108:15
+    |
+108 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:146:15
+    |
+146 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:187:15
+    |
+187 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:224:15
+    |
+224 |         event.record_kind(),
+    |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:225:15
+    |
+225 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:326:15
+    |
+326 |         event.record_kind(),
+    |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:327:15
+    |
+327 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:359:15
+    |
+359 |         event.record_kind(),
+    |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:360:15
+    |
+360 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:394:15
+    |
+394 |         event.record_kind(),
+    |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:395:15
+    |
+395 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:433:15
+    |
+433 |         event.record_kind(),
+    |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:434:15
+    |
+434 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:471:15
+    |
+471 |         event.record_kind(),
+    |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:472:15
+    |
+472 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:504:23
+    |
+504 |     let valid = event.is_valid();
+    |                       ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:520:23
+    |
+520 |     let valid = event.is_valid();
+    |                       ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:539:23
+    |
+539 |     let valid = event.is_valid();
+    |                       ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:559:23
+    |
+559 |     let valid = event.is_valid();
+    |                       ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:575:23
+    |
+575 |     let valid = event.is_valid();
+    |                       ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:592:23
+    |
+592 |     let valid = event.is_valid();
+    |                       ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:709:19
+    |
+709 |             event.record_kind(),
+    |                   ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:710:19
+    |
+710 |             event.seq().get(),
+    |                   ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `is_valid` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:718:20
+    |
+718 |             parsed.is_valid(),
+    |                    ^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `is_valid` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:740:15
+    |
+740 |         event.record_kind(),
+    |               ^^^^^^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:741:15
+    |
+741 |         event.seq().get(),
+    |               ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/journal/regression_tests_vb_xsu4g.rs:73:18
+   |
+73 |         original.record_kind(),
+   |                  ^^^^^^^^^^^ method not found in `event::JournalEvent`
+   |
+  ::: crates/vb_storage/src/events/event.rs:38:1
+   |
+38 | pub enum JournalEvent {
+   | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/regression_tests_vb_xsu4g.rs:74:18
+    |
+ 74 |         original.seq().get(),
+    |                  ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/regression_tests_vb_xsu4g.rs:163:23
+    |
+163 |         run: original.run_id(),
+    |                       ^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/regression_tests_vb_xsu4g.rs:173:34
+    |
+173 |         .events_for_run(original.run_id())
+    |                                  ^^^^^^ method not found in `event::JournalEvent`
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/tests.rs:674:26
+    |
+674 |         assert_eq!(event.run_id(), run_a, "replayed event must belong to run A");
+    |                          ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/tests.rs:683:26
+    |
+683 |         assert_eq!(event.run_id(), run_b, "replayed event must belong to run B");
+    |                          ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/journal/tests.rs:796:19
+    |
+796 |             event.seq().get(),
+    |                   ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:1378:26
+     |
+1378 |         assert_eq!(event.seq().get(), i as u64);
+     |                          ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:1379:26
+     |
+1379 |         assert_eq!(event.run_id(), run);
+     |                          ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:1726:19
+     |
+1726 |             event.seq().get(),
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:1732:26
+     |
+1732 |         assert_eq!(event.run_id(), run, "all events should belong to same run");
+     |                          ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:1856:15
+     |
+1856 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:1901:15
+     |
+1901 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:1948:15
+     |
+1948 |         event.seq().get(),
+     |               ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2200:30
+     |
+2200 |     assert_eq!(replayed_a[0].seq().get(), 0);
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2201:30
+     |
+2201 |     assert_eq!(replayed_a[1].seq().get(), 1);
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2202:30
+     |
+2202 |     assert_eq!(replayed_a[2].seq().get(), 2);
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2203:30
+     |
+2203 |     assert_eq!(replayed_b[0].seq().get(), 0);
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2204:30
+     |
+2204 |     assert_eq!(replayed_b[1].seq().get(), 1);
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2283:28
+     |
+2283 |     assert_eq!(replayed[0].seq().get(), 3);
+     |                            ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2284:28
+     |
+2284 |     assert_eq!(replayed[1].seq().get(), 4);
+     |                            ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2285:28
+     |
+2285 |     assert_eq!(replayed[2].seq().get(), 5);
+     |                            ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2584:32
+     |
+2584 |         assert_eq!(replayed[0].run_id(), run);
+     |                                ^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2613:26
+     |
+2613 |         assert_eq!(event.seq().get(), i as u64);
+     |                          ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2644:28
+     |
+2644 |     assert_eq!(replayed[0].seq().get(), 0);
+     |                            ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2645:28
+     |
+2645 |     assert_eq!(replayed[1].seq().get(), 1);
+     |                            ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/journal/tests.rs:2898:26
+     |
+2898 |         assert_eq!(event.seq().get(), i as u64);
+     |                          ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/proptests.rs:388:51
+    |
+388 |             let all_after = tail.iter().all(|e| e.seq() > snapshot.seq);
+    |                                                   ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/edge_case_tests.rs:206:31
+    |
+206 |                 assert_eq!(ev.seq(), EventSeq::new(i as u64));
+    |                               ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/edge_case_tests.rs:207:31
+    |
+207 |                 assert_eq!(ev.run_id(), run);
+    |                               ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/edge_case_tests.rs:459:27
+    |
+459 |             assert_eq!(ev.seq(), EventSeq::new(i as u64));
+    |                           ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/edge_case_tests.rs:490:34
+    |
+490 |             assert_eq!(events[0].seq(), EventSeq::new(0));
+    |                                  ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/edge_case_tests.rs:544:30
+    |
+544 |         assert_eq!(events[0].seq(), EventSeq::new(0));
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/edge_case_tests.rs:545:30
+    |
+545 |         assert_eq!(events[1].seq(), EventSeq::new(1));
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/queue/writer/stage.rs:38:35
+   |
+38 |     let key = run_event_key(event.run_id(), event.seq())?;
+   |                                   ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/writer/stage.rs:38:51
+    |
+ 38 |     let key = run_event_key(event.run_id(), event.seq())?;
+    |                                                   ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/queue/writer/stage.rs:52:24
+   |
+52 |             run: event.run_id(),
+   |                        ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/writer/stage.rs:53:24
+    |
+ 53 |             seq: event.seq(),
+    |                        ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/queue/writer/stage.rs:58:24
+   |
+58 |             run: event.run_id(),
+   |                        ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/writer/stage.rs:59:24
+    |
+ 59 |             seq: event.seq(),
+    |                        ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/queue/writer/stage.rs:64:15
+   |
+64 |         event.record_kind(),
+   |               ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/writer/stage.rs:65:15
+    |
+ 65 |         event.seq().get(),
+    |               ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:345:30
+    |
+345 |         assert_eq!(events[0].seq().get(), 0);
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:346:30
+    |
+346 |         assert_eq!(events[1].seq().get(), 1);
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:396:30
+    |
+396 |         assert_eq!(events[0].seq().get(), 0, "first event seq should be 0");
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:397:30
+    |
+397 |         assert_eq!(events[1].seq().get(), 1, "second event seq should be 1");
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:453:30
+    |
+453 |         assert_eq!(events[0].seq().get(), 0);
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:454:30
+    |
+454 |         assert_eq!(events[1].seq().get(), 1);
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:455:30
+    |
+455 |         assert_eq!(events[2].seq().get(), 2);
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:456:30
+    |
+456 |         assert_eq!(events[3].seq().get(), 3);
+    |                              ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:540:20
+    |
+540 |                 ev.seq().get(),
+    |                    ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:545:20
+    |
+545 |                 ev.seq().get()
+    |                    ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:577:20
+    |
+577 |                 ev.seq().get(),
+    |                    ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:649:27
+    |
+649 |             assert_eq!(ev.seq().get(), i as u64);
+    |                           ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:732:27
+    |
+732 |             assert_eq!(ev.seq().get(), i as u64, "FIFO order must be preserved");
+    |                           ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:793:27
+    |
+793 |             assert_eq!(ev.seq().get(), i as u64);
+    |                           ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/queue/tests.rs:945:20
+    |
+945 |                 ev.seq().get(),
+    |                    ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/recovery/hydrate.rs:27:68
+   |
+27 |     snapshot.run == run_id && tail_events.iter().all(|event| event.run_id() == run_id)
+   |                                                                    ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/hydrate.rs:36:42
+    |
+ 36 |     tail_events.iter().all(|event| event.seq() > snapshot.seq)
+    |                                          ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/recovery/hydrate.rs:87:25
+   |
+87 |         Self::new(event.run_id(), event.seq())
+   |                         ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/hydrate.rs:87:41
+    |
+ 87 |         Self::new(event.run_id(), event.seq())
+    |                                         ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/hydrate.rs:426:31
+    |
+426 |         let first_seq = first.seq();
+    |                               ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `attempt` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/recovery/replay/attempt.rs:11:38
+   |
+11 |         if let Some(attempt) = event.attempt().filter(|&a| a > max_attempt) {
+   |                                      ^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `attempt` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/recovery/replay/attempt.rs:51:75
+   |
+51 |     replay_event_has_state_effect(event) && replay_attempt_is_stale(event.attempt(), max_attempt)
+   |                                                                           ^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/core/full.rs:95:18
+    |
+ 95 |         if event.seq() <= snapshot_seq {
+    |                  ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/core/full.rs:100:27
+    |
+100 |                     event.seq().get(),
+    |                           ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `attempt` found for reference `&&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/core/full.rs:140:57
+    |
+140 |         .find(|event| is_terminal_event(event) && event.attempt().unwrap_or(1) == max_attempt)
+    |                                                         ^^^^^^^ method not found in `&&event::JournalEvent`
+
+error[E0599]: no method named `attempt` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/recovery/replay/core.rs:54:42
+   |
+54 |         if replay_attempt_is_stale(event.attempt(), max_attempt) {
+   |                                          ^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/core.rs:261:30
+    |
+261 |     let mut expected = first.seq();
+    |                              ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/core.rs:263:25
+    |
+263 |         let seq = event.seq();
+    |                         ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/recovery/replay/summary/accumulator.rs:83:18
+   |
+83 |         if event.run_id() != self.run {
+   |                  ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/accumulator.rs:89:18
+    |
+ 89 |         if event.seq() == EventSeq::MAX {
+    |                  ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/accumulator.rs:94:27
+    |
+ 94 |                     event.seq().get()
+    |                           ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/accumulator.rs:98:39
+    |
+ 98 |         self.summary.last_seq = event.seq();
+    |                                       ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+  --> crates/vb_storage/src/recovery/replay/summary/apply.rs:94:21
+   |
+94 |     let run = first.run_id();
+   |                     ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/apply.rs:97:26
+    |
+ 97 |         first_seq: first.seq(),
+    |                          ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/apply.rs:98:25
+    |
+ 98 |         last_seq: first.seq(),
+    |                         ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/apply.rs:111:18
+    |
+111 |         if event.run_id() != run {
+    |                  ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/apply.rs:117:18
+    |
+117 |         if event.seq() == EventSeq::MAX {
+    |                  ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/apply.rs:122:27
+    |
+122 |                     event.seq().get()
+    |                           ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/apply.rs:126:34
+    |
+126 |         summary.last_seq = event.seq();
+    |                                  ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/derive.rs:164:21
+    |
+164 |     let run = first.run_id();
+    |                     ^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/recovery/replay/summary/derive.rs:165:73
+    |
+165 |     let accumulator = recover_frame_seed_accumulator(events, run, first.seq())?;
+    |                                                                         ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/recovery/tests.rs:1135:31
+     |
+1135 |         .filter(|event| event.seq() <= seq)
+     |                               ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/recovery/tests.rs:1144:31
+     |
+1144 |         .filter(|event| event.seq() > seq)
+     |                               ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/recovery/tests.rs:1213:30
+     |
+1213 |     assert_eq!(timeout_event.record_kind(), RecordKind::AskTimedOut);
+     |                              ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/recovery/tests.rs:1214:30
+     |
+1214 |     assert_ne!(timeout_event.record_kind(), RecordKind::AskAnswered);
+     |                              ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `record_kind` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/recovery/tests.rs:1246:18
+     |
+1246 |         resolved.record_kind(),
+     |                  ^^^^^^^^^^^ method not found in `&event::JournalEvent`
+
+error[E0599]: no method named `seq` found for reference `&&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/recovery/tests.rs:3881:27
+     |
+3881 |             .filter(|e| e.seq() > snapshot_seq)
+     |                           ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/tests.rs:231:19
+    |
+231 |             event.seq().get(),
+    |                   ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/tests.rs:257:19
+    |
+257 |             event.seq().get(),
+    |                   ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/tests.rs:283:19
+    |
+283 |             event.seq().get(),
+    |                   ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/tests.rs:309:19
+    |
+309 |             event.seq().get(),
+    |                   ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/tests.rs:332:19
+    |
+332 |             event.seq().get(),
+    |                   ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/tests.rs:353:19
+    |
+353 |             event.seq().get(),
+    |                   ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/tests.rs:977:19
+    |
+977 |             event.seq().get(),
+    |                   ^^^
+    |
+   ::: crates/vb_storage/src/events/event.rs:38:1
+    |
+ 38 | pub enum JournalEvent {
+    | --------------------- method `seq` not found for this enum
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1013:19
+     |
+1013 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1049:19
+     |
+1049 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1090:19
+     |
+1090 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1129:19
+     |
+1129 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1156:19
+     |
+1156 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1234:19
+     |
+1234 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1262:19
+     |
+1262 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1385:19
+     |
+1385 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1422:19
+     |
+1422 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1456:19
+     |
+1456 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:1493:19
+     |
+1493 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:2122:26
+     |
+2122 |         assert_eq!(event.run_id(), RunId::new(42));
+     |                          ^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:2136:26
+     |
+2136 |         assert_eq!(event.seq(), EventSeq::new(7));
+     |                          ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:2150:26
+     |
+2150 |         assert_eq!(event.record_kind(), RecordKind::RunFinished);
+     |                          ^^^^^^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:2167:19
+     |
+2167 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:2383:30
+     |
+2383 |         assert_eq!(events[0].run_id(), run);
+     |                              ^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:2642:30
+     |
+2642 |         assert_eq!(events[0].run_id(), run);
+     |                              ^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:2683:30
+     |
+2683 |         assert_eq!(events[0].seq(), EventSeq::new(0));
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:2684:30
+     |
+2684 |         assert_eq!(events[1].seq(), EventSeq::new(1));
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:2685:30
+     |
+2685 |         assert_eq!(events[2].seq(), EventSeq::new(2));
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `run_id` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:3357:30
+     |
+3357 |             assert_eq!(event.run_id(), run);
+     |                              ^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `run_id` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:3369:30
+     |
+3369 |             assert_eq!(event.seq(), seq);
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:3381:30
+     |
+3381 |             assert_eq!(event.record_kind(), expected_kind);
+     |                              ^^^^^^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4002:30
+     |
+4002 |         assert_eq!(events[0].seq(), EventSeq::new(0));
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4003:30
+     |
+4003 |         assert_eq!(events[6].seq(), EventSeq::new(6));
+     |                              ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4147:26
+     |
+4147 |         assert_eq!(event.record_kind(), RecordKind::AskTimedOut);
+     |                          ^^^^^^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `record_kind` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4148:26
+     |
+4148 |         assert_ne!(event.record_kind(), RecordKind::AskAnswered);
+     |                          ^^^^^^^^^^^ method not found in `event::JournalEvent`
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `record_kind` not found for this enum
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4152:19
+     |
+4152 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4234:19
+     |
+4234 |             event.seq().get(),
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4264:19
+     |
+4264 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4356:19
+     |
+4356 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4410:19
+     |
+4410 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4434:19
+     |
+4434 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:4467:19
+     |
+4467 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for enum `event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/tests.rs:5004:19
+     |
+5004 |             event.seq().get(),
+     |                   ^^^
+     |
+    ::: crates/vb_storage/src/events/event.rs:38:1
+     |
+  38 | pub enum JournalEvent {
+     | --------------------- method `seq` not found for this enum
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/trimming/tests.rs:125:19
+    |
+125 |             event.seq().get() >= 6,
+    |                   ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+   --> crates/vb_storage/src/trimming/tests.rs:127:19
+    |
+127 |             event.seq().get()
+    |                   ^^^
+    |
+help: there is a method `eq` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+    |
+255 |     fn eq(&self, other: &Rhs) -> bool;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/trimming/tests.rs:1216:19
+     |
+1216 |             event.seq().get() >= 3,
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/trimming/tests.rs:1218:19
+     |
+1218 |             event.seq().get()
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/trimming/tests.rs:1412:19
+     |
+1412 |             event.seq().get(),
+     |                   ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:1107:23
+     |
+1107 |                 event.seq().get(),
+     |                       ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `seq` found for reference `&event::JournalEvent` in the current scope
+    --> crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:1617:23
+     |
+1617 |                 event.seq().get(),
+     |                       ^^^
+     |
+help: there is a method `eq` with a similar name, but with different arguments
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:255:5
+     |
+ 255 |     fn eq(&self, other: &Rhs) -> bool;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0004]: non-exhaustive patterns: `&event::JournalEvent::PolicyDecisionEvent { .. }` not covered
+    --> crates/vb_storage/src/recovery/tests.rs:1052:19
+     |
+1052 |             match event {
+     |                   ^^^^^ pattern `&event::JournalEvent::PolicyDecisionEvent { .. }` not covered
+     |
+note: `event::JournalEvent` defined here
+    --> crates/vb_storage/src/events/event.rs:38:10
+     |
+  38 | pub enum JournalEvent {
+     |          ^^^^^^^^^^^^
+...
+ 363 |     PolicyDecisionEvent {
+     |     ------------------- not covered
+     = note: the matched value is of type `&event::JournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+     |
+1110 ~                 | JournalEvent::ActionAbandoned { .. } => {},
+1111 +                 &event::JournalEvent::PolicyDecisionEvent { .. } => todo!()
+     |
+
+error[E0004]: non-exhaustive patterns: `&event::JournalEvent::PolicyDecisionEvent { .. }` not covered
+    --> crates/vb_storage/src/recovery/recovery_unit_tests.rs:1191:19
+     |
+1191 |             match event {
+     |                   ^^^^^ pattern `&event::JournalEvent::PolicyDecisionEvent { .. }` not covered
+     |
+note: `event::JournalEvent` defined here
+    --> crates/vb_storage/src/events/event.rs:38:10
+     |
+  38 | pub enum JournalEvent {
+     |          ^^^^^^^^^^^^
+...
+ 363 |     PolicyDecisionEvent {
+     |     ------------------- not covered
+     = note: the matched value is of type `&event::JournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+     |
+1217 ~                 JournalEvent::RunAnswered { .. } => Ok(false),
+1218 ~                 &event::JournalEvent::PolicyDecisionEvent { .. } => todo!(),
+     |
+
+Some errors have detailed explanations: E0004, E0599.
+For more information about an error, try `rustc --explain E0004`.
+warning: `vb_storage` (lib test) generated 3 warnings
+error: could not compile `vb_storage` (lib test) due to 279 previous errors; 3 warnings emitted

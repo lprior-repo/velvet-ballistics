@@ -1,0 +1,4 @@
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_core)
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_validate)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.31s

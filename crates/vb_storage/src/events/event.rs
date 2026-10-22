@@ -7,11 +7,11 @@
 
 use crate::EventSeq;
 use chrono::{DateTime, Utc};
+use vb_core::policy::{DecisionCode, PolicyDigest, PolicyLayer};
 use vb_core::{
     ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, StepIdx,
     Taint, WorkflowDigest,
 };
-use vb_core::policy::{DecisionCode, PolicyDigest, PolicyLayer};
 
 /// Terminal action outcome captured by durable completion envelopes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

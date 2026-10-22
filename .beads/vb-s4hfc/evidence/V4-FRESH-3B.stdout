@@ -1,0 +1,110 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/error/diagnostics.rs:46:
+     pub const SHARD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x201C);
+     pub const MIGRATE_SELF_CODE: DiagnosticCode = DiagnosticCode::new(0x201D);
+     pub const INTROSPECTION_EPOCH_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x201F);
+-pub const ACTION_DENIED_BY_POLICY_CODE: DiagnosticCode = DiagnosticCode::new(0x2020);
++    pub const ACTION_DENIED_BY_POLICY_CODE: DiagnosticCode = DiagnosticCode::new(0x2020);
+ 
+     #[must_use]
+     pub fn diagnostic_code(&self) -> DiagnosticCode {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/error/diagnostics.rs:122:
+             }
+             Self::RuntimeInputSlotKindMismatch { .. } => Self::UNSUPPORTED_OPERATION_CODE,
+             Self::ContractValidationError { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
+-Self::ActionDeniedByPolicy { .. } => Self::ACTION_DENIED_BY_POLICY_CODE,
++            Self::ActionDeniedByPolicy { .. } => Self::ACTION_DENIED_BY_POLICY_CODE,
+         }
+     }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/error/diagnostics.rs:191:
+             | Self::RecoveryCannotResume { .. }
+             | Self::Recovery { .. }
+             | Self::ContractValidationError { .. } => None,
+-| Self::ActionDeniedByPolicy { .. } => None,
++            Self::ActionDeniedByPolicy { .. } => None,
+             Self::RuntimeInputSlotKindMismatch { .. } => None,
+         }
+     }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/lib.rs:59:
+ pub mod idempotency;
+ pub mod ipc_refinement;
+ pub mod journal;
+-pub mod policy;
+ #[cfg(all(kani, feature = "kani-capability-harnesses"))]
+ pub mod kani_capability_harnesses;
+ #[cfg(all(kani, feature = "kani-engine-yaml-admission"))]
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/lib.rs:68:
+ pub mod kani_shard_command_queue;
+ #[cfg(all(kani, feature = "kani-trace-ring"))]
+ pub mod kani_trace_ring;
++pub mod policy;
+ 
+ #[cfg(kani)]
+ pub mod kani_vb_edvbj_storage_event_no_fabricate;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/policy.rs:108:
+     /// Returns a PolicyDecision that must be journaled before the action
+     /// is dispatched to the executor. If the decision is Denied or Suspended,
+     /// the caller must not dispatch the action.
+-    pub fn evaluate_action(
+-        &self,
+-        ticket: &ActionTicket,
+-    ) -> RuntimeResult<PolicyDecision> {
++    pub fn evaluate_action(&self, ticket: &ActionTicket) -> RuntimeResult<PolicyDecision> {
+         let input_digest = self.compute_input_digest(ticket);
+ 
+         // Check emergency deny overlay (monotonic).
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/policy.rs:118:
+         let emergency_active = {
+-            let state = self.emergency_deny.read().map_err(|_| {
+-                RuntimeError::UnsupportedOperation {
+-                    operation: "policy_decision_poisoned",
+-                }
+-            })?;
++            let state =
++                self.emergency_deny
++                    .read()
++                    .map_err(|_| RuntimeError::UnsupportedOperation {
++                        operation: "policy_decision_poisoned",
++                    })?;
+             matches!(*state, EmergencyDenyState::Active)
+         };
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/policy.rs:164:
+     ///
+     /// Once active, cannot be cleared. Future action dispatches will be suspended.
+     pub fn activate_emergency_deny(&self) -> RuntimeResult<()> {
+-        let mut state = self.emergency_deny.write().map_err(|_| {
+-            RuntimeError::UnsupportedOperation {
+-                operation: "policy_decision_poisoned",
+-            }
+-        })?;
++        let mut state =
++            self.emergency_deny
++                .write()
++                .map_err(|_| RuntimeError::UnsupportedOperation {
++                    operation: "policy_decision_poisoned",
++                })?;
+         *state = EmergencyDenyState::Active;
+         Ok(())
+     }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/policy.rs:194:
+ }
+ 
+ #[cfg(test)]
+-    fn make_ticket(run: u64, step: u16, seq: u64, action: u16) -> ActionTicket {
++fn make_ticket(run: u64, step: u16, seq: u64, action: u16) -> ActionTicket {
+     use super::*;
+     use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_runtime/src/policy.rs:328:
+         );
+ 
+         assert_eq!(recorder.admission_policy_digest().0, admission_digest);
+-        assert_eq!(recorder.current_live_effect_policy(), LiveEffectPolicy::DenyAll);
++        assert_eq!(
++            recorder.current_live_effect_policy(),
++            LiveEffectPolicy::DenyAll
++        );
+     }
+ }
++

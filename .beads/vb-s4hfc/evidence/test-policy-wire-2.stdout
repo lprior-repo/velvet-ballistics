@@ -1,0 +1,25 @@
+
+running 7 tests
+test test_decision_codes_all ... ok
+test test_legacy_tag_stability ... ok
+test test_malformed_payload ... ok
+test test_flag_permutations ... ok
+test test_policy_layers_all ... ok
+test test_fjall_journal_round_trip ... FAILED
+test test_multiple_events_distinct_digests ... FAILED
+
+failures:
+
+---- test_fjall_journal_round_trip stdout ----
+Error: SequenceGap { expected: EventSeq(0), actual: EventSeq(1) }
+
+---- test_multiple_events_distinct_digests stdout ----
+Error: SequenceGap { expected: EventSeq(0), actual: EventSeq(1) }
+
+
+failures:
+    test_fjall_journal_round_trip
+    test_multiple_events_distinct_digests
+
+test result: FAILED. 5 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

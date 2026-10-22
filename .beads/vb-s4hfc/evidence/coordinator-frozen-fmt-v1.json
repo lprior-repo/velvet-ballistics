@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec",
+  "argv": [
+    "cargo",
+    "fmt",
+    "-p",
+    "vb_storage",
+    "--check"
+  ],
+  "exit_code": 0,
+  "seconds": 0.263,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/coordinator-frozen-fmt-v1"
+}

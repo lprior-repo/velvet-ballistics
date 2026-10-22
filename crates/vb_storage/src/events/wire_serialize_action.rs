@@ -8,7 +8,7 @@ use super::super::tags::{
 use super::{serialize_record_kind_variant, serialize_routing_error};
 use crate::EventSeq;
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use vb_core::{ActionTicket, PolicyDigest, RunId, SlotIdx, Taint, WorkflowDigest};
+use vb_core::{ActionTicket, RunId, SlotIdx, Taint, WorkflowDigest};
 
 struct CompletedEnvelopePayload<'event> {
     head: CompletedEnvelopeHead<'event>,

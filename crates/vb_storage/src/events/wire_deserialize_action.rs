@@ -3,7 +3,7 @@
 use super::super::super::{DurableActionOutcome, JournalEvent};
 use crate::{EventSeq, RecordKind};
 use serde::de::{self, VariantAccess};
-use vb_core::{ActionTicket, PolicyDigest, RunId, SlotIdx, Taint, WorkflowDigest};
+use vb_core::{ActionTicket, RunId, SlotIdx, Taint, WorkflowDigest};
 
 type ActionCompletedEnvelopeFields = (
     RunId,
@@ -16,17 +16,6 @@ type ActionCompletedEnvelopeFields = (
     Taint,
     [u8; 32],
     WorkflowDigest,
-);
-
-type PolicyDecisionFields = (
-    RunId,
-    EventSeq,
-    vb_core::policy::PolicyLayer,
-    vb_core::policy::DecisionCode,
-    PolicyDigest,
-    PolicyDigest,
-    bool,
-    bool,
 );
 
 pub(super) fn deserialize<'de, A>(kind: RecordKind, variant: A) -> Result<JournalEvent, A::Error>

@@ -1,0 +1,124 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/events/event.rs:7:
+ 
+ use crate::EventSeq;
+ use chrono::{DateTime, Utc};
++use vb_core::policy::{DecisionCode, PolicyDigest, PolicyLayer};
+ use vb_core::{
+     ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, StepIdx,
+     Taint, WorkflowDigest,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/events/event.rs:13:
+ };
+-use vb_core::policy::{DecisionCode, PolicyDigest, PolicyLayer};
+ 
+ /// Terminal action outcome captured by durable completion envelopes.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/events/wire_category.rs:75:
+             | RecordKind::AskTimedOut
+     )
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/events/wire_deserialize_action.rs:149:
+         action_abi_digest: digest,
+     }
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/events/wire_serialize_action.rs:290:
+         _ => serialize_routing_error::<S>(),
+     }
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/events/wire_tags.rs:60:
+     "AskTimedOutEvent",
+     "PolicyDecisionEvent",
+ ];
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/events.rs:202:
+             | Self::StepSucceeded { .. }
+             | Self::RunResumed { .. }
+             | Self::RunRetried { .. }
+-| Self::PolicyDecisionEvent { .. }
++            | Self::PolicyDecisionEvent { .. }
+             | Self::RunAnswered { .. } => None,
+         }
+     }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/events.rs:253:
+             | Self::StepSucceeded { .. }
+             | Self::RunResumed { .. }
+             | Self::RunRetried { .. }
+-| Self::PolicyDecisionEvent { .. }
++            | Self::PolicyDecisionEvent { .. }
+             | Self::RunAnswered { .. } => true,
+         }
+     }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/journal/incident.rs:208:
+         JournalEvent::RunFinished { .. } => LifecycleState::Completed,
+         JournalEvent::RunFailedEvent { .. } => LifecycleState::Failed,
+         JournalEvent::RunResumed { .. } => LifecycleState::Active,
+-JournalEvent::PolicyDecisionEvent { .. } => LifecycleState::Active,
++        JournalEvent::PolicyDecisionEvent { .. } => LifecycleState::Active,
+         JournalEvent::RunRetried { .. } => LifecycleState::Active,
+         JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
+         JournalEvent::AskTimedOutEvent { .. } => LifecycleState::Active,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/src/recovery/hydrate.rs:812:
+         | JournalEvent::RunCancelled { .. }
+         | JournalEvent::RunKilled { .. }
+         | JournalEvent::RunFinished { .. }
+-| JournalEvent::PolicyDecisionEvent { .. }
++        | JournalEvent::PolicyDecisionEvent { .. }
+         | JournalEvent::RunFailedEvent { .. }
+         | JournalEvent::RunResumed { .. }
+         | JournalEvent::RunRetried { .. }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/tests/policy_decision_wire.rs:44:
+         let decoded: JournalEvent = postcard::from_bytes(&wire)?;
+ 
+         match decoded {
+-            JournalEvent::PolicyDecisionEvent { layer: decoded_layer, .. } => {
++            JournalEvent::PolicyDecisionEvent {
++                layer: decoded_layer,
++                ..
++            } => {
+                 assert_eq!(decoded_layer, layer);
+             }
+             _ => panic!("wrong event variant after round-trip"),
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/tests/policy_decision_wire.rs:84:
+         let decoded: JournalEvent = postcard::from_bytes(&wire)?;
+ 
+         match decoded {
+-            JournalEvent::PolicyDecisionEvent { code: decoded_code, .. } => {
++            JournalEvent::PolicyDecisionEvent {
++                code: decoded_code, ..
++            } => {
+                 assert_eq!(decoded_code, code);
+             }
+             _ => panic!("wrong event variant after round-trip"),
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/tests/policy_decision_wire.rs:102:
+     let policy_digest = make_policy_digest(5);
+     let input_digest = make_policy_digest(6);
+ 
+-    let flag_combos = [
+-        (false, false),
+-        (true, false),
+-        (false, true),
+-        (true, true),
+-    ];
++    let flag_combos = [(false, false), (true, false), (false, true), (true, true)];
+ 
+     for (emergency, compat) in flag_combos {
+         let event = JournalEvent::PolicyDecisionEvent {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/tests/policy_decision_wire.rs:194:
+             assert_eq!(*decoded_emergency, true);
+             assert_eq!(*decoded_compat, false);
+         }
+-        other => panic!("wrong event variant from journal: {:?}", other.record_kind()),
++        other => panic!(
++            "wrong event variant from journal: {:?}",
++            other.record_kind()
++        ),
+     }
+ 
+     drop(reopened);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-codec/crates/vb_storage/tests/policy_decision_wire.rs:319:
+ 
+     Ok(())
+ }
++
