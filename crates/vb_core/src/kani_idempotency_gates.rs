@@ -171,7 +171,7 @@ fn symbolic_ticket() -> ActionTicket {
         step: StepIdx::new(kani::any()),
         seq: SeqNo::new(kani::any()),
         action: ActionId::new(kani::any()),
-        attempt: kani::any(),
+        run_attempt: kani::any(),
         idempotency_key: kani::any(),
         capacity: kani::any(),
     }
@@ -643,7 +643,8 @@ fn check_ticket_key_case(run_raw: u64, seq_raw: u64, action_raw: u16, use_canoni
     let run = RunId::new(run_raw);
     let seq = SeqNo::new(seq_raw);
     let action = ActionId::new(action_raw);
-    let canonical_key = compute_action_idempotency_key(run, seq, action);
+    let run_attempt = kani::any::<u16>();
+    let canonical_key = compute_action_idempotency_key(run, run_attempt, seq, action);
     let idempotency_key = if use_canonical_key {
         canonical_key
     } else {
@@ -654,6 +655,7 @@ fn check_ticket_key_case(run_raw: u64, seq_raw: u64, action_raw: u16, use_canoni
         step: StepIdx::new(kani::any::<u16>()),
         seq,
         action,
+        run_attempt,
         attempt: kani::any(),
         idempotency_key,
         capacity: kani::any(),

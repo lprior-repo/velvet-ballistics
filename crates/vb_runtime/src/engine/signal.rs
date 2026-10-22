@@ -219,6 +219,7 @@ mod tests {
                     step: StepIdx::ZERO,
                     seq: SeqNo::ZERO,
                     action: ActionId::new(0),
+                    run_attempt: 1,
                     attempt: 1,
                     idempotency_key: 0,
                     capacity: 1,

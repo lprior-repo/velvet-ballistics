@@ -1,0 +1,11 @@
+warning: function `assert_tick_cannot_resume` is never used
+   --> crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:564:4
+    |
+564 | fn assert_tick_cannot_resume(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `velvet-ballistics-workspace-tests` (test "runtime_fjall_pending_action_recovery") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/runtime_fjall_pending_action_recovery.rs (target/debug/deps/runtime_fjall_pending_action_recovery-f7c8b7538c028e10)

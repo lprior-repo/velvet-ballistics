@@ -2984,6 +2984,7 @@ mod tests {
             step: StepIdx::new(0),
             seq: SeqNo::new(seq.get()),
             action: ActionId::new(1),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: 7,
             capacity: 3,

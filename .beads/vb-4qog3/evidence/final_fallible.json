@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-4qog3-local5090-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "vb_4qog3_independent_review"
+  ],
+  "exit_code": 0,
+  "seconds": 0.173,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-4qog3/evidence/final_fallible",
+  "coordinator_message": "Coordinator BEFORE finalhandoff: Your new independent review test still contains2 .unwrap() at run_attempt99 constructors (lines489/572). Replace with fallible ok_or/? preserving99 exact fixture, no panic/newlintallows. Run finalfmt on ownnewfile then full independent suite through read-only runner and save actual0 metadata. Reports should distinguish development piped commands from final true-exit gates, no blanket no-pipeline claim. Existing rejection assertions journal lengths do not prove journalbytes/frame/counters/pending unchanged; state exact limits. CLI strictbarrier is inspected wiring + runtime cold reopen, not a real powercut/CLI durability injection test. Preserve those limits. BCD only approval, not A or finalmain. No production edits. Root VCS."
+}

@@ -89,6 +89,7 @@ mod tests {
             step,
             seq: SeqNo::ZERO,
             action,
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,

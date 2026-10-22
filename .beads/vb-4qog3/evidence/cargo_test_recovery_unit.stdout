@@ -1,0 +1,42 @@
+
+running 37 tests
+test recovery::tests::durable_frame_recovery_boundary_rejects_unbounded_seed_entries ... ok
+test error::tests_equality::cross_variant_recovery_vs_contract ... ok
+test recovery::tests::seed_shape_rejects_slot_index_out_of_bounds ... ok
+test recovery::tests::pending_actions_fail_closed_with_typed_cannot_resume_state ... ok
+test recovery::tests::recovery_boundary_factory_selects_frame_for_frame_seed_variant ... ok
+test recovery::tests::hydration_gap_full_run_state_not_yet_implemented ... ok
+test recovery::tests::durable_frame_recovery_boundary_rejects_frame_only_slot_value_and_taint ... ok
+test recovery::tests::durable_frame_recovery_boundary_rejects_unsupported_action_payloads ... ok
+test recovery::tests::seed_shape_rejects_duplicate_pending_action_step_keys ... ok
+test recovery::tests::seed_shape_rejects_pending_action_step_out_of_bounds ... ok
+test error::tests_equality::recovery_reflexivity ... ok
+test recovery::tests::seed_shape_rejects_duplicate_slot_keys ... ok
+test recovery::tests::durable_frame_recovery_boundary_rejects_frame_only_minimal_state ... ok
+test recovery::tests::recovery_boundary_factory_preserves_storage_cannot_resume_witness_on_invalid_shape ... ok
+test error::tests_equality::cross_variant_slot_mismatch_vs_recovery ... ok
+test error::tests_equality::recovery_different_strings_unequal ... ok
+test recovery::tests::recovery_boundary_factory_selects_summary_for_summary_variant ... ok
+test recovery::tests::seed_shape_rejects_duplicate_step_keys ... ok
+test recovery::tests::seed_shape_rejects_first_step_out_of_bounds ... ok
+test recovery::tests::seed_shape_rejects_slots_len_over_slot_count ... ok
+test recovery::tests::seed_shape_rejects_zero_step_count ... ok
+test recovery::tests::summary_recovery_boundary_rejects_full_frame_hydration ... ok
+test recovery::tests::seed_shape_rejects_pending_actions_len_over_step_count ... ok
+test recovery::tests::durable_frame_recovery_boundary_rejects_inconsistent_seed ... ok
+test error::tests_equality::recovery_identical_strings_equal ... ok
+test recovery::tests::terminal_gate_failed_run_with_checkpoint_is_terminal ... ok
+test recovery::tests::terminal_gate_finished_run_is_terminal ... ok
+test recovery::tests::terminal_gate_suspended_run_without_terminal_is_not_terminal ... ok
+test runtime::tests::tests::runtime_recovery_without_ask_schedule_is_not_resumable ... ok
+test recovery::tests::recovery_boundary_factory_frame_seed_round_trips_summary ... ok
+test recovery::tests::seed_shape_rejects_program_counter_out_of_bounds ... ok
+test recovery::tests::summary_recovery_boundary_exposes_summary ... ok
+test recovery::tests::terminal_gate_explicitly_retried_active_run_is_not_terminal ... ok
+test primitives::collect::tests::collect_pagination_extra_round_trips_for_recovery ... ok
+test shard::types::introspection_poison_regression_tests::admission_continues_after_poison_recovery ... ok
+test shard::types::introspection_poison_regression_tests::register_rejects_run_already_exists_after_poison_recovery ... ok
+test journal::tests::queued_runtime_admission_flush_does_not_fabricate_recovery_indexes ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 1901 filtered out; finished in 0.58s
+

@@ -1,0 +1,46 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4qog3-local5090-review/crates/vb_runtime)
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:278:9
+    |
+278 |     let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:433:9
+    |
+433 |     let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:468:9
+    |
+468 |     let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:494:9
+    |
+494 |     let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:562:9
+    |
+562 |     let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: `vb_runtime` (test "vb_4qog3_independent_review") generated 5 warnings (run `cargo fix --test "vb_4qog3_independent_review" -p vb_runtime` to apply 5 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.86s
+     Running tests/vb_4qog3_independent_review.rs (target/debug/deps/vb_4qog3_independent_review-613aaa4d88372f88)

@@ -11,6 +11,7 @@ fn ticket(run: u64, step: u16, seq: u64, action: u16, attempt: u16) -> ActionTic
         step: StepIdx::new(step),
         seq: SeqNo::new(seq),
         action: ActionId::new(action),
+        run_attempt: 1,
         attempt,
         idempotency_key: 0,
         capacity: attempt,

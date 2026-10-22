@@ -1,0 +1,3 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.44s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-029e3942d93f9ae1)

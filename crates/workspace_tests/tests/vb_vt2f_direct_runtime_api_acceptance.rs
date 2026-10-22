@@ -257,6 +257,7 @@ fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
         step: StepIdx::ZERO,
         seq: SeqNo::ZERO,
         action,
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,

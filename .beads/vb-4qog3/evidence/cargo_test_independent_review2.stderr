@@ -1,0 +1,184 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-4qog3-local5090-review/crates/vb_runtime)
+error[E0432]: unresolved import `vb_core::compile`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:17:14
+   |
+17 | use vb_core::compile::{compile_workflow, CompiledWorkflow, WorkflowParts};
+   |              ^^^^^^^ could not find `compile` in `vb_core`
+
+error[E0432]: unresolved import `vb_core::run`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:19:14
+   |
+19 | use vb_core::run::{RunId, RuntimePolicy};
+   |              ^^^ could not find `run` in `vb_core`
+
+error[E0432]: unresolved import `vb_core::slot`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:20:14
+   |
+20 | use vb_core::slot::SlotIdx;
+   |              ^^^^ could not find `slot` in `vb_core`
+
+error[E0432]: unresolved imports `vb_runtime::ActionContract`, `vb_runtime::ActionOutputReady`, `vb_runtime::Runtime`, `vb_runtime::ShardConfig`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:22:18
+   |
+22 | use vb_runtime::{ActionContract, ActionOutputReady, Runtime, ShardConfig};
+   |                  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^^^^^^^^ no `ShardConfig` in the root
+   |                  |               |                  |
+   |                  |               |                  no `Runtime` in the root
+   |                  |               no `ActionOutputReady` in the root
+   |                  no `ActionContract` in the root
+   |
+   = help: consider importing this struct instead:
+           vb_core::ActionContract
+   = help: consider importing this struct instead:
+           vb_core::ActionOutputReady
+   = help: consider importing one of these items instead:
+           vb_core::CodeCategory::Runtime
+           vb_runtime::runtime::RegisteredExecutionError::Runtime
+           vb_runtime::runtime::Runtime
+   = help: consider importing this struct instead:
+           vb_runtime::shard::ShardConfig
+help: a similar name exists in the module
+   |
+22 - use vb_runtime::{ActionContract, ActionOutputReady, Runtime, ShardConfig};
+22 + use vb_runtime::{ActionContract, ActionOutputReady, runtime, ShardConfig};
+   |
+
+error[E0433]: cannot find `compile` in `vb_core`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:43:22
+   |
+43 |             vb_core::compile::Step {
+   |                      ^^^^^^^ could not find `compile` in `vb_core`
+
+error[E0433]: cannot find `slot` in `vb_core`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:59:43
+   |
+59 |         .input_schema(vec![("n", vb_core::slot::SlotType::I64)])
+   |                                           ^^^^ could not find `slot` in `vb_core`
+
+error[E0433]: cannot find `slot` in `vb_core`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:60:46
+   |
+60 |         .output_schema(vec![("out", vb_core::slot::SlotType::I64)])
+   |                                              ^^^^ could not find `slot` in `vb_core`
+
+error[E0433]: cannot find `ActionStatus` in `action`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:81:34
+   |
+81 |         status: vb_core::action::ActionStatus::Completed,
+   |                                  ^^^^^^^^^^^^ could not find `ActionStatus` in `action`
+
+error[E0603]: enum `SlotValue` is private
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:18:21
+    |
+ 18 | use vb_core::frame::SlotValue;
+    |                     ^^^^^^^^^ private enum
+    |
+note: the enum `SlotValue` is defined here
+   --> crates/vb_core/src/frame.rs:42:20
+    |
+ 42 | use crate::value::{SlotValue, Taint};
+    |                    ^^^^^^^^^
+    |
+   ::: crates/vb_core/src/value.rs:124:1
+    |
+124 | #[non_exhaustive]
+    | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+help: import `SlotValue` directly
+    |
+ 18 - use vb_core::frame::SlotValue;
+ 18 + use vb_core::value::SlotValue;
+    |
+
+error[E0560]: struct `ActionFailure` has no field named `message`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:68:9
+   |
+68 |         message: "Non-retryable failure".to_string(),
+   |         ^^^^^^^ `ActionFailure` does not have this field
+   |
+   = note: available fields are: `code`, `retry_policy`, `taint`, `detail`, `encoded_len`
+
+error[E0560]: struct `ActionFailure` has no field named `retryable`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:69:9
+   |
+69 |         retryable: false,
+   |         ^^^^^^^^^ `ActionFailure` does not have this field
+   |
+   = note: available fields are: `code`, `retry_policy`, `taint`, `detail`, `encoded_len`
+
+error[E0560]: struct `ActionFailure` has no field named `backoff`
+  --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:70:9
+   |
+70 |         backoff: Duration::from_secs(1),
+   |         ^^^^^^^ `ActionFailure` does not have this field
+   |
+   = note: available fields are: `code`, `retry_policy`, `taint`, `detail`, `encoded_len`
+
+error[E0599]: no method named `cloned` found for enum `Option<RunCheckpointV1>` in the current scope
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:101:10
+    |
+ 90 | /     events
+ 91 | |         .iter()
+ 92 | |         .rev()
+ 93 | |         .find_map(|e| {
+...   |
+100 | |         })
+101 | |         .cloned()
+    | |         -^^^^^^ `Option<RunCheckpointV1>` is not an iterator
+    | |_________|
+    |
+    |
+help: call `.into_iter()` first
+    |
+101 |         .into_iter().cloned()
+    |          ++++++++++++
+
+error[E0599]: no method named `submit_artifact_with_contracts` found for struct `Arc<FjallJournal>` in the current scope
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:120:10
+    |
+119 |       if journal
+    |  ________-
+120 | |         .submit_artifact_with_contracts(
+    | |         -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `Arc<FjallJournal>`
+    | |_________|
+    |
+
+error[E0599]: no method named `submit_artifact_with_contracts` found for struct `Arc<FjallJournal>` in the current scope
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:295:10
+    |
+294 | /     journal
+295 | |         .submit_artifact_with_contracts(&workflow, RuntimePolicy::Strict, &contracts)
+    | |         -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `Arc<FjallJournal>`
+    | |_________|
+    |
+
+error[E0277]: cannot subtract `vb_storage::EventSeq` from `u64`
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:425:44
+    |
+425 |     let wrong_prior = checkpoint.prior_seq - EventSeq::new(1);
+    |                                            ^ no implementation for `u64 - vb_storage::EventSeq`
+    |
+    = help: the trait `std::ops::Sub<vb_storage::EventSeq>` is not implemented for `u64`
+    = help: the following other types implement trait `std::ops::Sub<Rhs>`:
+              `&u64` implements `std::ops::Sub<u64>`
+              `&u64` implements `std::ops::Sub`
+              `u64` implements `std::ops::Sub<&u64>`
+              `u64` implements `std::ops::Sub<zerocopy::U64<O>>`
+              `u64` implements `std::ops::Sub`
+
+error[E0277]: cannot subtract `vb_storage::EventSeq` from `u64`
+   --> crates/vb_runtime/tests/vb_4qog3_independent_review.rs:536:44
+    |
+536 |         c.prior_seq = checkpoint.prior_seq - EventSeq::new(1);
+    |                                            ^ no implementation for `u64 - vb_storage::EventSeq`
+    |
+    = help: the trait `std::ops::Sub<vb_storage::EventSeq>` is not implemented for `u64`
+    = help: the following other types implement trait `std::ops::Sub<Rhs>`:
+              `&u64` implements `std::ops::Sub<u64>`
+              `&u64` implements `std::ops::Sub`
+              `u64` implements `std::ops::Sub<&u64>`
+              `u64` implements `std::ops::Sub<zerocopy::U64<O>>`
+              `u64` implements `std::ops::Sub`
+
+Some errors have detailed explanations: E0277, E0432, E0433, E0560, E0599, E0603.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `vb_runtime` (test "vb_4qog3_independent_review") due to 17 previous errors

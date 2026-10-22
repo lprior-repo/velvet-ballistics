@@ -1,0 +1,3 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running tests/vb_4qog3_independent_review.rs (target/debug/deps/vb_4qog3_independent_review-613aaa4d88372f88)

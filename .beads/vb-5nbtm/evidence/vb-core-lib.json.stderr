@@ -1,0 +1,46 @@
+    Blocking waiting for file lock on build directory
+   Compiling serde_core v1.0.228
+   Compiling cc v1.2.62
+   Compiling serde_json v1.0.150
+   Compiling alloca v0.4.0
+   Compiling byteorder v1.5.0
+   Compiling once_cell v1.21.4
+   Compiling clap_builder v4.6.0
+   Compiling tempfile v3.27.0
+   Compiling hash32 v0.2.1
+   Compiling regex-automata v0.4.14
+   Compiling ppv-lite86 v0.2.21
+   Compiling blake3 v1.8.5
+   Compiling rusty-fork v0.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling regex v1.12.3
+   Compiling clap v4.6.1
+   Compiling rand v0.9.4
+   Compiling arrayvec v0.7.6
+   Compiling proptest v1.11.0
+   Compiling serde v1.0.228
+   Compiling ciborium v0.2.2
+   Compiling tinytemplate v1.2.1
+   Compiling heapless v0.7.17
+   Compiling criterion v0.8.2
+   Compiling postcard v1.1.3
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_core)
+warning: unused variable: `ticket_a`
+   --> crates/vb_core/src/action/tests.rs:392:9
+    |
+392 |     let ticket_a = ActionTicket {
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ticket_a`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ticket_b`
+   --> crates/vb_core/src/action/tests.rs:402:9
+    |
+402 |     let ticket_b = ActionTicket {
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ticket_b`
+
+warning: `vb_core` (lib test) generated 2 warnings (run `cargo fix --lib -p vb_core --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 24.44s
+     Running unittests src/lib.rs (target/debug/deps/vb_core-fd6cb31c499fe177)

@@ -110,6 +110,7 @@ fn execute_nop_returns_continue_or_budget_exhausted() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     match result {
         Ok(RuntimeSignal::Continue) => {}
@@ -155,6 +156,7 @@ fn execute_jump_falls_through_to_step_once() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     match result {
         Ok(RuntimeSignal::Continue) => {}
@@ -203,6 +205,7 @@ fn execute_do_without_contract_rejects_without_ticket() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     match result {
         Err(RuntimeEngineError::Core(vb_core::EngineError::CapabilityDenied {
@@ -280,6 +283,7 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -340,6 +344,7 @@ fn execute_do_with_unknown_contract_returns_error() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     match result {
         Err(RuntimeEngineError::Action(vb_core::action::ActionError::UnknownAction { action })) => {
@@ -403,6 +408,7 @@ fn execute_do_taint_violation_for_deterministic_pure_with_secret_input() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     match result {
         Err(RuntimeEngineError::TaintViolation { step }) => {
@@ -453,6 +459,7 @@ fn execute_retry_check_never_policy_uninitialized_routes_to_body() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
     // NEVER policy: max_attempts=1, attempt=0 < 1, routes to body=step0
@@ -498,6 +505,7 @@ fn execute_retry_check_never_policy_attempt_one_routes_to_exhausted() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
     // NEVER policy: max_attempts=1, attempt=1 >= 1, routes to exhausted=step1
@@ -546,6 +554,7 @@ fn execute_retry_check_default_policy_routes_to_body() {
         RetryPolicy::DEFAULT,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
     // DEFAULT policy: max_attempts=3, attempt=1 < 3, routes to body=step0
@@ -590,6 +599,7 @@ fn execute_retry_check_default_policy_attempt_three_routes_to_exhausted() {
         RetryPolicy::DEFAULT,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
     // DEFAULT policy: max_attempts=3, attempt=3 >= 3, routes to exhausted=step1
@@ -638,6 +648,7 @@ fn execute_error_handler_routes_to_body_step() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
     let pc = run.pc();
@@ -677,6 +688,7 @@ fn execute_error_handler_with_error_slot_routes_to_body_step() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
     let pc = run.pc();
@@ -723,6 +735,7 @@ fn execute_for_each_start_errors_on_uninitialized_input() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -779,6 +792,7 @@ fn execute_for_each_join_errors_on_missing_next_step() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -828,6 +842,7 @@ fn execute_for_each_next_errors_on_uninitialized_iterator() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -871,7 +886,7 @@ fn execute_together_start_empty_branches_no_panic() {
     // assertion. It verifies that execute_node_full itself does not panic;
     // the inner RuntimeEngineResult is intentionally not asserted here.
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        execute_node_full(
+        let _ = execute_node_full(
             &wf,
             &mut run,
             &mut store,
@@ -880,7 +895,8 @@ fn execute_together_start_empty_branches_no_panic() {
             RetryPolicy::NEVER,
             &mut cs,
             &CapabilitySet::empty(),
-        )
+            1,
+        );
     }));
     if let Err(payload) = result {
         std::panic::resume_unwind(payload);
@@ -940,6 +956,7 @@ fn execute_together_join_errors_on_missing_next_step() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -991,6 +1008,7 @@ fn execute_collect_start_errors_on_uninitialized_source() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1040,6 +1058,7 @@ fn execute_collect_page_errors_on_uninitialized_collector() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1089,6 +1108,7 @@ fn execute_collect_next_errors_on_uninitialized_collector() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1134,6 +1154,7 @@ fn execute_collect_finish_errors_on_uninitialized_collector() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1187,6 +1208,7 @@ fn execute_reduce_start_errors_on_uninitialized_input() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1236,6 +1258,7 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1285,6 +1308,7 @@ fn execute_reduce_finish_errors_on_missing_next_step() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1329,7 +1353,7 @@ fn execute_repeat_start_single_attempt_no_panic() {
     // assertion. It verifies that execute_node_full itself does not panic;
     // the inner RuntimeEngineResult is intentionally not asserted here.
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        execute_node_full(
+        let _ = execute_node_full(
             &wf,
             &mut run,
             &mut store,
@@ -1338,7 +1362,8 @@ fn execute_repeat_start_single_attempt_no_panic() {
             RetryPolicy::NEVER,
             &mut cs,
             &CapabilitySet::empty(),
-        )
+            1,
+        );
     }));
     if let Err(payload) = result {
         std::panic::resume_unwind(payload);
@@ -1381,6 +1406,7 @@ fn execute_repeat_attempt_errors_on_uninitialized_attempt_slot() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1426,6 +1452,7 @@ fn execute_repeat_finish_errors_on_uninitialized_result_slot() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1471,6 +1498,7 @@ fn execute_wait_until_errors_on_uninitialized_deadline() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1517,6 +1545,7 @@ fn execute_wait_event_errors_on_uninitialized_event() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1563,6 +1592,7 @@ fn execute_ask_errors_on_uninitialized_prompt() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1608,6 +1638,7 @@ fn execute_ask_resume_errors_on_uninitialized_answer() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     assert!(
         matches!(
@@ -1655,6 +1686,7 @@ fn execute_repeat_check_routes_forward_on_done() {
         RetryPolicy::NEVER,
         &mut cs,
         &CapabilitySet::empty(),
+        1,
     );
     // RepeatCheck reads attempt_slot, but since it is uninitialized we expect an error
     assert!(
