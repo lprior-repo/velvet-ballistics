@@ -1,0 +1,19 @@
+{
+  "base": "42fd94f21c3615c8fbe322806a76beea671b6d16",
+  "files": [
+    {
+      "path": ".cargo/config.toml",
+      "sha256": "2d937027c571950cfce62cfa7c6bd975358b7e521aa5e752f09da8e3c17d06f6"
+    },
+    {
+      "path": "contracts/invariants.yaml",
+      "sha256": "c93f453db26ca05e67122fbdabd0b58e2a3a9ea40151143f1dc962631d2c2c9e"
+    },
+    {
+      "path": "xtask/src/evidence/persistence.rs",
+      "sha256": "9f43c4046e023e27bd1c16421a9ce94578b5b2224a5572e33f44d93d7ee9b4b3"
+    }
+  ],
+  "current_compile_hunk_unchanged": true,
+  "notes": "Draft scoped local5090 author, no root execution/review acceptance yet. Existing no-unsafe policy unchanged; no waiver for tests."
+}
