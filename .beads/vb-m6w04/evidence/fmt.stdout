@@ -1,0 +1,387 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_ipc/src/server/connection_io.rs:1:
+ #![forbid(unsafe_code)]
+ //! Single-flight framing and bounded partial I/O.
+ use super::dispatch::dispatch_command_with_resolver;
+-use super::helpers::{validate_magic_early, MagicValidationState};
++use super::helpers::{MagicValidationState, validate_magic_early};
+ use super::{
+     ClientConnection, ClosePolicy, IpcResponse, IpcServer, IpcServerError, WorkflowResolver,
+ };
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_ipc/src/server/connection_io.rs:8:
+-use crate::{IpcError, IpcFrameHeader, MaxPayloadBytes, IPC_HEADER_LEN};
++use crate::{IPC_HEADER_LEN, IpcError, IpcFrameHeader, MaxPayloadBytes};
+ use mio::{Interest, Token};
+ use std::io::{Read, Write};
+ use vb_runtime::runtime::Runtime;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/src/runtime/shutdown_failure_tests.rs:5:
+ use crate::{RuntimeError, RuntimeResult};
+ use std::num::NonZeroUsize;
+ use std::sync::{
+-    atomic::{AtomicBool, Ordering},
+     Arc,
++    atomic::{AtomicBool, Ordering},
+ };
+ use vb_core::RunId;
+ use vb_storage::{EventSeq, JournalEvent, JournalWriterFlushReport};
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/src/runtime/shutdown_tests.rs:105:
+     );
+     let events = journal.events_for_run(run)?;
+     assert!(!events.is_empty());
+-    assert!(events
+-        .iter()
+-        .any(|event| matches!(event, JournalEvent::WaitScheduledEvent { .. })));
++    assert!(
++        events
++            .iter()
++            .any(|event| matches!(event, JournalEvent::WaitScheduledEvent { .. }))
++    );
+     assert!(!events.iter().any(|event| matches!(
+         event,
+         JournalEvent::RunCancelled { .. } | JournalEvent::RunFinished { .. }
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/src/runtime/shutdown_tests.rs:141:
+     for run in [RunId::new(710), RunId::new(711)] {
+         runtime.submit_direct(run, finished_workflow()?)?;
+     }
+-    assert!(runtime
+-        .submit_direct(RunId::new(712), finished_workflow()?)
+-        .is_err());
++    assert!(
++        runtime
++            .submit_direct(RunId::new(712), finished_workflow()?)
++            .is_err()
++    );
+     assert_eq!(
+         runtime.pending_boundary_snapshot(64).command_queue_depth(),
+         2
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/src/runtime/shutdown_tests.rs:153:
+     assert_eq!(report.remaining().command_queue_depth(), 0);
+     assert_eq!(report.remaining().active_run_count(), 0);
+     for run in [RunId::new(710), RunId::new(711)] {
+-        assert!(journal
+-            .events_for_run(run)?
+-            .iter()
+-            .any(|event| matches!(event, JournalEvent::RunFinished { .. })));
++        assert!(
++            journal
++                .events_for_run(run)?
++                .iter()
++                .any(|event| matches!(event, JournalEvent::RunFinished { .. }))
++        );
+     }
+     assert_eq!(queue.pending_profile_counts()?.journaled, 0);
+     Ok(())
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/src/shard/types.rs:274:
+                 error: format!("retry checkpoint frame restore failed: {error:?}"),
+             }
+         })?;
+-        let collect_states =
+-            CollectStates::from_checkpoint_v1(checkpoint.collect_states.clone()).map_err(
+-                |error| crate::RuntimeError::Recovery {
+-                    error: format!("retry checkpoint collect restore failed: {error:?}"),
+-                },
+-            )?;
++        let collect_states = CollectStates::from_checkpoint_v1(checkpoint.collect_states.clone())
++            .map_err(|error| crate::RuntimeError::Recovery {
++            error: format!("retry checkpoint collect restore failed: {error:?}"),
++        })?;
+         Ok(Self {
+             run: checkpoint.run_id,
+             frame,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:11:
+ use std::sync::Arc;
+ 
+ use vb_core::action::{
+-    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady,
+-    ActionTicket, Idempotency, RetryPolicy, RetrySafety, SideEffect,
++    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
++    Idempotency, RetryPolicy, RetrySafety, SideEffect,
+ };
+ use vb_core::capability::CapabilitySet;
+ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:80:
+         input_slots: Box::from([]),
+     };
+     parts.digest = canonical_workflow_digest(&parts)?;
+-    CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("retry-action workflow invalid: {e:?}"))
++    CompiledWorkflow::try_from_parts(parts)
++        .map_err(|e| format!("retry-action workflow invalid: {e:?}"))
+ }
+ 
+ fn action_contract() -> Result<ActionContract, String> {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:191:
+                 contracts.clone(),
+             )
+             .map_err(|e| format!("submit failed: {e}"))?;
+-        runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++        runtime
++            .tick_all()
++            .map_err(|e| format!("tick failed: {e}"))?;
+ 
+         let ticket = pending_ticket(&runtime, run)?;
+         runtime
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:198:
+             .fail_action(ticket, non_retryable_failure())
+             .map_err(|e| format!("fail_action failed: {e}"))?;
+-        runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++        runtime
++            .tick_all()
++            .map_err(|e| format!("tick failed: {e}"))?;
+ 
+         let counters = runtime.counters_snapshot();
+         assert_eq!(counters.runs_failed, 1, "first attempt must fail");
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:225:
+     runtime
+         .recover_retry(run, checkpoint, next_seq)
+         .map_err(|e| format!("recover_retry failed: {e}"))?;
+-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++    runtime
++        .tick_all()
++        .map_err(|e| format!("tick failed: {e}"))?;
+ 
+     // The failed step is re-executed: a new action ticket is scheduled for the
+     // new run attempt.
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:235:
+         StepIdx::ZERO,
+         "retry must re-execute the failed step"
+     );
+-    assert_eq!(retry_ticket.attempt, 1, "re-executed action is its first action attempt");
++    assert_eq!(
++        retry_ticket.attempt, 1,
++        "re-executed action is its first action attempt"
++    );
+ 
+     runtime
+         .complete_action_with_output(retry_ticket, action_output(SlotValue::I64(42))?)
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:242:
+         .map_err(|e| format!("complete_action failed: {e}"))?;
+-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++    runtime
++        .tick_all()
++        .map_err(|e| format!("tick failed: {e}"))?;
+ 
+     let counters = runtime.counters_snapshot();
+     assert_eq!(counters.runs_completed, 1, "retry must complete the run");
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:260:
+     // The retry re-executes the failed action exactly once after the checkpoint.
+     let scheduled = events
+         .iter()
+-        .filter(|e| matches!(e, JournalEvent::ActionScheduledTicket { ticket, .. }
+-            if ticket.run == run && ticket.step == StepIdx::ZERO))
++        .filter(|e| {
++            matches!(e, JournalEvent::ActionScheduledTicket { ticket, .. }
++            if ticket.run == run && ticket.step == StepIdx::ZERO)
++        })
+         .count();
+-    assert_eq!(scheduled, 2, "first attempt and retry attempt each schedule the action once");
++    assert_eq!(
++        scheduled, 2,
++        "first attempt and retry attempt each schedule the action once"
++    );
+ 
+     let finished = events
+         .iter()
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:304:
+             contracts.clone(),
+         )
+         .map_err(|e| format!("submit failed: {e}"))?;
+-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++    runtime
++        .tick_all()
++        .map_err(|e| format!("tick failed: {e}"))?;
+     let ticket = pending_ticket(&runtime, run)?;
+     runtime
+         .fail_action(ticket, non_retryable_failure())
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:311:
+         .map_err(|e| format!("fail_action failed: {e}"))?;
+-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++    runtime
++        .tick_all()
++        .map_err(|e| format!("tick failed: {e}"))?;
+ 
+     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
+     let checkpoint = latest_retry_checkpoint(&events)?;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:316:
+ 
+     assert_eq!(checkpoint.run_id, run);
+-    assert_eq!(checkpoint.run_attempt.get(), 2, "checkpoint authorizes next attempt");
++    assert_eq!(
++        checkpoint.run_attempt.get(),
++        2,
++        "checkpoint authorizes next attempt"
++    );
+     assert_eq!(checkpoint.retry_step, StepIdx::ZERO);
+     assert_eq!(
+         checkpoint.artifact_digest, artifact.digest,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/vb_runtime/tests/durable_retry_execution.rs:340:
+ 
+     // The successful prefix (Do is step 0, nothing succeeded before it) and the
+     // value store are captured verbatim; admission and contracts are retained.
+-    assert!(checkpoint.admission.is_some(), "admission authority retained");
++    assert!(
++        checkpoint.admission.is_some(),
++        "admission authority retained"
++    );
+     assert_eq!(checkpoint.action_contracts.as_ref(), contracts.as_ref());
+ 
+     // prior_seq points at the audited RunFailed event immediately before the checkpoint.
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/velvet_ballistics/src/run_ops.rs:264:
+         return Err("retry checkpoint payload digest mismatch".to_string());
+     }
+ 
+-    let checkpoint: vb_runtime::run_checkpoint::RunCheckpointV1 =
+-        postcard::from_bytes(payload)
+-            .map_err(|e| format!("retry checkpoint decode failed: {e}"))?;
++    let checkpoint: vb_runtime::run_checkpoint::RunCheckpointV1 = postcard::from_bytes(payload)
++        .map_err(|e| format!("retry checkpoint decode failed: {e}"))?;
+ 
+     if checkpoint.run_id != run {
+         return Err(format!(
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/velvet_ballistics/tests/durable_retry_cli.rs:177:
+             contracts,
+         )
+         .map_err(|e| format!("submit failed: {e}"))?;
+-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++    runtime
++        .tick_all()
++        .map_err(|e| format!("tick failed: {e}"))?;
+     let ticket = pending_ticket(&runtime, run)?;
+     runtime
+         .fail_action(ticket, non_retryable_failure())
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/velvet_ballistics/tests/durable_retry_cli.rs:184:
+         .map_err(|e| format!("fail_action failed: {e}"))?;
+-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++    runtime
++        .tick_all()
++        .map_err(|e| format!("tick failed: {e}"))?;
+ 
+     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
+     assert!(
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/velvet_ballistics/tests/durable_retry_cli.rs:197:
+ fn produce_completed_run(path: &std::path::Path, run: RunId) -> Result<usize, String> {
+     let journal = Arc::new(FjallJournal::open(path, None).map_err(|e| e.to_string())?);
+     let workflow = completed_workflow()?;
+-    vb_storage::submit_artifact_with_contracts(
+-        &journal,
+-        &workflow,
+-        RuntimePolicy::Strict,
+-        &[],
+-    )
+-    .map_err(|e| format!("artifact submit failed: {e}"))?;
++    vb_storage::submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &[])
++        .map_err(|e| format!("artifact submit failed: {e}"))?;
+ 
+     let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
+     let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/velvet_ballistics/tests/durable_retry_cli.rs:210:
+     runtime
+         .submit_direct(run, workflow.clone())
+         .map_err(|e| format!("submit failed: {e}"))?;
+-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
++    runtime
++        .tick_all()
++        .map_err(|e| format!("tick failed: {e}"))?;
+ 
+     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
+     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/velvet_ballistics/tests/durable_retry_cli.rs:226:
+ 
+ fn events_count(path: &std::path::Path, run: RunId) -> Result<usize, String> {
+     let journal = FjallJournal::open(path, None).map_err(|e| e.to_string())?;
+-    journal.events_for_run(run).map(|e| e.len()).map_err(|e| e.to_string())
++    journal
++        .events_for_run(run)
++        .map(|e| e.len())
++        .map_err(|e| e.to_string())
+ }
+ 
+ #[test]
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/velvet_ballistics/tests/vb_md3w_retained_input_recovery.rs:46:
+         "submit failed: {}",
+         String::from_utf8_lossy(&result.stderr)
+     );
+-    let receipt: serde_json::Value =
+-        serde_saphyr::from_str(&String::from_utf8(result.stdout)?)?;
++    let receipt: serde_json::Value = serde_saphyr::from_str(&String::from_utf8(result.stdout)?)?;
+     assert_eq!(
+         receipt.get("status").and_then(serde_json::Value::as_str),
+         Some("submitted")
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:728:
+     // boundary: a Do-without-contract artifact is rejected at admission with the
+     // typed error, before any run/ticket mutation. The legacy "submit-ok then
+     // tick action_abi_digests_missing" semantics were superseded by gate 12.
+-    let result = submit_artifact_with_contracts(
+-        &journal,
+-        &workflow,
+-        RuntimePolicy::Strict,
+-        &contracts,
+-    );
++    let result =
++        submit_artifact_with_contracts(&journal, &workflow, RuntimePolicy::Strict, &contracts);
+     match result {
+         Err(vb_storage::JournalError::ArtifactValidation(
+-            vb_validate::ValidationError::ActionContractMissing { action_id, node_index },
++            vb_validate::ValidationError::ActionContractMissing {
++                action_id,
++                node_index,
++            },
+         )) => {
+             assert_eq!(action_id, 0);
+             assert_eq!(node_index, 0);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/workspace_tests/tests/runtime_version_barrier_tests.rs:6:
+ use vb_core::artifact::ArtifactEvidence;
+ use vb_core::{CapabilitySet, RunId, RuntimePolicy, WorkflowDigest};
+ use vb_runtime::admission::{
+-    admit_artifact_run, AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
+-    MissingAcceptedArtifactStore,
++    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, MissingAcceptedArtifactStore,
++    admit_artifact_run,
+ };
+-use vb_storage::admission::{prepare_compiled_artifact, AcceptedArtifact};
++use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+ 
+ type TestResult = Result<(), Box<dyn std::error::Error>>;
+ const SOURCE: &[u8] = b"version: velvet-ballistics/v1\nname: version_barrier\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:571:
+ }
+ 
+ #[test]
+-fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run(
+-) -> Result<(), String> {
++fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run()
++-> Result<(), String> {
+     // Given: SCN-VT2F-005 / ERR-003 one unrelated suspended action run and an absent-run ticket.
+     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+     let unrelated = RunId::new(2505);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:672:
+ }
+ 
+ #[test]
+-fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run(
+-) -> Result<(), String> {
++fn test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run()
++-> Result<(), String> {
+     // Given: SCN-VT2F-006 / ERR-004 a terminal stale run id and one unrelated suspended run.
+     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+     let stale = RunId::new(1606);
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:745:
+ }
+ 
+ #[test]
+-fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted(
+-) -> Result<(), String> {
++fn test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted()
++-> Result<(), String> {
+     // Given: SCN-VT2F-006 / ERR-004 a terminal stale run whose bounded trace ring cannot retain
+     // terminal evidence, plus one unrelated suspended run that must remain unchanged.
+     let mut runtime =
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-m6w04-local3090-review/crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:822:
+ }
+ 
+ #[test]
+-fn test_direct_api_answer_ask_rejects_answer_slot_mismatch_without_mutating_unrelated_run(
+-) -> Result<(), String> {
++fn test_direct_api_answer_ask_rejects_answer_slot_mismatch_without_mutating_unrelated_run()
++-> Result<(), String> {
+     // Given: SCN-VT2F-006 / ERR-004 an absent wrong-run ask ticket and one unrelated suspended run.
+     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+     let unrelated = RunId::new(2607);
