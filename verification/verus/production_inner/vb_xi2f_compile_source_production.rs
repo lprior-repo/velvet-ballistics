@@ -720,6 +720,7 @@ pub fn compile_source_production(
     _max_primitives_per_step: u32,
     _lowering_ok: u8,
     name: &str,
+    semantic_source_identity: WorkflowDigest,
     digest: WorkflowDigest,
 ) -> Result<CompiledWorkflow, SpecCompileError> {
     // Step 1 + 2: validate_canonical_compile_scope(source)? and
@@ -769,14 +770,14 @@ pub fn compile_source_production(
 
     // Step 6: WorkflowParts construction (part_01.rs:59-73).
     // entry=0, symbols_count=0, ResourceContract::DEFAULT. The
-    // projection carries the supplied digest as the source identity
-    // (production computes `semantic_source_identity = canonical_digest`
-    // and `digest = blake3(encoded_parts)`; the projection has a single
-    // digest parameter and no opaque crypto step).
+    // projection carries two distinct digests: semantic_source_identity
+    // (production's canonical source digest) and digest (production's
+    // blake3 hash of encoded compiled IR). No opaque crypto step is
+    // modeled; the caller supplies both.
     let parts = WorkflowParts {
         name: Box::from(name),
         digest,
-        semantic_source_identity: Some(digest),
+        semantic_source_identity: Some(semantic_source_identity),
         slot_count: builder
             .slot_count()
             .map_err(|_| SpecCompileError::StepIndexOutOfRange { value: 0 })?,

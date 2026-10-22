@@ -810,7 +810,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // Production calls validate_input_slots(&parts)? (workflow/mod.rs:40,
     // body at workflow/mod.rs:876-906). The projection checks: all
     // input slot indices in-bounds, no duplicates, strictly increasing.
-    let prev_slot: Option<u32> = None;
+    let mut prev_slot: Option<u32> = None;
     for current in &parts.input_slots {
         if *current >= parts.slot_count {
             return SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds);
@@ -823,6 +823,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
                 return SpecValidationResult::Err(SpecWorkflowError::NonCanonicalInputSlotOrder);
             }
         }
+        prev_slot = Some(*current);
     }
     SpecValidationResult::Ok
 }

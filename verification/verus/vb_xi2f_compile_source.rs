@@ -282,13 +282,15 @@ pub fn compile_source_pure(input: SpecCompileInput) -> SpecCompileOutcome {
         steps.push((StepPrimitiveTag::Set, i));
     }
     let name = "verus_spec_input";
-    let digest = production::WorkflowDigest([0u8; 32]);
+    let semantic_source_identity = production::WorkflowDigest([1u8; 32]);
+    let digest = production::WorkflowDigest([2u8; 32]);
     match production::compile_source_production(
         input.steps_len as usize,
         &steps,
         input.max_primitives_per_step,
         input.lowering_ok,
         name,
+        semantic_source_identity,
         digest,
     ) {
         Ok(workflow) => {

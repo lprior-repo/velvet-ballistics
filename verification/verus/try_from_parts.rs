@@ -597,9 +597,15 @@ pub open spec fn check_input_slots(parts: &SpecWorkflowParts, index: int, prev: 
         let current = parts.input_slots[index];
         if (current >= parts.slot_count) {
             Some(SpecWorkflowError::InputSlotOutOfBounds)
-        } else if (prev == Some(current as int)) {
+        } else if (match prev {
+            Some(p) => p == current,
+            None => false,
+        }) {
             Some(SpecWorkflowError::DuplicateInputSlot)
-        } else if (prev != None::<int> && current < prev.unwrap()) {
+        } else if (match prev {
+            Some(p) => current < p,
+            None => false,
+        }) {
             Some(SpecWorkflowError::NonCanonicalInputSlotOrder)
         } else {
             check_input_slots(parts, index + 1, Some(current as int))
