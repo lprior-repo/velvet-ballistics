@@ -195,6 +195,10 @@ harness = false
 name = "pagination_cost"
 harness = false
 
+[[test]]
+name = "vb_79ffw_ticket_authority_probe"
+path = "tests/vb_79ffw_ticket_authority_probe.rs"
+
 [[bench]]
 name = "action_queuing"
 harness = false

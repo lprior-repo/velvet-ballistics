@@ -1,0 +1,6 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2b170-local5090-probe/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.49s
+     Running tests/vb_79ffw_ticket_authority_probe.rs (target/debug/deps/vb_79ffw_ticket_authority_probe-9c09fb3f19e36ba8)
+Events before stale rejection: 14
+Events after stale rejection: 14
+Events after completion: 18

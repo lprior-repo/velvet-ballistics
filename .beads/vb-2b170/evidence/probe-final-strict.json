@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-2b170-local5090-probe",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_79ffw_ticket_authority_probe",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "seconds": 0.591,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2b170/evidence/probe-final-strict",
+  "coordinator_message": "Important exact API: postcard::to_allocvec (NO underscore), not postcard::to_alloc_vec. Actual first root gate completed101 on tuple shape/capacity and nonexistent RunFinished.result_payload; JSON/raw preserved. Keep original actual Ticket directly asCopy and correct real RunFinished fields. Independent journal+pending equality after stale completion immediately AND after failuretick. Avoid source editsduring gate; freeze then true actual tests. Root will directly run gate if OMP autospawns/ends early.\n"
+}
