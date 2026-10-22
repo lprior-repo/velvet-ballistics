@@ -1,0 +1,47 @@
+{
+  "version": 3,
+  "status": "final_practical_dispatch_contract",
+  "files": {
+    "existing": [
+      {
+        "path": "crates/vb_runtime/src/runtime/registered_executor.rs",
+        "sha256": "42cebc4f6cbd4b2d5e1d70a0d730fb30064cbd13924630f95da235e6ef7acdfb",
+        "role": "Runtime::execute_registered_action and reconcile entry points; registered_context validation; grant artifact digest check"
+      },
+      {
+        "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+        "sha256": "e2b041e1ce48911842ac8c7388ec76fed3cd9ff57aa1b74f892c87840dd0de5d",
+        "role": "RegisteredActionContext definition (4 fields: artifact, output, value, mode); registered_action_context builder; preflight_action_completion"
+      },
+      {
+        "path": "crates/vb_storage/src/executor/register.rs",
+        "sha256": "78e07824071d7b7f47da988eb7bdbe6b6755afe795c5c9cf3afde2857b83cd8b",
+        "role": "FjallRegister::execute, reconcile, value, effect_count; bounded 4096 receipts, 512 bytes; target idempotency"
+      },
+      {
+        "path": "crates/vb_core/src/policy.rs",
+        "sha256": "35a38e9a64854755b76b72b12e7b30cd2d4184479dfc7dba19a91551c4633fdc",
+        "role": "DecisionRecord (9 fields: ticket, admission, current_live, input_digest, taint, outcome, layer, emergency_influence, compat_influence); PinnedAdmissionPolicy enum; PolicyDigest; CurrentPolicyIdentity"
+      },
+      {
+        "path": "crates/vb_runtime/src/policy.rs",
+        "sha256": "2c11370fc1d07ae5edfd6c8e608126eaea6d6dc91f14d7e3b4c0c3bf8a159e50",
+        "role": "LivePolicy evaluator; evaluate() produces DecisionRecord; emergency_deny_active monotonic bool; configure/activate API"
+      }
+    ],
+    "proposed": [
+      {
+        "target": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+        "change": "RegisteredActionContext gains per-run retained admission pin field carrying pin from state.admission"
+      },
+      {
+        "target": "crates/vb_runtime/src/runtime/registered_executor.rs",
+        "change": "execute_registered_action calls LivePolicy::evaluate before adapter.execute; journals DecisionRecord with EventSeq; default-deny until configured; checks durable emergency marker"
+      },
+      {
+        "target": "child vb-ct31x",
+        "change": "Durable store-scoped emergency deny marker; separate from runtime-instance policy config"
+      }
+    ]
+  }
+}
