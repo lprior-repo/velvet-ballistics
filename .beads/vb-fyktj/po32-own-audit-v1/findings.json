@@ -1,0 +1,75 @@
+{
+  "audit_id": "po32-own-audit-v1",
+  "bead": "vb-fyktj",
+  "obligation": "PO-VERUS-032",
+  "base_commit": "48ef265727dbbe1426c8349ce09bdcbde0e8ae11",
+  "old_commit": "dd50c691bb67624f7d39bb19ca057223aed43abe",
+  "status": "REJECTED",
+  "grade_claimed": "PASS",
+  "grade_reviewed": "REJECTED",
+  "findings": [
+    {
+      "severity": "CRITICAL",
+      "file": "verification/verus/signals_from_env.rs",
+      "line": 132,
+      "problem": "assume_specification on step_budget_from_env asserts desired result without body proof",
+      "detail": "The assume_specification bridge on production::step_budget_from_env asserts that the returned budget has remaining <= MAX_STEP_BUDGET or returns BudgetParse error. This is an assumption, not a proof. The mirror function has a fake loop{} body that is never executed, so the contract is not proven against the production from_env implementation.",
+      "evidence": "old-04-signals_from_env.rs.txt lines 125-141: assume_specification[ production::step_budget_from_env ] asserts ensures clause without proof; old-03-signals_production.rs.txt line 188: fn step_budget_from_env has loop{} body"
+    },
+    {
+      "severity": "CRITICAL",
+      "file": "verification/verus/signals_from_env.rs",
+      "line": 143,
+      "problem": "exec proof does not call from_env or step_budget_from_env",
+      "detail": "The exec_proof_from_env_composes_with_new function only calls StepBudget::new(initial), not step_budget_from_env(). The proof demonstrates that new clamps to MAX_STEP_BUDGET, which was already proven in PO-VERUS-006. It does not prove anything about the from_env entry point or its interaction with environment variable parsing.",
+      "evidence": "old-04-signals_from_env.rs.txt lines 143-157: exec proof calls production::StepBudget::new(initial) but never production::step_budget_from_env()"
+    },
+    {
+      "severity": "HIGH",
+      "file": "verification/verus/production_inner/signals_production.rs",
+      "line": 187,
+      "problem": "step_budget_from_env is a standalone function with fake body, disconnected from production",
+      "detail": "The patch changes from_env from a method with #[verifier::external_body] (real body, opaque to Verus) to a standalone function with #[verifier::external] and a loop{} body. This makes the function completely disconnected from the production implementation. The drift check only verifies signature matching, not behavioral equivalence.",
+      "evidence": "own.patch: changed from impl StepBudget { pub fn from_env() } with real body to standalone fn step_budget_from_env() { loop {} }"
+    },
+    {
+      "severity": "HIGH",
+      "file": "contracts/proof_obligations.yaml",
+      "line": 1145,
+      "problem": "Registry entry claims proof where only assumption exists",
+      "detail": "The PO-VERUS-032 registry entry describes the obligation as 'StepBudget::from_env boundedness' with the claim that 'env-var-parsed budget is clamped to MAX_STEP_BUDGET, BudgetParse errors on invalid input, StepCounterOverflow never returned from from_env'. The actual proof artifact only proves StepBudget::new is bounded and assumes the from_env result.",
+      "evidence": "old-01-proof_obligations.yaml.txt lines 1145-1149: registry entry claims from_env boundedness proof"
+    },
+    {
+      "severity": "MEDIUM",
+      "file": "verification/verus/signals_from_env.rs",
+      "line": 138,
+      "problem": "Err wildcard true is weaker than production behavior",
+      "detail": "The assume_specification has 'Err(_) => true' which accepts any error variant. Production from_env only returns BudgetParse errors (not StepCounterOverflow or other variants). The wildcard is technically correct but weaker than the actual production contract, and it makes the proof less informative.",
+      "evidence": "current-01-001.txt lines 81-94: production from_env only returns Ok or BudgetParse errors; old-04-signals_from_env.rs.txt line 138: Err(_) => true"
+    }
+  ],
+  "code_parity": [
+    {
+      "claim": "StepBudget::from_env boundedness (remaining <= MAX_STEP_BUDGET)",
+      "production_target": "crates/vb_core/src/engine/signals.rs:81-94 (StepBudget::from_env)",
+      "proof_target": "verification/verus/signals_from_env.rs:132-141 (assume_specification on step_budget_from_env)",
+      "proof_artifact": "verification/verus/signals_from_env.rs:143-157 (exec_proof_from_env_composes_with_new)",
+      "gap": "Proof calls StepBudget::new, not from_env. Contract is assumed, not proven. Mirror function has fake loop{} body."
+    }
+  ],
+  "trust_boundary": {
+    "proved": [
+      "StepBudget::new clamps input to MAX_STEP_BUDGET (PO-VERUS-006)"
+    ],
+    "trusted": [
+      "step_budget_from_env returns bounded budget or BudgetParse error (assumed, not proven)"
+    ],
+    "new_trust_markers": [
+      "assume_specification[production::step_budget_from_env]",
+      "assume_specification[production::StepBudget::new]",
+      "#[verifier::external] on step_budget_from_env"
+    ]
+  },
+  "verdict": "The proof is rejected. It does not prove StepBudget::from_env boundedness. It proves StepBudget::new is bounded (already proven in PO-VERUS-006) and assumes the from_env result via assume_specification. The mirror function step_budget_from_env has a fake loop{} body that is never called in the proof, making the proof disconnected from production code. This is proof laundering: using assume_specification to substitute for proving production core logic."
+}

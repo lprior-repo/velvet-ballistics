@@ -1,0 +1,100 @@
+verification/verus/production_inner/signals_production.rs:1: // SPDX-License-Identifier: MIT
+verification/verus/production_inner/signals_production.rs:2: //
+verification/verus/production_inner/signals_production.rs:3: // ============================================================================
+verification/verus/production_inner/signals_production.rs:4: // IN-TREE PRODUCTION-SOURCE MIRROR for signals.rs
+verification/verus/production_inner/signals_production.rs:5: // ============================================================================
+verification/verus/production_inner/signals_production.rs:6: //
+verification/verus/production_inner/signals_production.rs:7: // This file is a verbatim copy of `crates/vb_core/src/engine/signals.rs`
+verification/verus/production_inner/signals_production.rs:8: // with the following minimal substitutions:
+verification/verus/production_inner/signals_production.rs:9: //
+verification/verus/production_inner/signals_production.rs:10: //   1. `StepBudget::remaining` is declared `pub` instead of private
+verification/verus/production_inner/signals_production.rs:11: //      (production at signals.rs:15). Verus's `external_type_specification`
+verification/verus/production_inner/signals_production.rs:12: //      requires the production-side field to be visible to the
+verification/verus/production_inner/signals_production.rs:13: //      spec mirror; production keeps the field private as a Rust-API
+verification/verus/production_inner/signals_production.rs:14: //      hardening. This mirror relaxes only visibility; field NAME
+verification/verus/production_inner/signals_production.rs:15: //      and TYPE are preserved byte-for-byte. Any drift in field
+verification/verus/production_inner/signals_production.rs:16: //      NAME breaks the verification build.
+verification/verus/production_inner/signals_production.rs:17: //
+verification/verus/production_inner/signals_production.rs:18: //   2. `StepBudget::from_env` body is wrapped in
+verification/verus/production_inner/signals_production.rs:19: //      `#[verifier::external_body]` because the closure pattern
+verification/verus/production_inner/signals_production.rs:20: //      `|_| EngineError::BudgetParse { reason: ... }` (production at
+verification/verus/production_inner/signals_production.rs:21: //      signals.rs:84) is rejected by Verus 0.2026.05.05 (Rust 1.95.0)
+verification/verus/production_inner/signals_production.rs:22: //      as "only variables are supported here, not general patterns".
+verification/verus/production_inner/signals_production.rs:23: //      The body is opaque to Verus. The signature and field name
+verification/verus/production_inner/signals_production.rs:24: //      remain production-identical so any drift breaks this Verus build.
+verification/verus/production_inner/signals_production.rs:25: //
+verification/verus/production_inner/signals_production.rs:26: // DRIFT POLICY: This file MUST be regenerated from
+verification/verus/production_inner/signals_production.rs:27: // `crates/vb_core/src/engine/signals.rs` whenever production changes.
+verification/verus/production_inner/signals_production.rs:28: // The mirror is annotated at the top of every section with the
+verification/verus/production_inner/signals_production.rs:29: // originating production line range so regeneration is mechanical.
+verification/verus/production_inner/signals_production.rs:30: //
+verification/verus/production_inner/signals_production.rs:31: // This file is included by the companion extern file
+verification/verus/production_inner/signals_production.rs:32: // (`verification/verus/extern_signals_invariant.rs`) via `#[path]`
+verification/verus/production_inner/signals_production.rs:33: // inside `verus!` (without module-level `#[verifier::external]`) so
+verification/verus/production_inner/signals_production.rs:34: // the type declarations are nameable in spec mode. Each production
+verification/verus/production_inner/signals_production.rs:35: // method body that Verus cannot verify is marked
+verification/verus/production_inner/signals_production.rs:36: // `#[verifier::external_body]` so the body is opaque while the
+verification/verus/production_inner/signals_production.rs:37: // signature participates in `assume_specification` binding in the
+verification/verus/production_inner/signals_production.rs:38: // companion spec file `signals_invariant.rs`.
+verification/verus/production_inner/signals_production.rs:39: 
+verification/verus/production_inner/signals_production.rs:40: #![forbid(unsafe_code)]
+verification/verus/production_inner/signals_production.rs:41: #![allow(dead_code)]
+verification/verus/production_inner/signals_production.rs:42: #![allow(non_snake_case)]
+verification/verus/production_inner/signals_production.rs:43: 
+verification/verus/production_inner/signals_production.rs:44: use vstd::prelude::*;
+verification/verus/production_inner/signals_production.rs:45: 
+verification/verus/production_inner/signals_production.rs:46: verus! {
+verification/verus/production_inner/signals_production.rs:47: 
+verification/verus/production_inner/signals_production.rs:48: // ============================================================================
+verification/verus/production_inner/signals_production.rs:49: // Opaque payload stubs — mirrors of crates/vb_core/src/value.rs
+verification/verus/production_inner/signals_production.rs:50: // ============================================================================
+verification/verus/production_inner/signals_production.rs:51: //
+verification/verus/production_inner/signals_production.rs:52: // Production `EngineSignal::Finished(SlotValue, Taint)` carries payload
+verification/verus/production_inner/signals_production.rs:53: // types defined in `crates/vb_core/src/value.rs`. The signals-invariant
+verification/verus/production_inner/signals_production.rs:54: // spec only cares about the discriminant set (specifically the
+verification/verus/production_inner/signals_production.rs:55: // `StepCounterOverflow` variant used by `StepBudget::try_take`), so we
+verification/verus/production_inner/signals_production.rs:56: // mirror the relevant enum variants opaquely.
+verification/verus/production_inner/signals_production.rs:57: 
+verification/verus/production_inner/signals_production.rs:58: #[derive(Clone)]
+verification/verus/production_inner/signals_production.rs:59: pub enum SlotValue {
+verification/verus/production_inner/signals_production.rs:60:     Null,
+verification/verus/production_inner/signals_production.rs:61:     Bool(bool),
+verification/verus/production_inner/signals_production.rs:62:     I64(i64),
+verification/verus/production_inner/signals_production.rs:63: }
+verification/verus/production_inner/signals_production.rs:64: 
+verification/verus/production_inner/signals_production.rs:65: #[derive(Clone, Copy)]
+verification/verus/production_inner/signals_production.rs:66: pub enum Taint {
+verification/verus/production_inner/signals_production.rs:67:     Clean,
+verification/verus/production_inner/signals_production.rs:68:     DerivedFromSecret,
+verification/verus/production_inner/signals_production.rs:69:     Secret,
+verification/verus/production_inner/signals_production.rs:70: }
+verification/verus/production_inner/signals_production.rs:71: 
+verification/verus/production_inner/signals_production.rs:72: // ============================================================================
+verification/verus/production_inner/signals_production.rs:73: // EngineError stub — mirrors the production error variants used by signals.rs
+verification/verus/production_inner/signals_production.rs:74: // ============================================================================
+verification/verus/production_inner/signals_production.rs:75: 
+verification/verus/production_inner/signals_production.rs:76: #[derive(Clone)]
+verification/verus/production_inner/signals_production.rs:77: pub enum EngineError {
+verification/verus/production_inner/signals_production.rs:78:     StepCounterOverflow,
+verification/verus/production_inner/signals_production.rs:79:     BudgetParse {
+verification/verus/production_inner/signals_production.rs:80:         reason: &'static str,
+verification/verus/production_inner/signals_production.rs:81:     },
+verification/verus/production_inner/signals_production.rs:82: }
+verification/verus/production_inner/signals_production.rs:83: 
+verification/verus/production_inner/signals_production.rs:84: // ============================================================================
+verification/verus/production_inner/signals_production.rs:85: // Production type mirrors
+verification/verus/production_inner/signals_production.rs:86: // ============================================================================
+verification/verus/production_inner/signals_production.rs:87: 
+verification/verus/production_inner/signals_production.rs:88: /// Stub for the production `MAX_STEP_BUDGET` u64 constant
+verification/verus/production_inner/signals_production.rs:89: /// (production at `crates/vb_core/src/limits.rs:94 = 10_000`).
+verification/verus/production_inner/signals_production.rs:90: pub const MAX_STEP_BUDGET: u64 = 10_000;
+verification/verus/production_inner/signals_production.rs:91: 
+verification/verus/production_inner/signals_production.rs:92: /// Mirror of production `StepBudget` at
+verification/verus/production_inner/signals_production.rs:93: /// `crates/vb_core/src/engine/signals.rs:13-16`. Field name `remaining`
+verification/verus/production_inner/signals_production.rs:94: /// and type `u64` match production exactly; the only relaxation is
+verification/verus/production_inner/signals_production.rs:95: /// visibility (production: private; mirror: `pub`) so the spec-mode
+verification/verus/production_inner/signals_production.rs:96: /// `#[verifier::external_type_specification]` bridge can read the
+verification/verus/production_inner/signals_production.rs:97: /// field. Drift in field NAME still breaks the build.
+verification/verus/production_inner/signals_production.rs:98: ///
+verification/verus/production_inner/signals_production.rs:99: /// The struct is marked `#[verifier::external]` so the type is
+verification/verus/production_inner/signals_production.rs:100: /// opaque to Verus until bridged via `external_type_specification`
