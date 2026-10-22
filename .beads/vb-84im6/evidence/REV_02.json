@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-84im6-local5090-code-review",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "--all-features",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 0,
+  "seconds": 4.958,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-84im6/evidence/REV_02",
+  "coordinator_message": "Finaltestsv5 formatter changedONLY3productionformat details in separateassembledworkspace: wire_deserialize.rs and wire_serialize.rs modpolicy movedalphabetically, incident.rs imports sorted. No functionalchange. Review frozen1a231source, rootwillrecordpreciseformat-onlyhashapplicability; no sourceeditsduringreview. Newtests stillunderrepair afterrootcaughtv5vacuousinvalid0x05wireattack; v6requiresvalidtuple38u32positivecontrolthenonlyouterrunmismatch. Actual scopedproductionreviewonly, no testacceptanceclaimed. Source-manifest has12productionfiles (prompt13counttypo); actualhashes govern. Sharedrunneractualrawgatesmandatory.\n"
+}

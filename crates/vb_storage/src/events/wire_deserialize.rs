@@ -8,6 +8,8 @@ mod run;
 mod step;
 #[path = "wire_deserialize_wait_ask.rs"]
 mod wait_ask;
+#[path = "wire_deserialize_policy.rs"]
+mod policy;
 
 use super::super::JournalEvent;
 use super::category::{JournalRecordCategory, journal_record_category};
@@ -55,6 +57,7 @@ where
         Some(JournalRecordCategory::Step) => step::deserialize(kind, variant),
         Some(JournalRecordCategory::Action) => action::deserialize(kind, variant),
         Some(JournalRecordCategory::WaitAsk) => wait_ask::deserialize(kind, variant),
+        Some(JournalRecordCategory::Policy) => policy::deserialize(kind, variant),
         None => Err(de::Error::custom(
             "non-journal record kind tag used for JournalEvent payload",
         )),
