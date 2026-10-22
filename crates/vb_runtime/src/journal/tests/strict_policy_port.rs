@@ -5,14 +5,13 @@ use vb_core::policy::{
     DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy, PolicyDigest, PolicyLayer,
 };
 use vb_core::value::Taint;
-use vb_storage::{
-    DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits,
-};
+use vb_storage::{EventSeq, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits};
 
+use crate::RuntimeError;
+use crate::journal::VolatileRuntimeJournal;
 use crate::journal::{
     QueuedStorageRuntimeJournal, RuntimeJournal, RuntimeJournalEvent, StorageRuntimeJournal,
 };
-use crate::{RuntimeError, VolatileRuntimeJournal};
 
 fn fixture_decision(run: RunId) -> DecisionRecord {
     DecisionRecord {

@@ -1,0 +1,20 @@
+error[E0432]: unresolved import `crate::VolatileRuntimeJournal`
+  --> crates/vb_runtime/src/journal/tests/strict_policy_port.rs:15:27
+   |
+15 | use crate::{RuntimeError, VolatileRuntimeJournal};
+   |                           ^^^^^^^^^^^^^^^^^^^^^^ no `VolatileRuntimeJournal` in the root
+   |
+   = help: consider importing this struct instead:
+           crate::journal::VolatileRuntimeJournal
+
+error: unused import: `DurabilityProfile`
+ --> crates/vb_runtime/src/journal/tests/strict_policy_port.rs:9:5
+  |
+9 |     DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits,
+  |     ^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `vb_runtime` (lib test) due to 2 previous errors
