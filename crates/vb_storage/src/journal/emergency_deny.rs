@@ -50,13 +50,12 @@ impl crate::journal::FjallJournal {
             Some(v) => v,
             None => return Ok(EmergencyDenyState::Inactive),
         };
-        let bytes = value.to_vec();
-        // Exact one-byte check
-        if bytes.len() != 1 {
+        // Exact one-byte check (no allocation)
+        if value.len() != 1 {
             return Err(JournalError::EmergencyDenyMarkerMalformed);
         }
         // Validate version byte
-        let version = *bytes
+        let version = *value
             .first()
             .ok_or(JournalError::EmergencyDenyMarkerMalformed)?;
         if version != EMERGENCY_DENY_VERSION {
