@@ -38,8 +38,6 @@ impl Shard {
         seq.get()
             .checked_add(1)
             .map(vb_storage::EventSeq::new)
-            .ok_or_else(|| {
-                crate::RuntimeError::from(vb_storage::JournalError::SequenceOverflow)
-            })
+            .ok_or_else(|| crate::RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
     }
 }
