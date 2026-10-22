@@ -1,0 +1,132 @@
+{
+  "bead_id": "vb-88a03",
+  "review_type": "dispatch_test_review_v3",
+  "candidate": "3fca010b5f5aaaafb5f41b08b95200db001bab3e",
+  "base": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "reviewer": "rtx3090",
+  "verdict": "APPROVED",
+  "total_tests_reviewed": 17,
+  "new_tests": 12,
+  "retained_original_tests": 5,
+  "failures": 0,
+  "findings": [],
+  "test_mapping": {
+    "internal_port_sequence": [
+      {
+        "test": "storage_adapter_persists_full_policy_decision_event",
+        "file": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+        "coverage": "full durable roundtrip Journaled profile reopen verify complete DecisionRecord"
+      },
+      {
+        "test": "queued_adapter_drains_prefix_before_strict_decision",
+        "file": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+        "coverage": "prefix flush before strict decision queue remains accepting run_a and run_b persistence"
+      },
+      {
+        "test": "noop_and_volatile_adapters_fail_closed",
+        "file": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs",
+        "coverage": "exact UnsupportedOperation default trait implementations"
+      },
+      {
+        "test": "successful_strict_policy_port",
+        "file": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+        "coverage": "real shard sequence 5 to 6 exact DecisionRecord seq captured recording journal"
+      },
+      {
+        "test": "typed_strict_policy_port_failure",
+        "file": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+        "coverage": "injected UnsupportedOperation propagates typed error sequence ticket unchanged"
+      },
+      {
+        "test": "overflow_at_u64_max",
+        "file": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+        "coverage": "u64::MAX sequence triggers SequenceOverflow before journal call no state change"
+      },
+      {
+        "test": "wrong_ticket_rejected",
+        "file": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs",
+        "coverage": "wrong action ID 999 triggers InvalidActionCompletion no journal call"
+      }
+    ],
+    "registered_executor_dispatch": [
+      {
+        "test": "allowed_policy_permits_effect_and_records_decision",
+        "file": "vb_7x0ol_probe_registered_executor/policy_dispatch/allowed.rs",
+        "coverage": "Allowed decision real effect 9-field DecisionRecord oracle match ticket preserved"
+      },
+      {
+        "test": "after_scheduling_policy_change_to_deny",
+        "file": "vb_7x0ol_probe_registered_executor/policy_dispatch/changed_policy.rs",
+        "coverage": "policy changed to Denied after tick PolicyDenied typed error admission pin differs from current"
+      },
+      {
+        "test": "reconcile_ignores_policy_change_after_effect",
+        "file": "vb_7x0ol_probe_registered_executor/policy_dispatch/reconcile.rs",
+        "coverage": "Allowed then policy changed to Denied reconcile same receipt no new decision no new effect"
+      },
+      {
+        "test": "unconfigured_policy_denies_execution",
+        "file": "vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs",
+        "coverage": "CurrentPolicyIdentity::Unconfigured PolicyDenied Admission layer full oracle match zero effects"
+      }
+    ],
+    "fail_closed": [
+      {
+        "test": "suspended_policy_denies_execution_with_full_record",
+        "file": "vb_policy_dispatch_fail_closed/suspended.rs",
+        "coverage": "current Suspended PolicyDenied Suspended identity zero effects pending unchanged oracle match stored"
+      },
+      {
+        "test": "emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config",
+        "file": "vb_policy_dispatch_fail_closed/emergency.rs",
+        "coverage": "Allowed then emergency activated two executions denied InfluenceState::Active later Allowed doesnt loosen monotonic two distinct digests both stored"
+      },
+      {
+        "test": "strict_port_failure_returns_typed_runtime_error_with_zero_effects",
+        "file": "vb_policy_dispatch_fail_closed/strict_failure.rs",
+        "coverage": "test wrapper overrides append_policy_decision_strict UnsupportedOperation propagates zero effects pending unchanged no decision stored captures exact decision and seq"
+      }
+    ]
+  },
+  "original_tests_retained": [
+    {
+      "test": "execute_registered_action_commits_one_effect_and_completes_run",
+      "file": "vb_7x0ol_probe_registered_executor.rs"
+    },
+    {
+      "test": "reconcile_registered_action_reads_receipt_without_new_effect",
+      "file": "vb_7x0ol_probe_registered_executor.rs"
+    },
+    {
+      "test": "execute_registered_action_rejects_mismatched_grant_artifact",
+      "file": "vb_7x0ol_probe_registered_executor.rs"
+    },
+    {
+      "test": "recovery_of_pending_registered_action_blocked_pack_rejects",
+      "file": "vb_7x0ol_probe_registered_executor.rs"
+    },
+    {
+      "test": "recovery_of_pending_registered_action_reconcile_pack_is_resumable",
+      "file": "vb_7x0ol_probe_registered_executor.rs"
+    }
+  ],
+  "rubric_compliance": {
+    "exact_error_fields_and_boundary_values": true,
+    "real_public_api_scoped_gates": true,
+    "no_ignored_cases": true,
+    "deterministic_fixtures": true,
+    "independent_expected_values_full_record_equality": true,
+    "named_mutation_thought_experiments": true,
+    "full_pending_state_retained_after_each_failure": true,
+    "real_actual_effects_not_flags": true,
+    "existing_original_tests_retained": true,
+    "no_new_tests_or_source_changes_by_reviewer": true
+  },
+  "oracle_independence": {
+    "test_side_compute_expected_input_digest": true,
+    "independent_blake3_hashing": true,
+    "all_eight_ticket_fields_hashed": true,
+    "domain_separation_prefix": "velvet-ballistics:policy:ticket:",
+    "no_production_encode_call": true
+  }
+}
