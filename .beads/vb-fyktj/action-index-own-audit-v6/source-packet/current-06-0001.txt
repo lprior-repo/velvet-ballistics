@@ -1,0 +1,67 @@
+ACTUALCURRENT crates/vb_storage/src/indexes.rs
+1: #![forbid(unsafe_code)]
+2: //! Index storage operations.
+3: //!
+4: //! Provides storage of status, workflow, and action index markers.
+5: 
+6: use crate::{
+7:     error::JournalError,
+8:     keys::{index_action_key, index_status_key, index_workflow_key},
+9: };
+10: 
+11: use crate::journal::FjallJournal;
+12: 
+13: impl FjallJournal {
+14:     /// Inserts minimal status index marker bytes.
+15:     pub fn put_status_index(
+16:         &self,
+17:         state: crate::types::IndexStatusState,
+18:         timestamp: u64,
+19:         run: vb_core::RunId,
+20:     ) -> Result<(), JournalError> {
+21:         let key = index_status_key(state, timestamp, run)?;
+22:         self.index_status.insert(key.to_vec(), Vec::<u8>::new())?;
+23:         Ok(())
+24:     }
+25: 
+26:     /// Inserts minimal workflow index marker bytes.
+27:     pub fn put_workflow_index(
+28:         &self,
+29:         workflow: vb_core::WorkflowId,
+30:         run: vb_core::RunId,
+31:     ) -> Result<(), JournalError> {
+32:         let key = index_workflow_key(workflow, run)?;
+33:         self.index_workflow.insert(key.to_vec(), Vec::<u8>::new())?;
+34:         Ok(())
+35:     }
+36: 
+37:     /// Inserts minimal pending action index marker bytes.
+38:     pub fn put_action_index(
+39:         &self,
+40:         action: vb_core::ActionId,
+41:         run: vb_core::RunId,
+42:         step: vb_core::StepIdx,
+43:     ) -> Result<(), JournalError> {
+44:         let key = index_action_key(action, run, step)?;
+45:         self.index_action.insert(key.to_vec(), Vec::<u8>::new())?;
+46:         Ok(())
+47:     }
+48: 
+49:     /// Removes the pending action index marker for the given triple.
+50:     ///
+51:     /// Idempotent: removing a non-existent key is a no-op (Fjall returns
+52:     /// `Ok(())` for absent keys). Used to clear the index when an action
+53:     /// reaches a terminal state (completed, failed, abandoned) so the
+54:     /// runtime journal path leaves the `index_action` keyspace
+55:     /// consistent with the durable event log.
+56:     pub fn delete_action_index(
+57:         &self,
+58:         action: vb_core::ActionId,
+59:         run: vb_core::RunId,
+60:         step: vb_core::StepIdx,
+61:     ) -> Result<(), JournalError> {
+62:         let key = index_action_key(action, run, step)?;
+63:         self.index_action.remove(key.as_slice())?;
+64:         Ok(())
+65:     }
+66: }

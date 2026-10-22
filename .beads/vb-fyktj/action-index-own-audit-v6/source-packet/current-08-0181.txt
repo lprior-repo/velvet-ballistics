@@ -1,0 +1,75 @@
+ACTUALCURRENT crates/vb_storage/src/lib.rs
+181: #[cfg(test)]
+182: #[path = "replay_core_tests.rs"]
+183: mod replay_core_tests;
+184: 
+185: #[cfg(test)]
+186: #[path = "snapshot_tests.rs"]
+187: mod snapshot_tests;
+188: 
+189: pub mod queue;
+190: pub mod records;
+191: pub mod recovery;
+192: pub mod security_tests;
+193: pub mod slot_extra;
+194: pub mod snapshots;
+195: pub mod tests;
+196: pub mod trimming;
+197: pub mod types;
+198: pub mod vb_2bok_durability_gate_tests;
+199: 
+200: // ============================================================================
+201: // Re-exports from submodules
+202: // ============================================================================
+203: 
+204: pub use public_api::*;
+205: 
+206: // Core types
+207: pub use constants::*;
+208: pub use error::{JournalError, KeyDecodeError};
+209: pub use events::{DurableActionOutcome, JournalEvent};
+210: pub use records::{
+211:     BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
+212: };
+213: pub use recovery::{ActionReplayTracker, RunSnapshot};
+214: pub use slot_extra::{
+215:     DecodedSlotWrittenExtra, SLOT_WRITTEN_EXTRA_PREFIX, SlotWrittenExtraEnvelope,
+216:     SlotWrittenExtraError, decode_slot_written_extra, encode_slot_written_extra,
+217: };
+218: pub use types::*;
+219: 
+220: // Journal
+221: pub use journal::incident::{
+222:     IncidentAnalysis, SideEffect, SideEffectCertainty, analyze_incident_events, build_repair_hints,
+223:     derive_lifecycle_state_from_events, event_to_lifecycle, lifecycle_state_to_inspect_status,
+224: };
+225: pub use journal::{EventReplayLimit, FjallJournal, ReadOnlyJournal};
+226: 
+227: // Batch
+228: pub use batch::JournalWriteBatch;
+229: 
+230: // Queue
+231: pub use queue::JournalWriterQueue;
+232: 
+233: // Types
+234: pub use types::JournalWriterFlushReport;
+235: 
+236: // Trimming
+237: pub use trimming::{
+238:     TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
+239:     TrimmedRunResult,
+240: };
+241: 
+242: // Codec
+243: pub use codec::{
+244:     decode_journal_event, decode_record, decode_record_header, encode_record, encode_record_header,
+245:     validate_journal_event_record_kind, verify_digest_match,
+246: };
+247: 
+248: // Admission
+249: pub use admission::{
+250:     AcceptedArtifact, VerificationProof, VerificationWarning, admit_compiled_artifact,
+251:     submit_artifact, submit_artifact_with_contracts,
+252: };
+253: 
+254: pub use inputs::{RunInputBinding, RunInputsRecord, RunPolicyPin, RunSubmission};

@@ -1,0 +1,181 @@
+ACTUALCURRENT crates/workspace_tests/tests/journal_side_index_contracts.rs
+1: //! Property-based tests for journal side-index atomicity contracts (vb-3h3k).
+2: //!
+3: //! Covers PO-002, PO-004, PO-008, PO-009, PO-010, PO-012, PO-013, PO-014.
+4: //!
+5: //! Each test is independently runnable with:
+6: //! `cargo nextest run -p velvet-ballistics-workspace-tests --test journal_side_index_contracts -- <filter>`
+7: //!
+8: //! # Trusted Base
+9: //!
+10: //! - Fjall OwnedWriteBatch::commit() provides WAL atomicity across keyspaces (TB-001).
+11: //! - JournalWriteBatch is !Send + !Sync, enforcing single-threaded access (TB-002).
+12: //! - index_*_key() functions are pure, bounded, and panic-free (TB-003, TB-004).
+13: 
+14: #![forbid(unsafe_code)]
+15: 
+16: use proptest::prelude::*;
+17: use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
+18: use vb_storage::{
+19:     EventSeq, FjallJournal, IndexStatusState, JournalError, JournalEvent, JournalWriteBatch,
+20: };
+21: 
+22: const JOURNAL_IO_PROPTEST_CASES: u32 = 64;
+23: const JOURNAL_KEY_PROPTEST_CASES: u32 = 128;
+24: 
+25: fn journal_proptest_config(cases: u32) -> proptest::prelude::ProptestConfig {
+26:     proptest::prelude::ProptestConfig {
+27:         cases,
+28:         failure_persistence: None,
+29:         ..Default::default()
+30:     }
+31: }
+32: 
+33: // ---------------------------------------------------------------------------
+34: // Test helpers
+35: // ---------------------------------------------------------------------------
+36: 
+37: /// Creates a tempfile-backed FjallJournal for test isolation.
+38: fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
+39:     let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+40:     let journal = FjallJournal::open(temp.path(), None).expect("journal open should succeed");
+41:     (temp, journal)
+42: }
+43: 
+44: /// Creates a minimal ActionScheduled event for testing.
+45: fn make_action_scheduled(run: RunId, seq: u64, step: StepIdx, action: ActionId) -> JournalEvent {
+46:     JournalEvent::ActionScheduled {
+47:         run,
+48:         seq: EventSeq::new(seq),
+49:         step,
+50:         action,
+51:         attempt: 1,
+52:     }
+53: }
+54: 
+55: /// Creates a minimal RunAccepted event for testing.
+56: fn make_run_accepted(run: RunId, seq: u64, workflow: WorkflowDigest) -> JournalEvent {
+57:     JournalEvent::RunAccepted {
+58:         run,
+59:         seq: EventSeq::new(seq),
+60:         workflow,
+61:     }
+62: }
+63: 
+64: // ---------------------------------------------------------------------------
+65: // PO-002: ActionScheduled writes event and index atomically (proptest)
+66: // ---------------------------------------------------------------------------
+67: 
+68: proptest::proptest! {
+69:     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
+70: 
+71:     /// PO-002: append_event + put_action_index staged together commit atomically.
+72:     ///
+73:     /// For each valid (action, run, step) combination:
+74:     /// 1. Stage ActionScheduled event + action index entry in same batch
+75:     /// 2. Commit batch
+76:     /// 3. Verify journal events_for_run returns the ActionScheduled
+77:     /// 4. Verify index_action keyspace contains entry for (action, run, step)
+78:     #[test]
+79:     fn test_action_scheduled_writes_event_and_index_atomically(
+80:         action_val in 1u16..=1000u16,
+81:         run_val in 1u64..=10000u64,
+82:         step_val in 0u16..=100u16,
+83:         seq_val in 0u64..=0u64,
+84:     ) {
+85:         let action = ActionId::new(action_val);
+86:         let run = RunId::new(run_val);
+87:         let step = StepIdx::new(step_val);
+88:         let (_temp, journal) = temp_journal();
+89: 
+90:         let event = make_action_scheduled(run, seq_val, step, action);
+91: 
+92:         // Stage event + index entry in same atomic batch
+93:         let mut batch = JournalWriteBatch::new(&journal);
+94:         let append_result = batch.append_event(&event);
+95:         prop_assert!(append_result.is_ok(), "append_event must succeed for valid event");
+96: 
+97:         let index_result = batch.put_action_index(action, run, step);
+98:         prop_assert!(index_result.is_ok(), "put_action_index must succeed for valid inputs");
+99: 
+100:         let commit_result = batch.commit();
+101:         prop_assert!(commit_result.is_ok(), "batch commit must succeed");
+102: 
+103:         // Verify event is durable in journal
+104:         let events = journal.events_for_run(run)
+105:             .expect("events_for_run must succeed");
+106:         prop_assert!(events.len() == 1, "exactly 1 event must be durable after batch commit");
+107:         prop_assert_eq!(&events[0], &event, "durable event must match committed event");
+108: 
+109:         // Verify index entry is durable — scan index_action keyspace
+110:         let index_key = vb_storage::keys::index_action_key(action, run, step)
+111:             .expect("index_action_key must succeed for valid inputs");
+112:         let has_entry = journal.has_action_index_entry(index_key)
+113:             .expect("has_action_index_entry must succeed");
+114:         prop_assert!(has_entry, "index_action entry must be durable for (action, run, step)");
+115:     }
+116: }
+117: 
+118: // ---------------------------------------------------------------------------
+119: // PO-004: RunAccepted writes status and workflow indexes atomically (proptest)
+120: // ---------------------------------------------------------------------------
+121: 
+122: proptest::proptest! {
+123:     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
+124: 
+125:     /// PO-004: RunAccepted batch with append_event + put_status_index + put_workflow_index
+126:     /// commits atomically with all 3 entries durable.
+127:     #[test]
+128:     fn test_run_accepted_writes_status_and_workflow_indexes(
+129:         run_val in 1u64..=10000u64,
+130:         workflow_val in 1u32..=1000u32,
+131:         seq_val in 0u64..=0u64,
+132:         timestamp in 0u64..=u64::MAX,
+133:     ) {
+134:         let run = RunId::new(run_val);
+135:         let workflow = WorkflowId::new(workflow_val);
+136:         let workflow_digest = WorkflowDigest::from_bytes({
+137:             let mut bytes = [0u8; 32];
+138:             bytes[0..4].copy_from_slice(&workflow_val.to_be_bytes());
+139:             bytes
+140:         });
+141: 
+142:         let (_temp, journal) = temp_journal();
+143: 
+144:         let event = make_run_accepted(run, seq_val, workflow_digest);
+145: 
+146:         // Stage event + 2 index entries in same atomic batch
+147:         let mut batch = JournalWriteBatch::new(&journal);
+148: 
+149:         prop_assert!(batch.append_event(&event).is_ok(), "append_event must succeed");
+150:         prop_assert!(
+151:             batch.put_status_index(IndexStatusState::Submitted, timestamp, run).is_ok(),
+152:             "put_status_index must succeed",
+153:         );
+154:         prop_assert!(
+155:             batch.put_workflow_index(workflow, run).is_ok(),
+156:             "put_workflow_index must succeed",
+157:         );
+158: 
+159:         prop_assert!(batch.commit().is_ok(), "batch commit must succeed");
+160: 
+161:         // Verify all 3 entries are durable
+162:         let events = journal.events_for_run(run)
+163:             .expect("events_for_run must succeed");
+164:         prop_assert!(events.len() == 1, "exactly 1 RunAccepted event must be durable");
+165:         prop_assert_eq!(&events[0], &event, "durable event must match committed event");
+166: 
+167:         // Verify status index entry
+168:         let status_key = vb_storage::keys::index_status_key(IndexStatusState::Submitted, timestamp, run)
+169:             .expect("index_status_key must succeed for valid inputs");
+170:         let has_status = journal.has_status_index_entry(status_key)
+171:             .expect("has_status_index_entry must succeed");
+172:         prop_assert!(has_status, "index_status entry must be durable");
+173: 
+174:         // Verify workflow index entry
+175:         let workflow_key = vb_storage::keys::index_workflow_key(workflow, run)
+176:             .expect("index_workflow_key must succeed for valid inputs");
+177:         let has_workflow = journal.has_workflow_index_entry(workflow_key)
+178:             .expect("has_workflow_index_entry must succeed");
+179:         prop_assert!(has_workflow, "index_workflow entry must be durable");
+180:     }

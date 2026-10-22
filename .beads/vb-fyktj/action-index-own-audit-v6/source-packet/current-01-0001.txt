@@ -1,0 +1,146 @@
+ACTUALCURRENT crates/vb_storage/src/batch/action_index.rs
+1: #![forbid(unsafe_code)]
+2: //! Atomic staging of recovery index maintenance for journal appends.
+3: //!
+4: //! vb-3wn7x: the runtime journal path drives the lifecycle of pending
+5: //! actions in three groups:
+6: //!
+7: //! 1. `ActionScheduled` / `ActionScheduledTicket` — emits the pending
+8: //!    action to the external boundary; a marker must be inserted into
+9: //!    the `index_action` keyspace so recovery, inspection, and lookup
+10: //!    traffic see the action as still in flight.
+11: //! 2. `ActionCompletedEvent` / `ActionCompletedEnvelope` — terminal
+12: //!    success; the marker must be removed.
+13: //! 3. `ActionFailedEvent` / `ActionAbandoned` — terminal failure or
+14: //!    cancellation-driven abandonment; the marker must be removed.
+15: //!
+16: //! `RunAccepted` intentionally does not derive run-header, status, or workflow
+17: //! indexes from the journal event alone: that event carries a workflow digest
+18: //! but not a real `WorkflowId`, and its sequence is not an admission timestamp.
+19: //! Those indexes must be staged only by callers that carry real metadata.
+20: //! All non-action event kinds therefore leave this event-derived index path
+21: //! untouched.
+22: //!
+23: //! [`stage_recovery_index_ops`] is the staging entry point for event-derived
+24: //! index maintenance. Callers MUST commit the same batch that holds the journal
+25: //! event so index and journal writes succeed or fail together; partial writes
+26: //! would leave recovery scans inconsistent with the event log.
+27: 
+28: use crate::{
+29:     error::JournalError, events::JournalEvent, journal::FjallJournal, keys::index_action_key,
+30: };
+31: use vb_core::{ActionId, RunId, StepIdx};
+32: 
+33: /// Discriminated pending-action-index mutation.
+34: ///
+35: /// Internal-only: the variant layout is purely a refactoring of the
+36: /// match arms in [`stage_pending_action_index_op`] so the encode paths
+37: /// are not duplicated.
+38: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+39: enum PendingActionIndexOp {
+40:     /// Insert an empty marker at `(action, run, step)`.
+41:     Insert {
+42:         action: ActionId,
+43:         run: RunId,
+44:         step: StepIdx,
+45:     },
+46:     /// Tombstone the marker at `(action, run, step)`.
+47:     Remove {
+48:         action: ActionId,
+49:         run: RunId,
+50:         step: StepIdx,
+51:     },
+52: }
+53: 
+54: /// Classifies a journal event into the pending-action-index mutation it
+55: /// implies (if any). Returns `None` for events that leave the index
+56: /// untouched.
+57: fn pending_action_index_op_for(event: &JournalEvent) -> Option<PendingActionIndexOp> {
+58:     match event {
+59:         // Insert-side — pending actions enter the index.
+60:         JournalEvent::ActionScheduled {
+61:             action, run, step, ..
+62:         } => Some(PendingActionIndexOp::Insert {
+63:             action: *action,
+64:             run: *run,
+65:             step: *step,
+66:         }),
+67:         JournalEvent::ActionScheduledTicket { ticket, .. } => Some(PendingActionIndexOp::Insert {
+68:             action: ticket.action,
+69:             run: ticket.run,
+70:             step: ticket.step,
+71:         }),
+72:         // Remove-side — terminal actions leave the index.
+73:         JournalEvent::ActionCompletedEvent {
+74:             action, run, step, ..
+75:         }
+76:         | JournalEvent::ActionFailedEvent {
+77:             action, run, step, ..
+78:         } => Some(PendingActionIndexOp::Remove {
+79:             action: *action,
+80:             run: *run,
+81:             step: *step,
+82:         }),
+83:         JournalEvent::ActionCompletedEnvelope { ticket, .. }
+84:         | JournalEvent::ActionAbandoned { ticket, .. } => Some(PendingActionIndexOp::Remove {
+85:             action: ticket.action,
+86:             run: ticket.run,
+87:             step: ticket.step,
+88:         }),
+89:         // Everything else is a no-op for the index.
+90:         _ => None,
+91:     }
+92: }
+93: 
+94: impl FjallJournal {
+95:     /// Stages all recovery indexes implied by a journal event onto the
+96:     /// supplied `fjall::OwnedWriteBatch`.
+97:     ///
+98:     /// This includes only metadata that is present in the event itself. In
+99:     /// particular, `RunAccepted` is a no-op here because deriving a
+100:     /// `WorkflowId` from a digest or an admission timestamp from `seq` would
+101:     /// fabricate recovery metadata. Callers that have real admission metadata
+102:     /// must stage those indexes through the explicit putter APIs.
+103:     pub(crate) fn stage_recovery_index_ops(
+104:         &self,
+105:         batch: &mut fjall::OwnedWriteBatch,
+106:         event: &JournalEvent,
+107:     ) -> Result<(), JournalError> {
+108:         self.stage_pending_action_index_op(batch, event)
+109:     }
+110: 
+111:     /// Stages the pending-action-index mutation implied by `event` onto
+112:     /// the supplied `fjall::OwnedWriteBatch`.
+113:     ///
+114:     /// Callers MUST commit the same batch that stages the corresponding
+115:     /// `JournalEvent` write so the index update is atomic with the event.
+116:     /// Events that imply no index change are silently accepted (the
+117:     /// helper returns `Ok(())` without staging any batch operation).
+118:     ///
+119:     /// # Errors
+120:     ///
+121:     /// Returns `JournalError::KeyCapacity` if the encoded
+122:     /// `index_action` key would overflow the 13-byte fixed-length
+123:     /// contract.
+124:     pub(crate) fn stage_pending_action_index_op(
+125:         &self,
+126:         batch: &mut fjall::OwnedWriteBatch,
+127:         event: &JournalEvent,
+128:     ) -> Result<(), JournalError> {
+129:         let Some(op) = pending_action_index_op_for(event) else {
+130:             return Ok(());
+131:         };
+132:         match op {
+133:             PendingActionIndexOp::Insert { action, run, step } => {
+134:                 let key = index_action_key(action, run, step)?;
+135:                 batch.insert(&self.index_action, key, Vec::<u8>::new());
+136:                 Ok(())
+137:             }
+138:             PendingActionIndexOp::Remove { action, run, step } => {
+139:                 let key = index_action_key(action, run, step)?;
+140:                 batch.remove(&self.index_action, key);
+141:                 Ok(())
+142:             }
+143:         }
+144:     }
+145: }
