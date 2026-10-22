@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -67,8 +67,12 @@ fn tool_output_bytes(tool: &str, args: &[&str], cwd: &Path) -> Result<Vec<u8>, S
 
 fn tool_output(tool: &str, args: &[&str], cwd: &Path) -> Result<String, String> {
     let bytes = tool_output_bytes(tool, args, cwd)?;
-    String::from_utf8(bytes)
-        .map_err(|error| format!("{tool} {} returned non-UTF8 stdout: {error}", args.join(" ")))
+    String::from_utf8(bytes).map_err(|error| {
+        format!(
+            "{tool} {} returned non-UTF8 stdout: {error}",
+            args.join(" ")
+        )
+    })
 }
 
 fn tool_output_allow_fail_bytes(tool: &str, args: &[&str], cwd: &Path) -> Option<Vec<u8>> {
@@ -82,8 +86,7 @@ fn tool_output_allow_fail_bytes(tool: &str, args: &[&str], cwd: &Path) -> Option
 }
 
 fn tool_output_allow_fail(tool: &str, args: &[&str], cwd: &Path) -> Option<String> {
-    tool_output_allow_fail_bytes(tool, args, cwd)
-        .and_then(|bytes| String::from_utf8(bytes).ok())
+    tool_output_allow_fail_bytes(tool, args, cwd).and_then(|bytes| String::from_utf8(bytes).ok())
 }
 
 fn git_output(args: &[&str], cwd: &Path) -> Result<String, String> {
@@ -216,7 +219,9 @@ fn validate_base_revision(root: &Path, base: &str, vcs: Vcs) -> Result<(), Strin
             let commit = format!("{base}^{{commit}}");
             git_output(&["rev-parse", "--verify", &commit], root).map(|_| ())
         }
-        Vcs::Jj => jj_output(&["log", "--no-graph", "-r", base, "-T", "commit_id"], root).map(|_| ()),
+        Vcs::Jj => {
+            jj_output(&["log", "--no-graph", "-r", base, "-T", "commit_id"], root).map(|_| ())
+        }
     }
     .map_err(|error| format!("invalid base revision {base:?}: {error}"))
 }
@@ -382,67 +387,38 @@ fn changed_files(root: &Path, base: &str, vcs: Vcs) -> Result<Vec<ChangedEntry>,
             let mut entries = Vec::new();
             for line in text.lines() {
                 let trimmed = line.trim();
-                let type_code = match trimmed.get(..2) {
-                    Some(code) => code,
-                    None => continue,
-                };
-                let path = match trimmed.get(2..).map(str::trim_start) {
-                    Some(p) => p,
-                    None => continue,
-                };
-                if path.is_empty() {
+                if trimmed.is_empty() {
                     continue;
                 }
-                if type_code == "-F" {
-                    entries.push(ChangedEntry {
-                        status: b'A',
-                        old_path: path.to_owned(),
-                        new_path: path.to_owned(),
-                    });
-                } else if type_code == "F-" {
-                    entries.push(ChangedEntry {
-                        status: b'D',
-                        old_path: path.to_owned(),
-                        new_path: path.to_owned(),
-                    });
-                } else if let Some((old, new)) = expand_rename_path(path) {
-                    entries.push(ChangedEntry {
-                        status: b'D',
-                        old_path: old.clone(),
-                        new_path: new.clone(),
-                    });
-                    entries.push(ChangedEntry {
-                        status: b'A',
-                        old_path: old,
-                        new_path: new,
-                    });
-                } else {
-                    entries.push(ChangedEntry {
-                        status: b'M',
-                        old_path: path.to_owned(),
-                        new_path: path.to_owned(),
-                    });
+                let type_code = trimmed.get(..2).ok_or_else(|| {
+                    format!("malformed jj --types line (shorter than 2 bytes): {line:?}")
+                })?;
+                let path = trimmed
+                    .get(2..)
+                    .map(str::trim_start)
+                    .ok_or_else(|| format!("malformed jj --types line (path offset): {line:?}"))?;
+                if path.is_empty() {
+                    return Err(format!("malformed jj --types line (empty path): {line:?}"));
                 }
+                let status = match type_code {
+                    "-F" => b'A',
+                    "F-" => b'D',
+                    "FF" => b'M',
+                    other => {
+                        return Err(format!(
+                            "unsupported jj --types type code {other:?} for path {path:?} (fail-closed)"
+                        ));
+                    }
+                };
+                entries.push(ChangedEntry {
+                    status,
+                    old_path: path.to_owned(),
+                    new_path: path.to_owned(),
+                });
             }
             Ok(entries)
         }
     }
-}
-
-fn expand_rename_path(path: &str) -> Option<(String, String)> {
-    let open = path.find('{')?;
-    let close = path.find('}')?;
-    if close <= open {
-        return None;
-    }
-    let inner = path.get(open.saturating_add(1)..close)?;
-    let (old_part, new_part) = inner.split_once(" => ")?;
-    let prefix = path.get(..open)?;
-    let suffix = path.get(close.saturating_add(1)..)?;
-    Some((
-        format!("{prefix}{old_part}{suffix}"),
-        format!("{prefix}{new_part}{suffix}"),
-    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -525,7 +501,10 @@ fn path_diff_bytes(root: &Path, base: &str, path: &str, vcs: Vcs) -> Result<Vec<
             ],
             root,
         ),
-        Vcs::Jj => jj_output_bytes(&["diff", "--git", "--from", base, "--to", "@", "--", path], root),
+        Vcs::Jj => jj_output_bytes(
+            &["diff", "--git", "--from", base, "--to", "@", "--", path],
+            root,
+        ),
     }
 }
 
@@ -653,11 +632,13 @@ fn scan_deleted_files(
     root: &Path,
     base: &str,
     entries: &[ChangedEntry],
+    relocated_old: &BTreeSet<String>,
     vcs: Vcs,
 ) -> Vec<Finding> {
     entries
         .iter()
         .filter(|entry| entry.status == b'D')
+        .filter(|entry| !relocated_old.contains(&entry.old_path))
         .filter(|entry| {
             is_test_path(&entry.old_path) || base_file_has_tests(root, base, &entry.old_path, vcs)
         })
@@ -669,11 +650,85 @@ fn scan_deleted_files(
         .collect()
 }
 
+// A byte-identical move that preserves the path's test classification is a
+// relocation, not a deletion: the test still exists, unchanged, at the new
+// path. Only exact byte identity plus preserved classification counts; a
+// modified rename must still surface its weakening/skip findings, and a move
+// out of a test path into a non-test path still fails.
+fn collect_relocations(
+    root: &Path,
+    base: &str,
+    entries: &[ChangedEntry],
+    vcs: Vcs,
+) -> (BTreeSet<String>, BTreeSet<String>) {
+    // Cache raw bytes up front so the byte-identity comparison never re-reads
+    // a file or re-spawns git inside the O(D * A) pairing loop.
+    let mut deleted: Vec<(String, bool, Vec<u8>)> = Vec::new();
+    for entry in entries.iter().filter(|entry| entry.status == b'D') {
+        if !is_test_path(&entry.old_path) && !base_file_has_tests(root, base, &entry.old_path, vcs)
+        {
+            continue;
+        }
+        if let Some(bytes) = base_file_bytes(root, base, &entry.old_path, vcs) {
+            deleted.push((entry.old_path.clone(), is_test_path(&entry.old_path), bytes));
+        }
+    }
+    let mut added: Vec<(String, bool, Vec<u8>)> = Vec::new();
+    for entry in entries.iter().filter(|entry| entry.status == b'A') {
+        if let Some(bytes) = current_file_bytes(root, &entry.new_path) {
+            added.push((entry.new_path.clone(), is_test_path(&entry.new_path), bytes));
+        }
+    }
+
+    let mut old_matches: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut new_matches: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for (old_path, old_is_test, old_bytes) in &deleted {
+        for (new_path, new_is_test, new_bytes) in &added {
+            if old_is_test != new_is_test {
+                continue;
+            }
+            if old_bytes != new_bytes {
+                continue;
+            }
+            old_matches
+                .entry(old_path.clone())
+                .or_default()
+                .push(new_path.clone());
+            new_matches
+                .entry(new_path.clone())
+                .or_default()
+                .push(old_path.clone());
+        }
+    }
+    let mut relocated_old = BTreeSet::new();
+    let mut relocated_new = BTreeSet::new();
+    for (old, news) in &old_matches {
+        if news.len() != 1 {
+            continue;
+        }
+        let new = &news[0];
+        if new_matches.get(new).is_some_and(|olds| olds.len() == 1) {
+            relocated_old.insert(old.clone());
+            relocated_new.insert(new.clone());
+        }
+    }
+    (relocated_old, relocated_new)
+}
+
 fn collect_findings(root: &Path, base: &str, vcs: Vcs) -> Result<Vec<Finding>, String> {
     validate_base_revision(root, base, vcs)?;
     let entries = changed_files(root, base, vcs)?;
-    let mut findings = scan_deleted_files(root, base, &entries, vcs);
+    let (relocated_old, relocated_new) = collect_relocations(root, base, &entries, vcs);
+    let mut findings = scan_deleted_files(root, base, &entries, &relocated_old, vcs);
     for entry in &entries {
+        let relocated = match entry.status {
+            b'D' => relocated_old.contains(&entry.old_path),
+            b'A' => relocated_new.contains(&entry.new_path),
+            _ => false,
+        };
+        if relocated {
+            continue;
+        }
         findings.extend(scan_changed_entry(root, base, entry, vcs)?);
     }
     Ok(findings)
@@ -703,19 +758,28 @@ fn parse_justifications(text: &str) -> Result<Vec<JustificationRecord>, String> 
             continue;
         }
         let columns: Vec<&str> = line.split('\t').collect();
-        let [base_commit, old_path, old_blob, new_path, new_blob, finding_kind, finding_detail, replacement_paths_col, review_artifact_path, review_artifact_blob, bead_id] =
-            match columns.as_slice() {
-                [a, b, c, d, e, f, g, h, i, j, k] => {
-                    [a, b, c, d, e, f, g, h, i, j, k]
-                }
-                _ => {
-                    return Err(format!(
-                        "justification record {}: expected 11 tab-separated columns, got {}",
-                        line_no.saturating_add(1),
-                        columns.len()
-                    ));
-                }
-            };
+        let [
+            base_commit,
+            old_path,
+            old_blob,
+            new_path,
+            new_blob,
+            finding_kind,
+            finding_detail,
+            replacement_paths_col,
+            review_artifact_path,
+            review_artifact_blob,
+            bead_id,
+        ] = match columns.as_slice() {
+            [a, b, c, d, e, f, g, h, i, j, k] => [a, b, c, d, e, f, g, h, i, j, k],
+            _ => {
+                return Err(format!(
+                    "justification record {}: expected 11 tab-separated columns, got {}",
+                    line_no.saturating_add(1),
+                    columns.len()
+                ));
+            }
+        };
         let base_commit = base_commit.trim().to_owned();
         let old_path = old_path.trim().to_owned();
         let old_blob = old_blob.trim().to_owned();
@@ -759,7 +823,8 @@ fn parse_justifications(text: &str) -> Result<Vec<JustificationRecord>, String> 
             ));
         }
 
-        let replacement_paths = if replacement_paths_col.is_empty() || replacement_paths_col == "-" {
+        let replacement_paths = if replacement_paths_col.is_empty() || replacement_paths_col == "-"
+        {
             Vec::new()
         } else {
             let mut paths = Vec::new();
@@ -984,10 +1049,8 @@ struct Fixture {
 
 impl Fixture {
     fn new(label: &str) -> Result<Fixture, String> {
-        let root = std::env::temp_dir().join(format!(
-            "test-integrity-{}-{label}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("test-integrity-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).map_err(|error| format!("{label}: create_dir: {error}"))?;
         let git = resolve_real_binary("git")
@@ -1011,8 +1074,7 @@ impl Fixture {
             fs::create_dir_all(parent)
                 .map_err(|error| format!("mkdir {}: {error}", parent.display()))?;
         }
-        fs::write(&path, content)
-            .map_err(|error| format!("write {}: {error}", path.display()))
+        fs::write(&path, content).map_err(|error| format!("write {}: {error}", path.display()))
     }
 
     fn remove(&self, rel: &str) -> Result<(), String> {
@@ -1054,6 +1116,12 @@ impl Fixture {
                 "base",
             ],
         )
+    }
+
+    fn stage_all(&self) -> Result<(), String> {
+        let git = resolve_real_binary("git")
+            .ok_or_else(|| "could not resolve a real git binary".to_owned())?;
+        git_cmd(&git, &self.root, &["add", "-A"])
     }
 
     fn collect(&self) -> Result<Vec<Finding>, String> {
@@ -1264,7 +1332,7 @@ fn run_silent_return_case(label: &str, path: &str) -> bool {
 
 fn run_rename_out_case(label: &str) -> bool {
     let from = "crates/workspace_tests/tests/behavior.rs";
-    let to = "crates/workspace_tests/archive/behavior.rs";
+    let to = "archive/behavior.rs";
     let fixture = match Fixture::new(label) {
         Ok(fixture) => fixture,
         Err(error) => return report_failure(label, &format!("fixture setup: {error}")),
@@ -1272,7 +1340,8 @@ fn run_rename_out_case(label: &str) -> bool {
     let setup = fixture
         .write(from, BASE_TEXT)
         .and_then(|()| fixture.commit_base())
-        .and_then(|()| fixture.rename(from, to));
+        .and_then(|()| fixture.rename(from, to))
+        .and_then(|()| fixture.stage_all());
     if let Err(error) = setup {
         return report_failure(label, &format!("setup: {error}"));
     }
@@ -1294,6 +1363,72 @@ fn run_rename_out_case(label: &str) -> bool {
     findings_ok && exit == 1
 }
 
+fn run_relocate_case(label: &str) -> bool {
+    let from = "crates/workspace_tests/tests/behavior.rs";
+    let to = "crates/workspace_tests/tests/behavior_relocated.rs";
+    let fixture = match Fixture::new(label) {
+        Ok(fixture) => fixture,
+        Err(error) => return report_failure(label, &format!("fixture setup: {error}")),
+    };
+    let setup = fixture
+        .write(from, BASE_TEXT)
+        .and_then(|()| fixture.commit_base())
+        .and_then(|()| fixture.rename(from, to))
+        .and_then(|()| fixture.stage_all());
+    if let Err(error) = setup {
+        return report_failure(label, &format!("setup: {error}"));
+    }
+    let findings = match fixture.collect() {
+        Ok(findings) => findings,
+        Err(error) => return report_failure(label, &format!("collect: {error}")),
+    };
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => return report_failure(label, &format!("check: {error}")),
+    };
+    let expected: [(&str, &str); 0] = [];
+    let findings_ok = expect_findings(label, &findings, &expected);
+    println!("SelfTest:{label}: exit expected=0 actual={exit}");
+    findings_ok && exit == 0
+}
+
+fn run_relocate_modified_case(label: &str) -> bool {
+    let from = "crates/workspace_tests/tests/behavior.rs";
+    let to = "crates/workspace_tests/tests/behavior_relocated.rs";
+    let weakened =
+        "#[test]\nfn behavior_test() {\n    assert!((2 + 2).checked_sub(4).is_some());\n}\n";
+    let fixture = match Fixture::new(label) {
+        Ok(fixture) => fixture,
+        Err(error) => return report_failure(label, &format!("fixture setup: {error}")),
+    };
+    let setup = fixture
+        .write(from, BASE_TEXT)
+        .and_then(|()| fixture.commit_base())
+        .and_then(|()| fixture.rename(from, to))
+        .and_then(|()| fixture.write(to, weakened))
+        .and_then(|()| fixture.stage_all());
+    if let Err(error) = setup {
+        return report_failure(label, &format!("setup: {error}"));
+    }
+    let findings = match fixture.collect() {
+        Ok(findings) => findings,
+        Err(error) => return report_failure(label, &format!("collect: {error}")),
+    };
+    let exit = match fixture.check() {
+        Ok(code) => code,
+        Err(error) => return report_failure(label, &format!("check: {error}")),
+    };
+    let expected = [
+        ("DeletedTestFile", from),
+        ("DeletedTestDeclaration", from),
+        ("WeakenedAssertion", from),
+        ("WeakenedAssertion", to),
+    ];
+    let findings_ok = expect_findings(label, &findings, &expected);
+    println!("SelfTest:{label}: exit expected=1 actual={exit}");
+    findings_ok && exit == 1
+}
+
 fn run_non_utf8_relevant_case(label: &str) -> bool {
     let path = "crates/workspace_tests/tests/behavior.rs";
     let fixture = match Fixture::new(label) {
@@ -1308,10 +1443,10 @@ fn run_non_utf8_relevant_case(label: &str) -> bool {
     }
     // Relevant .rs file with a NUL byte and trailing invalid UTF-8 (0xff 0x00).
     let mutated = [
-        0x23u8, 0x5b, 0x74, 0x65, 0x73, 0x74, 0x5d, 0x0a, 0x66, 0x6e, 0x20, 0x62, 0x65, 0x68,
-        0x61, 0x76, 0x69, 0x6f, 0x72, 0x5f, 0x74, 0x65, 0x73, 0x74, 0x28, 0x29, 0x20, 0x7b, 0x0a,
-        0x20, 0x20, 0x20, 0x20, 0x61, 0x73, 0x73, 0x65, 0x72, 0x74, 0x5f, 0x65, 0x71, 0x28, 0x64,
-        0x75, 0x6d, 0x6d, 0x79, 0x29, 0x3b, 0x0a, 0x7d, 0x0a, 0xff, 0x00,
+        0x23u8, 0x5b, 0x74, 0x65, 0x73, 0x74, 0x5d, 0x0a, 0x66, 0x6e, 0x20, 0x62, 0x65, 0x68, 0x61,
+        0x76, 0x69, 0x6f, 0x72, 0x5f, 0x74, 0x65, 0x73, 0x74, 0x28, 0x29, 0x20, 0x7b, 0x0a, 0x20,
+        0x20, 0x20, 0x20, 0x61, 0x73, 0x73, 0x65, 0x72, 0x74, 0x5f, 0x65, 0x71, 0x28, 0x64, 0x75,
+        0x6d, 0x6d, 0x79, 0x29, 0x3b, 0x0a, 0x7d, 0x0a, 0xff, 0x00,
     ];
     if let Err(error) = fixture.write_bytes(path, &mutated) {
         return report_failure(label, &format!("mutate: {error}"));
@@ -1475,7 +1610,11 @@ fn run_justification_tests() -> bool {
         Ok(findings) => findings,
         Err(error) => return report_failure("justify", &format!("pre-collect: {error}")),
     };
-    if !expect_findings("justify-pre", &pre, &[("WeakenedAssertion", test_path.as_str())]) {
+    if !expect_findings(
+        "justify-pre",
+        &pre,
+        &[("WeakenedAssertion", test_path.as_str())],
+    ) {
         return false;
     }
 
@@ -1500,7 +1639,10 @@ fn run_justification_tests() -> bool {
             2
         }
     };
-    println!("SelfTest:justify-valid: {} expected=0 actual={exit}", if exit == 0 { "PASS" } else { "FAIL" });
+    println!(
+        "SelfTest:justify-valid: {} expected=0 actual={exit}",
+        if exit == 0 { "PASS" } else { "FAIL" }
+    );
     ok = ok && exit == 0;
 
     // 2. Stale current test blob -> finding stays -> FAIL (exit 1).
@@ -1754,6 +1896,12 @@ fn self_test() -> i32 {
     all &= run_delete_case("module-rs-delete", module_rs_path);
     all &= run_weaken_case("module-dir-weaken", module_child_path);
     all &= run_rename_out_case("rename-out");
+    all &= run_relocate_case("relocate-identical");
+    all &= run_relocate_modified_case("relocate-modified");
+    all &= run_delete_case(
+        "space-delete",
+        "crates/workspace_tests/tests/behavior with spaces.rs",
+    );
     all &= run_non_utf8_relevant_case("non-utf8-relevant");
     all &= run_unrelated_binary_pass_case("unrelated-binary-passes");
     all &= run_binary_with_test_delete_case("binary-with-test-delete");
