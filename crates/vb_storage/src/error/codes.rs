@@ -80,12 +80,9 @@ impl JournalError {
     /// (`JournalError::ReplayEnvelopeSequenceMismatch`).
     pub const REPLAY_ENVELOPE_SEQUENCE_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4041);
 
-    /// Diagnostic code for emergency-deny marker with unsupported version
-    /// (`JournalError::EmergencyDenyMarkerUnsupportedVersion`).
-    pub const EMERGENCY_DENY_UNSUPPORTED_VERSION_CODE: DiagnosticCode =
-        DiagnosticCode::new(0x4042);
-    /// Diagnostic code for malformed emergency-deny marker
-    /// (`JournalError::EmergencyDenyMarkerMalformed`).
+    /// Diagnostic code for emergency-deny marker with unsupported version.
+    pub const EMERGENCY_DENY_UNSUPPORTED_VERSION_CODE: DiagnosticCode = DiagnosticCode::new(0x4042);
+    /// Diagnostic code for malformed emergency-deny marker.
     pub const EMERGENCY_DENY_MALFORMED_CODE: DiagnosticCode = DiagnosticCode::new(0x4043);
 
     /// Diagnostic code for invalid configuration supplied to journal open.
@@ -93,10 +90,7 @@ impl JournalError {
     /// Diagnostic code for read-only journal open attempt that the
     /// backend cannot honor.
     pub const UNSUPPORTED_READ_ONLY_CODE: DiagnosticCode = DiagnosticCode::new(0x4034);
-    /// Diagnostic code for artifact-side postcard encode failure
-    /// (`JournalError::PostcardEncodeFailed`). Distinct from
-    /// `POSTCARD_DECODE_FAILED_CODE` so admission callers can
-    /// distinguish encode-side defects.
+    /// Diagnostic code for artifact-side postcard encode failure.
     pub const POSTCARD_ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4032);
     /// Diagnostic code for malformed keyspace row under a known prefix
     /// (`JournalError::MalformedKeyspaceRow`).

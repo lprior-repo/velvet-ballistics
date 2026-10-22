@@ -1,0 +1,45 @@
+[ WARN 2026-10-22 10:49:13.679] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:49:13.804] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:49:15.363] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:49:15.860] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:49:15.942] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:49:43.024] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:49:43.024] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:49:43.102] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+     velvet-ballistics:lint-src | error[E0004]: non-exhaustive patterns: `vb_storage::JournalError::EmergencyDenyMarkerUnsupportedVersion { .. }` and `vb_storage::JournalError::EmergencyDenyMarkerMalformed` not covered
+     velvet-ballistics:lint-src |    --> fuzz/fuzz_targets/journal_decode.rs:101:11
+     velvet-ballistics:lint-src |     |
+     velvet-ballistics:lint-src | 101 |     match error {
+     velvet-ballistics:lint-src |     |           ^^^^^ patterns `vb_storage::JournalError::EmergencyDenyMarkerUnsupportedVersion { .. }` and `vb_storage::JournalError::EmergencyDenyMarkerMalformed` not covered
+     velvet-ballistics:lint-src |     |
+     velvet-ballistics:lint-src | note: `vb_storage::JournalError` defined here
+     velvet-ballistics:lint-src |    --> crates/vb_storage/src/error/mod.rs:21:1
+     velvet-ballistics:lint-src |     |
+     velvet-ballistics:lint-src |  21 | pub enum JournalError {
+     velvet-ballistics:lint-src |     | ^^^^^^^^^^^^^^^^^^^^^
+     velvet-ballistics:lint-src | ...
+     velvet-ballistics:lint-src | 193 |     EmergencyDenyMarkerUnsupportedVersion { version: u8 },
+     velvet-ballistics:lint-src |     |     ------------------------------------- not covered
+     velvet-ballistics:lint-src | 194 |     #[error("emergency deny marker is malformed (wrong length or encoding)")]
+     velvet-ballistics:lint-src | 195 |     EmergencyDenyMarkerMalformed,
+     velvet-ballistics:lint-src |     |     ---------------------------- not covered
+     velvet-ballistics:lint-src |     = note: the matched value is of type `vb_storage::JournalError`
+     velvet-ballistics:lint-src | help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+     velvet-ballistics:lint-src |     |
+     velvet-ballistics:lint-src | 165 ~         | JournalError::Trim(_) => {},
+     velvet-ballistics:lint-src | 166 +         vb_storage::JournalError::EmergencyDenyMarkerUnsupportedVersion { .. } | vb_storage::JournalError::EmergencyDenyMarkerMalformed => todo!()
+     velvet-ballistics:lint-src |     |
+
+     velvet-ballistics:lint-src | For more information about this error, try `rustc --explain E0004`.
+     velvet-ballistics:lint-src | error: could not compile `velvet-ballistics-fuzz` (bin "journal_decode") due to 1 previous error
+velvet-ballistics:source-length | source-length gate summary:
+velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+velvet-ballistics:source-length |   test_in_src        scanned=313   warn=48   over_limit=0    limit=1500 warn_at=1200
+velvet-ballistics:source-length |   test_top_level     scanned=386   warn=6    over_limit=0    limit=3000 warn_at=2400
+velvet-ballistics:source-length |   production         scanned=947   warn=197  over_limit=0    limit=300 warn_at=240
+velvet-ballistics:source-length |   ledger rows used:    383

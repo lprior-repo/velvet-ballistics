@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ct31x-local3090-repair",
+  "argv": [
+    "moon",
+    "ci",
+    ":fmt",
+    ":source-length",
+    ":lint-src",
+    "--downstream",
+    "none",
+    "--force",
+    "--concurrency",
+    "2"
+  ],
+  "exit_code": 0,
+  "seconds": 41.506,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ct31x/evidence/DENY_V2_11",
+  "coordinator_message": "Coordinator source audit after DENY_V2_07: passing source lint excludes cfg(test), so tests STILL violate explicit task. emergency_deny_tests.rs has many .expect(), .unwrap(), stored_bytes[0], events[0]. Contract claims zero but source contradicts. Before handoff fix ALL new tests with Result and ? / let-else; use Box<dyn Error> test return if simpler and exact assert_eq!(stored.as_ref().map(|x| x.as_ref()), Some(bad_value.as_slice())) or safe actual conversions. Full raw bytes Eq, not just length! Use assert_eq!(events, vec![event]) not unchecked index. Exact injected error must inspect actual fault hook and assert correct IO ErrorKind, not just Fjall(_). Empty and trailing malformed cases. Activation internal putter should take NO arbitrary value, insert fixed constant [1], fixed key; remove public(crate) arbitraryvalue API. Do NOT add new lint allows/ignore. Keep actual failure logs, fresh gates. Nightly pin is 2026-04-28, not04-27. Source lint passing does not excuse new test forbidden operations. No Runtime edits. Do not claim acceptance. Root owns VCS/bd.\n"
+}

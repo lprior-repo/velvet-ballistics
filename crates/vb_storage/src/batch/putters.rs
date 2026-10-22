@@ -25,9 +25,7 @@ use crate::{
 };
 
 impl<'j> JournalWriteBatch<'j> {
-    /// Inserts a workflow source record into the batch.
-    ///
-    /// The source bytes are verified against the claimed digest before staging.
+    /// Inserts a workflow source record, verifying digest before staging.
     pub fn put_workflow_source(
         &mut self,
         record: &WorkflowSourceRecord,
@@ -291,12 +289,11 @@ impl<'j> JournalWriteBatch<'j> {
         Ok(())
     }
 
-    /// Inserts the emergency-deny marker into the batch.
-    ///
-    /// Writes the encoded marker value to the emergency_deny keyspace.
-    /// This is committed atomically with other batch operations.
-    pub fn put_emergency_deny(&mut self, key: &[u8], value: [u8; 9]) -> Result<(), JournalError> {
-        self.inner.insert(&self.journal.emergency_deny, key, value);
+    /// Inserts the emergency-deny constant active marker at the fixed key.
+    /// Crate-private: no arbitrary key/value public API.
+    pub(crate) fn put_emergency_deny(&mut self, value: [u8; 1]) -> Result<(), JournalError> {
+        self.inner
+            .insert(&self.journal.emergency_deny, b"active", value);
         Ok(())
     }
 }

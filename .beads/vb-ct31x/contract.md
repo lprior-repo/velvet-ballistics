@@ -2,7 +2,7 @@
 
 ## Scope
 
-New dedicated Fjall keyspace for a monotonic emergency-deny marker. Scoped to
+New dedicated Fjall keyspace for an emergency-deny marker. Scoped to
 the Fjall journal store directory, NOT run-scoped, NOT RunId0. Stable scope
 means the marker persists across Runtime/process recreation using the same
 journal directory. This is storage only: no Runtime dispatch logic, no policy
@@ -21,21 +21,17 @@ Added to `crates/vb_storage/src/constants.rs`.
 
 ### Marker Encoding
 
-Single fixed key: `"active"`. Value encoding (9 bytes total):
-
-```
-byte[0]     : version u8 (current = 1)
-byte[1..9]  : big-endian u64 monotonic activation sequence
-```
+Single fixed key: `"active"`. Value encoding: exact one byte `[1]` where `1` is version 1.
 
 - Missing key → `EmergencyDenyState::Inactive`
-- Valid versioned marker → `EmergencyDenyState::Active { seq }`
-- Unknown version byte → `JournalError::EmergencyDenyMarkerUnsupportedVersion { version }`
-- Wrong length → `JournalError::EmergencyDenyMarkerMalformed`
+- Valid exact `[1]` → `EmergencyDenyState::Active`
+- Zero-length or extra bytes → `JournalError::EmergencyDenyMarkerMalformed`
+- Wrong single version byte → `JournalError::EmergencyDenyMarkerUnsupportedVersion { version }`
 - Any Fjall read/write error propagates via `JournalError::Fjall`
 
-The one-byte version prefix allows future format changes without losing
-existing stored markers.
+No sequence counter. Constant marker repeated writes are genuinely idempotent
+with full equality. No old 9-byte migration needed; this is an unaccepted
+unreleased prototype.
 
 ### Error Variants (crates/vb_storage/src/error/mod.rs)
 
@@ -52,17 +48,17 @@ EmergencyDenyMarkerMalformed,
 ```rust
 pub enum EmergencyDenyState {
     Inactive,
-    Active { seq: u64 },
+    Active,
 }
 ```
 
-### Public API (crates/vb_storage/src/journal/core.rs)
+### Public API (crates/vb_storage/src/journal/emergency_deny.rs)
 
 ```rust
 impl FjallJournal {
     /// Returns the current emergency-deny state.
     ///
-    /// `Inactive` when no marker exists. `Active { seq }` when a valid
+    /// `Inactive` when no marker exists. `Active` when a valid
     /// versioned marker is present. Storage read errors return
     /// `JournalError::Fjall`, never `Inactive`. Malformed or
     /// unsupported-version markers return their specific typed errors,
@@ -71,18 +67,23 @@ impl FjallJournal {
 
     /// Activates the emergency-deny overlay with strict durability.
     ///
-    /// Writes a monotonic versioned marker and persists with
-    /// `PersistMode::SyncAll` before returning. Idempotent: repeated
-    /// calls write fresh monotonic sequences but the state remains
-    /// `Active`. Never overwrites or clears an existing marker —
-    /// corruption is detected and reported as a typed error.
+    /// Reads and validates any existing marker first, rejecting corrupt
+    /// or unsupported state without overwriting it. Writes the constant
+    /// active marker and persists with `PersistMode::SyncAll` before
+    /// returning success. Always performs a strict-batch commit+SyncAll
+    /// even if already Active, because a prior failed persistence can
+    /// leave visible but not durably confirmed data.
+    ///
+    /// Idempotent: repeated calls write the same constant marker,
+    /// producing full equality with no overflow or race counter.
     /// Returns the new state.
     pub fn activate_emergency_deny(&self) -> Result<EmergencyDenyState, JournalError>;
-
-    /// Returns the emergency-deny keyspace handle for internal operations.
-    pub fn emergency_deny_keyspace(&self) -> &fjall::Keyspace;
 }
 ```
+
+No public `emergency_deny_keyspace` accessor. No public `put_emergency_deny`
+with arbitrary key/value. Batch marker putter is pub(crate), bound to fixed
+key and constant active marker.
 
 ### Integration Points
 
@@ -96,35 +97,42 @@ impl FjallJournal {
 | Rule | Description |
 |------|-------------|
 | Missing = Inactive | No marker key → `Inactive`, never an error |
-| Valid marker = Active | Version 1 + 8-byte big-endian u64 seq |
+| Valid marker = Active | Exact one byte `[1]` version 1 |
 | Typed errors for corruption | Wrong version, wrong length, Fjall error — never silently Inactive |
 | Atomic strict persist | Write + `SyncAll` in single `JournalWriteBatch::commit()` |
-| No clear/remove API | Monotonic; activation only ever adds new sequence |
-| Idempotent activation | Repeated calls succeed, each increments sequence |
+| No clear/remove API | Activation only ever writes the constant marker |
+| Idempotent activation | Repeated calls succeed, produce exact equality, no counter |
 | Storage scope | Same Fjall store directory as all other keyspace data |
+| Validate before write | Activation reads/validates existing marker first |
+| Always persist on activate | No shortcut for already-Active; always strict-batch commit+SyncAll |
 
 ## Tests
 
 Public integration-style tests in `crates/vb_storage/src/journal/emergency_deny_tests.rs`:
 
 1. New store is Inactive
-2. Activate → Active with seq > 0
-3. Repeated activation is idempotent (state remains Active)
+2. Activate → Active
+3. Repeated activation is idempotent (exact equality)
 4. Drop journal, reopen, marker persists (cold reopen)
 5. Separate stores are isolated
-6. Malformed marker (wrong length) → typed error
-7. Unsupported version → typed error
-8. Failed persist returns error, not success (cfg(test) injection)
-9. Original run event history unchanged after activation
+6. Malformed marker (wrong length) → typed error on read AND activation
+7. Unsupported version → typed error on read AND activation
+8. Failed persist returns error, not success (PRECOMMIT failure injection)
+9. Retry after injected failure succeeds
+10. Already Active retry still performs strict persistence
+11. Original run event history unchanged after activation
 
-Corruption fixtures use crate-private unit tests writing raw bytes via the
-Fjall keyspace directly (no new public backdoor API).
+All tests use Result return and ?/let patterns, zero expect/unwrap/panic,
+retain TempDir for fixture lifetime, prove exact state equality, and for
+corruption cases prove both state read and activation reject with exact
+errors while preserving raw bad bytes.
 
 ## Files Changed
 
 - `crates/vb_storage/src/constants.rs` — new keyspace constant
-- `crates/vb_storage/src/journal/core.rs` — new methods, keyspace creation
+- `crates/vb_storage/src/journal/core.rs` — new module import, removed inline emergency deny methods
+- `crates/vb_storage/src/journal/emergency_deny.rs` — NEW: dedicated module with enum, constants, state/activate methods
+- `crates/vb_storage/src/journal/batch/putters.rs` — pub(crate) put_emergency_deny with fixed key
 - `crates/vb_storage/src/journal/readonly.rs` — updated `declared_keyspaces()`
 - `crates/vb_storage/src/error/mod.rs` — new error variants
-- `crates/vb_storage/src/types.rs` — `EmergencyDenyState` enum (or local to core)
-- `crates/vb_storage/src/journal/emergency_deny_tests.rs` — new test module
+- `crates/vb_storage/src/journal/emergency_deny_tests.rs` — NEW: test module
