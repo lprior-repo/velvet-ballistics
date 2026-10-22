@@ -1,0 +1,544 @@
+error[E0432]: unresolved import `vb_core::action::ActionId`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:9:5
+   |
+ 9 | use vb_core::action::ActionId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ no `ActionId` in `action`
+   |
+note: found an item that was configured out
+  --> crates/vb_core/src/action.rs:20:18
+   |
+19 | #[cfg(test)]
+   |       ---- the item is gated here
+20 | use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
+   |                  ^^^^^^^^
+help: consider importing one of these structs instead
+   |
+ 9 - use vb_core::action::ActionId;
+ 9 + use vb_core::ActionId;
+   |
+ 9 - use vb_core::action::ActionId;
+ 9 + use vb_validate::ActionId;
+   |
+
+error[E0432]: unresolved import `vb_core::capability::CapabilityScopeSpec`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:11:39
+   |
+11 | use vb_core::capability::{Capability, CapabilityScopeSpec, CapabilitySet};
+   |                                       ^^^^^^^^^^^^^^^^^^^ no `CapabilityScopeSpec` in `capability`
+   |
+   = help: consider importing this struct instead:
+           vb_core::action_pack::CapabilityScopeSpec
+
+error[E0432]: unresolved import `vb_core::compile`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:12:14
+   |
+12 | use vb_core::compile::CompiledWorkflow;
+   |              ^^^^^^^ could not find `compile` in `vb_core`
+
+error[E0432]: unresolved import `vb_core::run`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:18:14
+   |
+18 | use vb_core::run::RunId;
+   |              ^^^ could not find `run` in `vb_core`
+
+error[E0432]: unresolved import `vb_core::step`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:19:14
+   |
+19 | use vb_core::step::StepIdx;
+   |              ^^^^ could not find `step` in `vb_core`
+
+error[E0432]: unresolved import `vb_runtime::recovery::RecoveryClass`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:21:5
+   |
+21 | use vb_runtime::recovery::RecoveryClass;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `RecoveryClass` in `recovery`
+   |
+help: consider importing this enum instead
+   |
+21 - use vb_runtime::recovery::RecoveryClass;
+21 + use vb_core::action_pack::RecoveryClass;
+   |
+
+error[E0432]: unresolved import `vb_runtime::storage`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:24:17
+   |
+24 | use vb_runtime::storage::ShardConfig;
+   |                 ^^^^^^^ could not find `storage` in `vb_runtime`
+
+error[E0432]: unresolved import `vb_runtime::storage`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:25:17
+   |
+25 | use vb_runtime::storage::StorageRuntimeJournal;
+   |                 ^^^^^^^ could not find `storage` in `vb_runtime`
+
+error[E0432]: unresolved import `vb_runtime::executor`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:26:17
+   |
+26 | use vb_runtime::executor::ExecutorCatalog;
+   |                 ^^^^^^^^ could not find `executor` in `vb_runtime`
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:68:20
+   |
+68 |     kind: vb_core::node::CompiledNodeKind,
+   |                    ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:69:15
+   |
+69 | ) -> vb_core::node::CompiledNode {
+   |               ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:70:14
+   |
+70 |     vb_core::node::CompiledNode {
+   |              ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:78:68
+   |
+78 | fn action_node(id: u16, action: ActionId, output: u16) -> vb_core::node::CompiledNode {
+   |                                                                    ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:85:39
+   |
+85 |             args: Box::from([vb_core::node::SlotSpec::from(
+   |                                       ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:87:26
+   |
+87 |                 vb_core::node::SlotType::I64,
+   |                          ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:93:50
+   |
+93 | fn finish_node(id: u16, output: u16) -> vb_core::node::CompiledNode {
+   |                                                  ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:99:30
+   |
+99 |             result: vb_core::node::SlotSpec::from(
+   |                              ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:101:26
+    |
+101 |                 vb_core::node::SlotType::I64,
+    |                          ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:117:29
+    |
+117 |         Box::from([vb_core::node::SlotSpec::from(
+    |                             ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:119:22
+    |
+119 |             vb_core::node::SlotType::I64,
+    |                      ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:121:29
+    |
+121 |         Box::from([vb_core::node::SlotSpec::from(
+    |                             ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:123:22
+    |
+123 |             vb_core::node::SlotType::I64,
+    |                      ^^^^ could not find `node` in `vb_core`
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:83:18
+   |
+83 |         vb_core::node::CompiledNodeKind::Action {
+   |                  ^^^^ could not find `node` in `vb_core`
+   |
+help: consider importing one of these enums
+   |
+ 6 + use vb_core::CompiledNodeKind;
+   |
+ 6 + use vb_validate::CompiledNodeKind;
+   |
+help: if you import `CompiledNodeKind`, refer to it directly
+   |
+83 -         vb_core::node::CompiledNodeKind::Action {
+83 +         CompiledNodeKind::Action {
+   |
+
+error[E0433]: cannot find `node` in `vb_core`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:98:18
+   |
+98 |         vb_core::node::CompiledNodeKind::Finish {
+   |                  ^^^^ could not find `node` in `vb_core`
+   |
+help: consider importing one of these enums
+   |
+ 6 + use vb_core::CompiledNodeKind;
+   |
+ 6 + use vb_validate::CompiledNodeKind;
+   |
+help: if you import `CompiledNodeKind`, refer to it directly
+   |
+98 -         vb_core::node::CompiledNodeKind::Finish {
+98 +         CompiledNodeKind::Finish {
+   |
+
+error[E0603]: struct `ActionTicket` is private
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:3:5
+   |
+ 3 |     ActionTicket, CurrentPolicyIdentity, DecisionRecord, PinnedAdmissionPolicy, PolicyDigest,
+   |     ^^^^^^^^^^^^ private struct
+   |
+note: the struct `ActionTicket` is defined here
+  --> crates/vb_core/src/policy.rs:10:5
+   |
+10 | use crate::action::ActionTicket;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: import `ActionTicket` directly
+   |
+ 3 |     vb_core::action::ticket::ActionTicket, CurrentPolicyIdentity, DecisionRecord, PinnedAdmissionPolicy, PolicyDigest,
+   |     +++++++++++++++++++++++++
+
+error[E0603]: enum `RuntimePolicy` is private
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:10:24
+    |
+ 10 | use vb_core::artifact::RuntimePolicy;
+    |                        ^^^^^^^^^^^^^ private enum
+    |
+note: the enum `RuntimePolicy` is defined here
+   --> crates/vb_core/src/artifact.rs:4:13
+    |
+  4 | use crate::{RuntimePolicy, WorkflowDigest};
+    |             ^^^^^^^^^^^^^
+    |
+   ::: crates/vb_core/src/policy.rs:193:1
+    |
+193 | #[non_exhaustive]
+    | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+help: import `RuntimePolicy` directly
+    |
+ 10 - use vb_core::artifact::RuntimePolicy;
+ 10 + use vb_core::policy::RuntimePolicy;
+    |
+
+error[E0603]: struct `SlotIdx` is private
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:13:21
+   |
+13 | use vb_core::frame::SlotIdx;
+   |                     ^^^^^^^ private struct
+   |
+note: the struct `SlotIdx` is defined here
+  --> crates/vb_core/src/frame.rs:41:25
+   |
+41 | use crate::ids::{RunId, SlotIdx, StepIdx};
+   |                         ^^^^^^^
+help: import `SlotIdx` directly
+   |
+13 - use vb_core::frame::SlotIdx;
+13 + use vb_core::ids::SlotIdx;
+   |
+
+error[E0603]: enum `SlotValue` is private
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:14:21
+    |
+ 14 | use vb_core::frame::SlotValue;
+    |                     ^^^^^^^^^ private enum
+    |
+note: the enum `SlotValue` is defined here
+   --> crates/vb_core/src/frame.rs:42:20
+    |
+ 42 | use crate::value::{SlotValue, Taint};
+    |                    ^^^^^^^^^
+    |
+   ::: crates/vb_core/src/value.rs:124:1
+    |
+124 | #[non_exhaustive]
+    | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+help: import `SlotValue` directly
+    |
+ 14 - use vb_core::frame::SlotValue;
+ 14 + use vb_core::value::SlotValue;
+    |
+
+error[E0603]: struct `RecoveryRuntimeSummary` is private
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:22:27
+   |
+22 | use vb_runtime::recovery::RecoveryRuntimeSummary;
+   |                           ^^^^^^^^^^^^^^^^^^^^^^ private struct
+   |
+note: the struct `RecoveryRuntimeSummary` is defined here
+  --> crates/vb_runtime/src/recovery.rs:12:5
+   |
+12 |     RecoveryRuntimeSummary, UnsupportedRecoveryState,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+help: import `RecoveryRuntimeSummary` directly
+   |
+22 - use vb_runtime::recovery::RecoveryRuntimeSummary;
+22 + use vb_storage::recovery::types::RecoveryRuntimeSummary;
+   |
+
+error[E0603]: enum `RuntimeError` is private
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:27:26
+   |
+27 | use vb_runtime::runtime::RuntimeError;
+   |                          ^^^^^^^^^^^^ private enum
+   |
+note: the enum `RuntimeError` is defined here
+  --> crates/vb_runtime/src/runtime.rs:19:13
+   |
+19 | use crate::{RuntimeError, RuntimeResult};
+   |             ^^^^^^^^^^^^
+   |
+  ::: crates/vb_runtime/src/error/mod.rs:6:1
+   |
+ 6 | #[non_exhaustive]
+   | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+help: import `RuntimeError` directly
+   |
+27 - use vb_runtime::runtime::RuntimeError;
+27 + use vb_runtime::error::RuntimeError;
+   |
+
+error[E0603]: type alias `RuntimeResult` is private
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:28:26
+   |
+28 | use vb_runtime::runtime::RuntimeResult;
+   |                          ^^^^^^^^^^^^^ private type alias
+   |
+note: the type alias `RuntimeResult` is defined here
+  --> crates/vb_runtime/src/runtime.rs:19:27
+   |
+19 | use crate::{RuntimeError, RuntimeResult};
+   |                           ^^^^^^^^^^^^^
+help: import `RuntimeResult` directly
+   |
+28 - use vb_runtime::runtime::RuntimeResult;
+28 + use vb_runtime::error::RuntimeResult;
+   |
+
+error[E0603]: enum `Taint` is private
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:16:29
+   |
+16 |     taint: vb_core::policy::Taint,
+   |                             ^^^^^ private enum
+   |
+note: the enum `Taint` is defined here
+  --> crates/vb_core/src/policy.rs:12:5
+   |
+12 | use crate::value::Taint;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+  ::: crates/vb_core/src/value.rs:13:1
+   |
+13 | #[non_exhaustive]
+   | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+help: consider importing this enum instead
+   |
+16 -     taint: vb_core::policy::Taint,
+16 +     taint: vb_core::Taint,
+   |
+help: import `Taint` directly
+   |
+16 -     taint: vb_core::policy::Taint,
+16 +     taint: vb_core::value::Taint,
+   |
+
+error[E0603]: enum `Taint` is private
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:26:26
+   |
+26 |         vb_core::policy::Taint::Clean => 0,
+   |                          ^^^^^ private enum
+   |
+note: the enum `Taint` is defined here
+  --> crates/vb_core/src/policy.rs:12:5
+   |
+12 | use crate::value::Taint;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+  ::: crates/vb_core/src/value.rs:13:1
+   |
+13 | #[non_exhaustive]
+   | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+help: consider importing this unit variant instead
+   |
+26 -         vb_core::policy::Taint::Clean => 0,
+26 +         vb_core::Taint::Clean => 0,
+   |
+help: import `Taint` directly
+   |
+26 -         vb_core::policy::Taint::Clean => 0,
+26 +         vb_core::value::Taint => 0,
+   |
+
+error[E0603]: enum `Taint` is private
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:27:26
+   |
+27 |         vb_core::policy::Taint::Internal => 1,
+   |                          ^^^^^ private enum
+   |
+note: the enum `Taint` is defined here
+  --> crates/vb_core/src/policy.rs:12:5
+   |
+12 | use crate::value::Taint;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+  ::: crates/vb_core/src/value.rs:13:1
+   |
+13 | #[non_exhaustive]
+   | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+help: consider importing this enum instead
+   |
+27 -         vb_core::policy::Taint::Internal => 1,
+27 +         vb_core::Taint::Internal => 1,
+   |
+help: import `Taint` directly
+   |
+27 -         vb_core::policy::Taint::Internal => 1,
+27 +         vb_core::value::Taint => 1,
+   |
+
+error[E0603]: enum `Taint` is private
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:28:26
+   |
+28 |         vb_core::policy::Taint::Foreign => 2,
+   |                          ^^^^^ private enum
+   |
+note: the enum `Taint` is defined here
+  --> crates/vb_core/src/policy.rs:12:5
+   |
+12 | use crate::value::Taint;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+  ::: crates/vb_core/src/value.rs:13:1
+   |
+13 | #[non_exhaustive]
+   | ----------------- cannot be constructed because it is `#[non_exhaustive]`
+help: consider importing this enum instead
+   |
+28 -         vb_core::policy::Taint::Foreign => 2,
+28 +         vb_core::Taint::Foreign => 2,
+   |
+help: import `Taint` directly
+   |
+28 -         vb_core::policy::Taint::Foreign => 2,
+28 +         vb_core::value::Taint => 2,
+   |
+
+error: unused import: `vb_runtime::recovery::RuntimeRecoveryProduct`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:20:5
+   |
+20 | use vb_runtime::recovery::RuntimeRecoveryProduct;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused import: `vb_storage::AcceptedArtifact`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:29:5
+   |
+29 | use vb_storage::AcceptedArtifact;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused imports: `RegisterGrant` and `RegisterReceipt`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:32:28
+   |
+32 | use vb_storage::executor::{RegisterGrant, RegisterReceipt};
+   |                            ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^
+
+error[E0533]: expected value, found struct variant `CurrentPolicyIdentity::Configured`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:11:5
+   |
+11 |     CurrentPolicyIdentity::Configured(PolicyDigest::from_bytes(digest))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+11 -     CurrentPolicyIdentity::Configured(PolicyDigest::from_bytes(digest))
+11 +     CurrentPolicyIdentity::Configured { digest: /* value */ }
+   |
+
+error[E0599]: no variant, associated function, or constant named `Internal` found for enum `vb_core::Taint` in the current scope
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:27:33
+   |
+27 |         vb_core::policy::Taint::Internal => 1,
+   |                                 ^^^^^^^^ variant, associated function, or constant not found in `vb_core::Taint`
+
+error[E0599]: no variant, associated function, or constant named `Foreign` found for enum `vb_core::Taint` in the current scope
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:28:33
+   |
+28 |         vb_core::policy::Taint::Foreign => 2,
+   |                                 ^^^^^^^ variant, associated function, or constant not found in `vb_core::Taint`
+
+error[E0308]: mismatched types
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:44:33
+   |
+44 |     Ok(PolicyDigest::from_bytes(hash.as_bytes()))
+   |        ------------------------ ^^^^^^^^^^^^^^^ expected `[u8; 32]`, found `&[u8; 32]`
+   |        |
+   |        arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> crates/vb_core/src/policy.rs:24:18
+   |
+24 |     pub const fn from_bytes(bytes: [u8; 32]) -> Self {
+   |                  ^^^^^^^^^^
+help: consider dereferencing the borrow
+   |
+44 |     Ok(PolicyDigest::from_bytes(*hash.as_bytes()))
+   |                                 +
+
+error[E0560]: struct `DecisionRecord` has no field named `admission_pin`
+  --> crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:63:9
+   |
+63 |         admission_pin,
+   |         ^^^^^^^^^^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+63 -         admission_pin,
+63 +         admission,
+   |
+
+error[E0599]: no associated function or constant named `new` found for struct `ActionContract` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:114:53
+    |
+114 |     let contract = vb_core::action::ActionContract::new(
+    |                                                     ^^^ associated function or constant not found in `ActionContract`
+    |
+help: there is a method `ne` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:263:5
+    |
+263 |     fn ne(&self, other: &Rhs) -> bool {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no variant named `ActionDecision` found for enum `JournalEvent`
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:207:75
+    |
+207 |     assert_eq!(journal_before.iter().filter(|e| matches!(e, JournalEvent::ActionDecision { .. })).count(), 1);
+    |                                                                           ^^^^^^^^^^^^^^ variant not found in `JournalEvent`
+
+error[E0609]: no field `code` on type `&DecisionRecord`
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:270:16
+    |
+270 |         stored.code, DecisionCode::Allowed,
+    |                ^^^^ unknown field
+    |
+    = note: available fields are: `ticket`, `admission`, `current_live`, `input_digest`, `taint` ... and 4 others
+
+error[E0599]: no variant named `ActionDecision` found for enum `JournalEvent`
+   --> crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:289:30
+    |
+289 |         if let JournalEvent::ActionDecision { decision } = event {
+    |                              ^^^^^^^^^^^^^^ variant not found in `JournalEvent`
+
+Some errors have detailed explanations: E0308, E0432, E0433, E0533, E0560, E0599, E0603, E0609.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_historical_replay") due to 47 previous errors
