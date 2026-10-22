@@ -1,0 +1,142 @@
+error[E0433]: cannot find `EmergencyDenyState` in `vb_storage`
+  --> crates/vb_runtime/src/runtime/live_policy_dispatch.rs:97:41
+   |
+97 |         if !matches!(state, vb_storage::EmergencyDenyState::Active) {
+   |                                         ^^^^^^^^^^^^^^^^^^ could not find `EmergencyDenyState` in `vb_storage`
+   |
+help: consider importing this enum
+   |
+ 1 + use vb_storage::journal::EmergencyDenyState;
+   |
+help: if you import `EmergencyDenyState`, refer to it directly
+   |
+97 -         if !matches!(state, vb_storage::EmergencyDenyState::Active) {
+97 +         if !matches!(state, EmergencyDenyState::Active) {
+   |
+
+error[E0433]: cannot find `EmergencyDenyState` in `vb_storage`
+   --> crates/vb_runtime/src/runtime/live_policy_dispatch.rs:110:40
+    |
+110 |         Ok(matches!(state, vb_storage::EmergencyDenyState::Active))
+    |                                        ^^^^^^^^^^^^^^^^^^ could not find `EmergencyDenyState` in `vb_storage`
+    |
+help: consider importing this enum
+    |
+  1 + use vb_storage::journal::EmergencyDenyState;
+    |
+help: if you import `EmergencyDenyState`, refer to it directly
+    |
+110 -         Ok(matches!(state, vb_storage::EmergencyDenyState::Active))
+110 +         Ok(matches!(state, EmergencyDenyState::Active))
+    |
+
+error[E0624]: method `configure_live_policy_helper` is private
+   --> crates/vb_runtime/src/runtime.rs:257:14
+    |
+257 |           self.configure_live_policy_helper(digest, rule);
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private method
+    |
+   ::: crates/vb_runtime/src/runtime/live_policy_dispatch.rs:81:5
+    |
+ 81 | /     pub(super) fn configure_live_policy_helper(
+ 82 | |         &mut self,
+ 83 | |         digest: vb_core::policy::PolicyDigest,
+ 84 | |         rule: vb_core::policy::PolicyRule,
+ 85 | |     ) {
+    | |_____- private method defined here
+
+error[E0624]: method `activate_emergency_deny_helper` is private
+   --> crates/vb_runtime/src/runtime.rs:267:14
+    |
+267 |         self.activate_emergency_deny_helper()
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private method
+    |
+   ::: crates/vb_runtime/src/runtime/live_policy_dispatch.rs:91:5
+    |
+ 91 |     pub(super) fn activate_emergency_deny_helper(&mut self) -> RuntimeResult<()> {
+    |     ---------------------------------------------------------------------------- private method defined here
+
+error[E0277]: `?` couldn't convert the error to `DecisionRecord`
+  --> crates/vb_runtime/src/runtime/live_policy_dispatch.rs:60:68
+   |
+60 |         let durable_emergency = self.read_durable_emergency_state()?;
+   |                                      ------------------------------^ the trait `From<RuntimeError>` is not implemented for `DecisionRecord`
+   |                                      |
+   |                                      this can't be annotated with `?` because it has type `Result<_, RuntimeError>`
+   |
+note: `RuntimeError` needs to implement `Into<DecisionRecord>`
+  --> crates/vb_runtime/src/error/mod.rs:7:1
+   |
+ 7 | pub enum RuntimeError {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+
+error[E0277]: `?` couldn't convert the error to `DecisionRecord`
+  --> crates/vb_runtime/src/runtime/live_policy_dispatch.rs:69:10
+   |
+64 |           let decision = self.live_policy.evaluate(
+   |  _________________________________________-
+65 | |             ctx.ticket,
+66 | |             ctx.admission_pin,
+67 | |             &ctx.encoded_bytes,
+68 | |             ctx.input_taint,
+69 | |         )?;
+   | |         -^ the trait `From<RuntimeError>` is not implemented for `DecisionRecord`
+   | |_________|
+   |           this can't be annotated with `?` because it has type `Result<_, RuntimeError>`
+   |
+note: `RuntimeError` needs to implement `Into<DecisionRecord>`
+  --> crates/vb_runtime/src/error/mod.rs:7:1
+   |
+ 7 | pub enum RuntimeError {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+
+error[E0277]: `?` couldn't convert the error to `DecisionRecord`
+  --> crates/vb_runtime/src/runtime/live_policy_dispatch.rs:70:63
+   |
+70 |         let decision = self.dispatch_policy_decision(decision)?;
+   |                             ----------------------------------^ the trait `From<RuntimeError>` is not implemented for `DecisionRecord`
+   |                             |
+   |                             this can't be annotated with `?` because it has type `Result<_, RuntimeError>`
+   |
+note: `RuntimeError` needs to implement `Into<DecisionRecord>`
+  --> crates/vb_runtime/src/error/mod.rs:7:1
+   |
+ 7 | pub enum RuntimeError {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+
+error[E0277]: `?` couldn't convert the error to `DecisionRecord`
+  --> crates/vb_runtime/src/runtime/live_policy_dispatch.rs:71:55
+   |
+71 |         let shard = self.shard_for_mut(ctx.ticket.run)?;
+   |                          -----------------------------^ the trait `From<RuntimeError>` is not implemented for `DecisionRecord`
+   |                          |
+   |                          this can't be annotated with `?` because it has type `Result<_, RuntimeError>`
+   |
+note: `RuntimeError` needs to implement `Into<DecisionRecord>`
+  --> crates/vb_runtime/src/error/mod.rs:7:1
+   |
+ 7 | pub enum RuntimeError {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+
+error[E0277]: `?` couldn't convert the error to `DecisionRecord`
+  --> crates/vb_runtime/src/runtime/live_policy_dispatch.rs:72:62
+   |
+72 |         shard.append_policy_decision_strict(decision.clone())?;
+   |               -----------------------------------------------^ the trait `From<RuntimeError>` is not implemented for `DecisionRecord`
+   |               |
+   |               this can't be annotated with `?` because it has type `Result<_, RuntimeError>`
+   |
+note: `RuntimeError` needs to implement `Into<DecisionRecord>`
+  --> crates/vb_runtime/src/error/mod.rs:7:1
+   |
+ 7 | pub enum RuntimeError {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+
+Some errors have detailed explanations: E0277, E0433, E0624.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `vb_runtime` (lib) due to 9 previous errors
