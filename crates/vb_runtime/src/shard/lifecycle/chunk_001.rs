@@ -361,6 +361,7 @@ impl Shard {
         let collect_states = command.collect_states;
         let retry_checkpoint = command.retry_checkpoint;
         let boundary = command.boundary;
+        let admission = command.admission;
 
         // Step 1: Load artifact by artifact_digest for verification
         let artifact = self
@@ -436,11 +437,11 @@ impl Shard {
             self.prepare_run_slots(run)?;
             state
         } else {
-            // Step 7: Build initial admission and recover the legacy resumable frame.
-            let granted_caps = vb_core::capability::CapabilitySet::from_grants(
-                artifact.required_capabilities.clone(),
-            );
-            let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
+            // Step 7: Restore the original historical admission validated by the
+            // recovery prefix flow (validate_recovery_admission) rather than
+            // rebuilding admission from current policy. Rebuilding could upgrade
+            // a legacy Unverified admission to Pinned, authorizing external
+            // effects the original run never had authority for.
             let frame_step_count = frame.step_count();
             let max_slots = workflow.resource_contract().max_slots;
             self.prepare_run_slots(run)?;
@@ -451,7 +452,7 @@ impl Shard {
                 workflow,
                 store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
                 action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
-                admission,
+                admission: Some(admission),
                 collect_states,
                 action_contracts: artifact.action_contracts.clone(),
             }

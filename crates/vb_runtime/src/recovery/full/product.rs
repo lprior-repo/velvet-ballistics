@@ -232,6 +232,9 @@ pub struct ResumableRecoveryProduct {
     next_seq: EventSeq,
     collect_states: crate::primitives::collect::CollectStates,
     boundary: RecoveredRunBoundary,
+    /// Original historical admission validated against the durable artifact;
+    /// must be restored verbatim rather than rebuilt from current policy.
+    admission: crate::admission::RunAdmission,
 }
 
 impl ResumableRecoveryProduct {
@@ -246,6 +249,7 @@ impl ResumableRecoveryProduct {
             next_seq: parts.next_seq,
             collect_states: parts.collect_states,
             boundary: parts.boundary,
+            admission: parts.admission,
         }
     }
 
@@ -275,6 +279,7 @@ impl ResumableRecoveryProduct {
             collect_states: self.collect_states,
             retry_checkpoint: None,
             boundary: self.boundary,
+            admission: self.admission,
         }
     }
 }
@@ -289,4 +294,7 @@ pub(crate) struct ResumableRecoveryParts {
     pub(crate) next_seq: EventSeq,
     pub(crate) collect_states: crate::primitives::collect::CollectStates,
     pub(crate) boundary: RecoveredRunBoundary,
+    /// Original historical admission validated against the durable artifact;
+    /// must be restored verbatim rather than rebuilt from current policy.
+    pub(crate) admission: crate::admission::RunAdmission,
 }

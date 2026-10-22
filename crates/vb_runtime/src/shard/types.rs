@@ -224,6 +224,9 @@ pub struct RecoverRunCommand {
     pub retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     /// Recovery boundary classification.
     pub boundary: crate::recovery::RecoveredRunBoundary,
+    /// Original historical admission validated against the durable artifact;
+    /// must be restored verbatim rather than rebuilt from current policy.
+    pub admission: crate::admission::RunAdmission,
 }
 
 impl RecoverRunCommand {
@@ -237,6 +240,7 @@ impl RecoverRunCommand {
         next_seq: EventSeq,
         collect_states: CollectStates,
         boundary: crate::recovery::RecoveredRunBoundary,
+        admission: crate::admission::RunAdmission,
     ) -> Self {
         Self {
             run,
@@ -247,6 +251,7 @@ impl RecoverRunCommand {
             collect_states,
             retry_checkpoint: None,
             boundary,
+            admission,
         }
     }
 
@@ -277,6 +282,12 @@ impl RecoverRunCommand {
             .map_err(|error| crate::RuntimeError::Recovery {
             error: format!("retry checkpoint collect restore failed: {error:?}"),
         })?;
+        let admission = checkpoint
+            .admission
+            .clone()
+            .ok_or_else(|| crate::RuntimeError::Recovery {
+                error: "retry checkpoint has no admission authority".to_string(),
+            })?;
         Ok(Self {
             run: checkpoint.run_id,
             frame,
@@ -286,6 +297,7 @@ impl RecoverRunCommand {
             collect_states,
             retry_checkpoint: Some(checkpoint),
             boundary: crate::recovery::RecoveredRunBoundary::none(),
+            admission,
         })
     }
 }
