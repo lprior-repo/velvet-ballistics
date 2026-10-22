@@ -1,0 +1,15 @@
+▮▮▮▮ velvet-ballistics:benchmark-proof (e934e52a)
+Running Criterion benchmarks for vb-current baseline...
+aggregate_resource_budget_contract_surface
+                        time:   [362.50 ns 364.56 ns 366.94 ns]
+                        change: [−4.6911% −2.9598% −1.4290%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+
+▮▮▮▮ velvet-ballistics:benchmark-proof (8s 500ms, e934e52a)
+
+Tasks: 1 completed
+ Time: 11s 332ms
+
