@@ -1,0 +1,59 @@
+error[E0433]: cannot find type `RecoveredAdmissionKind` in this scope
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:413:13
+    |
+413 |             RecoveredAdmissionKind::Historical(historical) => {
+    |             ^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `RecoveredAdmissionKind`
+    |
+help: consider importing this enum
+   --> crates/vb_runtime/src/shard/lifecycle.rs:12:1
+    |
+ 12 + use crate::shard::types::RecoveredAdmissionKind;
+    |
+
+error[E0433]: cannot find type `RecoveredAdmissionKind` in this scope
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:427:13
+    |
+427 |             RecoveredAdmissionKind::Unverified { run_id, artifact_digest: cmd_digest } => {
+    |             ^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `RecoveredAdmissionKind`
+    |
+help: consider importing this enum
+   --> crates/vb_runtime/src/shard/lifecycle.rs:12:1
+    |
+ 12 + use crate::shard::types::RecoveredAdmissionKind;
+    |
+
+error[E0433]: cannot find type `RecoveredAdmissionKind` in this scope
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:483:17
+    |
+483 |                 RecoveredAdmissionKind::Historical(h) => Some(h),
+    |                 ^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `RecoveredAdmissionKind`
+    |
+help: consider importing this enum
+   --> crates/vb_runtime/src/shard/lifecycle.rs:12:1
+    |
+ 12 + use crate::shard::types::RecoveredAdmissionKind;
+    |
+
+error[E0433]: cannot find type `RecoveredAdmissionKind` in this scope
+   --> crates/vb_runtime/src/shard/lifecycle/chunk_001.rs:484:17
+    |
+484 |                 RecoveredAdmissionKind::Unverified { .. } => Some(
+    |                 ^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `RecoveredAdmissionKind`
+    |
+help: consider importing this enum
+   --> crates/vb_runtime/src/shard/lifecycle.rs:12:1
+    |
+ 12 + use crate::shard::types::RecoveredAdmissionKind;
+    |
+
+error: unused import: `validate_recovered_policy_pin`
+  --> crates/vb_runtime/src/recovery/full.rs:20:5
+   |
+20 |     validate_recovered_policy_pin,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `vb_runtime` (lib test) due to 5 previous errors

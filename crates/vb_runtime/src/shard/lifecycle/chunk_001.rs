@@ -115,7 +115,10 @@ impl Shard {
         let digest = workflow.digest();
         let admission = self.build_admission(run, digest, caps)?;
         execution_binding::validate(
-            self.artifact_store.as_ref(), self.policy, &workflow, action_contracts,
+            self.artifact_store.as_ref(),
+            self.policy,
+            &workflow,
+            action_contracts,
         )?;
         self.prepare_run_slots(run)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
@@ -286,7 +289,10 @@ impl Shard {
         super::contract_validation::validate_contract_capabilities(action_contracts, &caps)?;
         super::contract_validation::validate_workflow_action_binding(workflow, action_contracts)?;
         execution_binding::validate(
-            self.artifact_store.as_ref(), self.policy, workflow, action_contracts,
+            self.artifact_store.as_ref(),
+            self.policy,
+            workflow,
+            action_contracts,
         )?;
         Ok(())
     }
@@ -361,6 +367,7 @@ impl Shard {
         let collect_states = command.collect_states;
         let retry_checkpoint = command.retry_checkpoint;
         let boundary = command.boundary;
+        let admission = command.admission;
 
         // Step 1: Load artifact by artifact_digest for verification
         let artifact = self
@@ -399,15 +406,83 @@ impl Shard {
             });
         }
 
-        // Step 4: Validate the checkpoint's admission policy pin against the
-        // loaded artifact's durable policy_digest before any restore mutation.
-        // This catches admission_policy_pin_mismatch that the separate full
-        // recovery flow validates via validate_recovered_admission_evidence.
-        if let Some(checkpoint) = &retry_checkpoint
-            && let Some(admission) = &checkpoint.admission
-        {
-            crate::recovery::validate_recovered_policy_pin(admission, &artifact)?;
+        // Step 4: Validate the command's admission against the loaded
+        // artifact and workflow before any state or journal mutation.
+        // This runs for all recovery paths (full, raw, retry) because the
+        // raw command path bypasses the Runtime prefix validation.
+        //
+        // For checkpoint recovery, the checkpoint's own admission is used.
+        // For legacy/raw recovery without a checkpoint, the command carries
+        // the Unverified enum variant and validation checks run identity
+        // and artifact compatibility only.
+        match &admission {
+            crate::shard::types::RecoveredAdmissionKind::Historical(historical) => {
+                crate::recovery::validate_recovered_admission_evidence(
+                    crate::recovery::RecoveredAdmissionEvidence {
+                        context: crate::recovery::RecoveredAdmissionContext {
+                            run,
+                            expected_workflow: workflow_digest,
+                            runtime_policy: self.policy,
+                        },
+                        admission: historical,
+                        artifact: &artifact,
+                        workflow: &workflow,
+                    },
+                )?;
+            }
+            crate::shard::types::RecoveredAdmissionKind::Unverified {
+                run_id,
+                artifact_digest: cmd_digest,
+            } => {
+                // Validate run identity and artifact compatibility only.
+                // Cannot validate policy pin without historical admission.
+                if *run_id != run {
+                    return Err(RuntimeError::Recovery {
+                        error: format!(
+                            "admission run identity mismatch: expected {run:?}, got {run_id:?}"
+                        ),
+                    });
+                }
+                if *cmd_digest != artifact_digest {
+                    return Err(RuntimeError::Recovery {
+                        error: format!(
+                            "admission artifact digest mismatch: expected {artifact_digest:?}, got {cmd_digest:?}"
+                        ),
+                    });
+                }
+            }
         }
+
+        // Step 4b: Validate policy pin for checkpoint recovery.
+        // When a retry checkpoint carries an admission, its policy pin must
+        // match the loaded artifact's policy before any state or journal mutation.
+        // This applies to both Historical and Unverified command paths because
+        // the public new(...).with_retry_checkpoint(...) API can attach a
+        // checkpoint to an Unverified command without Runtime prefix validation.
+        if let Some(checkpoint) = retry_checkpoint.as_ref() {
+            if let Some(admission) = checkpoint.admission.as_ref() {
+                crate::recovery::validate_recovered_policy_pin(admission, &artifact)?;
+            }
+        }
+
+        // Step 4c: Compute Unverified fallback admission before state mutation.
+        // For legacy/raw recovery without historical admission, build admission
+        // using the artifact's required capabilities and current policy, then
+        // force the Unverified pin so recovery never promotes to Pinned.
+        // This must happen before any journal or run state mutation so failures
+        // (capability denial, resource capacity) do not leave orphaned state.
+        let unverified_admission = if matches!(
+            admission,
+            crate::shard::types::RecoveredAdmissionKind::Unverified { .. }
+        ) {
+            let caps = vb_core::CapabilitySet::from_grants(artifact.required_capabilities.clone());
+            match self.build_admission(run, artifact_digest, caps)? {
+                Some(adm) => Some(adm.with_policy_pin(vb_storage::RunPolicyPin::Unverified)),
+                None => None,
+            }
+        } else {
+            None
+        };
 
         // Step 5: Seed journal sequence from recovered next_seq
         self.seed_journal_sequence(run, next_seq)?;
@@ -415,13 +490,12 @@ impl Shard {
         // Step 6: Restore the full validated checkpoint when this is a retry.
         // The checkpoint's accepted artifact digest and action registry are
         // checked against the independently loaded artifact before run state mutates.
-        let registered_execution = if boundary.kind()
-            == crate::recovery::RecoveredRunBoundaryKind::PendingAction
-        {
-            crate::shard::types::RegisteredExecutionMode::ReconcileOnly
-        } else {
-            crate::shard::types::RegisteredExecutionMode::Live
-        };
+        let registered_execution =
+            if boundary.kind() == crate::recovery::RecoveredRunBoundaryKind::PendingAction {
+                crate::shard::types::RegisteredExecutionMode::ReconcileOnly
+            } else {
+                crate::shard::types::RegisteredExecutionMode::Live
+            };
         let state = if let Some(checkpoint) = retry_checkpoint {
             let (state, _attempt, _retry_step, _prior_seq) = checkpoint
                 .restore(workflow, artifact_digest, &artifact.action_contracts)
@@ -436,14 +510,20 @@ impl Shard {
             self.prepare_run_slots(run)?;
             state
         } else {
-            // Step 7: Build initial admission and recover the legacy resumable frame.
-            let granted_caps = vb_core::capability::CapabilitySet::from_grants(
-                artifact.required_capabilities.clone(),
-            );
-            let admission = self.build_admission(run, workflow.digest(), granted_caps)?;
+            // Step 7: Restore the original historical admission validated by the
+            // recovery prefix flow (validate_recovery_admission) rather than
+            // rebuilding admission from current policy. Rebuilding could upgrade
+            // a legacy Unverified admission to Pinned, authorizing external
+            // effects the original run never had authority for.
             let frame_step_count = frame.step_count();
             let max_slots = workflow.resource_contract().max_slots;
             self.prepare_run_slots(run)?;
+            let state_admission = match admission {
+                crate::shard::types::RecoveredAdmissionKind::Historical(h) => Some(h),
+                crate::shard::types::RecoveredAdmissionKind::Unverified { .. } => {
+                    unverified_admission
+                }
+            };
             crate::shard::types::RunState {
                 registered_execution,
                 frame,
@@ -451,7 +531,7 @@ impl Shard {
                 workflow,
                 store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
                 action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
-                admission,
+                admission: state_admission,
                 collect_states,
                 action_contracts: artifact.action_contracts.clone(),
             }
@@ -688,7 +768,7 @@ impl Shard {
                 .ok_or(RuntimeError::RunNotFound)?;
             self.append_journal_events_atomically([
                 action_failed_event,
-                RuntimeJournalEvent::RunFailed { run, attempt},
+                RuntimeJournalEvent::RunFailed { run, attempt },
             ])?;
         } else {
             self.append_journal_event(action_failed_event)?;

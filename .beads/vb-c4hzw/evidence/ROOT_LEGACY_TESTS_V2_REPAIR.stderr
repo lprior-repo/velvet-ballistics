@@ -1,0 +1,81 @@
+error[E0423]: cannot initialize a tuple struct which contains private fields
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:110:18
+    |
+110 |             seq: vb_storage::EventSeq(0),
+    |                  ^^^^^^^^^^^^^^^^^^^^
+    |
+note: constructor is not visible here due to private fields
+   --> crates/vb_storage/src/types.rs:73:21
+    |
+ 73 | pub struct EventSeq(u64);
+    |                     ^^^ private field
+help: you might have meant to use the `new` associated function
+    |
+110 |             seq: vb_storage::EventSeq::new(0),
+    |                                      +++++
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:116:18
+    |
+116 |             seq: vb_storage::EventSeq(1),
+    |                  ^^^^^^^^^^^^^^^^^^^^
+    |
+note: constructor is not visible here due to private fields
+   --> crates/vb_storage/src/types.rs:73:21
+    |
+ 73 | pub struct EventSeq(u64);
+    |                     ^^^ private field
+help: you might have meant to use the `new` associated function
+    |
+116 |             seq: vb_storage::EventSeq::new(1),
+    |                                      +++++
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:124:18
+    |
+124 |             seq: vb_storage::EventSeq(2),
+    |                  ^^^^^^^^^^^^^^^^^^^^
+    |
+note: constructor is not visible here due to private fields
+   --> crates/vb_storage/src/types.rs:73:21
+    |
+ 73 | pub struct EventSeq(u64);
+    |                     ^^^ private field
+help: you might have meant to use the `new` associated function
+    |
+124 |             seq: vb_storage::EventSeq::new(2),
+    |                                      +++++
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:130:18
+    |
+130 |             seq: vb_storage::EventSeq(3),
+    |                  ^^^^^^^^^^^^^^^^^^^^
+    |
+note: constructor is not visible here due to private fields
+   --> crates/vb_storage/src/types.rs:73:21
+    |
+ 73 | pub struct EventSeq(u64);
+    |                     ^^^ private field
+help: you might have meant to use the `new` associated function
+    |
+130 |             seq: vb_storage::EventSeq::new(3),
+    |                                      +++++
+
+error[E0599]: no method named `digest` found for struct `Vec<u8>` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:105:28
+    |
+105 |     assert_eq!(artifact.ir.digest(), workflow.digest());
+    |                            ^^^^^^
+    |
+help: there is a method `get` with a similar name, but with different arguments
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/mod.rs:572:5
+    |
+572 | /     pub const fn get<I>(&self, index: I) -> Option<&I::Output>
+573 | |     where
+574 | |         I: [const] SliceIndex<Self>,
+    | |____________________________________^
+
+Some errors have detailed explanations: E0423, E0599.
+For more information about an error, try `rustc --explain E0423`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_legacy_admission") due to 5 previous errors

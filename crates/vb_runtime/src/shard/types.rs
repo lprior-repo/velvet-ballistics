@@ -206,6 +206,20 @@ pub enum ShardCommand {
 ///
 /// Constructed by recovery machinery after validating journal evidence
 /// and before enqueueing a Recover shard command.
+/// Distinguishes a recovered historical admission from an absence
+/// of durable admission evidence (legacy raw recovery path).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum RecoveredAdmissionKind {
+    /// No durable admission record exists. Legacy/raw recovery path.
+    /// Carries only run identity for validation.
+    Unverified {
+        run_id: RunId,
+        artifact_digest: WorkflowDigest,
+    },
+    /// Historical admission recovered from durable storage or checkpoint.
+    Historical(crate::admission::RunAdmission),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecoverRunCommand {
     /// Run identifier being recovered.
@@ -224,10 +238,21 @@ pub struct RecoverRunCommand {
     pub retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     /// Recovery boundary classification.
     pub boundary: crate::recovery::RecoveredRunBoundary,
+    /// Admission evidence carried by the recovery command. The Unverified
+    /// variant represents missing historical evidence rather than a fabricated
+    /// verified pin. Callers on the raw command path cannot gain verified
+    /// authority from the current artifact; that requires the validated
+    /// recovery product path.
+    pub(crate) admission: RecoveredAdmissionKind,
 }
 
 impl RecoverRunCommand {
-    /// Constructs a recovery command from validated journal replay evidence.
+    /// Constructs a legacy recovery command with no historical admission evidence.
+    ///
+    /// The command carries an Unverified admission record by default, representing
+    /// missing historical evidence rather than a fabricated verified pin. Callers
+    /// on the raw command path cannot gain verified authority from the current
+    /// artifact; that requires the validated recovery product path.
     #[must_use]
     pub fn new(
         run: RunId,
@@ -247,7 +272,25 @@ impl RecoverRunCommand {
             collect_states,
             retry_checkpoint: None,
             boundary,
+            admission: RecoveredAdmissionKind::Unverified {
+                run_id: run,
+                artifact_digest,
+            },
         }
+    }
+
+    /// Attaches a validated historical admission from a recovery product.
+    ///
+    /// Crate-private: only the validated recovery prefix flow should call this,
+    /// after `validate_recovered_admission_evidence` has checked the admission
+    /// against the run, artifact, workflow, and policy.
+    #[must_use]
+    pub(crate) fn with_validated_admission(
+        mut self,
+        admission: crate::admission::RunAdmission,
+    ) -> Self {
+        self.admission = RecoveredAdmissionKind::Historical(admission);
+        self
     }
 
     /// Attaches full retry state whose identity is checked against the loaded accepted artifact.
@@ -264,6 +307,9 @@ impl RecoverRunCommand {
     /// legacy resumable frame seed. The checkpoint's own frame, value store, collect
     /// states, and admission are authoritative; the independently loaded accepted
     /// artifact is still validated by `handle_recover` before any mutation.
+    ///
+    /// Checkpoints without a recorded admission retain Unverified authority,
+    /// preserving legacy checkpoint semantics.
     pub fn for_retry(
         checkpoint: crate::run_checkpoint::RunCheckpointV1,
         next_seq: EventSeq,
@@ -277,6 +323,16 @@ impl RecoverRunCommand {
             .map_err(|error| crate::RuntimeError::Recovery {
             error: format!("retry checkpoint collect restore failed: {error:?}"),
         })?;
+        // Checkpoints may lack a recorded admission (legacy). In that case,
+        // the command carries the Unverified enum variant; the full recovery
+        // validation path remains responsible for policy pin checks.
+        let admission = checkpoint.admission.clone().map_or(
+            RecoveredAdmissionKind::Unverified {
+                run_id: checkpoint.run_id,
+                artifact_digest: checkpoint.artifact_digest,
+            },
+            RecoveredAdmissionKind::Historical,
+        );
         Ok(Self {
             run: checkpoint.run_id,
             frame,
@@ -286,6 +342,7 @@ impl RecoverRunCommand {
             collect_states,
             retry_checkpoint: Some(checkpoint),
             boundary: crate::recovery::RecoveredRunBoundary::none(),
+            admission,
         })
     }
 }

@@ -13,7 +13,7 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::len_zero)]
 
-const MAX_FUZZ_PAYLOAD_USIZE: usize = 4096;
+const MAX_FUZZ_PAYLOAD_USIZE: usize = 100_000;
 
 fn assert_typed_yaml_error(error: vb_compile::YamlError) {
     use vb_compile::YamlError;
@@ -159,5 +159,53 @@ pub fn fuzz_span_bridge(data: &[u8]) {
         // `let_underscore_must_use` lint stays triggered only on
         // bare `let _ = must_use_call()`. They prove the lookup table
         // returns a span option without exercising it.
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn large_yaml_exceeds_4096_bound() -> Result<(), Box<dyn std::error::Error>> {
+        // Build valid YAML with >4096 events: a sequence of 5001 scalars
+        // stays within default max_sequence_len=10000 and max_source_bytes=1048576.
+        let item_count = 5001usize;
+        let mut yaml = "items:\n".to_string();
+        for i in 0..item_count {
+            yaml.push_str(&format!("  - item{}\n", i));
+        }
+
+        // Validate via the real compile pipeline
+        vb_compile::validate_yaml_profile(&yaml)?;
+
+        let events = vb_compile::parse_yaml_events(&yaml)?;
+        assert!(
+            events.len() > 4096,
+            "test YAML must produce >4096 events, got {}",
+            events.len()
+        );
+        assert!(
+            events.len() <= 100000,
+            "test YAML must stay within default max_nodes, got {}",
+            events.len()
+        );
+
+        let source_map = vb_compile::build_source_map(&yaml)?;
+        assert!(
+            source_map.len() > 4096,
+            "test YAML must produce >4096 source map entries, got {}",
+            source_map.len()
+        );
+        assert!(
+            source_map.len() <= 100000,
+            "test YAML must stay within default max_nodes, got {}",
+            source_map.len()
+        );
+
+        // This assertion will fail with MAX_FUZZ_PAYLOAD_USIZE=4096 (RED)
+        // and pass once the constant is fixed to 100000 (GREEN).
+        fuzz_yaml_events(yaml.as_bytes());
+        Ok(())
     }
 }
