@@ -2,7 +2,7 @@ use crate::shard::Shard;
 use crate::{RuntimeError, RuntimeResult};
 use vb_core::action::ActionOutputReady;
 use vb_core::policy::{PinnedAdmissionPolicy, PolicyDigest};
-use vb_core::{ActionTicket, CompiledNodeKind, SlotValue, Taint};
+use vb_core::ActionTicket;
 use vb_storage::executor::RegisterReceipt;
 
 pub(crate) struct RegisteredActionContext {
@@ -35,37 +35,16 @@ impl Shard {
             .artifact_store
             .load_accepted_artifact(admission.artifact_digest())
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-        let node = state
-            .workflow
-            .node(ticket.step)
-            .ok_or(RuntimeError::InvalidActionCompletion)?;
-        let CompiledNodeKind::Do { action, input } = node.kind else {
-            return Err(RuntimeError::InvalidActionCompletion);
-        };
-        let input_taint = state
-            .frame
-            .read_taint(input)
-            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-        if action != ticket.action || input_taint != Taint::Clean {
-            return Err(RuntimeError::InvalidActionCompletion);
-        }
-        let SlotValue::I64(value) = state
-            .frame
-            .read_slot(input)
-            .map_err(|_| RuntimeError::InvalidActionCompletion)?
-        else {
-            return Err(RuntimeError::InvalidActionCompletion);
-        };
-        let output_slot = node.output.ok_or(RuntimeError::InvalidActionCompletion)?;
-        let encoded = postcard::to_allocvec(&SlotValue::I64(*value))
-            .map_err(|_| RuntimeError::EncodeFailed)?;
-        let encoded_len = u32::try_from(encoded.len()).map_err(|_| RuntimeError::EncodeFailed)?;
-        let output = ActionOutputReady {
-            output_slot,
-            value: SlotValue::I64(*value),
-            taint: Taint::Clean,
-            encoded_len,
-        };
+        let (value, input_taint) =
+            super::registered_context_helpers::resolve_action_input(state, ticket)?;
+        let encoded =
+            super::registered_context_helpers::encode_action_input(value)?;
+        let output = super::registered_context_helpers::build_action_output(
+            state,
+            ticket,
+            value,
+            &encoded,
+        )?;
         super::preflight_action_completion(state, ticket, output)?;
         let admission_pin = match admission.policy_pin() {
             vb_storage::RunPolicyPin::Pinned(digest) => {
@@ -76,7 +55,7 @@ impl Shard {
         Ok(RegisteredActionContext {
             artifact,
             output,
-            value: *value,
+            value,
             mode: state.registered_execution,
             admission_pin,
             encoded_bytes: encoded,

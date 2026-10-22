@@ -73,7 +73,7 @@ impl Runtime {
         let shard = self.shard_for_mut(ctx.ticket.run)?;
         shard.append_policy_decision_strict(decision.clone())?;
         if decision.outcome != DecisionCode::Allowed {
-            return Err(RegisteredExecutionError::PolicyDenied(decision));
+            return Err(RegisteredExecutionError::PolicyDenied(Box::new(decision)));
         }
         Ok(decision)
     }
