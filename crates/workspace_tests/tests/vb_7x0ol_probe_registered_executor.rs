@@ -339,6 +339,16 @@ fn execute_registered_action_rejects_mismatched_grant_artifact() -> TestResult {
     )?;
     let forged_grant = catalog.issue_register_grant(&other_artifact, ticket, scope())?;
 
+    // Configure live allowed policy so policy layer permits execution;
+    // grant artifact mismatch is the intended rejection point.
+    runtime.configure_live_policy(
+        vb_core::policy::PolicyDigest::from_bytes([0x7au8; 32]),
+        vb_core::policy::PolicyRule {
+            action,
+            code: vb_core::policy::DecisionCode::Allowed,
+        },
+    )?;
+
     let register_path = dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
     let result = runtime.execute_registered_action(
@@ -384,6 +394,15 @@ fn submit_and_reach_pending(
         Arc::new(catalog.clone()),
     );
     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+    // Minimal live policy fixture: allow the action so it reaches the
+    // pending-scheduled boundary; recovery is the gate under test.
+    runtime.configure_live_policy(
+        vb_core::policy::PolicyDigest::from_bytes([0x80u8; 32]),
+        vb_core::policy::PolicyRule {
+            action,
+            code: vb_core::policy::DecisionCode::Allowed,
+        },
+    )?;
     runtime.submit_direct_with_inputs_grants_and_contracts(
         run,
         workflow,
