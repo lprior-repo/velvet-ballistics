@@ -112,6 +112,34 @@ pub(crate) fn classify_full_recovery_resume(
     state
 }
 
+/// Determines whether the run's latest terminal evidence belongs to its current attempt.
+///
+/// The `RetryCheckpoint` event's `attempt` field names the *authorized next* attempt (not a
+/// started attempt; see `transitions.rs::capture_retry_checkpoint`), so it is excluded when
+/// computing the current attempt. This prevents a failed run (`RunFailedEvent { attempt: N }`
+/// followed by `RetryCheckpoint { attempt: N + 1 }`, with nothing further) from being misread
+/// as "active" by the checkpoint's future attempt number: the failed run must remain terminal
+/// until an explicit `retry`, while a run that was explicitly retried and is now genuinely
+/// active (e.g. `StepStarted { attempt: N + 1 }`) is correctly treated as resumable.
+#[must_use]
+pub(crate) fn run_is_currently_terminal(events: &[vb_storage::JournalEvent]) -> bool {
+    let mut current_attempt = 1u16;
+    for event in events {
+        if matches!(event, vb_storage::JournalEvent::RetryCheckpoint { .. }) {
+            continue;
+        }
+        if let Some(attempt) = event.attempt()
+            && attempt > current_attempt
+        {
+            current_attempt = attempt;
+        }
+    }
+    events.iter().rev().any(|event| {
+        vb_storage::recovery::is_terminal_event(event)
+            && event.attempt().unwrap_or(1) == current_attempt
+    })
+}
+
 fn initial_full_recovery_resume_state(
     seed: &RecoveryFrameSeed,
     boundary: RecoveredRunBoundary,

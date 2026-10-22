@@ -169,7 +169,12 @@ pub(crate) fn cmd_retry(
     };
 
     let config = vb_runtime::shard::ShardConfig::default();
-    let shared = vb_runtime::journal::StorageRuntimeJournal::shared_journaled(Arc::new(journal));
+    // Retry must not silently downgrade the durability barrier. The original per-run
+    // append mode (strict vs journaled) is not recorded in the journal (admission
+    // `RuntimePolicy` is `Strict` for both), so retry selects the strict barrier as the
+    // safe default: it never weakens a previously-strict run and only upgrades a
+    // journaled run's retry phase to a `SyncAll`-acknowledged append.
+    let shared = vb_runtime::journal::StorageRuntimeJournal::shared_strict(Arc::new(journal));
     let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, shared);
 
     if let Err(e) = runtime.recover_retry(rid, checkpoint, next_seq) {

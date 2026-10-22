@@ -1,0 +1,15 @@
+
+running 1 test
+test auto_recovery_resumes_explicitly_retried_active_run ... FAILED
+
+failures:
+
+---- auto_recovery_resumes_explicitly_retried_active_run stdout ----
+Error: "recover_product failed: Recovery { error: \"non-idempotent action ActionId(0) at step StepIdx(0) cannot be re-executed during recovery\" }"
+
+
+failures:
+    auto_recovery_resumes_explicitly_retried_active_run
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.02s
+

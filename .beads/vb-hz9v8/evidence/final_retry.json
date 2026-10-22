@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "durable_retry_execution"
+  ],
+  "exit_code": 0,
+  "seconds": 0.622,
+  "timeout_seconds": 420,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-hz9v8/evidence/final_retry",
+  "coordinator_message": "Coordinator vb-wlnl4: D validation must reject an ALREADY-CONSUMED checkpoint when newer StepStarted/RunFinished events exist, even if there is no newer RetryCheckpoint. Actual current journal head must match authorized retry boundary. Please run real completed attempt2 -> cold reopen -> recover_retry(old checkpoint2, old next_seq) and require rejection before enqueue/no mutation. The existing latest-checkpoint + prior_seq/next_seq checks do not by themselves reject this case. See latest bd notes vb-hz9v8. This is within stale/multiple-attempt acceptance. Do not weaken valid explicit retry or current pending receipt recovery. Root owns VCS/publication; preserve all evidence and leave bead open."
+}

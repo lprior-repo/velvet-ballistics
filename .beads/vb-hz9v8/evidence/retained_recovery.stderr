@@ -1,0 +1,3 @@
+error: no test target named `vb_7x0ol_probe_registered_executor` in `velvet-ballistics` package
+help: available test in `velvet-ballistics-workspace-tests` package:
+    vb_7x0ol_probe_registered_executor

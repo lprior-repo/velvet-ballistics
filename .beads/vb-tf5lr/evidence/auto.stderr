@@ -1,0 +1,7 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-tf5lr-deepseek-ticket-review/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running tests/durable_retry_stale_probe.rs (target/debug/deps/durable_retry_stale_probe-bf610bf7b6354264)
+PROBE auto-recovery: recover_product is_resumable=true cannot_resume_reason=None
+PROBE auto-recovery: recover_and_resume=Ok(()) tick=Ok(true); events before=7 after=10; counters before=(0,0) after=(0,1)
+Error: "DEFECT: recover_product classifies a failed run (with a durable retry checkpoint) as Resumable"
+error: test failed, to rerun pass `-p vb_runtime --test durable_retry_stale_probe`

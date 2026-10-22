@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tf5lr-deepseek-ticket-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "durable_retry_stale_probe",
+    "probe_auto_recovery_does_not_resume_failed_run",
+    "--",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "exit_code": 101,
+  "seconds": 0.27,
+  "timeout_seconds": 420,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tf5lr/evidence/auto"
+}

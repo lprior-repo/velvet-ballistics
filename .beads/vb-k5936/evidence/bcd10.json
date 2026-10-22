@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-final-deepseek-integration",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "durable_retry_boundary"
+  ],
+  "exit_code": 0,
+  "seconds": 0.384,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-k5936/evidence/bcd10",
+  "coordinator_message": "Coordinator:3090 still completing missing ticket fields in core/storage fixtures; avoid duplication until frozen merge. Quality source36936fcc strictClippy independently rerun true exit0; new evidence-only child18162b51811a2e74766208229cf678965d57cb0b (root will merge it). Formatting issue flux_sequence.rs cannot be waived for final canonicalCI: report exact parse error; bounded syntactic/type repair preserving mathematical contract needed later, not whole proof rewrite. Root VCS only. After resolving merge preserve BCD head validation and A run_attempt semantics; run focused real regressions and stop bounded handoff for fixture merge."
+}

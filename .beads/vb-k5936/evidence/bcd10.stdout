@@ -1,0 +1,15 @@
+
+running 10 tests
+test shared_strict_journal_persists_each_append ... ok
+test recover_retry_rejects_cross_run_checkpoint ... ok
+test recover_retry_rejects_tampered_next_seq ... ok
+test recover_retry_rejects_missing_durable_checkpoint ... ok
+test auto_recovery_resumes_suspended_pending_action_run ... ok
+test auto_recovery_does_not_resume_failed_run ... ok
+test recover_retry_rejects_tampered_prior_seq ... ok
+test recover_retry_rejects_tampered_run_attempt ... ok
+test recover_retry_rejects_already_consumed_checkpoint ... ok
+test recover_retry_rejects_stale_checkpoint_but_accepts_current ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

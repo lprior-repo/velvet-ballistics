@@ -25,7 +25,23 @@ impl RuntimeRecoveryProduct {
         summary: RecoveryRuntimeSummary,
         state: RecoveryCannotResumeState,
     ) -> Self {
-        Self::CannotResume(NonResumableRecoveryProduct { summary, state })
+        Self::CannotResume(NonResumableRecoveryProduct {
+            summary,
+            state,
+            reason: None,
+        })
+    }
+
+    /// Terminal-lifecycle rejection: the frame seed is otherwise resumable, but the
+    /// run's latest terminal evidence (`RunFailed`/`RunFinished`/`RunCancelled`/`RunKilled`)
+    /// belongs to its current attempt, so automatic recovery must not re-drive it.
+    #[must_use]
+    pub(crate) const fn cannot_resume_terminal(summary: RecoveryRuntimeSummary) -> Self {
+        Self::CannotResume(NonResumableRecoveryProduct {
+            summary,
+            state: RecoveryCannotResumeState::RESUMABLE,
+            reason: Some("terminal_state"),
+        })
     }
 
     #[must_use]
@@ -74,6 +90,10 @@ impl SummaryRecoveryProduct {
 pub struct NonResumableRecoveryProduct {
     summary: RecoveryRuntimeSummary,
     state: RecoveryCannotResumeState,
+    /// Explicit reason token. `None` derives the reason from `state`; `Some` overrides
+    /// (used for terminal-lifecycle rejections where the frame seed is otherwise
+    /// resumable but the run has reached a terminal state).
+    reason: Option<&'static str>,
 }
 
 impl NonResumableRecoveryProduct {
@@ -89,7 +109,10 @@ impl NonResumableRecoveryProduct {
 
     #[must_use]
     pub const fn reason(&self) -> &'static str {
-        self.state.unsupported_reason()
+        match self.reason {
+            Some(reason) => reason,
+            None => self.state.unsupported_reason(),
+        }
     }
 }
 
