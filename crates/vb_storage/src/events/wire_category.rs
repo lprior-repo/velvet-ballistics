@@ -60,6 +60,7 @@ fn is_action_record(kind: RecordKind) -> bool {
             | RecordKind::ActionCompletedEnvelope
             | RecordKind::ActionFailed
             | RecordKind::ActionAbandoned
+            | RecordKind::PolicyDecision
     )
 }
 

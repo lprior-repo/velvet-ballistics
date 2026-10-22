@@ -258,3 +258,7 @@ impl JournalEvent {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "events/wire_policy_decision_tests.rs"]
+mod wire_policy_decision_tests;

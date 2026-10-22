@@ -3,7 +3,7 @@
 use super::super::super::{DurableActionOutcome, JournalEvent};
 use crate::{EventSeq, RecordKind};
 use serde::de::{self, VariantAccess};
-use vb_core::{ActionTicket, RunId, SlotIdx, Taint, WorkflowDigest};
+use vb_core::{ActionTicket, PolicyDigest, RunId, SlotIdx, Taint, WorkflowDigest};
 
 type ActionCompletedEnvelopeFields = (
     RunId,
@@ -18,6 +18,17 @@ type ActionCompletedEnvelopeFields = (
     WorkflowDigest,
 );
 
+type PolicyDecisionFields = (
+    RunId,
+    EventSeq,
+    vb_core::policy::PolicyLayer,
+    vb_core::policy::DecisionCode,
+    PolicyDigest,
+    PolicyDigest,
+    bool,
+    bool,
+);
+
 pub(super) fn deserialize<'de, A>(kind: RecordKind, variant: A) -> Result<JournalEvent, A::Error>
 where
     A: VariantAccess<'de>,
@@ -29,6 +40,7 @@ where
         RecordKind::ActionCompletedEnvelope => deserialize_completed_envelope(variant),
         RecordKind::ActionFailed => deserialize_failed(variant),
         RecordKind::ActionAbandoned => deserialize_abandoned(variant),
+        RecordKind::PolicyDecision => deserialize_policy_decision(variant),
         _ => Err(de::Error::custom("record kind is not an action event")),
     }
 }
@@ -104,6 +116,32 @@ where
 {
     let (run, seq, ticket) = variant.newtype_variant()?;
     Ok(JournalEvent::ActionAbandoned { run, seq, ticket })
+}
+
+fn deserialize_policy_decision<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let (
+        run,
+        seq,
+        layer,
+        code,
+        policy_digest,
+        input_digest,
+        emergency_deny_active,
+        compatibility_influence,
+    ) = variant.newtype_variant()?;
+    Ok(JournalEvent::PolicyDecisionEvent {
+        run,
+        seq,
+        layer,
+        code,
+        policy_digest,
+        input_digest,
+        emergency_deny_active,
+        compatibility_influence,
+    })
 }
 
 fn completed_envelope_from_fields(fields: ActionCompletedEnvelopeFields) -> JournalEvent {

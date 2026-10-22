@@ -3,12 +3,12 @@
 use super::super::super::{DurableActionOutcome, JournalEvent};
 use super::super::tags::{
     TAG_ACTION_ABANDONED, TAG_ACTION_COMPLETED, TAG_ACTION_COMPLETED_ENVELOPE, TAG_ACTION_FAILED,
-    TAG_ACTION_SCHEDULED, TAG_ACTION_SCHEDULED_TICKET,
+    TAG_ACTION_SCHEDULED, TAG_ACTION_SCHEDULED_TICKET, TAG_POLICY_DECISION,
 };
 use super::{serialize_record_kind_variant, serialize_routing_error};
 use crate::EventSeq;
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use vb_core::{ActionTicket, RunId, SlotIdx, Taint, WorkflowDigest};
+use vb_core::{ActionTicket, PolicyDigest, RunId, SlotIdx, Taint, WorkflowDigest};
 
 struct CompletedEnvelopePayload<'event> {
     head: CompletedEnvelopeHead<'event>,
@@ -44,6 +44,7 @@ where
         }
         JournalEvent::ActionFailedEvent { .. } => serialize_failed(event, serializer),
         JournalEvent::ActionAbandoned { .. } => serialize_abandoned(event, serializer),
+        JournalEvent::PolicyDecisionEvent { .. } => serialize_policy_decision(event, serializer),
         _ => serialize_routing_error::<S>(),
     }
 }
@@ -252,6 +253,39 @@ where
             TAG_ACTION_ABANDONED,
             "ActionAbandoned",
             &(run, seq, ticket),
+        ),
+        _ => serialize_routing_error::<S>(),
+    }
+}
+
+fn serialize_policy_decision<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::PolicyDecisionEvent {
+            run,
+            seq,
+            layer,
+            code,
+            policy_digest,
+            input_digest,
+            emergency_deny_active,
+            compatibility_influence,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_POLICY_DECISION,
+            "PolicyDecisionEvent",
+            &(
+                run,
+                seq,
+                layer,
+                code,
+                policy_digest,
+                input_digest,
+                emergency_deny_active,
+                compatibility_influence,
+            ),
         ),
         _ => serialize_routing_error::<S>(),
     }
