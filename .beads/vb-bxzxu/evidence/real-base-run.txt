@@ -1,0 +1,628 @@
+test integrity: FAIL
+DeletedTestFile|crates/vb_cli/src/agent_context/tests/kani_harnesses.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/agent_context/tests/mod.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/agent_context/tests/properties.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/agent_context/tests/unit.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/args/tests/mod.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/args/tests/parse_misc.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/args/tests/parse_misc2.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/args/tests/parse_other.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/args/tests/parse_run.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/args/tests/parse_workflow.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/cli_envelope.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/cli_postcard/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/commands_ai_context/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/commands_diff/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/commands_incident.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/commands_journal/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/commands_status.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/commands_system_status.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/commands_verify.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/deliver_sink/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/exit_code.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/json_access.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/mode_error.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/naming_scan/allowlist.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/naming_scan/classify.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/naming_scan/config.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/naming_scan/legacy.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/naming_scan/ordering.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/naming_scan/types.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/src/status/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/admission_durability_code.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/admission_evidence_integration.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/admission_evidence_integration/chunk_001.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/admission_evidence_integration/chunk_002.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/admission_evidence_integration/chunk_003.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/admission_evidence_integration/chunk_004.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/agent_context_snapshot.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/cli_integration.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/cli_trace_integration.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/cli_vb_m214_bdd_scenarios.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/cli_verify_integration.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/cross_crate_adversarial.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/deliver_sink_integration.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/error_chain_integration.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/ir_artifact_admission.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/lifecycle_integration.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/mode_activation_integration_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/vb_qi37_14_1_run_step.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_cli/tests/vb_qi37_17_1_incident_command.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_builtin_eval/blackhat_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_bytecode/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_bytecode/tests/adversarial.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_eval/proptest_strategies.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_eval/tests/and_or_short_circuit_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_eval/tests/inline_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_eval/tests/integration.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_eval/tests/integration_store.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_eval/tests/mod.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_eval_tests_core.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_eval_tests_logic.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_eval_tests_store.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_lexer/miri_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_lexer/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_lexer/tests/adversarial.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_parser/miri_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_parser/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_parser/tests/adversarial.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_property_tests/arithmetic_overflow.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_property_tests/constant_folding.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_property_tests/eval_bounds.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_typecheck/tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/expr_typecheck/tests/adversarial.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/yaml_events_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/yaml_profile_error_variants_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/yaml_profile_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/yaml_profile_tests_adversarial.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/src/yaml_source_map_tests.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/vb_compile/tests/digest_duplicate_parity.rs|deleted file contained tests or test assertions
+DeletedTestFile|crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs|deleted file contained tests or test assertions
+WeakenedAssertion|crates/vb_cli/src/agent_context/tests/kani_harnesses.rs|removed_exact=5 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/agent_context/tests/properties.rs|removed_declarations=19 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/agent_context/tests/properties.rs|removed_exact=8 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/agent_context/tests/unit.rs|removed_declarations=70 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/agent_context/tests/unit.rs|removed_exact=63 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/args/tests/parse_misc.rs|removed_declarations=20 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/args/tests/parse_misc.rs|removed_exact=32 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/args/tests/parse_misc2.rs|removed_declarations=22 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/args/tests/parse_misc2.rs|removed_exact=21 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/args/tests/parse_other.rs|removed_declarations=13 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/args/tests/parse_other.rs|removed_exact=12 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/args/tests/parse_run.rs|removed_declarations=7 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/args/tests/parse_run.rs|removed_exact=8 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/args/tests/parse_workflow.rs|removed_declarations=6 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/args/tests/parse_workflow.rs|removed_exact=8 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/cli_envelope.rs|removed_declarations=18 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/cli_envelope.rs|removed_exact=19 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/cli_postcard/tests.rs|removed_declarations=28 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/cli_postcard/tests.rs|removed_exact=27 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/commands_ai_context/tests.rs|removed_declarations=1 added_declarations=0
+DeletedTestDeclaration|crates/vb_cli/src/commands_diff/tests.rs|removed_declarations=34 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/commands_diff/tests.rs|removed_exact=39 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/commands_incident.rs|removed_declarations=10 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/commands_incident.rs|removed_exact=20 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/commands_journal/tests.rs|removed_declarations=40 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/commands_journal/tests.rs|removed_exact=107 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/commands_status.rs|removed_declarations=3 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/commands_status.rs|removed_exact=15 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/commands_system_status.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/commands_system_status.rs|removed_exact=7 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/commands_verify.rs|removed_declarations=8 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/commands_verify.rs|removed_exact=11 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/deliver_sink/tests.rs|removed_declarations=13 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/deliver_sink/tests.rs|removed_exact=19 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/exit_code.rs|removed_declarations=6 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/exit_code.rs|removed_exact=23 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/json_access.rs|removed_declarations=3 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/json_access.rs|removed_exact=2 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/mode_error.rs|removed_declarations=22 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/mode_error.rs|removed_exact=21 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/naming_scan/allowlist.rs|removed_declarations=7 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/naming_scan/allowlist.rs|removed_exact=5 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/naming_scan/classify.rs|removed_declarations=8 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/naming_scan/classify.rs|removed_exact=5 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/naming_scan/config.rs|removed_declarations=14 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/naming_scan/config.rs|removed_exact=10 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/naming_scan/legacy.rs|removed_declarations=10 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/naming_scan/legacy.rs|removed_exact=6 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/naming_scan/ordering.rs|removed_declarations=5 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/naming_scan/ordering.rs|removed_exact=4 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/naming_scan/types.rs|removed_declarations=18 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/naming_scan/types.rs|removed_exact=18 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/src/status/tests.rs|removed_declarations=5 added_declarations=0
+WeakenedAssertion|crates/vb_cli/src/status/tests.rs|removed_exact=6 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/admission_durability_code.rs|removed_declarations=1 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/admission_durability_code.rs|removed_exact=2 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/admission_evidence_integration/chunk_001.rs|removed_declarations=9 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/admission_evidence_integration/chunk_001.rs|removed_exact=10 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/admission_evidence_integration/chunk_002.rs|removed_declarations=4 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/admission_evidence_integration/chunk_002.rs|removed_exact=8 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/admission_evidence_integration/chunk_003.rs|removed_declarations=5 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/admission_evidence_integration/chunk_003.rs|removed_exact=4 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/admission_evidence_integration/chunk_004.rs|removed_declarations=7 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/admission_evidence_integration/chunk_004.rs|removed_exact=14 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/agent_context_snapshot.rs|removed_declarations=5 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/agent_context_snapshot.rs|removed_exact=6 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/cli_integration.rs|removed_declarations=106 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/cli_integration.rs|removed_exact=98 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/cli_trace_integration.rs|removed_declarations=15 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/cli_trace_integration.rs|removed_exact=1 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/cli_vb_m214_bdd_scenarios.rs|removed_declarations=44 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/cli_vb_m214_bdd_scenarios.rs|removed_exact=11 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/cli_verify_integration.rs|removed_declarations=14 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/cli_verify_integration.rs|removed_exact=9 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/cross_crate_adversarial.rs|removed_declarations=70 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/cross_crate_adversarial.rs|removed_exact=57 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/deliver_sink_integration.rs|removed_declarations=3 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/deliver_sink_integration.rs|removed_exact=4 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/error_chain_integration.rs|removed_declarations=16 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/error_chain_integration.rs|removed_exact=29 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/ir_artifact_admission.rs|removed_declarations=9 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/ir_artifact_admission.rs|removed_exact=1 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/lifecycle_integration.rs|removed_declarations=43 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/lifecycle_integration.rs|removed_exact=45 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/mode_activation_integration_tests.rs|removed_declarations=24 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/mode_activation_integration_tests.rs|removed_exact=20 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/vb_qi37_14_1_run_step.rs|removed_declarations=25 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/vb_qi37_14_1_run_step.rs|removed_exact=8 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_cli/tests/vb_qi37_17_1_incident_command.rs|removed_declarations=5 added_declarations=0
+WeakenedAssertion|crates/vb_cli/tests/vb_qi37_17_1_incident_command.rs|removed_exact=1 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_builtin_eval/blackhat_tests.rs|removed_declarations=18 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_builtin_eval/blackhat_tests.rs|removed_exact=11 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_bytecode/tests.rs|removed_declarations=45 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_bytecode/tests.rs|removed_exact=49 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_bytecode/tests/adversarial.rs|removed_declarations=46 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_bytecode/tests/adversarial.rs|removed_exact=43 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_eval/proptest_strategies.rs|removed_declarations=5 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_eval/proptest_strategies.rs|removed_exact=1 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_eval/tests/and_or_short_circuit_tests.rs|removed_declarations=58 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_eval/tests/and_or_short_circuit_tests.rs|removed_exact=74 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_eval/tests/inline_tests.rs|removed_declarations=83 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_eval/tests/inline_tests.rs|removed_exact=74 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_eval/tests/integration.rs|removed_declarations=57 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_eval/tests/integration.rs|removed_exact=55 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_eval/tests/integration_store.rs|removed_declarations=59 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_eval/tests/integration_store.rs|removed_exact=66 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_eval_tests_core.rs|removed_declarations=57 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_eval_tests_core.rs|removed_exact=55 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_eval_tests_logic.rs|removed_declarations=92 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_eval_tests_logic.rs|removed_exact=113 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_eval_tests_store.rs|removed_declarations=36 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_eval_tests_store.rs|removed_exact=40 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_lexer/miri_tests.rs|removed_declarations=7 added_declarations=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_lexer/tests.rs|removed_declarations=56 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_lexer/tests.rs|removed_exact=55 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_lexer/tests/adversarial.rs|removed_declarations=37 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_lexer/tests/adversarial.rs|removed_exact=33 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_parser/miri_tests.rs|removed_declarations=8 added_declarations=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_parser/tests.rs|removed_declarations=71 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_parser/tests.rs|removed_exact=142 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_parser/tests/adversarial.rs|removed_declarations=52 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_parser/tests/adversarial.rs|removed_exact=82 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_property_tests/arithmetic_overflow.rs|removed_declarations=10 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_property_tests/arithmetic_overflow.rs|removed_exact=1 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_property_tests/constant_folding.rs|removed_declarations=27 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_property_tests/constant_folding.rs|removed_exact=33 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_property_tests/eval_bounds.rs|removed_declarations=16 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_property_tests/eval_bounds.rs|removed_exact=6 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_typecheck/tests.rs|removed_declarations=59 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_typecheck/tests.rs|removed_exact=88 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/expr_typecheck/tests/adversarial.rs|removed_declarations=29 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/expr_typecheck/tests/adversarial.rs|removed_exact=44 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/yaml_events_tests.rs|removed_declarations=39 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/yaml_events_tests.rs|removed_exact=19 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/yaml_profile_error_variants_tests.rs|removed_declarations=14 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/yaml_profile_error_variants_tests.rs|removed_exact=7 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/yaml_profile_tests.rs|removed_declarations=53 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/yaml_profile_tests.rs|removed_exact=35 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/yaml_profile_tests_adversarial.rs|removed_declarations=27 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/yaml_profile_tests_adversarial.rs|removed_exact=20 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/src/yaml_source_map_tests.rs|removed_declarations=25 added_declarations=0
+WeakenedAssertion|crates/vb_compile/src/yaml_source_map_tests.rs|removed_exact=16 added_exact=0 added_weak=0
+DeletedTestDeclaration|crates/vb_compile/tests/digest_duplicate_parity.rs|removed_declarations=4 added_declarations=0
+WeakenedAssertion|crates/vb_compile/tests/digest_duplicate_parity.rs|removed_exact=4 added_exact=0 added_weak=0
+WeakenedAssertion|crates/vb_compile/tests/v1_primitive_lowering.rs|removed_exact=1 added_exact=0 added_weak=0
+WeakenedAssertion|crates/vb_expr/src/expr_bytecode/tests.rs|removed_exact=0 added_exact=49 added_weak=2
+WeakenedAssertion|crates/vb_expr/src/expr_bytecode/tests/adversarial.rs|removed_exact=0 added_exact=43 added_weak=2
+WeakenedAssertion|crates/vb_expr/src/expr_bytecode/tests/expr_bytecode_tests.rs|removed_exact=0 added_exact=49 added_weak=2
+WeakenedAssertion|crates/vb_expr/src/expr_eval/tests/integration_store.rs|removed_exact=0 added_exact=66 added_weak=1
+WeakenedAssertion|crates/vb_runtime/src/admission/tests.rs|removed_exact=0 added_exact=1 added_weak=1
+DeletedTestDeclaration|crates/vb_runtime/src/shard/lifecycle/chunk_001.rs|removed_declarations=5 added_declarations=0
+WeakenedAssertion|crates/vb_runtime/src/shard/lifecycle_tests/chunk_009.rs|removed_exact=80 added_exact=80 added_weak=14
+WeakenedAssertion|crates/vb_runtime/src/shard/tests/chunk_015.rs|removed_exact=2 added_exact=1 added_weak=0
+WeakenedAssertion|crates/vb_runtime/src/shard/tests/submission_parity.rs|removed_exact=0 added_exact=13 added_weak=3
+WeakenedAssertion|crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs|removed_exact=0 added_exact=12 added_weak=1
+WeakenedAssertion|crates/vb_runtime/tests/vb_4qog3_independent_review.rs|removed_exact=0 added_exact=4 added_weak=3
+DeletedTestDeclaration|crates/vb_runtime/tests/vb_wave16_mqa.rs|removed_declarations=1 added_declarations=0
+WeakenedAssertion|crates/vb_storage/src/inputs/tests.rs|removed_exact=0 added_exact=5 added_weak=1
+DeletedTestDeclaration|crates/vb_storage/src/types/flux_sequence.rs|removed_declarations=15 added_declarations=0
+WeakenedAssertion|crates/velvet_ballistics/src/agent_context/tests/kani_harnesses.rs|removed_exact=0 added_exact=5 added_weak=25
+WeakenedAssertion|crates/velvet_ballistics/src/agent_context/tests/properties.rs|removed_exact=0 added_exact=8 added_weak=2
+WeakenedAssertion|crates/velvet_ballistics/src/agent_context/tests/unit.rs|removed_exact=0 added_exact=63 added_weak=1
+CompileOnlyReplacement|crates/velvet_ballistics/src/args/tests/parse_misc.rs|fn parse_status_accepts_no_runtime_defaults() {
+WeakenedAssertion|crates/velvet_ballistics/src/args/tests/parse_misc2.rs|removed_exact=0 added_exact=21 added_weak=1
+WeakenedAssertion|crates/velvet_ballistics/src/args/tests/parse_run.rs|removed_exact=0 added_exact=8 added_weak=1
+WeakenedAssertion|crates/velvet_ballistics/src/cli_postcard/tests.rs|removed_exact=0 added_exact=27 added_weak=3
+WeakenedAssertion|crates/velvet_ballistics/src/commands_diff/tests.rs|removed_exact=0 added_exact=39 added_weak=3
+WeakenedAssertion|crates/velvet_ballistics/src/commands_journal/tests.rs|removed_exact=0 added_exact=107 added_weak=1
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|// and then submit the artifact under Relaxed policy (which skips checksum
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|// Relaxed admission skips artifact loading, but submit_artifact still
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|// (typed evidence contract supersedes "relaxed skips checksum").
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+WeakenedAssertion|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|removed_exact=0 added_exact=7 added_weak=2
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs|return;
+WeakenedAssertion|crates/velvet_ballistics/tests/agent_context_snapshot.rs|removed_exact=0 added_exact=6 added_weak=6
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_integration.rs|return;
+WeakenedAssertion|crates/velvet_ballistics/tests/cli_integration.rs|removed_exact=0 added_exact=98 added_weak=10
+WeakenedAssertion|crates/velvet_ballistics/tests/cli_trace_integration.rs|removed_exact=0 added_exact=1 added_weak=15
+WeakenedAssertion|crates/velvet_ballistics/tests/cli_vb_m214_bdd_scenarios.rs|removed_exact=0 added_exact=11 added_weak=3
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_verify_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_verify_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_verify_integration.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_verify_integration.rs|// Integration: Quick profile skips expensive gates
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cli_verify_integration.rs|return;
+WeakenedAssertion|crates/velvet_ballistics/tests/cli_verify_integration.rs|removed_exact=0 added_exact=9 added_weak=2
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|return;
+WeakenedAssertion|crates/velvet_ballistics/tests/cross_crate_adversarial.rs|removed_exact=0 added_exact=57 added_weak=16
+WeakenedAssertion|crates/velvet_ballistics/tests/error_chain_integration.rs|removed_exact=0 added_exact=29 added_weak=1
+WeakenedAssertion|crates/velvet_ballistics/tests/input_mapping_boundary.rs|removed_exact=0 added_exact=4 added_weak=1
+WeakenedAssertion|crates/velvet_ballistics/tests/ir_artifact_admission.rs|removed_exact=0 added_exact=1 added_weak=5
+WeakenedAssertion|crates/velvet_ballistics/tests/lifecycle_integration.rs|removed_exact=0 added_exact=45 added_weak=7
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/mode_activation_integration_tests.rs|// POST-003: run with durability=none skips FjallJournal::open
+WeakenedAssertion|crates/velvet_ballistics/tests/mode_activation_integration_tests.rs|removed_exact=0 added_exact=20 added_weak=4
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|return;
+WeakenedAssertion|crates/velvet_ballistics/tests/vb_qi37_14_1_run_step.rs|removed_exact=0 added_exact=8 added_weak=7
+WeakenedAssertion|crates/workspace_tests/tests/artifact_evidence_support/schema3_cases.rs|removed_exact=0 added_exact=8 added_weak=1
+WeakenedAssertion|crates/workspace_tests/tests/cli/submit_input_boundary.rs|removed_exact=0 added_exact=29 added_weak=2
+WeakenedAssertion|crates/workspace_tests/tests/cli/submit_retained_inputs.rs|removed_exact=0 added_exact=7 added_weak=3
+WeakenedAssertion|crates/workspace_tests/tests/cli/verify_budget_profiles.rs|removed_exact=0 added_exact=8 added_weak=2
+DeletedTestDeclaration|crates/workspace_tests/tests/runtime_version_barrier_tests.rs|removed_declarations=12 added_declarations=3
+DeletedTestDeclaration|crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs|removed_declarations=3 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs|removed_exact=18 added_exact=5 added_weak=0
+DeletedTestDeclaration|crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs|removed_declarations=8 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs|removed_exact=38 added_exact=0 added_weak=0
+WeakenedAssertion|fuzz/fuzz_targets/kind_validation.rs|removed_exact=2 added_exact=0 added_weak=0
+WeakenedAssertion|scripts/check-test-integrity.rs|removed_exact=5 added_exact=5 added_weak=2
+Add equal-or-stronger replacement coverage or bead-linked justification.
