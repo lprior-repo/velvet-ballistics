@@ -8,7 +8,7 @@ use vb_core::action::{
     Idempotency, RetryPolicy, RetrySafety, SideEffect,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
@@ -251,25 +251,15 @@ fn submit_action_workflow(
     )
 }
 
-fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
-    ActionTicket {
-        run,
-        step: StepIdx::ZERO,
-        seq: SeqNo::ZERO,
-        action,
-        attempt: 1,
-        idempotency_key: 0,
-        capacity: 1,
-    }
-}
-
-fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
-    ActionOutputReady {
+fn action_output(value: SlotValue, taint: Taint) -> Result<ActionOutputReady, String> {
+    let encoded_len = u32::try_from(encoded(&value)?.len())
+        .map_err(|error| format!("action output fixture length does not fit u32: {error}"))?;
+    Ok(ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint,
-        encoded_len: 8,
-    }
+        encoded_len,
+    })
 }
 
 fn ask_answer(ticket: AskTicket, value: SlotValue, taint: Taint) -> AskAnswer {
@@ -457,7 +447,6 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
 }
 
 #[test]
-#[ignore]
 fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String> {
     // Given: SCN-VT2F-004 two suspended runs and a public action ticket for one run.
     let journal = Arc::new(VolatileRuntimeJournal::new());
@@ -474,6 +463,9 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
     );
     run_one_tick(&mut runtime)?;
     run_one_tick(&mut runtime)?;
+    let ticket = runtime
+        .lookup_pending_action_ticket(run, 0)
+        .ok_or("suspended action must have a runtime-issued ticket")?;
     let unrelated_before = runtime.snapshot_run(unrelated, 44);
     let unrelated_events_before = trace_events(&runtime, unrelated)?;
     let expected_value = SlotValue::I64(4242);
@@ -482,10 +474,7 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
 
     // When: the matching ticket completes with exact output value and taint.
     assert_eq!(
-        runtime.complete_action_with_output(
-            action_ticket(run, ActionId::new(7)),
-            action_output(expected_value, expected_taint)
-        ),
+        runtime.complete_action_with_output(ticket, action_output(expected_value, expected_taint)?),
         Ok(())
     );
     run_one_tick(&mut runtime)?;
@@ -501,27 +490,50 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
         }),
         true
     );
-    let expected_slot_event = RuntimeJournalEvent::SlotWritten {
-        run,
-        slot: SlotIdx::new(1),
-        value: expected_bytes,
+    let expected_completion_event = RuntimeJournalEvent::ActionCompletedEnvelope {
+        ticket,
+        output: SlotIdx::new(1),
+        value: expected_bytes.clone(),
+        encoded_len: u32::try_from(expected_bytes.len())
+            .map_err(|error| format!("encoded output length does not fit u32: {error}"))?,
         taint: expected_taint,
-        extra: None,
+        value_digest: *blake3::hash(&expected_bytes).as_bytes(),
+        action_abi_digest: WorkflowDigest::from_bytes([0; 32]),
     };
     assert_eq!(
-        journal_events(&journal)?.contains(&expected_slot_event),
+        journal_events(&journal)?.contains(&expected_completion_event),
         true
     );
 
-    // And: a mismatched action ticket is rejected with the exact public error and does not mutate the unrelated run.
+    // And: tickets altered to target another run or action fail exactly without changing journal or run state.
+    let journal_before_rejections = journal_events(&journal)?;
+    let counters_before_rejections = runtime.counters_snapshot();
     assert_eq!(
         runtime.complete_action_with_output(
-            action_ticket(unrelated, ActionId::new(99)),
-            action_output(SlotValue::I64(9), Taint::Clean)
+            ActionTicket {
+                run: unrelated,
+                ..ticket
+            },
+            action_output(SlotValue::I64(9), Taint::Clean)?
+        ),
+        Err(RuntimeError::InvalidActionCompletion)
+    );
+    assert_eq!(
+        runtime.complete_action_with_output(
+            ActionTicket {
+                run: unrelated,
+                action: ActionId::new(99),
+                ..runtime
+                    .lookup_pending_action_ticket(unrelated, 0)
+                    .ok_or("unrelated run must have a runtime-issued ticket")?
+            },
+            action_output(SlotValue::I64(9), Taint::Clean)?
         ),
         Err(RuntimeError::InvalidActionCompletion)
     );
     assert_eq!(runtime.tick_all(), Ok(true));
+    assert_eq!(journal_events(&journal)?, journal_before_rejections);
+    assert_eq!(runtime.counters_snapshot(), counters_before_rejections);
     assert_eq!(runtime.snapshot_run(unrelated, 44), unrelated_before);
     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
     Ok(())
@@ -570,7 +582,8 @@ fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> 
 fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run()
 -> Result<(), String> {
     // Given: SCN-VT2F-005 / ERR-003 one unrelated suspended action run and an absent-run ticket.
-    let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
     let unrelated = RunId::new(2505);
     let absent = RunId::new(9505);
     assert_eq!(
@@ -578,9 +591,13 @@ fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unre
         Ok(())
     );
     run_one_tick(&mut runtime)?;
+    let issued = runtime
+        .lookup_pending_action_ticket(unrelated, 0)
+        .ok_or("suspended action must have a runtime-issued ticket")?;
     let unrelated_before = runtime.snapshot_run(unrelated, 505);
     let unrelated_events_before = trace_events(&runtime, unrelated)?;
     let counters_before = runtime.counters_snapshot();
+    let journal_before = journal_events(&journal)?;
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,
         retry_policy: RetryPolicy::NonRetryable,
@@ -589,9 +606,15 @@ fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unre
         encoded_len: 0,
     };
 
-    // When: fail_action is enqueued for a wrong/absent run id.
+    // When: fail_action is enqueued for a wrong/absent run id derived from a genuine ticket.
     assert_eq!(
-        runtime.fail_action(action_ticket(absent, ActionId::new(7)), failure),
+        runtime.fail_action(
+            ActionTicket {
+                run: absent,
+                ..issued
+            },
+            failure,
+        ),
         Ok(())
     );
 
@@ -610,6 +633,7 @@ fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unre
         vec![unrelated]
     );
     assert_eq!(tick_result, Err(RuntimeError::InvalidActionCompletion));
+    assert_eq!(journal_events(&journal)?, journal_before);
     Ok(())
 }
 
