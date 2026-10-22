@@ -1,0 +1,155 @@
+0f71f398cf66.patch:801:  
+0f71f398cf66.patch:802:      assert_eq!(
+0f71f398cf66.patch:803:          shard.enqueue(ShardCommand::Submit {
+0f71f398cf66.patch:804:              run,
+0f71f398cf66.patch:805:              workflow,
+0f71f398cf66.patch:806: diff --git a/crates/vb_runtime/src/shard/tests/chunk_010.rs b/crates/vb_runtime/src/shard/tests/chunk_010.rs
+0f71f398cf66.patch:807: index 778110074..b1d6bbabd 100644
+0f71f398cf66.patch:808: --- a/crates/vb_runtime/src/shard/tests/chunk_010.rs
+0f71f398cf66.patch:809: +++ b/crates/vb_runtime/src/shard/tests/chunk_010.rs
+0f71f398cf66.patch:810: @@ -18,35 +18,36 @@ fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() {
+0f71f398cf66.patch:811:      assert_eq!(shard.tick(), Ok(true));
+0f71f398cf66.patch:812:      assert_eq!(shard.counters().snapshot().runs_completed, 1);
+0f71f398cf66.patch:813:      // When submitting a new run with the same workflow dimensions
+0f71f398cf66.patch:814:      let Some(workflow2) = finished_workflow() else {
+0f71f398cf66.patch:815:          return;
+0f71f398cf66.patch:816:      };
+0f71f398cf66.patch:817:      assert_eq!(
+0f71f398cf66.patch:818:          shard.enqueue(ShardCommand::Submit {
+0f71f398cf66.patch:819:              run: super::RunId::new(402),
+0f71f398cf66.patch:820:              workflow: workflow2,
+0f71f398cf66.patch:821:              caps: vb_core::capability::CapabilitySet::empty()
+0f71f398cf66.patch:822:          }),
+0f71f398cf66.patch:823:          Ok(())
+0f71f398cf66.patch:824:      );
+0f71f398cf66.patch:825:      assert_eq!(shard.tick(), Ok(true));
+0f71f398cf66.patch:826: -    // Then the second run also completes and pool has 1 available frame
+0f71f398cf66.patch:827: +    // Then the second run also completes
+0f71f398cf66.patch:828:      assert_eq!(shard.counters().snapshot().runs_completed, 2);
+0f71f398cf66.patch:829: +    // Both runs are finished; pool has all pre-allocated frames available
+0f71f398cf66.patch:830:      assert_eq!(
+0f71f398cf66.patch:831:          shard.frame_pools.get(&(2, 1)).map(FramePool::available),
+0f71f398cf66.patch:832: -        Some(1)
+0f71f398cf66.patch:833: +        Some(4)
+0f71f398cf66.patch:834:      );
+0f71f398cf66.patch:835:  }
+0f71f398cf66.patch:836:  
+0f71f398cf66.patch:837:  #[test]
+0f71f398cf66.patch:838:  fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
+0f71f398cf66.patch:839:      // Given a shard with max_active_runs = 3
+0f71f398cf66.patch:840:      let config = ShardConfig {
+0f71f398cf66.patch:841:          command_queue_capacity: 16,
+0f71f398cf66.patch:842:          trace_capacity: 16,
+0f71f398cf66.patch:843:          step_budget_per_tick: 4,
+0f71f398cf66.patch:844:          max_active_runs: 3,
+0f71f398cf66.patch:845:          policy: vb_core::policy::RuntimePolicy::Relaxed,
+0f71f398cf66.patch:846:      };
+0f71f398cf66.patch:847:      let mut shard = Shard::new(config);
+0f71f398cf66.patch:848:      // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
+0f71f398cf66.patch:849: diff --git a/crates/vb_runtime/src/shard/tests/chunk_017.rs b/crates/vb_runtime/src/shard/tests/chunk_017.rs
+0f71f398cf66.patch:850: index 75c8698f8..7a4d82e7c 100644
+0f71f398cf66.patch:851: --- a/crates/vb_runtime/src/shard/tests/chunk_017.rs
+0f71f398cf66.patch:852: +++ b/crates/vb_runtime/src/shard/tests/chunk_017.rs
+0f71f398cf66.patch:853: @@ -182,45 +182,47 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
+0f71f398cf66.patch:854:              run,
+0f71f398cf66.patch:855:              correlation: 1
+0f71f398cf66.patch:856:          }),
+0f71f398cf66.patch:857:          Ok(())
+0f71f398cf66.patch:858:      );
+0f71f398cf66.patch:859:      assert_eq!(shard.tick(), Ok(true));
+0f71f398cf66.patch:860:      match shard.take_inspect_response() {
+0f71f398cf66.patch:861:          Some(InspectResponse::Found(_)) => {}
+0f71f398cf66.patch:862:          other => {
+0f71f398cf66.patch:863:              let msg = format!("expected Found, got {other:?}");
+0f71f398cf66.patch:864:              panic!("{msg}");
+0f71f398cf66.patch:865:          }
+0f71f398cf66.patch:866:      }
+0f71f398cf66.patch:867:  }
+0f71f398cf66.patch:868:  
+0f71f398cf66.patch:869: -// BH-SHD-07: Frame pool allocates beyond pool capacity.
+0f71f398cf66.patch:870: +// BH-SHD-07: Frame pool is bounded by capacity — no fresh allocation as fallback.
+0f71f398cf66.patch:871:  // Severity: Low. Mitigated by max_active_runs.
+0f71f398cf66.patch:872:  #[test]
+0f71f398cf66.patch:873: -fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() {
+0f71f398cf66.patch:874: +fn bh_shd_07_frame_pool_bounded_no_fresh_alloc() {
+0f71f398cf66.patch:875:      let mut pool = crate::frame_pool::FramePool::new(2, 1, 2)
+0f71f398cf66.patch:876:          .ok()
+0f71f398cf66.patch:877:          .unwrap_or_else(|| panic!("FramePool::new failed"));
+0f71f398cf66.patch:878: +    // With pre-allocation, taking 2 frames exhausts the pool
+0f71f398cf66.patch:879:      let f1 = pool.take(super::RunId::new(1), vb_core::ids::StepIdx::ZERO);
+0f71f398cf66.patch:880:      let f2 = pool.take(super::RunId::new(2), vb_core::ids::StepIdx::ZERO);
+0f71f398cf66.patch:881: +    assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed (within capacity)");
+0f71f398cf66.patch:882: +    assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed (within capacity)");
+0f71f398cf66.patch:883: +    // A 3rd take returns AllocationFailed (no fresh allocation fallback)
+0f71f398cf66.patch:884:      let f3 = pool.take(super::RunId::new(3), vb_core::ids::StepIdx::ZERO);
+0f71f398cf66.patch:885: -    assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed");
+0f71f398cf66.patch:886: -    assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed");
+0f71f398cf66.patch:887:      assert!(
+0f71f398cf66.patch:888: -        f3.is_ok(),
+0f71f398cf66.patch:889: -        "BH-SHD-07: f3 should succeed beyond pool capacity"
+0f71f398cf66.patch:890: +        matches!(f3, Err(vb_core::errors::CoreError::AllocationFailed)),
+0f71f398cf66.patch:891: +        "BH-SHD-07: f3 should fail with AllocationFailed (pool bounded, no fresh alloc)"
+0f71f398cf66.patch:892:      );
+0f71f398cf66.patch:893:  }
+0f71f398cf66.patch:894:  
+0f71f398cf66.patch:895:  // BH-SHD-08: pending_timers allows only one timer per run (last wins).
+0f71f398cf66.patch:896:  // Severity: Low. Invariant maintained by workflow structure.
+0f71f398cf66.patch:897:  #[test]
+0f71f398cf66.patch:898:  fn bh_shd_08_pending_timers_last_wins_per_run() {
+0f71f398cf66.patch:899:      let config = small_config();
+0f71f398cf66.patch:900:      let mut shard = Shard::new(config);
+0f71f398cf66.patch:901:      let Some(workflow) = timed_wait_then_finish_workflow() else {
+0f71f398cf66.patch:902:          return;
+0f71f398cf66.patch:903:      };
+0f71f398cf66.patch:904:      let run = super::RunId::new(808);
+0f71f398cf66.patch:905:      assert_eq!(
+0f71f398cf66.patch:906:          shard.enqueue(ShardCommand::Submit {
+0f71f398cf66.patch:907: diff --git a/crates/vb_runtime/src/shard/tests/chunk_024.rs b/crates/vb_runtime/src/shard/tests/chunk_024.rs
+0f71f398cf66.patch:908: index 294da5f7b..b531c49f3 100644
+0f71f398cf66.patch:909: --- a/crates/vb_runtime/src/shard/tests/chunk_024.rs
+0f71f398cf66.patch:910: +++ b/crates/vb_runtime/src/shard/tests/chunk_024.rs
+0f71f398cf66.patch:911: @@ -162,40 +162,42 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {
+0f71f398cf66.patch:912:      let config = small_config();
+0f71f398cf66.patch:913:      let mut shard = Shard::new(config);
+0f71f398cf66.patch:914:      let Some(workflow) = suspended_workflow() else {
+0f71f398cf66.patch:915:          return;
+0f71f398cf66.patch:916:      };
+0f71f398cf66.patch:917:      let run = super::RunId::new(1003);
+0f71f398cf66.patch:918:      assert_eq!(
+0f71f398cf66.patch:919:          shard.enqueue(ShardCommand::Submit {
+0f71f398cf66.patch:920:              run,
+0f71f398cf66.patch:921:              workflow,
+0f71f398cf66.patch:922:              caps: vb_core::capability::CapabilitySet::empty()
+0f71f398cf66.patch:923:          }),
+0f71f398cf66.patch:924:          Ok(())
+0f71f398cf66.patch:925:      );
+0f71f398cf66.patch:926:      assert_eq!(shard.tick(), Ok(true));
+0f71f398cf66.patch:927: +    // Pool pre-allocated to capacity (4); one frame in use
+0f71f398cf66.patch:928:      assert_eq!(
+0f71f398cf66.patch:929:          shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+0f71f398cf66.patch:930: -        Some(0)
+0f71f398cf66.patch:931: +        Some(3)
+0f71f398cf66.patch:932:      );
+0f71f398cf66.patch:933:      assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+0f71f398cf66.patch:934:      assert_eq!(shard.tick(), Ok(true));
+0f71f398cf66.patch:935:      assert_eq!(shard.run_state_get(run), None);
+0f71f398cf66.patch:936: +    // After cancel, frame returned to pool; all 4 available
+0f71f398cf66.patch:937:      assert_eq!(
+0f71f398cf66.patch:938:          shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+0f71f398cf66.patch:939: -        Some(1)
+0f71f398cf66.patch:940: +        Some(4)
+0f71f398cf66.patch:941:      );
+0f71f398cf66.patch:942:      assert_eq!(shard.counters().snapshot().runs_failed, 1);
+0f71f398cf66.patch:943:  }
+0f71f398cf66.patch:944:  
+0f71f398cf66.patch:945:  #[test]
+0f71f398cf66.patch:946:  fn vb1u88_cancel_removes_pending_timer() {
+0f71f398cf66.patch:947:      let config = small_config();
+0f71f398cf66.patch:948:      let mut shard = Shard::new(config);
+0f71f398cf66.patch:949:      let Some(workflow) = timed_wait_then_finish_workflow() else {
+0f71f398cf66.patch:950:          return;
+0f71f398cf66.patch:951:      };
+0f71f398cf66.patch:952:      let run = super::RunId::new(1004);
+0f71f398cf66.patch:953:      assert_eq!(
+0f71f398cf66.patch:954:          shard.enqueue(ShardCommand::Submit {
+0f71f398cf66.patch:955:              run,

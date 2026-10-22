@@ -1,0 +1,200 @@
+dec0e41e2690.patch:1: diff --git a/crates/vb_cli/src/run.rs b/crates/vb_cli/src/run.rs
+dec0e41e2690.patch:2: index c7c4ef74c..c4bffdf23 100644
+dec0e41e2690.patch:3: --- a/crates/vb_cli/src/run.rs
+dec0e41e2690.patch:4: +++ b/crates/vb_cli/src/run.rs
+dec0e41e2690.patch:5: @@ -91,49 +91,25 @@ pub(crate) fn store_workflow_artifacts(
+dec0e41e2690.patch:6:      submit_cli_compiled_artifact(&journal, compiled)
+dec0e41e2690.patch:7:          .map_err(|e| {
+dec0e41e2690.patch:8:              report_compiled_ir_store_error(
+dec0e41e2690.patch:9:                  format_args!("compiled artifact admission error: {e}"),
+dec0e41e2690.patch:10:                  output,
+dec0e41e2690.patch:11:              );
+dec0e41e2690.patch:12:              CliExitCode::StorageError.into()
+dec0e41e2690.patch:13:          })
+dec0e41e2690.patch:14:          .map(|_| ())
+dec0e41e2690.patch:15:  }
+dec0e41e2690.patch:16:  
+dec0e41e2690.patch:17:  pub(crate) fn submit_cli_compiled_artifact(
+dec0e41e2690.patch:18:      journal: &vb_storage::FjallJournal,
+dec0e41e2690.patch:19:      compiled: &vb_core::CompiledWorkflow,
+dec0e41e2690.patch:20:  ) -> Result<vb_storage::AcceptedArtifact, vb_storage::JournalError> {
+dec0e41e2690.patch:21: -    let parts = compiled.to_parts();
+dec0e41e2690.patch:22: -    let ir =
+dec0e41e2690.patch:23: -        postcard::to_allocvec(&parts).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
+dec0e41e2690.patch:24: -    let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+dec0e41e2690.patch:25: -    let mut artifact = vb_storage::AcceptedArtifact {
+dec0e41e2690.patch:26: -        digest: zero,
+dec0e41e2690.patch:27: -        source_digest: compiled.digest(),
+dec0e41e2690.patch:28: -        policy_digest: vb_storage::admission::compute_policy_digest(compiled)?,
+dec0e41e2690.patch:29: -        ir,
+dec0e41e2690.patch:30: -        verification: vb_storage::VerificationProof::new(
+dec0e41e2690.patch:31: -            zero,
+dec0e41e2690.patch:32: -            vb_runtime::admission::REQUIRED_GATE_COUNT,
+dec0e41e2690.patch:33: -            true,
+dec0e41e2690.patch:34: -        ),
+dec0e41e2690.patch:35: -        accepted_at_seq: vb_storage::EventSeq::new(0),
+dec0e41e2690.patch:36: -        required_capabilities: Box::new([]),
+dec0e41e2690.patch:37: -        action_contracts: Box::new([]),
+dec0e41e2690.patch:38: -    };
+dec0e41e2690.patch:39: -    let digest = vb_storage::admission::accepted_artifact_digest(&artifact)?;
+dec0e41e2690.patch:40: -    artifact.digest = digest;
+dec0e41e2690.patch:41: -    artifact.verification.digest = digest;
+dec0e41e2690.patch:42: -    let bytes =
+dec0e41e2690.patch:43: -        postcard::to_allocvec(&artifact).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
+dec0e41e2690.patch:44: -    journal.put_compiled_ir(&vb_storage::CompiledIrRecord { digest, ir: bytes })?;
+dec0e41e2690.patch:45: -    Ok(artifact)
+dec0e41e2690.patch:46: +    vb_storage::submit_artifact(journal, compiled, vb_core::RuntimePolicy::Strict)
+dec0e41e2690.patch:47:  }
+dec0e41e2690.patch:48:  
+dec0e41e2690.patch:49:  pub(crate) fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
+dec0e41e2690.patch:50:      if output != OutputFormat::Text {
+dec0e41e2690.patch:51:          write_failure_message(&args.to_string(), output, CliExitCode::StorageError);
+dec0e41e2690.patch:52:      } else {
+dec0e41e2690.patch:53:          errln!("{args}");
+dec0e41e2690.patch:54:      }
+dec0e41e2690.patch:55:  }
+dec0e41e2690.patch:56: diff --git a/crates/vb_storage/src/admission.rs b/crates/vb_storage/src/admission.rs
+dec0e41e2690.patch:57: index ff42b0755..53fdd5f67 100644
+dec0e41e2690.patch:58: --- a/crates/vb_storage/src/admission.rs
+dec0e41e2690.patch:59: +++ b/crates/vb_storage/src/admission.rs
+dec0e41e2690.patch:60: @@ -205,35 +205,32 @@ pub struct AcceptedArtifact {
+dec0e41e2690.patch:61:      /// The compiled artifact's content hash (matches `source_digest` when
+dec0e41e2690.patch:62:      /// artifact is produced directly from compilation without separate source).
+dec0e41e2690.patch:63:      pub digest: vb_core::WorkflowDigest,
+dec0e41e2690.patch:64:      /// Digest of the original workflow source that was compiled to produce this artifact.
+dec0e41e2690.patch:65:      /// For directly compiled workflows, this equals `digest`.
+dec0e41e2690.patch:66:      pub source_digest: vb_core::WorkflowDigest,
+dec0e41e2690.patch:67:      /// Digest of the resource/policy contract that governed this artifact's admission.
+dec0e41e2690.patch:68:      /// Derived from the `resource_contract` field of the compiled workflow.
+dec0e41e2690.patch:69:      pub policy_digest: vb_core::WorkflowDigest,
+dec0e41e2690.patch:70:      /// Serialized compiled IR (postcard).
+dec0e41e2690.patch:71:      pub ir: Vec<u8>,
+dec0e41e2690.patch:72:      /// Proof that verification passed.
+dec0e41e2690.patch:73:      pub verification: VerificationProof,
+dec0e41e2690.patch:74:      /// Journal sequence when accepted.
+dec0e41e2690.patch:75:      ///
+dec0e41e2690.patch:76: -    /// GAP-007 FIX: This field is currently always set to `EventSeq::new(0)`
+dec0e41e2690.patch:77: -    /// because actual sequence tracking is not implemented. The field is retained
+dec0e41e2690.patch:78: -    /// as a placeholder for future implementation of proper sequence tracking.
+dec0e41e2690.patch:79: -    /// When actual tracking is implemented, replace the placeholder with the real
+dec0e41e2690.patch:80: -    /// sequence number from the journal at admission time.
+dec0e41e2690.patch:81: +    /// Sequence-aware submission APIs bind this value from the caller that owns
+dec0e41e2690.patch:82: +    /// the journal sequence authority. It is part of the artifact digest.
+dec0e41e2690.patch:83:      pub accepted_at_seq: EventSeq,
+dec0e41e2690.patch:84:      /// Required capabilities for actions in this artifact.
+dec0e41e2690.patch:85:      pub required_capabilities: Box<[vb_core::capability::Capability]>,
+dec0e41e2690.patch:86:      /// Validated action contracts bound into this accepted artifact.
+dec0e41e2690.patch:87:      ///
+dec0e41e2690.patch:88:      /// The runtime needs these contracts after crash recovery to validate
+dec0e41e2690.patch:89:      /// action completion size, taint, idempotency, and output-slot authority.
+dec0e41e2690.patch:90:      /// Keeping them inside the accepted artifact makes the artifact the unit of
+dec0e41e2690.patch:91:      /// trust described by the master contract instead of relying on ephemeral
+dec0e41e2690.patch:92:      /// process memory.
+dec0e41e2690.patch:93:      #[serde(default)]
+dec0e41e2690.patch:94:      pub action_contracts: Box<[ActionContract]>,
+dec0e41e2690.patch:95:  }
+dec0e41e2690.patch:96:  
+dec0e41e2690.patch:97:  /// Computes the policy digest from a workflow's resource contract.
+dec0e41e2690.patch:98: @@ -336,65 +333,106 @@ pub(crate) const fn resource_contract_policy_bytes_bound() -> usize {
+dec0e41e2690.patch:99:  
+dec0e41e2690.patch:100:  /// Number of verification gates in the accepted artifact v1 admission flow.
+dec0e41e2690.patch:101:  /// This must match `vb_runtime::admission::REQUIRED_GATE_COUNT` (15).
+dec0e41e2690.patch:102:  const ADMISSION_GATE_COUNT: u8 = 15;
+dec0e41e2690.patch:103:  
+dec0e41e2690.patch:104:  /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
+dec0e41e2690.patch:105:  ///
+dec0e41e2690.patch:106:  /// This is the full admission flow. It performs:
+dec0e41e2690.patch:107:  /// 1. Policy check: Relaxed is rejected when accepted artifacts are required.
+dec0e41e2690.patch:108:  /// 2. Structure validation: re-parse the workflow from serialized parts.
+dec0e41e2690.patch:109:  /// 3. Checksum validation: serialized bytes must hash to the claimed digest.
+dec0e41e2690.patch:110:  /// 4. Proof validation: gate count must be 15 and all proof flags must be true.
+dec0e41e2690.patch:111:  /// 5. Persistence: store the artifact in the `compiled_ir` keyspace.
+dec0e41e2690.patch:112:  /// 6. Durability: under `Strict` policy, calls SyncAll before returning.
+dec0e41e2690.patch:113:  ///
+dec0e41e2690.patch:114: +/// The accepted-at-sequence is allocated from the journal's durable counter via
+dec0e41e2690.patch:115: +/// `FjallJournal::accept_seq_allocate`. Callers that need to bind the sequence
+dec0e41e2690.patch:116: +/// to a specific transaction should use `submit_artifact_at_seq` instead.
+dec0e41e2690.patch:117: +///
+dec0e41e2690.patch:118:  /// Returns the `AcceptedArtifact` on success.
+dec0e41e2690.patch:119:  pub fn submit_artifact(
+dec0e41e2690.patch:120:      journal: &FjallJournal,
+dec0e41e2690.patch:121:      workflow: &vb_core::CompiledWorkflow,
+dec0e41e2690.patch:122:      policy: vb_core::RuntimePolicy,
+dec0e41e2690.patch:123:  ) -> Result<AcceptedArtifact, JournalError> {
+dec0e41e2690.patch:124: -    submit_artifact_with_contracts(journal, workflow, policy, &[])
+dec0e41e2690.patch:125: +    let accepted_at_seq = journal.accept_seq_allocate()?;
+dec0e41e2690.patch:126: +    submit_artifact_at_seq(journal, workflow, policy, accepted_at_seq)
+dec0e41e2690.patch:127: +}
+dec0e41e2690.patch:128: +
+dec0e41e2690.patch:129: +/// Submits an artifact and binds the caller's journal-authoritative acceptance sequence.
+dec0e41e2690.patch:130: +///
+dec0e41e2690.patch:131: +/// The caller must obtain `accepted_at_seq` from the journal/run acceptance transaction;
+dec0e41e2690.patch:132: +/// this function does not synthesize sequence authority from time or process-local state.
+dec0e41e2690.patch:133: +pub fn submit_artifact_at_seq(
+dec0e41e2690.patch:134: +    journal: &FjallJournal,
+dec0e41e2690.patch:135: +    workflow: &vb_core::CompiledWorkflow,
+dec0e41e2690.patch:136: +    policy: vb_core::RuntimePolicy,
+dec0e41e2690.patch:137: +    accepted_at_seq: EventSeq,
+dec0e41e2690.patch:138: +) -> Result<AcceptedArtifact, JournalError> {
+dec0e41e2690.patch:139: +    submit_artifact_with_contracts_at_seq(journal, workflow, policy, accepted_at_seq, &[])
+dec0e41e2690.patch:140:  }
+dec0e41e2690.patch:141:  
+dec0e41e2690.patch:142:  /// Validates, verifies, and persists a compiled workflow artifact with the
+dec0e41e2690.patch:143:  /// required capability profile extracted from validated action contracts.
+dec0e41e2690.patch:144: +///
+dec0e41e2690.patch:145: +/// The accepted-at-sequence is allocated from the journal's durable counter via
+dec0e41e2690.patch:146: +/// `FjallJournal::accept_seq_allocate`. Callers that need to bind the sequence
+dec0e41e2690.patch:147: +/// to a specific transaction should use `submit_artifact_with_contracts_at_seq`
+dec0e41e2690.patch:148: +/// instead.
+dec0e41e2690.patch:149:  pub fn submit_artifact_with_contracts(
+dec0e41e2690.patch:150:      journal: &FjallJournal,
+dec0e41e2690.patch:151:      workflow: &vb_core::CompiledWorkflow,
+dec0e41e2690.patch:152:      policy: vb_core::RuntimePolicy,
+dec0e41e2690.patch:153:      action_contracts: &[ActionContract],
+dec0e41e2690.patch:154: +) -> Result<AcceptedArtifact, JournalError> {
+dec0e41e2690.patch:155: +    let accepted_at_seq = journal.accept_seq_allocate()?;
+dec0e41e2690.patch:156: +    submit_artifact_with_contracts_at_seq(
+dec0e41e2690.patch:157: +        journal,
+dec0e41e2690.patch:158: +        workflow,
+dec0e41e2690.patch:159: +        policy,
+dec0e41e2690.patch:160: +        accepted_at_seq,
+dec0e41e2690.patch:161: +        action_contracts,
+dec0e41e2690.patch:162: +    )
+dec0e41e2690.patch:163: +}
+dec0e41e2690.patch:164: +
+dec0e41e2690.patch:165: +/// Submits an artifact with action contracts and caller-owned sequence authority.
+dec0e41e2690.patch:166: +pub fn submit_artifact_with_contracts_at_seq(
+dec0e41e2690.patch:167: +    journal: &FjallJournal,
+dec0e41e2690.patch:168: +    workflow: &vb_core::CompiledWorkflow,
+dec0e41e2690.patch:169: +    policy: vb_core::RuntimePolicy,
+dec0e41e2690.patch:170: +    accepted_at_seq: EventSeq,
+dec0e41e2690.patch:171: +    action_contracts: &[ActionContract],
+dec0e41e2690.patch:172:  ) -> Result<AcceptedArtifact, JournalError> {
+dec0e41e2690.patch:173:      let required_capabilities = required_capabilities_from_contracts(action_contracts)?;
+dec0e41e2690.patch:174:      let idempotency_evidence = idempotency_evidence_from_contracts(action_contracts)?;
+dec0e41e2690.patch:175:      match policy {
+dec0e41e2690.patch:176:          vb_core::RuntimePolicy::Relaxed => {
+dec0e41e2690.patch:177:              // Relaxed: skip gate validation, no durability, gate_count=0
+dec0e41e2690.patch:178:              let parts = workflow.to_parts();
+dec0e41e2690.patch:179:              let ir_bytes =
+dec0e41e2690.patch:180:                  postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+dec0e41e2690.patch:181:              let mut proof = VerificationProof::new(zero_workflow_digest(), 0, false);
+dec0e41e2690.patch:182:              proof.idempotency_keyed = idempotency_evidence.keyed;
+dec0e41e2690.patch:183:              proof.idempotency_attested = idempotency_evidence.attested;
+dec0e41e2690.patch:184:              let mut artifact = AcceptedArtifact {
+dec0e41e2690.patch:185:                  digest: zero_workflow_digest(),
+dec0e41e2690.patch:186:                  source_digest: workflow.digest(),
+dec0e41e2690.patch:187:                  policy_digest: compute_policy_digest(workflow)?,
+dec0e41e2690.patch:188:                  ir: ir_bytes,
+dec0e41e2690.patch:189:                  verification: proof,
+dec0e41e2690.patch:190: -                accepted_at_seq: EventSeq::new(0),
+dec0e41e2690.patch:191: +                accepted_at_seq,
+dec0e41e2690.patch:192:                  required_capabilities,
+dec0e41e2690.patch:193:                  action_contracts: action_contracts.to_vec().into_boxed_slice(),
+dec0e41e2690.patch:194:              };
+dec0e41e2690.patch:195:              bind_artifact_digest(&mut artifact)?;
+dec0e41e2690.patch:196:              let artifact_bytes =
+dec0e41e2690.patch:197:                  postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
+dec0e41e2690.patch:198:              let record = CompiledIrRecord {
+dec0e41e2690.patch:199:                  digest: artifact.digest,
+dec0e41e2690.patch:200:                  ir: artifact_bytes,

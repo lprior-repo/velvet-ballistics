@@ -1,0 +1,16 @@
+{
+  "status": "PROVISIONAL_DIAGNOSTIC_NOT_ACCEPTANCE",
+  "source_base": "b752db4c1a665caf90fa9e63e43d1505b0ba651d",
+  "v2_rejected_claim": "Sequence-aware acceptance API/allocator missing despite submit_artifact being present. Name matching was not semantic coverage.",
+  "v3_remaining_correction": "compile_source already calls allocate_input_slots(source.inputs(), &mut builder) without ampersand at current line56. v3 missing compile hunk claim is false; config alias and repair hints need separate delivery.",
+  "other_limitations": [
+    "PRESENT rows not yet independent full-hunk accepted; inherited branch deltas remain pending.",
+    "Formal binding and registry claims need actual production-binding gate and verifier evidence; neither audit closes proof.",
+    "Empty cargo-vet metadata header alone is not useful production integration.",
+    "These reports executed no tests and do not close any old branch or bead."
+  ],
+  "followups": {
+    "dec0e41": "Live existing vb-0qwfq resumed local3090 contract/source authority study.",
+    "a8451f": "New vb-08daa local5090 bounded config recovery; compiler code preserved."
+  }
+}

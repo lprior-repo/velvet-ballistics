@@ -1,0 +1,158 @@
+{
+  "current_source": "b752db4c1a665caf90fa9e63e43d1505b0ba651d",
+  "scope": "Exact8historical OWNcommit source patches, notentirebranchfamily. Empty oralready-presentownpatch doesNOTclassifyinheritedbranchdeltas. No implementation or gate changes.",
+  "entries": [
+    {
+      "commit": "dec0e41e26902e5418cf972d6aa7d104d09f1d9c",
+      "subject": "vb-0qwfq: stamp accepted artifact sequence",
+      "refs": [
+        "refs/heads/bead/vb-0qwfq-s6",
+        "refs/remotes/origin/bead/vb-0qwfq-s6"
+      ],
+      "own_source_paths": [
+        "crates/vb_cli/src/run.rs",
+        "crates/vb_storage/src/admission.rs",
+        "crates/vb_storage/src/constants.rs",
+        "crates/vb_storage/src/journal/core.rs",
+        "crates/vb_storage/src/lib.rs"
+      ],
+      "own_patch": ".beads/vb-fyktj/own-patch-audit-v2/dec0e41e2690.patch",
+      "patch_sha256": "9bc476aa4119344b4a417a74fee475dcbf1305ec7c03aa6c97930a641faa65b3",
+      "own_patch_bytes": 25089,
+      "exact_own_patch_reverse_check_exit": 1,
+      "reverse_check_diagnostic": "error: patch failed: crates/vb_storage/src/lib.rs:246\nerror: crates/vb_storage/src/lib.rs: patch does not apply\nerror: patch failed: crates/vb_storage/src/journal/core.rs:13\nerror: crates/vb_storage/src/journal/core.rs: patch does not apply\nerror: patch failed: crates/vb_storage/src/constants.rs:22\nerror: crates/vb_storage/src/constants.rs: patch does not apply\nerror: patch failed: crates/vb_storage/src/admission.rs:217\nerror: crates/vb_storage/src/admission.rs: patch does not apply\nerror: crates/vb_cli/src/run.rs: No such file or directory\n"
+    },
+    {
+      "commit": "bd2920512bde46a801fc5663f392d3362272a525",
+      "subject": "vb-3wn7x: black-hat review - APPROVED",
+      "refs": [
+        "refs/heads/bead/vb-3wn7x",
+        "refs/remotes/origin/bead/vb-3wn7x"
+      ],
+      "own_source_paths": [
+        "crates/vb_storage/src/batch/action_index.rs",
+        "crates/vb_storage/src/batch/append_event.rs",
+        "crates/vb_storage/src/batch/mod.rs",
+        "crates/vb_storage/src/batch/putters.rs",
+        "crates/vb_storage/src/index_maintenance_tests.rs",
+        "crates/vb_storage/src/indexes.rs",
+        "crates/vb_storage/src/journal/internal.rs",
+        "crates/vb_storage/src/lib.rs",
+        "crates/workspace_tests/tests/journal_side_index_contracts.rs"
+      ],
+      "own_patch": ".beads/vb-fyktj/own-patch-audit-v2/bd2920512bde.patch",
+      "patch_sha256": "781344168aed5a0f49fadebf81d27afc8e670c699a6aba34e9042ffd059c2295",
+      "own_patch_bytes": 44621,
+      "exact_own_patch_reverse_check_exit": 1,
+      "reverse_check_diagnostic": "error: patch failed: crates/vb_storage/src/journal/internal.rs:37\nerror: crates/vb_storage/src/journal/internal.rs: patch does not apply\nerror: patch failed: crates/vb_storage/src/index_maintenance_tests.rs:1\nerror: crates/vb_storage/src/index_maintenance_tests.rs: patch does not apply\nerror: patch failed: crates/vb_storage/src/batch/mod.rs:1\nerror: crates/vb_storage/src/batch/mod.rs: patch does not apply\nerror: patch failed: crates/vb_storage/src/batch/append_event.rs:102\nerror: crates/vb_storage/src/batch/append_event.rs: patch does not apply\nerror: patch failed: crates/vb_storage/src/batch/action_index.rs:1\nerror: crates/vb_storage/src/batch/action_index.rs: patch does not apply\n"
+    },
+    {
+      "commit": "0f71f398cf66a3c8acb881826683aa36f6d7c850",
+      "subject": "vb-3y9q5: black-hat review - APPROVED",
+      "refs": [
+        "refs/heads/bead/vb-3y9q5",
+        "refs/remotes/origin/bead/vb-3y9q5"
+      ],
+      "own_source_paths": [
+        "crates/vb_runtime/src/frame_pool.rs",
+        "crates/vb_runtime/src/frame_pool/tests.rs",
+        "crates/vb_runtime/src/shard/tests/chunk_003.rs",
+        "crates/vb_runtime/src/shard/tests/chunk_010.rs",
+        "crates/vb_runtime/src/shard/tests/chunk_017.rs",
+        "crates/vb_runtime/src/shard/tests/chunk_024.rs"
+      ],
+      "own_patch": ".beads/vb-fyktj/own-patch-audit-v2/0f71f398cf66.patch",
+      "patch_sha256": "850ee4fcfd1c43306d95dddc9e6e1e270e0bcd7c421860f56b4a1d4169334156",
+      "own_patch_bytes": 34699,
+      "exact_own_patch_reverse_check_exit": 1,
+      "reverse_check_diagnostic": "error: patch failed: crates/vb_runtime/src/shard/tests/chunk_024.rs:174\nerror: crates/vb_runtime/src/shard/tests/chunk_024.rs: patch does not apply\nerror: patch failed: crates/vb_runtime/src/frame_pool/tests.rs:68\nerror: crates/vb_runtime/src/frame_pool/tests.rs: patch does not apply\n"
+    },
+    {
+      "commit": "dd50c691bb67624f7d39bb19ca057223aed43abe",
+      "subject": "vb-4pg6g: ledger StepBudget::from_env external_body as PO-VERUS-032",
+      "refs": [
+        "refs/heads/bead/vb-4pg6g",
+        "refs/remotes/origin/bead/vb-4pg6g"
+      ],
+      "own_source_paths": [
+        "contracts/proof_obligations.yaml"
+      ],
+      "own_patch": ".beads/vb-fyktj/own-patch-audit-v2/dd50c691bb67.patch",
+      "patch_sha256": "fc5ee1344955c42eb2029c056599d3cbf25b38cbeb9574837571d909d48453ac",
+      "own_patch_bytes": 2702,
+      "exact_own_patch_reverse_check_exit": 1,
+      "reverse_check_diagnostic": "error: patch failed: contracts/proof_obligations.yaml:1142\nerror: contracts/proof_obligations.yaml: patch does not apply\n"
+    },
+    {
+      "commit": "56d14ca7878d011d1b12a5c12f230110ca41186a",
+      "subject": "feat: route flux through canonical scripts/flux-check-package.sh",
+      "refs": [
+        "refs/heads/bead/vb-6r7f5",
+        "refs/remotes/origin/bead/vb-6r7f5"
+      ],
+      "own_source_paths": [
+        ".moon/tasks/flux.yml",
+        "scripts/flux-check-package.sh",
+        "xtask/src/lanes.rs"
+      ],
+      "own_patch": ".beads/vb-fyktj/own-patch-audit-v2/56d14ca7878d.patch",
+      "patch_sha256": "323a18704e712ed196396150d8f92cc52eda6d9de765552ec42973bd154667f8",
+      "own_patch_bytes": 8916,
+      "exact_own_patch_reverse_check_exit": 1,
+      "reverse_check_diagnostic": "error: patch failed: xtask/src/lanes.rs:78\nerror: xtask/src/lanes.rs: patch does not apply\nerror: patch failed: scripts/flux-check-package.sh:1\nerror: scripts/flux-check-package.sh: patch does not apply\nerror: .moon/tasks/flux.yml: No such file or directory\n"
+    },
+    {
+      "commit": "6351cc8cd904a3e9006aa9442c8e16987a195d97",
+      "subject": "consolidate stale cargo-vet with supply-chain store",
+      "refs": [
+        "refs/heads/bead/vb-b3kxw",
+        "refs/remotes/origin/bead/vb-b3kxw",
+        "refs/remotes/origin/vb/vb-b3kxw"
+      ],
+      "own_source_paths": [
+        "Cargo.toml"
+      ],
+      "own_patch": ".beads/vb-fyktj/own-patch-audit-v2/6351cc8cd904.patch",
+      "patch_sha256": "bdc39d849e9c8661fa891d79a7c377ffba5cb49b599251040555c9d6618a88d3",
+      "own_patch_bytes": 453,
+      "exact_own_patch_reverse_check_exit": 1,
+      "reverse_check_diagnostic": "error: patch failed: Cargo.toml:99\nerror: Cargo.toml: patch does not apply\n"
+    },
+    {
+      "commit": "a8451f741f718ee0cac25e0fb1904f3f189bb2b4",
+      "subject": "fix(vb-bywha): resolve clippy all-targets vs source-only lint policy",
+      "refs": [
+        "refs/heads/bead/vb-bywha",
+        "refs/remotes/origin/bead/vb-bywha"
+      ],
+      "own_source_paths": [
+        ".cargo/config.toml",
+        "contracts/invariants.yaml",
+        "crates/vb_compile/src/mod_compile_lowering/part_01.rs",
+        "xtask/src/evidence/persistence.rs"
+      ],
+      "own_patch": ".beads/vb-fyktj/own-patch-audit-v2/a8451f741f71.patch",
+      "patch_sha256": "e48bb49bde569a01822e5fdedae3250ea8ca307a062648dd1dde92427b5c5230",
+      "own_patch_bytes": 5817,
+      "exact_own_patch_reverse_check_exit": 1,
+      "reverse_check_diagnostic": "error: patch failed: xtask/src/evidence/persistence.rs:64\nerror: xtask/src/evidence/persistence.rs: patch does not apply\nerror: patch failed: crates/vb_compile/src/mod_compile_lowering/part_01.rs:43\nerror: crates/vb_compile/src/mod_compile_lowering/part_01.rs: patch does not apply\nerror: patch failed: contracts/invariants.yaml:397\nerror: contracts/invariants.yaml: patch does not apply\nerror: patch failed: .cargo/config.toml:15\nerror: .cargo/config.toml: patch does not apply\n"
+    },
+    {
+      "commit": "220e4d21d719b8cb80d26b872e118c372a245791",
+      "subject": "vb-ck4a1: relocate JSON diagnostic tests out of core source surfaces",
+      "refs": [
+        "refs/heads/bead/vb-ck4a1",
+        "refs/remotes/origin/bead/vb-ck4a1"
+      ],
+      "own_source_paths": [
+        "crates/vb_core/src/diagnostic.rs",
+        "crates/vb_core/src/diagnostic/tests_and_verification.rs"
+      ],
+      "own_patch": ".beads/vb-fyktj/own-patch-audit-v2/220e4d21d719.patch",
+      "patch_sha256": "419dc516777f00998fa968f1e0544eecafbc641c2d30fc46de09f85afe1a26b0",
+      "own_patch_bytes": 13801,
+      "exact_own_patch_reverse_check_exit": 1,
+      "reverse_check_diagnostic": "error: crates/vb_core/src/diagnostic/tests_and_verification.rs: already exists in working directory\nerror: patch failed: crates/vb_core/src/diagnostic.rs:2082\nerror: crates/vb_core/src/diagnostic.rs: patch does not apply\n"
+    }
+  ]
+}

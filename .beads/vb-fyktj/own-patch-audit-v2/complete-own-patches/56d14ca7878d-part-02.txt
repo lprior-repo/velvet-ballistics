@@ -1,0 +1,97 @@
+56d14ca7878d.patch:201: +
+56d14ca7878d.patch:202: +# --- Execute ---
+56d14ca7878d.patch:203: +if [ "${#packages[@]}" -eq 0 ]; then
+56d14ca7878d.patch:204: +  printf 'no flux-annotated crates found in %s/crates/\n' "$WORKSPACE_ROOT" >&2
+56d14ca7878d.patch:205: +  exit 2
+56d14ca7878d.patch:206: +fi
+56d14ca7878d.patch:207: +
+56d14ca7878d.patch:208: +any_failure=false
+56d14ca7878d.patch:209: +
+56d14ca7878d.patch:210: +for pkg in "${packages[@]}"; do
+56d14ca7878d.patch:211: +  if $dry_run; then
+56d14ca7878d.patch:212: +    printf 'DRY-RUN: cargo flux -p %s --message-format human %s\n' "$pkg" "${flux_args[*]+"${flux_args[*]}"}"
+56d14ca7878d.patch:213: +  else
+56d14ca7878d.patch:214: +    printf 'flux-check: %s ... ' "$pkg" >&2
+56d14ca7878d.patch:215: +    if cargo flux -p "$pkg" --message-format human "${flux_args[@]+"${flux_args[@]}"}"; then
+56d14ca7878d.patch:216: +      printf 'pass\n' >&2
+56d14ca7878d.patch:217: +    else
+56d14ca7878d.patch:218: +      printf 'fail\n' >&2
+56d14ca7878d.patch:219: +      any_failure=true
+56d14ca7878d.patch:220: +    fi
+56d14ca7878d.patch:221: +  fi
+56d14ca7878d.patch:222: +done
+56d14ca7878d.patch:223: +
+56d14ca7878d.patch:224: +if $any_failure; then
+56d14ca7878d.patch:225: +  exit 1
+56d14ca7878d.patch:226: +fi
+56d14ca7878d.patch:227: diff --git a/xtask/src/lanes.rs b/xtask/src/lanes.rs
+56d14ca7878d.patch:228: index f97147558..6282995aa 100644
+56d14ca7878d.patch:229: --- a/xtask/src/lanes.rs
+56d14ca7878d.patch:230: +++ b/xtask/src/lanes.rs
+56d14ca7878d.patch:231: @@ -66,56 +66,60 @@ pub fn lane_command(lane: &Lane, crate_name: &str, workspace_root: &Path) -> Vec
+56d14ca7878d.patch:232:              "cargo".into(),
+56d14ca7878d.patch:233:              "mutants".into(),
+56d14ca7878d.patch:234:              "-p".into(),
+56d14ca7878d.patch:235:              crate_name.into(),
+56d14ca7878d.patch:236:              "--no-times".into(),
+56d14ca7878d.patch:237:          ],
+56d14ca7878d.patch:238:          "coverage" => vec![
+56d14ca7878d.patch:239:              "cargo".into(),
+56d14ca7878d.patch:240:              "llvm-cov".into(),
+56d14ca7878d.patch:241:              "--no-report".into(),
+56d14ca7878d.patch:242:              "-p".into(),
+56d14ca7878d.patch:243:              crate_name.into(),
+56d14ca7878d.patch:244:          ],
+56d14ca7878d.patch:245:          "verus" => verus_command(crate_name, workspace_root),
+56d14ca7878d.patch:246:          "tla" => tla_command(crate_name, workspace_root),
+56d14ca7878d.patch:247: -        "flux" => vec![
+56d14ca7878d.patch:248: -            "cargo".into(),
+56d14ca7878d.patch:249: -            "flux".into(),
+56d14ca7878d.patch:250: -            "-p".into(),
+56d14ca7878d.patch:251: -            crate_name.into(),
+56d14ca7878d.patch:252: -        ],
+56d14ca7878d.patch:253: +        "flux" => flux_command(crate_name, workspace_root),
+56d14ca7878d.patch:254:          _ => vec!["echo".into(), format!("unknown lane: {}", lane.name)],
+56d14ca7878d.patch:255:      }
+56d14ca7878d.patch:256:  }
+56d14ca7878d.patch:257:  
+56d14ca7878d.patch:258:  fn verus_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
+56d14ca7878d.patch:259:      let verus_dir = workspace_root.join("verification").join("verus");
+56d14ca7878d.patch:260:      vec![
+56d14ca7878d.patch:261:          "verus".into(),
+56d14ca7878d.patch:262:          format!("{}/{crate_name}.rs", verus_dir.display()),
+56d14ca7878d.patch:263:      ]
+56d14ca7878d.patch:264:  }
+56d14ca7878d.patch:265:  
+56d14ca7878d.patch:266:  fn tla_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
+56d14ca7878d.patch:267:      let tla_file = workspace_root
+56d14ca7878d.patch:268:          .join("verification")
+56d14ca7878d.patch:269:          .join("tla")
+56d14ca7878d.patch:270:          .join(format!("{crate_name}.tla"));
+56d14ca7878d.patch:271:      vec!["tla2tools".into(), format!("{}", tla_file.display())]
+56d14ca7878d.patch:272:  }
+56d14ca7878d.patch:273:  
+56d14ca7878d.patch:274: +fn flux_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
+56d14ca7878d.patch:275: +    let script = workspace_root.join("scripts/flux-check-package.sh");
+56d14ca7878d.patch:276: +    vec![
+56d14ca7878d.patch:277: +        "bash".into(),
+56d14ca7878d.patch:278: +        format!("{}", script.display()),
+56d14ca7878d.patch:279: +        crate_name.into(),
+56d14ca7878d.patch:280: +    ]
+56d14ca7878d.patch:281: +}
+56d14ca7878d.patch:282: +
+56d14ca7878d.patch:283:  pub fn detect_available_lanes(workspace_root: &Path) -> Vec<Lane> {
+56d14ca7878d.patch:284:      let all_lanes = [
+56d14ca7878d.patch:285:          ("test", true),
+56d14ca7878d.patch:286:          ("clippy", true),
+56d14ca7878d.patch:287:          ("nextest", false),
+56d14ca7878d.patch:288:          ("kani", false),
+56d14ca7878d.patch:289:          ("miri", false),
+56d14ca7878d.patch:290:          ("loom", false),
+56d14ca7878d.patch:291:          ("fuzz", false),
+56d14ca7878d.patch:292:          ("mutants", false),
+56d14ca7878d.patch:293:          ("coverage", false),
+56d14ca7878d.patch:294:          ("verus", false),
+56d14ca7878d.patch:295:          ("tla", false),
+56d14ca7878d.patch:296:          ("flux", false),
+56d14ca7878d.patch:297:      ];

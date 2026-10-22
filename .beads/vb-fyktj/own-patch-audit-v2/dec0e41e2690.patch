@@ -1,0 +1,576 @@
+diff --git a/crates/vb_cli/src/run.rs b/crates/vb_cli/src/run.rs
+index c7c4ef74c..c4bffdf23 100644
+--- a/crates/vb_cli/src/run.rs
++++ b/crates/vb_cli/src/run.rs
+@@ -91,49 +91,25 @@ pub(crate) fn store_workflow_artifacts(
+     submit_cli_compiled_artifact(&journal, compiled)
+         .map_err(|e| {
+             report_compiled_ir_store_error(
+                 format_args!("compiled artifact admission error: {e}"),
+                 output,
+             );
+             CliExitCode::StorageError.into()
+         })
+         .map(|_| ())
+ }
+ 
+ pub(crate) fn submit_cli_compiled_artifact(
+     journal: &vb_storage::FjallJournal,
+     compiled: &vb_core::CompiledWorkflow,
+ ) -> Result<vb_storage::AcceptedArtifact, vb_storage::JournalError> {
+-    let parts = compiled.to_parts();
+-    let ir =
+-        postcard::to_allocvec(&parts).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
+-    let zero = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+-    let mut artifact = vb_storage::AcceptedArtifact {
+-        digest: zero,
+-        source_digest: compiled.digest(),
+-        policy_digest: vb_storage::admission::compute_policy_digest(compiled)?,
+-        ir,
+-        verification: vb_storage::VerificationProof::new(
+-            zero,
+-            vb_runtime::admission::REQUIRED_GATE_COUNT,
+-            true,
+-        ),
+-        accepted_at_seq: vb_storage::EventSeq::new(0),
+-        required_capabilities: Box::new([]),
+-        action_contracts: Box::new([]),
+-    };
+-    let digest = vb_storage::admission::accepted_artifact_digest(&artifact)?;
+-    artifact.digest = digest;
+-    artifact.verification.digest = digest;
+-    let bytes =
+-        postcard::to_allocvec(&artifact).map_err(vb_storage::JournalError::PostcardEncodeFailed)?;
+-    journal.put_compiled_ir(&vb_storage::CompiledIrRecord { digest, ir: bytes })?;
+-    Ok(artifact)
++    vb_storage::submit_artifact(journal, compiled, vb_core::RuntimePolicy::Strict)
+ }
+ 
+ pub(crate) fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
+     if output != OutputFormat::Text {
+         write_failure_message(&args.to_string(), output, CliExitCode::StorageError);
+     } else {
+         errln!("{args}");
+     }
+ }
+diff --git a/crates/vb_storage/src/admission.rs b/crates/vb_storage/src/admission.rs
+index ff42b0755..53fdd5f67 100644
+--- a/crates/vb_storage/src/admission.rs
++++ b/crates/vb_storage/src/admission.rs
+@@ -205,35 +205,32 @@ pub struct AcceptedArtifact {
+     /// The compiled artifact's content hash (matches `source_digest` when
+     /// artifact is produced directly from compilation without separate source).
+     pub digest: vb_core::WorkflowDigest,
+     /// Digest of the original workflow source that was compiled to produce this artifact.
+     /// For directly compiled workflows, this equals `digest`.
+     pub source_digest: vb_core::WorkflowDigest,
+     /// Digest of the resource/policy contract that governed this artifact's admission.
+     /// Derived from the `resource_contract` field of the compiled workflow.
+     pub policy_digest: vb_core::WorkflowDigest,
+     /// Serialized compiled IR (postcard).
+     pub ir: Vec<u8>,
+     /// Proof that verification passed.
+     pub verification: VerificationProof,
+     /// Journal sequence when accepted.
+     ///
+-    /// GAP-007 FIX: This field is currently always set to `EventSeq::new(0)`
+-    /// because actual sequence tracking is not implemented. The field is retained
+-    /// as a placeholder for future implementation of proper sequence tracking.
+-    /// When actual tracking is implemented, replace the placeholder with the real
+-    /// sequence number from the journal at admission time.
++    /// Sequence-aware submission APIs bind this value from the caller that owns
++    /// the journal sequence authority. It is part of the artifact digest.
+     pub accepted_at_seq: EventSeq,
+     /// Required capabilities for actions in this artifact.
+     pub required_capabilities: Box<[vb_core::capability::Capability]>,
+     /// Validated action contracts bound into this accepted artifact.
+     ///
+     /// The runtime needs these contracts after crash recovery to validate
+     /// action completion size, taint, idempotency, and output-slot authority.
+     /// Keeping them inside the accepted artifact makes the artifact the unit of
+     /// trust described by the master contract instead of relying on ephemeral
+     /// process memory.
+     #[serde(default)]
+     pub action_contracts: Box<[ActionContract]>,
+ }
+ 
+ /// Computes the policy digest from a workflow's resource contract.
+@@ -336,65 +333,106 @@ pub(crate) const fn resource_contract_policy_bytes_bound() -> usize {
+ 
+ /// Number of verification gates in the accepted artifact v1 admission flow.
+ /// This must match `vb_runtime::admission::REQUIRED_GATE_COUNT` (15).
+ const ADMISSION_GATE_COUNT: u8 = 15;
+ 
+ /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
+ ///
+ /// This is the full admission flow. It performs:
+ /// 1. Policy check: Relaxed is rejected when accepted artifacts are required.
+ /// 2. Structure validation: re-parse the workflow from serialized parts.
+ /// 3. Checksum validation: serialized bytes must hash to the claimed digest.
+ /// 4. Proof validation: gate count must be 15 and all proof flags must be true.
+ /// 5. Persistence: store the artifact in the `compiled_ir` keyspace.
+ /// 6. Durability: under `Strict` policy, calls SyncAll before returning.
+ ///
++/// The accepted-at-sequence is allocated from the journal's durable counter via
++/// `FjallJournal::accept_seq_allocate`. Callers that need to bind the sequence
++/// to a specific transaction should use `submit_artifact_at_seq` instead.
++///
+ /// Returns the `AcceptedArtifact` on success.
+ pub fn submit_artifact(
+     journal: &FjallJournal,
+     workflow: &vb_core::CompiledWorkflow,
+     policy: vb_core::RuntimePolicy,
+ ) -> Result<AcceptedArtifact, JournalError> {
+-    submit_artifact_with_contracts(journal, workflow, policy, &[])
++    let accepted_at_seq = journal.accept_seq_allocate()?;
++    submit_artifact_at_seq(journal, workflow, policy, accepted_at_seq)
++}
++
++/// Submits an artifact and binds the caller's journal-authoritative acceptance sequence.
++///
++/// The caller must obtain `accepted_at_seq` from the journal/run acceptance transaction;
++/// this function does not synthesize sequence authority from time or process-local state.
++pub fn submit_artifact_at_seq(
++    journal: &FjallJournal,
++    workflow: &vb_core::CompiledWorkflow,
++    policy: vb_core::RuntimePolicy,
++    accepted_at_seq: EventSeq,
++) -> Result<AcceptedArtifact, JournalError> {
++    submit_artifact_with_contracts_at_seq(journal, workflow, policy, accepted_at_seq, &[])
+ }
+ 
+ /// Validates, verifies, and persists a compiled workflow artifact with the
+ /// required capability profile extracted from validated action contracts.
++///
++/// The accepted-at-sequence is allocated from the journal's durable counter via
++/// `FjallJournal::accept_seq_allocate`. Callers that need to bind the sequence
++/// to a specific transaction should use `submit_artifact_with_contracts_at_seq`
++/// instead.
+ pub fn submit_artifact_with_contracts(
+     journal: &FjallJournal,
+     workflow: &vb_core::CompiledWorkflow,
+     policy: vb_core::RuntimePolicy,
+     action_contracts: &[ActionContract],
++) -> Result<AcceptedArtifact, JournalError> {
++    let accepted_at_seq = journal.accept_seq_allocate()?;
++    submit_artifact_with_contracts_at_seq(
++        journal,
++        workflow,
++        policy,
++        accepted_at_seq,
++        action_contracts,
++    )
++}
++
++/// Submits an artifact with action contracts and caller-owned sequence authority.
++pub fn submit_artifact_with_contracts_at_seq(
++    journal: &FjallJournal,
++    workflow: &vb_core::CompiledWorkflow,
++    policy: vb_core::RuntimePolicy,
++    accepted_at_seq: EventSeq,
++    action_contracts: &[ActionContract],
+ ) -> Result<AcceptedArtifact, JournalError> {
+     let required_capabilities = required_capabilities_from_contracts(action_contracts)?;
+     let idempotency_evidence = idempotency_evidence_from_contracts(action_contracts)?;
+     match policy {
+         vb_core::RuntimePolicy::Relaxed => {
+             // Relaxed: skip gate validation, no durability, gate_count=0
+             let parts = workflow.to_parts();
+             let ir_bytes =
+                 postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+             let mut proof = VerificationProof::new(zero_workflow_digest(), 0, false);
+             proof.idempotency_keyed = idempotency_evidence.keyed;
+             proof.idempotency_attested = idempotency_evidence.attested;
+             let mut artifact = AcceptedArtifact {
+                 digest: zero_workflow_digest(),
+                 source_digest: workflow.digest(),
+                 policy_digest: compute_policy_digest(workflow)?,
+                 ir: ir_bytes,
+                 verification: proof,
+-                accepted_at_seq: EventSeq::new(0),
++                accepted_at_seq,
+                 required_capabilities,
+                 action_contracts: action_contracts.to_vec().into_boxed_slice(),
+             };
+             bind_artifact_digest(&mut artifact)?;
+             let artifact_bytes =
+                 postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
+             let record = CompiledIrRecord {
+                 digest: artifact.digest,
+                 ir: artifact_bytes,
+             };
+             journal.put_compiled_ir(&record)?;
+             let stored = journal
+                 .compiled_ir(artifact.digest)
+                 .map_err(|_| JournalError::ArtifactMalformed)?;
+             if stored.is_none() {
+@@ -421,31 +459,31 @@ pub fn submit_artifact_with_contracts(
+ 
+             let mut proof =
+                 VerificationProof::new(zero_workflow_digest(), ADMISSION_GATE_COUNT, durable);
+             proof.idempotency_keyed = idempotency_evidence.keyed;
+             proof.idempotency_attested = idempotency_evidence.attested;
+ 
+             let ir_bytes =
+                 postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+ 
+             let mut artifact = AcceptedArtifact {
+                 digest: zero_workflow_digest(),
+                 source_digest: workflow.digest(),
+                 policy_digest: compute_policy_digest(workflow)?,
+                 ir: ir_bytes,
+                 verification: proof,
+-                accepted_at_seq: EventSeq::new(0),
++                accepted_at_seq,
+                 required_capabilities,
+                 action_contracts: action_contracts.to_vec().into_boxed_slice(),
+             };
+             bind_artifact_digest(&mut artifact)?;
+ 
+             let artifact_bytes =
+                 postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
+             let record = CompiledIrRecord {
+                 digest: artifact.digest,
+                 ir: artifact_bytes,
+             };
+             journal.put_compiled_ir(&record)?;
+ 
+             if durable {
+                 journal.persist_strict()?;
+diff --git a/crates/vb_storage/src/constants.rs b/crates/vb_storage/src/constants.rs
+index 98bfebad4..607c46026 100644
+--- a/crates/vb_storage/src/constants.rs
++++ b/crates/vb_storage/src/constants.rs
+@@ -10,78 +10,87 @@ pub const KEYSPACE_WORKFLOW_SOURCE: &str = "workflow_source";
+ pub const KEYSPACE_COMPILED_IR: &str = "compiled_ir";
+ /// Run metadata and status records.
+ pub const KEYSPACE_RUN_HEADER: &str = "run_header";
+ /// Compact binary event journal records.
+ pub const KEYSPACE_RUN_EVENT: &str = "run_event";
+ /// Compact binary run snapshot records.
+ pub const KEYSPACE_RUN_SNAPSHOT: &str = "run_snapshot";
+ /// Large input, output, and action payload blobs.
+ pub const KEYSPACE_BLOB: &str = "blob";
+ /// Status/time index records.
+ pub const KEYSPACE_INDEX_STATUS: &str = "index_status";
+ /// Workflow/run index records.
+ pub const KEYSPACE_INDEX_WORKFLOW: &str = "index_workflow";
+ /// Pending action index records.
+ pub const KEYSPACE_INDEX_ACTION: &str = "index_action";
++/// System metadata records (acceptance sequence counter).
++pub const KEYSPACE_SYSTEM: &str = "system";
+ 
+ /// `workflow_source` key prefix.
+ pub const PREFIX_WORKFLOW_SOURCE: u8 = 0x01;
+ /// `compiled_ir` key prefix.
+ pub const PREFIX_COMPILED_IR: u8 = 0x02;
+ /// `run_header` key prefix.
+ pub const PREFIX_RUN_HEADER: u8 = 0x10;
+ /// `run_event` key prefix.
+ pub const PREFIX_RUN_EVENT: u8 = 0x11;
+ /// `run_snapshot` key prefix.
+ pub const PREFIX_RUN_SNAPSHOT: u8 = 0x12;
+ /// `blob` key prefix.
+ pub const PREFIX_BLOB: u8 = 0x20;
+ /// `index_status` key prefix.
+ pub const PREFIX_INDEX_STATUS: u8 = 0x30;
+ /// `index_workflow` key prefix.
+ pub const PREFIX_INDEX_WORKFLOW: u8 = 0x31;
+ /// `index_action` key prefix.
+ pub const PREFIX_INDEX_ACTION: u8 = 0x32;
++/// `system` key prefix.
++pub const PREFIX_SYSTEM: u8 = 0x40;
+ 
+ /// Minimum accepted byte value for `IndexStatusState::Other(_)`.
+ ///
+ /// Bytes `0..MIN_OTHER_STATUS_BYTE` collide with the named variants
+ /// `Submitted` (0), `Active` (1), and `Completed` (2). Encoding them
+ /// would round-trip to the wrong variant on read. The
+ /// `index_status_key` encoder rejects any `Other(v)` whose byte is
+ /// below this threshold via a typed `JournalError::IndexStatusStateCollision`.
+ /// See SC-001 / vb-f1xkn.
+ pub const MIN_OTHER_STATUS_BYTE: u8 = 3;
+ 
+ /// Record envelope header length.
+ pub const RECORD_HEADER_LEN: u32 = 60;
+ /// Current record schema version.
+ pub const CURRENT_SCHEMA_VERSION: u16 = 1;
+ /// Compiled artifact magic, ASCII `VBIR`.
+ pub const MAGIC_COMPILED_ARTIFACT: u32 = 0x5642_4952;
+ /// Journal event magic, ASCII `VBJE`.
+ pub const MAGIC_JOURNAL_EVENT: u32 = 0x5642_4A45;
+ /// Snapshot magic, ASCII `VBSN`.
+ pub const MAGIC_SNAPSHOT: u32 = 0x5642_534E;
+ /// Blob record magic, ASCII `VBBL`.
+ pub const MAGIC_BLOB: u32 = 0x5642_424C;
+ /// IPC frame magic, ASCII `VBLT`.
+ pub const MAGIC_IPC_FRAME: u32 = 0x5642_4C54;
+ /// Workflow source magic, ASCII `VBSR`.
+ pub const MAGIC_WORKFLOW_SOURCE: u32 = 0x5642_5352;
+ /// Index record magic, ASCII `VBIX`.
+ pub const MAGIC_INDEX_RECORD: u32 = 0x5642_4958;
++/// System metadata record magic, ASCII `VBSY`.
++pub const MAGIC_SYSTEM_RECORD: u32 = 0x5642_5359;
++/// Key for the acceptance-sequence counter inside the `system` keyspace.
++/// Stored as big-endian u64 — the next value to hand out.
++pub const SYSTEM_ACCEPT_SEQ_KEY: &[u8] = &[PREFIX_SYSTEM, 0x01];
+ 
+ pub(crate) const JOURNAL_KEY_BYTES: usize = 17;
+ pub(crate) const DIGEST_KEY_BYTES: usize = 33;
+ pub(crate) const RUN_ONLY_KEY_BYTES: usize = 9;
+ pub(crate) const INDEX_STATUS_KEY_BYTES: usize = 18;
+ pub(crate) const INDEX_WORKFLOW_KEY_BYTES: usize = 13;
+ pub(crate) const INDEX_ACTION_KEY_BYTES: usize = 13;
+ pub(crate) const _RUN_EVENT_PREFIX_BYTES: usize = 9;
+ /// Digest byte width used by storage keys and record payload checksums.
+ pub const DIGEST_BYTES: usize = 32;
+ /// Record header bytes length.
+ pub const RECORD_HEADER_BYTES: usize = 60;
+ /// CRC32C checksum offset in header.
+ pub const CRC_OFFSET: usize = 56;
+ /// Maximum journal event payload accepted by the default journal APIs.
+diff --git a/crates/vb_storage/src/journal/core.rs b/crates/vb_storage/src/journal/core.rs
+index 13799df8e..fecab0637 100644
+--- a/crates/vb_storage/src/journal/core.rs
++++ b/crates/vb_storage/src/journal/core.rs
+@@ -1,35 +1,35 @@
+ #![forbid(unsafe_code)]
+ //! Fjall-backed journal implementation.
+ //!
+ //! Provides the main storage interface for workflow artifacts,
+ //! run metadata, journal events, snapshots, and blobs.
+ 
+ use std::path::Path;
+ use std::sync::Mutex;
+ #[cfg(test)]
+ use std::sync::atomic::{AtomicBool, Ordering};
+ 
+ use crate::{
+     constants::{
+         KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
+         KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_SNAPSHOT,
+-        KEYSPACE_WORKFLOW_SOURCE,
++        KEYSPACE_SYSTEM, KEYSPACE_WORKFLOW_SOURCE, SYSTEM_ACCEPT_SEQ_KEY,
+     },
+     error::JournalError,
+     process_lock::ProcessLock,
+-    types::{FjallConfig, KeyspaceProfile},
++    types::{EventSeq, FjallConfig, KeyspaceProfile},
+ };
+ 
+ /// Bounded replay limit for journal event collection.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct EventReplayLimit {
+     max_events: usize,
+ }
+ 
+ impl EventReplayLimit {
+     /// Conservative default for operator-facing replay collection.
+     pub const DEFAULT: Self = Self { max_events: 65_536 };
+ 
+     /// Creates a replay limit; returns `None` when the limit is zero.
+     #[must_use]
+     pub const fn new(max_events: usize) -> Option<Self> {
+@@ -47,30 +47,31 @@ impl EventReplayLimit {
+     }
+ }
+ 
+ /// Fjall-backed append journal.
+ pub struct FjallJournal {
+     pub(crate) database: fjall::Database,
+     pub(crate) workflow_source: fjall::Keyspace,
+     pub(crate) compiled_ir: fjall::Keyspace,
+     pub(crate) run_header: fjall::Keyspace,
+     pub(crate) events: fjall::Keyspace,
+     pub(crate) run_snapshot: fjall::Keyspace,
+     pub(crate) blob: fjall::Keyspace,
+     pub(crate) index_status: fjall::Keyspace,
+     pub(crate) index_workflow: fjall::Keyspace,
+     pub(crate) index_action: fjall::Keyspace,
++    pub(crate) system: fjall::Keyspace,
+     #[cfg(test)]
+     pub(crate) fail_next_persist: AtomicBool,
+     #[cfg(test)]
+     pub(crate) fail_next_compiled_ir_readback: AtomicBool,
+     /// Test-only fault hook: forces the next `JournalWriteBatch::commit()`
+     /// (the path `append_strict` uses) to return `Err(JournalError::Fjall(..))`
+     /// WITHOUT touching the real Fjall store. This proves the `append_strict`
+     /// commit-failure contract: the staged event is never made visible and a
+     /// retry is idempotent. Consumed exactly once.
+     #[cfg(test)]
+     pub(crate) fail_next_batch_commit: AtomicBool,
+     // SAFETY: write_lock is used in append_unfsynced() for poison detection.
+     // The lock guard is acquired and dropped, never read directly.
+     pub(crate) write_lock: Mutex<()>,
+     pub(crate) _process_lock: ProcessLock,
+@@ -112,69 +113,113 @@ impl FjallJournal {
+         let run_snapshot = database.keyspace(KEYSPACE_RUN_SNAPSHOT, || {
+             crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+         })?;
+         let blob = database.keyspace(KEYSPACE_BLOB, || {
+             crate::types::keyspace_options_for(KeyspaceProfile::Blob)
+         })?;
+         let index_status = database.keyspace(KEYSPACE_INDEX_STATUS, || {
+             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+         })?;
+         let index_workflow = database.keyspace(KEYSPACE_INDEX_WORKFLOW, || {
+             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+         })?;
+         let index_action = database.keyspace(KEYSPACE_INDEX_ACTION, || {
+             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+         })?;
++        let system = database.keyspace(KEYSPACE_SYSTEM, || {
++            crate::types::keyspace_options_for(KeyspaceProfile::Hot)
++        })?;
+         let _process_lock = ProcessLock::acquire(path_ref)?;
+         Ok(Self {
+             database,
+             workflow_source,
+             compiled_ir,
+             run_header,
+             events,
+             run_snapshot,
+             blob,
+             index_status,
+             index_workflow,
+             index_action,
++            system,
+             #[cfg(test)]
+             fail_next_persist: AtomicBool::new(false),
+             #[cfg(test)]
+             fail_next_compiled_ir_readback: AtomicBool::new(false),
+             #[cfg(test)]
+             fail_next_batch_commit: AtomicBool::new(false),
+             write_lock: Mutex::new(()),
+             _process_lock,
+         })
+     }
+ 
+     /// Returns all declared keyspace names after a successful open.
+     #[must_use]
+-    pub const fn declared_keyspaces() -> [&'static str; 9] {
++    pub const fn declared_keyspaces() -> [&'static str; 10] {
+         [
+             KEYSPACE_WORKFLOW_SOURCE,
+             KEYSPACE_COMPILED_IR,
+             KEYSPACE_RUN_HEADER,
+             KEYSPACE_RUN_EVENT,
+             KEYSPACE_RUN_SNAPSHOT,
+             KEYSPACE_BLOB,
+             KEYSPACE_INDEX_STATUS,
+             KEYSPACE_INDEX_WORKFLOW,
+             KEYSPACE_INDEX_ACTION,
++            KEYSPACE_SYSTEM,
+         ]
+     }
+ 
++    /// Allocates the next durable artifact-acceptance sequence number.
++    ///
++    /// Reads the current counter from the `system` keyspace, increments it,
++    /// and writes back the new value in a single batch commit. The caller's
++    /// write_lock serializes concurrent callers so that two callers never
++    /// observe the same counter value.
++    ///
++    /// Returns `JournalError::SequenceOverflow` when the counter is already
++    /// at `EventSeq::MAX` — no wrapping or silent reuse.
++    pub fn accept_seq_allocate(&self) -> Result<EventSeq, JournalError> {
++        let _guard = self
++            .write_lock
++            .lock()
++            .map_err(|_| JournalError::WriteLockPoisoned)?;
++        let current: u64 = self
++            .system
++            .get(SYSTEM_ACCEPT_SEQ_KEY)?
++            .map(|raw| -> Result<u64, JournalError> {
++                let buf: [u8; 8] = raw
++                    .as_ref()
++                    .try_into()
++                    .map_err(|_| JournalError::KeyCapacity)?;
++                Ok(u64::from_be_bytes(buf))
++            })
++            .transpose()?
++            .unwrap_or(0);
++        let next = current
++            .checked_add(1)
++            .ok_or(JournalError::SequenceOverflow)?;
++        let mut batch = self.database.batch();
++        batch.insert(
++            &self.system,
++            SYSTEM_ACCEPT_SEQ_KEY,
++            next.to_be_bytes().as_slice(),
++        );
++        batch.commit()?;
++        Ok(EventSeq::new(next))
++    }
++
+     /// Returns whether the action index contains an entry for the given key.
+     ///
+     /// This is a public query API to support external verification of index writes
+     /// from outside the `vb_storage` crate (e.g., integration tests).
+     ///
+     /// # Errors
+     ///
+     /// Returns `JournalError` if the underlying keyspace query fails.
+     pub fn has_action_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
+         Ok(self.index_action.contains_key(key.as_ref())?)
+     }
+ 
+     /// Returns whether the status index contains an entry for the given key.
+     ///
+     /// This is a public query API to support external verification of index writes
+@@ -203,30 +248,31 @@ impl FjallJournal {
+     ///
+     /// # Errors
+     ///
+     /// Returns `JournalError` if any underlying keyspace cannot be read.
+     pub fn probe_health(&self) -> Result<(), JournalError> {
+         let empty_key: &[u8] = &[];
+         let _ = self.workflow_source.contains_key(empty_key)?;
+         let _ = self.compiled_ir.contains_key(empty_key)?;
+         let _ = self.run_header.contains_key(empty_key)?;
+         let _ = self.events.contains_key(empty_key)?;
+         let _ = self.run_snapshot.contains_key(empty_key)?;
+         let _ = self.blob.contains_key(empty_key)?;
+         let _ = self.index_status.contains_key(empty_key)?;
+         let _ = self.index_workflow.contains_key(empty_key)?;
+         let _ = self.index_action.contains_key(empty_key)?;
++        let _ = self.system.contains_key(empty_key)?;
+         Ok(())
+     }
+ 
+     /// Closes the journal, forcing a strict durability barrier before ownership is released.
+     ///
+     /// This method **must** be called explicitly by callers who require durable persistence.
+     /// Drop does NOT call `close()` — it only releases the process lock.
+     /// Errors from `close()` cannot be propagated through Drop, so callers who need
+     /// fail-closed behavior must invoke this method and handle the result.
+     ///
+     /// # Errors
+     ///
+     /// Returns `JournalError` if the underlying storage fails to persist.
+     pub fn close(&mut self) -> Result<(), JournalError> {
+         self.persist_strict()
+diff --git a/crates/vb_storage/src/lib.rs b/crates/vb_storage/src/lib.rs
+index 5938df3ac..d150dc620 100644
+--- a/crates/vb_storage/src/lib.rs
++++ b/crates/vb_storage/src/lib.rs
+@@ -234,17 +234,18 @@ pub use types::JournalWriterFlushReport;
+ // Trimming
+ pub use trimming::{
+     TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
+     TrimmedRunResult,
+ };
+ 
+ // Codec
+ pub use codec::{
+     decode_journal_event, decode_record, decode_record_header, encode_record, encode_record_header,
+     validate_journal_event_record_kind, verify_digest_match,
+ };
+ 
+ // Admission
+ pub use admission::{
+     AcceptedArtifact, VerificationProof, VerificationWarning, admit_compiled_artifact,
+-    submit_artifact, submit_artifact_with_contracts,
++    submit_artifact, submit_artifact_at_seq, submit_artifact_with_contracts,
++    submit_artifact_with_contracts_at_seq,
+ };

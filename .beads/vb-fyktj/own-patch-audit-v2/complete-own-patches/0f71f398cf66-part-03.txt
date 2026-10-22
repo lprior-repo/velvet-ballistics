@@ -1,0 +1,200 @@
+0f71f398cf66.patch:401: -fn frame_pool_take_allocates_fresh_when_no_recycled() {
+0f71f398cf66.patch:402: -    // Given a fresh pool (empty)
+0f71f398cf66.patch:403: +fn frame_pool_take_returns_preallocated_frame_when_no_recycled() {
+0f71f398cf66.patch:404: +    // Given a fresh pool (all frames pre-allocated)
+0f71f398cf66.patch:405:      let mut pool = new_pool(2, 1, 4);
+0f71f398cf66.patch:406: -    assert_eq!(pool.available(), 0);
+0f71f398cf66.patch:407: +    assert_eq!(pool.available(), 4);
+0f71f398cf66.patch:408:      // When taking a frame
+0f71f398cf66.patch:409:      let frame = pool.take(RunId::new(42), StepIdx::new(0));
+0f71f398cf66.patch:410: -    // Then a new frame is allocated with the correct run_id
+0f71f398cf66.patch:411: +    // Then a pre-allocated frame is returned with the correct run_id
+0f71f398cf66.patch:412:      match frame {
+0f71f398cf66.patch:413:          Ok(f) => {
+0f71f398cf66.patch:414:              assert_eq!(f.run_id(), RunId::new(42));
+0f71f398cf66.patch:415:          }
+0f71f398cf66.patch:416:          Err(_) => {
+0f71f398cf66.patch:417:              assert!(false);
+0f71f398cf66.patch:418:          }
+0f71f398cf66.patch:419:      }
+0f71f398cf66.patch:420:  }
+0f71f398cf66.patch:421:  
+0f71f398cf66.patch:422:  #[test]
+0f71f398cf66.patch:423:  fn frame_pool_take_with_nonzero_first_step() {
+0f71f398cf66.patch:424:      // Given a pool
+0f71f398cf66.patch:425:      let mut pool = new_pool(4, 1, 4);
+0f71f398cf66.patch:426:      // When taking a frame with first_step = 2
+0f71f398cf66.patch:427: @@ -408,115 +448,122 @@ fn frame_pool_reused_frame_clears_prior_state() {
+0f71f398cf66.patch:428:      assert_eq!(
+0f71f398cf66.patch:429:          reused.read_slot(SlotIdx::ZERO),
+0f71f398cf66.patch:430:          Err(vb_core::CoreError::SlotUninitialized {
+0f71f398cf66.patch:431:              slot: SlotIdx::ZERO
+0f71f398cf66.patch:432:          })
+0f71f398cf66.patch:433:      );
+0f71f398cf66.patch:434:      assert_eq!(
+0f71f398cf66.patch:435:          reused.read_taint(SlotIdx::ZERO),
+0f71f398cf66.patch:436:          Err(vb_core::CoreError::SlotUninitialized {
+0f71f398cf66.patch:437:              slot: SlotIdx::ZERO
+0f71f398cf66.patch:438:          })
+0f71f398cf66.patch:439:      );
+0f71f398cf66.patch:440:  }
+0f71f398cf66.patch:441:  
+0f71f398cf66.patch:442:  #[test]
+0f71f398cf66.patch:443: -fn frame_pool_available_starts_at_zero() {
+0f71f398cf66.patch:444: +fn frame_pool_available_starts_at_capacity() {
+0f71f398cf66.patch:445:      // Given a new pool
+0f71f398cf66.patch:446:      let pool = new_pool(2, 1, 4);
+0f71f398cf66.patch:447:      // When checking available
+0f71f398cf66.patch:448: -    // Then it is 0
+0f71f398cf66.patch:449: -    assert_eq!(pool.available(), 0);
+0f71f398cf66.patch:450: +    // Then it equals capacity (all pre-allocated)
+0f71f398cf66.patch:451: +    assert_eq!(pool.available(), 4);
+0f71f398cf66.patch:452:  }
+0f71f398cf66.patch:453:  
+0f71f398cf66.patch:454:  #[test]
+0f71f398cf66.patch:455:  fn frame_pool_capacity_is_const() {
+0f71f398cf66.patch:456:      // Given a pool with capacity 16
+0f71f398cf66.patch:457:      let pool = new_pool(2, 1, 16);
+0f71f398cf66.patch:458:      // When checking capacity
+0f71f398cf66.patch:459:      // Then it is 16 and doesn't change
+0f71f398cf66.patch:460:      assert_eq!(pool.capacity(), 16);
+0f71f398cf66.patch:461:  }
+0f71f398cf66.patch:462:  
+0f71f398cf66.patch:463:  // =======================================================================
+0f71f398cf66.patch:464:  // Adversarial BDD tests — frame_pool
+0f71f398cf66.patch:465:  // =======================================================================
+0f71f398cf66.patch:466:  
+0f71f398cf66.patch:467:  #[test]
+0f71f398cf66.patch:468: -fn frame_pool_exhaust_then_take_still_succeeds_via_fresh_alloc() {
+0f71f398cf66.patch:469: -    // Given a pool with capacity 2 and no recycled frames
+0f71f398cf66.patch:470: +fn frame_pool_exhausted_take_returns_error_no_fresh_alloc() {
+0f71f398cf66.patch:471: +    // Given a pool with capacity 2
+0f71f398cf66.patch:472:      let mut pool = new_pool(2, 1, 2);
+0f71f398cf66.patch:473: -    // When taking 3 frames (pool capacity only limits recycled count, not live allocs)
+0f71f398cf66.patch:474: +    // When taking 2 frames without releasing
+0f71f398cf66.patch:475:      let f1 = pool.take(RunId::new(1), StepIdx::new(0));
+0f71f398cf66.patch:476:      let f2 = pool.take(RunId::new(2), StepIdx::new(0));
+0f71f398cf66.patch:477: +    // Then both succeed (we have 2 pre-allocated frames)
+0f71f398cf66.patch:478: +    assert!(f1.is_ok());
+0f71f398cf66.patch:479: +    assert!(f2.is_ok());
+0f71f398cf66.patch:480: +    // When taking a 3rd frame (no recycled frames, no fresh allocation)
+0f71f398cf66.patch:481:      let f3 = pool.take(RunId::new(3), StepIdx::new(0));
+0f71f398cf66.patch:482: -    // Then all three succeed — the pool always allocates fresh when empty
+0f71f398cf66.patch:483: -    assert_eq!(f1.as_ref().map(|f| f.run_id()), Ok(RunId::new(1)));
+0f71f398cf66.patch:484: -    assert_eq!(f2.as_ref().map(|f| f.run_id()), Ok(RunId::new(2)));
+0f71f398cf66.patch:485: -    assert_eq!(f3.as_ref().map(|f| f.run_id()), Ok(RunId::new(3)));
+0f71f398cf66.patch:486: +    // Then it fails with AllocationFailed (no fresh allocation fallback)
+0f71f398cf66.patch:487: +    assert!(matches!(
+0f71f398cf66.patch:488: +        f3,
+0f71f398cf66.patch:489: +        Err(vb_core::errors::CoreError::AllocationFailed)
+0f71f398cf66.patch:490: +    ));
+0f71f398cf66.patch:491:  }
+0f71f398cf66.patch:492:  
+0f71f398cf66.patch:493:  #[test]
+0f71f398cf66.patch:494:  fn frame_pool_release_wrong_dimension_frame_is_silently_dropped() {
+0f71f398cf66.patch:495: -    // Given a pool configured for (step_count=2, slot_count=1)
+0f71f398cf66.patch:496: +    // Given a pool configured for (step_count=2, slot_count=1) pre-allocated to capacity
+0f71f398cf66.patch:497:      let mut pool_a = new_pool(2, 1, 4);
+0f71f398cf66.patch:498: +    assert_eq!(pool_a.available(), 4);
+0f71f398cf66.patch:499:      // And a different pool for (step_count=4, slot_count=2)
+0f71f398cf66.patch:500:      let mut pool_b = new_pool(4, 2, 4);
+0f71f398cf66.patch:501: +    assert_eq!(pool_b.available(), 4);
+0f71f398cf66.patch:502:      // When taking a frame from pool_b and releasing it into pool_a
+0f71f398cf66.patch:503:      let frame = match pool_b.take(RunId::new(1), StepIdx::new(0)) {
+0f71f398cf66.patch:504:          Ok(f) => f,
+0f71f398cf66.patch:505:          Err(_) => return,
+0f71f398cf66.patch:506:      };
+0f71f398cf66.patch:507: +    assert_eq!(pool_a.available(), 4);
+0f71f398cf66.patch:508:      pool_a.release(frame);
+0f71f398cf66.patch:509: -    // Then pool_a is still empty — mismatched dimensions are silently dropped
+0f71f398cf66.patch:510: -    assert_eq!(pool_a.available(), 0);
+0f71f398cf66.patch:511: +    // Then pool_a is unchanged — mismatched dimensions are silently dropped
+0f71f398cf66.patch:512: +    assert_eq!(pool_a.available(), 4);
+0f71f398cf66.patch:513: +    assert_eq!(pool_b.available(), 3);
+0f71f398cf66.patch:514:  }
+0f71f398cf66.patch:515:  
+0f71f398cf66.patch:516:  #[test]
+0f71f398cf66.patch:517:  fn frame_pool_release_never_panics_or_overflows_capacity() {
+0f71f398cf66.patch:518:      // Given a pool with capacity 1
+0f71f398cf66.patch:519:      let mut pool = new_pool(2, 1, 1);
+0f71f398cf66.patch:520:      // When releasing 5 frames (all from same pool dims)
+0f71f398cf66.patch:521:      for i in 1u64..=5 {
+0f71f398cf66.patch:522:          let frame = match pool.take(RunId::new(i), StepIdx::new(0)) {
+0f71f398cf66.patch:523:              Ok(f) => f,
+0f71f398cf66.patch:524:              Err(_) => return,
+0f71f398cf66.patch:525:          };
+0f71f398cf66.patch:526:          pool.release(frame);
+0f71f398cf66.patch:527:      }
+0f71f398cf66.patch:528:      // Then the pool stays at its capacity limit
+0f71f398cf66.patch:529:      assert_eq!(pool.available(), 1);
+0f71f398cf66.patch:530:  }
+0f71f398cf66.patch:531:  
+0f71f398cf66.patch:532:  #[test]
+0f71f398cf66.patch:533: -fn frame_pool_zero_step_count_rejects_frame_creation() {
+0f71f398cf66.patch:534: -    // Given a pool with zero step count
+0f71f398cf66.patch:535: -    let mut pool = new_pool(0, 1, 4);
+0f71f398cf66.patch:536: -    // When taking a frame
+0f71f398cf66.patch:537: -    let result = pool.take(RunId::new(1), StepIdx::new(0));
+0f71f398cf66.patch:538: -    // Then RunFrame::new rejects step_count=0 as invalid
+0f71f398cf66.patch:539: +fn frame_pool_zero_step_count_rejects_construction() {
+0f71f398cf66.patch:540: +    // Given a pool with zero step count, construction itself fails because
+0f71f398cf66.patch:541: +    // RunFrame::new rejects step_count=0 (pre-allocation fails)
+0f71f398cf66.patch:542: +    let result = FramePool::new(0, 1, 4);
+0f71f398cf66.patch:543: +    // Then FramePool::new returns the error directly
+0f71f398cf66.patch:544:      match result {
+0f71f398cf66.patch:545:          Err(vb_core::errors::CoreError::InvalidCompiledWorkflow { reason }) => {
+0f71f398cf66.patch:546:              assert_eq!(reason, "step_count_zero");
+0f71f398cf66.patch:547:          }
+0f71f398cf66.patch:548: -        other => {
+0f71f398cf66.patch:549: -            assert_eq!(
+0f71f398cf66.patch:550: -                other,
+0f71f398cf66.patch:551: -                Err(vb_core::errors::CoreError::InvalidCompiledWorkflow {
+0f71f398cf66.patch:552: -                    reason: "step_count_zero"
+0f71f398cf66.patch:553: -                })
+0f71f398cf66.patch:554: -            );
+0f71f398cf66.patch:555: +        Err(other) => {
+0f71f398cf66.patch:556: +            let msg = format!("unexpected error: {other:?}");
+0f71f398cf66.patch:557: +            panic!("{msg}");
+0f71f398cf66.patch:558: +        }
+0f71f398cf66.patch:559: +        Ok(_) => {
+0f71f398cf66.patch:560: +            panic!("expected error for step_count=0");
+0f71f398cf66.patch:561:          }
+0f71f398cf66.patch:562:      }
+0f71f398cf66.patch:563:  }
+0f71f398cf66.patch:564:  
+0f71f398cf66.patch:565:  #[test]
+0f71f398cf66.patch:566:  fn frame_pool_reused_frame_has_clean_taint_state() {
+0f71f398cf66.patch:567:      // Given a pool with a frame that had tainted slots
+0f71f398cf66.patch:568:      let mut pool = new_pool(4, 2, 4);
+0f71f398cf66.patch:569:      let mut frame = match pool.take(RunId::new(1), StepIdx::new(0)) {
+0f71f398cf66.patch:570:          Ok(f) => f,
+0f71f398cf66.patch:571:          Err(_) => return,
+0f71f398cf66.patch:572:      };
+0f71f398cf66.patch:573:      assert_eq!(
+0f71f398cf66.patch:574:          frame.write_slot(SlotIdx::ZERO, vb_core::SlotValue::I64(42)),
+0f71f398cf66.patch:575:          Ok(())
+0f71f398cf66.patch:576: @@ -560,130 +607,132 @@ fn frame_pool_take_release_take_preserves_pool_consistency_under_rapid_cycle() {
+0f71f398cf66.patch:577:      assert_eq!(pool.available(), 1);
+0f71f398cf66.patch:578:      let reused = pool.take(RunId::new(99), StepIdx::new(0));
+0f71f398cf66.patch:579:      match reused {
+0f71f398cf66.patch:580:          Ok(f) => {
+0f71f398cf66.patch:581:              assert_eq!(f.run_id(), RunId::new(99));
+0f71f398cf66.patch:582:              assert_eq!(f.pc(), StepIdx::new(0));
+0f71f398cf66.patch:583:          }
+0f71f398cf66.patch:584:          Err(_) => {
+0f71f398cf66.patch:585:              assert!(false);
+0f71f398cf66.patch:586:          }
+0f71f398cf66.patch:587:      }
+0f71f398cf66.patch:588:  }
+0f71f398cf66.patch:589:  
+0f71f398cf66.patch:590:  #[test]
+0f71f398cf66.patch:591:  fn frame_pool_release_after_release_at_capacity_drops_all_extras() {
+0f71f398cf66.patch:592: -    // Given a pool with capacity 2 and 5 frames taken
+0f71f398cf66.patch:593: +    // Given a pool with capacity 2 — pre-allocated means only 2 frames exist
+0f71f398cf66.patch:594:      let mut pool = new_pool(2, 1, 2);
+0f71f398cf66.patch:595: -    let frames: Vec<RunFrame> = (1..=5u64)
+0f71f398cf66.patch:596: +    // When taking all 2 (the only pre-allocated ones)
+0f71f398cf66.patch:597: +    let frames: Vec<RunFrame> = (1..=2u64)
+0f71f398cf66.patch:598:          .filter_map(|i| pool.take(RunId::new(i), StepIdx::new(0)).ok())
+0f71f398cf66.patch:599:          .collect();
+0f71f398cf66.patch:600: -    assert_eq!(frames.len(), 5);

@@ -1,0 +1,176 @@
+dec0e41e2690.patch:401:      pub(crate) fail_next_batch_commit: AtomicBool,
+dec0e41e2690.patch:402:      // SAFETY: write_lock is used in append_unfsynced() for poison detection.
+dec0e41e2690.patch:403:      // The lock guard is acquired and dropped, never read directly.
+dec0e41e2690.patch:404:      pub(crate) write_lock: Mutex<()>,
+dec0e41e2690.patch:405:      pub(crate) _process_lock: ProcessLock,
+dec0e41e2690.patch:406: @@ -112,69 +113,113 @@ impl FjallJournal {
+dec0e41e2690.patch:407:          let run_snapshot = database.keyspace(KEYSPACE_RUN_SNAPSHOT, || {
+dec0e41e2690.patch:408:              crate::types::keyspace_options_for(KeyspaceProfile::Cold)
+dec0e41e2690.patch:409:          })?;
+dec0e41e2690.patch:410:          let blob = database.keyspace(KEYSPACE_BLOB, || {
+dec0e41e2690.patch:411:              crate::types::keyspace_options_for(KeyspaceProfile::Blob)
+dec0e41e2690.patch:412:          })?;
+dec0e41e2690.patch:413:          let index_status = database.keyspace(KEYSPACE_INDEX_STATUS, || {
+dec0e41e2690.patch:414:              crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+dec0e41e2690.patch:415:          })?;
+dec0e41e2690.patch:416:          let index_workflow = database.keyspace(KEYSPACE_INDEX_WORKFLOW, || {
+dec0e41e2690.patch:417:              crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+dec0e41e2690.patch:418:          })?;
+dec0e41e2690.patch:419:          let index_action = database.keyspace(KEYSPACE_INDEX_ACTION, || {
+dec0e41e2690.patch:420:              crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+dec0e41e2690.patch:421:          })?;
+dec0e41e2690.patch:422: +        let system = database.keyspace(KEYSPACE_SYSTEM, || {
+dec0e41e2690.patch:423: +            crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+dec0e41e2690.patch:424: +        })?;
+dec0e41e2690.patch:425:          let _process_lock = ProcessLock::acquire(path_ref)?;
+dec0e41e2690.patch:426:          Ok(Self {
+dec0e41e2690.patch:427:              database,
+dec0e41e2690.patch:428:              workflow_source,
+dec0e41e2690.patch:429:              compiled_ir,
+dec0e41e2690.patch:430:              run_header,
+dec0e41e2690.patch:431:              events,
+dec0e41e2690.patch:432:              run_snapshot,
+dec0e41e2690.patch:433:              blob,
+dec0e41e2690.patch:434:              index_status,
+dec0e41e2690.patch:435:              index_workflow,
+dec0e41e2690.patch:436:              index_action,
+dec0e41e2690.patch:437: +            system,
+dec0e41e2690.patch:438:              #[cfg(test)]
+dec0e41e2690.patch:439:              fail_next_persist: AtomicBool::new(false),
+dec0e41e2690.patch:440:              #[cfg(test)]
+dec0e41e2690.patch:441:              fail_next_compiled_ir_readback: AtomicBool::new(false),
+dec0e41e2690.patch:442:              #[cfg(test)]
+dec0e41e2690.patch:443:              fail_next_batch_commit: AtomicBool::new(false),
+dec0e41e2690.patch:444:              write_lock: Mutex::new(()),
+dec0e41e2690.patch:445:              _process_lock,
+dec0e41e2690.patch:446:          })
+dec0e41e2690.patch:447:      }
+dec0e41e2690.patch:448:  
+dec0e41e2690.patch:449:      /// Returns all declared keyspace names after a successful open.
+dec0e41e2690.patch:450:      #[must_use]
+dec0e41e2690.patch:451: -    pub const fn declared_keyspaces() -> [&'static str; 9] {
+dec0e41e2690.patch:452: +    pub const fn declared_keyspaces() -> [&'static str; 10] {
+dec0e41e2690.patch:453:          [
+dec0e41e2690.patch:454:              KEYSPACE_WORKFLOW_SOURCE,
+dec0e41e2690.patch:455:              KEYSPACE_COMPILED_IR,
+dec0e41e2690.patch:456:              KEYSPACE_RUN_HEADER,
+dec0e41e2690.patch:457:              KEYSPACE_RUN_EVENT,
+dec0e41e2690.patch:458:              KEYSPACE_RUN_SNAPSHOT,
+dec0e41e2690.patch:459:              KEYSPACE_BLOB,
+dec0e41e2690.patch:460:              KEYSPACE_INDEX_STATUS,
+dec0e41e2690.patch:461:              KEYSPACE_INDEX_WORKFLOW,
+dec0e41e2690.patch:462:              KEYSPACE_INDEX_ACTION,
+dec0e41e2690.patch:463: +            KEYSPACE_SYSTEM,
+dec0e41e2690.patch:464:          ]
+dec0e41e2690.patch:465:      }
+dec0e41e2690.patch:466:  
+dec0e41e2690.patch:467: +    /// Allocates the next durable artifact-acceptance sequence number.
+dec0e41e2690.patch:468: +    ///
+dec0e41e2690.patch:469: +    /// Reads the current counter from the `system` keyspace, increments it,
+dec0e41e2690.patch:470: +    /// and writes back the new value in a single batch commit. The caller's
+dec0e41e2690.patch:471: +    /// write_lock serializes concurrent callers so that two callers never
+dec0e41e2690.patch:472: +    /// observe the same counter value.
+dec0e41e2690.patch:473: +    ///
+dec0e41e2690.patch:474: +    /// Returns `JournalError::SequenceOverflow` when the counter is already
+dec0e41e2690.patch:475: +    /// at `EventSeq::MAX` — no wrapping or silent reuse.
+dec0e41e2690.patch:476: +    pub fn accept_seq_allocate(&self) -> Result<EventSeq, JournalError> {
+dec0e41e2690.patch:477: +        let _guard = self
+dec0e41e2690.patch:478: +            .write_lock
+dec0e41e2690.patch:479: +            .lock()
+dec0e41e2690.patch:480: +            .map_err(|_| JournalError::WriteLockPoisoned)?;
+dec0e41e2690.patch:481: +        let current: u64 = self
+dec0e41e2690.patch:482: +            .system
+dec0e41e2690.patch:483: +            .get(SYSTEM_ACCEPT_SEQ_KEY)?
+dec0e41e2690.patch:484: +            .map(|raw| -> Result<u64, JournalError> {
+dec0e41e2690.patch:485: +                let buf: [u8; 8] = raw
+dec0e41e2690.patch:486: +                    .as_ref()
+dec0e41e2690.patch:487: +                    .try_into()
+dec0e41e2690.patch:488: +                    .map_err(|_| JournalError::KeyCapacity)?;
+dec0e41e2690.patch:489: +                Ok(u64::from_be_bytes(buf))
+dec0e41e2690.patch:490: +            })
+dec0e41e2690.patch:491: +            .transpose()?
+dec0e41e2690.patch:492: +            .unwrap_or(0);
+dec0e41e2690.patch:493: +        let next = current
+dec0e41e2690.patch:494: +            .checked_add(1)
+dec0e41e2690.patch:495: +            .ok_or(JournalError::SequenceOverflow)?;
+dec0e41e2690.patch:496: +        let mut batch = self.database.batch();
+dec0e41e2690.patch:497: +        batch.insert(
+dec0e41e2690.patch:498: +            &self.system,
+dec0e41e2690.patch:499: +            SYSTEM_ACCEPT_SEQ_KEY,
+dec0e41e2690.patch:500: +            next.to_be_bytes().as_slice(),
+dec0e41e2690.patch:501: +        );
+dec0e41e2690.patch:502: +        batch.commit()?;
+dec0e41e2690.patch:503: +        Ok(EventSeq::new(next))
+dec0e41e2690.patch:504: +    }
+dec0e41e2690.patch:505: +
+dec0e41e2690.patch:506:      /// Returns whether the action index contains an entry for the given key.
+dec0e41e2690.patch:507:      ///
+dec0e41e2690.patch:508:      /// This is a public query API to support external verification of index writes
+dec0e41e2690.patch:509:      /// from outside the `vb_storage` crate (e.g., integration tests).
+dec0e41e2690.patch:510:      ///
+dec0e41e2690.patch:511:      /// # Errors
+dec0e41e2690.patch:512:      ///
+dec0e41e2690.patch:513:      /// Returns `JournalError` if the underlying keyspace query fails.
+dec0e41e2690.patch:514:      pub fn has_action_index_entry(&self, key: impl AsRef<[u8]>) -> Result<bool, JournalError> {
+dec0e41e2690.patch:515:          Ok(self.index_action.contains_key(key.as_ref())?)
+dec0e41e2690.patch:516:      }
+dec0e41e2690.patch:517:  
+dec0e41e2690.patch:518:      /// Returns whether the status index contains an entry for the given key.
+dec0e41e2690.patch:519:      ///
+dec0e41e2690.patch:520:      /// This is a public query API to support external verification of index writes
+dec0e41e2690.patch:521: @@ -203,30 +248,31 @@ impl FjallJournal {
+dec0e41e2690.patch:522:      ///
+dec0e41e2690.patch:523:      /// # Errors
+dec0e41e2690.patch:524:      ///
+dec0e41e2690.patch:525:      /// Returns `JournalError` if any underlying keyspace cannot be read.
+dec0e41e2690.patch:526:      pub fn probe_health(&self) -> Result<(), JournalError> {
+dec0e41e2690.patch:527:          let empty_key: &[u8] = &[];
+dec0e41e2690.patch:528:          let _ = self.workflow_source.contains_key(empty_key)?;
+dec0e41e2690.patch:529:          let _ = self.compiled_ir.contains_key(empty_key)?;
+dec0e41e2690.patch:530:          let _ = self.run_header.contains_key(empty_key)?;
+dec0e41e2690.patch:531:          let _ = self.events.contains_key(empty_key)?;
+dec0e41e2690.patch:532:          let _ = self.run_snapshot.contains_key(empty_key)?;
+dec0e41e2690.patch:533:          let _ = self.blob.contains_key(empty_key)?;
+dec0e41e2690.patch:534:          let _ = self.index_status.contains_key(empty_key)?;
+dec0e41e2690.patch:535:          let _ = self.index_workflow.contains_key(empty_key)?;
+dec0e41e2690.patch:536:          let _ = self.index_action.contains_key(empty_key)?;
+dec0e41e2690.patch:537: +        let _ = self.system.contains_key(empty_key)?;
+dec0e41e2690.patch:538:          Ok(())
+dec0e41e2690.patch:539:      }
+dec0e41e2690.patch:540:  
+dec0e41e2690.patch:541:      /// Closes the journal, forcing a strict durability barrier before ownership is released.
+dec0e41e2690.patch:542:      ///
+dec0e41e2690.patch:543:      /// This method **must** be called explicitly by callers who require durable persistence.
+dec0e41e2690.patch:544:      /// Drop does NOT call `close()` — it only releases the process lock.
+dec0e41e2690.patch:545:      /// Errors from `close()` cannot be propagated through Drop, so callers who need
+dec0e41e2690.patch:546:      /// fail-closed behavior must invoke this method and handle the result.
+dec0e41e2690.patch:547:      ///
+dec0e41e2690.patch:548:      /// # Errors
+dec0e41e2690.patch:549:      ///
+dec0e41e2690.patch:550:      /// Returns `JournalError` if the underlying storage fails to persist.
+dec0e41e2690.patch:551:      pub fn close(&mut self) -> Result<(), JournalError> {
+dec0e41e2690.patch:552:          self.persist_strict()
+dec0e41e2690.patch:553: diff --git a/crates/vb_storage/src/lib.rs b/crates/vb_storage/src/lib.rs
+dec0e41e2690.patch:554: index 5938df3ac..d150dc620 100644
+dec0e41e2690.patch:555: --- a/crates/vb_storage/src/lib.rs
+dec0e41e2690.patch:556: +++ b/crates/vb_storage/src/lib.rs
+dec0e41e2690.patch:557: @@ -234,17 +234,18 @@ pub use types::JournalWriterFlushReport;
+dec0e41e2690.patch:558:  // Trimming
+dec0e41e2690.patch:559:  pub use trimming::{
+dec0e41e2690.patch:560:      TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
+dec0e41e2690.patch:561:      TrimmedRunResult,
+dec0e41e2690.patch:562:  };
+dec0e41e2690.patch:563:  
+dec0e41e2690.patch:564:  // Codec
+dec0e41e2690.patch:565:  pub use codec::{
+dec0e41e2690.patch:566:      decode_journal_event, decode_record, decode_record_header, encode_record, encode_record_header,
+dec0e41e2690.patch:567:      validate_journal_event_record_kind, verify_digest_match,
+dec0e41e2690.patch:568:  };
+dec0e41e2690.patch:569:  
+dec0e41e2690.patch:570:  // Admission
+dec0e41e2690.patch:571:  pub use admission::{
+dec0e41e2690.patch:572:      AcceptedArtifact, VerificationProof, VerificationWarning, admit_compiled_artifact,
+dec0e41e2690.patch:573: -    submit_artifact, submit_artifact_with_contracts,
+dec0e41e2690.patch:574: +    submit_artifact, submit_artifact_at_seq, submit_artifact_with_contracts,
+dec0e41e2690.patch:575: +    submit_artifact_with_contracts_at_seq,
+dec0e41e2690.patch:576:  };

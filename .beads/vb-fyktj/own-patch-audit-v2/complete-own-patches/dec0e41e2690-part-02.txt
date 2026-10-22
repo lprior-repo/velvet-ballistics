@@ -1,0 +1,200 @@
+dec0e41e2690.patch:201:              };
+dec0e41e2690.patch:202:              journal.put_compiled_ir(&record)?;
+dec0e41e2690.patch:203:              let stored = journal
+dec0e41e2690.patch:204:                  .compiled_ir(artifact.digest)
+dec0e41e2690.patch:205:                  .map_err(|_| JournalError::ArtifactMalformed)?;
+dec0e41e2690.patch:206:              if stored.is_none() {
+dec0e41e2690.patch:207: @@ -421,31 +459,31 @@ pub fn submit_artifact_with_contracts(
+dec0e41e2690.patch:208:  
+dec0e41e2690.patch:209:              let mut proof =
+dec0e41e2690.patch:210:                  VerificationProof::new(zero_workflow_digest(), ADMISSION_GATE_COUNT, durable);
+dec0e41e2690.patch:211:              proof.idempotency_keyed = idempotency_evidence.keyed;
+dec0e41e2690.patch:212:              proof.idempotency_attested = idempotency_evidence.attested;
+dec0e41e2690.patch:213:  
+dec0e41e2690.patch:214:              let ir_bytes =
+dec0e41e2690.patch:215:                  postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+dec0e41e2690.patch:216:  
+dec0e41e2690.patch:217:              let mut artifact = AcceptedArtifact {
+dec0e41e2690.patch:218:                  digest: zero_workflow_digest(),
+dec0e41e2690.patch:219:                  source_digest: workflow.digest(),
+dec0e41e2690.patch:220:                  policy_digest: compute_policy_digest(workflow)?,
+dec0e41e2690.patch:221:                  ir: ir_bytes,
+dec0e41e2690.patch:222:                  verification: proof,
+dec0e41e2690.patch:223: -                accepted_at_seq: EventSeq::new(0),
+dec0e41e2690.patch:224: +                accepted_at_seq,
+dec0e41e2690.patch:225:                  required_capabilities,
+dec0e41e2690.patch:226:                  action_contracts: action_contracts.to_vec().into_boxed_slice(),
+dec0e41e2690.patch:227:              };
+dec0e41e2690.patch:228:              bind_artifact_digest(&mut artifact)?;
+dec0e41e2690.patch:229:  
+dec0e41e2690.patch:230:              let artifact_bytes =
+dec0e41e2690.patch:231:                  postcard::to_allocvec(&artifact).map_err(JournalError::PostcardEncodeFailed)?;
+dec0e41e2690.patch:232:              let record = CompiledIrRecord {
+dec0e41e2690.patch:233:                  digest: artifact.digest,
+dec0e41e2690.patch:234:                  ir: artifact_bytes,
+dec0e41e2690.patch:235:              };
+dec0e41e2690.patch:236:              journal.put_compiled_ir(&record)?;
+dec0e41e2690.patch:237:  
+dec0e41e2690.patch:238:              if durable {
+dec0e41e2690.patch:239:                  journal.persist_strict()?;
+dec0e41e2690.patch:240: diff --git a/crates/vb_storage/src/constants.rs b/crates/vb_storage/src/constants.rs
+dec0e41e2690.patch:241: index 98bfebad4..607c46026 100644
+dec0e41e2690.patch:242: --- a/crates/vb_storage/src/constants.rs
+dec0e41e2690.patch:243: +++ b/crates/vb_storage/src/constants.rs
+dec0e41e2690.patch:244: @@ -10,78 +10,87 @@ pub const KEYSPACE_WORKFLOW_SOURCE: &str = "workflow_source";
+dec0e41e2690.patch:245:  pub const KEYSPACE_COMPILED_IR: &str = "compiled_ir";
+dec0e41e2690.patch:246:  /// Run metadata and status records.
+dec0e41e2690.patch:247:  pub const KEYSPACE_RUN_HEADER: &str = "run_header";
+dec0e41e2690.patch:248:  /// Compact binary event journal records.
+dec0e41e2690.patch:249:  pub const KEYSPACE_RUN_EVENT: &str = "run_event";
+dec0e41e2690.patch:250:  /// Compact binary run snapshot records.
+dec0e41e2690.patch:251:  pub const KEYSPACE_RUN_SNAPSHOT: &str = "run_snapshot";
+dec0e41e2690.patch:252:  /// Large input, output, and action payload blobs.
+dec0e41e2690.patch:253:  pub const KEYSPACE_BLOB: &str = "blob";
+dec0e41e2690.patch:254:  /// Status/time index records.
+dec0e41e2690.patch:255:  pub const KEYSPACE_INDEX_STATUS: &str = "index_status";
+dec0e41e2690.patch:256:  /// Workflow/run index records.
+dec0e41e2690.patch:257:  pub const KEYSPACE_INDEX_WORKFLOW: &str = "index_workflow";
+dec0e41e2690.patch:258:  /// Pending action index records.
+dec0e41e2690.patch:259:  pub const KEYSPACE_INDEX_ACTION: &str = "index_action";
+dec0e41e2690.patch:260: +/// System metadata records (acceptance sequence counter).
+dec0e41e2690.patch:261: +pub const KEYSPACE_SYSTEM: &str = "system";
+dec0e41e2690.patch:262:  
+dec0e41e2690.patch:263:  /// `workflow_source` key prefix.
+dec0e41e2690.patch:264:  pub const PREFIX_WORKFLOW_SOURCE: u8 = 0x01;
+dec0e41e2690.patch:265:  /// `compiled_ir` key prefix.
+dec0e41e2690.patch:266:  pub const PREFIX_COMPILED_IR: u8 = 0x02;
+dec0e41e2690.patch:267:  /// `run_header` key prefix.
+dec0e41e2690.patch:268:  pub const PREFIX_RUN_HEADER: u8 = 0x10;
+dec0e41e2690.patch:269:  /// `run_event` key prefix.
+dec0e41e2690.patch:270:  pub const PREFIX_RUN_EVENT: u8 = 0x11;
+dec0e41e2690.patch:271:  /// `run_snapshot` key prefix.
+dec0e41e2690.patch:272:  pub const PREFIX_RUN_SNAPSHOT: u8 = 0x12;
+dec0e41e2690.patch:273:  /// `blob` key prefix.
+dec0e41e2690.patch:274:  pub const PREFIX_BLOB: u8 = 0x20;
+dec0e41e2690.patch:275:  /// `index_status` key prefix.
+dec0e41e2690.patch:276:  pub const PREFIX_INDEX_STATUS: u8 = 0x30;
+dec0e41e2690.patch:277:  /// `index_workflow` key prefix.
+dec0e41e2690.patch:278:  pub const PREFIX_INDEX_WORKFLOW: u8 = 0x31;
+dec0e41e2690.patch:279:  /// `index_action` key prefix.
+dec0e41e2690.patch:280:  pub const PREFIX_INDEX_ACTION: u8 = 0x32;
+dec0e41e2690.patch:281: +/// `system` key prefix.
+dec0e41e2690.patch:282: +pub const PREFIX_SYSTEM: u8 = 0x40;
+dec0e41e2690.patch:283:  
+dec0e41e2690.patch:284:  /// Minimum accepted byte value for `IndexStatusState::Other(_)`.
+dec0e41e2690.patch:285:  ///
+dec0e41e2690.patch:286:  /// Bytes `0..MIN_OTHER_STATUS_BYTE` collide with the named variants
+dec0e41e2690.patch:287:  /// `Submitted` (0), `Active` (1), and `Completed` (2). Encoding them
+dec0e41e2690.patch:288:  /// would round-trip to the wrong variant on read. The
+dec0e41e2690.patch:289:  /// `index_status_key` encoder rejects any `Other(v)` whose byte is
+dec0e41e2690.patch:290:  /// below this threshold via a typed `JournalError::IndexStatusStateCollision`.
+dec0e41e2690.patch:291:  /// See SC-001 / vb-f1xkn.
+dec0e41e2690.patch:292:  pub const MIN_OTHER_STATUS_BYTE: u8 = 3;
+dec0e41e2690.patch:293:  
+dec0e41e2690.patch:294:  /// Record envelope header length.
+dec0e41e2690.patch:295:  pub const RECORD_HEADER_LEN: u32 = 60;
+dec0e41e2690.patch:296:  /// Current record schema version.
+dec0e41e2690.patch:297:  pub const CURRENT_SCHEMA_VERSION: u16 = 1;
+dec0e41e2690.patch:298:  /// Compiled artifact magic, ASCII `VBIR`.
+dec0e41e2690.patch:299:  pub const MAGIC_COMPILED_ARTIFACT: u32 = 0x5642_4952;
+dec0e41e2690.patch:300:  /// Journal event magic, ASCII `VBJE`.
+dec0e41e2690.patch:301:  pub const MAGIC_JOURNAL_EVENT: u32 = 0x5642_4A45;
+dec0e41e2690.patch:302:  /// Snapshot magic, ASCII `VBSN`.
+dec0e41e2690.patch:303:  pub const MAGIC_SNAPSHOT: u32 = 0x5642_534E;
+dec0e41e2690.patch:304:  /// Blob record magic, ASCII `VBBL`.
+dec0e41e2690.patch:305:  pub const MAGIC_BLOB: u32 = 0x5642_424C;
+dec0e41e2690.patch:306:  /// IPC frame magic, ASCII `VBLT`.
+dec0e41e2690.patch:307:  pub const MAGIC_IPC_FRAME: u32 = 0x5642_4C54;
+dec0e41e2690.patch:308:  /// Workflow source magic, ASCII `VBSR`.
+dec0e41e2690.patch:309:  pub const MAGIC_WORKFLOW_SOURCE: u32 = 0x5642_5352;
+dec0e41e2690.patch:310:  /// Index record magic, ASCII `VBIX`.
+dec0e41e2690.patch:311:  pub const MAGIC_INDEX_RECORD: u32 = 0x5642_4958;
+dec0e41e2690.patch:312: +/// System metadata record magic, ASCII `VBSY`.
+dec0e41e2690.patch:313: +pub const MAGIC_SYSTEM_RECORD: u32 = 0x5642_5359;
+dec0e41e2690.patch:314: +/// Key for the acceptance-sequence counter inside the `system` keyspace.
+dec0e41e2690.patch:315: +/// Stored as big-endian u64 — the next value to hand out.
+dec0e41e2690.patch:316: +pub const SYSTEM_ACCEPT_SEQ_KEY: &[u8] = &[PREFIX_SYSTEM, 0x01];
+dec0e41e2690.patch:317:  
+dec0e41e2690.patch:318:  pub(crate) const JOURNAL_KEY_BYTES: usize = 17;
+dec0e41e2690.patch:319:  pub(crate) const DIGEST_KEY_BYTES: usize = 33;
+dec0e41e2690.patch:320:  pub(crate) const RUN_ONLY_KEY_BYTES: usize = 9;
+dec0e41e2690.patch:321:  pub(crate) const INDEX_STATUS_KEY_BYTES: usize = 18;
+dec0e41e2690.patch:322:  pub(crate) const INDEX_WORKFLOW_KEY_BYTES: usize = 13;
+dec0e41e2690.patch:323:  pub(crate) const INDEX_ACTION_KEY_BYTES: usize = 13;
+dec0e41e2690.patch:324:  pub(crate) const _RUN_EVENT_PREFIX_BYTES: usize = 9;
+dec0e41e2690.patch:325:  /// Digest byte width used by storage keys and record payload checksums.
+dec0e41e2690.patch:326:  pub const DIGEST_BYTES: usize = 32;
+dec0e41e2690.patch:327:  /// Record header bytes length.
+dec0e41e2690.patch:328:  pub const RECORD_HEADER_BYTES: usize = 60;
+dec0e41e2690.patch:329:  /// CRC32C checksum offset in header.
+dec0e41e2690.patch:330:  pub const CRC_OFFSET: usize = 56;
+dec0e41e2690.patch:331:  /// Maximum journal event payload accepted by the default journal APIs.
+dec0e41e2690.patch:332: diff --git a/crates/vb_storage/src/journal/core.rs b/crates/vb_storage/src/journal/core.rs
+dec0e41e2690.patch:333: index 13799df8e..fecab0637 100644
+dec0e41e2690.patch:334: --- a/crates/vb_storage/src/journal/core.rs
+dec0e41e2690.patch:335: +++ b/crates/vb_storage/src/journal/core.rs
+dec0e41e2690.patch:336: @@ -1,35 +1,35 @@
+dec0e41e2690.patch:337:  #![forbid(unsafe_code)]
+dec0e41e2690.patch:338:  //! Fjall-backed journal implementation.
+dec0e41e2690.patch:339:  //!
+dec0e41e2690.patch:340:  //! Provides the main storage interface for workflow artifacts,
+dec0e41e2690.patch:341:  //! run metadata, journal events, snapshots, and blobs.
+dec0e41e2690.patch:342:  
+dec0e41e2690.patch:343:  use std::path::Path;
+dec0e41e2690.patch:344:  use std::sync::Mutex;
+dec0e41e2690.patch:345:  #[cfg(test)]
+dec0e41e2690.patch:346:  use std::sync::atomic::{AtomicBool, Ordering};
+dec0e41e2690.patch:347:  
+dec0e41e2690.patch:348:  use crate::{
+dec0e41e2690.patch:349:      constants::{
+dec0e41e2690.patch:350:          KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
+dec0e41e2690.patch:351:          KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_SNAPSHOT,
+dec0e41e2690.patch:352: -        KEYSPACE_WORKFLOW_SOURCE,
+dec0e41e2690.patch:353: +        KEYSPACE_SYSTEM, KEYSPACE_WORKFLOW_SOURCE, SYSTEM_ACCEPT_SEQ_KEY,
+dec0e41e2690.patch:354:      },
+dec0e41e2690.patch:355:      error::JournalError,
+dec0e41e2690.patch:356:      process_lock::ProcessLock,
+dec0e41e2690.patch:357: -    types::{FjallConfig, KeyspaceProfile},
+dec0e41e2690.patch:358: +    types::{EventSeq, FjallConfig, KeyspaceProfile},
+dec0e41e2690.patch:359:  };
+dec0e41e2690.patch:360:  
+dec0e41e2690.patch:361:  /// Bounded replay limit for journal event collection.
+dec0e41e2690.patch:362:  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+dec0e41e2690.patch:363:  pub struct EventReplayLimit {
+dec0e41e2690.patch:364:      max_events: usize,
+dec0e41e2690.patch:365:  }
+dec0e41e2690.patch:366:  
+dec0e41e2690.patch:367:  impl EventReplayLimit {
+dec0e41e2690.patch:368:      /// Conservative default for operator-facing replay collection.
+dec0e41e2690.patch:369:      pub const DEFAULT: Self = Self { max_events: 65_536 };
+dec0e41e2690.patch:370:  
+dec0e41e2690.patch:371:      /// Creates a replay limit; returns `None` when the limit is zero.
+dec0e41e2690.patch:372:      #[must_use]
+dec0e41e2690.patch:373:      pub const fn new(max_events: usize) -> Option<Self> {
+dec0e41e2690.patch:374: @@ -47,30 +47,31 @@ impl EventReplayLimit {
+dec0e41e2690.patch:375:      }
+dec0e41e2690.patch:376:  }
+dec0e41e2690.patch:377:  
+dec0e41e2690.patch:378:  /// Fjall-backed append journal.
+dec0e41e2690.patch:379:  pub struct FjallJournal {
+dec0e41e2690.patch:380:      pub(crate) database: fjall::Database,
+dec0e41e2690.patch:381:      pub(crate) workflow_source: fjall::Keyspace,
+dec0e41e2690.patch:382:      pub(crate) compiled_ir: fjall::Keyspace,
+dec0e41e2690.patch:383:      pub(crate) run_header: fjall::Keyspace,
+dec0e41e2690.patch:384:      pub(crate) events: fjall::Keyspace,
+dec0e41e2690.patch:385:      pub(crate) run_snapshot: fjall::Keyspace,
+dec0e41e2690.patch:386:      pub(crate) blob: fjall::Keyspace,
+dec0e41e2690.patch:387:      pub(crate) index_status: fjall::Keyspace,
+dec0e41e2690.patch:388:      pub(crate) index_workflow: fjall::Keyspace,
+dec0e41e2690.patch:389:      pub(crate) index_action: fjall::Keyspace,
+dec0e41e2690.patch:390: +    pub(crate) system: fjall::Keyspace,
+dec0e41e2690.patch:391:      #[cfg(test)]
+dec0e41e2690.patch:392:      pub(crate) fail_next_persist: AtomicBool,
+dec0e41e2690.patch:393:      #[cfg(test)]
+dec0e41e2690.patch:394:      pub(crate) fail_next_compiled_ir_readback: AtomicBool,
+dec0e41e2690.patch:395:      /// Test-only fault hook: forces the next `JournalWriteBatch::commit()`
+dec0e41e2690.patch:396:      /// (the path `append_strict` uses) to return `Err(JournalError::Fjall(..))`
+dec0e41e2690.patch:397:      /// WITHOUT touching the real Fjall store. This proves the `append_strict`
+dec0e41e2690.patch:398:      /// commit-failure contract: the staged event is never made visible and a
+dec0e41e2690.patch:399:      /// retry is idempotent. Consumed exactly once.
+dec0e41e2690.patch:400:      #[cfg(test)]

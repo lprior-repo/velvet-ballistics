@@ -1,0 +1,153 @@
+{
+  "audit": "vb-fyktj own-patch semantic audit v3",
+  "corrections": [
+    "GAP-007 acceptance sequence is MISSING, not delivered as v2 claimed",
+    "Frame pool pre-allocation is PRESENT after full hunk inspection",
+    "Empty [workspace.metadata.cargo-vet] is NO-OP without tooling",
+    "PO-VERUS-032 binding exists but registry entry is MISSING"
+  ],
+  "patches": [
+    {
+      "id": "0f71f398cf66",
+      "description": "Frame pool pre-allocation",
+      "status": "PRESENT",
+      "evidence": "FramePool::new pre-allocates capacity frames; take returns pre-allocated frame with no fresh-allocation fallback; test expectations updated to assert capacity-based available() values",
+      "current_file": "crates/vb_runtime/src/frame_pool.rs",
+      "patch_hunks": [
+        "new() pre-allocates frames via loop calling RunFrame::new",
+        "take() returns pre-allocated frame, no runtime allocation",
+        "release() silently drops mismatched dimensions",
+        "tests assert available() equals capacity after release"
+      ],
+      "per_hunk": [
+        "present",
+        "present",
+        "present",
+        "present"
+      ]
+    },
+    {
+      "id": "220e4d21d719",
+      "description": "Diagnostic test consolidation to workspace_tests",
+      "status": "MISSING",
+      "evidence": "diagnostic.rs still includes tests_and_verification.rs via #[cfg(test)] #[path] attribute; file still exists in crates/vb_core/src/diagnostic/",
+      "current_file": "crates/vb_core/src/diagnostic.rs:2087-2089",
+      "patch_hunks": [
+        "delete tests_and_verification.rs include from diagnostic.rs",
+        "delete tests_and_verification.rs file"
+      ],
+      "per_hunk": [
+        "missing",
+        "missing"
+      ]
+    },
+    {
+      "id": "56d14ca7878d",
+      "description": "Flux Moon task and script consolidation",
+      "status": "MISSING",
+      "evidence": "No .moon/tasks/flux.yml exists; flux-check-package.sh is old single-package-only version; xtask lanes has no flux_command",
+      "current_file": "scripts/flux-check-package.sh:1-19",
+      "patch_hunks": [
+        "add .moon/tasks/flux.yml",
+        "expand flux-check-package.sh with --all/--crates/--dry-run",
+        "add flux_command to xtask/src/lanes.rs"
+      ],
+      "per_hunk": [
+        "missing",
+        "missing",
+        "missing"
+      ]
+    },
+    {
+      "id": "6351cc8cd904",
+      "description": "Empty [workspace.metadata.cargo-vet] section",
+      "status": "NO-OP",
+      "evidence": "Section not present in current Cargo.toml; empty metadata section has no semantic effect without cargo-vet tooling integration",
+      "current_file": "Cargo.toml",
+      "patch_hunks": [
+        "add empty [workspace.metadata.cargo-vet] section"
+      ],
+      "per_hunk": [
+        "missing"
+      ],
+      "note": "Semantically useful only if cargo-vet tooling is invoked that expects this config anchor"
+    },
+    {
+      "id": "a8451f741f71",
+      "description": "Clippy target scope narrowing + compile call",
+      "status": "MISSING",
+      "evidence": "ci alias in .cargo/config.toml still uses --all-targets; compile call still uses &source.inputs()",
+      "current_file": ".cargo/config.toml:14",
+      "patch_hunks": [
+        "narrow ci alias from --all-targets to --lib --bins --examples",
+        "change compile call from &source.inputs() to source.inputs()",
+        "update failure_repair_command for clippy"
+      ],
+      "per_hunk": [
+        "missing",
+        "missing",
+        "missing"
+      ]
+    },
+    {
+      "id": "bd2920512bde",
+      "description": "Pending action index maintenance (vb-3wn7x)",
+      "status": "PRESENT",
+      "evidence": "action_index.rs exists with stage_pending_action_index_op; stage_recovery_index_ops wrapper exists; append_event calls it; delete_action_index putter exists",
+      "current_file": "crates/vb_storage/src/batch/action_index.rs",
+      "patch_hunks": [
+        "add action_index.rs module",
+        "add stage_pending_action_index_op method",
+        "add stage_recovery_index_ops wrapper",
+        "add delete_action_index putter",
+        "call index staging from append_event",
+        "add contract tests"
+      ],
+      "per_hunk": [
+        "present",
+        "present",
+        "present",
+        "present",
+        "present",
+        "present"
+      ]
+    },
+    {
+      "id": "dd50c691bb67",
+      "description": "Verus PO-VERUS-032 registry entry",
+      "status": "MISSING",
+      "evidence": "contracts/proof_obligations.yaml has no PO-VERUS-032 entry; grep confirms absence",
+      "current_file": "contracts/proof_obligations.yaml",
+      "patch_hunks": [
+        "add PO-VERUS-032 entry for StepBudget::from_env"
+      ],
+      "per_hunk": [
+        "missing"
+      ],
+      "note": "Binding exists in verification/verus/signals_from_env.rs but registry entry is missing"
+    },
+    {
+      "id": "dec0e41e2690",
+      "description": "Artifact acceptance sequence tracking (GAP-007)",
+      "status": "MISSING",
+      "evidence": "No system keyspace; no accept_seq_allocate method; accepted_at_seq still uses EventSeq::new(0); docstring unchanged",
+      "current_file": "crates/vb_storage/src/admission.rs:220",
+      "patch_hunks": [
+        "add system keyspace and constants",
+        "add accept_seq_allocate method",
+        "add submit_artifact_at_seq and variants",
+        "update accepted_at_seq to use allocated sequence"
+      ],
+      "per_hunk": [
+        "missing",
+        "missing",
+        "missing",
+        "missing"
+      ],
+      "note": "CLI delegation to submit_artifact is present, but sequence-aware API is not"
+    }
+  ],
+  "delivered": 2,
+  "not_delivered": 5,
+  "no_op": 1
+}

@@ -1,0 +1,200 @@
+bd2920512bde.patch:801: +                step,
+bd2920512bde.patch:802: +                action,
+bd2920512bde.patch:803: +                attempt: 1,
+bd2920512bde.patch:804: +            })
+bd2920512bde.patch:805: +            .expect("first schedule must succeed");
+bd2920512bde.patch:806: +        assert!(has_index_entry(&journal, action, run, step));
+bd2920512bde.patch:807: +
+bd2920512bde.patch:808: +        // Duplicate at the journal-event layer is rejected, so the
+bd2920512bde.patch:809: +        // index is not asked to update twice. Direct path surfaces
+bd2920512bde.patch:810: +        // JournalError::DuplicateEvent.
+bd2920512bde.patch:811: +        let duplicate_result = journal.append_journaled(&JournalEvent::ActionScheduled {
+bd2920512bde.patch:812: +            run,
+bd2920512bde.patch:813: +            seq: EventSeq::new(0),
+bd2920512bde.patch:814: +            step,
+bd2920512bde.patch:815: +            action,
+bd2920512bde.patch:816: +            attempt: 1,
+bd2920512bde.patch:817: +        });
+bd2920512bde.patch:818: +        assert!(
+bd2920512bde.patch:819: +            matches!(duplicate_result, Err(JournalError::DuplicateEvent { .. })),
+bd2920512bde.patch:820: +            "duplicate ActionScheduled at same seq must be rejected, got {:?}",
+bd2920512bde.patch:821: +            duplicate_result,
+bd2920512bde.patch:822: +        );
+bd2920512bde.patch:823: +        assert!(
+bd2920512bde.patch:824: +            has_index_entry(&journal, action, run, step),
+bd2920512bde.patch:825: +            "rejected duplicate must not disturb existing marker",
+bd2920512bde.patch:826: +        );
+bd2920512bde.patch:827: +        assert_eq!(
+bd2920512bde.patch:828: +            count_action_index_entries(&journal),
+bd2920512bde.patch:829: +            1,
+bd2920512bde.patch:830: +            "index must contain exactly one entry (Fjall last-write-wins)",
+bd2920512bde.patch:831: +        );
+bd2920512bde.patch:832: +    }
+bd2920512bde.patch:833: +}
+bd2920512bde.patch:834: diff --git a/crates/vb_storage/src/indexes.rs b/crates/vb_storage/src/indexes.rs
+bd2920512bde.patch:835: index 17541274d..9ee78648e 100644
+bd2920512bde.patch:836: --- a/crates/vb_storage/src/indexes.rs
+bd2920512bde.patch:837: +++ b/crates/vb_storage/src/indexes.rs
+bd2920512bde.patch:838: @@ -33,16 +33,34 @@ impl FjallJournal {
+bd2920512bde.patch:839:          self.index_workflow.insert(key.to_vec(), Vec::<u8>::new())?;
+bd2920512bde.patch:840:          Ok(())
+bd2920512bde.patch:841:      }
+bd2920512bde.patch:842:  
+bd2920512bde.patch:843:      /// Inserts minimal pending action index marker bytes.
+bd2920512bde.patch:844:      pub fn put_action_index(
+bd2920512bde.patch:845:          &self,
+bd2920512bde.patch:846:          action: vb_core::ActionId,
+bd2920512bde.patch:847:          run: vb_core::RunId,
+bd2920512bde.patch:848:          step: vb_core::StepIdx,
+bd2920512bde.patch:849:      ) -> Result<(), JournalError> {
+bd2920512bde.patch:850:          let key = index_action_key(action, run, step)?;
+bd2920512bde.patch:851:          self.index_action.insert(key.to_vec(), Vec::<u8>::new())?;
+bd2920512bde.patch:852:          Ok(())
+bd2920512bde.patch:853:      }
+bd2920512bde.patch:854: +
+bd2920512bde.patch:855: +    /// Removes the pending action index marker for the given triple.
+bd2920512bde.patch:856: +    ///
+bd2920512bde.patch:857: +    /// Idempotent: removing a non-existent key is a no-op (Fjall returns
+bd2920512bde.patch:858: +    /// `Ok(())` for absent keys). Used to clear the index when an action
+bd2920512bde.patch:859: +    /// reaches a terminal state (completed, failed, abandoned) so the
+bd2920512bde.patch:860: +    /// runtime journal path leaves the `index_action` keyspace
+bd2920512bde.patch:861: +    /// consistent with the durable event log.
+bd2920512bde.patch:862: +    pub fn delete_action_index(
+bd2920512bde.patch:863: +        &self,
+bd2920512bde.patch:864: +        action: vb_core::ActionId,
+bd2920512bde.patch:865: +        run: vb_core::RunId,
+bd2920512bde.patch:866: +        step: vb_core::StepIdx,
+bd2920512bde.patch:867: +    ) -> Result<(), JournalError> {
+bd2920512bde.patch:868: +        let key = index_action_key(action, run, step)?;
+bd2920512bde.patch:869: +        self.index_action.remove(key.as_slice())?;
+bd2920512bde.patch:870: +        Ok(())
+bd2920512bde.patch:871: +    }
+bd2920512bde.patch:872:  }
+bd2920512bde.patch:873: diff --git a/crates/vb_storage/src/journal/internal.rs b/crates/vb_storage/src/journal/internal.rs
+bd2920512bde.patch:874: index ff78650c4..cf07c8884 100644
+bd2920512bde.patch:875: --- a/crates/vb_storage/src/journal/internal.rs
+bd2920512bde.patch:876: +++ b/crates/vb_storage/src/journal/internal.rs
+bd2920512bde.patch:877: @@ -25,53 +25,68 @@ impl FjallJournal {
+bd2920512bde.patch:878:          let Some(value) = keyspace.get(key)? else {
+bd2920512bde.patch:879:              return Ok(None);
+bd2920512bde.patch:880:          };
+bd2920512bde.patch:881:          let (_, record) = decode_record(value.as_ref(), magic, max_bytes)?;
+bd2920512bde.patch:882:          Ok(Some(record))
+bd2920512bde.patch:883:      }
+bd2920512bde.patch:884:  
+bd2920512bde.patch:885:      /// Appends one event to the LSM memtable without forcing a durability barrier.
+bd2920512bde.patch:886:      ///
+bd2920512bde.patch:887:      /// The event is committed to the WAL-backed LSM memtable and is visible
+bd2920512bde.patch:888:      /// to subsequent readers (replay / `events_for_run`) immediately on
+bd2920512bde.patch:889:      /// return.  "Unfsynced" is precise: the write survives process-level
+bd2920512bde.patch:890:      /// recovery (crash + restart reads back the memtable) but has not been
+bd2920512bde.patch:891:      /// force-flushed to stable storage.  Callers that require strict
+bd2920512bde.patch:892:      /// durability must invoke `persist_strict` after staging.
+bd2920512bde.patch:893: +    ///
+bd2920512bde.patch:894: +    /// vb-3wn7x: the runtime journal path uses this entry point for
+bd2920512bde.patch:895: +    /// direct appends. To keep the `index_action` keyspace consistent
+bd2920512bde.patch:896: +    /// with the durable event log, the action-lifecycle index mutation
+bd2920512bde.patch:897: +    /// (insert for `ActionScheduled` / `ActionScheduledTicket`,
+bd2920512bde.patch:898: +    /// tombstone for completion / failure / abandonment, no-op for
+bd2920512bde.patch:899: +    /// every other variant) is staged into the SAME
+bd2920512bde.patch:900: +    /// `fjall::OwnedWriteBatch` as the event write and committed
+bd2920512bde.patch:901: +    /// atomically. A process crash between the event insert and the
+bd2920512bde.patch:902: +    /// index mutation is impossible — they share one fsync'd batch.
+bd2920512bde.patch:903:      pub(crate) fn append_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
+bd2920512bde.patch:904:          let _guard = self
+bd2920512bde.patch:905:              .write_lock
+bd2920512bde.patch:906:              .lock()
+bd2920512bde.patch:907:              .map_err(|_| JournalError::WriteLockPoisoned)?;
+bd2920512bde.patch:908:          let key = run_event_key(event.run_id(), event.seq())?;
+bd2920512bde.patch:909:          if !event.is_valid() {
+bd2920512bde.patch:910:              return Err(JournalError::InvalidEvent);
+bd2920512bde.patch:911:          }
+bd2920512bde.patch:912:          if self.events.contains_key(key)? {
+bd2920512bde.patch:913:              return Err(JournalError::DuplicateEvent {
+bd2920512bde.patch:914:                  run: event.run_id(),
+bd2920512bde.patch:915:                  seq: event.seq(),
+bd2920512bde.patch:916:              });
+bd2920512bde.patch:917:          }
+bd2920512bde.patch:918:          let value = encode_record(
+bd2920512bde.patch:919:              MAGIC_JOURNAL_EVENT,
+bd2920512bde.patch:920:              event.record_kind(),
+bd2920512bde.patch:921:              event.seq().get(),
+bd2920512bde.patch:922:              event,
+bd2920512bde.patch:923:              MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+bd2920512bde.patch:924:          )?;
+bd2920512bde.patch:925: -        self.events.insert(key.to_vec(), value)?;
+bd2920512bde.patch:926: +        // Stage event + pending-action-index update on one batch so the
+bd2920512bde.patch:927: +        // index mutation succeeds or fails with the event write.
+bd2920512bde.patch:928: +        let mut batch = self.database.batch();
+bd2920512bde.patch:929: +        batch.insert(&self.events, key, value);
+bd2920512bde.patch:930: +        self.stage_pending_action_index_op(&mut batch, event)?;
+bd2920512bde.patch:931: +        batch.commit()?;
+bd2920512bde.patch:932:          Ok(())
+bd2920512bde.patch:933:      }
+bd2920512bde.patch:934:  
+bd2920512bde.patch:935:      /// Appends a queued event idempotently without forcing an fsync.
+bd2920512bde.patch:936:      ///
+bd2920512bde.patch:937:      /// The event is committed to the LSM memtable and is visible to
+bd2920512bde.patch:938:      /// subsequent readers (replay / `events_for_run`) immediately on
+bd2920512bde.patch:939:      /// return.  "Unfsynced" is the precise term: the write is durable
+bd2920512bde.patch:940:      /// against process-level recovery (crash + restart reads back the
+bd2920512bde.patch:941:      /// memtable) but has not been force-flushed to stable storage.
+bd2920512bde.patch:942:      /// Callers that require strict durability must invoke
+bd2920512bde.patch:943:      /// `persist_strict` after staging.
+bd2920512bde.patch:944:      #[cfg(test)]
+bd2920512bde.patch:945:      pub(crate) fn append_queued_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
+bd2920512bde.patch:946:          match self.append_unfsynced(event) {
+bd2920512bde.patch:947: diff --git a/crates/vb_storage/src/lib.rs b/crates/vb_storage/src/lib.rs
+bd2920512bde.patch:948: index 5bbbd06a4..14fe63859 100644
+bd2920512bde.patch:949: --- a/crates/vb_storage/src/lib.rs
+bd2920512bde.patch:950: +++ b/crates/vb_storage/src/lib.rs
+bd2920512bde.patch:951: @@ -123,30 +123,35 @@ mod proptest_integration;
+bd2920512bde.patch:952:  #[path = "error_tests.rs"]
+bd2920512bde.patch:953:  mod error_tests;
+bd2920512bde.patch:954:  
+bd2920512bde.patch:955:  #[cfg(test)]
+bd2920512bde.patch:956:  #[path = "error_code_tests.rs"]
+bd2920512bde.patch:957:  mod error_code_tests;
+bd2920512bde.patch:958:  
+bd2920512bde.patch:959:  #[cfg(test)]
+bd2920512bde.patch:960:  #[path = "type_tests.rs"]
+bd2920512bde.patch:961:  mod type_tests;
+bd2920512bde.patch:962:  
+bd2920512bde.patch:963:  #[cfg(test)]
+bd2920512bde.patch:964:  #[path = "index_tests.rs"]
+bd2920512bde.patch:965:  mod index_tests;
+bd2920512bde.patch:966:  
+bd2920512bde.patch:967: +// vb-3wn7x: pending action index maintenance contract tests.
+bd2920512bde.patch:968: +#[cfg(test)]
+bd2920512bde.patch:969: +#[path = "index_maintenance_tests.rs"]
+bd2920512bde.patch:970: +mod index_maintenance_tests;
+bd2920512bde.patch:971: +
+bd2920512bde.patch:972:  #[cfg(test)]
+bd2920512bde.patch:973:  #[path = "artifact_tests.rs"]
+bd2920512bde.patch:974:  mod artifact_tests;
+bd2920512bde.patch:975:  
+bd2920512bde.patch:976:  #[cfg(test)]
+bd2920512bde.patch:977:  #[path = "blob_tests.rs"]
+bd2920512bde.patch:978:  mod blob_tests;
+bd2920512bde.patch:979:  
+bd2920512bde.patch:980:  #[cfg(test)]
+bd2920512bde.patch:981:  #[path = "header_tests.rs"]
+bd2920512bde.patch:982:  mod header_tests;
+bd2920512bde.patch:983:  
+bd2920512bde.patch:984:  #[cfg(test)]
+bd2920512bde.patch:985:  #[path = "hydrate_tests.rs"]
+bd2920512bde.patch:986:  mod hydrate_tests;
+bd2920512bde.patch:987: diff --git a/crates/workspace_tests/tests/journal_side_index_contracts.rs b/crates/workspace_tests/tests/journal_side_index_contracts.rs
+bd2920512bde.patch:988: index a1722d7f7..290b1f0f8 100644
+bd2920512bde.patch:989: --- a/crates/workspace_tests/tests/journal_side_index_contracts.rs
+bd2920512bde.patch:990: +++ b/crates/workspace_tests/tests/journal_side_index_contracts.rs
+bd2920512bde.patch:991: @@ -257,53 +257,70 @@ proptest::proptest! {
+bd2920512bde.patch:992:  }
+bd2920512bde.patch:993:  
+bd2920512bde.patch:994:  // ---------------------------------------------------------------------------
+bd2920512bde.patch:995:  // PO-009: Batch commit is all-or-nothing across keyspaces (proptest)
+bd2920512bde.patch:996:  // ---------------------------------------------------------------------------
+bd2920512bde.patch:997:  
+bd2920512bde.patch:998:  proptest::proptest! {
+bd2920512bde.patch:999:      #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
+bd2920512bde.patch:1000:  

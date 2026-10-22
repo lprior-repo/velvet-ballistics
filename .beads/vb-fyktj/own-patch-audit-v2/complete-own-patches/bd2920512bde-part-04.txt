@@ -1,0 +1,200 @@
+bd2920512bde.patch:601: +        let (_temp, journal) = temp_journal();
+bd2920512bde.patch:602: +        let run = RunId::new(9);
+bd2920512bde.patch:603: +        let step = StepIdx::new(13);
+bd2920512bde.patch:604: +        let action = ActionId::new(37);
+bd2920512bde.patch:605: +        let ticket = minimal_action_ticket(run, step, action);
+bd2920512bde.patch:606: +
+bd2920512bde.patch:607: +        let mut batch = JournalWriteBatch::new(&journal);
+bd2920512bde.patch:608: +        batch
+bd2920512bde.patch:609: +            .append_event(&JournalEvent::ActionScheduledTicket {
+bd2920512bde.patch:610: +                run,
+bd2920512bde.patch:611: +                seq: EventSeq::new(0),
+bd2920512bde.patch:612: +                ticket,
+bd2920512bde.patch:613: +                input: SlotIdx::new(0),
+bd2920512bde.patch:614: +                output: SlotIdx::new(1),
+bd2920512bde.patch:615: +                action_abi_digest: WorkflowDigest::from_bytes([0xAB; 32]),
+bd2920512bde.patch:616: +            })
+bd2920512bde.patch:617: +            .expect("schedule must succeed");
+bd2920512bde.patch:618: +        batch
+bd2920512bde.patch:619: +            .append_event(&JournalEvent::ActionAbandoned {
+bd2920512bde.patch:620: +                run,
+bd2920512bde.patch:621: +                seq: EventSeq::new(1),
+bd2920512bde.patch:622: +                ticket,
+bd2920512bde.patch:623: +            })
+bd2920512bde.patch:624: +            .expect("abandonment must succeed");
+bd2920512bde.patch:625: +        batch.commit().expect("commit must succeed");
+bd2920512bde.patch:626: +
+bd2920512bde.patch:627: +        assert!(
+bd2920512bde.patch:628: +            !has_index_entry(&journal, action, run, step),
+bd2920512bde.patch:629: +            "ActionAbandoned must remove the pending action marker"
+bd2920512bde.patch:630: +        );
+bd2920512bde.patch:631: +    }
+bd2920512bde.patch:632: +
+bd2920512bde.patch:633: +    #[test]
+bd2920512bde.patch:634: +    fn batch_append_event_non_action_events_do_not_touch_index() {
+bd2920512bde.patch:635: +        let (_temp, journal) = temp_journal();
+bd2920512bde.patch:636: +        let run = RunId::new(10);
+bd2920512bde.patch:637: +        let workflow = WorkflowDigest::from_bytes([0xCD; 32]);
+bd2920512bde.patch:638: +
+bd2920512bde.patch:639: +        let mut batch = JournalWriteBatch::new(&journal);
+bd2920512bde.patch:640: +        batch
+bd2920512bde.patch:641: +            .append_event(&JournalEvent::RunAccepted {
+bd2920512bde.patch:642: +                run,
+bd2920512bde.patch:643: +                seq: EventSeq::new(0),
+bd2920512bde.patch:644: +                workflow,
+bd2920512bde.patch:645: +            })
+bd2920512bde.patch:646: +            .expect("RunAccepted must succeed");
+bd2920512bde.patch:647: +        batch
+bd2920512bde.patch:648: +            .append_event(&JournalEvent::StepStarted {
+bd2920512bde.patch:649: +                run,
+bd2920512bde.patch:650: +                seq: EventSeq::new(1),
+bd2920512bde.patch:651: +                step: StepIdx::new(0),
+bd2920512bde.patch:652: +                attempt: 1,
+bd2920512bde.patch:653: +            })
+bd2920512bde.patch:654: +            .expect("StepStarted must succeed");
+bd2920512bde.patch:655: +        batch
+bd2920512bde.patch:656: +            .append_event(&JournalEvent::StepSucceeded {
+bd2920512bde.patch:657: +                run,
+bd2920512bde.patch:658: +                seq: EventSeq::new(2),
+bd2920512bde.patch:659: +                step: StepIdx::new(0),
+bd2920512bde.patch:660: +                output: SlotIdx::new(2),
+bd2920512bde.patch:661: +            })
+bd2920512bde.patch:662: +            .expect("StepSucceeded must succeed");
+bd2920512bde.patch:663: +        batch.commit().expect("commit must succeed");
+bd2920512bde.patch:664: +
+bd2920512bde.patch:665: +        assert_eq!(
+bd2920512bde.patch:666: +            count_action_index_entries(&journal),
+bd2920512bde.patch:667: +            0,
+bd2920512bde.patch:668: +            "non-action events must not introduce spurious index entries",
+bd2920512bde.patch:669: +        );
+bd2920512bde.patch:670: +    }
+bd2920512bde.patch:671: +
+bd2920512bde.patch:672: +    // -----------------------------------------------------------------
+bd2920512bde.patch:673: +    // Strict batch path: append_strict_batch
+bd2920512bde.patch:674: +    // -----------------------------------------------------------------
+bd2920512bde.patch:675: +
+bd2920512bde.patch:676: +    #[test]
+bd2920512bde.patch:677: +    fn append_strict_batch_action_lifecycle_maintains_index() {
+bd2920512bde.patch:678: +        let (_temp, journal) = temp_journal();
+bd2920512bde.patch:679: +        let run = RunId::new(11);
+bd2920512bde.patch:680: +        let step = StepIdx::new(14);
+bd2920512bde.patch:681: +        let action = ActionId::new(41);
+bd2920512bde.patch:682: +
+bd2920512bde.patch:683: +        let scheduled = JournalEvent::ActionScheduled {
+bd2920512bde.patch:684: +            run,
+bd2920512bde.patch:685: +            seq: EventSeq::new(0),
+bd2920512bde.patch:686: +            step,
+bd2920512bde.patch:687: +            action,
+bd2920512bde.patch:688: +            attempt: 1,
+bd2920512bde.patch:689: +        };
+bd2920512bde.patch:690: +        let completed = JournalEvent::ActionCompletedEvent {
+bd2920512bde.patch:691: +            run,
+bd2920512bde.patch:692: +            seq: EventSeq::new(1),
+bd2920512bde.patch:693: +            step,
+bd2920512bde.patch:694: +            action,
+bd2920512bde.patch:695: +            attempt: 1,
+bd2920512bde.patch:696: +        };
+bd2920512bde.patch:697: +
+bd2920512bde.patch:698: +        journal
+bd2920512bde.patch:699: +            .append_strict_batch(&[scheduled])
+bd2920512bde.patch:700: +            .expect("first batch must succeed");
+bd2920512bde.patch:701: +        assert!(
+bd2920512bde.patch:702: +            has_index_entry(&journal, action, run, step),
+bd2920512bde.patch:703: +            "ActionScheduled in strict batch must add the marker",
+bd2920512bde.patch:704: +        );
+bd2920512bde.patch:705: +
+bd2920512bde.patch:706: +        journal
+bd2920512bde.patch:707: +            .append_strict_batch(&[completed])
+bd2920512bde.patch:708: +            .expect("second batch must succeed");
+bd2920512bde.patch:709: +        assert!(
+bd2920512bde.patch:710: +            !has_index_entry(&journal, action, run, step),
+bd2920512bde.patch:711: +            "ActionCompletedEvent in strict batch must remove the marker",
+bd2920512bde.patch:712: +        );
+bd2920512bde.patch:713: +    }
+bd2920512bde.patch:714: +
+bd2920512bde.patch:715: +    // -----------------------------------------------------------------
+bd2920512bde.patch:716: +    // Queued writer path: drain_all through JournalWriterQueue
+bd2920512bde.patch:717: +    // -----------------------------------------------------------------
+bd2920512bde.patch:718: +
+bd2920512bde.patch:719: +    #[test]
+bd2920512bde.patch:720: +    fn queued_flush_batch_action_lifecycle_maintains_index() {
+bd2920512bde.patch:721: +        let (_temp, journal, queue) = temp_journal_with_queue();
+bd2920512bde.patch:722: +        let run = RunId::new(12);
+bd2920512bde.patch:723: +        let step = StepIdx::new(15);
+bd2920512bde.patch:724: +        let action = ActionId::new(43);
+bd2920512bde.patch:725: +
+bd2920512bde.patch:726: +        queue
+bd2920512bde.patch:727: +            .enqueue_journaled(JournalEvent::ActionScheduled {
+bd2920512bde.patch:728: +                run,
+bd2920512bde.patch:729: +                seq: EventSeq::new(0),
+bd2920512bde.patch:730: +                step,
+bd2920512bde.patch:731: +                action,
+bd2920512bde.patch:732: +                attempt: 1,
+bd2920512bde.patch:733: +            })
+bd2920512bde.patch:734: +            .expect("enqueue schedule must succeed");
+bd2920512bde.patch:735: +        queue
+bd2920512bde.patch:736: +            .enqueue_journaled(JournalEvent::ActionCompletedEvent {
+bd2920512bde.patch:737: +                run,
+bd2920512bde.patch:738: +                seq: EventSeq::new(1),
+bd2920512bde.patch:739: +                step,
+bd2920512bde.patch:740: +                action,
+bd2920512bde.patch:741: +                attempt: 1,
+bd2920512bde.patch:742: +            })
+bd2920512bde.patch:743: +            .expect("enqueue complete must succeed");
+bd2920512bde.patch:744: +
+bd2920512bde.patch:745: +        // Drain the queue into the journal — the event AND its index
+bd2920512bde.patch:746: +        // mutation must be visible after the drain.
+bd2920512bde.patch:747: +        let report = queue.drain_all(&journal).expect("drain_all must succeed");
+bd2920512bde.patch:748: +        assert_eq!(report.written, 2, "queue must report 2 events flushed");
+bd2920512bde.patch:749: +
+bd2920512bde.patch:750: +        assert!(
+bd2920512bde.patch:751: +            !has_index_entry(&journal, action, run, step),
+bd2920512bde.patch:752: +            "queued + drained lifecycle pair must leave the index empty",
+bd2920512bde.patch:753: +        );
+bd2920512bde.patch:754: +        assert_eq!(
+bd2920512bde.patch:755: +            count_action_index_entries(&journal),
+bd2920512bde.patch:756: +            0,
+bd2920512bde.patch:757: +            "queued lifecycle pair must not leave stale pending entries",
+bd2920512bde.patch:758: +        );
+bd2920512bde.patch:759: +    }
+bd2920512bde.patch:760: +
+bd2920512bde.patch:761: +    #[test]
+bd2920512bde.patch:762: +    fn queued_flush_batch_action_scheduled_alone_creates_index_entry() {
+bd2920512bde.patch:763: +        let (_temp, journal, queue) = temp_journal_with_queue();
+bd2920512bde.patch:764: +        let run = RunId::new(13);
+bd2920512bde.patch:765: +        let step = StepIdx::new(16);
+bd2920512bde.patch:766: +        let action = ActionId::new(47);
+bd2920512bde.patch:767: +
+bd2920512bde.patch:768: +        queue
+bd2920512bde.patch:769: +            .enqueue_journaled(JournalEvent::ActionScheduled {
+bd2920512bde.patch:770: +                run,
+bd2920512bde.patch:771: +                seq: EventSeq::new(0),
+bd2920512bde.patch:772: +                step,
+bd2920512bde.patch:773: +                action,
+bd2920512bde.patch:774: +                attempt: 1,
+bd2920512bde.patch:775: +            })
+bd2920512bde.patch:776: +            .expect("enqueue schedule must succeed");
+bd2920512bde.patch:777: +        queue.drain_all(&journal).expect("drain_all must succeed");
+bd2920512bde.patch:778: +
+bd2920512bde.patch:779: +        assert!(
+bd2920512bde.patch:780: +            has_index_entry(&journal, action, run, step),
+bd2920512bde.patch:781: +            "queued ActionScheduled must add the index marker after drain",
+bd2920512bde.patch:782: +        );
+bd2920512bde.patch:783: +    }
+bd2920512bde.patch:784: +
+bd2920512bde.patch:785: +    // -----------------------------------------------------------------
+bd2920512bde.patch:786: +    // Idempotency: duplicate events at same seq are rejected.
+bd2920512bde.patch:787: +    // -----------------------------------------------------------------
+bd2920512bde.patch:788: +
+bd2920512bde.patch:789: +    #[test]
+bd2920512bde.patch:790: +    fn duplicate_action_scheduled_does_not_duplicate_index_entry() {
+bd2920512bde.patch:791: +        let (_temp, journal) = temp_journal();
+bd2920512bde.patch:792: +        let run = RunId::new(14);
+bd2920512bde.patch:793: +        let step = StepIdx::new(17);
+bd2920512bde.patch:794: +        let action = ActionId::new(53);
+bd2920512bde.patch:795: +
+bd2920512bde.patch:796: +        // Successful first schedule: marker present.
+bd2920512bde.patch:797: +        journal
+bd2920512bde.patch:798: +            .append_journaled(&JournalEvent::ActionScheduled {
+bd2920512bde.patch:799: +                run,
+bd2920512bde.patch:800: +                seq: EventSeq::new(0),

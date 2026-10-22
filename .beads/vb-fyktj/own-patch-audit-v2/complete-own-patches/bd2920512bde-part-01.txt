@@ -1,0 +1,200 @@
+bd2920512bde.patch:1: diff --git a/crates/vb_storage/src/batch/action_index.rs b/crates/vb_storage/src/batch/action_index.rs
+bd2920512bde.patch:2: new file mode 100644
+bd2920512bde.patch:3: index 000000000..a96053833
+bd2920512bde.patch:4: --- /dev/null
+bd2920512bde.patch:5: +++ b/crates/vb_storage/src/batch/action_index.rs
+bd2920512bde.patch:6: @@ -0,0 +1,127 @@
+bd2920512bde.patch:7: +#![forbid(unsafe_code)]
+bd2920512bde.patch:8: +//! Atomic staging of pending action index maintenance for journal appends.
+bd2920512bde.patch:9: +//!
+bd2920512bde.patch:10: +//! vb-3wn7x: the runtime journal path drives the lifecycle of pending
+bd2920512bde.patch:11: +//! actions in three groups:
+bd2920512bde.patch:12: +//!
+bd2920512bde.patch:13: +//! 1. `ActionScheduled` / `ActionScheduledTicket` — emits the pending
+bd2920512bde.patch:14: +//!    action to the external boundary; a marker must be inserted into
+bd2920512bde.patch:15: +//!    the `index_action` keyspace so recovery, inspection, and lookup
+bd2920512bde.patch:16: +//!    traffic see the action as still in flight.
+bd2920512bde.patch:17: +//! 2. `ActionCompletedEvent` / `ActionCompletedEnvelope` — terminal
+bd2920512bde.patch:18: +//!    success; the marker must be removed.
+bd2920512bde.patch:19: +//! 3. `ActionFailedEvent` / `ActionAbandoned` — terminal failure or
+bd2920512bde.patch:20: +//!    cancellation-driven abandonment; the marker must be removed.
+bd2920512bde.patch:21: +//!
+bd2920512bde.patch:22: +//! All other event kinds (runs, steps, waits, asks, slot writes, …) leave
+bd2920512bde.patch:23: +//! the index untouched.
+bd2920512bde.patch:24: +//!
+bd2920512bde.patch:25: +//! [`stage_pending_action_index_op`] is the single staging entry point:
+bd2920512bde.patch:26: +//! it stages either a value insert or a tombstone on the supplied
+bd2920512bde.patch:27: +//! `fjall::OwnedWriteBatch`. Callers MUST commit the same batch that
+bd2920512bde.patch:28: +//! holds the journal event so index and journal writes succeed or fail
+bd2920512bde.patch:29: +//! together; partial writes would leave the index inconsistent with the
+bd2920512bde.patch:30: +//! event log.
+bd2920512bde.patch:31: +
+bd2920512bde.patch:32: +use crate::{
+bd2920512bde.patch:33: +    error::JournalError, events::JournalEvent, journal::FjallJournal, keys::index_action_key,
+bd2920512bde.patch:34: +};
+bd2920512bde.patch:35: +use vb_core::{ActionId, RunId, StepIdx};
+bd2920512bde.patch:36: +
+bd2920512bde.patch:37: +/// Discriminated pending-action-index mutation.
+bd2920512bde.patch:38: +///
+bd2920512bde.patch:39: +/// Internal-only: the variant layout is purely a refactoring of the
+bd2920512bde.patch:40: +/// match arms in [`stage_pending_action_index_op`] so the encode paths
+bd2920512bde.patch:41: +/// are not duplicated.
+bd2920512bde.patch:42: +#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+bd2920512bde.patch:43: +enum PendingActionIndexOp {
+bd2920512bde.patch:44: +    /// Insert an empty marker at `(action, run, step)`.
+bd2920512bde.patch:45: +    Insert {
+bd2920512bde.patch:46: +        action: ActionId,
+bd2920512bde.patch:47: +        run: RunId,
+bd2920512bde.patch:48: +        step: StepIdx,
+bd2920512bde.patch:49: +    },
+bd2920512bde.patch:50: +    /// Tombstone the marker at `(action, run, step)`.
+bd2920512bde.patch:51: +    Remove {
+bd2920512bde.patch:52: +        action: ActionId,
+bd2920512bde.patch:53: +        run: RunId,
+bd2920512bde.patch:54: +        step: StepIdx,
+bd2920512bde.patch:55: +    },
+bd2920512bde.patch:56: +}
+bd2920512bde.patch:57: +
+bd2920512bde.patch:58: +/// Classifies a journal event into the pending-action-index mutation it
+bd2920512bde.patch:59: +/// implies (if any). Returns `None` for events that leave the index
+bd2920512bde.patch:60: +/// untouched.
+bd2920512bde.patch:61: +fn pending_action_index_op_for(event: &JournalEvent) -> Option<PendingActionIndexOp> {
+bd2920512bde.patch:62: +    match event {
+bd2920512bde.patch:63: +        // Insert-side — pending actions enter the index.
+bd2920512bde.patch:64: +        JournalEvent::ActionScheduled {
+bd2920512bde.patch:65: +            action, run, step, ..
+bd2920512bde.patch:66: +        } => Some(PendingActionIndexOp::Insert {
+bd2920512bde.patch:67: +            action: *action,
+bd2920512bde.patch:68: +            run: *run,
+bd2920512bde.patch:69: +            step: *step,
+bd2920512bde.patch:70: +        }),
+bd2920512bde.patch:71: +        JournalEvent::ActionScheduledTicket { ticket, .. } => Some(PendingActionIndexOp::Insert {
+bd2920512bde.patch:72: +            action: ticket.action,
+bd2920512bde.patch:73: +            run: ticket.run,
+bd2920512bde.patch:74: +            step: ticket.step,
+bd2920512bde.patch:75: +        }),
+bd2920512bde.patch:76: +        // Remove-side — terminal actions leave the index.
+bd2920512bde.patch:77: +        JournalEvent::ActionCompletedEvent {
+bd2920512bde.patch:78: +            action, run, step, ..
+bd2920512bde.patch:79: +        }
+bd2920512bde.patch:80: +        | JournalEvent::ActionFailedEvent {
+bd2920512bde.patch:81: +            action, run, step, ..
+bd2920512bde.patch:82: +        } => Some(PendingActionIndexOp::Remove {
+bd2920512bde.patch:83: +            action: *action,
+bd2920512bde.patch:84: +            run: *run,
+bd2920512bde.patch:85: +            step: *step,
+bd2920512bde.patch:86: +        }),
+bd2920512bde.patch:87: +        JournalEvent::ActionCompletedEnvelope { ticket, .. }
+bd2920512bde.patch:88: +        | JournalEvent::ActionAbandoned { ticket, .. } => Some(PendingActionIndexOp::Remove {
+bd2920512bde.patch:89: +            action: ticket.action,
+bd2920512bde.patch:90: +            run: ticket.run,
+bd2920512bde.patch:91: +            step: ticket.step,
+bd2920512bde.patch:92: +        }),
+bd2920512bde.patch:93: +        // Everything else is a no-op for the index.
+bd2920512bde.patch:94: +        _ => None,
+bd2920512bde.patch:95: +    }
+bd2920512bde.patch:96: +}
+bd2920512bde.patch:97: +
+bd2920512bde.patch:98: +impl FjallJournal {
+bd2920512bde.patch:99: +    /// Stages the pending-action-index mutation implied by `event` onto
+bd2920512bde.patch:100: +    /// the supplied `fjall::OwnedWriteBatch`.
+bd2920512bde.patch:101: +    ///
+bd2920512bde.patch:102: +    /// Callers MUST commit the same batch that stages the corresponding
+bd2920512bde.patch:103: +    /// `JournalEvent` write so the index update is atomic with the event.
+bd2920512bde.patch:104: +    /// Events that imply no index change are silently accepted (the
+bd2920512bde.patch:105: +    /// helper returns `Ok(())` without staging any batch operation).
+bd2920512bde.patch:106: +    ///
+bd2920512bde.patch:107: +    /// # Errors
+bd2920512bde.patch:108: +    ///
+bd2920512bde.patch:109: +    /// Returns `JournalError::KeyCapacity` if the encoded
+bd2920512bde.patch:110: +    /// `index_action` key would overflow the 13-byte fixed-length
+bd2920512bde.patch:111: +    /// contract.
+bd2920512bde.patch:112: +    pub(crate) fn stage_pending_action_index_op(
+bd2920512bde.patch:113: +        &self,
+bd2920512bde.patch:114: +        batch: &mut fjall::OwnedWriteBatch,
+bd2920512bde.patch:115: +        event: &JournalEvent,
+bd2920512bde.patch:116: +    ) -> Result<(), JournalError> {
+bd2920512bde.patch:117: +        let Some(op) = pending_action_index_op_for(event) else {
+bd2920512bde.patch:118: +            return Ok(());
+bd2920512bde.patch:119: +        };
+bd2920512bde.patch:120: +        match op {
+bd2920512bde.patch:121: +            PendingActionIndexOp::Insert { action, run, step } => {
+bd2920512bde.patch:122: +                let key = index_action_key(action, run, step)?;
+bd2920512bde.patch:123: +                batch.insert(&self.index_action, key, Vec::<u8>::new());
+bd2920512bde.patch:124: +                Ok(())
+bd2920512bde.patch:125: +            }
+bd2920512bde.patch:126: +            PendingActionIndexOp::Remove { action, run, step } => {
+bd2920512bde.patch:127: +                let key = index_action_key(action, run, step)?;
+bd2920512bde.patch:128: +                batch.remove(&self.index_action, key);
+bd2920512bde.patch:129: +                Ok(())
+bd2920512bde.patch:130: +            }
+bd2920512bde.patch:131: +        }
+bd2920512bde.patch:132: +    }
+bd2920512bde.patch:133: +}
+bd2920512bde.patch:134: diff --git a/crates/vb_storage/src/batch/append_event.rs b/crates/vb_storage/src/batch/append_event.rs
+bd2920512bde.patch:135: index f7039e0d7..e7d9c9648 100644
+bd2920512bde.patch:136: --- a/crates/vb_storage/src/batch/append_event.rs
+bd2920512bde.patch:137: +++ b/crates/vb_storage/src/batch/append_event.rs
+bd2920512bde.patch:138: @@ -90,22 +90,33 @@ impl<'j> JournalWriteBatch<'j> {
+bd2920512bde.patch:139:                  Some(total) => total,
+bd2920512bde.patch:140:                  None => {
+bd2920512bde.patch:141:                      return Err(JournalError::JournalBatchBytesExceeded {
+bd2920512bde.patch:142:                          attempted: u64::MAX,
+bd2920512bde.patch:143:                          limit,
+bd2920512bde.patch:144:                      });
+bd2920512bde.patch:145:                  }
+bd2920512bde.patch:146:              };
+bd2920512bde.patch:147:              if attempted > limit {
+bd2920512bde.patch:148:                  return Err(JournalError::JournalBatchBytesExceeded { attempted, limit });
+bd2920512bde.patch:149:              }
+bd2920512bde.patch:150:              self.staged_bytes = attempted;
+bd2920512bde.patch:151:          }
+bd2920512bde.patch:152:  
+bd2920512bde.patch:153:          self.inner.insert(&self.journal.events, key, value);
+bd2920512bde.patch:154: +        // vb-3wn7x: maintain the pending action index atomically with
+bd2920512bde.patch:155: +        // the event write. The action lifecycle map (see
+bd2920512bde.patch:156: +        // `super::action_index`) translates each event variant into the
+bd2920512bde.patch:157: +        // index mutation it implies (insert for scheduled events,
+bd2920512bde.patch:158: +        // tombstone for completed/failed/abandoned events, no-op for
+bd2920512bde.patch:159: +        // every other variant). The mutation lands in the SAME
+bd2920512bde.patch:160: +        // OwnedWriteBatch, so committing this batch makes the event
+bd2920512bde.patch:161: +        // and the index update durable together — recovery can rely on
+bd2920512bde.patch:162: +        // the index as the authoritative pending-action cursor.
+bd2920512bde.patch:163: +        self.journal
+bd2920512bde.patch:164: +            .stage_pending_action_index_op(&mut self.inner, event)?;
+bd2920512bde.patch:165:          // Record the key as staged so a subsequent append_event with
+bd2920512bde.patch:166:          // the same `(run, seq)` is rejected by the same-batch
+bd2920512bde.patch:167:          // duplicate guard above before the durable lookup.
+bd2920512bde.patch:168:          self.staged_event_keys.insert(key);
+bd2920512bde.patch:169:          Ok(())
+bd2920512bde.patch:170:      }
+bd2920512bde.patch:171:  }
+bd2920512bde.patch:172: diff --git a/crates/vb_storage/src/batch/mod.rs b/crates/vb_storage/src/batch/mod.rs
+bd2920512bde.patch:173: index 320da2065..e21d55d7a 100644
+bd2920512bde.patch:174: --- a/crates/vb_storage/src/batch/mod.rs
+bd2920512bde.patch:175: +++ b/crates/vb_storage/src/batch/mod.rs
+bd2920512bde.patch:176: @@ -1,11 +1,12 @@
+bd2920512bde.patch:177:  #![forbid(unsafe_code)]
+bd2920512bde.patch:178: +mod action_index;
+bd2920512bde.patch:179:  mod append_event;
+bd2920512bde.patch:180:  mod commit;
+bd2920512bde.patch:181:  mod putters;
+bd2920512bde.patch:182:  mod types;
+bd2920512bde.patch:183:  mod writer_queue;
+bd2920512bde.patch:184:  pub use types::{DEFAULT_JOURNAL_BATCH_BYTE_LIMIT, JournalWriteBatch};
+bd2920512bde.patch:185:  pub use writer_queue::{JournalWriterQueue, MAX_BATCH_COUNT};
+bd2920512bde.patch:186:  #[cfg(test)]
+bd2920512bde.patch:187:  #[path = "tests.rs"]
+bd2920512bde.patch:188:  mod tests;
+bd2920512bde.patch:189: diff --git a/crates/vb_storage/src/batch/putters.rs b/crates/vb_storage/src/batch/putters.rs
+bd2920512bde.patch:190: index c4fefd30c..b96ae30b9 100644
+bd2920512bde.patch:191: --- a/crates/vb_storage/src/batch/putters.rs
+bd2920512bde.patch:192: +++ b/crates/vb_storage/src/batch/putters.rs
+bd2920512bde.patch:193: @@ -204,16 +204,33 @@ impl<'j> JournalWriteBatch<'j> {
+bd2920512bde.patch:194:          Ok(())
+bd2920512bde.patch:195:      }
+bd2920512bde.patch:196:  
+bd2920512bde.patch:197:      /// Inserts an action index marker into the batch.
+bd2920512bde.patch:198:      pub fn put_action_index(
+bd2920512bde.patch:199:          &mut self,
+bd2920512bde.patch:200:          action: vb_core::ActionId,

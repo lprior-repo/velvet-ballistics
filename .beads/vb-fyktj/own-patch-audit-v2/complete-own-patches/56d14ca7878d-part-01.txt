@@ -1,0 +1,200 @@
+56d14ca7878d.patch:1: diff --git a/.moon/tasks/flux.yml b/.moon/tasks/flux.yml
+56d14ca7878d.patch:2: new file mode 100644
+56d14ca7878d.patch:3: index 000000000..387a56b85
+56d14ca7878d.patch:4: --- /dev/null
+56d14ca7878d.patch:5: +++ b/.moon/tasks/flux.yml
+56d14ca7878d.patch:6: @@ -0,0 +1,42 @@
+56d14ca7878d.patch:7: +# Flux refinement-type verification tasks
+56d14ca7878d.patch:8: +# These tasks run formal verification using the flux-rs compiler plugin
+56d14ca7878d.patch:9: +# via the canonical scripts/flux-check-package.sh entry point.
+56d14ca7878d.patch:10: +
+56d14ca7878d.patch:11: +fileGroups:
+56d14ca7878d.patch:12: +  flux_sources:
+56d14ca7878d.patch:13: +    - 'crates/vb_storage/src/**/*'
+56d14ca7878d.patch:14: +  flux_scripts:
+56d14ca7878d.patch:15: +    - 'scripts/flux-check-package.sh'
+56d14ca7878d.patch:16: +
+56d14ca7878d.patch:17: +tasks:
+56d14ca7878d.patch:18: +  flux-check:
+56d14ca7878d.patch:19: +    script: |
+56d14ca7878d.patch:20: +      set -euo pipefail
+56d14ca7878d.patch:21: +      mkdir -p target/moon-locks
+56d14ca7878d.patch:22: +      flock --shared target/moon-locks/source-mutation.lock timeout 120m bash scripts/flux-check-package.sh vb_storage
+56d14ca7878d.patch:23: +    toolchains:
+56d14ca7878d.patch:24: +      - rust
+56d14ca7878d.patch:25: +    inputs:
+56d14ca7878d.patch:26: +      - '@globs(flux_sources)'
+56d14ca7878d.patch:27: +      - '@globs(flux_scripts)'
+56d14ca7878d.patch:28: +      - 'Cargo.toml'
+56d14ca7878d.patch:29: +      - 'rust-toolchain.toml'
+56d14ca7878d.patch:30: +    options:
+56d14ca7878d.patch:31: +      runInCI: true
+56d14ca7878d.patch:32: +      cache: false
+56d14ca7878d.patch:33: +
+56d14ca7878d.patch:34: +  flux-check-all:
+56d14ca7878d.patch:35: +    script: |
+56d14ca7878d.patch:36: +      set -euo pipefail
+56d14ca7878d.patch:37: +      mkdir -p target/moon-locks
+56d14ca7878d.patch:38: +      flock --shared target/moon-locks/source-mutation.lock timeout 180m bash scripts/flux-check-package.sh --all
+56d14ca7878d.patch:39: +    toolchains:
+56d14ca7878d.patch:40: +      - rust
+56d14ca7878d.patch:41: +    inputs:
+56d14ca7878d.patch:42: +      - '@globs(flux_sources)'
+56d14ca7878d.patch:43: +      - '@globs(flux_scripts)'
+56d14ca7878d.patch:44: +      - 'Cargo.toml'
+56d14ca7878d.patch:45: +      - 'rust-toolchain.toml'
+56d14ca7878d.patch:46: +    options:
+56d14ca7878d.patch:47: +      runInCI: false
+56d14ca7878d.patch:48: +      cache: false
+56d14ca7878d.patch:49: diff --git a/scripts/flux-check-package.sh b/scripts/flux-check-package.sh
+56d14ca7878d.patch:50: index 330974b6a..413a717f6 100755
+56d14ca7878d.patch:51: --- a/scripts/flux-check-package.sh
+56d14ca7878d.patch:52: +++ b/scripts/flux-check-package.sh
+56d14ca7878d.patch:53: @@ -1,21 +1,164 @@
+56d14ca7878d.patch:54:  #!/usr/bin/env bash
+56d14ca7878d.patch:55:  set -euo pipefail
+56d14ca7878d.patch:56:  
+56d14ca7878d.patch:57: -if [ "$#" -lt 1 ]; then
+56d14ca7878d.patch:58: -  printf 'usage: bash scripts/flux-check-package.sh <package> [cargo-flux options]\n' >&2
+56d14ca7878d.patch:59: +# =============================================================================
+56d14ca7878d.patch:60: +# Canonical Flux Check Script
+56d14ca7878d.patch:61: +#
+56d14ca7878d.patch:62: +# Single entry point for all flux verification across:
+56d14ca7878d.patch:63: +#   - xtask lane runner (scripts/flux-check-package.sh <package>)
+56d14ca7878d.patch:64: +#   - Moon tasks (bash scripts/flux-check-package.sh <package> [--all | --crates ...])
+56d14ca7878d.patch:65: +#   - Direct invocation (bash scripts/flux-check-package.sh --help | --dry-run ...)
+56d14ca7878d.patch:66: +#
+56d14ca7878d.patch:67: +# Usage:
+56d14ca7878d.patch:68: +#   bash scripts/flux-check-package.sh <package> [cargo-flux options]
+56d14ca7878d.patch:69: +#   bash scripts/flux-check-package.sh --all [cargo-flux options]
+56d14ca7878d.patch:70: +#   bash scripts/flux-check-package.sh --crates <p1> <p2> ... [cargo-flux options]
+56d14ca7878d.patch:71: +#   bash scripts/flux-check-package.sh --dry-run --all
+56d14ca7878d.patch:72: +#   bash scripts/flux-check-package.sh --help
+56d14ca7878d.patch:73: +#
+56d14ca7878d.patch:74: +# The installed cargo-flux does not accept --lib, --test, --tests, --benches,
+56d14ca7878d.patch:75: +# or --all-targets target selectors; these are rejected at the script level.
+56d14ca7878d.patch:76: +# =============================================================================
+56d14ca7878d.patch:77: +
+56d14ca7878d.patch:78: +SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+56d14ca7878d.patch:79: +WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+56d14ca7878d.patch:80: +
+56d14ca7878d.patch:81: +usage() {
+56d14ca7878d.patch:82: +  cat >&2 <<EOF
+56d14ca7878d.patch:83: +usage: bash scripts/flux-check-package.sh [OPTIONS] [PACKAGE]
+56d14ca7878d.patch:84: +
+56d14ca7878d.patch:85: +Canonical flux-check entry point.
+56d14ca7878d.patch:86: +
+56d14ca7878d.patch:87: +Options:
+56d14ca7878d.patch:88: +  --all                    Run flux on all crates with flux annotations
+56d14ca7878d.patch:89: +  --crates P1 [P2 ...]    Run flux on specific packages
+56d14ca7878d.patch:90: +  --dry-run               Print commands without executing
+56d14ca7878d.patch:91: +  --help                  Show this help message
+56d14ca7878d.patch:92: +
+56d14ca7878d.patch:93: +When --all or --crates is omitted, the first positional argument is treated
+56d14ca7878d.patch:94: +as the package name. Additional positional arguments are forwarded to
+56d14ca7878d.patch:95: +cargo-flux.
+56d14ca7878d.patch:96: +EOF
+56d14ca7878d.patch:97:    exit 2
+56d14ca7878d.patch:98: -fi
+56d14ca7878d.patch:99: +}
+56d14ca7878d.patch:100: +
+56d14ca7878d.patch:101: +# --- Argument parsing ---
+56d14ca7878d.patch:102: +dry_run=false
+56d14ca7878d.patch:103: +run_all=false
+56d14ca7878d.patch:104: +declare -a extra_packages=()
+56d14ca7878d.patch:105: +declare -a flux_args=()
+56d14ca7878d.patch:106: +
+56d14ca7878d.patch:107: +while [ "$#" -gt 0 ]; do
+56d14ca7878d.patch:108: +  case "$1" in
+56d14ca7878d.patch:109: +    --help)
+56d14ca7878d.patch:110: +      usage
+56d14ca7878d.patch:111: +      ;;
+56d14ca7878d.patch:112: +    --dry-run)
+56d14ca7878d.patch:113: +      dry_run=true
+56d14ca7878d.patch:114: +      shift
+56d14ca7878d.patch:115: +      ;;
+56d14ca7878d.patch:116: +    --all)
+56d14ca7878d.patch:117: +      run_all=true
+56d14ca7878d.patch:118: +      shift
+56d14ca7878d.patch:119: +      ;;
+56d14ca7878d.patch:120: +    --crates)
+56d14ca7878d.patch:121: +      shift
+56d14ca7878d.patch:122: +      if [ "$#" -lt 1 ]; then
+56d14ca7878d.patch:123: +        printf 'error: --crates requires at least one package name\n' >&2
+56d14ca7878d.patch:124: +        exit 2
+56d14ca7878d.patch:125: +      fi
+56d14ca7878d.patch:126: +      while [ "$#" -gt 0 ]; do
+56d14ca7878d.patch:127: +        case "$1" in
+56d14ca7878d.patch:128: +          --dry-run|--all|--crates|--help)
+56d14ca7878d.patch:129: +            break
+56d14ca7878d.patch:130: +            ;;
+56d14ca7878d.patch:131: +          *)
+56d14ca7878d.patch:132: +            extra_packages+=("$1")
+56d14ca7878d.patch:133: +            shift
+56d14ca7878d.patch:134: +            ;;
+56d14ca7878d.patch:135: +        esac
+56d14ca7878d.patch:136: +      done
+56d14ca7878d.patch:137: +      ;;
+56d14ca7878d.patch:138: +    *)
+56d14ca7878d.patch:139: +      flux_args+=("$1")
+56d14ca7878d.patch:140: +      shift
+56d14ca7878d.patch:141: +      ;;
+56d14ca7878d.patch:142: +  esac
+56d14ca7878d.patch:143: +done
+56d14ca7878d.patch:144:  
+56d14ca7878d.patch:145: -package="$1"
+56d14ca7878d.patch:146: -shift
+56d14ca7878d.patch:147: +# --- Target-selector validation ---
+56d14ca7878d.patch:148: +# The installed cargo-flux does not accept these flags.
+56d14ca7878d.patch:149: +reject_target_selector() {
+56d14ca7878d.patch:150: +  printf 'unsupported cargo-flux target selector: %s\n' "$1" >&2
+56d14ca7878d.patch:151: +  exit 2
+56d14ca7878d.patch:152: +}
+56d14ca7878d.patch:153:  
+56d14ca7878d.patch:154: -for arg in "$@"; do
+56d14ca7878d.patch:155: +for arg in "${flux_args[@]+"${flux_args[@]}"}"; do
+56d14ca7878d.patch:156:    case "$arg" in
+56d14ca7878d.patch:157:      --lib|--test|--tests|--benches|--all-targets)
+56d14ca7878d.patch:158: -      printf 'unsupported cargo-flux target selector for installed cargo-flux: %s\n' "$arg" >&2
+56d14ca7878d.patch:159: -      exit 2
+56d14ca7878d.patch:160: +      reject_target_selector "$arg"
+56d14ca7878d.patch:161:        ;;
+56d14ca7878d.patch:162:    esac
+56d14ca7878d.patch:163:  done
+56d14ca7878d.patch:164:  
+56d14ca7878d.patch:165: -cargo flux -p "$package" --message-format human "$@"
+56d14ca7878d.patch:166: +# --- Discover packages ---
+56d14ca7878d.patch:167: +discover_all_flux_crates() {
+56d14ca7878d.patch:168: +  # Find crates with #[cfg(flux)] gated flux source files.
+56d14ca7878d.patch:169: +  # This avoids running flux on every crate when only a subset has annotations.
+56d14ca7878d.patch:170: +  local found=()
+56d14ca7878d.patch:171: +  for manifest in "$WORKSPACE_ROOT"/crates/*/Cargo.toml; do
+56d14ca7878d.patch:172: +    local crate_name
+56d14ca7878d.patch:173: +    crate_name="$(basename "$(dirname "$manifest")")"
+56d14ca7878d.patch:174: +    # Check if the crate has flux-annotated source files
+56d14ca7878d.patch:175: +    local crate_src="$WORKSPACE_ROOT/crates/$crate_name/src"
+56d14ca7878d.patch:176: +    if [ -d "$crate_src" ] && grep -rl '#\[cfg(flux)\]' "$crate_src" >/dev/null 2>&1; then
+56d14ca7878d.patch:177: +      found+=("$crate_name")
+56d14ca7878d.patch:178: +    fi
+56d14ca7878d.patch:179: +  done
+56d14ca7878d.patch:180: +  printf '%s\n' "${found[@]+"${found[@]}"}"
+56d14ca7878d.patch:181: +}
+56d14ca7878d.patch:182: +
+56d14ca7878d.patch:183: +if $run_all; then
+56d14ca7878d.patch:184: +  declare -a packages=()
+56d14ca7878d.patch:185: +  while IFS= read -r pkg; do
+56d14ca7878d.patch:186: +    [ -n "$pkg" ] && packages+=("$pkg")
+56d14ca7878d.patch:187: +  done < <(discover_all_flux_crates)
+56d14ca7878d.patch:188: +elif [ "${#extra_packages[@]}" -gt 0 ]; then
+56d14ca7878d.patch:189: +  packages=("${extra_packages[@]}")
+56d14ca7878d.patch:190: +else
+56d14ca7878d.patch:191: +  # Single package mode: first non-flag arg (if any) is the package name.
+56d14ca7878d.patch:192: +  # Remaining positional args after the first are forwarded to cargo-flux.
+56d14ca7878d.patch:193: +  if [ "${#flux_args[@]}" -gt 0 ]; then
+56d14ca7878d.patch:194: +    packages=("${flux_args[0]}")
+56d14ca7878d.patch:195: +    flux_args=("${flux_args[@]:1}")
+56d14ca7878d.patch:196: +  else
+56d14ca7878d.patch:197: +    printf 'error: no package specified. Use <package>, --all, or --crates <p1> <p2> ...\n' >&2
+56d14ca7878d.patch:198: +    exit 2
+56d14ca7878d.patch:199: +  fi
+56d14ca7878d.patch:200: +fi

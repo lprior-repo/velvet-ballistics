@@ -1,0 +1,40 @@
+dd50c691bb67.patch:1: diff --git a/contracts/proof_obligations.yaml b/contracts/proof_obligations.yaml
+dd50c691bb67.patch:2: index 102919de4..0a0f8b8ef 100644
+dd50c691bb67.patch:3: --- a/contracts/proof_obligations.yaml
+dd50c691bb67.patch:4: +++ b/contracts/proof_obligations.yaml
+dd50c691bb67.patch:5: @@ -1130,30 +1130,35 @@ verus_registry:
+dd50c691bb67.patch:6:    - id: PO-VERUS-029
+dd50c691bb67.patch:7:      description: "Diagnostic envelope construction soundness: public CLI exit codes exactly bounded by 0..=8; schema version invariant (INV-001, INV-005)."
+dd50c691bb67.patch:8:      verus: verification/verus/diagnostic_envelope_verus.rs
+dd50c691bb67.patch:9:      production: crates/vb_cli/src/exit_code.rs
+dd50c691bb67.patch:10:  
+dd50c691bb67.patch:11:    - id: PO-VERUS-030
+dd50c691bb67.patch:12:      description: "Cancel/kill lattice: cancel/kill only on live runs (REQ-cancel-kill-live-only), exactly one terminal event per run (REQ-single-terminal-winner), cancel/kill invalidates stale authority (REQ-stale-authority-cleanup); bound to production handle_cancel/handle_kill at chunk_002.rs:127-174 (PO-VERUS-001..003)."
+dd50c691bb67.patch:13:      verus: verification/verus/cancel_kill_lattice.rs
+dd50c691bb67.patch:14:      production: crates/vb_runtime/src/shard/lifecycle/chunk_002.rs
+dd50c691bb67.patch:15:  
+dd50c691bb67.patch:16:    - id: PO-VERUS-031
+dd50c691bb67.patch:17:      description: "vb-6da68 append_strict commit contract: a failed batch.strict().commit() surfaces as Err(JournalError::Fjall) (NOT Ok or DuplicateEvent); the staged event is NOT visible after the failure (events keyspace unchanged — Fjall OwnedWriteBatch atomicity); a retry append_strict of the same event returns Ok(()) (idempotent-retry). Supersedes the vb-vzcuf-PS-004 commit-bridge for the append_strict surface (POB-vb-vzcuf-013 coverage of the commit-failure mode). Single localized trusted axiom: Fjall OwnedWriteBatch atomicity on Err (TBP-008 + vb-o6qcf.3 LIVE test compensating evidence)."
+dd50c691bb67.patch:18:      verus: verification/verus/vb-6da68-append-strict-commit.rs
+dd50c691bb67.patch:19:      production: crates/vb_storage/src/journal/append.rs
+dd50c691bb67.patch:20:  
+dd50c691bb67.patch:21: +  - id: PO-VERUS-032
+dd50c691bb67.patch:22: +    description: "StepBudget::from_env boundedness: env-var–parsed budget is clamped to MAX_STEP_BUDGET, BudgetParse errors on invalid input, StepCounterOverflow never returned from from_env (trusted external_body boundary). Binds to production_inner/signals_production.rs via extern_signals_invariant.rs mirror. (PO-VERUS-006/007 cover new/try_take; PO-VERUS-032 covers the env-entry point.)"
+dd50c691bb67.patch:23: +    verus: verification/verus/signals_from_env.rs
+dd50c691bb67.patch:24: +    production: crates/vb_core/src/engine/signals.rs
+dd50c691bb67.patch:25: +
+dd50c691bb67.patch:26:  # ============================================================
+dd50c691bb67.patch:27:  # EVIDENCE FORMAT
+dd50c691bb67.patch:28:  # ============================================================
+dd50c691bb67.patch:29:  evidence_schema:
+dd50c691bb67.patch:30:    kind: ProofEvidence
+dd50c691bb67.patch:31:    bead: string
+dd50c691bb67.patch:32:    commit: string
+dd50c691bb67.patch:33:    obligations:
+dd50c691bb67.patch:34:      - id: string
+dd50c691bb67.patch:35:        status: pass | fail | waived | deferred
+dd50c691bb67.patch:36:        level: L0 | L1 | L2 | L3 | L4 | L5 | L6
+dd50c691bb67.patch:37:        commands:
+dd50c691bb67.patch:38:          - string
+dd50c691bb67.patch:39:        log: string
+dd50c691bb67.patch:40:    remaining_assumptions:

@@ -1,0 +1,125 @@
+diff --git a/.cargo/config.toml b/.cargo/config.toml
+index 442053e12..eec335eae 100644
+--- a/.cargo/config.toml
++++ b/.cargo/config.toml
+@@ -3,23 +3,23 @@
+ # Sized for 32-core / 126 GB host; 12 GB headroom plus 16 parallel rustc
+ # jobs gives cache hits on the same crate for both feature and non-feature
+ # builds. Layer 2 (bazel-remote AC+CAS) and Layer 3 (Cargo `target/`) are
+ # configured elsewhere; sccache only governs rustc invocations.
+ [build]
+ rustc-wrapper = "/home/lewis/.local/share/mise/installs/sccache/0.16.0/sccache-v0.16.0-x86_64-unknown-linux-musl/sccache"
+ jobs = 16
+ 
+ [env]
+ SCCACHE_DIR = "/home/lewis/.cache/sccache"
+ SCCACHE_CACHE_SIZE = "12G"
+ SCCACHE_MAX_FRAME_LENGTH = "104857600"
+ SCCACHE_BASEDIR = "/home/lewis/src/velvet-ballistics"
+ 
+ [alias]
+-ci = "clippy --workspace --all-targets --all-features -- -D warnings"
++ci = "clippy --workspace --lib --bins --examples --all-features -- -D warnings"
+ check-all = "check --workspace --all-targets --all-features"
+ fmt-check = "fmt --all -- --check"
+ doc-all = "doc --workspace --all-features --no-deps"
+ test-all = "test --workspace --all-features"
+ hardened-build = "build --workspace --all-features --profile hardened"
+ nightly-feature-cargo-probe = "check -Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs --workspace --all-targets --all-features"
+ xtask = "run -p xtask --"
+diff --git a/contracts/invariants.yaml b/contracts/invariants.yaml
+index 6cd377cec..cd612638d 100644
+--- a/contracts/invariants.yaml
++++ b/contracts/invariants.yaml
+@@ -385,16 +385,16 @@ scan_commands:
+ 
+   no_runtime_json:
+     - cargo xtask forbidden-scan --crate vb_core --pattern serde_json
+     - cargo xtask forbidden-scan --crate vb_runtime --pattern serde_json
+     - cargo xtask forbidden-scan --crate vb_storage --pattern serde_json
+ 
+   no_hot_path_formatting:
+     - cargo xtask hotpath-scan --crate vb_core --pattern format
+     - cargo xtask hotpath-scan --crate vb_runtime --pattern format
+ 
+   no_unchecked_indexing:
+     - cargo xtask forbidden-scan --pattern get_unchecked --crate vb_core
+     - cargo xtask forbidden-scan --pattern slice::from_raw_parts
+ 
+   no_unsafe_in_first_party:
+-    - cargo clippy --workspace --all-targets -- -D unsafe_code
++    - cargo clippy --workspace --lib --bins --examples -- -D unsafe_code
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_01.rs b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+index e7c18068d..69deeed72 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_01.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_01.rs
+@@ -31,31 +31,31 @@ pub fn compile_source(
+         canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
+     for (index, step) in steps.iter().enumerate() {
+         let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+         let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+         lower_canonical_step(
+             step,
+             index,
+             last,
+             id,
+             next,
+             &mut outputs,
+             &mut step_names,
+             &mut builder,
+         )?;
+     }
+-    allocate_input_slots(&source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
++    allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
+     let parts = WorkflowParts {
+         name: Box::from(source.name()),
+         digest: canonical_digest(source)?,
+         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
+         symbols_count: 0,
+         nodes: builder.nodes.into_boxed_slice(),
+         expressions: builder.expressions.into_boxed_slice(),
+         accessors: builder.accessors.into_boxed_slice(),
+         constants: builder.constants.into_boxed_slice(),
+         entry: StepIdx::new(0),
+         resource_contract: ResourceContract::DEFAULT,
+         step_names: step_names.into_boxed_slice(),
+         input_slots: builder.input_slots.into_boxed_slice(),
+     };
+     vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+diff --git a/xtask/src/evidence/persistence.rs b/xtask/src/evidence/persistence.rs
+index be391aa20..916d4788b 100644
+--- a/xtask/src/evidence/persistence.rs
++++ b/xtask/src/evidence/persistence.rs
+@@ -52,31 +52,31 @@ fn failure_hint(gate_name: &str) -> &'static str {
+     match gate_name {
+         "fmt" => "Rust formatting drift was detected.",
+         "clippy" => "Clippy found warnings or policy violations.",
+         "miri" => "Miri found undefined-behavior-sensitive test failure.",
+         "test" | "nextest" => {
+             "A Rust test failed; inspect the captured log for the first failing case."
+         }
+         "supply-chain" => "Supply-chain policy gate failed; inspect dependency policy output.",
+         _ => "Gate failed; inspect the captured log and rerun the named gate locally.",
+     }
+ }
+ 
+ fn failure_repair_command(gate_name: &str) -> &'static str {
+     match gate_name {
+         "fmt" => "cargo +nightly fmt --all",
+-        "clippy" => "cargo +nightly clippy --workspace --all-targets --all-features",
++        "clippy" => "cargo +nightly clippy --workspace --lib --bins --examples --all-features",
+         "miri" => "moon run velvet-ballistics:miri",
+         "test" | "nextest" => "moon run velvet-ballistics:test",
+         "supply-chain" => "moon run velvet-ballistics:supply-chain",
+         _ => "moon ci --base HEAD --head HEAD",
+     }
+ }
+ 
+ /// Validates that all required evidence files exist in a directory.
+ ///
+ /// Implements fail-closed behavior: missing evidence is treated as failure.
+ ///
+ /// # Arguments
+ /// * `dir` - Directory to check for evidence files
+ /// * `required_gates` - List of gate names that must have evidence
+ ///

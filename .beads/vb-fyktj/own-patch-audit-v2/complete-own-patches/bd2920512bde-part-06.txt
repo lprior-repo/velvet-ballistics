@@ -1,0 +1,177 @@
+bd2920512bde.patch:1001:      /// PO-009: When commit() returns Err, NO operations from the batch are visible
+bd2920512bde.patch:1002:      /// in any keyspace.
+bd2920512bde.patch:1003:      ///
+bd2920512bde.patch:1004:      /// This test is inherently limited because Fjall's commit() rarely fails in practice.
+bd2920512bde.patch:1005:      /// We verify the batch state machine behaves correctly by checking aborted flag
+bd2920512bde.patch:1006:      /// and len() invariants after failed encode operations.
+bd2920512bde.patch:1007: +    ///
+bd2920512bde.patch:1008: +    /// vb-3wn7x: as of this fix, `append_event` for an action-lifecycle
+bd2920512bde.patch:1009: +    /// event automatically stages the corresponding `index_action`
+bd2920512bde.patch:1010: +    /// mutation in the same batch. A subsequent explicit
+bd2920512bde.patch:1011: +    /// `put_action_index` call from the test is therefore redundant —
+bd2920512bde.patch:1012: +    /// Fjall last-write-wins leaves the marker in place either way.
+bd2920512bde.patch:1013: +    /// The expected `batch.len()` after `append_event` of an
+bd2920512bde.patch:1014: +    /// `ActionScheduled` plus an explicit `put_action_index` is now 3:
+bd2920512bde.patch:1015: +    /// one for the event, one auto-staged by `append_event`, and one
+bd2920512bde.patch:1016: +    /// from the explicit call.
+bd2920512bde.patch:1017:      #[test]
+bd2920512bde.patch:1018:      fn test_batch_commit_all_or_nothing_across_keyspaces(
+bd2920512bde.patch:1019:          action_val in 1u16..=100u16,
+bd2920512bde.patch:1020:          run_val in 1u64..=1000u64,
+bd2920512bde.patch:1021:          step_val in 0u16..=50u16,
+bd2920512bde.patch:1022:      ) {
+bd2920512bde.patch:1023:          let action = ActionId::new(action_val);
+bd2920512bde.patch:1024:          let run = RunId::new(run_val);
+bd2920512bde.patch:1025:          let step = StepIdx::new(step_val);
+bd2920512bde.patch:1026:          let (_temp, journal) = temp_journal();
+bd2920512bde.patch:1027:  
+bd2920512bde.patch:1028:          let seq = EventSeq::new(0);
+bd2920512bde.patch:1029:          let event = make_action_scheduled(run, seq.get(), step, action);
+bd2920512bde.patch:1030:  
+bd2920512bde.patch:1031:          let mut batch = JournalWriteBatch::new(&journal);
+bd2920512bde.patch:1032:  
+bd2920512bde.patch:1033: -        // Stage valid entries
+bd2920512bde.patch:1034: +        // Stage valid entries. vb-3wn7x: append_event auto-stages the
+bd2920512bde.patch:1035: +        // index_action mutation, so it contributes 2 (event + index)
+bd2920512bde.patch:1036: +        // to batch.len(). The explicit put_action_index call adds one
+bd2920512bde.patch:1037: +        // more (Fjall last-write-wins makes it idempotent).
+bd2920512bde.patch:1038:          prop_assert!(batch.append_event(&event).is_ok(), "append_event must succeed");
+bd2920512bde.patch:1039:          prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index must succeed");
+bd2920512bde.patch:1040:  
+bd2920512bde.patch:1041:          // Before commit: batch is non-empty
+bd2920512bde.patch:1042:          prop_assert!(!batch.is_empty(), "batch must be non-empty before commit");
+bd2920512bde.patch:1043: -        prop_assert_eq!(batch.len(), 2, "batch.len() must be 2 before commit");
+bd2920512bde.patch:1044: +        prop_assert_eq!(
+bd2920512bde.patch:1045: +            batch.len(),
+bd2920512bde.patch:1046: +            3,
+bd2920512bde.patch:1047: +            "batch.len() must be 3 before commit (event + auto-index + explicit-index)"
+bd2920512bde.patch:1048: +        );
+bd2920512bde.patch:1049:  
+bd2920512bde.patch:1050:          // Commit succeeds with valid data — verifying all-or-nothing in practice
+bd2920512bde.patch:1051:          let commit_result = batch.commit();
+bd2920512bde.patch:1052:          prop_assert!(commit_result.is_ok(), "valid batch commit must succeed");
+bd2920512bde.patch:1053:  
+bd2920512bde.patch:1054:          // After successful commit: both entries are durable
+bd2920512bde.patch:1055:          let events = journal.events_for_run(run).expect("events_for_run must succeed");
+bd2920512bde.patch:1056:          prop_assert_eq!(events.len(), 1, "event must be durable after commit");
+bd2920512bde.patch:1057:  
+bd2920512bde.patch:1058:          let index_key = vb_storage::keys::index_action_key(action, run, step)
+bd2920512bde.patch:1059:              .expect("index_action_key must succeed");
+bd2920512bde.patch:1060:          let has_entry = journal.has_action_index_entry(index_key)
+bd2920512bde.patch:1061:              .expect("has_action_index_entry must succeed");
+bd2920512bde.patch:1062:          prop_assert!(has_entry, "index_action entry must be durable");
+bd2920512bde.patch:1063:      }
+bd2920512bde.patch:1064: @@ -369,83 +386,105 @@ proptest::proptest! {
+bd2920512bde.patch:1065:          // Note: append_event checks for duplicate events in the staged keys and
+bd2920512bde.patch:1066:          // durable journal keyspace.
+bd2920512bde.patch:1067:          let events = journal.events_for_run(run).expect("events_for_run must succeed");
+bd2920512bde.patch:1068:          prop_assert_eq!(events.len(), 1, "exactly 1 event must be durable");
+bd2920512bde.patch:1069:          prop_assert_eq!(&events[0], &event_a, "durable event must be the first event");
+bd2920512bde.patch:1070:      }
+bd2920512bde.patch:1071:  }
+bd2920512bde.patch:1072:  
+bd2920512bde.patch:1073:  // ---------------------------------------------------------------------------
+bd2920512bde.patch:1074:  // PO-012: len() is strictly monotonic; is_empty() == (len() == 0) (proptest)
+bd2920512bde.patch:1075:  // ---------------------------------------------------------------------------
+bd2920512bde.patch:1076:  
+bd2920512bde.patch:1077:  proptest::proptest! {
+bd2920512bde.patch:1078:      #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
+bd2920512bde.patch:1079:  
+bd2920512bde.patch:1080: -    /// PO-012: After N successful staging operations, batch.len() == N.
+bd2920512bde.patch:1081: -    /// is_empty() == (len() == 0) always holds.
+bd2920512bde.patch:1082: +    /// PO-012: After N successful staging operations, batch.len() ==
+bd2920512bde.patch:1083: +    /// num_appends * 2 (each action-scheduled event auto-stages the
+bd2920512bde.patch:1084: +    /// matching index_action mutation). `is_empty()` ==
+bd2920512bde.patch:1085: +    /// `(len() == 0)` always holds.
+bd2920512bde.patch:1086: +    ///
+bd2920512bde.patch:1087: +    /// vb-3wn7x: as of this fix, each `append_event(ActionScheduled)`
+bd2920512bde.patch:1088: +    /// appends the event AND its `index_action` mutation to the
+bd2920512bde.patch:1089: +    /// OwnedWriteBatch, so each successful `append_event` increments
+bd2920512bde.patch:1090: +    /// `batch.len()` by exactly 2 (event row + index marker). The
+bd2920512bde.patch:1091: +    /// total `batch.len()` after `N` appends is therefore `N * 2`,
+bd2920512bde.patch:1092: +    /// not `N`. The strict-monotonicity, `is_empty() == (len() == 0)`,
+bd2920512bde.patch:1093: +    /// and never-shrinks invariants remain.
+bd2920512bde.patch:1094:      #[test]
+bd2920512bde.patch:1095:      fn test_batch_len_monotonic_and_is_empty_invariant(
+bd2920512bde.patch:1096:          num_ops in 0u8..=20u8,
+bd2920512bde.patch:1097:          action_val in 1u16..=100u16,
+bd2920512bde.patch:1098:          run_val in 1u64..=1000u64,
+bd2920512bde.patch:1099:      ) {
+bd2920512bde.patch:1100: +        // vb-3wn7x: one for the event row + one for the auto-staged
+bd2920512bde.patch:1101: +        // index_action mutation. Future action-lifecycle variants that
+bd2920512bde.patch:1102: +        // stage additional index mutations would bump this constant.
+bd2920512bde.patch:1103: +        const LEN_INCREMENT_PER_APPEND_EVENT: usize = 2;
+bd2920512bde.patch:1104: +
+bd2920512bde.patch:1105:          let action = ActionId::new(action_val);
+bd2920512bde.patch:1106:          let run = RunId::new(run_val);
+bd2920512bde.patch:1107:          let (_temp, journal) = temp_journal();
+bd2920512bde.patch:1108:  
+bd2920512bde.patch:1109:          let mut batch = JournalWriteBatch::new(&journal);
+bd2920512bde.patch:1110:  
+bd2920512bde.patch:1111:          // Initial state invariants
+bd2920512bde.patch:1112:          prop_assert_eq!(batch.len(), 0, "new batch len must be 0");
+bd2920512bde.patch:1113:          prop_assert!(batch.is_empty(), "new batch must be empty");
+bd2920512bde.patch:1114:  
+bd2920512bde.patch:1115:          let num_ops = num_ops as usize;
+bd2920512bde.patch:1116:          for i in 0..num_ops {
+bd2920512bde.patch:1117:              let step = StepIdx::new(i as u16);
+bd2920512bde.patch:1118:              let event = make_action_scheduled(run, i as u64, step, action);
+bd2920512bde.patch:1119:  
+bd2920512bde.patch:1120:              let before_len = batch.len();
+bd2920512bde.patch:1121:              let _before_empty = batch.is_empty();
+bd2920512bde.patch:1122:  
+bd2920512bde.patch:1123:              let result = batch.append_event(&event);
+bd2920512bde.patch:1124:              prop_assert!(result.is_ok(), "append_event must succeed for valid event");
+bd2920512bde.patch:1125:  
+bd2920512bde.patch:1126: -            // After successful staging: len increases by 1
+bd2920512bde.patch:1127: +            // After successful staging: len increases by the per-call
+bd2920512bde.patch:1128: +            // increment (event + auto-staged index_action).
+bd2920512bde.patch:1129:              prop_assert_eq!(
+bd2920512bde.patch:1130:                  batch.len(),
+bd2920512bde.patch:1131: -                before_len + 1,
+bd2920512bde.patch:1132: -                "len must increment by 1 after successful staging",
+bd2920512bde.patch:1133: +                before_len + LEN_INCREMENT_PER_APPEND_EVENT,
+bd2920512bde.patch:1134: +                "len must increment by 2 after successful staging (event + auto-staged index_action)",
+bd2920512bde.patch:1135: +            );
+bd2920512bde.patch:1136: +            prop_assert!(
+bd2920512bde.patch:1137: +                batch.len() > before_len,
+bd2920512bde.patch:1138: +                "len must be strictly greater after successful staging",
+bd2920512bde.patch:1139:              );
+bd2920512bde.patch:1140:              prop_assert!(
+bd2920512bde.patch:1141:                  !batch.is_empty(),
+bd2920512bde.patch:1142:                  "batch must not be empty after successful staging",
+bd2920512bde.patch:1143:              );
+bd2920512bde.patch:1144:  
+bd2920512bde.patch:1145:              // is_empty == (len == 0) invariant must always hold
+bd2920512bde.patch:1146:              prop_assert_eq!(
+bd2920512bde.patch:1147:                  batch.is_empty(),
+bd2920512bde.patch:1148:                  batch.len() == 0,
+bd2920512bde.patch:1149:                  "is_empty() must equal (len() == 0) always",
+bd2920512bde.patch:1150:              );
+bd2920512bde.patch:1151:          }
+bd2920512bde.patch:1152:  
+bd2920512bde.patch:1153: -        // After all staging: len == num_ops
+bd2920512bde.patch:1154: +        // After all staging: len == num_ops * 2 (each append_event
+bd2920512bde.patch:1155: +        // contributes the event row plus the auto-staged index_action
+bd2920512bde.patch:1156: +        // mutation).
+bd2920512bde.patch:1157:          prop_assert_eq!(
+bd2920512bde.patch:1158:              batch.len(),
+bd2920512bde.patch:1159: -            num_ops,
+bd2920512bde.patch:1160: -            "final len must equal number of successful staging ops",
+bd2920512bde.patch:1161: +            num_ops * LEN_INCREMENT_PER_APPEND_EVENT,
+bd2920512bde.patch:1162: +            "final len must equal num_ops * 2 (each append contributes event + index)",
+bd2920512bde.patch:1163:          );
+bd2920512bde.patch:1164:          prop_assert_eq!(
+bd2920512bde.patch:1165:              batch.is_empty(),
+bd2920512bde.patch:1166:              num_ops == 0,
+bd2920512bde.patch:1167:              "is_empty must be true iff num_ops == 0",
+bd2920512bde.patch:1168:          );
+bd2920512bde.patch:1169:      }
+bd2920512bde.patch:1170:  }
+bd2920512bde.patch:1171:  
+bd2920512bde.patch:1172:  // ---------------------------------------------------------------------------
+bd2920512bde.patch:1173:  // PO-013: Once aborted==true, commit reports BatchAborted (proptest)
+bd2920512bde.patch:1174:  // ---------------------------------------------------------------------------
+bd2920512bde.patch:1175:  
+bd2920512bde.patch:1176:  proptest::proptest! {
+bd2920512bde.patch:1177:      #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]

@@ -1,0 +1,1177 @@
+diff --git a/crates/vb_storage/src/batch/action_index.rs b/crates/vb_storage/src/batch/action_index.rs
+new file mode 100644
+index 000000000..a96053833
+--- /dev/null
++++ b/crates/vb_storage/src/batch/action_index.rs
+@@ -0,0 +1,127 @@
++#![forbid(unsafe_code)]
++//! Atomic staging of pending action index maintenance for journal appends.
++//!
++//! vb-3wn7x: the runtime journal path drives the lifecycle of pending
++//! actions in three groups:
++//!
++//! 1. `ActionScheduled` / `ActionScheduledTicket` — emits the pending
++//!    action to the external boundary; a marker must be inserted into
++//!    the `index_action` keyspace so recovery, inspection, and lookup
++//!    traffic see the action as still in flight.
++//! 2. `ActionCompletedEvent` / `ActionCompletedEnvelope` — terminal
++//!    success; the marker must be removed.
++//! 3. `ActionFailedEvent` / `ActionAbandoned` — terminal failure or
++//!    cancellation-driven abandonment; the marker must be removed.
++//!
++//! All other event kinds (runs, steps, waits, asks, slot writes, …) leave
++//! the index untouched.
++//!
++//! [`stage_pending_action_index_op`] is the single staging entry point:
++//! it stages either a value insert or a tombstone on the supplied
++//! `fjall::OwnedWriteBatch`. Callers MUST commit the same batch that
++//! holds the journal event so index and journal writes succeed or fail
++//! together; partial writes would leave the index inconsistent with the
++//! event log.
++
++use crate::{
++    error::JournalError, events::JournalEvent, journal::FjallJournal, keys::index_action_key,
++};
++use vb_core::{ActionId, RunId, StepIdx};
++
++/// Discriminated pending-action-index mutation.
++///
++/// Internal-only: the variant layout is purely a refactoring of the
++/// match arms in [`stage_pending_action_index_op`] so the encode paths
++/// are not duplicated.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++enum PendingActionIndexOp {
++    /// Insert an empty marker at `(action, run, step)`.
++    Insert {
++        action: ActionId,
++        run: RunId,
++        step: StepIdx,
++    },
++    /// Tombstone the marker at `(action, run, step)`.
++    Remove {
++        action: ActionId,
++        run: RunId,
++        step: StepIdx,
++    },
++}
++
++/// Classifies a journal event into the pending-action-index mutation it
++/// implies (if any). Returns `None` for events that leave the index
++/// untouched.
++fn pending_action_index_op_for(event: &JournalEvent) -> Option<PendingActionIndexOp> {
++    match event {
++        // Insert-side — pending actions enter the index.
++        JournalEvent::ActionScheduled {
++            action, run, step, ..
++        } => Some(PendingActionIndexOp::Insert {
++            action: *action,
++            run: *run,
++            step: *step,
++        }),
++        JournalEvent::ActionScheduledTicket { ticket, .. } => Some(PendingActionIndexOp::Insert {
++            action: ticket.action,
++            run: ticket.run,
++            step: ticket.step,
++        }),
++        // Remove-side — terminal actions leave the index.
++        JournalEvent::ActionCompletedEvent {
++            action, run, step, ..
++        }
++        | JournalEvent::ActionFailedEvent {
++            action, run, step, ..
++        } => Some(PendingActionIndexOp::Remove {
++            action: *action,
++            run: *run,
++            step: *step,
++        }),
++        JournalEvent::ActionCompletedEnvelope { ticket, .. }
++        | JournalEvent::ActionAbandoned { ticket, .. } => Some(PendingActionIndexOp::Remove {
++            action: ticket.action,
++            run: ticket.run,
++            step: ticket.step,
++        }),
++        // Everything else is a no-op for the index.
++        _ => None,
++    }
++}
++
++impl FjallJournal {
++    /// Stages the pending-action-index mutation implied by `event` onto
++    /// the supplied `fjall::OwnedWriteBatch`.
++    ///
++    /// Callers MUST commit the same batch that stages the corresponding
++    /// `JournalEvent` write so the index update is atomic with the event.
++    /// Events that imply no index change are silently accepted (the
++    /// helper returns `Ok(())` without staging any batch operation).
++    ///
++    /// # Errors
++    ///
++    /// Returns `JournalError::KeyCapacity` if the encoded
++    /// `index_action` key would overflow the 13-byte fixed-length
++    /// contract.
++    pub(crate) fn stage_pending_action_index_op(
++        &self,
++        batch: &mut fjall::OwnedWriteBatch,
++        event: &JournalEvent,
++    ) -> Result<(), JournalError> {
++        let Some(op) = pending_action_index_op_for(event) else {
++            return Ok(());
++        };
++        match op {
++            PendingActionIndexOp::Insert { action, run, step } => {
++                let key = index_action_key(action, run, step)?;
++                batch.insert(&self.index_action, key, Vec::<u8>::new());
++                Ok(())
++            }
++            PendingActionIndexOp::Remove { action, run, step } => {
++                let key = index_action_key(action, run, step)?;
++                batch.remove(&self.index_action, key);
++                Ok(())
++            }
++        }
++    }
++}
+diff --git a/crates/vb_storage/src/batch/append_event.rs b/crates/vb_storage/src/batch/append_event.rs
+index f7039e0d7..e7d9c9648 100644
+--- a/crates/vb_storage/src/batch/append_event.rs
++++ b/crates/vb_storage/src/batch/append_event.rs
+@@ -90,22 +90,33 @@ impl<'j> JournalWriteBatch<'j> {
+                 Some(total) => total,
+                 None => {
+                     return Err(JournalError::JournalBatchBytesExceeded {
+                         attempted: u64::MAX,
+                         limit,
+                     });
+                 }
+             };
+             if attempted > limit {
+                 return Err(JournalError::JournalBatchBytesExceeded { attempted, limit });
+             }
+             self.staged_bytes = attempted;
+         }
+ 
+         self.inner.insert(&self.journal.events, key, value);
++        // vb-3wn7x: maintain the pending action index atomically with
++        // the event write. The action lifecycle map (see
++        // `super::action_index`) translates each event variant into the
++        // index mutation it implies (insert for scheduled events,
++        // tombstone for completed/failed/abandoned events, no-op for
++        // every other variant). The mutation lands in the SAME
++        // OwnedWriteBatch, so committing this batch makes the event
++        // and the index update durable together — recovery can rely on
++        // the index as the authoritative pending-action cursor.
++        self.journal
++            .stage_pending_action_index_op(&mut self.inner, event)?;
+         // Record the key as staged so a subsequent append_event with
+         // the same `(run, seq)` is rejected by the same-batch
+         // duplicate guard above before the durable lookup.
+         self.staged_event_keys.insert(key);
+         Ok(())
+     }
+ }
+diff --git a/crates/vb_storage/src/batch/mod.rs b/crates/vb_storage/src/batch/mod.rs
+index 320da2065..e21d55d7a 100644
+--- a/crates/vb_storage/src/batch/mod.rs
++++ b/crates/vb_storage/src/batch/mod.rs
+@@ -1,11 +1,12 @@
+ #![forbid(unsafe_code)]
++mod action_index;
+ mod append_event;
+ mod commit;
+ mod putters;
+ mod types;
+ mod writer_queue;
+ pub use types::{DEFAULT_JOURNAL_BATCH_BYTE_LIMIT, JournalWriteBatch};
+ pub use writer_queue::{JournalWriterQueue, MAX_BATCH_COUNT};
+ #[cfg(test)]
+ #[path = "tests.rs"]
+ mod tests;
+diff --git a/crates/vb_storage/src/batch/putters.rs b/crates/vb_storage/src/batch/putters.rs
+index c4fefd30c..b96ae30b9 100644
+--- a/crates/vb_storage/src/batch/putters.rs
++++ b/crates/vb_storage/src/batch/putters.rs
+@@ -204,16 +204,33 @@ impl<'j> JournalWriteBatch<'j> {
+         Ok(())
+     }
+ 
+     /// Inserts an action index marker into the batch.
+     pub fn put_action_index(
+         &mut self,
+         action: vb_core::ActionId,
+         run: vb_core::RunId,
+         step: vb_core::StepIdx,
+     ) -> Result<(), JournalError> {
+         let key = index_action_key(action, run, step)?;
+         self.inner
+             .insert(&self.journal.index_action, key, Vec::<u8>::new());
+         Ok(())
+     }
++
++    /// Stages a tombstone for the action index marker into the batch.
++    ///
++    /// The tombstone is part of the same atomic batch as the surrounding
++    /// event writes; a successful `commit()` removes the index entry
++    /// exactly when the corresponding terminal event (completion,
++    /// failure, or abandonment) becomes durable.
++    pub fn delete_action_index(
++        &mut self,
++        action: vb_core::ActionId,
++        run: vb_core::RunId,
++        step: vb_core::StepIdx,
++    ) -> Result<(), JournalError> {
++        let key = index_action_key(action, run, step)?;
++        self.inner.remove(&self.journal.index_action, key);
++        Ok(())
++    }
+ }
+diff --git a/crates/vb_storage/src/index_maintenance_tests.rs b/crates/vb_storage/src/index_maintenance_tests.rs
+new file mode 100644
+index 000000000..0dde39127
+--- /dev/null
++++ b/crates/vb_storage/src/index_maintenance_tests.rs
+@@ -0,0 +1,601 @@
++#![forbid(unsafe_code)]
++//! Contract tests for vb-3wn7x: pending action index maintenance in the
++//! runtime journal path.
++//!
++//! Master §18 requires `index_action` to be the authoritative pending
++//! action cursor. The defect captured under vb-3wn7x was that the
++//! runtime's `append_journaled` / `append_strict` path only wrote the
++//! `run_event` record, leaving the index keyspace out of sync with the
++//! durable event log.
++//!
++//! These tests exercise every action-lifecycle event variant through
++//! every admission path that previously missed the index update:
++//!
++//! - `FjallJournal::append_journaled` (journaled profile)
++//! - `FjallJournal::append_strict` (strict profile)
++//! - `FjallJournal::append_strict_batch` (atomic batch insert)
++//! - `JournalWriteBatch::append_event` (cross-keyspace batch)
++//! - `JournalWriterQueue::drain_all` (queued writer)
++//!
++//! Insert-side events:
++//! - `JournalEvent::ActionScheduled`
++//! - `JournalEvent::ActionScheduledTicket`
++//!
++//! Remove-side events:
++//! - `JournalEvent::ActionCompletedEvent`
++//! - `JournalEvent::ActionCompletedEnvelope`
++//! - `JournalEvent::ActionFailedEvent`
++//! - `JournalEvent::ActionAbandoned`
++//!
++//! No-op events (run/step/wait/ask/slot/lifecycle): leave the index
++//! untouched.
++
++#[cfg(test)]
++#[allow(
++    clippy::as_conversions,
++    clippy::cast_possible_truncation,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unwrap_used
++)]
++mod tests {
++    use crate::{
++        DurableActionOutcome, EventSeq, FjallJournal, JournalError, JournalEvent,
++        JournalWriteBatch, JournalWriterQueue, StorageLimits,
++    };
++    use std::sync::Arc;
++    use vb_core::{
++        ActionId, ActionTicket, RunId, SeqNo, SlotIdx, StepIdx as CoreStepIdx, Taint,
++        WorkflowDigest, ids::StepIdx,
++    };
++
++    fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
++        let temp = tempfile::tempdir().expect("tempdir creation must succeed");
++        let journal = FjallJournal::open(temp.path(), None).expect("journal open must succeed");
++        (temp, journal)
++    }
++
++    fn temp_journal_with_queue() -> (tempfile::TempDir, FjallJournal, Arc<JournalWriterQueue>) {
++        let (temp, journal) = temp_journal();
++        let queue = Arc::new(
++            JournalWriterQueue::new(8, 4, StorageLimits::DEFAULT)
++                .expect("queue construction must succeed"),
++        );
++        (temp, journal, queue)
++    }
++
++    fn count_action_index_entries(journal: &FjallJournal) -> usize {
++        journal.index_action.iter().count()
++    }
++
++    fn has_index_entry(
++        journal: &FjallJournal,
++        action: ActionId,
++        run: RunId,
++        step: CoreStepIdx,
++    ) -> bool {
++        let key = crate::keys::index_action_key(action, run, step)
++            .expect("index_action_key must succeed for valid inputs");
++        journal
++            .has_action_index_entry(key)
++            .expect("has_action_index_entry must succeed")
++    }
++
++    fn minimal_action_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTicket {
++        ActionTicket {
++            run,
++            step,
++            seq: SeqNo::ZERO,
++            action,
++            attempt: 1,
++            idempotency_key: 0,
++            capacity: 1,
++        }
++    }
++
++    // -----------------------------------------------------------------
++    // Direct journal path: append_journaled (write_lock-bound)
++    // -----------------------------------------------------------------
++
++    #[test]
++    fn append_journaled_action_scheduled_creates_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(1);
++        let step = StepIdx::new(2);
++        let action = ActionId::new(3);
++
++        let event = JournalEvent::ActionScheduled {
++            run,
++            seq: EventSeq::new(0),
++            step,
++            action,
++            attempt: 1,
++        };
++        journal
++            .append_journaled(&event)
++            .expect("append_journaled must succeed");
++
++        assert!(
++            has_index_entry(&journal, action, run, step),
++            "ActionScheduled must add a pending action marker at (action, run, step)"
++        );
++        assert_eq!(
++            count_action_index_entries(&journal),
++            1,
++            "index_action must contain exactly one entry",
++        );
++    }
++
++    #[test]
++    fn append_journaled_action_completed_removes_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(2);
++        let step = StepIdx::new(5);
++        let action = ActionId::new(11);
++
++        journal
++            .append_journaled(&JournalEvent::ActionScheduled {
++                run,
++                seq: EventSeq::new(0),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("schedule must succeed");
++        assert!(
++            has_index_entry(&journal, action, run, step),
++            "marker must exist before completion"
++        );
++
++        journal
++            .append_journaled(&JournalEvent::ActionCompletedEvent {
++                run,
++                seq: EventSeq::new(1),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("completion must succeed");
++        assert!(
++            !has_index_entry(&journal, action, run, step),
++            "ActionCompletedEvent must remove the pending action marker"
++        );
++        assert_eq!(
++            count_action_index_entries(&journal),
++            0,
++            "index_action must be empty after terminal completion",
++        );
++    }
++
++    #[test]
++    fn append_journaled_action_failed_removes_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(3);
++        let step = StepIdx::new(7);
++        let action = ActionId::new(13);
++
++        journal
++            .append_journaled(&JournalEvent::ActionScheduled {
++                run,
++                seq: EventSeq::new(0),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("schedule must succeed");
++        journal
++            .append_journaled(&JournalEvent::ActionFailedEvent {
++                run,
++                seq: EventSeq::new(1),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("failure must succeed");
++        assert!(
++            !has_index_entry(&journal, action, run, step),
++            "ActionFailedEvent must remove the pending action marker"
++        );
++    }
++
++    // -----------------------------------------------------------------
++    // Direct journal path: append_strict (force fsync)
++    // -----------------------------------------------------------------
++
++    #[test]
++    fn append_strict_action_scheduled_creates_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(4);
++        let step = StepIdx::new(8);
++        let action = ActionId::new(17);
++
++        journal
++            .append_strict(&JournalEvent::ActionScheduled {
++                run,
++                seq: EventSeq::new(0),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("append_strict must succeed");
++        assert!(
++            has_index_entry(&journal, action, run, step),
++            "append_strict ActionScheduled must add the index marker"
++        );
++    }
++
++    // -----------------------------------------------------------------
++    // Atomic batch insert path: append_event through JournalWriteBatch
++    // -----------------------------------------------------------------
++
++    #[test]
++    fn batch_append_event_action_scheduled_creates_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(5);
++        let step = StepIdx::new(9);
++        let action = ActionId::new(19);
++
++        let event = JournalEvent::ActionScheduled {
++            run,
++            seq: EventSeq::new(0),
++            step,
++            action,
++            attempt: 1,
++        };
++        let mut batch = JournalWriteBatch::new(&journal);
++        batch
++            .append_event(&event)
++            .expect("batch.append_event must succeed");
++        batch.commit().expect("commit must succeed");
++
++        assert!(
++            has_index_entry(&journal, action, run, step),
++            "batch-staged ActionScheduled must add the pending action marker"
++        );
++    }
++
++    #[test]
++    fn batch_append_event_action_completed_removes_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(6);
++        let step = StepIdx::new(10);
++        let action = ActionId::new(23);
++
++        let mut batch = JournalWriteBatch::new(&journal);
++        batch
++            .append_event(&JournalEvent::ActionScheduled {
++                run,
++                seq: EventSeq::new(0),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("schedule must succeed");
++        batch
++            .append_event(&JournalEvent::ActionCompletedEvent {
++                run,
++                seq: EventSeq::new(1),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("completion must succeed");
++        batch.commit().expect("commit must succeed");
++
++        assert!(
++            !has_index_entry(&journal, action, run, step),
++            "batch-staged ActionCompleted must remove the pending action marker"
++        );
++        assert_eq!(
++            count_action_index_entries(&journal),
++            0,
++            "no markers must remain after scheduled+completed pair",
++        );
++    }
++
++    #[test]
++    fn batch_append_event_action_scheduled_ticket_creates_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(7);
++        let step = StepIdx::new(11);
++        let action = ActionId::new(29);
++        let ticket = minimal_action_ticket(run, step, action);
++
++        let event = JournalEvent::ActionScheduledTicket {
++            run,
++            seq: EventSeq::new(0),
++            ticket,
++            input: SlotIdx::new(0),
++            output: SlotIdx::new(1),
++            action_abi_digest: WorkflowDigest::from_bytes([0xAB; 32]),
++        };
++        let mut batch = JournalWriteBatch::new(&journal);
++        batch
++            .append_event(&event)
++            .expect("batch.append_event must succeed");
++        batch.commit().expect("commit must succeed");
++
++        assert!(
++            has_index_entry(&journal, action, run, step),
++            "ActionScheduledTicket must add the pending action marker"
++        );
++    }
++
++    #[test]
++    fn batch_append_event_action_completed_envelope_removes_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(8);
++        let step = StepIdx::new(12);
++        let action = ActionId::new(31);
++        let ticket = minimal_action_ticket(run, step, action);
++
++        let mut batch = JournalWriteBatch::new(&journal);
++        batch
++            .append_event(&JournalEvent::ActionScheduledTicket {
++                run,
++                seq: EventSeq::new(0),
++                ticket,
++                input: SlotIdx::new(0),
++                output: SlotIdx::new(1),
++                action_abi_digest: WorkflowDigest::from_bytes([0xAB; 32]),
++            })
++            .expect("schedule must succeed");
++        batch
++            .append_event(&JournalEvent::ActionCompletedEnvelope {
++                run,
++                seq: EventSeq::new(1),
++                ticket,
++                output: SlotIdx::new(1),
++                outcome: DurableActionOutcome::Ready,
++                value: Vec::new(),
++                encoded_len: 0,
++                taint: Taint::Clean,
++                value_digest: [0u8; 32],
++                action_abi_digest: WorkflowDigest::from_bytes([0xAB; 32]),
++            })
++            .expect("completion must succeed");
++        batch.commit().expect("commit must succeed");
++
++        assert!(
++            !has_index_entry(&journal, action, run, step),
++            "ActionCompletedEnvelope must remove the pending action marker"
++        );
++    }
++
++    #[test]
++    fn batch_append_event_action_abandoned_removes_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(9);
++        let step = StepIdx::new(13);
++        let action = ActionId::new(37);
++        let ticket = minimal_action_ticket(run, step, action);
++
++        let mut batch = JournalWriteBatch::new(&journal);
++        batch
++            .append_event(&JournalEvent::ActionScheduledTicket {
++                run,
++                seq: EventSeq::new(0),
++                ticket,
++                input: SlotIdx::new(0),
++                output: SlotIdx::new(1),
++                action_abi_digest: WorkflowDigest::from_bytes([0xAB; 32]),
++            })
++            .expect("schedule must succeed");
++        batch
++            .append_event(&JournalEvent::ActionAbandoned {
++                run,
++                seq: EventSeq::new(1),
++                ticket,
++            })
++            .expect("abandonment must succeed");
++        batch.commit().expect("commit must succeed");
++
++        assert!(
++            !has_index_entry(&journal, action, run, step),
++            "ActionAbandoned must remove the pending action marker"
++        );
++    }
++
++    #[test]
++    fn batch_append_event_non_action_events_do_not_touch_index() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(10);
++        let workflow = WorkflowDigest::from_bytes([0xCD; 32]);
++
++        let mut batch = JournalWriteBatch::new(&journal);
++        batch
++            .append_event(&JournalEvent::RunAccepted {
++                run,
++                seq: EventSeq::new(0),
++                workflow,
++            })
++            .expect("RunAccepted must succeed");
++        batch
++            .append_event(&JournalEvent::StepStarted {
++                run,
++                seq: EventSeq::new(1),
++                step: StepIdx::new(0),
++                attempt: 1,
++            })
++            .expect("StepStarted must succeed");
++        batch
++            .append_event(&JournalEvent::StepSucceeded {
++                run,
++                seq: EventSeq::new(2),
++                step: StepIdx::new(0),
++                output: SlotIdx::new(2),
++            })
++            .expect("StepSucceeded must succeed");
++        batch.commit().expect("commit must succeed");
++
++        assert_eq!(
++            count_action_index_entries(&journal),
++            0,
++            "non-action events must not introduce spurious index entries",
++        );
++    }
++
++    // -----------------------------------------------------------------
++    // Strict batch path: append_strict_batch
++    // -----------------------------------------------------------------
++
++    #[test]
++    fn append_strict_batch_action_lifecycle_maintains_index() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(11);
++        let step = StepIdx::new(14);
++        let action = ActionId::new(41);
++
++        let scheduled = JournalEvent::ActionScheduled {
++            run,
++            seq: EventSeq::new(0),
++            step,
++            action,
++            attempt: 1,
++        };
++        let completed = JournalEvent::ActionCompletedEvent {
++            run,
++            seq: EventSeq::new(1),
++            step,
++            action,
++            attempt: 1,
++        };
++
++        journal
++            .append_strict_batch(&[scheduled])
++            .expect("first batch must succeed");
++        assert!(
++            has_index_entry(&journal, action, run, step),
++            "ActionScheduled in strict batch must add the marker",
++        );
++
++        journal
++            .append_strict_batch(&[completed])
++            .expect("second batch must succeed");
++        assert!(
++            !has_index_entry(&journal, action, run, step),
++            "ActionCompletedEvent in strict batch must remove the marker",
++        );
++    }
++
++    // -----------------------------------------------------------------
++    // Queued writer path: drain_all through JournalWriterQueue
++    // -----------------------------------------------------------------
++
++    #[test]
++    fn queued_flush_batch_action_lifecycle_maintains_index() {
++        let (_temp, journal, queue) = temp_journal_with_queue();
++        let run = RunId::new(12);
++        let step = StepIdx::new(15);
++        let action = ActionId::new(43);
++
++        queue
++            .enqueue_journaled(JournalEvent::ActionScheduled {
++                run,
++                seq: EventSeq::new(0),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("enqueue schedule must succeed");
++        queue
++            .enqueue_journaled(JournalEvent::ActionCompletedEvent {
++                run,
++                seq: EventSeq::new(1),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("enqueue complete must succeed");
++
++        // Drain the queue into the journal — the event AND its index
++        // mutation must be visible after the drain.
++        let report = queue.drain_all(&journal).expect("drain_all must succeed");
++        assert_eq!(report.written, 2, "queue must report 2 events flushed");
++
++        assert!(
++            !has_index_entry(&journal, action, run, step),
++            "queued + drained lifecycle pair must leave the index empty",
++        );
++        assert_eq!(
++            count_action_index_entries(&journal),
++            0,
++            "queued lifecycle pair must not leave stale pending entries",
++        );
++    }
++
++    #[test]
++    fn queued_flush_batch_action_scheduled_alone_creates_index_entry() {
++        let (_temp, journal, queue) = temp_journal_with_queue();
++        let run = RunId::new(13);
++        let step = StepIdx::new(16);
++        let action = ActionId::new(47);
++
++        queue
++            .enqueue_journaled(JournalEvent::ActionScheduled {
++                run,
++                seq: EventSeq::new(0),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("enqueue schedule must succeed");
++        queue.drain_all(&journal).expect("drain_all must succeed");
++
++        assert!(
++            has_index_entry(&journal, action, run, step),
++            "queued ActionScheduled must add the index marker after drain",
++        );
++    }
++
++    // -----------------------------------------------------------------
++    // Idempotency: duplicate events at same seq are rejected.
++    // -----------------------------------------------------------------
++
++    #[test]
++    fn duplicate_action_scheduled_does_not_duplicate_index_entry() {
++        let (_temp, journal) = temp_journal();
++        let run = RunId::new(14);
++        let step = StepIdx::new(17);
++        let action = ActionId::new(53);
++
++        // Successful first schedule: marker present.
++        journal
++            .append_journaled(&JournalEvent::ActionScheduled {
++                run,
++                seq: EventSeq::new(0),
++                step,
++                action,
++                attempt: 1,
++            })
++            .expect("first schedule must succeed");
++        assert!(has_index_entry(&journal, action, run, step));
++
++        // Duplicate at the journal-event layer is rejected, so the
++        // index is not asked to update twice. Direct path surfaces
++        // JournalError::DuplicateEvent.
++        let duplicate_result = journal.append_journaled(&JournalEvent::ActionScheduled {
++            run,
++            seq: EventSeq::new(0),
++            step,
++            action,
++            attempt: 1,
++        });
++        assert!(
++            matches!(duplicate_result, Err(JournalError::DuplicateEvent { .. })),
++            "duplicate ActionScheduled at same seq must be rejected, got {:?}",
++            duplicate_result,
++        );
++        assert!(
++            has_index_entry(&journal, action, run, step),
++            "rejected duplicate must not disturb existing marker",
++        );
++        assert_eq!(
++            count_action_index_entries(&journal),
++            1,
++            "index must contain exactly one entry (Fjall last-write-wins)",
++        );
++    }
++}
+diff --git a/crates/vb_storage/src/indexes.rs b/crates/vb_storage/src/indexes.rs
+index 17541274d..9ee78648e 100644
+--- a/crates/vb_storage/src/indexes.rs
++++ b/crates/vb_storage/src/indexes.rs
+@@ -33,16 +33,34 @@ impl FjallJournal {
+         self.index_workflow.insert(key.to_vec(), Vec::<u8>::new())?;
+         Ok(())
+     }
+ 
+     /// Inserts minimal pending action index marker bytes.
+     pub fn put_action_index(
+         &self,
+         action: vb_core::ActionId,
+         run: vb_core::RunId,
+         step: vb_core::StepIdx,
+     ) -> Result<(), JournalError> {
+         let key = index_action_key(action, run, step)?;
+         self.index_action.insert(key.to_vec(), Vec::<u8>::new())?;
+         Ok(())
+     }
++
++    /// Removes the pending action index marker for the given triple.
++    ///
++    /// Idempotent: removing a non-existent key is a no-op (Fjall returns
++    /// `Ok(())` for absent keys). Used to clear the index when an action
++    /// reaches a terminal state (completed, failed, abandoned) so the
++    /// runtime journal path leaves the `index_action` keyspace
++    /// consistent with the durable event log.
++    pub fn delete_action_index(
++        &self,
++        action: vb_core::ActionId,
++        run: vb_core::RunId,
++        step: vb_core::StepIdx,
++    ) -> Result<(), JournalError> {
++        let key = index_action_key(action, run, step)?;
++        self.index_action.remove(key.as_slice())?;
++        Ok(())
++    }
+ }
+diff --git a/crates/vb_storage/src/journal/internal.rs b/crates/vb_storage/src/journal/internal.rs
+index ff78650c4..cf07c8884 100644
+--- a/crates/vb_storage/src/journal/internal.rs
++++ b/crates/vb_storage/src/journal/internal.rs
+@@ -25,53 +25,68 @@ impl FjallJournal {
+         let Some(value) = keyspace.get(key)? else {
+             return Ok(None);
+         };
+         let (_, record) = decode_record(value.as_ref(), magic, max_bytes)?;
+         Ok(Some(record))
+     }
+ 
+     /// Appends one event to the LSM memtable without forcing a durability barrier.
+     ///
+     /// The event is committed to the WAL-backed LSM memtable and is visible
+     /// to subsequent readers (replay / `events_for_run`) immediately on
+     /// return.  "Unfsynced" is precise: the write survives process-level
+     /// recovery (crash + restart reads back the memtable) but has not been
+     /// force-flushed to stable storage.  Callers that require strict
+     /// durability must invoke `persist_strict` after staging.
++    ///
++    /// vb-3wn7x: the runtime journal path uses this entry point for
++    /// direct appends. To keep the `index_action` keyspace consistent
++    /// with the durable event log, the action-lifecycle index mutation
++    /// (insert for `ActionScheduled` / `ActionScheduledTicket`,
++    /// tombstone for completion / failure / abandonment, no-op for
++    /// every other variant) is staged into the SAME
++    /// `fjall::OwnedWriteBatch` as the event write and committed
++    /// atomically. A process crash between the event insert and the
++    /// index mutation is impossible — they share one fsync'd batch.
+     pub(crate) fn append_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
+         let _guard = self
+             .write_lock
+             .lock()
+             .map_err(|_| JournalError::WriteLockPoisoned)?;
+         let key = run_event_key(event.run_id(), event.seq())?;
+         if !event.is_valid() {
+             return Err(JournalError::InvalidEvent);
+         }
+         if self.events.contains_key(key)? {
+             return Err(JournalError::DuplicateEvent {
+                 run: event.run_id(),
+                 seq: event.seq(),
+             });
+         }
+         let value = encode_record(
+             MAGIC_JOURNAL_EVENT,
+             event.record_kind(),
+             event.seq().get(),
+             event,
+             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+         )?;
+-        self.events.insert(key.to_vec(), value)?;
++        // Stage event + pending-action-index update on one batch so the
++        // index mutation succeeds or fails with the event write.
++        let mut batch = self.database.batch();
++        batch.insert(&self.events, key, value);
++        self.stage_pending_action_index_op(&mut batch, event)?;
++        batch.commit()?;
+         Ok(())
+     }
+ 
+     /// Appends a queued event idempotently without forcing an fsync.
+     ///
+     /// The event is committed to the LSM memtable and is visible to
+     /// subsequent readers (replay / `events_for_run`) immediately on
+     /// return.  "Unfsynced" is the precise term: the write is durable
+     /// against process-level recovery (crash + restart reads back the
+     /// memtable) but has not been force-flushed to stable storage.
+     /// Callers that require strict durability must invoke
+     /// `persist_strict` after staging.
+     #[cfg(test)]
+     pub(crate) fn append_queued_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
+         match self.append_unfsynced(event) {
+diff --git a/crates/vb_storage/src/lib.rs b/crates/vb_storage/src/lib.rs
+index 5bbbd06a4..14fe63859 100644
+--- a/crates/vb_storage/src/lib.rs
++++ b/crates/vb_storage/src/lib.rs
+@@ -123,30 +123,35 @@ mod proptest_integration;
+ #[path = "error_tests.rs"]
+ mod error_tests;
+ 
+ #[cfg(test)]
+ #[path = "error_code_tests.rs"]
+ mod error_code_tests;
+ 
+ #[cfg(test)]
+ #[path = "type_tests.rs"]
+ mod type_tests;
+ 
+ #[cfg(test)]
+ #[path = "index_tests.rs"]
+ mod index_tests;
+ 
++// vb-3wn7x: pending action index maintenance contract tests.
++#[cfg(test)]
++#[path = "index_maintenance_tests.rs"]
++mod index_maintenance_tests;
++
+ #[cfg(test)]
+ #[path = "artifact_tests.rs"]
+ mod artifact_tests;
+ 
+ #[cfg(test)]
+ #[path = "blob_tests.rs"]
+ mod blob_tests;
+ 
+ #[cfg(test)]
+ #[path = "header_tests.rs"]
+ mod header_tests;
+ 
+ #[cfg(test)]
+ #[path = "hydrate_tests.rs"]
+ mod hydrate_tests;
+diff --git a/crates/workspace_tests/tests/journal_side_index_contracts.rs b/crates/workspace_tests/tests/journal_side_index_contracts.rs
+index a1722d7f7..290b1f0f8 100644
+--- a/crates/workspace_tests/tests/journal_side_index_contracts.rs
++++ b/crates/workspace_tests/tests/journal_side_index_contracts.rs
+@@ -257,53 +257,70 @@ proptest::proptest! {
+ }
+ 
+ // ---------------------------------------------------------------------------
+ // PO-009: Batch commit is all-or-nothing across keyspaces (proptest)
+ // ---------------------------------------------------------------------------
+ 
+ proptest::proptest! {
+     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
+ 
+     /// PO-009: When commit() returns Err, NO operations from the batch are visible
+     /// in any keyspace.
+     ///
+     /// This test is inherently limited because Fjall's commit() rarely fails in practice.
+     /// We verify the batch state machine behaves correctly by checking aborted flag
+     /// and len() invariants after failed encode operations.
++    ///
++    /// vb-3wn7x: as of this fix, `append_event` for an action-lifecycle
++    /// event automatically stages the corresponding `index_action`
++    /// mutation in the same batch. A subsequent explicit
++    /// `put_action_index` call from the test is therefore redundant —
++    /// Fjall last-write-wins leaves the marker in place either way.
++    /// The expected `batch.len()` after `append_event` of an
++    /// `ActionScheduled` plus an explicit `put_action_index` is now 3:
++    /// one for the event, one auto-staged by `append_event`, and one
++    /// from the explicit call.
+     #[test]
+     fn test_batch_commit_all_or_nothing_across_keyspaces(
+         action_val in 1u16..=100u16,
+         run_val in 1u64..=1000u64,
+         step_val in 0u16..=50u16,
+     ) {
+         let action = ActionId::new(action_val);
+         let run = RunId::new(run_val);
+         let step = StepIdx::new(step_val);
+         let (_temp, journal) = temp_journal();
+ 
+         let seq = EventSeq::new(0);
+         let event = make_action_scheduled(run, seq.get(), step, action);
+ 
+         let mut batch = JournalWriteBatch::new(&journal);
+ 
+-        // Stage valid entries
++        // Stage valid entries. vb-3wn7x: append_event auto-stages the
++        // index_action mutation, so it contributes 2 (event + index)
++        // to batch.len(). The explicit put_action_index call adds one
++        // more (Fjall last-write-wins makes it idempotent).
+         prop_assert!(batch.append_event(&event).is_ok(), "append_event must succeed");
+         prop_assert!(batch.put_action_index(action, run, step).is_ok(), "put_action_index must succeed");
+ 
+         // Before commit: batch is non-empty
+         prop_assert!(!batch.is_empty(), "batch must be non-empty before commit");
+-        prop_assert_eq!(batch.len(), 2, "batch.len() must be 2 before commit");
++        prop_assert_eq!(
++            batch.len(),
++            3,
++            "batch.len() must be 3 before commit (event + auto-index + explicit-index)"
++        );
+ 
+         // Commit succeeds with valid data — verifying all-or-nothing in practice
+         let commit_result = batch.commit();
+         prop_assert!(commit_result.is_ok(), "valid batch commit must succeed");
+ 
+         // After successful commit: both entries are durable
+         let events = journal.events_for_run(run).expect("events_for_run must succeed");
+         prop_assert_eq!(events.len(), 1, "event must be durable after commit");
+ 
+         let index_key = vb_storage::keys::index_action_key(action, run, step)
+             .expect("index_action_key must succeed");
+         let has_entry = journal.has_action_index_entry(index_key)
+             .expect("has_action_index_entry must succeed");
+         prop_assert!(has_entry, "index_action entry must be durable");
+     }
+@@ -369,83 +386,105 @@ proptest::proptest! {
+         // Note: append_event checks for duplicate events in the staged keys and
+         // durable journal keyspace.
+         let events = journal.events_for_run(run).expect("events_for_run must succeed");
+         prop_assert_eq!(events.len(), 1, "exactly 1 event must be durable");
+         prop_assert_eq!(&events[0], &event_a, "durable event must be the first event");
+     }
+ }
+ 
+ // ---------------------------------------------------------------------------
+ // PO-012: len() is strictly monotonic; is_empty() == (len() == 0) (proptest)
+ // ---------------------------------------------------------------------------
+ 
+ proptest::proptest! {
+     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]
+ 
+-    /// PO-012: After N successful staging operations, batch.len() == N.
+-    /// is_empty() == (len() == 0) always holds.
++    /// PO-012: After N successful staging operations, batch.len() ==
++    /// num_appends * 2 (each action-scheduled event auto-stages the
++    /// matching index_action mutation). `is_empty()` ==
++    /// `(len() == 0)` always holds.
++    ///
++    /// vb-3wn7x: as of this fix, each `append_event(ActionScheduled)`
++    /// appends the event AND its `index_action` mutation to the
++    /// OwnedWriteBatch, so each successful `append_event` increments
++    /// `batch.len()` by exactly 2 (event row + index marker). The
++    /// total `batch.len()` after `N` appends is therefore `N * 2`,
++    /// not `N`. The strict-monotonicity, `is_empty() == (len() == 0)`,
++    /// and never-shrinks invariants remain.
+     #[test]
+     fn test_batch_len_monotonic_and_is_empty_invariant(
+         num_ops in 0u8..=20u8,
+         action_val in 1u16..=100u16,
+         run_val in 1u64..=1000u64,
+     ) {
++        // vb-3wn7x: one for the event row + one for the auto-staged
++        // index_action mutation. Future action-lifecycle variants that
++        // stage additional index mutations would bump this constant.
++        const LEN_INCREMENT_PER_APPEND_EVENT: usize = 2;
++
+         let action = ActionId::new(action_val);
+         let run = RunId::new(run_val);
+         let (_temp, journal) = temp_journal();
+ 
+         let mut batch = JournalWriteBatch::new(&journal);
+ 
+         // Initial state invariants
+         prop_assert_eq!(batch.len(), 0, "new batch len must be 0");
+         prop_assert!(batch.is_empty(), "new batch must be empty");
+ 
+         let num_ops = num_ops as usize;
+         for i in 0..num_ops {
+             let step = StepIdx::new(i as u16);
+             let event = make_action_scheduled(run, i as u64, step, action);
+ 
+             let before_len = batch.len();
+             let _before_empty = batch.is_empty();
+ 
+             let result = batch.append_event(&event);
+             prop_assert!(result.is_ok(), "append_event must succeed for valid event");
+ 
+-            // After successful staging: len increases by 1
++            // After successful staging: len increases by the per-call
++            // increment (event + auto-staged index_action).
+             prop_assert_eq!(
+                 batch.len(),
+-                before_len + 1,
+-                "len must increment by 1 after successful staging",
++                before_len + LEN_INCREMENT_PER_APPEND_EVENT,
++                "len must increment by 2 after successful staging (event + auto-staged index_action)",
++            );
++            prop_assert!(
++                batch.len() > before_len,
++                "len must be strictly greater after successful staging",
+             );
+             prop_assert!(
+                 !batch.is_empty(),
+                 "batch must not be empty after successful staging",
+             );
+ 
+             // is_empty == (len == 0) invariant must always hold
+             prop_assert_eq!(
+                 batch.is_empty(),
+                 batch.len() == 0,
+                 "is_empty() must equal (len() == 0) always",
+             );
+         }
+ 
+-        // After all staging: len == num_ops
++        // After all staging: len == num_ops * 2 (each append_event
++        // contributes the event row plus the auto-staged index_action
++        // mutation).
+         prop_assert_eq!(
+             batch.len(),
+-            num_ops,
+-            "final len must equal number of successful staging ops",
++            num_ops * LEN_INCREMENT_PER_APPEND_EVENT,
++            "final len must equal num_ops * 2 (each append contributes event + index)",
+         );
+         prop_assert_eq!(
+             batch.is_empty(),
+             num_ops == 0,
+             "is_empty must be true iff num_ops == 0",
+         );
+     }
+ }
+ 
+ // ---------------------------------------------------------------------------
+ // PO-013: Once aborted==true, commit reports BatchAborted (proptest)
+ // ---------------------------------------------------------------------------
+ 
+ proptest::proptest! {
+     #![proptest_config(journal_proptest_config(JOURNAL_IO_PROPTEST_CASES))]

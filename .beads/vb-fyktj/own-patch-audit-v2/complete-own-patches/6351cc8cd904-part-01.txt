@@ -1,0 +1,22 @@
+6351cc8cd904.patch:1: diff --git a/Cargo.toml b/Cargo.toml
+6351cc8cd904.patch:2: index 3b93f2efd..3da736561 100644
+6351cc8cd904.patch:3: --- a/Cargo.toml
+6351cc8cd904.patch:4: +++ b/Cargo.toml
+6351cc8cd904.patch:5: @@ -87,15 +87,17 @@ codegen-units = 1
+6351cc8cd904.patch:6:  debug = "line-tables-only"
+6351cc8cd904.patch:7:  lto = "thin"
+6351cc8cd904.patch:8:  overflow-checks = true
+6351cc8cd904.patch:9:  panic = "abort"
+6351cc8cd904.patch:10:  strip = "symbols"
+6351cc8cd904.patch:11:  
+6351cc8cd904.patch:12:  [profile.maxperf]
+6351cc8cd904.patch:13:  inherits = "release"
+6351cc8cd904.patch:14:  opt-level = 3
+6351cc8cd904.patch:15:  codegen-units = 1
+6351cc8cd904.patch:16:  debug = false
+6351cc8cd904.patch:17:  debug-assertions = false
+6351cc8cd904.patch:18:  lto = "fat"
+6351cc8cd904.patch:19:  overflow-checks = true
+6351cc8cd904.patch:20:  strip = "symbols"
+6351cc8cd904.patch:21: +
+6351cc8cd904.patch:22: +[workspace.metadata.cargo-vet]

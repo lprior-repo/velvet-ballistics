@@ -1,0 +1,22 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 3b93f2efd..3da736561 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -87,15 +87,17 @@ codegen-units = 1
+ debug = "line-tables-only"
+ lto = "thin"
+ overflow-checks = true
+ panic = "abort"
+ strip = "symbols"
+ 
+ [profile.maxperf]
+ inherits = "release"
+ opt-level = 3
+ codegen-units = 1
+ debug = false
+ debug-assertions = false
+ lto = "fat"
+ overflow-checks = true
+ strip = "symbols"
++
++[workspace.metadata.cargo-vet]

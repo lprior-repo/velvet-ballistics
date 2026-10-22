@@ -1,0 +1,16 @@
+220e4d21d719.patch:401: -    }
+220e4d21d719.patch:402: -
+220e4d21d719.patch:403: -    #[test]
+220e4d21d719.patch:404: -    fn is_supported_code_accepts_e3022() {
+220e4d21d719.patch:405: -        assert!(is_supported_code(0x3022), "ACTION_CIRCUIT_BREAKER_OPEN");
+220e4d21d719.patch:406: -    }
+220e4d21d719.patch:407: -
+220e4d21d719.patch:408: -    #[test]
+220e4d21d719.patch:409: -    fn is_supported_code_rejects_e301c_through_e301f() {
+220e4d21d719.patch:410: -        // 0x301C-0x301F are genuine gaps between Runtime 0x301B and
+220e4d21d719.patch:411: -        // action/audit codes at 0x3020-0x3022.
+220e4d21d719.patch:412: -        for code in 0x301Cu16..=0x301F {
+220e4d21d719.patch:413: -            assert!(!is_supported_code(code), "E{:04X} must be rejected", code);
+220e4d21d719.patch:414: -        }
+220e4d21d719.patch:415: -    }
+220e4d21d719.patch:416: -}

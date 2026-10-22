@@ -1,0 +1,200 @@
+220e4d21d719.patch:1: diff --git a/crates/vb_core/src/diagnostic.rs b/crates/vb_core/src/diagnostic.rs
+220e4d21d719.patch:2: index 5d1a08d0d..24081ba59 100644
+220e4d21d719.patch:3: --- a/crates/vb_core/src/diagnostic.rs
+220e4d21d719.patch:4: +++ b/crates/vb_core/src/diagnostic.rs
+220e4d21d719.patch:5: @@ -2070,25 +2070,16 @@ fn pack_digits(
+220e4d21d719.patch:6:          .ok_or(DiagnosticCodeParseError::InvalidFormat)
+220e4d21d719.patch:7:  }
+220e4d21d719.patch:8:  
+220e4d21d719.patch:9:  /// Returns `true` when the numeric code is registered in
+220e4d21d719.patch:10:  /// [`CODE_REGISTRY`].
+220e4d21d719.patch:11:  ///
+220e4d21d719.patch:12:  /// Delegates to [`is_registered_numeric`], which uses `iter().find()`
+220e4d21d719.patch:13:  /// over the CODE_REGISTRY.  This eliminates hardcoded range lists that
+220e4d21d719.patch:14:  /// had previously drifted from the registry (e.g. the runtime range
+220e4d21d719.patch:15:  /// 0x3001..=0x301B was missing entries at 0x3020-0x3022).
+220e4d21d719.patch:16:  #[must_use]
+220e4d21d719.patch:17:  pub(crate) fn is_supported_code(code: u16) -> bool {
+220e4d21d719.patch:18:      is_registered_numeric(code)
+220e4d21d719.patch:19:  }
+220e4d21d719.patch:20:  
+220e4d21d719.patch:21: -// ---------------------------------------------------------------------------
+220e4d21d719.patch:22: -// Tests
+220e4d21d719.patch:23: -// ---------------------------------------------------------------------------
+220e4d21d719.patch:24: -
+220e4d21d719.patch:25: -// Tests extracted to: crates/workspace_tests/tests/vb_test_validate_diagnostic_behavior.rs
+220e4d21d719.patch:26: -// and related diagnostic test files.
+220e4d21d719.patch:27:  
+220e4d21d719.patch:28: -#[cfg(test)]
+220e4d21d719.patch:29: -#[path = "diagnostic/tests_and_verification.rs"]
+220e4d21d719.patch:30: -mod tests_and_verification;
+220e4d21d719.patch:31: diff --git a/crates/vb_core/src/diagnostic/tests_and_verification.rs b/crates/vb_core/src/diagnostic/tests_and_verification.rs
+220e4d21d719.patch:32: deleted file mode 100644
+220e4d21d719.patch:33: index 0ed6b367a..000000000
+220e4d21d719.patch:34: --- a/crates/vb_core/src/diagnostic/tests_and_verification.rs
+220e4d21d719.patch:35: +++ /dev/null
+220e4d21d719.patch:36: @@ -1,380 +0,0 @@
+220e4d21d719.patch:37: -// ---------------------------------------------------------------------------
+220e4d21d719.patch:38: -// Tests
+220e4d21d719.patch:39: -// ---------------------------------------------------------------------------
+220e4d21d719.patch:40: -
+220e4d21d719.patch:41: -#[cfg(test)]
+220e4d21d719.patch:42: -mod tests {
+220e4d21d719.patch:43: -    use crate::diagnostic::{
+220e4d21d719.patch:44: -        CODE_REGISTRY, CodeCategory, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,
+220e4d21d719.patch:45: -        Severity, SymbolicCode, is_supported_code, numeric_to_symbolic, symbolic_to_numeric,
+220e4d21d719.patch:46: -    };
+220e4d21d719.patch:47: -    use crate::span::Span;
+220e4d21d719.patch:48: -    use core::str::FromStr;
+220e4d21d719.patch:49: -
+220e4d21d719.patch:50: -    // ---- DiagnosticCode existing tests ----
+220e4d21d719.patch:51: -
+220e4d21d719.patch:52: -    #[test]
+220e4d21d719.patch:53: -    fn diagnostic_code_preserves_packed_value() {
+220e4d21d719.patch:54: -        let code = DiagnosticCode::new(0x0101);
+220e4d21d719.patch:55: -
+220e4d21d719.patch:56: -        assert_eq!(code.code(), 0x0101);
+220e4d21d719.patch:57: -        assert_eq!(code.to_string(), "E0101");
+220e4d21d719.patch:58: -    }
+220e4d21d719.patch:59: -
+220e4d21d719.patch:60: -    #[test]
+220e4d21d719.patch:61: -    fn diagnostic_code_parses_supported_ranges() {
+220e4d21d719.patch:62: -        assert_eq!(
+220e4d21d719.patch:63: -            DiagnosticCode::from_str("E0101"),
+220e4d21d719.patch:64: -            Ok(DiagnosticCode::new(0x0101))
+220e4d21d719.patch:65: -        );
+220e4d21d719.patch:66: -        assert_eq!(
+220e4d21d719.patch:67: -            DiagnosticCode::from_str("E010B"),
+220e4d21d719.patch:68: -            Ok(DiagnosticCode::new(0x010B))
+220e4d21d719.patch:69: -        );
+220e4d21d719.patch:70: -        assert_eq!(
+220e4d21d719.patch:71: -            DiagnosticCode::from_str("E0409"),
+220e4d21d719.patch:72: -            Ok(DiagnosticCode::new(0x0409))
+220e4d21d719.patch:73: -        );
+220e4d21d719.patch:74: -        assert_eq!(
+220e4d21d719.patch:75: -            DiagnosticCode::from_str("E040C"),
+220e4d21d719.patch:76: -            Ok(DiagnosticCode::new(0x040C))
+220e4d21d719.patch:77: -        );
+220e4d21d719.patch:78: -        assert_eq!(
+220e4d21d719.patch:79: -            DiagnosticCode::from_str("E1315"),
+220e4d21d719.patch:80: -            Ok(DiagnosticCode::new(0x1315))
+220e4d21d719.patch:81: -        );
+220e4d21d719.patch:82: -        assert_eq!(
+220e4d21d719.patch:83: -            DiagnosticCode::from_str("E4015"),
+220e4d21d719.patch:84: -            Ok(DiagnosticCode::new(0x4015))
+220e4d21d719.patch:85: -        );
+220e4d21d719.patch:86: -        // New: E3020 action/audit codes (REPAIR-7 range fix)
+220e4d21d719.patch:87: -        assert_eq!(
+220e4d21d719.patch:88: -            DiagnosticCode::from_str("E3020"),
+220e4d21d719.patch:89: -            Ok(DiagnosticCode::new(0x3020))
+220e4d21d719.patch:90: -        );
+220e4d21d719.patch:91: -        // New: E05xx gate verifier codes
+220e4d21d719.patch:92: -        assert_eq!(
+220e4d21d719.patch:93: -            DiagnosticCode::from_str("E0501"),
+220e4d21d719.patch:94: -            Ok(DiagnosticCode::new(0x0501))
+220e4d21d719.patch:95: -        );
+220e4d21d719.patch:96: -        // New: E06xx contract discovery codes
+220e4d21d719.patch:97: -        assert_eq!(
+220e4d21d719.patch:98: -            DiagnosticCode::from_str("E0601"),
+220e4d21d719.patch:99: -            Ok(DiagnosticCode::new(0x0601))
+220e4d21d719.patch:100: -        );
+220e4d21d719.patch:101: -        // New: E4020 boundary
+220e4d21d719.patch:102: -        assert_eq!(
+220e4d21d719.patch:103: -            DiagnosticCode::from_str("E4020"),
+220e4d21d719.patch:104: -            Ok(DiagnosticCode::new(0x4020))
+220e4d21d719.patch:105: -        );
+220e4d21d719.patch:106: -    }
+220e4d21d719.patch:107: -
+220e4d21d719.patch:108: -    #[test]
+220e4d21d719.patch:109: -    fn diagnostic_code_rejects_malformed_or_unsupported_input() {
+220e4d21d719.patch:110: -        assert_eq!(
+220e4d21d719.patch:111: -            DiagnosticCode::from_str("0101"),
+220e4d21d719.patch:112: -            Err(DiagnosticCodeParseError::InvalidFormat)
+220e4d21d719.patch:113: -        );
+220e4d21d719.patch:114: -        assert_eq!(
+220e4d21d719.patch:115: -            DiagnosticCode::from_str("E010C"),
+220e4d21d719.patch:116: -            Err(DiagnosticCodeParseError::UnsupportedCode)
+220e4d21d719.patch:117: -        );
+220e4d21d719.patch:118: -        assert_eq!(
+220e4d21d719.patch:119: -            DiagnosticCode::from_str("E0410"),
+220e4d21d719.patch:120: -            Err(DiagnosticCodeParseError::UnsupportedCode)
+220e4d21d719.patch:121: -        );
+220e4d21d719.patch:122: -    }
+220e4d21d719.patch:123: -
+220e4d21d719.patch:124: -    // ---- SymbolicCode tests ----
+220e4d21d719.patch:125: -
+220e4d21d719.patch:126: -    #[test]
+220e4d21d719.patch:127: -    fn symbolic_code_from_static_known_code() {
+220e4d21d719.patch:128: -        let code = SymbolicCode::from_static("DUPLICATE_KEY");
+220e4d21d719.patch:129: -        assert!(code.is_some());
+220e4d21d719.patch:130: -        assert_eq!(code.expect("should be Some").as_str(), "DUPLICATE_KEY");
+220e4d21d719.patch:131: -    }
+220e4d21d719.patch:132: -
+220e4d21d719.patch:133: -    #[test]
+220e4d21d719.patch:134: -    fn symbolic_code_from_static_unknown_code() {
+220e4d21d719.patch:135: -        let code = SymbolicCode::from_static("BOGUS_CODE");
+220e4d21d719.patch:136: -        assert!(code.is_none());
+220e4d21d719.patch:137: -    }
+220e4d21d719.patch:138: -
+220e4d21d719.patch:139: -    #[test]
+220e4d21d719.patch:140: -    fn symbolic_code_numeric_code_roundtrip() {
+220e4d21d719.patch:141: -        let code = SymbolicCode::from_static("DUPLICATE_KEY").unwrap();
+220e4d21d719.patch:142: -        assert_eq!(code.numeric_code(), Some(0x0101));
+220e4d21d719.patch:143: -        assert_eq!(code.as_diagnostic_code(), Some(DiagnosticCode::new(0x0101)));
+220e4d21d719.patch:144: -    }
+220e4d21d719.patch:145: -
+220e4d21d719.patch:146: -    #[test]
+220e4d21d719.patch:147: -    fn symbolic_code_display_is_name_not_hex() {
+220e4d21d719.patch:148: -        let code = SymbolicCode::from_static("DUPLICATE_KEY").unwrap();
+220e4d21d719.patch:149: -        assert_eq!(code.to_string(), "DUPLICATE_KEY");
+220e4d21d719.patch:150: -    }
+220e4d21d719.patch:151: -
+220e4d21d719.patch:152: -    #[test]
+220e4d21d719.patch:153: -    fn symbolic_code_is_copy() {
+220e4d21d719.patch:154: -        let a = SymbolicCode::from_static("TYPE_MISMATCH").unwrap();
+220e4d21d719.patch:155: -        let b = a;
+220e4d21d719.patch:156: -        assert_eq!(a, b);
+220e4d21d719.patch:157: -        // Both usable after copy
+220e4d21d719.patch:158: -        assert_eq!(a.as_str(), "TYPE_MISMATCH");
+220e4d21d719.patch:159: -        assert_eq!(b.as_str(), "TYPE_MISMATCH");
+220e4d21d719.patch:160: -    }
+220e4d21d719.patch:161: -
+220e4d21d719.patch:162: -    #[test]
+220e4d21d719.patch:163: -    fn symbolic_code_category() {
+220e4d21d719.patch:164: -        let schema = SymbolicCode::from_static("DUPLICATE_KEY").unwrap();
+220e4d21d719.patch:165: -        assert_eq!(schema.category(), Some(CodeCategory::Schema));
+220e4d21d719.patch:166: -
+220e4d21d719.patch:167: -        let gate = SymbolicCode::from_static("EXPRESSION_STACK_EXCEEDED").unwrap();
+220e4d21d719.patch:168: -        assert_eq!(gate.category(), Some(CodeCategory::Gate));
+220e4d21d719.patch:169: -
+220e4d21d719.patch:170: -        let runtime = SymbolicCode::from_static("RUNTIME_TIMEOUT").unwrap();
+220e4d21d719.patch:171: -        assert_eq!(runtime.category(), Some(CodeCategory::Runtime));
+220e4d21d719.patch:172: -    }
+220e4d21d719.patch:173: -
+220e4d21d719.patch:174: -    #[test]
+220e4d21d719.patch:175: -    fn symbolic_code_from_str_accepts_registered_name() {
+220e4d21d719.patch:176: -        let result: Result<SymbolicCode, _> = "DUPLICATE_KEY".parse();
+220e4d21d719.patch:177: -        assert!(result.is_ok());
+220e4d21d719.patch:178: -        assert_eq!(result.unwrap().as_str(), "DUPLICATE_KEY");
+220e4d21d719.patch:179: -    }
+220e4d21d719.patch:180: -
+220e4d21d719.patch:181: -    #[test]
+220e4d21d719.patch:182: -    fn symbolic_code_from_str_rejects_unknown_name() {
+220e4d21d719.patch:183: -        let result: Result<SymbolicCode, _> = "BOGUS_CODE".parse();
+220e4d21d719.patch:184: -        assert!(result.is_err());
+220e4d21d719.patch:185: -    }
+220e4d21d719.patch:186: -
+220e4d21d719.patch:187: -    // ---- CODE_REGISTRY tests ----
+220e4d21d719.patch:188: -
+220e4d21d719.patch:189: -    #[test]
+220e4d21d719.patch:190: -    fn registry_symbolic_to_numeric_roundtrip() {
+220e4d21d719.patch:191: -        let numeric = symbolic_to_numeric("DUPLICATE_KEY");
+220e4d21d719.patch:192: -        assert_eq!(numeric, Some(0x0101));
+220e4d21d719.patch:193: -
+220e4d21d719.patch:194: -        let symbolic = numeric_to_symbolic(0x0101);
+220e4d21d719.patch:195: -        assert_eq!(symbolic, Some("DUPLICATE_KEY"));
+220e4d21d719.patch:196: -    }
+220e4d21d719.patch:197: -
+220e4d21d719.patch:198: -    #[test]
+220e4d21d719.patch:199: -    fn registry_all_codes_non_zero() {
+220e4d21d719.patch:200: -        for entry in CODE_REGISTRY {
