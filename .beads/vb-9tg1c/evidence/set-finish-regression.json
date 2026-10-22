@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_compile",
+    "--test",
+    "digest_set_finish_regression"
+  ],
+  "exit_code": 101,
+  "seconds": 5.822,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-9tg1c/evidence/set-finish-regression"
+}

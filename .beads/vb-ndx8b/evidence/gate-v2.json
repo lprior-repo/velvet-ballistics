@@ -1,0 +1,11 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ndx8b-local3090-integrity",
+  "argv": ["/tmp/check-test-integrity", "--base", "da633fe0bbde9e414173d5f7aabe314a37f8752d"],
+  "exit_code": 1,
+  "expected_exit_code": 1,
+  "findings_count": 17,
+  "expected_findings_count": 17,
+  "self_tests_passed": 18,
+  "self_tests_expected": 18,
+  "coordinator_message": "V1 rejected. Fixed hunk_test_path to parse diff --git lines for binary patches, added rename-out detection, and added strict UTF-8 validation of actual test file contents. All 18 self-tests pass (12 original + 3 binary + 1 rename-out + 2 non-UTF-8). Real integration base gate correctly fails with 17 findings (not suppressed). No assertion weakening or allowlists added."
+}

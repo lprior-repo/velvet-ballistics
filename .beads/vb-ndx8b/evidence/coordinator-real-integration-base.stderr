@@ -1,0 +1,19 @@
+test integrity: FAIL
+DeletedTestFile|crates/vb_compile/tests/digest_duplicate_parity.rs|deleted file contained tests or test assertions
+DeletedTestDeclaration|crates/vb_compile/tests/digest_duplicate_parity.rs|removed_declarations=4 added_declarations=0
+WeakenedAssertion|crates/vb_compile/tests/digest_duplicate_parity.rs|removed_exact=4 added_exact=0 added_weak=0
+WeakenedAssertion|crates/vb_compile/tests/v1_primitive_lowering.rs|removed_exact=1 added_exact=0 added_weak=0
+WeakenedAssertion|crates/vb_runtime/src/shard/tests/chunk_015.rs|removed_exact=2 added_exact=1 added_weak=0
+DeletedTestDeclaration|crates/vb_runtime/tests/vb_wave16_mqa.rs|removed_declarations=1 added_declarations=0
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|// Relaxed admission skips artifact loading, but submit_artifact still
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|// (typed evidence contract supersedes "relaxed skips checksum").
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_002.rs|return;
+IgnoredOrSkippedTest|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|return;
+WeakenedAssertion|crates/velvet_ballistics/tests/admission_evidence_integration/chunk_003.rs|removed_exact=1 added_exact=4 added_weak=1
+DeletedTestDeclaration|crates/workspace_tests/tests/runtime_version_barrier_tests.rs|removed_declarations=12 added_declarations=3
+DeletedTestDeclaration|crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs|removed_declarations=3 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs|removed_exact=18 added_exact=5 added_weak=0
+WeakenedAssertion|fuzz/fuzz_targets/kind_validation.rs|removed_exact=2 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.

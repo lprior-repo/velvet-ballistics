@@ -1,0 +1,17 @@
+
+running 12 tests
+test canonical_digest_finish_string_vs_integer_produce_distinct_digests ... ok
+test canonical_digest_produces_distinct_digests_when_finish_result_integer_differs ... ok
+test canonical_digest_produces_distinct_digests_when_finish_result_string_differs ... ok
+test canonical_digest_produces_distinct_digests_when_set_output_differs ... ok
+test canonical_digest_is_deterministic_for_set_finish_source ... ok
+test canonical_digest_is_deterministic_for_finish_source ... ok
+test canonical_digest_produces_valid_digest_for_finish_string_only_source ... ok
+test canonical_digest_produces_valid_digest_for_set_only_source ... ok
+test canonical_digest_produces_distinct_digests_when_set_value_differs ... ok
+test canonical_digest_is_deterministic_for_set_only_source ... ok
+test canonical_digest_produces_valid_digest_for_finish_integer_only_source ... ok
+test canonical_digest_produces_distinct_digests_when_step_order_differs_set_vs_finish ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

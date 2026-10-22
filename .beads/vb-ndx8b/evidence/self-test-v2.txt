@@ -1,0 +1,74 @@
+test integrity: FAIL
+DeletedTestFile|crates/workspace_tests/tests/behavior.rs|deleted file contained tests or test assertions
+DeletedTestDeclaration|crates/workspace_tests/tests/behavior.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:delete: PASS expected=1 actual=1
+test integrity: FAIL
+IgnoredOrSkippedTest|crates/workspace_tests/tests/behavior.rs|#[ignore]
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:ignore: PASS expected=1 actual=1
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:weaken: PASS expected=1 actual=1
+test integrity: PASS base=HEAD
+SelfTest:strengthen: PASS expected=0 actual=0
+test integrity: FAIL
+DeletedTestFile|crates/vb_runtime/src/action/tests.rs|deleted file contained tests or test assertions
+DeletedTestDeclaration|crates/vb_runtime/src/action/tests.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/vb_runtime/src/action/tests.rs|removed_exact=1 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:module-rs-delete: PASS expected=1 actual=1
+test integrity: FAIL
+WeakenedAssertion|crates/vb_runtime/src/action/tests.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:module-rs-weaken: PASS expected=1 actual=1
+test integrity: FAIL
+IgnoredOrSkippedTest|crates/vb_runtime/src/action/tests.rs|let Ok(value) = Result::<u8, ()>::Ok(4) else { return; };
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:module-rs-silent-return: PASS expected=1 actual=1
+test integrity: PASS base=HEAD
+SelfTest:module-rs-strengthen: PASS expected=0 actual=0
+test integrity: FAIL
+DeletedTestFile|crates/vb_runtime/src/action/tests/behavior.rs|deleted file contained tests or test assertions
+DeletedTestDeclaration|crates/vb_runtime/src/action/tests/behavior.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/vb_runtime/src/action/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:module-dir-delete: PASS expected=1 actual=1
+test integrity: FAIL
+WeakenedAssertion|crates/vb_runtime/src/action/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:module-dir-weaken: PASS expected=1 actual=1
+test integrity: FAIL
+IgnoredOrSkippedTest|crates/vb_runtime/src/action/tests/behavior.rs|return;
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:module-dir-silent-return: PASS expected=1 actual=1
+test integrity: PASS base=HEAD
+SelfTest:module-dir-strengthen: PASS expected=0 actual=0
+test integrity: PASS base=HEAD
+SelfTest:unrelated-binary-passes: PASS expected=0 actual=0
+test integrity: FAIL
+DeletedTestFile|crates/workspace_tests/tests/behavior.rs|deleted file contained tests or test assertions
+DeletedTestDeclaration|crates/workspace_tests/tests/behavior.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:binary-with-test-delete: PASS expected=1 actual=1
+test integrity: FAIL
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=1
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:binary-with-weak-assertion: PASS expected=1 actual=1
+test integrity: FAIL
+DeletedTestFile|crates/workspace_tests/tests/behavior.rs|deleted file contained tests or test assertions
+DeletedTestDeclaration|crates/workspace_tests/tests/behavior.rs|removed_declarations=2 added_declarations=0
+WeakenedAssertion|crates/workspace_tests/tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:rename-test-out-of-scope: PASS expected=1 actual=1
+test integrity: FAIL
+NonUtf8TestFile|crates/workspace_tests/tests/behavior.rs|relevant test file contains non-UTF8 bytes
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:non-utf8-relevant-rust: PASS expected=1 actual=1
+test integrity: FAIL
+NonUtf8TestFile|crates/workspace_tests/tests/behavior.rs|relevant test file contains non-UTF8 bytes
+Add equal-or-stronger replacement coverage or bead-linked justification.
+SelfTest:non-utf8-without-nul: PASS expected=1 actual=1

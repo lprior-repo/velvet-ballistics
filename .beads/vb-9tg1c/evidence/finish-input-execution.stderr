@@ -1,0 +1,80 @@
+   Compiling serde_core v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling serde v1.0.228
+   Compiling once_cell v1.21.4
+   Compiling crossbeam-utils v0.8.21
+   Compiling jobserver v0.1.35
+   Compiling crossbeam-epoch v0.9.20
+   Compiling smallvec v1.15.1
+   Compiling zerocopy v0.8.48
+   Compiling cc v1.2.62
+   Compiling tempfile v3.27.0
+   Compiling zerocopy-derive v0.8.48
+   Compiling log v0.4.29
+   Compiling parking_lot_core v0.9.12
+   Compiling byteorder v1.5.0
+   Compiling hash32 v0.2.1
+   Compiling blake3 v1.8.5
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling hashbrown v0.16.1
+   Compiling xxhash-rust v0.8.15
+   Compiling byteorder-lite v0.1.0
+   Compiling twox-hash v2.1.2
+   Compiling compare v0.0.6
+   Compiling interval-heap v0.0.5
+   Compiling lz4_flex v0.13.1
+   Compiling sfa v1.0.0
+   Compiling heapless v0.7.17
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_core)
+   Compiling quick_cache v0.6.22
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling enum_dispatch v0.3.13
+   Compiling crc32c v0.6.8
+   Compiling byteview v0.10.1
+   Compiling self_cell v1.2.2
+   Compiling hashbrown v0.14.5
+   Compiling rustc-hash v2.1.2
+   Compiling varint-rs v2.2.0
+   Compiling lsm-tree v3.1.4
+   Compiling dashmap v6.2.1
+   Compiling postcard v1.1.3
+   Compiling flume v0.12.0
+   Compiling zmij v1.0.21
+   Compiling version_check v0.9.5
+   Compiling ahash v0.8.12
+   Compiling fjall v3.1.4
+   Compiling ordered-float v5.3.0
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_storage)
+   Compiling saphyr v0.0.6
+   Compiling crossbeam-queue v0.3.12
+   Compiling encoding_rs v0.8.35
+   Compiling anstyle v1.0.14
+   Compiling serde_json v1.0.150
+   Compiling unicode-width v0.2.2
+   Compiling rtrb v0.3.5
+   Compiling crc32fast v1.5.0
+   Compiling annotate-snippets v0.12.16
+   Compiling encoding_rs_io v0.1.7
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_yaml)
+   Compiling saphyr-parser-bw v0.0.611
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_runtime)
+   Compiling ppv-lite86 v0.2.21
+   Compiling mio v1.2.0
+   Compiling crossbeam-channel v0.5.15
+   Compiling nohash-hasher v0.2.0
+   Compiling base64 v0.22.1
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.0
+   Compiling serde-saphyr v0.0.25
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_ipc)
+   Compiling rand_chacha v0.9.0
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/vb_compile)
+   Compiling rusty-fork v0.3.1
+   Compiling rand v0.9.4
+   Compiling proptest v1.11.0
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.29s
+     Running ../workspace_tests/tests/cli/finish_input_execution.rs (target/debug/deps/finish_input_execution-bd6d11df3236fd42)

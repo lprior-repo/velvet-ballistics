@@ -2,6 +2,7 @@
   "base_commit": "da633fe0bbde9e414173d5f7aabe314a37f8752d",
   "candidate_commit": "f003129c2e9c1c502c7c236e16c9e72592d4c967",
   "disposition": ".beads/vb-vzyac/final-precise-coverage-disposition.md",
+  "disposition_blob": "f040e0f28759fe5c50f0507472d56e59e07fc425",
   "sections": {
     "A": {
       "description": "Deleted digest_duplicate_parity.rs replaced by sensitivity/regression/payload tests",
