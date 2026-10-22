@@ -613,10 +613,13 @@ fn shared_strict_journal_persists_each_append() -> Result<(), String> {
 
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
     assert_eq!(events.len(), 1, "strict append must be immediately durable");
+    let event = events
+        .first()
+        .ok_or("strict append must produce exactly one durable event")?;
     assert!(matches!(
-        events[0],
+        event,
         JournalEvent::RunAccepted { run: r, seq, workflow: w }
-            if r == run && seq == EventSeq::new(0) && w == workflow
+            if *r == run && *seq == EventSeq::new(0) && *w == workflow
     ));
     Ok(())
 }
