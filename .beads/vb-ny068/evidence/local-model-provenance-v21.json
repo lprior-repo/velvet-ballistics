@@ -1,0 +1,65 @@
+{
+  "scope": "V21 test fixture delta and independent review only; earlier production provenance in child reports",
+  "source": "eccd15db8176c2278c47e3a57ef5e259a62d23a7",
+  "authored_rust_logic": "local 3090",
+  "independent_test_review": "local 5090",
+  "root_role": "coordination, mechanical formatting, actual gates, source audits and VCS",
+  "runs": [
+    {
+      "model": "local-3090-llama/qwen3.8-27b-uncensored",
+      "workspace": "/home/lewis/src/isoloated/vb-policy-fixture-v21",
+      "prompt": "/tmp/vb-policy-fixture-v21.txt",
+      "cloud_fallback": false,
+      "thinking": "high",
+      "runner": "mise exec -- omp",
+      "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+      "tools": "native text read exact replace edit write grep glob; NO shell",
+      "images_blocked": true,
+      "invocation_sha256": "77fef777606b1ee77ce93d46938c47009ce6b164a1c6c5525cd0e1b114a6de76",
+      "run": "vb-policy-fixture-local3090-v21",
+      "exit_code": 0
+    },
+    {
+      "model": "local-3090-llama/qwen3.8-27b-uncensored",
+      "workspace": "/home/lewis/src/isoloated/vb-policy-fixture-v21",
+      "prompt": "/tmp/vb-policy-fixture-v21-repair2.txt",
+      "cloud_fallback": false,
+      "thinking": "high",
+      "runner": "mise exec -- omp",
+      "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+      "tools": "native text read exact replace edit write grep glob; NO shell",
+      "images_blocked": true,
+      "invocation_sha256": "77fdb110644276ce4c08203d7464a0f6a511e2c735bf032248c47e03e524fafd",
+      "run": "vb-policy-fixture-local3090-v21-repair2",
+      "exit_code": 0
+    },
+    {
+      "model": "local-3090-llama/qwen3.8-27b-uncensored",
+      "workspace": "/home/lewis/src/isoloated/vb-policy-fixture-v21",
+      "prompt": "/tmp/vb-policy-fixture-v21-repair3.txt",
+      "cloud_fallback": false,
+      "thinking": "high",
+      "runner": "mise exec -- omp",
+      "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+      "tools": "native text read exact replace edit write grep glob; NO shell",
+      "images_blocked": true,
+      "invocation_sha256": "78bb5b5aa23d3c52580a0cd339d7dfea55b3b75030a6f99616d9dcbaeec1f2d2",
+      "run": "vb-policy-fixture-local3090-v21-repair3",
+      "exit_code": 0
+    },
+    {
+      "model": "local-5090-ninfer/qwen3.8-27b-uncensored",
+      "workspace": "/home/lewis/src/isoloated/vb-policy-test-review-v21",
+      "prompt": "/tmp/vb-policy-test-review-v21.txt",
+      "cloud_fallback": false,
+      "thinking": "high",
+      "runner": "mise exec -- omp",
+      "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+      "tools": "native text read exact replace edit bash write grep glob",
+      "images_blocked": true,
+      "invocation_sha256": "f383d116988de8a88cec2e9c4c9cf746c83a4fb321d16c3efac9c0140b0bd34c",
+      "run": "vb-policy-test-review-local5090-v21",
+      "exit_code": 0
+    }
+  ]
+}

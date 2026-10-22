@@ -1,0 +1,56 @@
+────────────
+ Nextest run ID 812f7b26-8fdf-484e-ac67-c8e77c4ee07c with nextest profile: default
+    Starting 14456 tests across 294 binaries (27 tests skipped)
+        FAIL [   0.004s] (13551/14456) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile
+  stdout ───
+
+    running 1 test
+    test given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile ... FAILED
+
+    failures:
+
+    failures:
+        given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile' (2070921) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:831:5:
+    assertion `left == right` failed
+      left: Admitted(RunAdmission { artifact_digest: WorkflowDigest([83, 208, 49, 139, 79, 137, 188, 173, 141, 205, 235, 171, 254, 110, 151, 176, 241, 151, 3, 29, 18, 174, 29, 113, 157, 23, 176, 169, 164, 3, 219, 252]), run_id: RunId(51), granted_capabilities: CapabilitySet { grants: [Capability { name: "network.github", action: ActionId(0) }] }, policy: Journaled, policy_pin: Pinned(WorkflowDigest([218, 104, 8, 255, 192, 216, 157, 63, 17, 102, 28, 12, 60, 219, 62, 59, 184, 55, 134, 57, 3, 239, 158, 215, 78, 26, 104, 49, 87, 28, 105, 122])), budget: None, idempotency_attested: [] })
+     right: Admitted(RunAdmission { artifact_digest: WorkflowDigest([83, 208, 49, 139, 79, 137, 188, 173, 141, 205, 235, 171, 254, 110, 151, 176, 241, 151, 3, 29, 18, 174, 29, 113, 157, 23, 176, 169, 164, 3, 219, 252]), run_id: RunId(51), granted_capabilities: CapabilitySet { grants: [Capability { name: "network.github", action: ActionId(0) }] }, policy: Journaled, policy_pin: Unverified, budget: None, idempotency_attested: [] })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.005s] (13553/14456) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted
+  stdout ───
+
+    running 1 test
+    test proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted ... FAILED
+
+    failures:
+
+    failures:
+        proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted' (2070925) panicked at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1299:1:
+    Test failed: assertion failed: `(left == right)` 
+      left: `Admitted(RunAdmission { artifact_digest: WorkflowDigest([132, 152, 1, 125, 14, 254, 165, 42, 13, 95, 139, 85, 101, 90, 162, 176, 130, 22, 15, 226, 8, 44, 254, 91, 243, 67, 15, 39, 186, 229, 183, 228]), run_id: RunId(501), granted_capabilities: CapabilitySet { grants: [Capability { name: "network.service1", action: ActionId(0) }] }, policy: Strict, policy_pin: Pinned(WorkflowDigest([218, 104, 8, 255, 192, 216, 157, 63, 17, 102, 28, 12, 60, 219, 62, 59, 184, 55, 134, 57, 3, 239, 158, 215, 78, 26, 104, 49, 87, 28, 105, 122])), budget: None, idempotency_attested: [] })`,
+     right: `Admitted(RunAdmission { artifact_digest: WorkflowDigest([132, 152, 1, 125, 14, 254, 165, 42, 13, 95, 139, 85, 101, 90, 162, 176, 130, 22, 15, 226, 8, 44, 254, 91, 243, 67, 15, 39, 186, 229, 183, 228]), run_id: RunId(501), granted_capabilities: CapabilitySet { grants: [Capability { name: "network.service1", action: ActionId(0) }] }, policy: Strict, policy_pin: Unverified, budget: None, idempotency_attested: [] })` at crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1328.
+    minimal failing input: name_suffix = 1, mutation = 0
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+────────────
+     Summary [ 364.079s] 14456 tests run: 14454 passed (21 slow), 2 failed, 27 skipped
+        FAIL [   0.004s] (13551/14456) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile
+        FAIL [   0.005s] (13553/14456) velvet-ballistics-workspace-tests::vb_qi37_4_2_strict_runtime_admission proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted
+error: test run failed
