@@ -1,0 +1,12 @@
+{
+  "status": "bounded contract corrected for implementation after qz lands; no source implementation yet",
+  "raw_v1": "Rejected imaginary enum and unconditional durability regression; preserved unaccepted",
+  "raw_v2": "Corrected actual errors but still passed originalpolicy to helper and weakened packeddurability; preserved unaccepted",
+  "coordination_corrections": [
+    "One illustrative helper argument to RuntimePolicy::Strict and explicit alladmissionprofile SyncAll guarantee",
+    "EventSeq actual fieldtype, no invented u64 field or16enumcount",
+    "Only injected precommit faults guarantee unchanged state; arbitrarybatchIO uncertain",
+    "New issuance encode errorwrapper acknowledged; existing readback errorpaths retained"
+  ],
+  "source_of_truth": "Actual source-packet-v1 and Rust executor/error.rs and packed.rs; no source changes authored by root"
+}

@@ -1,0 +1,65 @@
+xtask/src/lanes.rs:201:         let lanes = detect_available_lanes(Path::new("/workspace"));
+xtask/src/lanes.rs:202:         let required: Vec<_> = lanes.iter().filter(|l| l.required).collect();
+xtask/src/lanes.rs:203:         assert!(!required.is_empty());
+xtask/src/lanes.rs:204:     }
+xtask/src/lanes.rs:205: 
+xtask/src/lanes.rs:206:     #[test]
+xtask/src/lanes.rs:207:     fn test_flux_command_uses_wrapper_script() {
+xtask/src/lanes.rs:208:         let lane = Lane {
+xtask/src/lanes.rs:209:             name: "flux".to_string(),
+xtask/src/lanes.rs:210:             required: false,
+xtask/src/lanes.rs:211:         };
+xtask/src/lanes.rs:212:         let cmd = lane_command(&lane, "vb_core", Path::new("/workspace"));
+xtask/src/lanes.rs:213:         let expected = vec![
+xtask/src/lanes.rs:214:             "bash".to_string(),
+xtask/src/lanes.rs:215:             "/workspace/scripts/flux-check-package.sh".to_string(),
+xtask/src/lanes.rs:216:             "vb_core".to_string(),
+xtask/src/lanes.rs:217:         ];
+xtask/src/lanes.rs:218:         assert_eq!(cmd, expected);
+xtask/src/lanes.rs:219:     }
+xtask/src/lanes.rs:220: 
+xtask/src/lanes.rs:221:     #[test]
+xtask/src/lanes.rs:222:     fn test_flux_command_workspace_root_with_spaces() {
+xtask/src/lanes.rs:223:         let lane = Lane {
+xtask/src/lanes.rs:224:             name: "flux".to_string(),
+xtask/src/lanes.rs:225:             required: false,
+xtask/src/lanes.rs:226:         };
+xtask/src/lanes.rs:227:         let cmd = lane_command(&lane, "vb_core", Path::new("/home/user/my workspace"));
+xtask/src/lanes.rs:228:         let expected = vec![
+xtask/src/lanes.rs:229:             "bash".to_string(),
+xtask/src/lanes.rs:230:             "/home/user/my workspace/scripts/flux-check-package.sh".to_string(),
+xtask/src/lanes.rs:231:             "vb_core".to_string(),
+xtask/src/lanes.rs:232:         ];
+xtask/src/lanes.rs:233:         assert_eq!(cmd, expected);
+xtask/src/lanes.rs:234:     }
+xtask/src/lanes.rs:235: 
+xtask/src/lanes.rs:236:     #[test]
+xtask/src/lanes.rs:237:     fn test_flux_command_workspace_root_with_metacharacters() {
+xtask/src/lanes.rs:238:         let lane = Lane {
+xtask/src/lanes.rs:239:             name: "flux".to_string(),
+xtask/src/lanes.rs:240:             required: false,
+xtask/src/lanes.rs:241:         };
+xtask/src/lanes.rs:242:         let cmd = lane_command(&lane, "vb_core", Path::new("/tmp/$HOME (test) & co"));
+xtask/src/lanes.rs:243:         let expected = vec![
+xtask/src/lanes.rs:244:             "bash".to_string(),
+xtask/src/lanes.rs:245:             "/tmp/$HOME (test) & co/scripts/flux-check-package.sh".to_string(),
+xtask/src/lanes.rs:246:             "vb_core".to_string(),
+xtask/src/lanes.rs:247:         ];
+xtask/src/lanes.rs:248:         assert_eq!(cmd, expected);
+xtask/src/lanes.rs:249:     }
+xtask/src/lanes.rs:250: 
+xtask/src/lanes.rs:251:     #[test]
+xtask/src/lanes.rs:252:     fn test_flux_command_package_metacharacters_retained_as_one_argv() {
+xtask/src/lanes.rs:253:         let lane = Lane {
+xtask/src/lanes.rs:254:             name: "flux".to_string(),
+xtask/src/lanes.rs:255:             required: false,
+xtask/src/lanes.rs:256:         };
+xtask/src/lanes.rs:257:         let cmd = lane_command(&lane, "vb_core;$(printf nope)", Path::new("/workspace"));
+xtask/src/lanes.rs:258:         let expected = vec![
+xtask/src/lanes.rs:259:             "bash".to_string(),
+xtask/src/lanes.rs:260:             "/workspace/scripts/flux-check-package.sh".to_string(),
+xtask/src/lanes.rs:261:             "vb_core;$(printf nope)".to_string(),
+xtask/src/lanes.rs:262:         ];
+xtask/src/lanes.rs:263:         assert_eq!(cmd, expected);
+xtask/src/lanes.rs:264:     }
+xtask/src/lanes.rs:265: }

@@ -1,0 +1,100 @@
+xtask/src/lanes.rs:101: 
+xtask/src/lanes.rs:102: fn flux_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
+xtask/src/lanes.rs:103:     let script_path = workspace_root.join("scripts").join("flux-check-package.sh");
+xtask/src/lanes.rs:104:     vec![
+xtask/src/lanes.rs:105:         "bash".into(),
+xtask/src/lanes.rs:106:         script_path.display().to_string(),
+xtask/src/lanes.rs:107:         crate_name.into(),
+xtask/src/lanes.rs:108:     ]
+xtask/src/lanes.rs:109: }
+xtask/src/lanes.rs:110: 
+xtask/src/lanes.rs:111: pub fn detect_available_lanes(workspace_root: &Path) -> Vec<Lane> {
+xtask/src/lanes.rs:112:     let all_lanes = [
+xtask/src/lanes.rs:113:         ("test", true),
+xtask/src/lanes.rs:114:         ("clippy", true),
+xtask/src/lanes.rs:115:         ("nextest", false),
+xtask/src/lanes.rs:116:         ("kani", false),
+xtask/src/lanes.rs:117:         ("miri", false),
+xtask/src/lanes.rs:118:         ("loom", false),
+xtask/src/lanes.rs:119:         ("fuzz", false),
+xtask/src/lanes.rs:120:         ("mutants", false),
+xtask/src/lanes.rs:121:         ("coverage", false),
+xtask/src/lanes.rs:122:         ("verus", false),
+xtask/src/lanes.rs:123:         ("tla", false),
+xtask/src/lanes.rs:124:         ("flux", false),
+xtask/src/lanes.rs:125:     ];
+xtask/src/lanes.rs:126: 
+xtask/src/lanes.rs:127:     all_lanes
+xtask/src/lanes.rs:128:         .iter()
+xtask/src/lanes.rs:129:         .filter(|(name, required)| {
+xtask/src/lanes.rs:130:             if *required {
+xtask/src/lanes.rs:131:                 true
+xtask/src/lanes.rs:132:             } else {
+xtask/src/lanes.rs:133:                 is_tool_available(name, workspace_root)
+xtask/src/lanes.rs:134:             }
+xtask/src/lanes.rs:135:         })
+xtask/src/lanes.rs:136:         .map(|(name, required)| Lane {
+xtask/src/lanes.rs:137:             name: name.to_string(),
+xtask/src/lanes.rs:138:             required: *required,
+xtask/src/lanes.rs:139:         })
+xtask/src/lanes.rs:140:         .collect()
+xtask/src/lanes.rs:141: }
+xtask/src/lanes.rs:142: 
+xtask/src/lanes.rs:143: fn is_tool_available(lane: &str, workspace_root: &Path) -> bool {
+xtask/src/lanes.rs:144:     match lane {
+xtask/src/lanes.rs:145:         "nextest" => tool_in_path("cargo-nextest"),
+xtask/src/lanes.rs:146:         "kani" => tool_in_path("cargo-kani"),
+xtask/src/lanes.rs:147:         "miri" => tool_in_path("cargo-miri"),
+xtask/src/lanes.rs:148:         "loom" => has_crate_feature("loom", workspace_root),
+xtask/src/lanes.rs:149:         "fuzz" => tool_in_path("cargo-fuzz"),
+xtask/src/lanes.rs:150:         "mutants" => tool_in_path("cargo-mutants"),
+xtask/src/lanes.rs:151:         "coverage" => tool_in_path("cargo-llvm-cov"),
+xtask/src/lanes.rs:152:         "verus" => workspace_root.join("verification/verus").exists(),
+xtask/src/lanes.rs:153:         "tla" => workspace_root.join("verification/tla").exists(),
+xtask/src/lanes.rs:154:         "flux" => tool_in_path("cargo-flux"),
+xtask/src/lanes.rs:155:         _ => false,
+xtask/src/lanes.rs:156:     }
+xtask/src/lanes.rs:157: }
+xtask/src/lanes.rs:158: 
+xtask/src/lanes.rs:159: fn tool_in_path(tool: &str) -> bool {
+xtask/src/lanes.rs:160:     std::process::Command::new(tool)
+xtask/src/lanes.rs:161:         .arg("--version")
+xtask/src/lanes.rs:162:         .output()
+xtask/src/lanes.rs:163:         .map(|o| o.status.success())
+xtask/src/lanes.rs:164:         .unwrap_or(false)
+xtask/src/lanes.rs:165: }
+xtask/src/lanes.rs:166: 
+xtask/src/lanes.rs:167: fn has_crate_feature(_feature: &str, _workspace_root: &Path) -> bool {
+xtask/src/lanes.rs:168:     // Simplified: check if any crate has the feature
+xtask/src/lanes.rs:169:     // In production, parse Cargo.toml for feature flags
+xtask/src/lanes.rs:170:     false
+xtask/src/lanes.rs:171: }
+xtask/src/lanes.rs:172: 
+xtask/src/lanes.rs:173: #[cfg(test)]
+xtask/src/lanes.rs:174: mod tests {
+xtask/src/lanes.rs:175:     use super::*;
+xtask/src/lanes.rs:176: 
+xtask/src/lanes.rs:177:     #[test]
+xtask/src/lanes.rs:178:     fn test_lane_command_test() {
+xtask/src/lanes.rs:179:         let lane = Lane {
+xtask/src/lanes.rs:180:             name: "test".to_string(),
+xtask/src/lanes.rs:181:             required: true,
+xtask/src/lanes.rs:182:         };
+xtask/src/lanes.rs:183:         let cmd = lane_command(&lane, "vb_core", Path::new("/workspace"));
+xtask/src/lanes.rs:184:         assert_eq!(cmd[0], "cargo");
+xtask/src/lanes.rs:185:         assert_eq!(cmd[1], "test");
+xtask/src/lanes.rs:186:     }
+xtask/src/lanes.rs:187: 
+xtask/src/lanes.rs:188:     #[test]
+xtask/src/lanes.rs:189:     fn test_lane_command_clippy() {
+xtask/src/lanes.rs:190:         let lane = Lane {
+xtask/src/lanes.rs:191:             name: "clippy".to_string(),
+xtask/src/lanes.rs:192:             required: true,
+xtask/src/lanes.rs:193:         };
+xtask/src/lanes.rs:194:         let cmd = lane_command(&lane, "vb_core", Path::new("/workspace"));
+xtask/src/lanes.rs:195:         assert!(cmd.contains(&"-D".to_string()));
+xtask/src/lanes.rs:196:         assert!(cmd.contains(&"warnings".to_string()));
+xtask/src/lanes.rs:197:     }
+xtask/src/lanes.rs:198: 
+xtask/src/lanes.rs:199:     #[test]
+xtask/src/lanes.rs:200:     fn test_required_lanes_always_available() {

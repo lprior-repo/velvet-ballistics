@@ -1,0 +1,56 @@
+crates/vb_storage/src/inputs/submission.rs:101: 
+crates/vb_storage/src/inputs/submission.rs:102:     fn stage_acceptance(
+crates/vb_storage/src/inputs/submission.rs:103:         &self,
+crates/vb_storage/src/inputs/submission.rs:104:         batch: &mut crate::JournalWriteBatch<'_>,
+crates/vb_storage/src/inputs/submission.rs:105:         policy: RuntimePolicy,
+crates/vb_storage/src/inputs/submission.rs:106:     ) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/submission.rs:107:         if policy == RuntimePolicy::Relaxed {
+crates/vb_storage/src/inputs/submission.rs:108:             return Ok(());
+crates/vb_storage/src/inputs/submission.rs:109:         }
+crates/vb_storage/src/inputs/submission.rs:110:         batch.append_event(&self.accepted_event())?;
+crates/vb_storage/src/inputs/submission.rs:111:         batch.append_event(&self.admission_event(policy))
+crates/vb_storage/src/inputs/submission.rs:112:     }
+crates/vb_storage/src/inputs/submission.rs:113: 
+crates/vb_storage/src/inputs/submission.rs:114:     fn accepted_event(&self) -> JournalEvent {
+crates/vb_storage/src/inputs/submission.rs:115:         JournalEvent::RunAccepted {
+crates/vb_storage/src/inputs/submission.rs:116:             run: self.header.run,
+crates/vb_storage/src/inputs/submission.rs:117:             seq: EventSeq::new(0),
+crates/vb_storage/src/inputs/submission.rs:118:             workflow: self.header.compiled_digest,
+crates/vb_storage/src/inputs/submission.rs:119:         }
+crates/vb_storage/src/inputs/submission.rs:120:     }
+crates/vb_storage/src/inputs/submission.rs:121: 
+crates/vb_storage/src/inputs/submission.rs:122:     fn admission_event(&self, policy: RuntimePolicy) -> JournalEvent {
+crates/vb_storage/src/inputs/submission.rs:123:         JournalEvent::RunAdmission {
+crates/vb_storage/src/inputs/submission.rs:124:             input_digest: crate::RunInputBinding::Digest(self.inputs.input_digest()),
+crates/vb_storage/src/inputs/submission.rs:125:             run: self.header.run,
+crates/vb_storage/src/inputs/submission.rs:126:             seq: EventSeq::new(1),
+crates/vb_storage/src/inputs/submission.rs:127:             artifact_digest: self.artifact.digest,
+crates/vb_storage/src/inputs/submission.rs:128:             policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
+crates/vb_storage/src/inputs/submission.rs:129:             granted_capabilities: vb_core::CapabilitySet::empty(),
+crates/vb_storage/src/inputs/submission.rs:130:             policy,
+crates/vb_storage/src/inputs/submission.rs:131:         }
+crates/vb_storage/src/inputs/submission.rs:132:     }
+crates/vb_storage/src/inputs/submission.rs:133: }
+crates/vb_storage/src/inputs/submission.rs:134: 
+crates/vb_storage/src/inputs/submission.rs:135: impl FjallJournal {
+crates/vb_storage/src/inputs/submission.rs:136:     /// Commits source, executable artifact, inputs, header and acceptance indexes atomically.
+crates/vb_storage/src/inputs/submission.rs:137:     /// Strict returns only after SyncAll. Journaled/Relaxed retain a data-loss window.
+crates/vb_storage/src/inputs/submission.rs:138:     pub fn commit_run_submission(
+crates/vb_storage/src/inputs/submission.rs:139:         &self,
+crates/vb_storage/src/inputs/submission.rs:140:         submission: &RunSubmission,
+crates/vb_storage/src/inputs/submission.rs:141:         policy: RuntimePolicy,
+crates/vb_storage/src/inputs/submission.rs:142:     ) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/submission.rs:143:         submission.validate_policy(policy)?;
+crates/vb_storage/src/inputs/submission.rs:144:         let _guard = self
+crates/vb_storage/src/inputs/submission.rs:145:             .write_lock
+crates/vb_storage/src/inputs/submission.rs:146:             .lock()
+crates/vb_storage/src/inputs/submission.rs:147:             .map_err(|_| JournalError::WriteLockPoisoned)?;
+crates/vb_storage/src/inputs/submission.rs:148:         if self.run_header(submission.header.run)?.is_some()
+crates/vb_storage/src/inputs/submission.rs:149:             || self.run_inputs(submission.header.run)?.is_some()
+crates/vb_storage/src/inputs/submission.rs:150:             || !self.events_for_run(submission.header.run)?.is_empty()
+crates/vb_storage/src/inputs/submission.rs:151:         {
+crates/vb_storage/src/inputs/submission.rs:152:             return Err(JournalError::RunAlreadyExists);
+crates/vb_storage/src/inputs/submission.rs:153:         }
+crates/vb_storage/src/inputs/submission.rs:154:         submission.commit(self, policy)
+crates/vb_storage/src/inputs/submission.rs:155:     }
+crates/vb_storage/src/inputs/submission.rs:156: }
