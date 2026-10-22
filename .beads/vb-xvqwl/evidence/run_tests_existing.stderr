@@ -1,0 +1,4 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xvqwl-local5090-review/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.33s
+     Running tests/durable_retry_execution.rs (target/debug/deps/durable_retry_execution-335bd1717a9f98da)
+     Running tests/durable_retry_red_phase.rs (target/debug/deps/durable_retry_red_phase-b8915118a32ac43b)

@@ -1,0 +1,17 @@
+
+running 12 tests
+test bdd_idempotency::idem_002_duplicate_completion_different_digest ... ok
+test bdd_idempotency::idem_001_duplicate_completion_same_key ... ok
+test bdd_idempotency::idem_003_non_idempotent_replay_blocked ... ok
+test bdd_idempotency::idem_005_cancel_duplicate_returns_error ... ok
+test bdd_idempotency::idem_004_resume_after_crash_no_duplication ... ok
+test bdd_idempotency::idem_007_resume_on_completed_returns_stale ... ok
+test bdd_idempotency::idem_008_retry_duplicate_returns_error ... ok
+test bdd_idempotency::idem_006_cancel_on_terminal_returns_stale ... ok
+test bdd_idempotency::idem_011_evidence_export_determinism ... ok
+test bdd_idempotency::idem_010_recovery_replay_no_duplication ... ok
+test bdd_idempotency::idem_012_eviction_does_not_corrupt_state ... ok
+test bdd_idempotency::idem_009_answer_duplicate_returns_error ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

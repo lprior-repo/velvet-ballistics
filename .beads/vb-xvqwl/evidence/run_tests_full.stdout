@@ -1,0 +1,51 @@
+
+running 9 tests
+test ask_answered_persists_before_ack ... ok
+test gate_fails_when_primitive_row_is_missing ... ok
+test gate_fails_when_row_omits_replay_evidence ... ok
+test gate_fails_when_row_claims_ack_before_persist ... ok
+test cancel_persists_before_ack ... ok
+test action_completed_persists_before_ack ... ok
+test submit_handler_persists_before_ack ... ok
+test action_failed_persists_before_ack ... ok
+test timer_fired_persists_before_ack ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test checkpoint_roundtrips_full_retry_authority ... ok
+test durable_retry_reopens_and_completes_failed_step ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 9 tests
+test record_retry_attempt_integration_gap ... ok
+test ticket_with_retry_capacity_increases_capacity_to_max_attempts ... ok
+test ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata ... ok
+test action_failure_preserves_action_completed_slots_integration_gap ... ok
+test apply_action_failure_to_state_resets_pc_to_failed_step_on_retry ... ok
+test apply_error_handler_writes_step_index_to_error_slot_integration_gap ... ok
+test retry_is_available_returns_false_when_no_retry_metadata ... ok
+test retry_is_available_returns_false_for_nonretryable_policy ... ok
+test journal_replay_idempotent_action_failed ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test zero_run_attempt_ticket_rejected ... ok
+test run_attempt_advances_but_per_action_attempt_does_not ... ok
+test stale_old_ticket_rejected_after_durable_retry ... ok
+test future_run_attempt_ticket_rejected ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 2 tests
+test completion_rejects_tampering_without_journal_or_run_mutation ... ok
+test failure_rejects_tampering_without_journal_or_run_mutation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

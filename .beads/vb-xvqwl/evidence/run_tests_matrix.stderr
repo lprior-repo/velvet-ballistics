@@ -1,0 +1,3 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-xvqwl-local5090-review/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running tests/ticket_authority_matrix.rs (target/debug/deps/ticket_authority_matrix-7df4206ea2717a60)
