@@ -1,0 +1,31 @@
+Validating .moon/tasks/all.yml
+Tasks: fuzz-smoke, fuzz-tsan, fuzz-regress
+
+--- fuzz-smoke ---
+  ✓ shell syntax valid
+  ✓ --target-dir: target/fuzz-asan/build
+  ✓ binary path: ${bin_dir}/${fuzz_target}
+    ✓ binary path consistent with target-dir
+  ✓ build log redirection present
+
+--- fuzz-tsan ---
+  ✓ shell syntax valid
+  ✓ --target-dir: target/fuzz-tsan/build
+  ✓ binary path: target/fuzz-tsan/build/x86_64-unknown-linux-gnu/release/${tgt}
+    ✓ binary path consistent with target-dir
+  ✓ build log redirection present
+
+--- fuzz-regress ---
+  ✓ shell syntax valid
+  ✓ --target-dir: target/fuzz-asan/build
+  ✓ binary path: target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/${tgt}
+    ✓ binary path consistent with target-dir
+  ✓ build log redirection present
+
+--- Cross-task consistency ---
+  ✓ ASAN tasks share target dir: target/fuzz-asan/build
+  ✓ TSAN uses separate dir: target/fuzz-tsan/build
+
+  Actual fuzz targets: 93
+
+All validations passed (syntax and path consistency only)

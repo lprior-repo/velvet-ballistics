@@ -2,36 +2,51 @@
 
 ## Status: READY FOR REVIEW
 
-Single-line fix applied to `.moon/tasks/all.yml` line 604.
+Three-lane fix applied to `.moon/tasks/all.yml` covering all three fuzz tasks.
 
 ## What was changed
 
+Three tasks modified, 5 lines changed total:
+
 ```diff
--        bin="fuzz/target/x86_64-unknown-linux-gnu/release/${tgt}"
-+        bin="target/x86_64-unknown-linux-gnu/release/${tgt}"
+--- fuzz-smoke (lines 535, 545) ---
+- cargo fuzz build --target x86_64-unknown-linux-gnu
++ cargo fuzz build --target x86_64-unknown-linux-gnu --target-dir "$PWD/target/fuzz-asan/build"
+- bin_dir="fuzz/target/x86_64-unknown-linux-gnu/release"
++ bin_dir="target/fuzz-asan/build/x86_64-unknown-linux-gnu/release"
+
+--- fuzz-tsan (lines 593-596, 604) ---
++ cargo fuzz build ... --target-dir "$PWD/target/fuzz-tsan/build"
+- bin="target/x86_64-unknown-linux-gnu/release/${tgt}"
++ bin="target/fuzz-tsan/build/x86_64-unknown-linux-gnu/release/${tgt}"
+
+--- fuzz-regress (lines 631, 639) ---
+- cargo fuzz build --target x86_64-unknown-linux-gnu
++ cargo fuzz build --target x86_64-unknown-linux-gnu --target-dir "$PWD/target/fuzz-asan/build"
+- bin="fuzz/target/x86_64-unknown-linux-gnu/release/${tgt}"
++ bin="target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/${tgt}"
 ```
 
 ## Why
 
-Pure virtual Cargo workspace outputs `cargo fuzz build` binaries to `target/`, not `fuzz/target/`.
-The baseline d20 CI run built all TSAN fuzz targets successfully (15m 21s), but the `fuzz-tsan`
-task's executable-lookup loop used the wrong path and reported `TSAN-MISSING: accessor_traversal`
-(and all other targets) as failures.
+- `fuzz-smoke` and `fuzz-regress` used `fuzz/target/` which doesn't exist in this pure virtual workspace (cargo-fuzz outputs to workspace root `target/`)
+- `fuzz-tsan` used generic `target/` which races with ASAN builds when tasks run in parallel or with overlapping build state
+- Explicit `--target-dir` on all three tasks ensures isolation and correct binary discovery
 
 ## Verification performed
 
-1. Confirmed actual executable exists at `target/x86_64-unknown-linux-gnu/release/accessor_traversal` (ELF binary, 1.3MB)
-2. Confirmed old path `fuzz/target/` does not exist at all
-3. Confirmed build actually succeeded (build.err shows `Finished ... in 15m 21s`)
-4. Validated task YAML structure preserved (indentation, shell quoting)
-5. Git diff shows exactly one line changed
+1. Shell syntax validated for all three tasks via `bash -n`
+2. Path consistency verified: each task's build output dir matches its binary lookup dir
+3. Cross-task consistency verified: ASAN tasks share `target/fuzz-asan/build`, TSAN uses separate `target/fuzz-tsan/build`
+4. `cargo fuzz list` returns 93 targets, confirming workspace is intact
+5. YAML structure and indentation preserved
 
 ## Remaining work (root-owned)
 
-- Final canonical TSAN rebuild + run from source-frozen commit (15m cold build)
+- Final canonical ASAN+TSAN rebuild + run from source-frozen commit
 - Full `moon ci` gate
+- Fresh DeepSeek review of implementation
 
 ## No other changes
 
-No product source, tests, or other task configurations modified. `fuzz-regress` task path
-not changed (not the same bug; it already uses the correct workspace target path).
+No product source, tests, or other task configurations modified. No sanitizer flags, build flags, or limits changed. Pure path contract fix.

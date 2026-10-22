@@ -1,55 +1,53 @@
-# Bead vb-ja1zd: Fix fuzz-tsan target binary lookup path
+# Bead vb-ja1zd: Fix all three fuzz task binary lookup paths
 
 ## Problem
 
-The `fuzz-tsan` Moon task (`.moon/tasks/all.yml`) hardcodes the binary lookup path as
-`fuzz/target/x86_64-unknown-linux-gnu/release/${tgt}`, but this is a pure virtual Cargo
-workspace where `cargo fuzz build` outputs binaries to the workspace root `target/`
-directory, not to `fuzz/target/`.
+Three Moon fuzz tasks in `.moon/tasks/all.yml` used incorrect or race-prone binary lookup paths:
 
-Evidence from canonical baseline d20 (vb-2lyiw):
-- `.beads/vb-2lyiw/evidence/canonical-frozen-baseline.stdout` reports `TSAN-MISSING: accessor_traversal`
-- `target/fuzz-tsan/build.err` proves the build succeeded (15m 21s)
-- Actual executable exists at `target/x86_64-unknown-linux-gnu/release/accessor_traversal`
-- `fuzz/target/` directory does not exist
+1. **fuzz-smoke**: Used `fuzz/target/x86_64-unknown-linux-gnu/release/` (wrong; pure virtual workspace outputs to `target/`)
+2. **fuzz-tsan**: Used `target/x86_64-unknown-linux-gnu/release/` (generic target dir, races with ASAN builds)
+3. **fuzz-regress**: Used `fuzz/target/x86_64-unknown-linux-gnu/release/` (wrong; same bug as fuzz-smoke)
+
+All three tasks built without `--target-dir`, meaning builds shared the default `target/` directory. When ASAN and TSAN tasks ran in parallel (or sequentially with overlapping build state), they could check the wrong binary or miss binaries entirely.
 
 ## Contract
 
-The `fuzz-tsan` task must resolve the actual Cargo target directory where `cargo fuzz build`
-outputs binaries for this pure virtual workspace. Every listed fuzz target that was actually
-built must be found at the declared output directory.
+All three fuzz tasks must:
+1. Use explicit `--target-dir` build flag
+2. Use consistent executable lookup path matching the build output
+3. ASAN tasks (fuzz-smoke, fuzz-regress) share one target directory
+4. TSAN task (fuzz-tsan) uses a separate target directory to avoid race conditions
 
 Requirements:
-1. Unchanged thread sanitizer flags
-2. Unchanged `--build-std` flag
-3. Unchanged pinned nightly toolchain
-4. Unchanged target triple `x86_64-unknown-linux-gnu`
-5. Correct binary lookup path matching actual `cargo fuzz build` output
+- Unchanged sanitizer flags (`--sanitizer thread` for TSAN, default ASAN for others)
+- Unchanged `--build-std` flag for TSAN
+- Unchanged pinned nightly toolchain
+- Unchanged target triple `x86_64-unknown-linux-gnu`
+- No disabled builds, no skipped targets, no fake binaries
 
-## Fix
+## Fix Applied
 
-Change line 604 of `.moon/tasks/all.yml` from:
-```
-bin="fuzz/target/x86_64-unknown-linux-gnu/release/${tgt}"
-```
-to:
-```
-bin="target/x86_64-unknown-linux-gnu/release/${tgt}"
-```
+Three-lane path correction:
 
-This is a one-line path correction. No build flags, cache policy, or check logic changed.
+| Task | Build --target-dir | Binary lookup path |
+|------|-------------------|-------------------|
+| fuzz-smoke | `$PWD/target/fuzz-asan/build` | `target/fuzz-asan/build/x86_64-unknown-linux-gnu/release` |
+| fuzz-tsan | `$PWD/target/fuzz-tsan/build` | `target/fuzz-tsan/build/x86_64-unknown-linux-gnu/release/${tgt}` |
+| fuzz-regress | `$PWD/target/fuzz-asan/build` | `target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/${tgt}` |
 
-## Acceptance Criteria
+## Verification Performed
 
-1. Task YAML syntax valid
-2. `accessor_traversal` (and any other actually-built TSAN target) found at corrected path
-3. Old path `fuzz/target/...` verified absent (not a symlink, not a real directory)
-4. Minimal diff: single line changed
+1. Shell syntax validated for all three tasks via `bash -n`
+2. Path consistency verified: build output dir matches binary lookup dir
+3. Cross-task consistency: ASAN tasks share dir, TSAN uses separate dir
+4. Actual fuzz targets listed via `cargo fuzz list` (93 targets)
+5. YAML structure preserved
 
-## Limits
+## Remaining Work (root-owned)
 
-- Bounded validation only: inspected baseline build output, did not rebuild
-- Final canonical TSAN rerun is root-owned after source freeze
-- `fuzz-regress` task path not expanded (not the same bug; verified correct)
-- Only `accessor_traversal` was built in the baseline; other targets would be built
-  and found by the same corrected path when the task runs in full CI
+- Final canonical ASAN+TSAN rebuild + run from source-frozen commit
+- Full `moon ci` gate
+
+## Scope
+
+Configuration fix only. No runtime implementation changes. No sanitizer flag changes. No build/skip policy changes.

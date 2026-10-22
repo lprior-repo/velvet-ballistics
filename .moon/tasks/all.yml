@@ -532,7 +532,7 @@ tasks:
       export PATH="/cache/cargo-shared/bin:${PATH}"
       mkdir -p target/moon-locks
       mkdir -p target/fuzz-smoke
-      if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu >target/fuzz-smoke/build.log 2>target/fuzz-smoke/build.err; then
+      if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu --target-dir "$PWD/target/fuzz-asan/build" >target/fuzz-smoke/build.log 2>target/fuzz-smoke/build.err; then
         cat target/fuzz-smoke/build.log
         cat target/fuzz-smoke/build.err
         exit 1
@@ -542,7 +542,7 @@ tasks:
         echo "cargo fuzz list returned no targets" >&2
         exit 1
       fi
-      bin_dir="fuzz/target/x86_64-unknown-linux-gnu/release"
+      bin_dir="target/fuzz-asan/build/x86_64-unknown-linux-gnu/release"
       for fuzz_target in "${fuzz_targets[@]}"; do
         bin="${bin_dir}/${fuzz_target}"
         {
@@ -589,19 +589,23 @@ tasks:
       set -euo pipefail
       export PATH="/cache/cargo-shared/bin:${PATH}"
       mkdir -p target/moon-locks target/fuzz-tsan
-      flock --shared target/moon-locks/source-mutation.lock \
+      if ! flock --shared target/moon-locks/source-mutation.lock \
         rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu \
           --sanitizer thread \
+          --target-dir "$PWD/target/fuzz-tsan/build" \
           --build-std \
-          >target/fuzz-tsan/build.log 2>target/fuzz-tsan/build.err \
-        || { cat target/fuzz-tsan/build.{log,err}; exit 1; }
+        >target/fuzz-tsan/build.log 2>target/fuzz-tsan/build.err; then
+        cat target/fuzz-tsan/build.log
+        cat target/fuzz-tsan/build.err
+        exit 1
+      fi
       mapfile -t fuzz_targets < <(cargo fuzz list)
       if [ "${#fuzz_targets[@]}" -eq 0 ]; then
         echo "cargo fuzz list returned no targets" >&2
         exit 1
       fi
       for tgt in "${fuzz_targets[@]}"; do
-        bin="target/x86_64-unknown-linux-gnu/release/${tgt}"
+        bin="target/fuzz-tsan/build/x86_64-unknown-linux-gnu/release/${tgt}"
         if [ -x "$bin" ]; then
           echo "TSAN-OK: $tgt"
         else
@@ -628,7 +632,7 @@ tasks:
       set -euo pipefail
       export PATH="/cache/cargo-shared/bin:${PATH}"
       mkdir -p target/moon-locks target/fuzz-regress
-      if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu >target/fuzz-regress/build.log 2>target/fuzz-regress/build.err; then
+      if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu --target-dir "$PWD/target/fuzz-asan/build" >target/fuzz-regress/build.log 2>target/fuzz-regress/build.err; then
         cat target/fuzz-regress/build.log
         cat target/fuzz-regress/build.err
         exit 1
@@ -636,7 +640,7 @@ tasks:
       rc=0
       while IFS= read -r artifact; do
         tgt=$(basename "$(dirname "$artifact")")
-        bin="fuzz/target/x86_64-unknown-linux-gnu/release/${tgt}"
+        bin="target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/${tgt}"
         if [ ! -x "$bin" ]; then
           echo "MISSING: $tgt (binary required for $artifact)"
           rc=1
