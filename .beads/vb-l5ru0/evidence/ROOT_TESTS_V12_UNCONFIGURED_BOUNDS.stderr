@@ -1,0 +1,175 @@
+error[E0425]: cannot find type `ActionPack` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:8:11
+   |
+ 8 |     pack: ActionPack,
+   |           ^^^^^^^^^^
+   |
+  ::: crates/vb_core/src/action/name.rs:24:1
+   |
+24 | pub struct ActionName(String);
+   | --------------------- similarly named struct `ActionName` defined here
+   |
+help: a struct with a similar name exists
+   |
+ 8 -     pack: ActionPack,
+ 8 +     pack: ActionName,
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_core::action_pack::ActionPack;
+   |
+
+error[E0425]: cannot find type `AcceptedArtifact` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:10:15
+   |
+10 |     artifact: AcceptedArtifact,
+   |               ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_storage::AcceptedArtifact;
+   |
+
+error[E0425]: cannot find type `RegisterGrant` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:13:12
+   |
+13 |     grant: RegisterGrant,
+   |            ^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_storage::executor::RegisterGrant;
+   |
+
+error[E0425]: cannot find type `ActionPack` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:31:31
+   |
+31 | ) -> Result<(ExecutorCatalog, ActionPack), Box<dyn std::error::Error>> {
+   |                               ^^^^^^^^^^
+   |
+  ::: crates/vb_core/src/action/name.rs:24:1
+   |
+24 | pub struct ActionName(String);
+   | --------------------- similarly named struct `ActionName` defined here
+   |
+help: a struct with a similar name exists
+   |
+31 - ) -> Result<(ExecutorCatalog, ActionPack), Box<dyn std::error::Error>> {
+31 + ) -> Result<(ExecutorCatalog, ActionName), Box<dyn std::error::Error>> {
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_core::action_pack::ActionPack;
+   |
+
+error[E0425]: cannot find type `ActionPack` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:41:12
+   |
+41 |     pack: &ActionPack,
+   |            ^^^^^^^^^^
+   |
+  ::: crates/vb_core/src/action/name.rs:24:1
+   |
+24 | pub struct ActionName(String);
+   | --------------------- similarly named struct `ActionName` defined here
+   |
+help: a struct with a similar name exists
+   |
+41 -     pack: &ActionPack,
+41 +     pack: &ActionName,
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_core::action_pack::ActionPack;
+   |
+
+error[E0425]: cannot find type `AcceptedArtifact` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:42:33
+   |
+42 | ) -> Result<(Arc<FjallJournal>, AcceptedArtifact), Box<dyn std::error::Error>> {
+   |                                 ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_storage::AcceptedArtifact;
+   |
+
+error[E0425]: cannot find type `AcceptedArtifact` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:73:16
+   |
+73 |     artifact: &AcceptedArtifact,
+   |                ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_storage::AcceptedArtifact;
+   |
+
+error[E0425]: cannot find type `RegisterGrant` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:76:28
+   |
+76 | ) -> Result<(ActionTicket, RegisterGrant), Box<dyn std::error::Error>> {
+   |                            ^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_storage::executor::RegisterGrant;
+   |
+
+error[E0425]: cannot find type `DecisionRecord` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:85:13
+   |
+85 | ) -> Result<DecisionRecord, Box<dyn std::error::Error>> {
+   |             ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_core::policy::DecisionRecord;
+   |
+
+error[E0425]: cannot find type `DecisionRecord` in this scope
+  --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:99:13
+   |
+99 | ) -> Result<DecisionRecord, Box<dyn std::error::Error>> {
+   |             ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_core::policy::DecisionRecord;
+   |
+
+error[E0425]: cannot find type `DecisionRecord` in this scope
+   --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:109:48
+    |
+109 | fn assert_decision(case: &TestCase, decision: &DecisionRecord, expected: &DecisionRecord) {
+    |                                                ^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct
+    |
+  1 + use vb_core::policy::DecisionRecord;
+    |
+
+error[E0425]: cannot find type `DecisionRecord` in this scope
+   --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:109:75
+    |
+109 | fn assert_decision(case: &TestCase, decision: &DecisionRecord, expected: &DecisionRecord) {
+    |                                                                           ^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct
+    |
+  1 + use vb_core::policy::DecisionRecord;
+    |
+
+error[E0425]: cannot find type `DecisionRecord` in this scope
+   --> crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:124:16
+    |
+124 |     expected: &DecisionRecord,
+    |                ^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct
+    |
+  1 + use vb_core::policy::DecisionRecord;
+    |
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_7x0ol_probe_registered_executor") due to 13 previous errors
