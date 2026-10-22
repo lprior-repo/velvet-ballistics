@@ -477,15 +477,16 @@ fn readonly_journal_is_debug() {
 }
 
 #[test]
-fn readonly_journal_declared_keyspaces_returns_eleven() {
+fn readonly_journal_declared_keyspaces_returns_twelve() {
     // Static method — proves the type is accessible.
-    // Actual count is 11 after emergency_deny keyspace was added (vb-h7rex).
+    // Actual count is 12 after artifact_acceptance keyspace was added (vb-qz2yn).
     let spaces = ReadOnlyJournal::declared_keyspaces();
-    assert_eq!(spaces.len(), 11);
+    assert_eq!(spaces.len(), 12);
     // Verify all keyspace names are non-empty (cold path — no JSON/YAML).
     for &name in &spaces {
         assert!(!name.is_empty(), "keyspace name must not be empty");
     }
+    assert!(spaces.contains(&"artifact_acceptance"));
 }
 
 /// Verify that no write methods exist on ReadOnlyJournal by checking

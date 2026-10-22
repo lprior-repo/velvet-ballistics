@@ -723,7 +723,7 @@ mod tests {
     fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        assert_eq!(FjallJournal::declared_keyspaces().len(), 11);
+        assert_eq!(FjallJournal::declared_keyspaces().len(), 12);
 
         let source_bytes = vec![b'n', b'a', b'm', b'e'];
         let workflow_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
@@ -1648,7 +1648,7 @@ mod tests {
 
         let reopened = init_keyspaces(temp_dir.path());
         assert!(reopened.is_ok(), "init_keyspaces should succeed");
-        assert_eq!(FjallJournal::declared_keyspaces().len(), 11);
+        assert_eq!(FjallJournal::declared_keyspaces().len(), 12);
     }
 
     #[test]

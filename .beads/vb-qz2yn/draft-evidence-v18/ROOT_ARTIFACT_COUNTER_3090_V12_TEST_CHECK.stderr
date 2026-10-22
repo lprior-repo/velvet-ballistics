@@ -1,0 +1,88 @@
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-failure-tests-local3090-v10/crates/vb_storage)
+error[E0277]: `?` couldn't convert the error to `std::string::String`
+   --> crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:203:29
+    |
+176 | fn counter_overflow_at_u64_max() -> Result<(), String> {
+    |                                     ------------------ expected `std::string::String` because of this
+...
+203 |         .get(b"last_issued")?
+    |          -------------------^ the trait `From<fjall::Error>` is not implemented for `std::string::String`
+    |          |
+    |          this can't be annotated with `?` because it has type `Result<_, fjall::Error>`
+    |
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = help: `std::string::String` implements trait `From<T>`:
+              From<&mut str>
+              From<&std::string::String>
+              From<&str>
+              From<Box<str>>
+              From<Cow<'_, str>>
+              From<char>
+
+error[E0277]: the trait bound `[u8; 8]: TryFrom<fjall::Slice>` is not satisfied
+   --> crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:212:10
+    |
+212 |         .try_into()
+    |          ^^^^^^^^ the trait `From<fjall::Slice>` is not implemented for `[u8; 8]`
+    |
+help: `[u8; 8]` implements trait `From<T>`
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/zerocopy-0.8.48/src/byteorder.rs:588:9
+    |
+588 |           impl<O: ByteOrder> From<$name<O>> for [u8; $bytes] {
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |           |
+    |           `From<zerocopy::byteorder::F64<O>>`
+    |           `From<zerocopy::byteorder::I64<O>>`
+    |           `From<zerocopy::byteorder::U64<O>>`
+...
+736 | / define_type!(
+737 | |     A,
+738 | |     "A 64-bit unsigned integer",
+739 | |     U64,
+...   |
+751 | |     [U128]
+752 | | );
+    | |_- in this macro invocation
+...
+821 | / define_type!(
+822 | |     An,
+823 | |     "A 64-bit signed integer",
+824 | |     I64,
+...   |
+836 | |     [I128]
+837 | | );
+    | |_- in this macro invocation
+...
+922 | / define_type!(
+923 | |     An,
+924 | |     "A 64-bit floating point number",
+925 | |     F64,
+...   |
+937 | |     []
+938 | | );
+    | |_- in this macro invocation
+    = note: required for `fjall::Slice` to implement `Into<[u8; 8]>`
+    = note: required for `[u8; 8]` to implement `TryFrom<fjall::Slice>`
+    = note: required for `fjall::Slice` to implement `TryInto<[u8; 8]>`
+    = note: this error originates in the macro `define_type` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the `?` operator can only be used in a closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:34:67
+   |
+19 |     let artifacts = std::thread::scope(|scope| {
+   |                                        ------- this function should return `Result` or `Option` to accept `?`
+...
+34 |                 .map_err(|e| format!("thread join failed: {e:?}"))??;
+   |                                                                   ^ cannot use the `?` operator in a closure that returns `Vec<admission::AcceptedArtifact>`
+
+error[E0277]: the `?` operator can only be used in a closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:34:68
+   |
+19 |     let artifacts = std::thread::scope(|scope| {
+   |                                        ------- this function should return `Result` or `Option` to accept `?`
+...
+34 |                 .map_err(|e| format!("thread join failed: {e:?}"))??;
+   |                                                                    ^ cannot use the `?` operator in a closure that returns `Vec<admission::AcceptedArtifact>`
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `vb_storage` (lib test) due to 4 previous errors
