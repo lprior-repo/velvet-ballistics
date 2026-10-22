@@ -437,7 +437,8 @@ fn recovery_of_pending_registered_action_blocked_pack_rejects() -> TestResult {
         other => {
             return Err(format!(
                 "expected RecoveryCannotResume(registered_recovery_blocked), got: {other:?}"
-            ));
+            )
+            .into());
         }
     }
     Ok(())
@@ -478,9 +479,9 @@ fn recovery_of_pending_registered_action_reconcile_pack_is_resumable() -> TestRe
             );
         }
         other => {
-            return Err(format!(
-                "expected Resumable pending-action product, got: {other:?}"
-            ));
+            return Err(
+                format!("expected Resumable pending-action product, got: {other:?}").into(),
+            );
         }
     }
     Ok(())
