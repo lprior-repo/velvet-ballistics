@@ -1,0 +1,3 @@
+# Short-workspace V10 failure disposition
+
+Actual raw gate exit1 in640.003s: fifteen tasks completed, two failed. Test lane found stale crosscrate unknown-kind38 fixture, then its existing10minute task timeout killed31ongoingtests;1295wereunrun. This is not acceptance. Moon bench-build also failed declared-output verification because coordinator CARGO_TARGET_DIR override placed builds outside the new workspace target directory. No gate or production defect is inferred from that output location mistake. V11 uses short isolated root with default target directory and local5090 repaired only fixture; pinned source hashes for original17storagefiles unchanged. Canonical fullsuccess still required. Raw Moon report saved before any subsequent invocation.
