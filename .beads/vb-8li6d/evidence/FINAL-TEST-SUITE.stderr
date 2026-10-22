@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running tests/vb_test_cli_run_lifecycle_behavior.rs (target/debug/deps/vb_test_cli_run_lifecycle_behavior-050672b0334ff7b3)

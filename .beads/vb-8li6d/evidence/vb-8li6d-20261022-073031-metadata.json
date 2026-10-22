@@ -1,0 +1,18 @@
+{
+  "prefix": "vb-8li6d-20261022-073031",
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_test_cli_run_lifecycle_behavior",
+    "--",
+    "--test-threads=4"
+  ],
+  "timestamp": "20261022-073031",
+  "elapsed_seconds": 0.10013508796691895,
+  "exit_code": 0,
+  "stdout_file": ".beads/vb-8li6d/evidence/vb-8li6d-20261022-073031-stdout.log",
+  "stderr_file": ".beads/vb-8li6d/evidence/vb-8li6d-20261022-073031-stderr.log"
+}

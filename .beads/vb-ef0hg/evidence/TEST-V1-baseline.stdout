@@ -1,0 +1,569 @@
+
+running 80 tests
+test agent_context_command::cli_agent_context_with_deliver_succeeds ... FAILED
+test agent_context_command::cli_agent_context_without_args_succeeds ... FAILED
+test answer_command::cli_answer_invalid_step_fails ... FAILED
+test action_command::cli_action_inspect_without_id_fails ... FAILED
+test action_command::cli_action_inspect_invalid_id_fails ... FAILED
+test action_command::cli_action_unknown_subcommand_fails ... FAILED
+test ai_context_command::cli_ai_context_with_all_args_passes_parsing ... FAILED
+test answer_command::cli_answer_without_args_fails ... FAILED
+test ai_context_command::cli_ai_context_without_db_fails ... FAILED
+test cli_help_h_flag_succeeds ... FAILED
+test action_command::cli_action_list_succeeds ... FAILED
+test cli_help_short_flag_succeeds ... FAILED
+test cli_unknown_command_returns_nonzero ... FAILED
+test cli_version_command_succeeds ... FAILED
+test cli_version_short_flag_succeeds ... FAILED
+test cli_no_command_shows_help ... FAILED
+test ai_context_command::cli_ai_context_without_run_id_fails ... FAILED
+test cli_help_command_succeeds ... FAILED
+test cli_version_v_flag_succeeds ... FAILED
+test compile_command::cli_compile_missing_out_fails ... FAILED
+test compile_command::cli_compile_unknown_emit_fails ... FAILED
+test compile_command::cli_compile_missing_emit_fails ... FAILED
+test compile_command::cli_compile_without_args_fails ... FAILED
+test diff_command::cli_diff_without_both_run_ids_fails ... FAILED
+test diff_command::cli_diff_without_db_fails ... FAILED
+test doctor_command::cli_doctor_with_db_runs ... FAILED
+test doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts ... FAILED
+test doctor_command::cli_doctor_without_db_runs ... FAILED
+test incident_command::cli_incident_without_db_fails ... FAILED
+test incident_command::cli_incident_without_run_id_fails ... FAILED
+test inspect_events_replay::cli_events_without_run_id_fails ... FAILED
+test inspect_events_replay::cli_events_without_db_fails ... FAILED
+test inspect_events_replay::cli_inspect_without_db_fails ... FAILED
+test inspect_events_replay::cli_inspect_without_run_id_fails ... FAILED
+test inspect_events_replay::cli_replay_without_db_fails ... FAILED
+test inspect_events_replay::cli_replay_without_run_id_fails ... FAILED
+test ipc_serve_command::cli_ipc_serve_without_db_fails ... FAILED
+test ipc_serve_command::cli_ipc_serve_without_socket_fails ... FAILED
+test lifecycle_commands::cli_cancel_reason_too_long_fails ... FAILED
+test lifecycle_commands::cli_cancel_without_db_fails ... FAILED
+test lifecycle_commands::cli_cancel_without_run_id_fails ... FAILED
+test lifecycle_commands::cli_resume_without_db_fails ... FAILED
+test lifecycle_commands::cli_resume_without_run_id_fails ... FAILED
+test lifecycle_commands::cli_retry_without_run_id_fails ... FAILED
+test lifecycle_commands::cli_retry_without_db_fails ... FAILED
+test output_format::cli_run_accepts_json_flag ... FAILED
+test output_format::cli_validate_accepts_emit_yaml ... FAILED
+test run_command::cli_run_durability_journaled_requires_db ... FAILED
+test run_command::cli_run_durability_journaled_with_db_passes_arg_parsing ... FAILED
+test run_command::cli_run_durability_none_without_db_succeeds ... FAILED
+test run_command::cli_run_durability_strict_requires_db ... FAILED
+test run_command::cli_run_invalid_durability_mode_fails ... FAILED
+test run_command::cli_run_missing_durability_fails ... FAILED
+test run_command::cli_run_missing_input_bin_fails ... FAILED
+test run_command::cli_run_step_requires_step_input ... FAILED
+test run_command::cli_run_with_step_flags_passes_arg_parsing ... FAILED
+test run_command::cli_run_without_args_fails ... FAILED
+test status_command::cli_status_active_runs_out_of_range_fails ... FAILED
+test status_command::cli_status_non_numeric_arg_fails ... FAILED
+test status_command::cli_status_queue_depth_out_of_range_fails ... FAILED
+test status_command::cli_status_without_args_succeeds ... FAILED
+test subcommand_help::cli_run_with_help_flag_shows_help ... FAILED
+test subcommand_help::cli_validate_with_h_flag_shows_help ... FAILED
+test submit_command::cli_submit_with_all_args_passes_parsing ... FAILED
+test submit_command::cli_submit_without_db_fails ... FAILED
+test system_status_command::cli_system_status_succeeds ... FAILED
+test system_status_command::cli_system_status_unknown_profile_fails ... FAILED
+test system_status_command::cli_system_status_unprobed_server_mode_fails ... FAILED
+test system_status_command::cli_system_without_subcommand_fails ... FAILED
+test trace_command::cli_trace_unknown_filter_fails ... FAILED
+test trace_command::cli_trace_without_db_fails ... FAILED
+test trace_command::cli_trace_without_run_id_fails ... FAILED
+test validate_command::cli_validate_nonexistent_file_fails ... FAILED
+test validate_command::cli_validate_without_workflow_fails ... FAILED
+test verify_command::cli_verify_unknown_profile_fails ... FAILED
+test verify_command::cli_verify_without_workflow_fails ... FAILED
+test workflow_commands::cli_bench_run_without_workflow_fails ... FAILED
+test workflow_commands::cli_explain_without_workflow_fails ... FAILED
+test workflow_commands::cli_graph_without_workflow_fails ... FAILED
+test workflow_commands::cli_simulate_without_workflow_fails ... FAILED
+
+failures:
+
+---- agent_context_command::cli_agent_context_with_deliver_succeeds stdout ----
+
+thread 'agent_context_command::cli_agent_context_with_deliver_succeeds' (1761267) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- agent_context_command::cli_agent_context_without_args_succeeds stdout ----
+
+thread 'agent_context_command::cli_agent_context_without_args_succeeds' (1761268) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- answer_command::cli_answer_invalid_step_fails stdout ----
+
+thread 'answer_command::cli_answer_invalid_step_fails' (1761272) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- action_command::cli_action_inspect_without_id_fails stdout ----
+
+thread 'action_command::cli_action_inspect_without_id_fails' (1761264) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- action_command::cli_action_inspect_invalid_id_fails stdout ----
+
+thread 'action_command::cli_action_inspect_invalid_id_fails' (1761263) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- action_command::cli_action_unknown_subcommand_fails stdout ----
+
+thread 'action_command::cli_action_unknown_subcommand_fails' (1761266) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- ai_context_command::cli_ai_context_with_all_args_passes_parsing stdout ----
+
+thread 'ai_context_command::cli_ai_context_with_all_args_passes_parsing' (1761269) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- answer_command::cli_answer_without_args_fails stdout ----
+
+thread 'answer_command::cli_answer_without_args_fails' (1761273) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- ai_context_command::cli_ai_context_without_db_fails stdout ----
+
+thread 'ai_context_command::cli_ai_context_without_db_fails' (1761270) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- cli_help_h_flag_succeeds stdout ----
+
+thread 'cli_help_h_flag_succeeds' (1761275) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- action_command::cli_action_list_succeeds stdout ----
+
+thread 'action_command::cli_action_list_succeeds' (1761265) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- cli_help_short_flag_succeeds stdout ----
+
+thread 'cli_help_short_flag_succeeds' (1761276) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- cli_unknown_command_returns_nonzero stdout ----
+
+thread 'cli_unknown_command_returns_nonzero' (1761278) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- cli_version_command_succeeds stdout ----
+
+thread 'cli_version_command_succeeds' (1761279) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- cli_version_short_flag_succeeds stdout ----
+
+thread 'cli_version_short_flag_succeeds' (1761280) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- cli_no_command_shows_help stdout ----
+
+thread 'cli_no_command_shows_help' (1761277) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- ai_context_command::cli_ai_context_without_run_id_fails stdout ----
+
+thread 'ai_context_command::cli_ai_context_without_run_id_fails' (1761271) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- cli_help_command_succeeds stdout ----
+
+thread 'cli_help_command_succeeds' (1761274) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- cli_version_v_flag_succeeds stdout ----
+
+thread 'cli_version_v_flag_succeeds' (1761281) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- compile_command::cli_compile_missing_out_fails stdout ----
+
+thread 'compile_command::cli_compile_missing_out_fails' (1761283) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- compile_command::cli_compile_unknown_emit_fails stdout ----
+
+thread 'compile_command::cli_compile_unknown_emit_fails' (1761284) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- compile_command::cli_compile_missing_emit_fails stdout ----
+
+thread 'compile_command::cli_compile_missing_emit_fails' (1761282) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- compile_command::cli_compile_without_args_fails stdout ----
+
+thread 'compile_command::cli_compile_without_args_fails' (1761285) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- diff_command::cli_diff_without_both_run_ids_fails stdout ----
+
+thread 'diff_command::cli_diff_without_both_run_ids_fails' (1761286) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- diff_command::cli_diff_without_db_fails stdout ----
+
+thread 'diff_command::cli_diff_without_db_fails' (1761287) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- doctor_command::cli_doctor_with_db_runs stdout ----
+
+thread 'doctor_command::cli_doctor_with_db_runs' (1761288) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts stdout ----
+Error: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- doctor_command::cli_doctor_without_db_runs stdout ----
+
+thread 'doctor_command::cli_doctor_without_db_runs' (1761290) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- incident_command::cli_incident_without_db_fails stdout ----
+
+thread 'incident_command::cli_incident_without_db_fails' (1761291) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- incident_command::cli_incident_without_run_id_fails stdout ----
+
+thread 'incident_command::cli_incident_without_run_id_fails' (1761292) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- inspect_events_replay::cli_events_without_run_id_fails stdout ----
+
+thread 'inspect_events_replay::cli_events_without_run_id_fails' (1761294) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- inspect_events_replay::cli_events_without_db_fails stdout ----
+
+thread 'inspect_events_replay::cli_events_without_db_fails' (1761293) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- inspect_events_replay::cli_inspect_without_db_fails stdout ----
+
+thread 'inspect_events_replay::cli_inspect_without_db_fails' (1761295) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- inspect_events_replay::cli_inspect_without_run_id_fails stdout ----
+
+thread 'inspect_events_replay::cli_inspect_without_run_id_fails' (1761296) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- inspect_events_replay::cli_replay_without_db_fails stdout ----
+
+thread 'inspect_events_replay::cli_replay_without_db_fails' (1761297) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- inspect_events_replay::cli_replay_without_run_id_fails stdout ----
+
+thread 'inspect_events_replay::cli_replay_without_run_id_fails' (1761298) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- ipc_serve_command::cli_ipc_serve_without_db_fails stdout ----
+
+thread 'ipc_serve_command::cli_ipc_serve_without_db_fails' (1761299) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- ipc_serve_command::cli_ipc_serve_without_socket_fails stdout ----
+
+thread 'ipc_serve_command::cli_ipc_serve_without_socket_fails' (1761300) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- lifecycle_commands::cli_cancel_reason_too_long_fails stdout ----
+
+thread 'lifecycle_commands::cli_cancel_reason_too_long_fails' (1761301) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- lifecycle_commands::cli_cancel_without_db_fails stdout ----
+
+thread 'lifecycle_commands::cli_cancel_without_db_fails' (1761302) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- lifecycle_commands::cli_cancel_without_run_id_fails stdout ----
+
+thread 'lifecycle_commands::cli_cancel_without_run_id_fails' (1761303) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- lifecycle_commands::cli_resume_without_db_fails stdout ----
+
+thread 'lifecycle_commands::cli_resume_without_db_fails' (1761304) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- lifecycle_commands::cli_resume_without_run_id_fails stdout ----
+
+thread 'lifecycle_commands::cli_resume_without_run_id_fails' (1761305) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- lifecycle_commands::cli_retry_without_run_id_fails stdout ----
+
+thread 'lifecycle_commands::cli_retry_without_run_id_fails' (1761307) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- lifecycle_commands::cli_retry_without_db_fails stdout ----
+
+thread 'lifecycle_commands::cli_retry_without_db_fails' (1761306) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- output_format::cli_run_accepts_json_flag stdout ----
+
+thread 'output_format::cli_run_accepts_json_flag' (1761308) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- output_format::cli_validate_accepts_emit_yaml stdout ----
+
+thread 'output_format::cli_validate_accepts_emit_yaml' (1761309) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_durability_journaled_requires_db stdout ----
+
+thread 'run_command::cli_run_durability_journaled_requires_db' (1761310) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_durability_journaled_with_db_passes_arg_parsing stdout ----
+
+thread 'run_command::cli_run_durability_journaled_with_db_passes_arg_parsing' (1761311) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_durability_none_without_db_succeeds stdout ----
+
+thread 'run_command::cli_run_durability_none_without_db_succeeds' (1761312) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_durability_strict_requires_db stdout ----
+
+thread 'run_command::cli_run_durability_strict_requires_db' (1761313) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_invalid_durability_mode_fails stdout ----
+
+thread 'run_command::cli_run_invalid_durability_mode_fails' (1761314) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_missing_durability_fails stdout ----
+
+thread 'run_command::cli_run_missing_durability_fails' (1761315) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_missing_input_bin_fails stdout ----
+
+thread 'run_command::cli_run_missing_input_bin_fails' (1761316) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_step_requires_step_input stdout ----
+
+thread 'run_command::cli_run_step_requires_step_input' (1761317) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_with_step_flags_passes_arg_parsing stdout ----
+
+thread 'run_command::cli_run_with_step_flags_passes_arg_parsing' (1761318) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- run_command::cli_run_without_args_fails stdout ----
+
+thread 'run_command::cli_run_without_args_fails' (1761319) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- status_command::cli_status_active_runs_out_of_range_fails stdout ----
+
+thread 'status_command::cli_status_active_runs_out_of_range_fails' (1761320) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- status_command::cli_status_non_numeric_arg_fails stdout ----
+
+thread 'status_command::cli_status_non_numeric_arg_fails' (1761321) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- status_command::cli_status_queue_depth_out_of_range_fails stdout ----
+
+thread 'status_command::cli_status_queue_depth_out_of_range_fails' (1761322) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- status_command::cli_status_without_args_succeeds stdout ----
+
+thread 'status_command::cli_status_without_args_succeeds' (1761323) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- subcommand_help::cli_run_with_help_flag_shows_help stdout ----
+
+thread 'subcommand_help::cli_run_with_help_flag_shows_help' (1761324) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- subcommand_help::cli_validate_with_h_flag_shows_help stdout ----
+
+thread 'subcommand_help::cli_validate_with_h_flag_shows_help' (1761325) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- submit_command::cli_submit_with_all_args_passes_parsing stdout ----
+
+thread 'submit_command::cli_submit_with_all_args_passes_parsing' (1761326) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- submit_command::cli_submit_without_db_fails stdout ----
+
+thread 'submit_command::cli_submit_without_db_fails' (1761327) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- system_status_command::cli_system_status_succeeds stdout ----
+
+thread 'system_status_command::cli_system_status_succeeds' (1761328) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- system_status_command::cli_system_status_unknown_profile_fails stdout ----
+
+thread 'system_status_command::cli_system_status_unknown_profile_fails' (1761329) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- system_status_command::cli_system_status_unprobed_server_mode_fails stdout ----
+
+thread 'system_status_command::cli_system_status_unprobed_server_mode_fails' (1761330) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- system_status_command::cli_system_without_subcommand_fails stdout ----
+
+thread 'system_status_command::cli_system_without_subcommand_fails' (1761331) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- trace_command::cli_trace_unknown_filter_fails stdout ----
+
+thread 'trace_command::cli_trace_unknown_filter_fails' (1761332) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- trace_command::cli_trace_without_db_fails stdout ----
+
+thread 'trace_command::cli_trace_without_db_fails' (1761333) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- trace_command::cli_trace_without_run_id_fails stdout ----
+
+thread 'trace_command::cli_trace_without_run_id_fails' (1761334) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- validate_command::cli_validate_nonexistent_file_fails stdout ----
+
+thread 'validate_command::cli_validate_nonexistent_file_fails' (1761335) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- validate_command::cli_validate_without_workflow_fails stdout ----
+
+thread 'validate_command::cli_validate_without_workflow_fails' (1761336) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- verify_command::cli_verify_unknown_profile_fails stdout ----
+
+thread 'verify_command::cli_verify_unknown_profile_fails' (1761337) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- verify_command::cli_verify_without_workflow_fails stdout ----
+
+thread 'verify_command::cli_verify_without_workflow_fails' (1761338) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- workflow_commands::cli_bench_run_without_workflow_fails stdout ----
+
+thread 'workflow_commands::cli_bench_run_without_workflow_fails' (1761339) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- workflow_commands::cli_explain_without_workflow_fails stdout ----
+
+thread 'workflow_commands::cli_explain_without_workflow_fails' (1761340) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- workflow_commands::cli_graph_without_workflow_fails stdout ----
+
+thread 'workflow_commands::cli_graph_without_workflow_fails' (1761341) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- workflow_commands::cli_simulate_without_workflow_fails stdout ----
+
+thread 'workflow_commands::cli_simulate_without_workflow_fails' (1761342) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+
+failures:
+    action_command::cli_action_inspect_invalid_id_fails
+    action_command::cli_action_inspect_without_id_fails
+    action_command::cli_action_list_succeeds
+    action_command::cli_action_unknown_subcommand_fails
+    agent_context_command::cli_agent_context_with_deliver_succeeds
+    agent_context_command::cli_agent_context_without_args_succeeds
+    ai_context_command::cli_ai_context_with_all_args_passes_parsing
+    ai_context_command::cli_ai_context_without_db_fails
+    ai_context_command::cli_ai_context_without_run_id_fails
+    answer_command::cli_answer_invalid_step_fails
+    answer_command::cli_answer_without_args_fails
+    cli_help_command_succeeds
+    cli_help_h_flag_succeeds
+    cli_help_short_flag_succeeds
+    cli_no_command_shows_help
+    cli_unknown_command_returns_nonzero
+    cli_version_command_succeeds
+    cli_version_short_flag_succeeds
+    cli_version_v_flag_succeeds
+    compile_command::cli_compile_missing_emit_fails
+    compile_command::cli_compile_missing_out_fails
+    compile_command::cli_compile_unknown_emit_fails
+    compile_command::cli_compile_without_args_fails
+    diff_command::cli_diff_without_both_run_ids_fails
+    diff_command::cli_diff_without_db_fails
+    doctor_command::cli_doctor_with_db_runs
+    doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts
+    doctor_command::cli_doctor_without_db_runs
+    incident_command::cli_incident_without_db_fails
+    incident_command::cli_incident_without_run_id_fails
+    inspect_events_replay::cli_events_without_db_fails
+    inspect_events_replay::cli_events_without_run_id_fails
+    inspect_events_replay::cli_inspect_without_db_fails
+    inspect_events_replay::cli_inspect_without_run_id_fails
+    inspect_events_replay::cli_replay_without_db_fails
+    inspect_events_replay::cli_replay_without_run_id_fails
+    ipc_serve_command::cli_ipc_serve_without_db_fails
+    ipc_serve_command::cli_ipc_serve_without_socket_fails
+    lifecycle_commands::cli_cancel_reason_too_long_fails
+    lifecycle_commands::cli_cancel_without_db_fails
+    lifecycle_commands::cli_cancel_without_run_id_fails
+    lifecycle_commands::cli_resume_without_db_fails
+    lifecycle_commands::cli_resume_without_run_id_fails
+    lifecycle_commands::cli_retry_without_db_fails
+    lifecycle_commands::cli_retry_without_run_id_fails
+    output_format::cli_run_accepts_json_flag
+    output_format::cli_validate_accepts_emit_yaml
+    run_command::cli_run_durability_journaled_requires_db
+    run_command::cli_run_durability_journaled_with_db_passes_arg_parsing
+    run_command::cli_run_durability_none_without_db_succeeds
+    run_command::cli_run_durability_strict_requires_db
+    run_command::cli_run_invalid_durability_mode_fails
+    run_command::cli_run_missing_durability_fails
+    run_command::cli_run_missing_input_bin_fails
+    run_command::cli_run_step_requires_step_input
+    run_command::cli_run_with_step_flags_passes_arg_parsing
+    run_command::cli_run_without_args_fails
+    status_command::cli_status_active_runs_out_of_range_fails
+    status_command::cli_status_non_numeric_arg_fails
+    status_command::cli_status_queue_depth_out_of_range_fails
+    status_command::cli_status_without_args_succeeds
+    subcommand_help::cli_run_with_help_flag_shows_help
+    subcommand_help::cli_validate_with_h_flag_shows_help
+    submit_command::cli_submit_with_all_args_passes_parsing
+    submit_command::cli_submit_without_db_fails
+    system_status_command::cli_system_status_succeeds
+    system_status_command::cli_system_status_unknown_profile_fails
+    system_status_command::cli_system_status_unprobed_server_mode_fails
+    system_status_command::cli_system_without_subcommand_fails
+    trace_command::cli_trace_unknown_filter_fails
+    trace_command::cli_trace_without_db_fails
+    trace_command::cli_trace_without_run_id_fails
+    validate_command::cli_validate_nonexistent_file_fails
+    validate_command::cli_validate_without_workflow_fails
+    verify_command::cli_verify_unknown_profile_fails
+    verify_command::cli_verify_without_workflow_fails
+    workflow_commands::cli_bench_run_without_workflow_fails
+    workflow_commands::cli_explain_without_workflow_fails
+    workflow_commands::cli_graph_without_workflow_fails
+    workflow_commands::cli_simulate_without_workflow_fails
+
+test result: FAILED. 0 passed; 80 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

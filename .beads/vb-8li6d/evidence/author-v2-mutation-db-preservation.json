@@ -1,0 +1,222 @@
+{
+  "source": "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl/crates/workspace_tests/vb-isolation-test.db",
+  "destination": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-8li6d-author-mutation-db-v2",
+  "files": [
+    {
+      "path": "lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "0.jnl",
+      "sha256": "3beb9e8a3bc55bea4345034c1af9e338905b0be2370859ef2b14a9a3bef565d4",
+      "bytes": 67108864
+    },
+    {
+      "path": "version",
+      "sha256": "6e2a8f0836a0c290f398c66faa9ccbb310bbd22f99f922c5b6be907e35ac7927",
+      "bytes": 4
+    },
+    {
+      "path": ".process.lock",
+      "sha256": "73e66e0cf90ac3790f6b35c5352fe02e0091979f0e4936fdcb359c1401da1b20",
+      "bytes": 7
+    },
+    {
+      "path": "keyspaces/0/v0",
+      "sha256": "d6b4c876bfb5d077443aeb9a434142a8d19f58ab81b210b0bb852796226e3549",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/0/v1",
+      "sha256": "0f91b091ac7aa25e10355055f9c4fcd70dfda786c0f2f4bbb898f1876fa8c991",
+      "bytes": 344
+    },
+    {
+      "path": "keyspaces/0/v2",
+      "sha256": "d9cdfbe62a8c972a71242ede8b9fa234c432d0108fce1fdebc7ae231a8bc2cc7",
+      "bytes": 344
+    },
+    {
+      "path": "keyspaces/0/v3",
+      "sha256": "74f8644a344c7904459e24439cfa1efe49a4998b4a290e40c99c57c7a7d8962f",
+      "bytes": 381
+    },
+    {
+      "path": "keyspaces/0/v4",
+      "sha256": "33a44d77fab4b14f5159c6f14b8cb4d872a6c290b63e84a2eec0a56d43d70c61",
+      "bytes": 418
+    },
+    {
+      "path": "keyspaces/0/v5",
+      "sha256": "36fae884c7c4b2d1be8f68c726ebc01a3f21bc6fe39fd38f60f7b411a3ca23cd",
+      "bytes": 344
+    },
+    {
+      "path": "keyspaces/0/v6",
+      "sha256": "0301c348fbc0af60b6a35b745a86e3ca050f028839438ccc23522eb85868f294",
+      "bytes": 381
+    },
+    {
+      "path": "keyspaces/0/v7",
+      "sha256": "075deb9ceb4bcaf4fea80be95b1cba7037722ae5c99963e801d0790d12b66033",
+      "bytes": 418
+    },
+    {
+      "path": "keyspaces/0/v8",
+      "sha256": "e1422383988cb0da71497f0b9d0a4b449827f56cb3c818ffde922d3eb8cc9f82",
+      "bytes": 344
+    },
+    {
+      "path": "keyspaces/0/v9",
+      "sha256": "f0f4052a47231da1c6faeb27d55bca7de7cf6914ab891fe4481030ea863a2e78",
+      "bytes": 381
+    },
+    {
+      "path": "keyspaces/0/v10",
+      "sha256": "1cc5bfd82a89c28e17f66a19389000d2f50e48d85ed3c26bf7cf412294c4d0e3",
+      "bytes": 418
+    },
+    {
+      "path": "keyspaces/0/v11",
+      "sha256": "b0774e9fba8725356ff0db57a8751d7029a9a051f02b5eeaed99299335756fae",
+      "bytes": 344
+    },
+    {
+      "path": "keyspaces/0/v12",
+      "sha256": "a617baccf3ae6ea0d90f5d1cce612058a70174748d54b35c4135a5f5c6b68b45",
+      "bytes": 381
+    },
+    {
+      "path": "keyspaces/0/v13",
+      "sha256": "7133162450d16ea6c77674deff803496aaa10ad95414cc9589abb0ac52cfeae5",
+      "bytes": 418
+    },
+    {
+      "path": "keyspaces/0/v14",
+      "sha256": "9eb76f79f5115bf93421492f01591c35197ee64b3e30d067a374cbb2ef0c8249",
+      "bytes": 344
+    },
+    {
+      "path": "keyspaces/0/v15",
+      "sha256": "58770666626f2f95605b27741a5e3baf9b867a02213440b702e0a0815aad8adf",
+      "bytes": 381
+    },
+    {
+      "path": "keyspaces/0/current",
+      "sha256": "5d63fa998d64da26b156a7cf0f6aaa4f66a7a9daf3f2b5947e7d4d3619fefc39",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/1/v0",
+      "sha256": "7f79be16518a70e4e9e4bfee28c2eb2c66d588dd7872bc82a9b56e5ce07511ea",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/1/current",
+      "sha256": "ddad16db103e61a23b51de68ec9fde7ae42e2071a2df1e8d7b35ba0e4163013f",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/2/v0",
+      "sha256": "7f79be16518a70e4e9e4bfee28c2eb2c66d588dd7872bc82a9b56e5ce07511ea",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/2/current",
+      "sha256": "ddad16db103e61a23b51de68ec9fde7ae42e2071a2df1e8d7b35ba0e4163013f",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/3/v0",
+      "sha256": "d6b4c876bfb5d077443aeb9a434142a8d19f58ab81b210b0bb852796226e3549",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/3/current",
+      "sha256": "2a35e9b731516a3099bd7ede1d4bb34c7d2bfd8c9fdab11fe0f31d4f2d4c2c51",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/4/v0",
+      "sha256": "7f79be16518a70e4e9e4bfee28c2eb2c66d588dd7872bc82a9b56e5ce07511ea",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/4/current",
+      "sha256": "ddad16db103e61a23b51de68ec9fde7ae42e2071a2df1e8d7b35ba0e4163013f",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/5/v0",
+      "sha256": "d6b4c876bfb5d077443aeb9a434142a8d19f58ab81b210b0bb852796226e3549",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/5/current",
+      "sha256": "2a35e9b731516a3099bd7ede1d4bb34c7d2bfd8c9fdab11fe0f31d4f2d4c2c51",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/6/v0",
+      "sha256": "7f79be16518a70e4e9e4bfee28c2eb2c66d588dd7872bc82a9b56e5ce07511ea",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/6/current",
+      "sha256": "ddad16db103e61a23b51de68ec9fde7ae42e2071a2df1e8d7b35ba0e4163013f",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/7/v0",
+      "sha256": "7f79be16518a70e4e9e4bfee28c2eb2c66d588dd7872bc82a9b56e5ce07511ea",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/7/current",
+      "sha256": "ddad16db103e61a23b51de68ec9fde7ae42e2071a2df1e8d7b35ba0e4163013f",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/8/v0",
+      "sha256": "d6b4c876bfb5d077443aeb9a434142a8d19f58ab81b210b0bb852796226e3549",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/8/current",
+      "sha256": "2a35e9b731516a3099bd7ede1d4bb34c7d2bfd8c9fdab11fe0f31d4f2d4c2c51",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/9/v0",
+      "sha256": "d6b4c876bfb5d077443aeb9a434142a8d19f58ab81b210b0bb852796226e3549",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/9/current",
+      "sha256": "2a35e9b731516a3099bd7ede1d4bb34c7d2bfd8c9fdab11fe0f31d4f2d4c2c51",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/10/v0",
+      "sha256": "d6b4c876bfb5d077443aeb9a434142a8d19f58ab81b210b0bb852796226e3549",
+      "bytes": 307
+    },
+    {
+      "path": "keyspaces/10/current",
+      "sha256": "2a35e9b731516a3099bd7ede1d4bb34c7d2bfd8c9fdab11fe0f31d4f2d4c2c51",
+      "bytes": 25
+    },
+    {
+      "path": "keyspaces/0/tables/12",
+      "sha256": "e057ec074515c11079e038129d80a8af0993c10cbb6a6a0e180981587181b702",
+      "bytes": 12056
+    },
+    {
+      "path": "keyspaces/0/tables/13",
+      "sha256": "1ff6e5a102180fdba1e3b0cdc047365d3c87217e1ea5c8f8d516b53e6e5f9eb8",
+      "bytes": 2194
+    }
+  ],
+  "open_handles_check": "lsof +D returned1 and no output before move"
+}

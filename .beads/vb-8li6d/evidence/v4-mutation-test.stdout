@@ -1,0 +1,18 @@
+
+running 1 test
+test doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts ... FAILED
+
+failures:
+
+---- doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts stdout ----
+
+thread 'doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts' (1719542) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:785:9:
+DB should exist at "/tmp/.tmpFLkd4Y/vb-isolation-v4.db"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 1.72s
+

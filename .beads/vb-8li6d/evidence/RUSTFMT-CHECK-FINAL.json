@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl",
+  "argv": [
+    "rustfmt",
+    "--edition",
+    "2024",
+    "--check",
+    "crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs"
+  ],
+  "exit_code": 0,
+  "seconds": 0.018,
+  "timeout_seconds": 30,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-8li6d/evidence/RUSTFMT-CHECK-FINAL"
+}
