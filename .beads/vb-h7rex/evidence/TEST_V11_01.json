@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h7rex-tests-v11",
+  "argv": [
+    "cargo",
+    "test",
+    "--test",
+    "policy_pin_wire_contract",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "seconds": 0.22,
+  "timeout_seconds": 540,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-h7rex/evidence/TEST_V11_01"
+}

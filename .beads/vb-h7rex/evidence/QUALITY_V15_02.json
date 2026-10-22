@@ -1,0 +1,25 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h7rex-tests-v11",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "policy_pin_durable_recovery",
+    "--",
+    "--exact",
+    "admission_policy_pin_mismatch_rejected_by_recover_retry"
+  ],
+  "exit_code": 0,
+  "seconds": 0.07,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-h7rex/evidence/QUALITY_V15_02"
+}

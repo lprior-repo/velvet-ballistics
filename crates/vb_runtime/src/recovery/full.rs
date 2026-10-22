@@ -17,6 +17,7 @@ use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
 pub(crate) use admission::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
     action_contract_abi_digest, validate_recovered_admission_evidence,
+    validate_recovered_policy_pin,
 };
 pub(crate) use pending::pending_action_ticket_from_events;
 pub(crate) use product::ResumableRecoveryParts;

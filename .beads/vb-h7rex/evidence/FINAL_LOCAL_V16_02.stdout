@@ -1,0 +1,11 @@
+
+running 6 tests
+test all_admission_record_kinds_have_stable_ids ... ok
+test wire_envelope_kind_matches_event_record_kind ... ok
+test digest_bound_unverified_roundtrips_as_tag_36 ... ok
+test unbound_pinned_roundtrips_as_tag_39 ... ok
+test legacy_unbound_unverified_roundtrips_as_tag_24 ... ok
+test bound_pinned_roundtrips_as_tag_41 ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

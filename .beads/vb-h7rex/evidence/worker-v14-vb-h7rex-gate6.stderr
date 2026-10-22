@@ -1,0 +1,29 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_runtime)
+error[E0308]: mismatched types
+   --> crates/vb_runtime/tests/policy_pin_durable_recovery.rs:723:23
+    |
+723 |             if pin != &forged_pin {
+    |                ---    ^^^^^^^^^^^ expected `WorkflowDigest`, found `&WorkflowDigest`
+    |                |
+    |                expected because this is `WorkflowDigest`
+    |
+help: consider removing the borrow
+    |
+723 -             if pin != &forged_pin {
+723 +             if pin != forged_pin {
+    |
+
+error[E0277]: `WorkflowDigest` doesn't implement `std::fmt::Display`
+   --> crates/vb_runtime/tests/policy_pin_durable_recovery.rs:726:21
+    |
+725 |                     "forged admission pin {} != expected {}",
+    |                                           -- required by this formatting parameter
+726 |                     pin, forged_pin
+    |                     ^^^ `WorkflowDigest` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `WorkflowDigest`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `vb_runtime` (test "policy_pin_durable_recovery") due to 2 previous errors

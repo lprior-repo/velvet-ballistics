@@ -1,0 +1,15 @@
+
+running 5 tests
+test legacy_version_1_checkpoint_is_explicitly_rejected ... ok
+test journaled_admission_policy_pin_survives_durable_recovery ... ok
+test strict_admission_policy_pin_survives_durable_recovery ... ok
+test admission_policy_pin_mismatch_rejected_by_recover_retry ... FAILED
+test tampered_policy_pin_rejected_by_recover_retry ... ok
+
+failures:
+
+failures:
+    admission_policy_pin_mismatch_rejected_by_recover_retry
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

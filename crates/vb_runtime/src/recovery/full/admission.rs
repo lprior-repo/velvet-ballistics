@@ -73,7 +73,7 @@ fn validate_recovered_policy_digest(
     }
 }
 
-fn validate_recovered_policy_pin(
+pub(crate) fn validate_recovered_policy_pin(
     admission: &crate::admission::RunAdmission,
     artifact: &vb_storage::admission::AcceptedArtifact,
 ) -> RuntimeResult<()> {

@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h7rex-tests-v11",
+  "argv": [
+    "cargo",
+    "test",
+    "--release",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "policy_pin_durable_recovery"
+  ],
+  "exit_code": 0,
+  "seconds": 4.551,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/tmp/vb-h7rex-gate10",
+  "coordinator_message": "ROOT V14 REVIEW: do not duplicate 20lines pin matching inside alreadylarge handle_recover. Reuse existing validate_recovered_policy_pin by exposing pub(crate) in recovery/full/admission.rs and narrow re-export, or call existing validate_recovered_admission_evidence with proper actualcontext. Minimal helper call before seed is preferable. policy_pin() returns Copy RunPolicyPin, pin_digest is value; do NOT dereference it. Existing4tests untouched. Need genuine red evidence: temporary ORIGINAL source for red then same regression withfix green, record separate raw gates not fabricated. No gateexceptions.\n"
+}

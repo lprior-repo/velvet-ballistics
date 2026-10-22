@@ -405,19 +405,7 @@ impl Shard {
         // recovery flow validates via validate_recovered_admission_evidence.
         if let Some(checkpoint) = &retry_checkpoint {
             if let Some(admission) = &checkpoint.admission {
-                match admission.policy_pin() {
-                    vb_storage::RunPolicyPin::Unverified => {
-                        // Legacy or relaxed admission: no actual policy identity bound.
-                        // Accept as historical record; cannot authorize live effects.
-                    }
-                    vb_storage::RunPolicyPin::Pinned(pin_digest) => {
-                        if pin_digest != artifact.policy_digest {
-                            return Err(RuntimeError::RecoveryCannotResume {
-                                reason: String::from("admission_policy_pin_mismatch"),
-                            });
-                        }
-                    }
-                }
+                crate::recovery::validate_recovered_policy_pin(admission, &artifact)?;
             }
         }
 

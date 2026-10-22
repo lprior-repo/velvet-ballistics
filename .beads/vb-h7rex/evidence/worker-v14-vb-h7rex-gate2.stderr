@@ -1,0 +1,15 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_runtime)
+   Compiling proptest v1.11.0
+error[E0433]: cannot find type `RuntimeError` in this scope
+   --> crates/vb_runtime/tests/policy_pin_durable_recovery.rs:786:13
+    |
+786 |             RuntimeError::RecoveryCannotResume { reason } => {
+    |             ^^^^^^^^^^^^ use of undeclared type `RuntimeError`
+    |
+help: consider importing this enum
+    |
+ 10 + use vb_runtime::RuntimeError;
+    |
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `vb_runtime` (test "policy_pin_durable_recovery") due to 1 previous error

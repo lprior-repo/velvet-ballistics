@@ -1,0 +1,7 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_runtime)
+    Finished `release` profile [optimized] target(s) in 13.59s
+     Running tests/policy_pin_durable_recovery.rs (target/release/deps/policy_pin_durable_recovery-ec94c3fd382c0da7)
+VB-DEBUG: validating pin WorkflowDigest([218, 104, 8, 255, 192, 216, 157, 63, 17, 102, 28, 12, 60, 219, 62, 59, 184, 55, 134, 57, 3, 239, 158, 215, 78, 26, 104, 49, 87, 28, 105, 122]) vs artifact policy_digest WorkflowDigest([218, 104, 8, 255, 192, 216, 157, 63, 17, 102, 28, 12, 60, 219, 62, 59, 184, 55, 134, 57, 3, 239, 158, 215, 78, 26, 104, 49, 87, 28, 105, 122])
+VB-DEBUG: validating pin WorkflowDigest([218, 104, 8, 255, 192, 216, 157, 63, 17, 102, 28, 12, 60, 219, 62, 59, 184, 55, 134, 57, 3, 239, 158, 215, 78, 26, 104, 49, 87, 28, 105, 122]) vs artifact policy_digest WorkflowDigest([218, 104, 8, 255, 192, 216, 157, 63, 17, 102, 28, 12, 60, 219, 62, 59, 184, 55, 134, 57, 3, 239, 158, 215, 78, 26, 104, 49, 87, 28, 105, 122])
+Error: "forged policy pin must be rejected by recover_retry"
+error: test failed, to rerun pass `-p vb_runtime --test policy_pin_durable_recovery`

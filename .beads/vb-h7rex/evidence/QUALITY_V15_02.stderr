@@ -1,0 +1,11 @@
+warning: unused variable: `event_count_before`
+   --> crates/vb_runtime/tests/policy_pin_durable_recovery.rs:816:9
+    |
+816 |     let event_count_before = events_before.len();
+    |         ^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_event_count_before`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (test "policy_pin_durable_recovery") generated 1 warning (run `cargo fix --test "policy_pin_durable_recovery" -p vb_runtime` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/policy_pin_durable_recovery.rs (target/debug/deps/policy_pin_durable_recovery-d7f0628bd3dccd46)

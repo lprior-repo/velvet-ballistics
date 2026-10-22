@@ -1,0 +1,3 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-tests-v11/crates/vb_runtime)
+    Finished `release` profile [optimized] target(s) in 4.29s
+     Running tests/policy_pin_durable_recovery.rs (target/release/deps/policy_pin_durable_recovery-ec94c3fd382c0da7)

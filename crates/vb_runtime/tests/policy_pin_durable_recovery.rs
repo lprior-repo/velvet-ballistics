@@ -644,7 +644,7 @@ fn admission_policy_pin_mismatch_rejected_by_recover_retry() -> Result<(), Strin
     let config = shard_config_for(RuntimePolicy::Strict);
 
     // ---- Scope A: produce durable failure + checkpoint with correct pin ----
-    let original_checkpoint = {
+    let (original_checkpoint, original_events) = {
         let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
 
         vb_storage::submit_artifact_with_contracts(
@@ -695,20 +695,34 @@ fn admission_policy_pin_mismatch_rejected_by_recover_retry() -> Result<(), Strin
             ));
         }
 
+        // Capture the original journal state (events before any forging).
+        let original_events = journal.events_for_run(run).map_err(|e| e.to_string())?;
+
         drop(runtime);
         drop(journal);
-        checkpoint
+        (checkpoint, original_events)
     };
 
     // ---- Scope B: forge a checkpoint with a wrong policy pin ----
-    // We use the original pin as the forged pin value because the shard will
-    // validate the checkpoint's policy pin against the artifact's policy_digest.
     // The checkpoint validation validates value equality (supplied matches durable),
     // so we must persist the forged checkpoint as the durable checkpoint.
     let original_admission = original_checkpoint
         .admission
         .as_ref()
         .ok_or_else(|| "original checkpoint must have admission")?;
+
+    // Positive control: the same DTO helper used to construct forged admissions
+    // must produce an admission that fully matches the original when given the
+    // original (real) policy pin. This verifies the serialization/deserialization
+    // path is faithful before testing the mismatch case.
+    let real_pin_reconstruction = forge_admission_with_pin(original_admission, policy_digest)?;
+    if real_pin_reconstruction != *original_admission {
+        return Err(
+            "positive control failed: reconstructing with original pin must equal original admission"
+                .to_string(),
+        );
+    }
+
     let forged_pin = WorkflowDigest::from_bytes([0xEE; 32]);
     let forged_admission = forge_admission_with_pin(original_admission, forged_pin)?;
 
@@ -780,12 +794,25 @@ fn admission_policy_pin_mismatch_rejected_by_recover_retry() -> Result<(), Strin
         .append_strict(&forged_checkpoint_event)
         .map_err(|e| format!("failed to append forged checkpoint: {e}"))?;
 
+    // Drop all journal handles and reopen to force durability. The journal
+    // must be closed before the runtime attempts recovery, ensuring the
+    // forged checkpoint is persisted on disk and not just in the write-ahead
+    // log buffer.
+    drop(journal);
+    let journal = Arc::new(FjallJournal::open(&path, None).map_err(|e| e.to_string())?);
+
+    // Verify the forged checkpoint was durably persisted and is the latest.
+    let persisted_checkpoint = get_latest_checkpoint(&journal, run)?
+        .ok_or_else(|| "no durable checkpoint after forging".to_string())?;
+    if persisted_checkpoint != forged_checkpoint {
+        return Err("persisted checkpoint must fully equal the forged checkpoint".to_string());
+    }
+
     let next_seq_for_recovery =
         next_seq_after(&journal.events_for_run(run).map_err(|e| e.to_string())?)?;
 
     // Record the journal state before recovery to verify no mutation on rejection.
     let events_before = journal.events_for_run(run).map_err(|e| e.to_string())?;
-    let event_count_before = events_before.len();
 
     {
         let shared = runtime_journal_for_policy(journal.clone(), RuntimePolicy::Strict)?;
@@ -823,11 +850,22 @@ fn admission_policy_pin_mismatch_rejected_by_recover_retry() -> Result<(), Strin
 
     // Verify the journal was not mutated by the failed recovery.
     let events_after = journal.events_for_run(run).map_err(|e| e.to_string())?;
-    if events_after.len() != event_count_before {
+    if events_after != events_before {
         return Err(format!(
-            "journal must not be mutated by rejected recovery; before={event_count_before}, after={}",
+            "journal must not be mutated by rejected recovery; before={} events, after={} events, \
+             full vec equality failed",
+            events_before.len(),
             events_after.len()
         ));
+    }
+    // Verify the original prefix (events before the forged failure/checkpoint were appended)
+    // is still complete and unchanged in the final journal state.
+    if !events_after
+        .iter()
+        .take(original_events.len())
+        .eq(original_events.iter())
+    {
+        return Err("original journal prefix must be complete and unchanged".to_string());
     }
 
     Ok(())
