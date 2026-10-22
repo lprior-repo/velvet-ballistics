@@ -12,6 +12,8 @@ use vb_runtime::admission::{
     admit_artifact_run_with_certificate_floor,
 };
 use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
+use vb_storage::admission::accepted_artifact_digest;
+use vb_storage::admission::prepare_compiled_artifact;
 use velvet_ballistics::lifecycle;
 
 fn compile_fixture() -> Result<vb_core::CompiledWorkflow, String> {
@@ -46,10 +48,6 @@ fn temp_journal() -> Result<(TempDir, FjallJournal), String> {
 
 fn digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
-}
-fn digest_hex(digest: &WorkflowDigest) -> String {
-    let bytes = digest.as_bytes();
-    bytes.iter().take(4).map(|b| format!("{:02x}", b)).collect()
 }
 
 fn append_run_accepted(
@@ -356,64 +354,55 @@ fn given_wrong_digest_and_stale_floor_when_strict_admission_runs_then_digest_mis
 #[test]
 fn given_completed_action_before_restart_when_replayed_then_no_redispatch_and_event_count_stable()
 -> Result<(), String> {
-    // Given: real runtime produces an actual completed run with real ticket.
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let run = RunId::new(13);
-    let (_ticket, _abi_digest) =
+    let (ticket, abi_digest) =
         vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
     let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
 
-    // Capture full journal before replay.
     let before = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
 
-    // Verify the journal has the expected real events.
-    let scheduled_count = before
-        .iter()
-        .filter(|event| matches!(event, JournalEvent::ActionScheduledTicket { .. }))
-        .count();
-    let completion_count = before
-        .iter()
-        .filter(|event| matches!(event, JournalEvent::ActionCompletedEnvelope { .. }))
-        .count();
-    assert_eq!(scheduled_count, 1, "exactly one scheduled ticket event");
-    assert_eq!(completion_count, 1, "exactly one completion envelope event");
+    let mut tracker = vb_storage::ActionReplayTracker::default();
+    let expected = vec![(ticket.action, abi_digest)];
+    let replayed = vb_storage::replay_journal(&journal, run, &mut tracker, &expected, &[])
+        .map_err(|error| error.to_string())?;
 
-    // The run is finished, so no extra scheduling should occur.
-    assert!(
-        before
-            .iter()
-            .any(|event| matches!(event, JournalEvent::RunFinished { .. })),
-        "run must be marked as finished"
+    assert_eq!(replayed.len(), before.len(), "replayed all events");
+    assert_eq!(
+        before.iter().filter(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })).count(),
+        1,
+        "exactly one scheduled ticket event"
     );
     assert_eq!(
-        scheduled_count,
+        before.iter().filter(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. })).count(),
         1,
-        "no extra scheduling should occur after replay"
+        "exactly one completion envelope event"
+    );
+    assert!(
+        before.iter().any(|e| matches!(e, JournalEvent::RunFinished { .. })),
+        "run must be marked as finished"
     );
 
-    // Journal unchanged by replay analysis.
     let after = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
-    assert_eq!(after, before, "journal event vector unchanged by replay");
+    assert_eq!(after, before, "journal unchanged by replay");
     Ok(())
 }
 
 #[test]
 fn given_evicted_runtime_key_when_durable_journal_replayed_then_recovery_resolves_action()
 -> Result<(), String> {
-    // Given: two distinct runtime-issued tickets from two actual completed runs.
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let run1 = RunId::new(14);
     let run2 = RunId::new(15);
-    let (ticket1, _abi_digest1) =
+    let (ticket1, abi_digest1) =
         vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run1)?;
     let (ticket2, _abi_digest2) =
         vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run2)?;
 
-    // Volatile in-memory tracker evicts the first key (capacity 1, two completions).
     let mut volatile = vb_runtime::idempotency::IdempotencyTracker::with_capacity(1);
     volatile
         .mark_completed(&ticket1)
@@ -426,28 +415,32 @@ fn given_evicted_runtime_key_when_durable_journal_replayed_then_recovery_resolve
         "volatile tracker must have evicted the first key"
     );
 
-    // When: durable journal replay of first run restores resolution.
     let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
-    let events = journal
+    let before = journal
         .events_for_run(run1)
         .map_err(|error| error.to_string())?;
 
-    // Verify the durable journal contains the first run's completion.
-    let has_scheduled = events
-        .iter()
-        .any(|event| matches!(event, JournalEvent::ActionScheduledTicket { .. }));
-    let has_completed = events
-        .iter()
-        .any(|event| matches!(event, JournalEvent::ActionCompletedEnvelope { .. }));
-    assert!(has_scheduled, "durable journal must contain scheduled ticket");
-    assert!(has_completed, "durable journal must contain completion envelope");
+    let mut tracker = vb_storage::ActionReplayTracker::default();
+    let expected = vec![(ticket1.action, abi_digest1)];
+    let replayed = vb_storage::replay_journal(&journal, run1, &mut tracker, &expected, &[])
+        .map_err(|error| error.to_string())?;
 
-    // The durable journal has the complete history, so even though the
-    // volatile tracker evicted the key, the durable replay would resolve it.
+    assert_eq!(replayed.len(), before.len(), "replayed all events for run1");
+    assert!(
+        replayed.iter().any(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })),
+        "replayed journal contains scheduled ticket"
+    );
+    assert!(
+        replayed.iter().any(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. })),
+        "replayed journal contains completion envelope"
+    );
+
+    let after = journal
+        .events_for_run(run1)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(after, before, "journal unchanged by replay");
     Ok(())
 }
-
-
 
 #[test]
 fn given_same_sequence_different_run_when_appended_then_cross_run_sequences_are_independent()
@@ -665,4 +658,38 @@ fn count_retried(events: &[JournalEvent]) -> usize {
         .iter()
         .filter(|event| matches!(event, JournalEvent::RunRetried { .. }))
         .count()
+}
+
+#[test]
+fn given_no_schedule_event_when_expected_abi_then_replay_journal_rejects_with_abi_mismatch()
+-> Result<(), String> {
+    // Negative regression: when expected_action_abi_digests is nonempty but
+    // the journal contains no ActionScheduled or ActionScheduledTicket event,
+    // replay_journal must reject with ActionAbiMismatch.
+    let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
+    let run = RunId::new(999);
+
+    // Append only a RunAdmission event — no schedule event.
+    let admission_event = JournalEvent::RunAdmission {
+        run,
+        seq: EventSeq::new(0),
+        artifact_digest: digest(0x11),
+        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+        granted_capabilities: vb_core::CapabilitySet::empty(),
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    vb_storage::append_journal_event(&journal, &admission_event).map_err(|e| e.to_string())?;
+
+    let mut tracker = vb_storage::ActionReplayTracker::default();
+    let expected = vec![(ActionId::new(1), digest(0x33))];
+    let result = vb_storage::replay_journal(&journal, run, &mut tracker, &expected, &[]);
+
+    match result {
+        Err(vb_storage::recovery::RecoveryError::ActionAbiMismatch { action_id }) => {
+            assert_eq!(action_id, ActionId::new(1), "must report the expected action");
+            Ok(())
+        }
+        other => Err(format!("expected ActionAbiMismatch, got {other:?}")),
+    }
 }

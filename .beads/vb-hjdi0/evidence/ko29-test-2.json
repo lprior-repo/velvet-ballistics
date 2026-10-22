@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-hjdi0-local3090-replay-repair",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_ko29_5_public_idempotency"
+  ],
+  "exit_code": 101,
+  "seconds": 0.22,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-hjdi0/evidence/ko29-test-2",
+  "coordinator_message": "Final scope guard: restore PUBLIC replay_journal, never manual tracker folds/private API shortcut. Both actualproducer16cases must pass and wrong/zero/missing ABI stay typed rejected. Existing schedule_action_abi_digest helper is authoritative. Run production-inner drift/binding after productfix; if active mirror truly contains changed method/guard, update ONLY faithful mirror projection/header, preserve math/comments/trust. No unrelated mirror/proof rewrite. Report exact impacted obligation; no broad Kani. Actual strict scope clippy and source-length, fresh officialrunner prefixes. Include initial actual public replay failing probe before fix if practical, root alreadyretained raw old failures. Root will independentreview final, so no selfapproval; END under90k context."
+}

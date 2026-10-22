@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-hjdi0-local3090-replay-repair",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "recovery"
+  ],
+  "exit_code": 0,
+  "seconds": 8.415,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-hjdi0/evidence/storage-recovery-2",
+  "coordinator_message": "Root current tests lost KEY oracle: after public replay BOTH completed replay and eviction tests must assert tracker.is_resolved(actual_ticket.action, actual_ticket.step). Merely seeing events/counts is NOT durable resolution. Add exact assertion to BOTH; replayed vector should equal full before vector, not len only. Keep after==before. This is required original behavior, no weakening. Add exact ABI schedule==completion!=zero probe and wrong/zero ABI negative typed rejection, no zero acceptance. Strict source clippy, source-length/binding/drift, raw actual16namedPASS, new prefixes. Then honest handoff+END under90k; no broader research or docs-bloat."
+}

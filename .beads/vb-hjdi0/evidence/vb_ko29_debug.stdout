@@ -1,0 +1,19 @@
+
+running 1 test
+test given_completed_action_before_restart_when_replayed_then_no_redispatch_and_event_count_stable ... FAILED
+
+failures:
+
+---- given_completed_action_before_restart_when_replayed_then_no_redispatch_and_event_count_stable stdout ----
+DEBUG: abi_digest = [106, 15, 54, 217, 255, 135, 223, 234, 51, 134, 205, 117, 195, 187, 209, 83, 103, 223, 42, 50, 37, 246, 207, 4, 70, 165, 174, 219, 131, 94, 29, 5]
+DEBUG: ticket.action = ActionId(0)
+DEBUG: journal events count = 8
+DEBUG: scheduled ticket abi = [106, 15, 54, 217, 255, 135, 223, 234, 51, 134, 205, 117, 195, 187, 209, 83, 103, 223, 42, 50, 37, 246, 207, 4, 70, 165, 174, 219, 131, 94, 29, 5]
+Error: "action ABI digest mismatch for action ActionId(0)"
+
+
+failures:
+    given_completed_action_before_restart_when_replayed_then_no_redispatch_and_event_count_stable
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.01s
+
