@@ -1,0 +1,73 @@
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:1: #![forbid(unsafe_code)]
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:2: 
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:3: use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:4: use vb_core::{
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:5:     ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:6:     WorkflowParts,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:7: };
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:8: 
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:9: pub(super) const SOURCE: &[u8] = b"version: velvet-ballistics/v1\nname: artifact_evidence\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:10: 
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:11: pub(super) fn workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:12:     Ok(vb_compile::compile_workflow(SOURCE)?)
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:13: }
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:14: 
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:15: pub(super) fn canonicalize(
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:16:     mut parts: WorkflowParts,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:17: ) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:18:     parts.digest = WorkflowDigest::from_bytes([0; 32]);
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:19:     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:20:     Ok(CompiledWorkflow::try_from_parts(parts)?)
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:21: }
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:22: 
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:23: pub(super) fn action_workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:24:     let mut parts = workflow()?.to_parts();
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:25:     let first = parts.nodes.first().ok_or("missing first node")?.clone();
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:26:     let mut last = parts.nodes.last().ok_or("missing last node")?.clone();
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:27:     last.id = StepIdx::new(2);
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:28:     last.kind = CompiledNodeKind::Finish {
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:29:         result: SlotIdx::new(1),
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:30:     };
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:31:     parts.nodes = Box::new([
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:32:         first,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:33:         CompiledNode {
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:34:             id: StepIdx::new(1),
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:35:             output: Some(SlotIdx::new(1)),
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:36:             next: Some(StepIdx::new(2)),
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:37:             on_error: None,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:38:             error_slot: None,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:39:             kind: CompiledNodeKind::Do {
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:40:                 action: ActionId::new(0),
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:41:                 input: SlotIdx::new(0),
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:42:             },
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:43:         },
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:44:         last,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:45:     ]);
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:46:     parts.slot_count = 2;
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:47:     parts.step_names = Box::new([]);
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:48:     canonicalize(parts)
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:49: }
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:50: 
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:51: pub(super) fn contract() -> Result<ActionContract, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:52:     Ok(ActionContract {
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:53:         id: ActionId::new(0),
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:54:         name: ActionName::new("artifact_action")?,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:55:         input_slot_count: 1,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:56:         output_slot_count: 1,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:57:         max_input_bytes: 64,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:58:         max_output_bytes: 64,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:59:         timeout_ms: 1000,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:60:         idempotency: Idempotency::IdempotentExternal,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:61:         side_effect: SideEffect::Writes,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:62:         retry_safety: RetrySafety::KeyRequired,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:63:         required_capabilities: Box::new([]),
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:64:     })
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:65: }
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:66: 
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:67: pub(super) fn rebind(
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:68:     artifact: &mut vb_storage::AcceptedArtifact,
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:69: ) -> Result<(), vb_storage::JournalError> {
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:70:     artifact.digest = vb_storage::admission::accepted_artifact_digest(artifact)?;
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:71:     artifact.verification.digest = artifact.digest;
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:72:     Ok(())
+crates/workspace_tests/tests/artifact_evidence_support/mod.rs:73: }

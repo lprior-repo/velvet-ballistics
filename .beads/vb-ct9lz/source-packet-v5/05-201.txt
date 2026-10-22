@@ -1,0 +1,81 @@
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:201:         other => return Err(format!("expected ArtifactChecksumMismatch, got: {other:?}")),
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:202:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:203: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:204:     let counter = counter_value(&journal)?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:205:     if counter.is_some() {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:206:         return Err(format!(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:207:             "counter should be 0 after digest rejection, got: {counter:?}"
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:208:         ));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:209:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:210:     compiled_empty(&journal)?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:211: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:212:     let valid_workflow = minimal_workflow()?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:213:     let artifact = submit_artifact(&journal, &valid_workflow, RuntimePolicy::Relaxed)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:214:         .map_err(|e| format!("valid workflow submission failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:215:     if artifact.accepted_at_seq.get() != 1 {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:216:         return Err(format!(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:217:             "valid workflow should get seq 1, got {}",
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:218:             artifact.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:219:         ));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:220:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:221:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:222: }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:223: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:224: /// Counter overflow: at u64::MAX - 1, one more submission succeeds at u64::MAX,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:225: /// then the next fails with SequenceOverflow.
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:226: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:227: fn counter_overflow_at_u64_max() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:228:     let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:229:     let workflow = minimal_workflow()?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:230: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:231:     let near_max = u64::MAX
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:232:         .checked_sub(1)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:233:         .ok_or_else(|| "u64::MAX - 1 underflow".to_string())?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:234:     journal
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:235:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:236:         .insert(b"last_issued", &near_max.to_be_bytes())
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:237:         .map_err(|e| format!("insert counter failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:238: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:239:     let artifact1 = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:240:         .map_err(|e| format!("submission at near-max failed: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:241:     if artifact1.accepted_at_seq.get() != u64::MAX {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:242:         return Err(format!(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:243:             "first artifact should have seq u64::MAX, got {}",
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:244:             artifact1.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:245:         ));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:246:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:247: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:248:     let counter = counter_value(&journal)?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:249:     if counter != Some(u64::MAX) {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:250:         return Err(format!("counter should be u64::MAX, got: {counter:?}"));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:251:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:252: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:253:     verify_artifact_readback(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:254:         &journal,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:255:         artifact1.digest,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:256:         &artifact1,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:257:         RuntimePolicy::Relaxed,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:258:     )?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:259: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:260:     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:261:     match result {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:262:         Err(JournalError::SequenceOverflow) => {}
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:263:         other => return Err(format!("expected SequenceOverflow, got: {other:?}")),
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:264:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:265: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:266:     let counter_after = counter_value(&journal)?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:267:     if counter_after != Some(u64::MAX) {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:268:         return Err(format!(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:269:             "counter should remain u64::MAX after overflow, got: {counter_after:?}"
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:270:         ));
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:271:     }
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:272: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:273:     verify_artifact_readback(
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:274:         &journal,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:275:         artifact1.digest,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:276:         &artifact1,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:277:         RuntimePolicy::Relaxed,
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:278:     )?;
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:279: 
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:280:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:281: }

@@ -1,0 +1,100 @@
+crates/vb_storage/src/executor/catalog.rs:1: use super::receipt::hash;
+crates/vb_storage/src/executor/catalog.rs:2: use super::{ExecutedConformance, ExecutorError, RegisterGrant};
+crates/vb_storage/src/executor/catalog.rs:3: use vb_core::action_pack::{
+crates/vb_storage/src/executor/catalog.rs:4:     ActionPack, ActionPackDigest, CapabilityScopeSpec, ExecutorIdentity, ExecutorVersionDigest,
+crates/vb_storage/src/executor/catalog.rs:5:     IdempotencyClass, ManifestDigest, ReceiptSchemaDigest, RecoveryClass, TimeoutPolicy,
+crates/vb_storage/src/executor/catalog.rs:6: };
+crates/vb_storage/src/executor/catalog.rs:7: use vb_core::{ActionContract, ActionTicket, Idempotency, RetrySafety, SideEffect};
+crates/vb_storage/src/executor/catalog.rs:8: 
+crates/vb_storage/src/executor/catalog.rs:9: /// Trusted built-in selector. Construction always executes the concrete scratch suite.
+crates/vb_storage/src/executor/catalog.rs:10: /// Cloning preserves that checked origin; raw report deserialization cannot create it.
+crates/vb_storage/src/executor/catalog.rs:11: #[derive(Debug, Clone)]
+crates/vb_storage/src/executor/catalog.rs:12: pub struct ExecutorCatalog {
+crates/vb_storage/src/executor/catalog.rs:13:     checked: ExecutedConformance,
+crates/vb_storage/src/executor/catalog.rs:14: }
+crates/vb_storage/src/executor/catalog.rs:15: 
+crates/vb_storage/src/executor/catalog.rs:16: impl ExecutorCatalog {
+crates/vb_storage/src/executor/catalog.rs:17:     /// Execute duplicate/conflict/reopen/capacity cases using isolated scratch state.
+crates/vb_storage/src/executor/catalog.rs:18:     pub fn run_registered_conformance() -> Result<Self, ExecutorError> {
+crates/vb_storage/src/executor/catalog.rs:19:         Ok(Self {
+crates/vb_storage/src/executor/catalog.rs:20:             checked: super::conformance::execute_suite()?,
+crates/vb_storage/src/executor/catalog.rs:21:         })
+crates/vb_storage/src/executor/catalog.rs:22:     }
+crates/vb_storage/src/executor/catalog.rs:23: 
+crates/vb_storage/src/executor/catalog.rs:24:     /// Inspect actual observations; they are not provider or remote-service guarantees.
+crates/vb_storage/src/executor/catalog.rs:25:     pub fn conformance(&self) -> &ExecutedConformance {
+crates/vb_storage/src/executor/catalog.rs:26:         &self.checked
+crates/vb_storage/src/executor/catalog.rs:27:     }
+crates/vb_storage/src/executor/catalog.rs:28: 
+crates/vb_storage/src/executor/catalog.rs:29:     /// Build a checked local-register declaration. Recovery remains an explicit axis.
+crates/vb_storage/src/executor/catalog.rs:30:     pub fn register_pack(
+crates/vb_storage/src/executor/catalog.rs:31:         &self,
+crates/vb_storage/src/executor/catalog.rs:32:         contract: &ActionContract,
+crates/vb_storage/src/executor/catalog.rs:33:         scope: CapabilityScopeSpec,
+crates/vb_storage/src/executor/catalog.rs:34:         recovery: RecoveryClass,
+crates/vb_storage/src/executor/catalog.rs:35:     ) -> Result<ActionPack, ExecutorError> {
+crates/vb_storage/src/executor/catalog.rs:36:         let pack = ActionPack {
+crates/vb_storage/src/executor/catalog.rs:37:             action: contract.id,
+crates/vb_storage/src/executor/catalog.rs:38:             manifest: ManifestDigest::from_digest(hash(&postcard::to_allocvec(contract)?)),
+crates/vb_storage/src/executor/catalog.rs:39:             executor: ExecutorIdentity::FjallRegisterV1,
+crates/vb_storage/src/executor/catalog.rs:40:             executor_version: version(),
+crates/vb_storage/src/executor/catalog.rs:41:             scope,
+crates/vb_storage/src/executor/catalog.rs:42:             receipt_schema: receipt_schema(),
+crates/vb_storage/src/executor/catalog.rs:43:             timeout: TimeoutPolicy {
+crates/vb_storage/src/executor/catalog.rs:44:                 timeout_ms: contract.timeout_ms,
+crates/vb_storage/src/executor/catalog.rs:45:             },
+crates/vb_storage/src/executor/catalog.rs:46:             idempotency: IdempotencyClass::KeyEnforcedByExecutor,
+crates/vb_storage/src/executor/catalog.rs:47:             recovery,
+crates/vb_storage/src/executor/catalog.rs:48:             duplicate_ticket_test: self.checked.digest(),
+crates/vb_storage/src/executor/catalog.rs:49:         };
+crates/vb_storage/src/executor/catalog.rs:50:         self.check_pack(contract, &pack)?;
+crates/vb_storage/src/executor/catalog.rs:51:         Ok(pack)
+crates/vb_storage/src/executor/catalog.rs:52:     }
+crates/vb_storage/src/executor/catalog.rs:53: 
+crates/vb_storage/src/executor/catalog.rs:54:     pub(super) fn check_pack(
+crates/vb_storage/src/executor/catalog.rs:55:         &self,
+crates/vb_storage/src/executor/catalog.rs:56:         contract: &ActionContract,
+crates/vb_storage/src/executor/catalog.rs:57:         pack: &ActionPack,
+crates/vb_storage/src/executor/catalog.rs:58:     ) -> Result<(), ExecutorError> {
+crates/vb_storage/src/executor/catalog.rs:59:         check_contract(contract)?;
+crates/vb_storage/src/executor/catalog.rs:60:         if pack.action != contract.id
+crates/vb_storage/src/executor/catalog.rs:61:             || pack.executor != ExecutorIdentity::FjallRegisterV1
+crates/vb_storage/src/executor/catalog.rs:62:             || pack.executor_version != version()
+crates/vb_storage/src/executor/catalog.rs:63:             || pack.receipt_schema != receipt_schema()
+crates/vb_storage/src/executor/catalog.rs:64:             || pack.manifest != ManifestDigest::from_digest(hash(&postcard::to_allocvec(contract)?))
+crates/vb_storage/src/executor/catalog.rs:65:             || pack.duplicate_ticket_test != self.checked.digest()
+crates/vb_storage/src/executor/catalog.rs:66:             || pack.timeout.timeout_ms != contract.timeout_ms
+crates/vb_storage/src/executor/catalog.rs:67:             || pack.idempotency != IdempotencyClass::KeyEnforcedByExecutor
+crates/vb_storage/src/executor/catalog.rs:68:             || !matches!(
+crates/vb_storage/src/executor/catalog.rs:69:                 pack.recovery,
+crates/vb_storage/src/executor/catalog.rs:70:                 RecoveryClass::Blocked | RecoveryClass::ReconcileReceipt
+crates/vb_storage/src/executor/catalog.rs:71:             )
+crates/vb_storage/src/executor/catalog.rs:72:         {
+crates/vb_storage/src/executor/catalog.rs:73:             return Err(ExecutorError::PackMismatch);
+crates/vb_storage/src/executor/catalog.rs:74:         }
+crates/vb_storage/src/executor/catalog.rs:75:         Ok(())
+crates/vb_storage/src/executor/catalog.rs:76:     }
+crates/vb_storage/src/executor/catalog.rs:77: 
+crates/vb_storage/src/executor/catalog.rs:78:     /// Trusted local operator authorizes one exact artifact/ticket/resource.
+crates/vb_storage/src/executor/catalog.rs:79:     /// Runtime additionally requires that the ticket and input come from its live pending action.
+crates/vb_storage/src/executor/catalog.rs:80:     pub fn issue_register_grant(
+crates/vb_storage/src/executor/catalog.rs:81:         &self,
+crates/vb_storage/src/executor/catalog.rs:82:         artifact: &crate::AcceptedArtifact,
+crates/vb_storage/src/executor/catalog.rs:83:         ticket: ActionTicket,
+crates/vb_storage/src/executor/catalog.rs:84:         scope: CapabilityScopeSpec,
+crates/vb_storage/src/executor/catalog.rs:85:     ) -> Result<RegisterGrant, ExecutorError> {
+crates/vb_storage/src/executor/catalog.rs:86:         self.verify_artifact(artifact, vb_core::RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/catalog.rs:87:         let pack = self.pack_for(artifact, ticket.action)?;
+crates/vb_storage/src/executor/catalog.rs:88:         if pack.scope != scope {
+crates/vb_storage/src/executor/catalog.rs:89:             return Err(ExecutorError::Unauthorized);
+crates/vb_storage/src/executor/catalog.rs:90:         }
+crates/vb_storage/src/executor/catalog.rs:91:         let grant = RegisterGrant {
+crates/vb_storage/src/executor/catalog.rs:92:             artifact: artifact.digest,
+crates/vb_storage/src/executor/catalog.rs:93:             pack: pack_digest(pack)?,
+crates/vb_storage/src/executor/catalog.rs:94:             ticket,
+crates/vb_storage/src/executor/catalog.rs:95:             scope,
+crates/vb_storage/src/executor/catalog.rs:96:             timeout_ms: pack.timeout.timeout_ms,
+crates/vb_storage/src/executor/catalog.rs:97:         };
+crates/vb_storage/src/executor/catalog.rs:98:         grant.validate(ticket)?;
+crates/vb_storage/src/executor/catalog.rs:99:         Ok(grant)
+crates/vb_storage/src/executor/catalog.rs:100:     }

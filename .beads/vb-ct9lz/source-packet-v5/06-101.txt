@@ -1,0 +1,28 @@
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:101: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:102:     let max_bytes = u64::MAX.to_be_bytes();
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:103:     journal
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:104:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:105:         .insert(b"last_issued", &max_bytes)
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:106:         .map_err(|e| format!("insert u64::MAX counter: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:107: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:108:     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:109:     let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:110: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:111:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:112:         matches!(result, Err(JournalError::SequenceOverflow)),
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:113:         "expected SequenceOverflow, got {result:?}"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:114:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:115: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:116:     let counter = journal
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:117:         .artifact_acceptance
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:118:         .get(b"last_issued")
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:119:         .map_err(|e| format!("read counter: {e}"))?
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:120:         .ok_or_else(|| "counter should still exist")?;
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:121:     assert_eq!(counter, &max_bytes, "counter should be unchanged");
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:122:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:123:         journal.compiled_ir.iter().next().is_none(),
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:124:         "no compiled_ir written"
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:125:     );
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:126: 
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:127:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_boundary_tests.rs:128: }

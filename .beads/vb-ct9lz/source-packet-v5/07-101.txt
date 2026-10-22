@@ -1,0 +1,77 @@
+crates/vb_storage/src/executor/catalog.rs:101:     /// Recheck an opaque adapter receipt against the exact artifact and logical invocation.
+crates/vb_storage/src/executor/catalog.rs:102:     pub fn validate_receipt(
+crates/vb_storage/src/executor/catalog.rs:103:         &self,
+crates/vb_storage/src/executor/catalog.rs:104:         artifact: &crate::AcceptedArtifact,
+crates/vb_storage/src/executor/catalog.rs:105:         ticket: ActionTicket,
+crates/vb_storage/src/executor/catalog.rs:106:         value: i64,
+crates/vb_storage/src/executor/catalog.rs:107:         receipt: &super::RegisterReceipt,
+crates/vb_storage/src/executor/catalog.rs:108:     ) -> Result<(), ExecutorError> {
+crates/vb_storage/src/executor/catalog.rs:109:         let pack = self.pack_for(artifact, ticket.action)?;
+crates/vb_storage/src/executor/catalog.rs:110:         let grant = self.issue_register_grant(artifact, ticket, pack.scope)?;
+crates/vb_storage/src/executor/catalog.rs:111:         let expected = super::receipt::record(&grant, value, receipt.effect_ordinal())?;
+crates/vb_storage/src/executor/catalog.rs:112:         super::receipt::validate_record(&receipt.0)?;
+crates/vb_storage/src/executor/catalog.rs:113:         if receipt.0 != expected {
+crates/vb_storage/src/executor/catalog.rs:114:             return Err(ExecutorError::ReceiptConflict);
+crates/vb_storage/src/executor/catalog.rs:115:         }
+crates/vb_storage/src/executor/catalog.rs:116:         Ok(())
+crates/vb_storage/src/executor/catalog.rs:117:     }
+crates/vb_storage/src/executor/catalog.rs:118: 
+crates/vb_storage/src/executor/catalog.rs:119:     /// Recovery authority is explicit and independent from idempotency enforcement.
+crates/vb_storage/src/executor/catalog.rs:120:     pub fn require_receipt_recovery(
+crates/vb_storage/src/executor/catalog.rs:121:         &self,
+crates/vb_storage/src/executor/catalog.rs:122:         artifact: &crate::AcceptedArtifact,
+crates/vb_storage/src/executor/catalog.rs:123:         action: vb_core::ActionId,
+crates/vb_storage/src/executor/catalog.rs:124:     ) -> Result<(), ExecutorError> {
+crates/vb_storage/src/executor/catalog.rs:125:         self.verify_artifact(artifact, vb_core::RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/catalog.rs:126:         if self.pack_for(artifact, action)?.recovery != RecoveryClass::ReconcileReceipt {
+crates/vb_storage/src/executor/catalog.rs:127:             return Err(ExecutorError::PackMismatch);
+crates/vb_storage/src/executor/catalog.rs:128:         }
+crates/vb_storage/src/executor/catalog.rs:129:         Ok(())
+crates/vb_storage/src/executor/catalog.rs:130:     }
+crates/vb_storage/src/executor/catalog.rs:131: }
+crates/vb_storage/src/executor/catalog.rs:132: 
+crates/vb_storage/src/executor/catalog.rs:133: fn check_contract(contract: &ActionContract) -> Result<(), ExecutorError> {
+crates/vb_storage/src/executor/catalog.rs:134:     let cap = vb_core::Capability::new("velvet.register.write".into(), contract.id);
+crates/vb_storage/src/executor/catalog.rs:135:     if contract.side_effect != SideEffect::Writes
+crates/vb_storage/src/executor/catalog.rs:136:         || contract.idempotency != Idempotency::IdempotentExternal
+crates/vb_storage/src/executor/catalog.rs:137:         || contract.retry_safety != RetrySafety::KeyRequired
+crates/vb_storage/src/executor/catalog.rs:138:         || contract.input_slot_count != 1
+crates/vb_storage/src/executor/catalog.rs:139:         || contract.output_slot_count != 1
+crates/vb_storage/src/executor/catalog.rs:140:         || contract.max_input_bytes < 11
+crates/vb_storage/src/executor/catalog.rs:141:         || contract.max_output_bytes < 11
+crates/vb_storage/src/executor/catalog.rs:142:         || contract.timeout_ms == 0
+crates/vb_storage/src/executor/catalog.rs:143:         || contract.timeout_ms > 60_000
+crates/vb_storage/src/executor/catalog.rs:144:         || contract.required_capabilities.as_ref() != [cap]
+crates/vb_storage/src/executor/catalog.rs:145:     {
+crates/vb_storage/src/executor/catalog.rs:146:         return Err(ExecutorError::PackMismatch);
+crates/vb_storage/src/executor/catalog.rs:147:     }
+crates/vb_storage/src/executor/catalog.rs:148:     Ok(())
+crates/vb_storage/src/executor/catalog.rs:149: }
+crates/vb_storage/src/executor/catalog.rs:150: 
+crates/vb_storage/src/executor/catalog.rs:151: pub(super) fn pack_digest(pack: &ActionPack) -> Result<ActionPackDigest, ExecutorError> {
+crates/vb_storage/src/executor/catalog.rs:152:     Ok(ActionPackDigest::from_digest(hash(&postcard::to_allocvec(
+crates/vb_storage/src/executor/catalog.rs:153:         pack,
+crates/vb_storage/src/executor/catalog.rs:154:     )?)))
+crates/vb_storage/src/executor/catalog.rs:155: }
+crates/vb_storage/src/executor/catalog.rs:156: 
+crates/vb_storage/src/executor/catalog.rs:157: pub(super) fn receipt_schema() -> ReceiptSchemaDigest {
+crates/vb_storage/src/executor/catalog.rs:158:     ReceiptSchemaDigest::from_digest(hash(include_bytes!("receipt.rs")))
+crates/vb_storage/src/executor/catalog.rs:159: }
+crates/vb_storage/src/executor/catalog.rs:160: 
+crates/vb_storage/src/executor/catalog.rs:161: pub(super) fn version() -> ExecutorVersionDigest {
+crates/vb_storage/src/executor/catalog.rs:162:     let mut hasher = blake3::Hasher::new();
+crates/vb_storage/src/executor/catalog.rs:163:     [
+crates/vb_storage/src/executor/catalog.rs:164:         include_bytes!("register.rs").as_slice(),
+crates/vb_storage/src/executor/catalog.rs:165:         include_bytes!("receipt.rs").as_slice(),
+crates/vb_storage/src/executor/catalog.rs:166:         include_bytes!("authority.rs").as_slice(),
+crates/vb_storage/src/executor/catalog.rs:167:         include_bytes!("conformance.rs").as_slice(),
+crates/vb_storage/src/executor/catalog.rs:168:         include_bytes!("catalog.rs").as_slice(),
+crates/vb_storage/src/executor/catalog.rs:169:     ]
+crates/vb_storage/src/executor/catalog.rs:170:     .iter()
+crates/vb_storage/src/executor/catalog.rs:171:     .for_each(|source| {
+crates/vb_storage/src/executor/catalog.rs:172:         hasher.update(source);
+crates/vb_storage/src/executor/catalog.rs:173:     });
+crates/vb_storage/src/executor/catalog.rs:174:     ExecutorVersionDigest::from_digest(vb_core::WorkflowDigest::from_bytes(
+crates/vb_storage/src/executor/catalog.rs:175:         hasher.finalize().into(),
+crates/vb_storage/src/executor/catalog.rs:176:     ))
+crates/vb_storage/src/executor/catalog.rs:177: }

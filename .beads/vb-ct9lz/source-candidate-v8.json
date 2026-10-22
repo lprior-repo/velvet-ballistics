@@ -1,0 +1,9 @@
+{
+  "status": "WIP only; test drafts currently do not compile, no acceptance",
+  "base": "15857211dfae9e7bcfaa1086cf7b67f5fcd02a48",
+  "production": "packed.rs helper Strict, exact fourteen-line integration; actual v4 cargo check passed7.222s",
+  "test_drafts": "v5 actual31errors v6actual25errors; v7 fixture wrong, v8 focused fixes; testmodule rewrites pending",
+  "author": "local5090 OMP qwen3.8-27b-uncensored high; cloud fallback false",
+  "review_scope": "CODE review may inspect production delta and unchanged helper only; not TEST approval",
+  "no_main_landing": true
+}

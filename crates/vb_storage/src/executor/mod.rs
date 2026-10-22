@@ -14,3 +14,12 @@ pub use conformance::{ConformanceReport, ExecutedConformance};
 pub use error::ExecutorError;
 pub use receipt::RegisterReceipt;
 pub use register::FjallRegister;
+
+#[cfg(test)]
+mod issuance_test_support;
+
+#[cfg(test)]
+mod issuance_tests;
+
+#[cfg(test)]
+mod issuance_failure_tests;
