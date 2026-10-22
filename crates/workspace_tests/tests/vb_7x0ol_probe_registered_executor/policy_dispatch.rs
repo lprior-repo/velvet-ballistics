@@ -125,7 +125,6 @@ fn make_expected_decision(
     current_live: CurrentPolicyIdentity,
     input_digest: PolicyDigest,
     outcome: DecisionCode,
-    layer: PolicyLayer,
 ) -> vb_core::policy::DecisionRecord {
     vb_core::policy::DecisionRecord {
         ticket,
@@ -134,7 +133,7 @@ fn make_expected_decision(
         input_digest,
         taint: Taint::Clean,
         outcome,
-        layer,
+        layer: PolicyLayer::Live,
         emergency_influence: InfluenceState::Inactive,
         compat_influence: InfluenceState::NotEvaluated,
     }
@@ -226,7 +225,6 @@ fn unconfigured_policy_denies_execution() -> TestResult {
         CurrentPolicyIdentity::Unconfigured,
         expected_input_digest,
         DecisionCode::Denied,
-        PolicyLayer::Live,
     );
 
     match result {
@@ -257,8 +255,9 @@ fn unconfigured_policy_denies_execution() -> TestResult {
         1,
         "exactly one policy decision must be stored"
     );
+    let stored = stored_decisions.first().ok_or("expected exactly one decision")?;
     assert_eq!(
-        stored_decisions[0], expected_decision,
+        stored, &expected_decision,
         "stored DecisionRecord must match oracle for unconfigured deny"
     );
 
@@ -352,7 +351,6 @@ fn after_scheduling_policy_change_to_deny() -> TestResult {
         current_live_configured(denied_digest.as_bytes()),
         expected_input_digest,
         DecisionCode::Denied,
-        PolicyLayer::Live,
     );
 
     match result {
@@ -395,8 +393,9 @@ fn after_scheduling_policy_change_to_deny() -> TestResult {
         1,
         "exactly one policy decision must be stored"
     );
+    let stored = stored_decisions.first().ok_or("expected exactly one decision")?;
     assert_eq!(
-        stored_decisions[0], expected_decision,
+        stored, &expected_decision,
         "stored DecisionRecord must match oracle for policy-change deny"
     );
     Ok(())
@@ -476,7 +475,6 @@ fn allowed_policy_permits_effect_and_records_decision() -> TestResult {
         current_live_configured(allowed_digest.as_bytes()),
         expected_input_digest,
         DecisionCode::Allowed,
-        PolicyLayer::Live,
     );
 
     let stored_decisions = read_journal_decision_events(&journal, run)?;
@@ -485,13 +483,14 @@ fn allowed_policy_permits_effect_and_records_decision() -> TestResult {
         1,
         "exactly one policy decision must be stored"
     );
+    let stored = stored_decisions.first().ok_or("expected exactly one decision")?;
     assert_eq!(
-        stored_decisions[0], expected_decision,
+        stored, &expected_decision,
         "full stored DecisionRecord must match oracle for allowed policy"
     );
     // Run and ticket consistency
-    assert_eq!(stored_decisions[0].ticket.run, run);
-    assert_eq!(stored_decisions[0].ticket, ticket);
+    assert_eq!(stored.ticket.run, run);
+    assert_eq!(stored.ticket, ticket);
 
     Ok(())
 }
@@ -567,7 +566,6 @@ fn reconcile_ignores_policy_change_after_effect() -> TestResult {
         current_live_configured(allowed_digest.as_bytes()),
         expected_input_digest,
         DecisionCode::Allowed,
-        PolicyLayer::Live,
     );
     let decisions_before_reconcile = read_journal_decision_events(&journal, run)?;
     assert_eq!(
@@ -575,8 +573,9 @@ fn reconcile_ignores_policy_change_after_effect() -> TestResult {
         1,
         "exactly one allowed decision must be stored before reconcile"
     );
+    let stored = decisions_before_reconcile.first().ok_or("expected exactly one decision")?;
     assert_eq!(
-        decisions_before_reconcile[0], expected_allowed_decision,
+        stored, &expected_allowed_decision,
         "stored allowed DecisionRecord must match oracle"
     );
 
@@ -612,8 +611,9 @@ fn reconcile_ignores_policy_change_after_effect() -> TestResult {
         1,
         "reconcile must not add a new policy decision"
     );
+    let stored = decisions_after_reconcile.first().ok_or("expected exactly one decision")?;
     assert_eq!(
-        decisions_after_reconcile[0], expected_allowed_decision,
+        stored, &expected_allowed_decision,
         "stored decision list must be exactly the same before/after reconcile"
     );
 
