@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local3090-final-tests",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "fmt",
+    "--all",
+    "--check"
+  ],
+  "exit_code": 0,
+  "seconds": 1.685,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-s4hfc/evidence/ASSEMBLY_V10_FMT"
+}

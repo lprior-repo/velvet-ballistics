@@ -25,13 +25,13 @@ pub enum EmergencyDenyState {
 }
 
 /// Fixed marker key for the emergency-deny overlay.
-const EMERGENCY_DENY_KEY: &[u8] = b"active";
+pub(crate) const EMERGENCY_DENY_KEY: &[u8] = b"active";
 
 /// Current emergency-deny marker version byte.
-const EMERGENCY_DENY_VERSION: u8 = 1;
+pub(crate) const EMERGENCY_DENY_VERSION: u8 = 1;
 
 /// The complete valid active marker value: one version byte.
-const EMERGENCY_DENY_ACTIVE_MARKER: [u8; 1] = [EMERGENCY_DENY_VERSION];
+pub(crate) const EMERGENCY_DENY_ACTIVE_MARKER: [u8; 1] = [EMERGENCY_DENY_VERSION];
 
 impl crate::journal::FjallJournal {
     /// Returns the current emergency-deny state persisted in this store.
@@ -84,7 +84,7 @@ impl crate::journal::FjallJournal {
         let _ = current;
         // Write constant active marker via strict batch commit
         let mut batch = self.batch();
-        batch.put_emergency_deny(EMERGENCY_DENY_ACTIVE_MARKER)?;
+        batch.put_emergency_deny()?;
         batch.strict().commit()?;
         Ok(EmergencyDenyState::Active)
     }

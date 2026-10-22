@@ -8,6 +8,7 @@ pub(super) enum JournalRecordCategory {
     Step,
     Action,
     WaitAsk,
+    Policy,
 }
 
 pub(super) fn journal_record_category(kind: RecordKind) -> Option<JournalRecordCategory> {
@@ -19,6 +20,8 @@ pub(super) fn journal_record_category(kind: RecordKind) -> Option<JournalRecordC
         Some(JournalRecordCategory::Action)
     } else if is_wait_or_ask_record(kind) {
         Some(JournalRecordCategory::WaitAsk)
+    } else if is_policy_record(kind) {
+        Some(JournalRecordCategory::Policy)
     } else {
         None
     }
@@ -73,4 +76,8 @@ fn is_wait_or_ask_record(kind: RecordKind) -> bool {
             | RecordKind::RetryScheduled
             | RecordKind::AskTimedOut
     )
+}
+
+fn is_policy_record(kind: RecordKind) -> bool {
+    matches!(kind, RecordKind::PolicyDecision)
 }

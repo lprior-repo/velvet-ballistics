@@ -2,6 +2,8 @@
 
 #[path = "wire_serialize_action.rs"]
 mod action;
+#[path = "wire_serialize_policy.rs"]
+mod policy;
 #[path = "wire_serialize_run.rs"]
 mod run;
 #[path = "wire_serialize_step.rs"]
@@ -53,6 +55,7 @@ where
         Some(JournalRecordCategory::Step) => step::serialize(event, serializer),
         Some(JournalRecordCategory::Action) => action::serialize(event, serializer),
         Some(JournalRecordCategory::WaitAsk) => wait_ask::serialize(event, serializer),
+        Some(JournalRecordCategory::Policy) => policy::serialize(event, serializer),
         None => serialize_routing_error::<S>(),
     }
 }

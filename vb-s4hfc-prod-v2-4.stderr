@@ -1,0 +1,21 @@
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local5090-full-record/crates/vb_storage)
+error[E0425]: cannot find type `RunId` in the crate root
+  --> crates/vb_storage/src/events/wire_deserialize_policy.rs:21:26
+   |
+21 |     let payload: (crate::RunId, crate::EventSeq, vb_core::policy::DecisionRecord) =
+   |                          ^^^^^ not found in the crate root
+   |
+help: consider importing one of these structs
+   |
+ 3 + use crate::events::RunId;
+   |
+ 3 + use vb_core::RunId;
+   |
+help: if you import `RunId`, refer to it directly
+   |
+21 -     let payload: (crate::RunId, crate::EventSeq, vb_core::policy::DecisionRecord) =
+21 +     let payload: (RunId, crate::EventSeq, vb_core::policy::DecisionRecord) =
+   |
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `vb_storage` (lib) due to 1 previous error

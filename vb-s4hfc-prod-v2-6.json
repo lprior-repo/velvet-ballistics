@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-s4hfc-local5090-full-record",
+  "argv": [
+    "cargo",
+    "check",
+    "-p",
+    "vb_storage",
+    "--lib"
+  ],
+  "exit_code": 0,
+  "seconds": 0.348,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "vb-s4hfc-prod-v2-6",
+  "coordinator_message": "Root check-v2 production actualexit0. Focus remaining neutral decision lifecycle preservation and outerrun/ticket.run validation atcodec boundary; strict rawClippy. Tests separate3090workspace. Sharedrunnerexists/nohelperedits.\n"
+}
