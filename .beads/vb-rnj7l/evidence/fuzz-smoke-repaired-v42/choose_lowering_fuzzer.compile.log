@@ -1,0 +1,3 @@
+=== compile evidence: choose_lowering_fuzzer ===
+-rwxr-xr-x 2 lewis lewis 1897816 Oct 22 17:16 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/choose_lowering_fuzzer
+OK: binary present

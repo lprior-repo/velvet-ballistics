@@ -1,0 +1,3 @@
+=== compile evidence: diagnostic_from_error_fuzz ===
+-rwxr-xr-x 2 lewis lewis 2035736 Oct 22 17:21 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/diagnostic_from_error_fuzz
+OK: binary present

@@ -1,0 +1,12 @@
+{
+  "base": "4cf251fe1f11978788a587feae125e1ed87c8b7f",
+  "allowed_documents": [
+    "velvet-ballistics-MASTER.md",
+    "docs/rust-governance.md",
+    "docs/master/section-083-ui-testing-benchmarking-and-acceptance-gates.md",
+    "docs/master/section-040-ci-gate.md",
+    "docs/master/section-077-ai-safe-quality-infrastructure.md",
+    "docs/master/section-044-evidence-and-bead-contract.md"
+  ],
+  "policy": "UserAGENTS source lint strict; tests compile and run but testclippy notstrict; actualMoon lint-src already --lib --bins --examples."
+}

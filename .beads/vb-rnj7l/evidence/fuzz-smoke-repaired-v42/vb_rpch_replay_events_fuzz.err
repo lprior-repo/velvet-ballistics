@@ -1,0 +1,44 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 732799420
+INFO: Loaded 1 modules   (84733 inline 8-bit counters): 84733 [0x560536109603, 0x56053611e100), 
+INFO: Loaded 1 PC tables (84733 PCs): 84733 [0x56053611e100,0x5605362690d0), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/vb_rpch_replay_events_fuzz
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 6795 ft: 6796 corp: 1/1b exec/s: 0 rss: 81Mb
+#3	NEW    cov: 6795 ft: 6798 corp: 2/3b lim: 4 exec/s: 0 rss: 93Mb L: 2/2 MS: 1 InsertByte-
+#4	NEW    cov: 6796 ft: 6820 corp: 3/5b lim: 4 exec/s: 0 rss: 102Mb L: 2/2 MS: 1 CrossOver-
+#5	NEW    cov: 6800 ft: 6828 corp: 4/6b lim: 4 exec/s: 0 rss: 112Mb L: 1/2 MS: 1 ChangeBit-
+#6	NEW    cov: 6800 ft: 6832 corp: 5/8b lim: 4 exec/s: 0 rss: 122Mb L: 2/2 MS: 1 ShuffleBytes-
+#9	NEW    cov: 6800 ft: 6835 corp: 6/10b lim: 4 exec/s: 0 rss: 151Mb L: 2/2 MS: 3 EraseBytes-InsertByte-CMP- DE: "\001\000"-
+#12	NEW    cov: 6806 ft: 6844 corp: 7/13b lim: 4 exec/s: 0 rss: 180Mb L: 3/3 MS: 3 ChangeBinInt-ChangeBinInt-InsertByte-
+#13	NEW    cov: 6808 ft: 6848 corp: 8/14b lim: 4 exec/s: 0 rss: 190Mb L: 1/3 MS: 1 EraseBytes-
+	NEW_FUNC[1/1]: 0x560536059130  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_rpch_replay_events_fuzz+0x85d130) (BuildId: 832252b9a032ac8986a98fada84e376e3281a18b)
+#14	NEW    cov: 6855 ft: 7576 corp: 9/18b lim: 4 exec/s: 0 rss: 200Mb L: 4/4 MS: 1 InsertByte-
+	NEW_FUNC[1/2]: 0x560535c91a80  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_rpch_replay_events_fuzz+0x495a80) (BuildId: 832252b9a032ac8986a98fada84e376e3281a18b)
+	NEW_FUNC[2/2]: 0x560535d06c40  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_rpch_replay_events_fuzz+0x50ac40) (BuildId: 832252b9a032ac8986a98fada84e376e3281a18b)
+#16	NEW    cov: 6863 ft: 8120 corp: 10/22b lim: 4 exec/s: 0 rss: 220Mb L: 4/4 MS: 2 ChangeByte-InsertByte-
+#19	NEW    cov: 6865 ft: 8122 corp: 11/24b lim: 4 exec/s: 0 rss: 249Mb L: 2/4 MS: 3 ShuffleBytes-PersAutoDict-ChangeByte- DE: "\001\000"-
+#22	NEW    cov: 6865 ft: 8123 corp: 12/28b lim: 4 exec/s: 0 rss: 278Mb L: 4/4 MS: 3 ChangeBit-ShuffleBytes-ChangeByte-
+#26	NEW    cov: 6865 ft: 8124 corp: 13/32b lim: 4 exec/s: 0 rss: 288Mb L: 4/4 MS: 4 CMP-CrossOver-ShuffleBytes-InsertByte- DE: "\001\025"-
+#33	NEW    cov: 6866 ft: 8126 corp: 14/36b lim: 4 exec/s: 33 rss: 290Mb L: 4/4 MS: 2 CopyPart-ChangeByte-
+	NEW_FUNC[1/2]: 0x560535cf1bd0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_rpch_replay_events_fuzz+0x4f5bd0) (BuildId: 832252b9a032ac8986a98fada84e376e3281a18b)
+	NEW_FUNC[2/2]: 0x560535cf3970  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_rpch_replay_events_fuzz+0x4f7970) (BuildId: 832252b9a032ac8986a98fada84e376e3281a18b)
+#34	NEW    cov: 6881 ft: 8172 corp: 15/39b lim: 4 exec/s: 34 rss: 290Mb L: 3/4 MS: 1 ShuffleBytes-
+#39	NEW    cov: 6883 ft: 8175 corp: 16/41b lim: 4 exec/s: 39 rss: 291Mb L: 2/4 MS: 5 ChangeBit-EraseBytes-ChangeBinInt-CMP-EraseBytes- DE: "\025\000"-
+#48	NEW    cov: 6884 ft: 8205 corp: 17/45b lim: 4 exec/s: 48 rss: 293Mb L: 4/4 MS: 4 InsertByte-ChangeByte-EraseBytes-CMP- DE: "\031\000"-
+#56	NEW    cov: 6884 ft: 8206 corp: 18/49b lim: 4 exec/s: 56 rss: 294Mb L: 4/4 MS: 3 ChangeBit-InsertByte-ShuffleBytes-
+#57	NEW    cov: 6884 ft: 8208 corp: 19/51b lim: 4 exec/s: 57 rss: 294Mb L: 2/4 MS: 1 ChangeBit-
+#60	NEW    cov: 6885 ft: 8209 corp: 20/55b lim: 4 exec/s: 60 rss: 294Mb L: 4/4 MS: 3 InsertByte-ChangeByte-ChangeBit-
+#71	NEW    cov: 6885 ft: 8210 corp: 21/57b lim: 4 exec/s: 71 rss: 295Mb L: 2/4 MS: 1 CrossOver-
+#77	NEW    cov: 6885 ft: 8366 corp: 22/61b lim: 4 exec/s: 77 rss: 296Mb L: 4/4 MS: 1 CopyPart-
+#82	NEW    cov: 6886 ft: 8388 corp: 23/65b lim: 4 exec/s: 82 rss: 296Mb L: 4/4 MS: 5 ChangeByte-ChangeBit-CrossOver-CopyPart-ChangeBinInt-
+#88	NEW    cov: 6887 ft: 8390 corp: 24/69b lim: 4 exec/s: 88 rss: 296Mb L: 4/4 MS: 1 ShuffleBytes-
+#98	DONE   cov: 6887 ft: 8390 corp: 24/69b lim: 4 exec/s: 49 rss: 297Mb
+###### Recommended dictionary. ######
+"\001\000" # Uses: 1
+"\001\025" # Uses: 2
+"\025\000" # Uses: 0
+"\031\000" # Uses: 0
+###### End of recommended dictionary. ######
+Done 98 runs in 2 second(s)

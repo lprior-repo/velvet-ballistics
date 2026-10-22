@@ -1,0 +1,3 @@
+=== compile evidence: journal_event_fuzz ===
+-rwxr-xr-x 2 lewis lewis 3093080 Oct 22 17:21 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/journal_event_fuzz
+OK: binary present

@@ -1,0 +1,25 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 315160665
+INFO: Loaded 1 modules   (352 inline 8-bit counters): 352 [0x55dc055420a3, 0x55dc05542203), 
+INFO: Loaded 1 PC tables (352 PCs): 352 [0x55dc05542208,0x55dc05543808), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/vb_vzcuf_PS_006
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 20 ft: 21 corp: 1/1b exec/s: 0 rss: 32Mb
+#7	NEW    cov: 21 ft: 22 corp: 2/3b lim: 4 exec/s: 0 rss: 32Mb L: 2/2 MS: 5 CrossOver-InsertByte-ShuffleBytes-ChangeByte-EraseBytes-
+#43	REDUCE cov: 21 ft: 22 corp: 2/2b lim: 4 exec/s: 0 rss: 32Mb L: 1/1 MS: 1 EraseBytes-
+#482	NEW    cov: 22 ft: 23 corp: 3/10b lim: 8 exec/s: 0 rss: 33Mb L: 8/8 MS: 4 InsertRepeatedBytes-ChangeBinInt-InsertByte-CopyPart-
+#2441	NEW    cov: 29 ft: 30 corp: 4/35b lim: 25 exec/s: 0 rss: 34Mb L: 25/25 MS: 4 ChangeByte-ChangeBinInt-EraseBytes-InsertRepeatedBytes-
+#2545	NEW    cov: 30 ft: 31 corp: 5/60b lim: 25 exec/s: 0 rss: 34Mb L: 25/25 MS: 4 CrossOver-ChangeBinInt-CrossOver-ChangeByte-
+#3191	NEW    cov: 31 ft: 32 corp: 6/89b lim: 29 exec/s: 0 rss: 34Mb L: 29/29 MS: 1 InsertRepeatedBytes-
+#3343	REDUCE cov: 31 ft: 32 corp: 6/88b lim: 29 exec/s: 0 rss: 34Mb L: 28/28 MS: 2 EraseBytes-CopyPart-
+#3784	NEW    cov: 32 ft: 33 corp: 7/121b lim: 33 exec/s: 0 rss: 34Mb L: 33/33 MS: 1 InsertRepeatedBytes-
+#4152	REDUCE cov: 32 ft: 33 corp: 7/120b lim: 33 exec/s: 0 rss: 34Mb L: 27/33 MS: 3 EraseBytes-ChangeBit-InsertRepeatedBytes-
+#4511	REDUCE cov: 32 ft: 33 corp: 7/119b lim: 33 exec/s: 0 rss: 34Mb L: 26/33 MS: 4 EraseBytes-ShuffleBytes-ShuffleBytes-InsertByte-
+#5414	REDUCE cov: 32 ft: 33 corp: 7/118b lim: 38 exec/s: 0 rss: 35Mb L: 32/32 MS: 3 InsertRepeatedBytes-CopyPart-EraseBytes-
+#7029	REDUCE cov: 32 ft: 33 corp: 7/117b lim: 53 exec/s: 0 rss: 35Mb L: 25/32 MS: 5 CrossOver-CrossOver-CMP-CrossOver-InsertByte- DE: "\000\000"-
+#3702544	DONE   cov: 32 ft: 33 corp: 7/117b lim: 4096 exec/s: 1851272 rss: 364Mb
+###### Recommended dictionary. ######
+"\000\000" # Uses: 335429
+###### End of recommended dictionary. ######
+Done 3702544 runs in 2 second(s)

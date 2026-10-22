@@ -1,0 +1,20 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2043933243
+INFO: Loaded 1 modules   (392 inline 8-bit counters): 392 [0x56466c87fd90, 0x56466c87ff18), 
+INFO: Loaded 1 PC tables (392 PCs): 392 [0x56466c87ff18,0x56466c881798), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_set_lowering
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED exec/s: 0 rss: 31Mb
+WARNING: no interesting inputs were found so far. Is the code instrumented for coverage?
+This may also happen if the target rejected all inputs we tried so far
+	NEW_FUNC[1/9]: 0x56466c7db380  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_set_lowering+0x117380) (BuildId: 1452f2ccc5dde8ae0ee8f11a6aa81450c85b6d35)
+	NEW_FUNC[2/9]: 0x56466c7db560  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_set_lowering+0x117560) (BuildId: 1452f2ccc5dde8ae0ee8f11a6aa81450c85b6d35)
+#411	NEW    cov: 37 ft: 38 corp: 2/8b lim: 8 exec/s: 0 rss: 33Mb L: 7/7 MS: 4 CopyPart-InsertRepeatedBytes-ChangeBit-InsertByte-
+#412	NEW    cov: 38 ft: 40 corp: 3/15b lim: 8 exec/s: 0 rss: 33Mb L: 7/7 MS: 1 ShuffleBytes-
+#433	NEW    cov: 41 ft: 47 corp: 4/23b lim: 8 exec/s: 0 rss: 33Mb L: 8/8 MS: 1 InsertByte-
+#557	REDUCE cov: 41 ft: 47 corp: 4/22b lim: 8 exec/s: 0 rss: 33Mb L: 7/7 MS: 4 CopyPart-CrossOver-ShuffleBytes-InsertRepeatedBytes-
+#866	REDUCE cov: 41 ft: 48 corp: 5/32b lim: 11 exec/s: 0 rss: 33Mb L: 10/10 MS: 4 ShuffleBytes-ShuffleBytes-ChangeByte-InsertRepeatedBytes-
+#882	REDUCE cov: 41 ft: 48 corp: 5/31b lim: 11 exec/s: 0 rss: 33Mb L: 9/9 MS: 1 CrossOver-
+#2411542	DONE   cov: 41 ft: 48 corp: 5/31b lim: 4096 exec/s: 1205771 rss: 220Mb
+Done 2411542 runs in 2 second(s)

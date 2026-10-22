@@ -1,0 +1,3 @@
+=== compile evidence: wait_digest_exhaustive_collision ===
+-rwxr-xr-x 2 lewis lewis 6124760 Oct 22 17:21 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/wait_digest_exhaustive_collision
+OK: binary present

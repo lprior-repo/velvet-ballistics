@@ -1,0 +1,28 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4227396872
+INFO: Loaded 1 modules   (6139 inline 8-bit counters): 6139 [0x55615c6da7a3, 0x55615c6dbf9e), 
+INFO: Loaded 1 PC tables (6139 PCs): 6139 [0x55615c6dbfa0,0x55615c6f3f50), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_retry_validate_completion
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 297 ft: 298 corp: 1/1b exec/s: 0 rss: 41Mb
+#3	NEW    cov: 298 ft: 299 corp: 2/3b lim: 4 exec/s: 0 rss: 41Mb L: 2/2 MS: 1 InsertByte-
+#4	REDUCE cov: 298 ft: 299 corp: 2/2b lim: 4 exec/s: 0 rss: 41Mb L: 1/1 MS: 1 EraseBytes-
+#426	REDUCE cov: 302 ft: 303 corp: 3/10b lim: 8 exec/s: 0 rss: 44Mb L: 8/8 MS: 2 ShuffleBytes-InsertRepeatedBytes-
+#756	REDUCE cov: 305 ft: 306 corp: 4/19b lim: 11 exec/s: 0 rss: 46Mb L: 9/9 MS: 5 CopyPart-ChangeByte-ChangeBit-InsertRepeatedBytes-CopyPart-
+#762	REDUCE cov: 307 ft: 308 corp: 5/29b lim: 11 exec/s: 0 rss: 46Mb L: 10/10 MS: 1 InsertRepeatedBytes-
+#766	NEW    cov: 309 ft: 310 corp: 6/40b lim: 11 exec/s: 0 rss: 46Mb L: 11/11 MS: 4 ShuffleBytes-ShuffleBytes-CrossOver-CrossOver-
+#1088	NEW    cov: 313 ft: 314 corp: 7/54b lim: 14 exec/s: 0 rss: 46Mb L: 14/14 MS: 2 InsertByte-CopyPart-
+#1100	NEW    cov: 316 ft: 317 corp: 8/68b lim: 14 exec/s: 0 rss: 46Mb L: 14/14 MS: 2 ShuffleBytes-CopyPart-
+#1132	NEW    cov: 317 ft: 318 corp: 9/81b lim: 14 exec/s: 0 rss: 46Mb L: 13/14 MS: 2 InsertByte-CrossOver-
+#1169	NEW    cov: 318 ft: 319 corp: 10/93b lim: 14 exec/s: 0 rss: 46Mb L: 12/14 MS: 2 InsertByte-CMP- DE: "\001\000\000\000\000\000\000\000"-
+#1388	REDUCE cov: 318 ft: 319 corp: 10/91b lim: 14 exec/s: 0 rss: 46Mb L: 12/14 MS: 4 EraseBytes-ShuffleBytes-ChangeBit-CopyPart-
+#1696	NEW    cov: 325 ft: 326 corp: 11/108b lim: 17 exec/s: 0 rss: 46Mb L: 17/17 MS: 3 InsertByte-ChangeBit-InsertRepeatedBytes-
+#2050	REDUCE cov: 325 ft: 326 corp: 11/107b lim: 17 exec/s: 0 rss: 46Mb L: 12/17 MS: 4 CMP-ChangeBinInt-CrossOver-InsertByte- DE: "\000\000\000\000"-
+#2332	REDUCE cov: 325 ft: 326 corp: 11/106b lim: 17 exec/s: 0 rss: 47Mb L: 16/16 MS: 2 ChangeByte-EraseBytes-
+#472637	DONE   cov: 325 ft: 326 corp: 11/106b lim: 4096 exec/s: 236318 rss: 277Mb
+###### Recommended dictionary. ######
+"\001\000\000\000\000\000\000\000" # Uses: 21233
+"\000\000\000\000" # Uses: 21243
+###### End of recommended dictionary. ######
+Done 472637 runs in 2 second(s)

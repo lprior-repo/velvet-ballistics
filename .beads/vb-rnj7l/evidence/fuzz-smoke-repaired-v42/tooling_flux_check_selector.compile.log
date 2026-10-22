@@ -1,0 +1,3 @@
+=== compile evidence: tooling_flux_check_selector ===
+-rwxr-xr-x 2 lewis lewis 1905992 Oct 22 17:18 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/tooling_flux_check_selector
+OK: binary present

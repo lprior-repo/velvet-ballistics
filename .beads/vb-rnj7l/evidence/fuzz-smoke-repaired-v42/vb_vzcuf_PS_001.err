@@ -1,0 +1,44 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2691055105
+INFO: Loaded 1 modules   (3710 inline 8-bit counters): 3710 [0x561fa9bd2bc3, 0x561fa9bd3a41), 
+INFO: Loaded 1 PC tables (3710 PCs): 3710 [0x561fa9bd3a48,0x561fa9be2228), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/vb_vzcuf_PS_001
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 20 ft: 21 corp: 1/1b exec/s: 0 rss: 34Mb
+#3	NEW    cov: 21 ft: 22 corp: 2/2b lim: 4 exec/s: 0 rss: 34Mb L: 1/1 MS: 1 ChangeByte-
+#415	NEW    cov: 22 ft: 23 corp: 3/10b lim: 8 exec/s: 0 rss: 35Mb L: 8/8 MS: 2 InsertRepeatedBytes-CrossOver-
+	NEW_FUNC[1/21]: 0x561fa9af7780  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_001+0x13a780) (BuildId: 3b2dab50b1f6028c5ef432393fd1f5ab0c39b131)
+	NEW_FUNC[2/21]: 0x561fa9afb240  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_001+0x13e240) (BuildId: 3b2dab50b1f6028c5ef432393fd1f5ab0c39b131)
+#725	NEW    cov: 150 ft: 152 corp: 4/21b lim: 11 exec/s: 0 rss: 36Mb L: 11/11 MS: 5 ChangeBit-CrossOver-ChangeByte-EraseBytes-InsertRepeatedBytes-
+#741	NEW    cov: 152 ft: 154 corp: 5/31b lim: 11 exec/s: 0 rss: 36Mb L: 10/11 MS: 1 CrossOver-
+#809	NEW    cov: 153 ft: 155 corp: 6/41b lim: 11 exec/s: 0 rss: 36Mb L: 10/11 MS: 3 EraseBytes-CMP-CMP- DE: "\377\377\377\377"-"\000\000"-
+#811	NEW    cov: 154 ft: 156 corp: 7/52b lim: 11 exec/s: 0 rss: 36Mb L: 11/11 MS: 2 InsertByte-CMP- DE: "\000\000\000\000"-
+#817	NEW    cov: 155 ft: 167 corp: 8/62b lim: 11 exec/s: 0 rss: 36Mb L: 10/11 MS: 1 CMP- DE: "\000\000\000\000\000\000\000\000"-
+#820	NEW    cov: 156 ft: 168 corp: 9/72b lim: 11 exec/s: 0 rss: 36Mb L: 10/11 MS: 3 ChangeBinInt-ChangeByte-ChangeBinInt-
+#826	NEW    cov: 157 ft: 169 corp: 10/82b lim: 11 exec/s: 0 rss: 36Mb L: 10/11 MS: 1 CopyPart-
+#832	NEW    cov: 158 ft: 170 corp: 11/92b lim: 11 exec/s: 0 rss: 36Mb L: 10/11 MS: 1 PersAutoDict- DE: "\000\000\000\000\000\000\000\000"-
+#846	REDUCE cov: 158 ft: 170 corp: 11/90b lim: 11 exec/s: 0 rss: 36Mb L: 9/11 MS: 4 ChangeBit-ChangeByte-EraseBytes-InsertByte-
+#860	REDUCE cov: 158 ft: 170 corp: 11/89b lim: 11 exec/s: 0 rss: 36Mb L: 9/11 MS: 4 CopyPart-ShuffleBytes-InsertByte-EraseBytes-
+#861	NEW    cov: 159 ft: 171 corp: 12/99b lim: 11 exec/s: 0 rss: 36Mb L: 10/11 MS: 1 PersAutoDict- DE: "\000\000"-
+#933	NEW    cov: 160 ft: 172 corp: 13/108b lim: 11 exec/s: 0 rss: 36Mb L: 9/11 MS: 2 ChangeBit-EraseBytes-
+#989	NEW    cov: 161 ft: 173 corp: 14/119b lim: 11 exec/s: 0 rss: 37Mb L: 11/11 MS: 1 CrossOver-
+#1030	NEW    cov: 161 ft: 174 corp: 15/129b lim: 11 exec/s: 0 rss: 37Mb L: 10/11 MS: 1 ChangeBit-
+#1040	REDUCE cov: 161 ft: 174 corp: 15/128b lim: 11 exec/s: 0 rss: 37Mb L: 9/11 MS: 5 CopyPart-ChangeByte-InsertByte-EraseBytes-CopyPart-
+#1236	REDUCE cov: 161 ft: 174 corp: 15/127b lim: 11 exec/s: 0 rss: 37Mb L: 9/11 MS: 1 EraseBytes-
+#1333	REDUCE cov: 161 ft: 174 corp: 15/126b lim: 11 exec/s: 0 rss: 38Mb L: 10/11 MS: 2 ChangeByte-EraseBytes-
+#1945	REDUCE cov: 162 ft: 175 corp: 16/142b lim: 17 exec/s: 0 rss: 39Mb L: 16/16 MS: 2 ChangeByte-InsertRepeatedBytes-
+#6226	REDUCE cov: 162 ft: 175 corp: 16/141b lim: 58 exec/s: 0 rss: 41Mb L: 9/16 MS: 1 EraseBytes-
+#9062	REDUCE cov: 162 ft: 175 corp: 16/140b lim: 86 exec/s: 0 rss: 42Mb L: 9/16 MS: 1 EraseBytes-
+#11198	REDUCE cov: 162 ft: 175 corp: 16/139b lim: 104 exec/s: 0 rss: 43Mb L: 9/16 MS: 1 EraseBytes-
+#12210	REDUCE cov: 162 ft: 175 corp: 16/138b lim: 110 exec/s: 0 rss: 44Mb L: 9/16 MS: 2 CrossOver-EraseBytes-
+#12341	REDUCE cov: 162 ft: 175 corp: 16/137b lim: 110 exec/s: 0 rss: 44Mb L: 9/16 MS: 1 EraseBytes-
+#49447	REDUCE cov: 162 ft: 175 corp: 16/136b lim: 477 exec/s: 0 rss: 59Mb L: 9/16 MS: 1 EraseBytes-
+#701972	DONE   cov: 162 ft: 175 corp: 16/136b lim: 4096 exec/s: 350986 rss: 308Mb
+###### Recommended dictionary. ######
+"\377\377\377\377" # Uses: 16029
+"\000\000" # Uses: 16325
+"\000\000\000\000" # Uses: 16260
+"\000\000\000\000\000\000\000\000" # Uses: 15695
+###### End of recommended dictionary. ######
+Done 701972 runs in 2 second(s)

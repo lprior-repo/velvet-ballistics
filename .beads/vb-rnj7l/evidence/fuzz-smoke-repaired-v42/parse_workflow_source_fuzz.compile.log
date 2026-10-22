@@ -1,0 +1,3 @@
+=== compile evidence: parse_workflow_source_fuzz ===
+-rwxr-xr-x 2 lewis lewis 4265672 Oct 22 17:17 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/parse_workflow_source_fuzz
+OK: binary present

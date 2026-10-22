@@ -1,0 +1,31 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 195454999
+INFO: Loaded 1 modules   (41425 inline 8-bit counters): 41425 [0x55f3e8bd1b63, 0x55f3e8bdbd34), 
+INFO: Loaded 1 PC tables (41425 PCs): 41425 [0x55f3e8bdbd38,0x55f3e8c7da48), 
+INFO:       54 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/wait_digest_exhaustive_collision
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: seed corpus: files: 54 min: 1b max: 30b total: 326b rss: 36Mb
+#55	INITED cov: 2838 ft: 3267 corp: 21/89b exec/s: 0 rss: 54Mb
+	NEW_FUNC[1/1]: 0x55f3e8942c70  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/wait_digest_exhaustive_collision+0x28bc70) (BuildId: 3206a569f8d810050f5085fd37e8779821388052)
+#59	NEW    cov: 2841 ft: 3270 corp: 22/93b lim: 8 exec/s: 0 rss: 55Mb L: 4/8 MS: 4 ChangeBit-CopyPart-CopyPart-ChangeBit-
+#82	REDUCE cov: 2841 ft: 3270 corp: 22/92b lim: 8 exec/s: 0 rss: 56Mb L: 5/8 MS: 3 ChangeBinInt-EraseBytes-CopyPart-
+#137	NEW    cov: 2841 ft: 3273 corp: 23/99b lim: 8 exec/s: 0 rss: 60Mb L: 7/8 MS: 5 CrossOver-ShuffleBytes-InsertByte-CopyPart-CrossOver-
+#176	NEW    cov: 2841 ft: 3274 corp: 24/107b lim: 8 exec/s: 0 rss: 61Mb L: 8/8 MS: 4 CMP-ChangeBit-ChangeBinInt-InsertRepeatedBytes- DE: "\000\000\000\000"-
+#199	NEW    cov: 2843 ft: 3277 corp: 25/111b lim: 8 exec/s: 0 rss: 63Mb L: 4/8 MS: 3 CopyPart-ChangeBit-ShuffleBytes-
+#210	NEW    cov: 2843 ft: 3278 corp: 26/115b lim: 8 exec/s: 0 rss: 63Mb L: 4/8 MS: 1 ShuffleBytes-
+#421	NEW    cov: 2843 ft: 3279 corp: 27/119b lim: 8 exec/s: 0 rss: 76Mb L: 4/8 MS: 1 ChangeBinInt-
+#521	NEW    cov: 2843 ft: 3280 corp: 28/126b lim: 8 exec/s: 0 rss: 80Mb L: 7/8 MS: 5 ShuffleBytes-CopyPart-CopyPart-ChangeBit-ShuffleBytes-
+#554	NEW    cov: 2843 ft: 3283 corp: 29/130b lim: 8 exec/s: 0 rss: 82Mb L: 4/8 MS: 3 ChangeBinInt-ChangeBit-CopyPart-
+#1124	NEW    cov: 2843 ft: 3292 corp: 30/138b lim: 11 exec/s: 0 rss: 113Mb L: 8/8 MS: 5 InsertByte-EraseBytes-InsertByte-CopyPart-CopyPart-
+#1223	NEW    cov: 2843 ft: 3293 corp: 31/147b lim: 11 exec/s: 0 rss: 118Mb L: 9/9 MS: 4 CrossOver-InsertRepeatedBytes-EraseBytes-PersAutoDict- DE: "\000\000\000\000"-
+#1558	NEW    cov: 2843 ft: 3302 corp: 32/159b lim: 14 exec/s: 0 rss: 136Mb L: 12/12 MS: 5 ChangeBit-ChangeByte-ChangeBinInt-CMP-ChangeBinInt- DE: "\000\000\000\000\000\000\000\006"-
+#1802	RELOAD cov: 2843 ft: 3303 corp: 33/167b lim: 14 exec/s: 1802 rss: 152Mb
+#2129	REDUCE cov: 2843 ft: 3303 corp: 33/166b lim: 17 exec/s: 2129 rss: 172Mb L: 6/12 MS: 2 ChangeBinInt-EraseBytes-
+#2875	REDUCE cov: 2843 ft: 3303 corp: 33/162b lim: 21 exec/s: 2875 rss: 214Mb L: 8/9 MS: 1 EraseBytes-
+#4421	REDUCE cov: 2843 ft: 3303 corp: 33/158b lim: 33 exec/s: 4421 rss: 299Mb L: 4/9 MS: 1 EraseBytes-
+#4566	DONE   cov: 2843 ft: 3303 corp: 33/158b lim: 33 exec/s: 2283 rss: 309Mb
+###### Recommended dictionary. ######
+"\000\000\000\000" # Uses: 248
+"\000\000\000\000\000\000\000\006" # Uses: 87
+###### End of recommended dictionary. ######
+Done 4566 runs in 2 second(s)

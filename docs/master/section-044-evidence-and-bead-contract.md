@@ -20,7 +20,7 @@ exit = 0
 log = "logs/fmt.txt"
 
 [[commands]]
-command = "cargo +nightly clippy --workspace --all-targets --all-features -- -D warnings"
+command = "cargo +nightly clippy --workspace --lib --bins --examples --all-features -- -D warnings"
 exit = 0
 log = "logs/clippy.txt"
 

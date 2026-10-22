@@ -1,0 +1,3 @@
+=== compile evidence: decode_record ===
+-rwxr-xr-x 2 lewis lewis 2882552 Oct 22 17:17 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/decode_record
+OK: binary present

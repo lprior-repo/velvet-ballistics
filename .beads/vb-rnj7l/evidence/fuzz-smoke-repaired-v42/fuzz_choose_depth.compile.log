@@ -1,0 +1,3 @@
+=== compile evidence: fuzz_choose_depth ===
+-rwxr-xr-x 2 lewis lewis 7484248 Oct 22 17:21 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_choose_depth
+OK: binary present

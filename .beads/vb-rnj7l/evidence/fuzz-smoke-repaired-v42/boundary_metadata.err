@@ -1,0 +1,37 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3200441660
+INFO: Loaded 1 modules   (579 inline 8-bit counters): 579 [0x55e5c8830d43, 0x55e5c8830f86), 
+INFO: Loaded 1 PC tables (579 PCs): 579 [0x55e5c8830f88,0x55e5c88333b8), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/boundary_metadata
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 29 ft: 30 corp: 1/1b exec/s: 0 rss: 42Mb
+#516	NEW    cov: 30 ft: 31 corp: 2/8b lim: 8 exec/s: 0 rss: 42Mb L: 7/7 MS: 4 InsertRepeatedBytes-ShuffleBytes-EraseBytes-InsertByte-
+#552	NEW    cov: 31 ft: 32 corp: 3/16b lim: 8 exec/s: 0 rss: 42Mb L: 8/8 MS: 1 InsertByte-
+#592	NEW    cov: 32 ft: 33 corp: 4/24b lim: 8 exec/s: 0 rss: 44Mb L: 8/8 MS: 5 CrossOver-ChangeByte-CrossOver-CopyPart-CMP- DE: "\376\377\377\377\377\377\377\377"-
+#915	NEW    cov: 33 ft: 34 corp: 5/33b lim: 11 exec/s: 0 rss: 44Mb L: 9/9 MS: 3 ChangeByte-ChangeBit-PersAutoDict- DE: "\376\377\377\377\377\377\377\377"-
+#916	NEW    cov: 34 ft: 35 corp: 6/43b lim: 11 exec/s: 0 rss: 44Mb L: 10/10 MS: 1 CopyPart-
+#1330	NEW    cov: 35 ft: 36 corp: 7/56b lim: 14 exec/s: 0 rss: 45Mb L: 13/13 MS: 4 InsertByte-ChangeByte-InsertRepeatedBytes-InsertByte-
+#7185	REDUCE cov: 35 ft: 36 corp: 7/54b lim: 68 exec/s: 0 rss: 47Mb L: 6/13 MS: 5 ChangeASCIIInt-ChangeByte-PersAutoDict-EraseBytes-EraseBytes- DE: "\376\377\377\377\377\377\377\377"-
+	NEW_FUNC[1/4]: 0x55e5c87c90f0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/boundary_metadata+0x15a0f0) (BuildId: 1ddbc4b25a5728b55d53feb00760e9be7a7199aa)
+	NEW_FUNC[2/4]: 0x55e5c87c92e0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/boundary_metadata+0x15a2e0) (BuildId: 1ddbc4b25a5728b55d53feb00760e9be7a7199aa)
+#60180	NEW    cov: 78 ft: 80 corp: 8/82b lim: 589 exec/s: 0 rss: 69Mb L: 28/28 MS: 5 CrossOver-CMP-CrossOver-ChangeByte-CMP- DE: "\012\357\277\275\357\277\275\357\277\275\357\277\275*\357\277\275"-"generated-interface-boundary"-
+#63916	NEW    cov: 80 ft: 82 corp: 9/110b lim: 625 exec/s: 0 rss: 71Mb L: 28/28 MS: 1 CMP- DE: "decoder-byte-ingest-boundary"-
+#102733	NEW    cov: 82 ft: 84 corp: 10/134b lim: 1003 exec/s: 0 rss: 88Mb L: 24/28 MS: 2 InsertRepeatedBytes-CMP- DE: "external-binary-boundary"-
+#133267	NEW    cov: 86 ft: 89 corp: 11/159b lim: 1300 exec/s: 0 rss: 102Mb L: 25/28 MS: 4 CrossOver-PersAutoDict-CrossOver-CMP- DE: "\012\357\277\275\357\277\275\357\277\275\357\277\275*\357\277\275"-"foreign-function-boundary"-
+#154171	NEW    cov: 88 ft: 91 corp: 12/176b lim: 1500 exec/s: 0 rss: 111Mb L: 17/28 MS: 4 ChangeByte-PersAutoDict-EraseBytes-CMP- DE: "\012\357\277\275\357\277\275\357\277\275\357\277\275*\357\277\275"-"extern-c-boundary"-
+#230895	REDUCE cov: 90 ft: 93 corp: 13/211b lim: 2259 exec/s: 0 rss: 144Mb L: 35/35 MS: 4 ChangeBit-CopyPart-PersAutoDict-CMP- DE: "decoder-byte-ingest-boundary"-"unsafe-adjacent-dependency-boundary"-
+#470520	REDUCE cov: 92 ft: 95 corp: 14/229b lim: 4096 exec/s: 0 rss: 249Mb L: 18/35 MS: 5 CrossOver-InsertByte-CrossOver-InsertByte-CMP- DE: "ipc-frame-boundary"-
+#1258630	DONE   cov: 92 ft: 95 corp: 14/229b lim: 4096 exec/s: 629315 rss: 497Mb
+###### Recommended dictionary. ######
+"\376\377\377\377\377\377\377\377" # Uses: 17841
+"\012\357\277\275\357\277\275\357\277\275\357\277\275*\357\277\275" # Uses: 11177
+"generated-interface-boundary" # Uses: 9956
+"decoder-byte-ingest-boundary" # Uses: 10001
+"external-binary-boundary" # Uses: 9753
+"foreign-function-boundary" # Uses: 9140
+"extern-c-boundary" # Uses: 9722
+"unsafe-adjacent-dependency-boundary" # Uses: 7076
+"ipc-frame-boundary" # Uses: 6444
+###### End of recommended dictionary. ######
+Done 1258630 runs in 2 second(s)

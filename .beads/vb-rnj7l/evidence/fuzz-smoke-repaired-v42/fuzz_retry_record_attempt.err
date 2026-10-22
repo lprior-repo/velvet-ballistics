@@ -1,0 +1,30 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2137694138
+INFO: Loaded 1 modules   (6116 inline 8-bit counters): 6116 [0x557dba863183, 0x557dba864967), 
+INFO: Loaded 1 PC tables (6116 PCs): 6116 [0x557dba864968,0x557dba87c7a8), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_retry_record_attempt
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 19 ft: 20 corp: 1/1b exec/s: 0 rss: 36Mb
+#46	NEW    cov: 20 ft: 21 corp: 2/5b lim: 4 exec/s: 0 rss: 36Mb L: 4/4 MS: 4 ShuffleBytes-CopyPart-ShuffleBytes-CMP- DE: "\000\000"-
+	NEW_FUNC[1/27]: 0x557dba784c80  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_retry_record_attempt+0x14cc80) (BuildId: 90f504df027c84e4a97a86d5440b8d47ec998830)
+	NEW_FUNC[2/27]: 0x557dba785160  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_retry_record_attempt+0x14d160) (BuildId: 90f504df027c84e4a97a86d5440b8d47ec998830)
+#491	NEW    cov: 292 ft: 294 corp: 3/13b lim: 8 exec/s: 0 rss: 38Mb L: 8/8 MS: 5 ChangeByte-CMP-CopyPart-CopyPart-CopyPart- DE: "\000\000\000\000"-
+#492	NEW    cov: 293 ft: 295 corp: 4/21b lim: 8 exec/s: 0 rss: 38Mb L: 8/8 MS: 1 CrossOver-
+#516	NEW    cov: 297 ft: 304 corp: 5/29b lim: 8 exec/s: 0 rss: 38Mb L: 8/8 MS: 4 ChangeByte-CopyPart-CopyPart-InsertRepeatedBytes-
+#822	NEW    cov: 303 ft: 310 corp: 6/39b lim: 11 exec/s: 0 rss: 39Mb L: 10/10 MS: 1 PersAutoDict- DE: "\000\000"-
+	NEW_FUNC[1/1]: 0x557dba788490  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/fuzz_retry_record_attempt+0x150490) (BuildId: 90f504df027c84e4a97a86d5440b8d47ec998830)
+#830	NEW    cov: 314 ft: 321 corp: 7/48b lim: 11 exec/s: 0 rss: 39Mb L: 9/10 MS: 3 ChangeByte-CopyPart-InsertByte-
+#831	NEW    cov: 316 ft: 323 corp: 8/59b lim: 11 exec/s: 0 rss: 39Mb L: 11/11 MS: 1 PersAutoDict- DE: "\000\000"-
+#1138	NEW    cov: 324 ft: 331 corp: 9/72b lim: 14 exec/s: 0 rss: 40Mb L: 13/13 MS: 2 ChangeByte-CrossOver-
+#1140	NEW    cov: 326 ft: 333 corp: 10/86b lim: 14 exec/s: 0 rss: 40Mb L: 14/14 MS: 2 EraseBytes-InsertRepeatedBytes-
+#1184	NEW    cov: 327 ft: 334 corp: 11/98b lim: 14 exec/s: 0 rss: 41Mb L: 12/14 MS: 4 ChangeBit-PersAutoDict-ChangeByte-InsertRepeatedBytes- DE: "\000\000\000\000"-
+#1204	REDUCE cov: 327 ft: 334 corp: 11/97b lim: 14 exec/s: 0 rss: 41Mb L: 12/14 MS: 5 ChangeBinInt-ChangeBit-EraseBytes-ChangeBit-InsertByte-
+#1510	NEW    cov: 336 ft: 343 corp: 12/113b lim: 17 exec/s: 0 rss: 41Mb L: 16/16 MS: 1 CMP- DE: "\016\377\377\377\377\377\377\377"-
+#401080	DONE   cov: 336 ft: 343 corp: 12/113b lim: 3986 exec/s: 200540 rss: 213Mb
+###### Recommended dictionary. ######
+"\000\000" # Uses: 12781
+"\000\000\000\000" # Uses: 12484
+"\016\377\377\377\377\377\377\377" # Uses: 11419
+###### End of recommended dictionary. ######
+Done 401080 runs in 2 second(s)

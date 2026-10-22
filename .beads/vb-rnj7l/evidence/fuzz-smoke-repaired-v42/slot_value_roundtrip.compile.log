@@ -1,0 +1,3 @@
+=== compile evidence: slot_value_roundtrip ===
+-rwxr-xr-x 2 lewis lewis 1305592 Oct 22 17:15 target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/slot_value_roundtrip
+OK: binary present

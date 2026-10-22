@@ -1,0 +1,18 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1756275851
+INFO: Loaded 1 modules   (12597 inline 8-bit counters): 12597 [0x560176c03e63, 0x560176c06f98), 
+INFO: Loaded 1 PC tables (12597 PCs): 12597 [0x560176c06f98,0x560176c382e8), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_storage_codec_payload_corruption
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 333 ft: 334 corp: 1/1b exec/s: 0 rss: 40Mb
+#3	NEW    cov: 337 ft: 340 corp: 2/2b lim: 4 exec/s: 0 rss: 41Mb L: 1/1 MS: 1 ChangeByte-
+#4	NEW    cov: 339 ft: 342 corp: 3/4b lim: 4 exec/s: 0 rss: 41Mb L: 2/2 MS: 1 InsertByte-
+#8	NEW    cov: 341 ft: 344 corp: 4/7b lim: 4 exec/s: 0 rss: 42Mb L: 3/3 MS: 4 EraseBytes-CrossOver-CopyPart-InsertByte-
+#12	NEW    cov: 342 ft: 345 corp: 5/11b lim: 4 exec/s: 0 rss: 43Mb L: 4/4 MS: 4 ChangeBit-CopyPart-CrossOver-CopyPart-
+#18	NEW    cov: 347 ft: 350 corp: 6/15b lim: 4 exec/s: 0 rss: 43Mb L: 4/4 MS: 1 CrossOver-
+#20	NEW    cov: 354 ft: 367 corp: 7/19b lim: 4 exec/s: 0 rss: 43Mb L: 4/4 MS: 2 InsertByte-ChangeBinInt-
+#435	NEW    cov: 358 ft: 371 corp: 8/27b lim: 8 exec/s: 0 rss: 45Mb L: 8/8 MS: 5 InsertByte-InsertRepeatedBytes-CopyPart-ChangeBit-CrossOver-
+#1741	REDUCE cov: 358 ft: 371 corp: 8/26b lim: 17 exec/s: 0 rss: 48Mb L: 3/8 MS: 1 EraseBytes-
+#90796	DONE   cov: 358 ft: 371 corp: 8/26b lim: 895 exec/s: 45398 rss: 197Mb
+Done 90796 runs in 2 second(s)

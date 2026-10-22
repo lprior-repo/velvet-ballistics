@@ -1,0 +1,24 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 263194187
+INFO: Loaded 1 modules   (5210 inline 8-bit counters): 5210 [0x55e3971fe023, 0x55e3971ff47d), 
+INFO: Loaded 1 PC tables (5210 PCs): 5210 [0x55e3971ff480,0x55e397213a20), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/vb_vzcuf_PS_008
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 20 ft: 21 corp: 1/1b exec/s: 0 rss: 32Mb
+#3	NEW    cov: 21 ft: 22 corp: 2/2b lim: 4 exec/s: 0 rss: 33Mb L: 1/1 MS: 1 ChangeByte-
+	NEW_FUNC[1/21]: 0x55e3971083a0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_008+0x1593a0) (BuildId: 238213f06f77da7d1bc4f9b13e1d2ad031c55e84)
+	NEW_FUNC[2/21]: 0x55e39710be60  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_008+0x15ce60) (BuildId: 238213f06f77da7d1bc4f9b13e1d2ad031c55e84)
+#222	NEW    cov: 145 ft: 147 corp: 3/8b lim: 6 exec/s: 0 rss: 34Mb L: 6/6 MS: 4 CopyPart-ShuffleBytes-ChangeByte-InsertRepeatedBytes-
+#228	NEW    cov: 147 ft: 149 corp: 4/14b lim: 6 exec/s: 0 rss: 36Mb L: 6/6 MS: 1 ShuffleBytes-
+#285	REDUCE cov: 147 ft: 149 corp: 4/13b lim: 6 exec/s: 0 rss: 36Mb L: 5/6 MS: 2 CrossOver-InsertRepeatedBytes-
+	NEW_FUNC[1/3]: 0x55e3971624d0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_008+0x1b34d0) (BuildId: 238213f06f77da7d1bc4f9b13e1d2ad031c55e84)
+	NEW_FUNC[2/3]: 0x55e397167ef0  (/home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/vb_vzcuf_PS_008+0x1b8ef0) (BuildId: 238213f06f77da7d1bc4f9b13e1d2ad031c55e84)
+#347	REDUCE cov: 166 ft: 169 corp: 5/18b lim: 6 exec/s: 0 rss: 36Mb L: 5/6 MS: 2 ChangeBit-CMP- DE: "\000\000\000\000"-
+#562	NEW    cov: 167 ft: 170 corp: 6/26b lim: 8 exec/s: 0 rss: 37Mb L: 8/8 MS: 5 PersAutoDict-ShuffleBytes-ChangeBit-InsertByte-CopyPart- DE: "\000\000\000\000"-
+#564	NEW    cov: 169 ft: 172 corp: 7/34b lim: 8 exec/s: 0 rss: 37Mb L: 8/8 MS: 2 CopyPart-InsertByte-
+#972069	DONE   cov: 169 ft: 172 corp: 7/34b lim: 4096 exec/s: 486034 rss: 269Mb
+###### Recommended dictionary. ######
+"\000\000\000\000" # Uses: 78245
+###### End of recommended dictionary. ######
+Done 972069 runs in 2 second(s)

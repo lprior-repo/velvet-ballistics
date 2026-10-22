@@ -1,0 +1,22 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1551493089
+INFO: Loaded 1 modules   (13656 inline 8-bit counters): 13656 [0x55d78d303f43, 0x55d78d30749b), 
+INFO: Loaded 1 PC tables (13656 PCs): 13656 [0x55d78d3074a0,0x55d78d33ca20), 
+INFO:        0 files found in /home/lewis/src/isoloated/vb-policy-dispatch-v1/target/fuzz-smoke/corpus/fuzz_storage_codec_schema_version
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: A corpus is not provided, starting from an empty corpus
+#2	INITED cov: 222 ft: 223 corp: 1/1b exec/s: 0 rss: 41Mb
+#3	NEW    cov: 225 ft: 226 corp: 2/4b lim: 4 exec/s: 0 rss: 41Mb L: 3/3 MS: 1 CMP- DE: "\000\000"-
+#5	NEW    cov: 226 ft: 227 corp: 3/8b lim: 4 exec/s: 0 rss: 41Mb L: 4/4 MS: 2 ShuffleBytes-InsertByte-
+#10	NEW    cov: 227 ft: 229 corp: 4/11b lim: 4 exec/s: 0 rss: 41Mb L: 3/4 MS: 5 ChangeBit-ChangeBit-PersAutoDict-PersAutoDict-ChangeByte- DE: "\000\000"-"\000\000"-
+#17	NEW    cov: 228 ft: 230 corp: 5/13b lim: 4 exec/s: 0 rss: 42Mb L: 2/4 MS: 2 ChangeBit-InsertByte-
+#49	NEW    cov: 233 ft: 244 corp: 6/17b lim: 4 exec/s: 0 rss: 43Mb L: 4/4 MS: 2 InsertByte-ChangeBinInt-
+#54	REDUCE cov: 233 ft: 244 corp: 6/16b lim: 4 exec/s: 0 rss: 43Mb L: 2/4 MS: 5 CrossOver-ShuffleBytes-EraseBytes-InsertByte-EraseBytes-
+#112	REDUCE cov: 233 ft: 244 corp: 6/15b lim: 4 exec/s: 0 rss: 44Mb L: 1/4 MS: 3 ChangeBit-ChangeBit-EraseBytes-
+#527	REDUCE cov: 237 ft: 248 corp: 7/23b lim: 8 exec/s: 0 rss: 46Mb L: 8/8 MS: 5 InsertByte-PersAutoDict-ChangeBinInt-CopyPart-CMP- DE: "\000\000"-"\000\000\000\000"-
+#344022	DONE   cov: 237 ft: 248 corp: 7/23b lim: 3414 exec/s: 172011 rss: 265Mb
+###### Recommended dictionary. ######
+"\000\000" # Uses: 16072
+"\000\000\000\000" # Uses: 13905
+###### End of recommended dictionary. ######
+Done 344022 runs in 2 second(s)
