@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-f7nmz-local5090-replay-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "recovery::replay"
+  ],
+  "exit_code": 0,
+  "seconds": 10.227,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-f7nmz/evidence/review-v2-vb-storage-recovery"
+}

@@ -1,0 +1,34 @@
+
+running 29 tests
+test recovery::replay::summary::tests::action_failed_event_increments_actions_resolved_only ... ok
+test recovery::replay::summary::tests::ask_answered_event_is_no_op ... ok
+test recovery::replay::summary::tests::action_abandoned_event_drops_pending_action_and_increments_resolved ... ok
+test recovery::replay::summary::tests::crash_after_schedule_then_recover_hydrates_resume_queue ... ok
+test recovery::replay::summary::tests::frame_seed_builder_without_workflow_delegates_to_event_recovery ... ok
+test recovery::replay::summary::tests::action_scheduled_ticket_advances_max_slot_and_step_dimensions ... ok
+test recovery::replay::summary::tests::replay_internal_error_maps_to_exact_recovery_error ... ok
+test recovery::replay::summary::tests::frame_seed_slot_dimension_overflow_reports_exact_variant ... ok
+test recovery::replay::summary::tests::frame_seed_multiple_runs_reports_exact_divergence_detail ... ok
+test recovery::replay::summary::tests::recover_run_admission_returns_latest_metadata_or_none ... ok
+test recovery::replay::summary::tests::frame_seed_empty_events_returns_exact_no_recovery_data ... ok
+test recovery::replay::summary::tests::replay_non_deterministic_mapping_uses_all_typed_kind_names ... ok
+test recovery::replay::summary::tests::event_slot_values_cover_valid_corrupt_and_missing_frame_paths ... ok
+test recovery::replay::summary::tests::replay_non_deterministic_maps_to_exact_recovery_error ... ok
+test recovery::replay::summary::tests::replay_expression_error_maps_to_exact_recovery_error ... ok
+test recovery::replay::summary::tests::replay_slot_not_available_maps_to_exact_recovery_error ... ok
+test recovery::replay::summary::tests::replay_step_not_found_maps_to_exact_recovery_error ... ok
+test recovery::replay::summary::tests::recovery_summary_multiple_runs_reports_exact_divergence_detail ... ok
+test recovery::replay::summary::tests::replayed_all_scalar_slot_variants_remain_supported ... ok
+test recovery::replay::summary::tests::replayed_list_slots_are_explicitly_unsupported ... ok
+test recovery::replay::summary::tests::replayed_object_slots_are_explicitly_unsupported ... ok
+test recovery::replay::summary::tests::replayed_scalar_slots_remain_supported ... ok
+test recovery::replay::summary::tests::slot_written_event_increments_slots_written_only ... ok
+test recovery::replay::summary::tests::summarize_recovery_events_empty_returns_exact_no_recovery_data ... ok
+test recovery::replay::summary::tests::summary_events_cover_workflow_admission_retry_and_terminals ... ok
+test recovery::replay::summary::tests::wait_scheduled_event_increments_suspensions ... ok
+test recovery::replay::summary::tests::unresolved_action_marks_pending_action_recovery_unsupported ... ok
+test recovery::replay::summary::tests::workflow_digest_rejection_fails_closed_without_run_accepted ... ok
+test recovery::replay::summary::tests::workflow_digest_rejection_reports_exact_mismatch_and_accepts_match ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 1588 filtered out; finished in 0.00s
+
