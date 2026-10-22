@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-flvw3-local3090-ask-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "shard::tests::shard_ask_answer_for_wrong_ask_step_returns_invalid_action_completion",
+    "--",
+    "--exact"
+  ],
+  "exit_code": 0,
+  "seconds": 0.077,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-flvw3/evidence/chunk-015-test"
+}

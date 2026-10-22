@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-flvw3-local3090-ask-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "--list"
+  ],
+  "exit_code": 0,
+  "seconds": 0.079,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-flvw3/evidence/list-tests"
+}
