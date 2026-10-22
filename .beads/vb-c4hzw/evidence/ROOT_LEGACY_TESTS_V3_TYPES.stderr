@@ -1,0 +1,10 @@
+error[E0599]: no method named `digest` found for struct `WorkflowParts` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:107:22
+    |
+107 |     assert_eq!(parts.digest(), workflow.digest());
+    |                      ^^^^^^-- help: remove the arguments
+    |                      |
+    |                      field, not a method
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_legacy_admission") due to 1 previous error

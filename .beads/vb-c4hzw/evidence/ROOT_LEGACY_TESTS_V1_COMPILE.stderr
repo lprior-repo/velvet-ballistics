@@ -1,0 +1,172 @@
+error[E0432]: unresolved import `vb_runtime::runtime::RuntimeRecoveryProduct`
+  --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:12:72
+   |
+12 |     RegisteredExecutionError, Runtime, RuntimePendingBoundarySnapshot, RuntimeRecoveryProduct,
+   |                                                                        ^^^^^^^^^^^^^^^^^^^^^^ no `RuntimeRecoveryProduct` in `runtime`
+   |
+   = help: consider importing this enum instead:
+           vb_runtime::recovery::RuntimeRecoveryProduct
+
+error[E0433]: cannot find `RecoveredRunBoundaryKind` in `runtime`
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:144:70
+    |
+144 |             assert_eq!(product.boundary_kind(), vb_runtime::runtime::RecoveredRunBoundaryKind::OpenAsk);
+    |                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^ could not find `RecoveredRunBoundaryKind` in `runtime`
+    |
+help: consider importing this enum
+    |
+  1 + use vb_runtime::recovery::RecoveredRunBoundaryKind;
+    |
+help: if you import `RecoveredRunBoundaryKind`, refer to it directly
+    |
+144 -             assert_eq!(product.boundary_kind(), vb_runtime::runtime::RecoveredRunBoundaryKind::OpenAsk);
+144 +             assert_eq!(product.boundary_kind(), RecoveredRunBoundaryKind::OpenAsk);
+    |
+
+error: unused import: `RuntimePendingBoundarySnapshot`
+  --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:12:40
+   |
+12 |     RegisteredExecutionError, Runtime, RuntimePendingBoundarySnapshot, RuntimeRecoveryProduct,
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error[E0308]: mismatched types
+  --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:76:27
+   |
+76 |     journal.append_strict(events.as_ref()).map_err(|err| err.to_string())
+   |             ------------- ^^^^^^^^^^^^^^^ expected `&JournalEvent`, found `&[JournalEvent]`
+   |             |
+   |             arguments to this method are incorrect
+   |
+   = note: expected reference `&JournalEvent`
+              found reference `&[JournalEvent]`
+note: method defined here
+  --> crates/vb_storage/src/journal/append.rs:39:12
+   |
+39 |     pub fn append_strict(&self, event: &JournalEvent) -> Result<(), JournalError> {
+   |            ^^^^^^^^^^^^^
+
+error[E0609]: no field `workflow_digest` on type `AcceptedArtifact`
+  --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:99:25
+   |
+99 |     assert_eq!(artifact.workflow_digest, workflow.digest());
+   |                         ^^^^^^^^^^^^^^^ unknown field
+   |
+   = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:104:18
+    |
+104 |             seq: vb_core::ids::EventSeq::new(0),
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `vb_storage::EventSeq`, found `vb_core::EventSeq`
+    |
+    = note: `vb_core::EventSeq` and `vb_storage::EventSeq` have similar names, but are actually distinct types
+note: `vb_core::EventSeq` is defined in crate `vb_core`
+   --> crates/vb_core/src/ids/mod.rs:31:9
+    |
+ 31 |         pub struct $name($inner);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 81 | numeric_id!(EventSeq, u64, get);
+    | ------------------------------- in this macro invocation
+note: `vb_storage::EventSeq` is defined in crate `vb_storage`
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the macro `numeric_id` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:110:18
+    |
+110 |             seq: vb_core::ids::EventSeq::new(1),
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `vb_storage::EventSeq`, found `vb_core::EventSeq`
+    |
+    = note: `vb_core::EventSeq` and `vb_storage::EventSeq` have similar names, but are actually distinct types
+note: `vb_core::EventSeq` is defined in crate `vb_core`
+   --> crates/vb_core/src/ids/mod.rs:31:9
+    |
+ 31 |         pub struct $name($inner);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 81 | numeric_id!(EventSeq, u64, get);
+    | ------------------------------- in this macro invocation
+note: `vb_storage::EventSeq` is defined in crate `vb_storage`
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the macro `numeric_id` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:118:18
+    |
+118 |             seq: vb_core::ids::EventSeq::new(2),
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `vb_storage::EventSeq`, found `vb_core::EventSeq`
+    |
+    = note: `vb_core::EventSeq` and `vb_storage::EventSeq` have similar names, but are actually distinct types
+note: `vb_core::EventSeq` is defined in crate `vb_core`
+   --> crates/vb_core/src/ids/mod.rs:31:9
+    |
+ 31 |         pub struct $name($inner);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 81 | numeric_id!(EventSeq, u64, get);
+    | ------------------------------- in this macro invocation
+note: `vb_storage::EventSeq` is defined in crate `vb_storage`
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the macro `numeric_id` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:124:18
+    |
+124 |             seq: vb_core::ids::EventSeq::new(3),
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `vb_storage::EventSeq`, found `vb_core::EventSeq`
+    |
+    = note: `vb_core::EventSeq` and `vb_storage::EventSeq` have similar names, but are actually distinct types
+note: `vb_core::EventSeq` is defined in crate `vb_core`
+   --> crates/vb_core/src/ids/mod.rs:31:9
+    |
+ 31 |         pub struct $name($inner);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 81 | numeric_id!(EventSeq, u64, get);
+    | ------------------------------- in this macro invocation
+note: `vb_storage::EventSeq` is defined in crate `vb_storage`
+   --> crates/vb_storage/src/types.rs:73:1
+    |
+ 73 | pub struct EventSeq(u64);
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the macro `numeric_id` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no method named `clone` found for struct `FjallJournal` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:134:17
+    |
+134 |         journal.clone(),
+    |                 ^^^^^
+    |
+help: there is a method `close` with a similar name
+    |
+134 -         journal.clone(),
+134 +         journal.close(),
+    |
+
+error[E0616]: field `ticket` of struct `PendingActionBoundarySnapshot` is private
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:245:35
+    |
+245 |     assert_eq!(pending_actions[0].ticket, action_ticket);
+    |                                   ^^^^^^ private field
+    |
+help: a method `ticket` also exists, call it with parentheses
+    |
+245 |     assert_eq!(pending_actions[0].ticket(), action_ticket);
+    |                                         ++
+
+Some errors have detailed explanations: E0308, E0432, E0433, E0599, E0609, E0616.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_legacy_admission") due to 11 previous errors

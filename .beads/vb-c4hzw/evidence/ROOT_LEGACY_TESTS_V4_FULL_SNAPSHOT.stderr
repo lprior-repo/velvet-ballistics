@@ -1,0 +1,76 @@
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:86:1
+   |
+86 |   pub fn compute_expected_input_digest(
+   |   ^--
+   |   |
+   |  _help: consider restricting its visibility: `pub(crate)`
+   | |
+87 | |     value: i64,
+88 | |     taint: Taint,
+89 | |     ticket: &ActionTicket,
+90 | | ) -> Result<PolicyDigest, String> {
+   | |_________________________________^
+   |
+   = help: or consider exporting it for use by other crates
+   = note: requested on the command line with `-D unreachable-pub`
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:113:1
+    |
+113 |   pub fn make_expected_decision(
+    |   ^--
+    |   |
+    |  _help: consider restricting its visibility: `pub(crate)`
+    | |
+114 | |     ticket: ActionTicket,
+115 | |     admission_pin: PinnedAdmissionPolicy,
+116 | |     current_live: CurrentPolicyIdentity,
+117 | |     input_digest: PolicyDigest,
+118 | |     outcome: DecisionCode,
+119 | | ) -> vb_core::policy::DecisionRecord {
+    | |____________________________________^
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:133:1
+    |
+133 | pub fn admission_pin_unverified() -> PinnedAdmissionPolicy {
+    | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(crate)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:137:1
+    |
+137 | pub fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {
+    | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(crate)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+ --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:7:1
+  |
+7 | pub fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
+  | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  | |
+  | help: consider restricting its visibility: `pub(crate)`
+  |
+  = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:20:1
+   |
+20 | pub fn legacy_ask_action_workflow(action: ActionId) -> Result<CompiledWorkflow, String> {
+   | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider restricting its visibility: `pub(crate)`
+   |
+   = help: or consider exporting it for use by other crates
+
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_legacy_admission") due to 6 previous errors

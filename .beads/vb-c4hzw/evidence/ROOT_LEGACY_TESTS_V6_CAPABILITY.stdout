@@ -1,0 +1,15 @@
+
+running 1 test
+legacy_admission_test::legacy_unverified_admission_blocks_new_live_effect --- FAILED
+
+failures:
+
+---- legacy_admission_test::legacy_unverified_admission_blocks_new_live_effect stdout ----
+Error: "expected PolicyDenied, got: Ok(RegisterReceipt(ReceiptRecord { body: ReceiptBody { invocation: Invocation { run: RunId(4420), step: StepIdx(2), seq: SeqNo(1), action: ActionId(0), key: 206871048963919990397296688024808987336 }, artifact: WorkflowDigest([57, 234, 59, 88, 107, 11, 160, 212, 37, 98, 38, 188, 117, 51, 26, 195, 126, 235, 251, 34, 203, 170, 113, 169, 30, 71, 133, 175, 212, 168, 54, 87]), pack: ActionPackDigest(WorkflowDigest([78, 173, 62, 202, 128, 161, 177, 10, 71, 93, 22, 70, 149, 243, 49, 19, 85, 138, 238, 10, 151, 191, 90, 18, 39, 233, 235, 234, 189, 113, 63, 144])), scope: CapabilityScopeSpec { namespace: 15, key: 29 }, input: InputDigest(WorkflowDigest([93, 230, 179, 103, 148, 199, 152, 239, 128, 26, 238, 160, 85, 172, 7, 102, 6, 161, 110, 105, 50, 107, 19, 141, 121, 121, 126, 159, 204, 126, 238, 101])), value: 99, effect_ordinal: 1 }, digest: ReceiptDigest(WorkflowDigest([109, 175, 208, 87, 236, 4, 105, 112, 57, 202, 239, 93, 95, 152, 253, 133, 31, 16, 3, 253, 164, 135, 187, 45, 61, 229, 227, 168, 128, 100, 215, 55])) }))"
+
+
+failures:
+    legacy_admission_test::legacy_unverified_admission_blocks_new_live_effect
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
