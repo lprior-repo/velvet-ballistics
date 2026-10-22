@@ -6,9 +6,9 @@ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_runtime::admission::{
-    admit_artifact_run, AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
+    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, admit_artifact_run,
 };
-use vb_storage::admission::{prepare_compiled_artifact, AcceptedArtifact};
+use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 

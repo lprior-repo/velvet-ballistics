@@ -6,10 +6,10 @@
 
 use vb_core::{ActionId, RunId, SeqNo, StepIdx, WorkflowId};
 use vb_storage::{
+    JournalError, RecordKind,
     codec::{decode_record_header, encode_record},
     keys,
     types::EventSeq,
-    JournalError, RecordKind,
 };
 // =============================================================================
 // Helper Functions

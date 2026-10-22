@@ -14,7 +14,9 @@ use vb_core::{
     ActionId, AggregateResourceBudget, AggregateResourceCapacity, Capability, CapabilitySet, RunId,
     RuntimePolicy, WorkflowDigest,
 };
-use vb_runtime::admission::{AdmissionError, ArtifactStore, admit_artifact_run, admit_run, admit_run_with_budget};
+use vb_runtime::admission::{
+    AdmissionError, ArtifactStore, admit_artifact_run, admit_run, admit_run_with_budget,
+};
 use vb_storage::EventSeq;
 use vb_storage::admission::{AcceptedArtifact, VerificationProof};
 
@@ -510,9 +512,7 @@ fn given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count() -
     // Unverified ledger is rejected by storage verification, not runtime gate count check.
     assert_eq!(
         result,
-        Err(AdmissionError::ArtifactInvalidProofFlag {
-            flag: "evidence"
-        })
+        Err(AdmissionError::ArtifactInvalidProofFlag { flag: "evidence" })
     );
     Ok(())
 }

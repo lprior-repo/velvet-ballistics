@@ -1,0 +1,1049 @@
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review/crates/workspace_tests)
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:153:1
+    |
+153 | / fn valid_workspace_passes_sharpened_assertions() -> TestResult {
+154 | |     let workspace = workspace_with(None, None)?;
+155 | |     let output = run_assertions(workspace.path())?;
+156 | |     assert!(output.status.success(), "{}", stderr_text(&output));
+157 | |     Ok(())
+158 | | }
+    | |_^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:156:5
+    |
+156 |     assert!(output.status.success(), "{}", stderr_text(&output));
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+    = note: requested on the command line with `-F clippy::panic-in-result-fn`
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:161:1
+    |
+161 | / fn forbidden_ui_dependency_fails_target_crate() -> TestResult {
+162 | |     let workspace = workspace_with(Some("vb_ui_makepad"), None)?;
+163 | |     let output = run_assertions(workspace.path())?;
+164 | |     let stderr = stderr_text(&output);
+...   |
+169 | |     Ok(())
+170 | | }
+    | |_^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:165:5
+    |
+165 |     assert!(!output.status.success());
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+166 |     assert!(stderr.contains("crates/vb_core/Cargo.toml"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+167 |     assert!(stderr.contains("forbidden UI dependency"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+168 |     assert!(stderr.contains("vb_ui_makepad"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:173:1
+    |
+173 | / fn unexpected_workspace_member_fails_exact_gate() -> TestResult {
+174 | |     let workspace = workspace_with(None, Some("crates/vb_surprise"))?;
+175 | |     let output = run_assertions(workspace.path())?;
+176 | |     let stderr = stderr_text(&output);
+...   |
+180 | |     Ok(())
+181 | | }
+    | |_^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:177:5
+    |
+177 |     assert!(!output.status.success());
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+178 |     assert!(stderr.contains("workspace.members unexpected"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+179 |     assert!(stderr.contains("crates/vb_surprise"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:184:1
+    |
+184 | / fn forbidden_runtime_format_dependency_fails_target_crate() -> TestResult {
+185 | |     let workspace = workspace_with(Some("serde_json"), None)?;
+186 | |     let output = run_assertions(workspace.path())?;
+187 | |     let stderr = stderr_text(&output);
+...   |
+194 | |     Ok(())
+195 | | }
+    | |_^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:188:5
+    |
+188 |       assert!(!output.status.success());
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+189 | /     assert!(
+190 | |         stderr.contains("forbidden runtime format dependency"),
+191 | |         "{stderr}"
+192 | |     );
+    | |_____^
+193 |       assert!(stderr.contains("serde_json"), "{stderr}");
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:198:1
+    |
+198 | / fn renamed_forbidden_ui_dependency_fails_target_crate() -> TestResult {
+199 | |     let workspace = workspace_with_dependency_line("ui = { package = \"vb_ui_makepad\" }\n")?;
+200 | |     let output = run_assertions(workspace.path())?;
+201 | |     let stderr = stderr_text(&output);
+...   |
+206 | |     Ok(())
+207 | | }
+    | |_^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:202:5
+    |
+202 |     assert!(!output.status.success());
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+203 |     assert!(stderr.contains("crates/vb_core/Cargo.toml"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+204 |     assert!(stderr.contains("forbidden UI dependency"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+205 |     assert!(stderr.contains("vb_ui_makepad"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:210:1
+    |
+210 | / fn renamed_forbidden_runtime_format_dependency_fails_target_crate() -> TestResult {
+211 | |     let workspace = workspace_with_dependency_line("fmt = { package = \"serde_json\" }\n")?;
+212 | |     let output = run_assertions(workspace.path())?;
+213 | |     let stderr = stderr_text(&output);
+...   |
+220 | |     Ok(())
+221 | | }
+    | |_^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:214:5
+    |
+214 |       assert!(!output.status.success());
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+215 | /     assert!(
+216 | |         stderr.contains("forbidden runtime format dependency"),
+217 | |         "{stderr}"
+218 | |     );
+    | |_____^
+219 |       assert!(stderr.contains("serde_json"), "{stderr}");
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:224:1
+    |
+224 | / fn path_aliased_forbidden_ui_dependency_fails_target_crate() -> TestResult {
+225 | |     let workspace = workspace_with_dependency_line("ui = { path = \"../vb_ui_makepad\" }\n")?;
+226 | |     let output = run_assertions(workspace.path())?;
+227 | |     let stderr = stderr_text(&output);
+...   |
+231 | |     Ok(())
+232 | | }
+    | |_^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs:228:5
+    |
+228 |     assert!(!output.status.success());
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+229 |     assert!(stderr.contains("forbidden UI dependency"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+230 |     assert!(stderr.contains("vb_ui_makepad"), "{stderr}");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_8ma2_workspace_assertions") due to 7 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: used `expect()` on a `Result` value
+  --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:32:5
+   |
+32 | /     encode_record(
+33 | |         vb_storage::constants::MAGIC_JOURNAL_EVENT,
+34 | |         valid_kind,
+35 | |         0,
+...  |
+39 | |     .expect("encoding should succeed")
+   | |______________________________________^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+   = note: requested on the command line with `-F clippy::expect-used`
+
+error: slicing may panic
+  --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:45:5
+   |
+45 |     header[6..8].copy_from_slice(&new_kind.to_le_bytes());
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider using `.get(n..m)` or `.get_mut(n..m)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+   = note: requested on the command line with `-D clippy::indexing-slicing`
+
+error: slicing may panic
+  --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:47:36
+   |
+47 |     let checksum = crc32c::crc32c(&header[..vb_storage::constants::CRC_OFFSET]);
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: slicing may panic
+  --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:48:5
+   |
+48 |     header[vb_storage::constants::CRC_OFFSET..vb_storage::constants::CRC_OFFSET + 4]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(n..m)` or `.get_mut(n..m)` instead
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: used `panic!()` or assertion in a function that returns `Result`
+  --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:66:5
+   |
+66 | /     fn run_header_key_preserves_run_id_bytes() -> Result<(), JournalError> {
+67 | |         // Given: a RunId constructed from any u64 value
+68 | |         let run_id = RunId::new(0xDEAD_BEEF_CAFE_BABE);
+...  |
+88 | |         Ok(())
+89 | |     }
+   | |_____^
+   |
+   = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+  --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:74:9
+   |
+74 | /         assert_eq!(
+75 | |             key[0],
+76 | |             vb_storage::constants::PREFIX_RUN_HEADER,
+77 | |             "prefix must be 0x10"
+78 | |         );
+   | |_________^
+79 | /         assert_eq!(
+80 | |             &key[1..9],
+81 | |             run_id.get().to_be_bytes(),
+82 | |             "run_id bytes must be preserved in big-endian"
+83 | |         );
+   | |_________^
+...
+87 |           assert_eq!(recovered_run_id, run_id);
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+   = note: requested on the command line with `-F clippy::panic-in-result-fn`
+
+error: used `unwrap()` on a `Result` value
+  --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:86:62
+   |
+86 |         let recovered_run_id = RunId::new(u64::from_be_bytes(key[1..9].try_into().unwrap()));
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+   = note: requested on the command line with `-F clippy::unwrap-used`
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:92:5
+    |
+ 92 | /     fn run_header_key_prefix_is_0x10() -> Result<(), JournalError> {
+ 93 | |         // Given: a non-zero RunId (PO-cn2v4-001: zero is reserved)
+ 94 | |         let run_id = RunId::new(1);
+...   |
+106 | |         Ok(())
+107 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:100:9
+    |
+100 |           assert_eq!(key[0], 0x10, "prefix byte must be 0x10");
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+101 | /         assert_eq!(
+102 | |             key[0],
+103 | |             vb_storage::constants::PREFIX_RUN_HEADER,
+104 | |             "prefix must match constant"
+105 | |         );
+    | |_________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:110:5
+    |
+110 | /     fn run_header_key_zero_run_id() -> Result<(), JournalError> {
+111 | |         // Given: RunId::new(0)
+112 | |         let run_id = RunId::new(0);
+...   |
+129 | |         Ok(())
+130 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:122:17
+    |
+122 |                   assert_eq!(run, RunId::new(0), "the run must round-trip back as zero");
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+123 |               }
+124 |               other => panic!(
+    |  ______________________^
+125 | |                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+126 | |                 other
+127 | |             ),
+    | |_____________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: `panic` should not be present in production code
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:124:22
+    |
+124 |               other => panic!(
+    |  ______________________^
+125 | |                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+126 | |                 other
+127 | |             ),
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+    = note: requested on the command line with `-F clippy::panic`
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:133:5
+    |
+133 | /     fn run_header_key_max_run_id() -> Result<(), JournalError> {
+134 | |         // Given: RunId::new(u64::MAX)
+135 | |         let run_id = RunId::new(u64::MAX);
+...   |
+146 | |         Ok(())
+147 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:141:9
+    |
+141 | /         assert_eq!(
+142 | |             &key[1..9],
+143 | |             u64::MAX.to_be_bytes(),
+144 | |             "max run_id must encode as all-0xFF bytes"
+145 | |         );
+    | |_________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:158:5
+    |
+158 | /     fn index_workflow_key_preserves_workflow_id_bytes() -> Result<(), JournalError> {
+159 | |         // Given: a WorkflowId constructed from any u32 value and a RunId
+160 | |         let workflow_id = WorkflowId::new(0x1234_5678);
+161 | |         let run_id = RunId::new(0xAABB_CCDD_EEFF_0011);
+...   |
+188 | |         Ok(())
+189 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:167:9
+    |
+167 | /         assert_eq!(
+168 | |             key[0],
+169 | |             vb_storage::constants::PREFIX_INDEX_WORKFLOW,
+170 | |             "prefix must be 0x31"
+171 | |         );
+    | |_________^
+172 | /         assert_eq!(
+173 | |             &key[1..5],
+174 | |             workflow_id.get().to_be_bytes(),
+175 | |             "workflow_id bytes must be preserved in big-endian"
+176 | |         );
+    | |_________^
+177 | /         assert_eq!(
+178 | |             &key[5..13],
+179 | |             run_id.get().to_be_bytes(),
+180 | |             "run_id bytes must be preserved in big-endian"
+181 | |         );
+    | |_________^
+...
+186 |           assert_eq!(recovered_workflow, workflow_id);
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+187 |           assert_eq!(recovered_run_id, run_id);
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:184:69
+    |
+184 |         let recovered_workflow = WorkflowId::new(u32::from_be_bytes(key[1..5].try_into().unwrap()));
+    |                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:185:62
+    |
+185 |         let recovered_run_id = RunId::new(u64::from_be_bytes(key[5..13].try_into().unwrap()));
+    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:192:5
+    |
+192 | /     fn index_workflow_key_lexicographic_ordering() -> Result<(), JournalError> {
+193 | |         // Given: two WorkflowIds w1 < w2 with the same RunId
+194 | |         let run_id = RunId::new(42);
+195 | |         let w1 = WorkflowId::new(100);
+...   |
+207 | |         Ok(())
+208 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:203:9
+    |
+203 | /         assert!(
+204 | |             key1 < key2,
+205 | |             "key(w1) must be less than key(w2) when w1 < w2"
+206 | |         );
+    | |_________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:211:5
+    |
+211 | /     fn index_workflow_key_zero_values() -> Result<(), JournalError> {
+212 | |         // Given: WorkflowId::new(0) and RunId::new(0)
+213 | |         let workflow_id = WorkflowId::new(0);
+214 | |         let run_id = RunId::new(0);
+...   |
+234 | |         Ok(())
+235 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:227:17
+    |
+227 |                   assert_eq!(run, RunId::new(0), "the run must round-trip back as zero");
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+228 |               }
+229 |               other => panic!(
+    |  ______________________^
+230 | |                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+231 | |                 other
+232 | |             ),
+    | |_____________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: `panic` should not be present in production code
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:229:22
+    |
+229 |               other => panic!(
+    |  ______________________^
+230 | |                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+231 | |                 other
+232 | |             ),
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:238:5
+    |
+238 | /     fn index_workflow_key_zero_workflow_id() -> Result<(), JournalError> {
+239 | |         // Companion that pins the (workflow=0, run=nonzero) byte
+240 | |         // layout the previous test used to cover.
+241 | |         let workflow_id = WorkflowId::new(0);
+...   |
+255 | |         Ok(())
+256 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:244:9
+    |
+244 | /         assert_eq!(
+245 | |             &key[1..5],
+246 | |             0u32.to_be_bytes(),
+247 | |             "zero workflow_id must encode as all-zero bytes"
+248 | |         );
+    | |_________^
+249 | /         assert_eq!(
+250 | |             &key[5..13],
+251 | |             1u64.to_be_bytes(),
+252 | |             "non-zero run_id bytes must encode as big-endian u64"
+253 | |         );
+    | |_________^
+254 |           assert_eq!(key.len(), 13, "index_workflow_key must be 13 bytes");
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:267:5
+    |
+267 | /     fn index_action_key_preserves_all_fields() -> Result<(), JournalError> {
+268 | |         // Given: ActionId, RunId, and StepIdx with arbitrary values
+269 | |         let action_id = ActionId::new(0x1234);
+270 | |         let run_id = RunId::new(0xDEAD_BEEF_CAFE_BABE);
+...   |
+305 | |         Ok(())
+306 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:277:9
+    |
+277 | /         assert_eq!(
+278 | |             key[0],
+279 | |             vb_storage::constants::PREFIX_INDEX_ACTION,
+280 | |             "prefix must be 0x32"
+281 | |         );
+    | |_________^
+282 | /         assert_eq!(
+283 | |             &key[1..3],
+284 | |             action_id.get().to_be_bytes(),
+285 | |             "action_id bytes must be preserved"
+286 | |         );
+    | |_________^
+287 | /         assert_eq!(
+288 | |             &key[3..11],
+289 | |             run_id.get().to_be_bytes(),
+290 | |             "run_id bytes must be preserved"
+291 | |         );
+    | |_________^
+292 | /         assert_eq!(
+293 | |             &key[11..13],
+294 | |             step_idx.get().to_be_bytes(),
+295 | |             "step_idx bytes must be preserved"
+296 | |         );
+    | |_________^
+...
+302 |           assert_eq!(recovered_action, action_id);
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+303 |           assert_eq!(recovered_run_id, run_id);
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+304 |           assert_eq!(recovered_step, step_idx);
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:299:65
+    |
+299 |         let recovered_action = ActionId::new(u16::from_be_bytes(key[1..3].try_into().unwrap()));
+    |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:300:62
+    |
+300 |         let recovered_run_id = RunId::new(u64::from_be_bytes(key[3..11].try_into().unwrap()));
+    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:301:62
+    |
+301 |         let recovered_step = StepIdx::new(u16::from_be_bytes(key[11..13].try_into().unwrap()));
+    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:309:5
+    |
+309 | /     fn index_action_key_max_values() -> Result<(), JournalError> {
+310 | |         // Given: ActionId::new(u16::MAX), RunId::new(u64::MAX), StepIdx::new(u16::MAX)
+311 | |         let action_id = ActionId::new(u16::MAX);
+312 | |         let run_id = RunId::new(u64::MAX);
+...   |
+334 | |         Ok(())
+335 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:319:9
+    |
+319 | /         assert_eq!(
+320 | |             &key[1..3],
+321 | |             u16::MAX.to_be_bytes(),
+322 | |             "max action_id must encode as 0xFFFF"
+323 | |         );
+    | |_________^
+324 | /         assert_eq!(
+325 | |             &key[3..11],
+326 | |             u64::MAX.to_be_bytes(),
+327 | |             "max run_id must encode as all 0xFF"
+328 | |         );
+    | |_________^
+329 | /         assert_eq!(
+330 | |             &key[11..13],
+331 | |             u16::MAX.to_be_bytes(),
+332 | |             "max step_idx must encode as 0xFFFF"
+333 | |         );
+    | |_________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:393:32
+    |
+393 |         let ac = a.checked_add((b.get() + c.get()) as u64);
+    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `((b.get() + c.get()))`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_cast
+    = note: `-D clippy::unnecessary-cast` implied by `-D clippy::complexity`
+    = help: to override `-D clippy::complexity` add `#[allow(clippy::unnecessary_cast)]`
+
+error: using a potentially dangerous silent `as` conversion
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:393:32
+    |
+393 |         let ac = a.checked_add((b.get() + c.get()) as u64);
+    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: consider using a safe wrapper for this conversion
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
+    = note: requested on the command line with `-D clippy::as-conversions`
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:410:5
+    |
+410 | /     fn decode_rejects_unknown_record_kind() -> Result<(), JournalError> {
+411 | |         // Given: a record header with kind = 255 (unknown)
+412 | |         let mut header = make_header_with_kind(255);
+413 | |         corrupt_kind_in_header(&mut header, 255);
+...   |
+429 | |         Ok(())
+430 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:425:17
+    |
+425 |                 assert_eq!(kind, 255, "unknown kind must be 255");
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+426 |             }
+427 |             other => panic!("expected UnknownRecordKind(255), got {:?}", other),
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: `panic` should not be present in production code
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:427:22
+    |
+427 |             other => panic!("expected UnknownRecordKind(255), got {:?}", other),
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:433:5
+    |
+433 | /     fn decode_accepts_all_known_journal_event_kinds() -> Result<(), JournalError> {
+434 | |         // Given: record headers with kinds 10..=29 and 31 (valid for MAGIC_JOURNAL_EVENT)
+435 | |         let known_journal_kinds: Vec<u16> = vec![
+436 | |             10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31,
+...   |
+457 | |         Ok(())
+458 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:450:13
+    |
+450 | /             assert!(
+451 | |                 result.is_ok(),
+452 | |                 "known journal event kind {} must not be rejected, got {:?}",
+453 | |                 kind,
+454 | |                 result
+455 | |             );
+    | |_____________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:673:5
+    |
+673 | /     fn all_key_prefixes_are_distinct() -> Result<(), JournalError> {
+674 | |         // Given: all key constructor functions with fixed inputs
+675 | |         let run_id = RunId::new(1);
+676 | |         let seq = EventSeq::new(1);
+...   |
+705 | |         Ok(())
+706 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:698:17
+    |
+698 | /                 assert_ne!(
+699 | |                     prefixes[i], prefixes[j],
+700 | |                     "prefix at index {} ({:#04x}) must differ from prefix at index {} ({:#04x})",
+701 | |                     i, prefixes[i], j, prefixes[j]
+702 | |                 );
+    | |_________________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: indexing may panic
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:699:21
+    |
+699 |                     prefixes[i], prefixes[j],
+    |                     ^^^^^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:699:34
+    |
+699 |                     prefixes[i], prefixes[j],
+    |                                  ^^^^^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:701:24
+    |
+701 |                     i, prefixes[i], j, prefixes[j]
+    |                        ^^^^^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: indexing may panic
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:701:40
+    |
+701 |                     i, prefixes[i], j, prefixes[j]
+    |                                        ^^^^^^^^^^^
+    |
+    = help: consider using `.get(n)` or `.get_mut(n)` instead
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:709:5
+    |
+709 | /     fn run_family_prefixes_distinct() -> Result<(), JournalError> {
+710 | |         // Given: run_header_key, run_event_key, run_snapshot_key
+711 | |         let run_id = RunId::new(1);
+712 | |         let seq = EventSeq::new(1);
+...   |
+736 | |         Ok(())
+737 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:721:9
+    |
+721 |           assert_eq!(header_prefix, 0x10, "run_header prefix must be 0x10");
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+722 |           assert_eq!(event_prefix, 0x11, "run_event prefix must be 0x11");
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+723 |           assert_eq!(snapshot_prefix, 0x12, "run_snapshot prefix must be 0x12");
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+724 | /         assert_ne!(
+725 | |             header_prefix, event_prefix,
+726 | |             "header and event prefixes must differ"
+727 | |         );
+    | |_________^
+728 | /         assert_ne!(
+729 | |             header_prefix, snapshot_prefix,
+730 | |             "header and snapshot prefixes must differ"
+731 | |         );
+    | |_________^
+732 | /         assert_ne!(
+733 | |             event_prefix, snapshot_prefix,
+734 | |             "event and snapshot prefixes must differ"
+735 | |         );
+    | |_________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:748:5
+    |
+748 | /     fn run_id_zero_roundtrip() -> Result<(), JournalError> {
+749 | |         // Given: RunId::new(0)
+750 | |         let run_id = RunId::new(0);
+...   |
+768 | |         Ok(())
+769 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:761:17
+    |
+761 |                   assert_eq!(run, RunId::new(0));
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+762 |               }
+763 |               other => panic!(
+    |  ______________________^
+764 | |                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+765 | |                 other
+766 | |             ),
+    | |_____________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: `panic` should not be present in production code
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:763:22
+    |
+763 |               other => panic!(
+    |  ______________________^
+764 | |                 "expected JournalError::InvalidRunId for zero RunId, got {:?}",
+765 | |                 other
+766 | |             ),
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:772:5
+    |
+772 | /     fn run_id_nonzero_roundtrip() -> Result<(), JournalError> {
+773 | |         // Companion to `run_id_zero_roundtrip` that covers the
+774 | |         // big-endian 8-byte layout for a non-zero RunId.
+775 | |         let run_id = RunId::new(42);
+...   |
+779 | |         Ok(())
+780 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:778:9
+    |
+778 |         assert_eq!(decoded, run_id, "non-zero RunId must roundtrip correctly");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:777:53
+    |
+777 |         let decoded = RunId::new(u64::from_be_bytes(key[1..9].try_into().unwrap()));
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:783:5
+    |
+783 | /     fn run_id_max_roundtrip() -> Result<(), JournalError> {
+784 | |         // Given: RunId::new(u64::MAX)
+785 | |         let run_id = RunId::new(u64::MAX);
+...   |
+793 | |         Ok(())
+794 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:792:9
+    |
+792 |         assert_eq!(decoded, run_id, "max RunId must roundtrip correctly");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:791:53
+    |
+791 |         let decoded = RunId::new(u64::from_be_bytes(key[1..9].try_into().unwrap()));
+    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:797:5
+    |
+797 | /     fn workflow_id_extents_roundtrip() -> Result<(), JournalError> {
+798 | |         // Given: WorkflowId::new(0) and WorkflowId::new(u32::MAX)
+799 | |         let run_id = RunId::new(42);
+800 | |         let min_workflow = WorkflowId::new(0);
+...   |
+819 | |         Ok(())
+820 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:811:9
+    |
+811 | /         assert_eq!(
+812 | |             decoded_min, min_workflow,
+813 | |             "min WorkflowId must roundtrip correctly"
+814 | |         );
+    | |_________^
+815 | /         assert_eq!(
+816 | |             decoded_max, max_workflow,
+817 | |             "max WorkflowId must roundtrip correctly"
+818 | |         );
+    | |_________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:808:62
+    |
+808 |         let decoded_min = WorkflowId::new(u32::from_be_bytes(key_min[1..5].try_into().unwrap()));
+    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:809:62
+    |
+809 |         let decoded_max = WorkflowId::new(u32::from_be_bytes(key_max[1..5].try_into().unwrap()));
+    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:831:5
+    |
+831 | /     fn full_run_id_to_key_to_decode_roundtrip() -> Result<(), JournalError> {
+832 | |         // Given: a valid RunId value
+833 | |         let original = RunId::new(0x1234_5678_ABCD_EF00);
+...   |
+841 | |         Ok(())
+842 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:840:9
+    |
+840 |         assert_eq!(recovered, original);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:837:55
+    |
+837 |         let recovered = RunId::new(u64::from_be_bytes(key[1..9].try_into().unwrap()));
+    |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:845:5
+    |
+845 | /     fn full_workflow_id_index_key_roundtrip() -> Result<(), JournalError> {
+846 | |         // Given: WorkflowId::new(12345) and RunId::new(67890)
+847 | |         let workflow_id = WorkflowId::new(12345);
+848 | |         let run_id = RunId::new(67890);
+...   |
+859 | |         Ok(())
+860 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:857:9
+    |
+857 |         assert_eq!(extracted_workflow, workflow_id);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+858 |         assert_eq!(extracted_run_id, run_id);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:854:69
+    |
+854 |         let extracted_workflow = WorkflowId::new(u32::from_be_bytes(key[1..5].try_into().unwrap()));
+    |                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:855:62
+    |
+855 |         let extracted_run_id = RunId::new(u64::from_be_bytes(key[5..13].try_into().unwrap()));
+    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:871:5
+    |
+871 | /     fn fromstr_max_u64_roundtrip() -> Result<(), String> {
+872 | |         // Given: the string "18446744073709551615" (u64::MAX)
+873 | |         let s = "18446744073709551615";
+...   |
+892 | |         Ok(())
+893 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:879:9
+    |
+879 | /         assert_eq!(
+880 | |             run_id.get(),
+881 | |             18446744073709551615u64,
+882 | |             "parsed max u64 must equal original value"
+883 | |         );
+    | |_________^
+...
+887 | /         assert_eq!(
+888 | |             &key[1..9],
+889 | |             18446744073709551615u64.to_be_bytes(),
+890 | |             "key bytes must match max u64"
+891 | |         );
+    | |_________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:896:5
+    |
+896 | /     fn fromstr_zero_roundtrip() -> Result<(), String> {
+897 | |         // Given: the string "0"
+898 | |         let s = "0";
+...   |
+905 | |         Ok(())
+906 | |     }
+    | |_____^
+    |
+    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+   --> crates/workspace_tests/tests/vb_eepg_bdd_tests.rs:904:9
+    |
+904 |         assert_eq!(run_id.get(), 0u64, "parsed zero must equal 0");
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_eepg_bdd_tests") due to 49 previous errors

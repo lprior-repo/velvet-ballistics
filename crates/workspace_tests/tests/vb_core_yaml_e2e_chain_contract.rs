@@ -11,19 +11,19 @@ use vb_core::{
     CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
 };
 use vb_runtime::admission::{
-    admit_artifact_run, AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
-    StorageArtifactStore,
+    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, StorageArtifactStore,
+    admit_artifact_run,
 };
 use vb_storage::admission::{
-    accepted_artifact_digest, prepare_compiled_artifact, submit_artifact, AcceptedArtifact,
-    VerificationProof,
+    AcceptedArtifact, VerificationProof, accepted_artifact_digest, prepare_compiled_artifact,
+    submit_artifact,
 };
 use vb_storage::recovery::{
-    recover_runtime_frame_seed_from_events, summarize_recovery_events, RecoveryError,
+    RecoveryError, recover_runtime_frame_seed_from_events, summarize_recovery_events,
 };
 use vb_storage::{
-    put_compiled_ir, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
-    WorkflowSourceRecord,
+    CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent, WorkflowSourceRecord,
+    put_compiled_ir,
 };
 
 struct MissingAcceptedArtifactStore;
@@ -190,8 +190,8 @@ fn run_finished_event(run: RunId, seq: u64) -> JournalEvent {
 }
 
 #[test]
-fn storage_produced_strict_accepted_artifact_has_typed_ledger_when_yaml_origin_run_is_submitted(
-) -> Result<(), String> {
+fn storage_produced_strict_accepted_artifact_has_typed_ledger_when_yaml_origin_run_is_submitted()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let workflow = compile_valid_yaml()?;
 
@@ -241,8 +241,8 @@ fn storage_produced_strict_accepted_artifact_has_typed_ledger_when_yaml_origin_r
 }
 
 #[test]
-fn persist_source_and_artifact_persists_source_artifact_and_ref_when_digests_match(
-) -> Result<(), String> {
+fn persist_source_and_artifact_persists_source_artifact_and_ref_when_digests_match()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let source = valid_yaml_source().to_vec();
     let source_digest = digest_for(&source);
@@ -272,8 +272,8 @@ fn persist_source_and_artifact_persists_source_artifact_and_ref_when_digests_mat
 }
 
 #[test]
-fn persist_source_and_artifact_returns_workflow_source_digest_mismatch_when_source_digest_differs(
-) -> Result<(), String> {
+fn persist_source_and_artifact_returns_workflow_source_digest_mismatch_when_source_digest_differs()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let source = valid_yaml_source().to_vec();
     let claimed = wrong_digest_for(&source);
@@ -293,8 +293,8 @@ fn persist_source_and_artifact_returns_workflow_source_digest_mismatch_when_sour
 }
 
 #[test]
-fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact_digest_differs(
-) -> Result<(), String> {
+fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact_digest_differs()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let workflow = compile_valid_yaml()?;
     let wrong_digest = WorkflowDigest::from_bytes([0xCC; 32]);
@@ -316,8 +316,8 @@ fn persist_source_and_artifact_returns_compiled_ir_digest_mismatch_when_artifact
 }
 
 #[test]
-fn persist_source_and_artifact_rejects_source_digest_used_as_artifact_digest_when_roles_differ(
-) -> Result<(), String> {
+fn persist_source_and_artifact_rejects_source_digest_used_as_artifact_digest_when_roles_differ()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let source_digest = digest_for(valid_yaml_source());
     let store = StorageArtifactStore::new(Arc::new(journal));
@@ -334,8 +334,8 @@ fn persist_source_and_artifact_rejects_source_digest_used_as_artifact_digest_whe
 }
 
 #[test]
-fn persist_source_and_artifact_returns_durability_failure_and_no_ref_when_flush_fails(
-) -> Result<(), String> {
+fn persist_source_and_artifact_returns_durability_failure_and_no_ref_when_flush_fails()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let source = valid_yaml_source().to_vec();
     let claimed = wrong_digest_for(&source);
@@ -358,8 +358,8 @@ fn persist_source_and_artifact_returns_durability_failure_and_no_ref_when_flush_
 }
 
 #[test]
-fn admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_ledger_valid(
-) -> Result<(), String> {
+fn admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_ledger_valid()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let workflow = compile_valid_yaml()?;
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
@@ -385,8 +385,8 @@ fn admit_strict_artifact_run_accepts_storage_produced_yaml_artifact_when_ledger_
 }
 
 #[test]
-fn admit_strict_artifact_run_returns_accepted_artifact_missing_when_envelope_absent(
-) -> Result<(), String> {
+fn admit_strict_artifact_run_returns_accepted_artifact_missing_when_envelope_absent()
+-> Result<(), String> {
     let digest = WorkflowDigest::from_bytes([0x32; 32]);
     let result = admit_artifact_run(
         &MissingAcceptedArtifactStore,
@@ -401,8 +401,8 @@ fn admit_strict_artifact_run_returns_accepted_artifact_missing_when_envelope_abs
 }
 
 #[test]
-fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_ledger_unverified(
-) -> Result<(), String> {
+fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_ledger_unverified()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let artifact = accepted_artifact_with_gate_count(WorkflowDigest::from_bytes([0x33; 32]), 14);
     let digest = artifact.digest;
@@ -425,8 +425,8 @@ fn admit_strict_artifact_run_returns_accepted_artifact_invalid_when_ledger_unver
 }
 
 #[test]
-fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted(
-) -> Result<(), String> {
+fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capability_ungranted()
+-> Result<(), String> {
     use vb_core::action::{Idempotency, RetrySafety, SideEffect};
     let required = Capability::new("net.fetch".into(), ActionId::new(0));
     let contract = ActionContract {
@@ -514,8 +514,8 @@ fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capabilit
 }
 
 #[test]
-fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_accepted_artifact_invalid(
-) -> Result<(), String> {
+fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_accepted_artifact_invalid()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let workflow = compile_valid_yaml()?;
     let raw_ir = postcard::to_allocvec(&workflow.to_parts()).map_err(|error| error.to_string())?;
@@ -543,8 +543,8 @@ fn admit_strict_artifact_run_rejects_raw_workflow_parts_or_yaml_bypass_with_acce
 }
 
 #[test]
-fn runtime_storage_artifact_store_rejects_unverified_ledger_via_storage_verification(
-) -> Result<(), String> {
+fn runtime_storage_artifact_store_rejects_unverified_ledger_via_storage_verification()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let artifact = accepted_artifact_with_gate_count(WorkflowDigest::from_bytes([0xA5; 32]), 2);
     let digest = artifact.digest;
@@ -561,8 +561,8 @@ fn runtime_storage_artifact_store_rejects_unverified_ledger_via_storage_verifica
 }
 
 #[test]
-fn strict_runtime_admission_rejects_unverified_ledger_via_storage_verification(
-) -> Result<(), String> {
+fn strict_runtime_admission_rejects_unverified_ledger_via_storage_verification()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let artifact = accepted_artifact_with_gate_count(WorkflowDigest::from_bytes([0x5A; 32]), 2);
     let digest = artifact.digest;
@@ -585,8 +585,8 @@ fn strict_runtime_admission_rejects_unverified_ledger_via_storage_verification(
 }
 
 #[test]
-fn runtime_recovery_paths_have_no_yaml_json_http_parser_dependency_when_static_boundary_scan_runs(
-) -> Result<(), String> {
+fn runtime_recovery_paths_have_no_yaml_json_http_parser_dependency_when_static_boundary_scan_runs()
+-> Result<(), String> {
     let runtime_manifest = std::fs::read_to_string(workspace_path("crates/vb_runtime/Cargo.toml"))
         .map_err(|error| error.to_string())?;
     let forbidden = [
@@ -610,8 +610,8 @@ fn runtime_recovery_paths_have_no_yaml_json_http_parser_dependency_when_static_b
 }
 
 #[test]
-fn append_strict_runtime_event_appends_run_accepted_before_admission_when_ack_succeeds(
-) -> Result<(), String> {
+fn append_strict_runtime_event_appends_run_accepted_before_admission_when_ack_succeeds()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let run = RunId::new(8101);
     let digest = WorkflowDigest::from_bytes([0x41; 32]);
@@ -633,8 +633,8 @@ fn append_strict_runtime_event_appends_run_accepted_before_admission_when_ack_su
 }
 
 #[test]
-fn append_strict_runtime_event_appends_terminal_or_suspended_event_after_admission(
-) -> Result<(), String> {
+fn append_strict_runtime_event_appends_terminal_or_suspended_event_after_admission()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let run = RunId::new(8102);
     let digest = WorkflowDigest::from_bytes([0x42; 32]);
@@ -651,8 +651,8 @@ fn append_strict_runtime_event_appends_terminal_or_suspended_event_after_admissi
 }
 
 #[test]
-fn append_strict_runtime_event_returns_durability_failure_when_event_flush_fails_before_ack(
-) -> Result<(), String> {
+fn append_strict_runtime_event_returns_durability_failure_when_event_flush_fails_before_ack()
+-> Result<(), String> {
     let (_temp, journal) = temp_journal().map_err(|error| error.to_string())?;
     let run = RunId::new(8103);
     let digest = WorkflowDigest::from_bytes([0x43; 32]);
@@ -678,8 +678,8 @@ fn append_strict_runtime_event_returns_durability_failure_when_event_flush_fails
 }
 
 #[test]
-fn append_strict_runtime_event_rejects_event_for_unadmitted_run_without_success_ack(
-) -> Result<(), String> {
+fn append_strict_runtime_event_rejects_event_for_unadmitted_run_without_success_ack()
+-> Result<(), String> {
     let events = vec![run_finished_event(RunId::new(8104), 1)];
 
     let result = summarize_recovery_events(&events);
@@ -695,8 +695,8 @@ fn append_strict_runtime_event_rejects_event_for_unadmitted_run_without_success_
 }
 
 #[test]
-fn append_strict_runtime_event_preserves_monotonic_event_sequence_for_same_run(
-) -> Result<(), String> {
+fn append_strict_runtime_event_preserves_monotonic_event_sequence_for_same_run()
+-> Result<(), String> {
     let run = RunId::new(8105);
     let digest = WorkflowDigest::from_bytes([0x45; 32]);
     let events = vec![
@@ -712,8 +712,8 @@ fn append_strict_runtime_event_preserves_monotonic_event_sequence_for_same_run(
 }
 
 #[test]
-fn inspect_run_returns_digest_bound_status_when_required_journal_prefix_exists(
-) -> Result<(), String> {
+fn inspect_run_returns_digest_bound_status_when_required_journal_prefix_exists()
+-> Result<(), String> {
     let run = RunId::new(8201);
     let digest = WorkflowDigest::from_bytes([0x51; 32]);
     let hydration = summarize_recovery_events(&[
@@ -730,8 +730,8 @@ fn inspect_run_returns_digest_bound_status_when_required_journal_prefix_exists(
 }
 
 #[test]
-fn inspect_run_returns_no_recovery_data_or_absent_status_when_run_has_no_evidence(
-) -> Result<(), String> {
+fn inspect_run_returns_no_recovery_data_or_absent_status_when_run_has_no_evidence()
+-> Result<(), String> {
     assert_no_recovery_data(summarize_recovery_events(&[]), RunId::new(0))
 }
 
@@ -837,8 +837,8 @@ fn events_for_run_preserves_digest_fields_without_role_swap() -> Result<(), Stri
 }
 
 #[test]
-fn events_for_run_returns_corrupt_recovery_data_when_event_record_is_malformed(
-) -> Result<(), String> {
+fn events_for_run_returns_corrupt_recovery_data_when_event_record_is_malformed()
+-> Result<(), String> {
     let run_a = RunId::new(8305);
     let run_b = RunId::new(8306);
     let digest = WorkflowDigest::from_bytes([0x65; 32]);
@@ -859,8 +859,8 @@ fn events_for_run_returns_corrupt_recovery_data_when_event_record_is_malformed(
 }
 
 #[test]
-fn recover_yaml_origin_run_recovers_state_from_persisted_artifact_journal_and_snapshot_without_yaml(
-) -> Result<(), String> {
+fn recover_yaml_origin_run_recovers_state_from_persisted_artifact_journal_and_snapshot_without_yaml()
+-> Result<(), String> {
     let run = RunId::new(8401);
     let digest = WorkflowDigest::from_bytes([0x71; 32]);
     let seed = recover_runtime_frame_seed_from_events(&[
@@ -876,8 +876,8 @@ fn recover_yaml_origin_run_recovers_state_from_persisted_artifact_journal_and_sn
 }
 
 #[test]
-fn recover_yaml_origin_run_returns_replay_divergence_when_snapshot_diverges_from_model(
-) -> Result<(), String> {
+fn recover_yaml_origin_run_returns_replay_divergence_when_snapshot_diverges_from_model()
+-> Result<(), String> {
     let run_a = RunId::new(8402);
     let run_b = RunId::new(8403);
     let digest = WorkflowDigest::from_bytes([0x72; 32]);
@@ -898,16 +898,16 @@ fn recover_yaml_origin_run_returns_replay_divergence_when_snapshot_diverges_from
 }
 
 #[test]
-fn recover_yaml_origin_run_returns_corrupt_recovery_data_when_snapshot_or_frame_decode_fails(
-) -> Result<(), String> {
+fn recover_yaml_origin_run_returns_corrupt_recovery_data_when_snapshot_or_frame_decode_fails()
+-> Result<(), String> {
     let result = recover_runtime_frame_seed_from_events(&[]);
 
     assert_no_recovery_data(result, RunId::new(0))
 }
 
 #[test]
-fn recover_yaml_origin_run_returns_no_recovery_data_when_no_durable_evidence_exists(
-) -> Result<(), String> {
+fn recover_yaml_origin_run_returns_no_recovery_data_when_no_durable_evidence_exists()
+-> Result<(), String> {
     let result = summarize_recovery_events(&[]);
 
     assert_no_recovery_data(result, RunId::new(0))

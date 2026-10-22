@@ -1,0 +1,118 @@
+
+running 19 tests
+test missing_slot_value_blocks_both_values_and_taint ... ok
+test supported_seed_hydrates_exact_derived_taint ... ok
+test supported_seed_hydrates_exact_secret_taint ... ok
+test corrupt_slot_value_blocks_both_values_and_taint ... ok
+test no_output_step_summary_reports_zero_slots_written ... ok
+test no_output_step_recovery_has_no_recovered_slot_entries ... ok
+test event_only_recovery_keeps_slot_taint_supported_when_value_bytes_are_valid ... ok
+test no_output_step_does_not_fabricate_slot_zero_dimension ... ok
+test event_only_recovery_returns_derived_bool_when_durable_taint_is_derived ... ok
+test deterministic_step_recovery_hydrates_exact_tainted_frame_when_slot_event_is_complete ... ok
+test ask_answer_records_exact_clean_taint_when_answer_writes_output ... ok
+test recovery_does_not_default_missing_durable_taint_to_clean ... ok
+test event_only_recovery_returns_secret_i64_when_durable_taint_is_secret ... ok
+test action_completion_records_exact_secret_taint_when_action_writes_output ... ok
+test runtime_to_storage_mapping_preserves_taint_for_slot_write ... ok
+test proptest_no_output_success_never_creates_slot_zero ... ok
+test proptest_event_only_slot_recovery_preserves_secret_taint ... ok
+test proptest_valid_slot_events_are_fully_hydrateable ... ok
+test drain_report_contract_requires_three_drained_and_three_written ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 3 tests
+test binary_alias_reports_exact_allowed_binary_set ... ok
+test feature_drift_reports_exact_expected_feature_set ... ok
+test package_name_drift_reports_exact_member_and_expected_name ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+
+running 47 tests
+test e2e_diagnostic_fields_exposed_in_rejection ... ok
+test integration_budget_compute_collect_small_limit ... ok
+test integration_budget_compute_empty_workflow_error ... ok
+test integration_budget_compute_nop_chain ... ok
+test integration_budget_compute_repeat_small_attempts ... ok
+test integration_budget_compute_single_nop ... ok
+test integration_action_together_parallel_exceeded ... ok
+test integration_budget_compute_single_finish_node ... ok
+test integration_budget_compute_together_small_branches ... ok
+test integration_budget_compute_single_do_node ... ok
+test integration_budget_error_fanout_exceeded_display ... ok
+test integration_budget_error_total_steps_exceeded_display ... ok
+test integration_budget_error_parallel_exceeded_display ... ok
+test integration_collect_large_limit_tracks_gather_items ... ok
+test integration_collect_overflow_returns_total_steps_exceeded ... ok
+test integration_budget_returns_fanout_exceeded_when_fanout_crosses_limit ... ok
+test integration_collect_with_minimum_limit ... ok
+test integration_default_policy_accepts_large_workflow ... ok
+test integration_policy_accepts_workflow_within_limits ... ok
+test integration_nested_loops_returns_nesting_depth_exceeded ... ok
+test integration_policy_checks_fanout_before_parallel ... ok
+test integration_policy_rejects_at_nesting_depth_boundary ... ok
+test integration_policy_rejects_at_exact_fanout_boundary ... ok
+test integration_default_policy_accepts_moderate_workflow ... ok
+test integration_policy_checks_total_steps_before_fanout ... ok
+test integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit ... ok
+test integration_policy_rejects_at_exact_total_steps_boundary ... ok
+test integration_policy_returns_result_bytes_exceeded_when_result_bytes_cross_limit ... ok
+test integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit ... ok
+test integration_policy_returns_action_tickets_exceeded_when_action_tickets_cross_limit ... ok
+test integration_policy_returns_total_slots_exceeded_when_slots_cross_limit ... ok
+test integration_policy_validates_nesting_depth ... ok
+test integration_policy_validates_result_bytes ... ok
+test integration_policy_validate_order_is_deterministic ... ok
+test integration_repeat_large_attempts_tracks_repeat_attempts ... ok
+test integration_policy_returns_parallel_exceeded_when_parallel_crosses_limit ... ok
+test integration_repeat_overflow_returns_total_steps_exceeded ... ok
+test integration_policy_validates_total_slots ... ok
+test integration_repeat_with_minimum_attempts ... ok
+test integration_result_size_returns_result_bytes_exceeded ... ok
+test integration_together_with_minimum_branches ... ok
+test integration_together_large_branches_tracks_fanout ... ok
+test integration_together_overflow_returns_fanout_exceeded ... ok
+test integration_policy_validates_steps_executable ... ok
+test e2e_workflow_error_budget_policy_exceeded_contains_detail ... ok
+test integration_budget_returns_total_steps_exceeded_when_steps_cross_limit ... ok
+test integration_policy_returns_steps_executable_exceeded_when_executable_steps_cross_limit ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 22 tests
+test given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capacity_error_is_preserved ... ok
+test given_malformed_bytes_when_strict_run_created_then_decode_failed_with_rejected_digest ... ok
+test given_existence_only_artifact_check_when_strict_admission_then_bypass_is_denied ... ok
+test given_missing_artifact_when_strict_run_created_then_artifact_not_found_before_allocation ... ok
+test given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_not_called ... ok
+test given_unverified_legacy_evidence_when_strict_run_created_then_evidence_denies ... ok
+test given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_store_is_required ... ok
+test given_evidence_schema_tamper_matrix_when_strict_run_created_then_typed_invalid_diagnostic_denies ... ok
+test given_checked_artifact_when_prepared_then_gate_count_and_durability_are_not_admission_authority ... ok
+test given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies ... ok
+test given_stale_artifact_when_strict_run_created_then_stale_certificate_denies ... ok
+test given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_state_allocated ... ok
+test accepted_ledger_distinguishes_runtime_validated_from_operator_attested ... ok
+test given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_digest_and_cause_are_preserved ... ok
+test given_valid_accepted_artifact_when_admitted_then_admission_record_contains_digest_certificate_profile ... ok
+test given_required_capability_with_extras_or_duplicates_then_denied ... ok
+test given_missing_prefix_or_action_mismatched_capability_then_capability_denied ... ok
+test proptest_diagnostic_mapping_is_injective_over_admission_error_categories ... ok
+test proptest_evidence_schema_version_fails_closed ... ok
+test proptest_verification_digest_must_equal_artifact_digest ... ok
+test given_raw_or_malformed_storage_bytes_when_strict_run_created_then_decode_failed_matrix_denies ... ok
+test proptest_capability_profiles_admit_iff_required_capability_is_exactly_granted ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+
+running 2 tests
+test state8_kani_exact_grant_setup_detects_module_before_state11_execution ... ok
+test state8_fuzz_schema_setup_registers_required_capability_bins ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -1,0 +1,8 @@
+
+=== Summary ===
+Mirror files checked:  64
+Extern files scanned:  78
+Drift findings:        0
+Log:                   target/verus-drift/drift.log
+
+Production-inner drift gate: PASS

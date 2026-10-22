@@ -99,16 +99,14 @@ fn accepted_artifact_validator_rejects_legacy_thirteen_gate_upper_bound() {
 }
 
 #[test]
-fn accepted_artifact_encoder_records_gate_proof_when_policy_is_journaled()
--> Result<(), String> {
+fn accepted_artifact_encoder_records_gate_proof_when_policy_is_journaled() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
     assert_eq!(artifact.verification.gate_count, 0);
     Ok(())
 }
 
 #[test]
-fn accepted_artifact_encoder_records_gate_proof_when_policy_is_strict() -> Result<(), String>
-{
+fn accepted_artifact_encoder_records_gate_proof_when_policy_is_strict() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     assert_eq!(artifact.verification.gate_count, 0);
     Ok(())
@@ -151,8 +149,7 @@ fn accepted_artifact_encoder_binds_ir_digest_to_ir_bytes_not_workflow_parts_dige
 }
 
 #[test]
-fn accepted_artifact_validator_produces_typed_ledger_with_expected_flags()
--> Result<(), String> {
+fn accepted_artifact_validator_produces_typed_ledger_with_expected_flags() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     let proof = &artifact.verification;
     // Display-only flags: gate_count is 0, durable is always false.
@@ -406,8 +403,7 @@ fn accepted_artifact_validator_has_expected_flags_under_strict() -> Result<(), S
 }
 
 #[test]
-fn accepted_artifact_validator_has_expected_flags_under_journaled() -> Result<(), String>
-{
+fn accepted_artifact_validator_has_expected_flags_under_journaled() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
     let p = &artifact.verification;
     assert!(p.bounded_claimed);
