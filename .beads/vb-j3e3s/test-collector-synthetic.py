@@ -349,6 +349,88 @@ def t_criterion_only_scans_new_directory():
     data = json.loads(found[0].read_text())
     assert data["full_id"] == "mybench;correct-metric"
 
+# --- real Criterion nested group directory structure ---------------------
+# Criterion writes to {home}/{bench}/{group}/{func}/new/benchmark.json.
+# The flat glob "*/new/benchmark.json" misses the group directory.
+
+def _make_criterion_fixture(home, bench_name, group, func, mean=200.0):
+    """Create a Criterion-style nested result fixture with benchmark.json + estimates + sample."""
+    dir_path = home / bench_name / group / func / "new"
+    dir_path.mkdir(parents=True)
+    # Real Criterion full_id has format group/function;params
+    real_full_id = f"{group}/{func}"
+    (dir_path / "benchmark.json").write_text(json.dumps({"full_id": real_full_id, "mean": mean}))
+    (dir_path / "estimates.json").write_text(json.dumps({"mean": {"point_estimate": mean}}))
+    sample = {"iters": [1.0] * 12, "times": [mean] * 12}
+    (dir_path / "sample.json").write_text(json.dumps(sample))
+    return dir_path
+
+
+def t_criterion_nested_group_directory_found():
+    """Nested {bench}/{group}/{func}/new/benchmark.json must be discovered."""
+    import tempfile
+    tmp_base = Path(tempfile.mkdtemp(prefix="vb-criterion-nested-"))
+    home = tmp_base / "crit-home"
+    orig_run = c.run_gated
+
+    def fake_run(seconds, prefix, cmd, cwd=None):
+        # Simulate Criterion writing results during the benchmark run
+        _make_criterion_fixture(
+            home, "criterion-mybench", "runtime_core",
+            "my_func;profile=bench", mean=200.0)
+        return "", "", {"status": 0}
+    c.run_gated = fake_run
+    try:
+        result = c.criterion_run("/dev/null", "my_func", "/tmp", str(home), "test")
+        assert result["mean_ns"] == 200.0
+        assert result["sample_count"] == 12
+    finally:
+        c.run_gated = orig_run
+
+
+def t_criterion_base_stale_ignored():
+    """A base/benchmark.json at the same depth must not be matched."""
+    import tempfile
+    tmp_base = Path(tempfile.mkdtemp(prefix="vb-criterion-base-"))
+    home = tmp_base / "crit-home"
+    orig_run = c.run_gated
+
+    def fake_run(seconds, prefix, cmd, cwd=None):
+        # Only write a stale base result, no new/ — collector must reject
+        base_path = (home / "criterion-mybench" / "runtime_core" /
+                     "my_func;profile=bench" / "base")
+        base_path.mkdir(parents=True)
+        (base_path / "benchmark.json").write_text(json.dumps(
+            {"full_id": "runtime_core/my_func;profile=bench", "mean": 999.0}))
+        return "", "", {"status": 0}
+    c.run_gated = fake_run
+    try:
+        raises("base result only", lambda: c.criterion_run(
+            "/dev/null", "my_func", "/tmp", str(home), "test"), needle="no criterion")
+    finally:
+        c.run_gated = orig_run
+
+
+def t_criterion_multiple_matches_rejected():
+    """Two new/benchmark.json files matching the same metric must be rejected."""
+    import tempfile
+    tmp_base = Path(tempfile.mkdtemp(prefix="vb-criterion-multi-"))
+    home = tmp_base / "crit-home"
+    orig_run = c.run_gated
+
+    def fake_run(seconds, prefix, cmd, cwd=None):
+        _make_criterion_fixture(home, "criterion-mybench", "runtime_core",
+                                "my_func;profile=bench", mean=200.0)
+        _make_criterion_fixture(home, "criterion-mybench2", "other_group",
+                                "my_func;profile=bench", mean=300.0)
+        return "", "", {"status": 0}
+    c.run_gated = fake_run
+    try:
+        raises("multiple matches", lambda: c.criterion_run(
+            "/dev/null", "my_func", "/tmp", str(home), "test"),
+            needle="multiple criterion")
+    finally:
+        c.run_gated = orig_run
 
 # --- find_binary requires exact target name -------------------------------
 
@@ -641,6 +723,9 @@ if __name__ == "__main__":
     check("heaptrack_trace_total_vs_peak", t_parse_heaptrack_trace_total_vs_peak)
     check("heaptrack_trace_total_exceeds_peak", t_parse_heaptrack_trace_total_exceeds_peak)
     check("criterion_only_scans_new_directory", t_criterion_only_scans_new_directory)
+    check("criterion_nested_group_directory_found", t_criterion_nested_group_directory_found)
+    check("criterion_base_stale_ignored", t_criterion_base_stale_ignored)
+    check("criterion_multiple_matches_rejected", t_criterion_multiple_matches_rejected)
     check("find_binary_requires_target_name", t_find_binary_requires_target_name)
     check("check_clean_nul_delimited", t_check_clean_nul_delimited)
     check("check_clean_allowed_jj_git_moon", t_check_clean_allowed_jj_git_moon)

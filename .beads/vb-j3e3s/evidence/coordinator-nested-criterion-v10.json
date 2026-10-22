@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-local5090-collector",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/test-collector-synthetic.py"
+  ],
+  "exit_code": 0,
+  "seconds": 0.112,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-j3e3s/evidence/coordinator-nested-criterion-v10",
+  "coordinator_message": "Coordinator: v7 fixtures currently wrong actual Criterion full_id: must runtime_core/my_func;profile=bench (metric component BEFORE semicolon), not mybench;my_func. Estimates actual mean.point_estimate not point. Use bytes for stub output. Preserve initial failedv6/v7 rawlogs, newprefix. Stop after genuine passing nested/baseonly/duplicate actual criterion_run tests. Do not change metric_matches or thresholds to satisfy fixtures. Root will run actual collection. No extra scope."
+}
