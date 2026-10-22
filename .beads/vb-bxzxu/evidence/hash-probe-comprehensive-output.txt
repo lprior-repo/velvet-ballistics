@@ -1,0 +1,41 @@
+Test-Integrity Checker Justification Bypass Probes
+============================================================
+
+============================================================
+SCENARIO: Bypass: new_path points to unrelated file
+============================================================
+Without justification: exit=1
+  stderr: test integrity: FAIL
+WeakenedAssertion|tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+With justification: exit=0
+  stderr: 
+  RESULT: PASS (finding justified)
+
+============================================================
+SCENARIO: Edge: new_path=ABSENT with file existing
+============================================================
+Without justification: exit=1
+  stderr: test integrity: FAIL
+WeakenedAssertion|tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+With justification: exit=0
+  stderr: 
+  RESULT: UNEXPECTED PASS
+
+============================================================
+SCENARIO: Control: correct new_path=old_path
+============================================================
+Without justification: exit=1
+  stderr: test integrity: FAIL
+WeakenedAssertion|tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0
+Add equal-or-stronger replacement coverage or bead-linked justification.
+With justification: exit=0
+  stderr: 
+  RESULT: PASS (finding justified)
+
+============================================================
+SUMMARY:
+  Bypass #1 (unrelated new_path): CONFIRMED
+  new_path=ABSENT edge case: needs manual verification
+  Control (correct path): should pass

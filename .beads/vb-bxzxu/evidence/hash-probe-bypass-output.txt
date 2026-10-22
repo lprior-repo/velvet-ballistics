@@ -1,0 +1,30 @@
+Base commit: 5b26b94d5e6870f0e7b22ee2a9ba747638edb3da
+Base test blob: 656942709fdb81969e0765db107f3c53bbf18af0
+Base unrelated blob: 272ece2bdfb3996bd4253b3e4a63ce790cd4eba3
+Current test blob: da583d8686f77a267416e717db169b48d5fa2129
+Current unrelated blob: 272ece2bdfb3996bd4253b3e4a63ce790cd4eba3
+Checker: /home/lewis/src/isoloated/velvet-ballistics-vb-bxzxu-local5090-hash-review/target/gate-tools/check-test-integrity
+CWD: /tmp/vb-hash-probe-eh56eyca
+Base: 5b26b94d5e6870f0e7b22ee2a9ba747638edb3da
+TEST_INTEGRITY_BASE: 5b26b94d5e6870f0e7b22ee2a9ba747638edb3da
+Result: stdout='', stderr='test integrity: FAIL\nWeakenedAssertion|tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0\nAdd equal-or-stronger replacement coverage or bead-linked justification.\n', returncode=1
+
+--- Checker output (no justifications) ---
+stdout: ''
+stderr: 'test integrity: FAIL\nWeakenedAssertion|tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0\nAdd equal-or-stronger replacement coverage or bead-linked justification.\n'
+
+Extracted finding detail: removed_exact=1 added_exact=0 added_weak=0
+
+Wrote justification record pointing new_path to unrelated file
+old_path=tests/behavior.rs (correct)
+new_path=README.md (unrelated file, bypass)
+
+--- Checker output (with bypass justification) ---
+JUSTIFIED|WeakenedAssertion|tests/behavior.rs|removed_exact=1 added_exact=0 added_weak=0|bead=vb-bxzxu
+test integrity: PASS base=5b26b94d5e6870f0e7b22ee2a9ba747638edb3da
+
+Exit code: 0
+
+BUG CONFIRMED: Bypass succeeded - finding was justified despite
+new_path pointing to an unrelated file. The actual weakened test
+at tests/behavior.rs was never bound to its current blob.
