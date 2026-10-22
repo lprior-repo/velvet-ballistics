@@ -1,0 +1,100 @@
+{
+  "source_candidate": "673617ae0e96",
+  "actual_gates": [
+    {
+      "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+      "argv": [
+        "env",
+        "RUSTFLAGS=-Dwarnings",
+        "RUSTC_WRAPPER=",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "vb_runtime",
+        "--all-features"
+      ],
+      "exit_code": 0,
+      "seconds": 12.126,
+      "timeout_seconds": 240,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_V27_RUNTIME_ALL_FEATURES_ALL_TESTS"
+    },
+    {
+      "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+      "argv": [
+        "env",
+        "RUSTFLAGS=-Dwarnings",
+        "RUSTC_WRAPPER=",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "velvet-ballistics-workspace-tests",
+        "--test",
+        "cancel_kill_lattice_tests",
+        "--test",
+        "runtime_fjall_pending_action_recovery",
+        "--test",
+        "vb_c1s0_orchestration_runtime_tests",
+        "--test",
+        "vb_test_runtime_lifecycle_state_behavior",
+        "--test",
+        "vb_vt2f_direct_runtime_api_acceptance"
+      ],
+      "exit_code": 0,
+      "seconds": 1.319,
+      "timeout_seconds": 240,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_V28_LIFECYCLE_RECORDED_FAILURE_TARGETS"
+    },
+    {
+      "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+      "argv": [
+        "env",
+        "RUSTFLAGS=-Dwarnings",
+        "RUSTC_WRAPPER=",
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "test",
+        "-p",
+        "velvet-ballistics-workspace-tests",
+        "--test",
+        "cancel_kill_lattice_tests",
+        "--test",
+        "runtime_fjall_pending_action_recovery",
+        "--test",
+        "vb_c1s0_orchestration_runtime_tests",
+        "--test",
+        "vb_test_runtime_lifecycle_state_behavior",
+        "--test",
+        "vb_vt2f_direct_runtime_api_acceptance",
+        "--",
+        "--test-threads=2"
+      ],
+      "exit_code": 0,
+      "seconds": 0.234,
+      "timeout_seconds": 240,
+      "timed_out": false,
+      "env_overrides": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_V29_LIFECYCLE_NAMED_RESULTS"
+    }
+  ],
+  "limitations": "Pre final recovery phase extraction/authority tests. No final main acceptance, full v1 or proof closure. Runtime all tests 2562 passed zero failed one existing ignored. Lifecycle five targets122 passed, old-name audit35/36 explicit wrong-run Ask gap still open."
+}
