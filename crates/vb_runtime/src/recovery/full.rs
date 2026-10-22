@@ -67,7 +67,6 @@ impl RecoveredPendingActionTicket {
 /// Unlike `RuntimeRecoveryBoundary::hydrate_run_frame`, this path is allowed
 /// to proceed when a pending action has durable ticket authority and the
 /// caller will hydrate the surrounding `RunState` components from artifacts.
-
 /// Hydrates a frame for the full runtime recovery path with initial input seeds.
 ///
 /// Retained inputs are seeded into the frame BEFORE applying journal slot writes
