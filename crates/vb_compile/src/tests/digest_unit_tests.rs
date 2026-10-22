@@ -76,13 +76,19 @@ fn digest_step_primitive_finish_writes_finish_discriminator() {
         "Finish discriminator must affect the digest"
     );
 
-    // Hash produced manually: b"finish" + 42i64 LE (exact match)
-    let manual_with_discriminator = hash_bytes(&[b"finish", &42_i64.to_le_bytes()]);
+    // New encoding: b"finish" + type tag (0x02 for i64) + tagged i64 value
+    // Type tag adds domain separation between string and integer results
+    let manual_with_discriminator = hash_bytes(&[
+        b"finish",
+        &[0x02], // Integer type tag
+        &[0x02], // TAG_I64
+        &42_i64.to_le_bytes(),
+    ]);
 
     // Hashes must match — encoding is deterministic
     assert_eq!(
         actual, manual_with_discriminator,
-        "Finish encoding must match manual b\"finish\" + LE bytes"
+        "Finish encoding must match manual b\"finish\" + type tag + tagged i64 bytes"
     );
 }
 
@@ -95,11 +101,16 @@ fn digest_step_primitive_finish_encodes_string_result_as_utf8_bytes() {
     let primitive = finish_string("my_output");
 
     let actual = hash_primitive(&primitive);
-    let expected = hash_bytes(&[b"finish", b"my_output"]);
+    // New encoding: b"finish" + type tag (0x01 for string) + tagged string value
+    let value_bytes = b"my_output";
+    let len = u32::try_from(value_bytes.len())
+        .unwrap_or(u32::MAX)
+        .to_le_bytes();
+    let expected = hash_bytes(&[b"finish", &[0x01], &[0x01], &len, value_bytes]);
 
     assert_eq!(
         actual, expected,
-        "Finish String result must hash b\"finish\" + raw UTF-8 bytes"
+        "Finish String result must hash b\"finish\" + type tag + tagged string bytes"
     );
 }
 
@@ -107,10 +118,10 @@ fn digest_step_primitive_finish_encodes_string_result_as_utf8_bytes() {
 #[test]
 fn digest_step_primitive_finish_encodes_empty_string() {
     let primitive = finish_string("");
-
     let actual = hash_primitive(&primitive);
-    // b"finish" + b"" = just b"finish"
-    let expected = hash_bytes(&[b"finish", b""]);
+    // New encoding: b"finish" + type tag (0x01) + tagged empty string
+    let len = u32::try_from(0).unwrap_or(u32::MAX).to_le_bytes();
+    let expected = hash_bytes(&[b"finish", &[0x01], &[0x01], &len]);
 
     assert_eq!(
         actual, expected,
@@ -132,11 +143,16 @@ fn digest_step_primitive_finish_encodes_unicode_string() {
     let primitive = finish_string("ré∑umé");
 
     let actual = hash_primitive(&primitive);
-    let expected = hash_bytes(&[b"finish", "ré∑umé".as_bytes()]);
+    // New encoding: b"finish" + type tag (0x01) + tagged string value
+    let value_bytes = "ré∑umé".as_bytes();
+    let len = u32::try_from(value_bytes.len())
+        .unwrap_or(u32::MAX)
+        .to_le_bytes();
+    let expected = hash_bytes(&[b"finish", &[0x01], &[0x01], &len, value_bytes]);
 
     assert_eq!(
         actual, expected,
-        "Finish String with unicode must hash raw UTF-8 bytes"
+        "Finish String with unicode must hash tagged UTF-8 bytes"
     );
 }
 
@@ -149,11 +165,12 @@ fn digest_step_primitive_finish_encodes_integer_result_as_le_bytes() {
     let primitive = finish_integer(42);
 
     let actual = hash_primitive(&primitive);
-    let expected = hash_bytes(&[b"finish", &42_i64.to_le_bytes()]);
+    // New encoding: b"finish" + type tag (0x02) + tagged i64 value
+    let expected = hash_bytes(&[b"finish", &[0x02], &[0x02], &42_i64.to_le_bytes()]);
 
     assert_eq!(
         actual, expected,
-        "Finish Integer result must hash b\"finish\" + i64 LE bytes"
+        "Finish Integer result must hash b\"finish\" + type tag + tagged i64 LE bytes"
     );
 }
 
@@ -163,11 +180,12 @@ fn digest_step_primitive_finish_encodes_integer_zero() {
     let primitive = finish_integer(0);
 
     let actual = hash_primitive(&primitive);
-    let expected = hash_bytes(&[b"finish", &[0u8; 8]]);
+    // New encoding: b"finish" + type tag (0x02) + tagged i64 value
+    let expected = hash_bytes(&[b"finish", &[0x02], &[0x02], &[0u8; 8]]);
 
     assert_eq!(
         actual, expected,
-        "Finish Integer 0 must hash b\"finish\" + [0u8; 8]"
+        "Finish Integer 0 must hash b\"finish\" + type tag + tagged [0u8; 8]"
     );
 }
 
@@ -177,11 +195,12 @@ fn digest_step_primitive_finish_encodes_integer_negative() {
     let primitive = finish_integer(-1);
 
     let actual = hash_primitive(&primitive);
-    let expected = hash_bytes(&[b"finish", &[0xFF_u8; 8]]);
+    // New encoding: b"finish" + type tag (0x02) + tagged i64 value
+    let expected = hash_bytes(&[b"finish", &[0x02], &[0x02], &[0xFF_u8; 8]]);
 
     assert_eq!(
         actual, expected,
-        "Finish Integer -1 must hash b\"finish\" + [0xFF_u8; 8]"
+        "Finish Integer -1 must hash b\"finish\" + type tag + tagged [0xFF_u8; 8]"
     );
 }
 
@@ -191,7 +210,8 @@ fn digest_step_primitive_finish_encodes_integer_min() {
     let primitive = finish_integer(i64::MIN);
 
     let actual = hash_primitive(&primitive);
-    let expected = hash_bytes(&[b"finish", &i64::MIN.to_le_bytes()]);
+    // New encoding: b"finish" + type tag (0x02) + tagged i64 value
+    let expected = hash_bytes(&[b"finish", &[0x02], &[0x02], &i64::MIN.to_le_bytes()]);
 
     assert_eq!(
         actual, expected,
@@ -205,7 +225,8 @@ fn digest_step_primitive_finish_encodes_integer_max() {
     let primitive = finish_integer(i64::MAX);
 
     let actual = hash_primitive(&primitive);
-    let expected = hash_bytes(&[b"finish", &i64::MAX.to_le_bytes()]);
+    // New encoding: b"finish" + type tag (0x02) + tagged i64 value
+    let expected = hash_bytes(&[b"finish", &[0x02], &[0x02], &i64::MAX.to_le_bytes()]);
 
     assert_eq!(
         actual, expected,

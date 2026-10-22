@@ -129,11 +129,12 @@ fn foreach_at_once_none_some1_produces_identical_step_digest() {
     let digest_none = step_digest_bytes(&step_none);
     let digest_some1 = step_digest_bytes(&step_some1);
 
-    // Then: Both hashers produce identical bytes
-    // (None → 1u32, Some(1) → 1u32 — semantic equivalence)
+    // Then: None and Some(1) produce identical digests. Both lower to the same
+    // IR (`at_once.unwrap_or(1)` → `limit = 1` in part_02.rs), so the canonical
+    // digest must resolve the default to preserve digest stability (master §59).
     assert_eq!(
         digest_none, digest_some1,
-        "at_once=None and at_once=Some(1) must produce identical digest contributions"
+        "at_once=None and at_once=Some(1) lower to limit=1 and must share a digest"
     );
 }
 
@@ -148,7 +149,8 @@ fn foreach_at_once_none_some1_produces_identical_workflow_digest() {
     let digest_none = canonical_digest_part05(&source_none);
     let digest_some1 = canonical_digest_part05(&source_some1);
 
-    // Then: Both produce identical WorkflowDigest values
+    // Then: None and Some(1) produce identical digests for the same reason as
+    // the step-level test above (both lower to `limit = 1`).
     assert_eq!(
         digest_none, digest_some1,
         "at_once=None and at_once=Some(1) must produce identical workflow digests"

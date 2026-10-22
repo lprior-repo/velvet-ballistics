@@ -352,20 +352,27 @@ fn digest_step_primitive_uses_exact_b_none_sentinel_when_event_is_absent() {
     digest_step_primitive(&mut hasher_until, &wait_until);
     let digest_until = hasher_until.finalize();
 
-    // Reference: manually construct the expected byte sequence
-    // Wait arm order: b"wait" + event_bytes + timeout_bytes
-    // event=None → b"none"
+    // New encoding: b"wait" + field_tag("event:") + TAG_NONE +
+    //               field_tag("timeout:") + TAG_SOME + tagged_string("30")
     let mut hasher_ref = Hasher::new();
     hasher_ref.update(b"wait");
-    hasher_ref.update(b"none");
-    hasher_ref.update(b"30");
+    hasher_ref.update(b"event:");
+    hasher_ref.update(&[0x11]); // TAG_NONE
+    hasher_ref.update(b"timeout:");
+    hasher_ref.update(&[0x10]); // TAG_SOME
+    let timeout_bytes = b"30";
+    let len = u32::try_from(timeout_bytes.len())
+        .unwrap_or(u32::MAX)
+        .to_le_bytes();
+    hasher_ref.update(&[0x01]); // TAG_STRING
+    hasher_ref.update(&len);
+    hasher_ref.update(timeout_bytes);
     let digest_ref = hasher_ref.finalize();
 
     // Then: the WaitUntil hasher and reference must match exactly
     assert_eq!(
         digest_until, digest_ref,
-        "WaitUntil (event=None) must hash exactly b\"wait\" + b\"none\" + timeout; \
-         sentinel b\"none\" is the fixed C3 constant"
+        "WaitUntil (event=None) must use TAG_NONE sentinel with length-prefixed timeout"
     );
 }
 
@@ -387,20 +394,27 @@ fn digest_step_primitive_uses_exact_b_none_sentinel_when_timeout_is_absent() {
     digest_step_primitive(&mut hasher_unbounded, &wait_unbounded);
     let digest_unbounded = hasher_unbounded.finalize();
 
-    // Reference: manually construct the expected byte sequence
-    // Wait arm order: b"wait" + event_bytes + timeout_bytes
-    // timeout=None → b"none"
+    // New encoding: b"wait" + field_tag("event:") + TAG_SOME + tagged_string("0") +
+    //               field_tag("timeout:") + TAG_NONE
     let mut hasher_ref = Hasher::new();
     hasher_ref.update(b"wait");
-    hasher_ref.update(b"0");
-    hasher_ref.update(b"none");
+    hasher_ref.update(b"event:");
+    hasher_ref.update(&[0x10]); // TAG_SOME
+    let event_bytes = b"0";
+    let event_len = u32::try_from(event_bytes.len())
+        .unwrap_or(u32::MAX)
+        .to_le_bytes();
+    hasher_ref.update(&[0x01]); // TAG_STRING
+    hasher_ref.update(&event_len);
+    hasher_ref.update(event_bytes);
+    hasher_ref.update(b"timeout:");
+    hasher_ref.update(&[0x11]); // TAG_NONE
     let digest_ref = hasher_ref.finalize();
 
     // Then: the WaitEvent unbounded hasher and reference must match exactly
     assert_eq!(
         digest_unbounded, digest_ref,
-        "WaitEvent unbounded (timeout=None) must hash exactly \
-         b\"wait\" + event + b\"none\"; sentinel b\"none\" is the fixed C3 constant"
+        "WaitEvent unbounded (timeout=None) must use TAG_NONE sentinel with tagged event"
     );
 }
 
