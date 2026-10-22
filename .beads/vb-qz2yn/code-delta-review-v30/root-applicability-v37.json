@@ -1,0 +1,18 @@
+{
+  "source": "7e71ff4bbc7fe06b20fea3f07a770980e0ab0064",
+  "verdict": "narrow CODE delta accepted; actual full canonical gate still running",
+  "scope": "Full unified delta in two production files after independent full v20 CODE review. Four other production files unchanged. Current guard span and current core raw read covered; some native Rust range reads yielded AST summaries, so no claim all helper body newly read raw. Prior full source packet review applies to unchanged body.",
+  "corrections": [
+    "CompiledIrReadback exists; erroneous nonexistent claim originated in root coordination, not the local v20 reviewer.",
+    "core diff removes seven total blank lines, not seven between methods; import groups reordered by rustfmt.",
+    "V33 actual 14 source tasks,1643 storage,71 crosscrate all passed after final delta; reviewers pending status reflected their context.",
+    "No source semantic change inferred solely from passing gates; exact unified diff inspected and hashes verified."
+  ],
+  "excluded": [
+    "CLI/packed producers",
+    "formal proof closure",
+    "power loss guarantees",
+    "performance improvement",
+    "full v1 acceptance"
+  ]
+}
