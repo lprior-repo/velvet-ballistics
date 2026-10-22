@@ -144,19 +144,19 @@ fn build_batch(
 
 /// Apply policy durability and commit the batch.
 fn commit_batch(
-    journal: &FjallJournal,
+    _journal: &FjallJournal,
     mut batch: fjall::OwnedWriteBatch,
     policy: RuntimePolicy,
 ) -> Result<(), JournalError> {
     if policy == RuntimePolicy::Strict {
         #[cfg(test)]
-        if journal.consume_persist_failure_for_test() {
+        if _journal.consume_persist_failure_for_test() {
             return Err(JournalError::StrictDurabilityFailed);
         }
         batch = batch.durability(Some(fjall::PersistMode::SyncAll));
     }
     #[cfg(test)]
-    if journal.consume_batch_commit_failure_for_test() {
+    if _journal.consume_batch_commit_failure_for_test() {
         return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
             std::io::ErrorKind::Other,
             "injected batch commit failure (test hook)",

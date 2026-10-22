@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-use crate::{error::JournalError, types::EventSeq};
+use crate::{CompiledIrRecord, error::JournalError, types::EventSeq};
 
 use crate::journal::FjallJournal;
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};

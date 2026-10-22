@@ -9,32 +9,36 @@ Changed ONLY the default artifact submission APIs (`submit_artifact` and `submit
 ### Counter Storage
 
 - New dedicated `artifact_acceptance` keyspace in `FjallJournal`
-- Single fixed key: `last_issued` (ASCII prefix `0x40` + name)
+- Single private literal key: `b"last_issued"` (no prefix; keyspace isolates)
 - Value: u64 big-endian 8 bytes (0 = no artifacts issued yet)
 - Malformed value length → `MalformedKeyspaceRow` error
 - u64 overflow → `SequenceOverflow` error
+- Safe fixed array `TryFrom` for 8-byte slice→array conversion
 
 ### Sequence Type
 
-- Private `IssuedArtifactSequence` wrapper (wraps `u64` with non-zero guarantee)
+- Private `IssuedArtifactSequence` wrapping `std::num::NonZeroU64`
+- Checked constructor validates via `NonZeroU64::new(value).ok_or(...)`
 - Not exported publicly — only `EventSeq` appears in the public API
 - `to_event_seq()` converts to the embedded `accepted_at_seq` field
 
 ### Transactional Pattern
 
+Private issuance flows through 5 small private functions, each ≤ 25 lines:
+
 ```
-submit_artifact_with_contracts:
-  1. prepare_compiled_artifact (pure, seq=0, validates)
-  2. acquire write_lock
-  3. create OwnedWriteBatch
-  4. issue_next_artifact_sequence (stages counter + returns seq)
-  5. stamp accepted_at_seq on artifact
-  6. bind_artifact_digest (rebind after stamp)
-  7. encode with existing encode_record (MAGIC_COMPILED_ARTIFACT, etc.)
-  8. batch.put_compiled_ir(staged record)
-  9. commit with Strict durability (SyncAll) or default
-  10. drop write_lock
-  11. verify_artifact_persisted (existing readback)
+issue_artifact(journal, artifact, policy):
+  1. journal.acquire_write_lock()
+  2. last = read_counter(journal)
+  3. (next, stamped) = prepare_artifact(last, artifact)
+  4. (record, encoded) = encode_record(stamped)
+  5. batch = build_batch(journal, next, stamped, encoded)
+  6. commit_batch(journal, batch, policy)
+  7. journal.release_write_lock()
+  8. return stamped
+
+issue_next_artifact_sequence(journal, artifact, policy)
+  → pub(crate) wrapper delegating to issue_artifact
 ```
 
 ### Locking
@@ -56,11 +60,11 @@ submit_artifact_with_contracts:
 
 ## Key Design Decisions
 
-1. **Private batch API**: Uses `journal.batch()` internally but does NOT expose a new public batch API. No `pub fn` added to `FjallJournal`.
+1. **Private batch API**: No public batch API exposed. Uses raw `fjall::OwnedWriteBatch` internally via `build_batch` helper. No `pub fn` added to `FjallJournal`.
 
-2. **Counter staged in same batch as record**: The counter update and compiled IR insert are committed atomically in one `OwnedWriteBatch`. No separate counter persistence.
+2. **Counter staged in same batch as record**: The counter update and compiled IR insert are committed atomically in one `fjall::OwnedWriteBatch`. No separate counter persistence.
 
-3. **Strict durability via batch**: For `RuntimePolicy::Strict`, calls `batch.strict()` before commit, which sets `durability(Some(PersistMode::SyncAll))`. The existing `persist_strict` is NOT called separately — the batch handles durability.
+3. **Strict durability via batch**: For `RuntimePolicy::Strict`, sets `batch = batch.durability(Some(fjall::PersistMode::SyncAll))` before commit. No separate `persist_strict` call — the batch handles durability.
 
 4. **No counter key reserved hash**: Only the `last_issued` key exists. No per-artifact counter keys.
 
@@ -79,12 +83,13 @@ submit_artifact_with_contracts:
 
 ## Test Hook Compatibility
 
-- Existing `persist_strict` fault hook: NOT used in new path (durability via batch)
-- Existing `compiled_ir_readback` hook: still active
-- Existing `batch_commit` hook: now active for this path
-- No new test hooks added (implementation phase; tests written by root after this)
+- `persist_strict` fault hook: honored for Strict policy (checked before durability setting)
+- `batch_commit` fault hook: honored for all policies (checked before batch commit)
+- Both hooks are private `#[cfg(test)]` methods on `FjallJournal`
+- Existing `compiled_ir_readback` hook: still active for readback verification
 
 ## Limitations (intentional)
 
-- Counter helper method is ~45 logical lines, exceeds the strict 25-line target. This is because the counter read requires parsing the value, validating length, and returning the appropriate typed error. The logic is simple but the error handling expands it.
+- Issuance logic split across 5 private functions to maintain ≤ 25 lines each. Total issuance flow is ~80 logical lines.
 - No public API changes — callers still pass `workflow`, `policy`, `action_contracts` and receive `AcceptedArtifact`. The sequence number is embedded in the artifact, not returned separately.
+- Readback verification after commit may still fail due to IO errors post-acknowledgment; this is an IO error, not a rollback scenario.
