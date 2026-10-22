@@ -1,9 +1,9 @@
 use crate::shard::Shard;
 use crate::{RuntimeError, RuntimeResult};
-use vb_core::action::ActionOutputReady;
-use vb_core::policy::{PinnedAdmissionPolicy, PolicyDigest};
 use vb_core::ActionTicket;
 use vb_core::Taint;
+use vb_core::action::ActionOutputReady;
+use vb_core::policy::{PinnedAdmissionPolicy, PolicyDigest};
 use vb_storage::executor::RegisterReceipt;
 
 pub(crate) struct RegisteredActionContext {
@@ -38,14 +38,9 @@ impl Shard {
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         let (value, input_taint) =
             super::registered_context_helpers::resolve_action_input(state, ticket)?;
-        let encoded =
-            super::registered_context_helpers::encode_action_input(value)?;
-        let output = super::registered_context_helpers::build_action_output(
-            state,
-            ticket,
-            value,
-            &encoded,
-        )?;
+        let encoded = super::registered_context_helpers::encode_action_input(value)?;
+        let output =
+            super::registered_context_helpers::build_action_output(state, ticket, value, &encoded)?;
         super::preflight_action_completion(state, ticket, output)?;
         let admission_pin = match admission.policy_pin() {
             vb_storage::RunPolicyPin::Pinned(digest) => {
