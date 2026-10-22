@@ -1,0 +1,188 @@
+{
+  "scope": "Read-only current compiled source seam map, no runtime or test execution",
+  "source_commit": "8707f8e976f9a1f936a65341c924468be57f2920",
+  "records": [
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle.rs",
+      "sha256": "49235889dcf876aab127c8588e9f981153399d021413c21c3e08f8726ab09215",
+      "symbols": [
+        {
+          "needle": "chunk_005.rs",
+          "lines": [
+            15,
+            24
+          ]
+        },
+        {
+          "needle": "chunk_002.rs",
+          "lines": [
+            12,
+            21
+          ]
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/chunk_005.rs",
+      "sha256": "2776ae445c555ddfb4113565c52d76d54a2c3deb99b8648fbf4050ec3b935f8a",
+      "symbols": [
+        {
+          "needle": "fn prepare_awaiting_action",
+          "lines": [
+            2
+          ]
+        },
+        {
+          "needle": "fn apply_awaiting_action",
+          "lines": [
+            110
+          ]
+        },
+        {
+          "needle": "if evidence.is_empty()",
+          "lines": [
+            117,
+            148,
+            185,
+            223
+          ]
+        },
+        {
+          "needle": "pending_action_insert",
+          "lines": [
+            135
+          ]
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/registered_executor.rs",
+      "sha256": "42cebc4f6cbd4b2d5e1d70a0d730fb30064cbd13924630f95da235e6ef7acdfb",
+      "symbols": [
+        {
+          "needle": "pub fn execute_registered_action",
+          "lines": [
+            20
+          ]
+        },
+        {
+          "needle": "adapter.execute(",
+          "lines": [
+            31
+          ]
+        },
+        {
+          "needle": "pub fn reconcile_registered_action",
+          "lines": [
+            38
+          ]
+        },
+        {
+          "needle": "adapter.reconcile(",
+          "lines": [
+            51
+          ]
+        },
+        {
+          "needle": "fn registered_context",
+          "lines": [
+            86
+          ]
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+      "sha256": "e2b041e1ce48911842ac8c7388ec76fed3cd9ff57aa1b74f892c87840dd0de5d",
+      "symbols": [
+        {
+          "needle": "fn registered_action_context",
+          "lines": [
+            15
+          ]
+        },
+        {
+          "needle": "state.registered_execution",
+          "lines": [
+            69
+          ]
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_runtime/src/admission/parts/chunk_002_records.rs",
+      "sha256": "4bcf2ea1926fcc751c90fd64c188573e8006362290e9cbc2d45a0b50caa143e3",
+      "symbols": [
+        {
+          "needle": "pub struct RunAdmission",
+          "lines": [
+            3
+          ]
+        },
+        {
+          "needle": "artifact_digest: WorkflowDigest",
+          "lines": [
+            5
+          ]
+        },
+        {
+          "needle": "pub fn artifact_digest",
+          "lines": [
+            85
+          ]
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_storage/src/executor/authority.rs",
+      "sha256": "ceaee026dfb5ae82c2bf1c78b77357549d161bc010d73002b38516fd9470e6c4",
+      "symbols": [
+        {
+          "needle": "does not implement expiry",
+          "lines": [
+            6
+          ]
+        },
+        {
+          "needle": "pub struct RegisterGrant",
+          "lines": [
+            8
+          ]
+        },
+        {
+          "needle": "fn validate",
+          "lines": [
+            17
+          ]
+        }
+      ]
+    },
+    {
+      "path": "crates/vb_storage/src/executor/catalog.rs",
+      "sha256": "2266fbdbee717ffc455b70a8b25adece0ffed0aa92ce24ca07f07027c217c2d4",
+      "symbols": [
+        {
+          "needle": "pub fn issue_register_grant",
+          "lines": [
+            80
+          ]
+        },
+        {
+          "needle": "pub fn validate_receipt",
+          "lines": [
+            102
+          ]
+        }
+      ]
+    }
+  ],
+  "observations": [
+    "Compiled lifecycle includes chunk_005.rs; old chunk_002_parts/chunk_002_drive_core.rs is not active inclusion.",
+    "evidence.is_empty() is not proof of historical replay; do not use it to bypass live authorization.",
+    "Current policy must be checked at actual Runtime::execute_registered_action before adapter.execute, including changes after ticket scheduling.",
+    "reconcile_registered_action uses adapter.reconcile and must remain effect-free; historical replay cannot be reevaluated against current deny.",
+    "Existing RegisterGrant already binds exact artifact/pack/ticket/scope/timeout; authority.rs explicitly excludes expiry/revocation lifecycle.",
+    "RunAdmission contains artifact digest, not pinned AcceptedArtifact.policy_digest; artifact identity is not policy identity."
+  ],
+  "acceptance": "No policy behavior accepted. Parent vb-ny068 remains in_progress; local workers implement bounded foundation and codec slices."
+}
