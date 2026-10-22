@@ -1,0 +1,13 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-r4fm9-local5090-replay/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-r4fm9-local5090-replay/crates/vb_runtime)
+warning: function `action_output` is never used
+   --> crates/vb_runtime/tests/vb_r4fm9_event_generation.rs:110:4
+    |
+110 | fn action_output(value: SlotValue) -> ActionOutputReady {
+    |    ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (test "vb_r4fm9_event_generation") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.81s
+     Running tests/vb_r4fm9_event_generation.rs (target/debug/deps/vb_r4fm9_event_generation-fd3c4699e60d16bc)

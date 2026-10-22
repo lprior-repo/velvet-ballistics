@@ -193,7 +193,7 @@ impl JournalEvent {
             | Self::AskTimedOutEvent { attempt, .. } => Some(*attempt),
             Self::ActionScheduledTicket { ticket, .. }
             | Self::ActionCompletedEnvelope { ticket, .. }
-            | Self::ActionAbandoned { ticket, .. } => Some(ticket.attempt),
+            | Self::ActionAbandoned { ticket, .. } => Some(ticket.run_attempt),
             Self::RunAccepted { .. }
             | Self::RunAdmission { .. }
             | Self::StepSucceeded { .. }
