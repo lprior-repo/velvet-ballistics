@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-ct31x-v4",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "--all-features"
+  ],
+  "exit_code": 0,
+  "seconds": 1.299,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ct31x/evidence/DENY_V4_02"
+}
