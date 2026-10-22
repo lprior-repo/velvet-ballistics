@@ -1,0 +1,14 @@
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/ipc_runtime_transitions_production.rs:242:10
+    |
+242 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/ipc_runtime_transitions_production.rs:302:10
+    |
+302 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: 2 warnings emitted
+

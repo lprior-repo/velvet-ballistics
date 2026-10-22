@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-fg1pi-local5090-mirror-review",
+  "argv": [
+    "verus",
+    "--crate-type=lib",
+    "verification/verus/extern_recovery_verification.rs"
+  ],
+  "exit_code": 0,
+  "seconds": 0.267,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-fg1pi/evidence/verus-recovery"
+}
