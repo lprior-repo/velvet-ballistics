@@ -4,6 +4,8 @@
 // with a real ExecutorCatalog + FjallRegister wired into a public Runtime
 // via StorageRuntimeJournal::shared_strict_with_catalog.
 
+mod policy_dispatch;
+
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
@@ -11,7 +13,7 @@ use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, Side
 use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::policy::RuntimePolicy;
+use vb_core::policy::{PolicyDigest, PolicyRule, RuntimePolicy, DecisionCode};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
@@ -145,6 +147,13 @@ fn execute_registered_action_commits_one_effect_and_completes_run() -> TestResul
         Arc::new(catalog.clone()),
     );
     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+
+    let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
+    runtime.configure_live_policy(
+        allowed_digest,
+        PolicyRule { action, code: DecisionCode::Allowed },
+    )?;
+
     runtime.submit_direct_with_inputs_grants_and_contracts(
         run,
         workflow,
@@ -211,6 +220,13 @@ fn reconcile_registered_action_reads_receipt_without_new_effect() -> TestResult 
         Arc::new(catalog.clone()),
     );
     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+
+    let allowed_digest = PolicyDigest::from_bytes([0x12u8; 32]);
+    runtime.configure_live_policy(
+        allowed_digest,
+        PolicyRule { action, code: DecisionCode::Allowed },
+    )?;
+
     runtime.submit_direct_with_inputs_grants_and_contracts(
         run,
         workflow,
