@@ -8,13 +8,13 @@
 
 use std::path::PathBuf;
 use std::process::{Command, Output};
+use tempfile::TempDir;
 
 /// Helper to get the path to the velvet-ballistics binary.
 fn vb_binary() -> PathBuf {
-    // Use the cargo test environment or target directory
     std::env::var("CARGO_BIN_EXE_velvet-ballistics")
-        .map(PathBuf::from)
         .ok()
+        .map(PathBuf::from)
         .or_else(|| {
             std::fs::canonicalize(std::path::Path::new(env!("CARGO_MANIFEST_DIR")))
                 .ok()
@@ -23,12 +23,31 @@ fn vb_binary() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("velvet-ballistics"))
 }
 
-/// Run the velvet-ballistics binary with the given args and return the output.
-fn run_vb(args: &[&str]) -> Output {
+/// Internal helper: run velvet-ballistics with isolated temp dir,
+/// resolving binary to absolute path first. Returns Output and owned TempDir
+/// so callers can inspect child working directory. TempDir lifetime covers
+/// the entire child process execution.
+fn run_vb_internal(args: &[&str]) -> Result<(Output, TempDir), Box<dyn std::error::Error>> {
     let binary = vb_binary();
-    let mut cmd = Command::new(&binary);
+    let absolute_binary = std::fs::canonicalize(&binary)?;
+
+    let tmp_dir = TempDir::new()?;
+
+    let mut cmd = Command::new(absolute_binary);
+    cmd.current_dir(tmp_dir.path());
     cmd.args(args);
-    cmd.output().expect("failed to execute velvet-ballistics")
+    let output = cmd.output()?;
+
+    Ok((output, tmp_dir))
+}
+
+/// Run the velvet-ballistics binary with the given args and return the output.
+/// All fallible operations are handled by run_vb_internal; this wrapper uses
+/// a single expect for the total operation.
+fn run_vb(args: &[&str]) -> Output {
+    run_vb_internal(args)
+        .expect("failed to execute velvet-ballistics")
+        .0
 }
 
 /// Check that velvet-ballistics prints help and exits successfully.
@@ -714,6 +733,31 @@ mod doctor_command {
         );
     }
 
+    /// Regression test: CLI commands that create database files must not
+    /// write artifacts into the repository's source tree. Each CLI invocation
+    /// runs in an isolated temp working directory.
+    ///
+    /// This test proves:
+    /// 1. The doctor command succeeds with a relative --db name
+    /// 2. A Fjall journal is actually created in the child's working directory
+    /// 3. No journal artifacts appear in the inherited repository cwd
+    /// 4. The test fails if the child current_dir override is removed
+    /// Isolated child cwd prevents relative DB from leaking into repo root.
+    #[test]
+    fn cli_doctor_with_relative_db_no_source_tree_artifacts(
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let db_name = "vb-isolation-v4.db";
+        let (output, tmp_dir) = run_vb_internal(&["doctor", "--db", db_name])?;
+
+        assert_vb_success(&output, |s| {
+            s.contains("all checks passed") || s.contains("trim eligibility")
+        });
+
+        assert_db_created_at(&tmp_dir.path().join(db_name));
+        assert_db_not_at(&std::env::current_dir()?.join(db_name));
+
+        Ok(())
+    }
     /// doctor with --db should also work.
     #[test]
     fn cli_doctor_with_db_runs() {
@@ -725,6 +769,25 @@ mod doctor_command {
             "doctor with --db should not fail on arg parsing: {}",
             stderr
         );
+    }
+    fn assert_vb_success(output: &Output, expect_stdout: fn(&str) -> bool) {
+        assert!(
+            output.status.success(),
+            "exit code: {:?}\nstdout: {}\nstderr: {}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(expect_stdout(&stdout), "unexpected output: {}", stdout);
+    }
+
+    fn assert_db_created_at(path: &std::path::Path) {
+        assert!(path.exists(), "DB should exist at {:?}", path);
+    }
+
+    fn assert_db_not_at(path: &std::path::Path) {
+        assert!(!path.exists(), "DB should not exist at {:?}", path);
     }
 }
 

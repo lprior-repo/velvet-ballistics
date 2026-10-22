@@ -1,0 +1,37 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl/crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:10:
+ use std::process::{Command, Output};
+ use tempfile::TempDir;
+ 
+-
+ /// Helper to get the path to the velvet-ballistics binary.
+ fn vb_binary() -> PathBuf {
+     std::env::var("CARGO_BIN_EXE_velvet-ballistics")
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl/crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:28:
+ /// resolving binary to absolute path first. Returns Output and owned TempDir
+ /// so callers can inspect child working directory. TempDir lifetime covers
+ /// the entire child process execution.
+-fn run_vb_internal(
+-    args: &[&str],
+-) -> Result<(Output, TempDir), Box<dyn std::error::Error>> {
++fn run_vb_internal(args: &[&str]) -> Result<(Output, TempDir), Box<dyn std::error::Error>> {
+     let binary = vb_binary();
+     let absolute_binary = std::fs::canonicalize(&binary)?;
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl/crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:44:
+     Ok((output, tmp_dir))
+ }
+ 
+-
+ /// Run the velvet-ballistics binary with the given args and return the output.
+ /// All fallible operations are handled by run_vb_internal; this wrapper uses
+ /// a single expect for the total operation.
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-8li6d-local5090-impl/crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:747:
+     /// 3. No journal artifacts appear in the inherited repository cwd
+     /// 4. The test fails if the child current_dir override is removed
+     #[test]
+-    fn cli_doctor_with_relative_db_no_source_tree_artifacts() -> Result<(), Box<dyn std::error::Error>> {
++    fn cli_doctor_with_relative_db_no_source_tree_artifacts()
++    -> Result<(), Box<dyn std::error::Error>> {
+         let db_name = "vb-isolation-test.db";
+ 
+         // Run doctor with a relative db path in an isolated temp dir.
