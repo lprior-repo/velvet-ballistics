@@ -1,0 +1,1025 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_runtime)
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/workspace_tests)
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:268:26
+    |
+268 |         idempotency_key: compute_idempotency_key(run, SeqNo::ZERO, action),
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^      ----------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+268 |         idempotency_key: compute_idempotency_key(run, /* u16 */, SeqNo::ZERO, action),
+    |                                                       ++++++++++
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+   --> crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:262:5
+    |
+262 |     ActionTicket {
+    |     ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:923:9
+    |
+923 |         compute_idempotency_key(ticket.run, ticket.seq, ticket.action)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^             ---------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+help: provide the argument
+    |
+923 |         compute_idempotency_key(ticket.run, /* u16 */, ticket.seq, ticket.action)
+    |                                             ++++++++++
+
+Some errors have detailed explanations: E0061, E0063.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "runtime_fjall_pending_action_recovery") due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+error[E0063]: missing field `attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/action_queue.rs:326:9
+    |
+326 |         ActionTicket {
+    |         ^^^^^^^^^^^^ missing `attempt`
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:239:20
+    |
+239 |         let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(2), ActionId::new(3));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+239 |         let key1 = compute_idempotency_key(RunId::new(1), /* u16 */, SeqNo::new(2), ActionId::new(3));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:240:20
+    |
+240 |         let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(2), ActionId::new(3));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+240 |         let key2 = compute_idempotency_key(RunId::new(1), /* u16 */, SeqNo::new(2), ActionId::new(3));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:246:20
+    |
+246 |         let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+246 |         let key1 = compute_idempotency_key(RunId::new(1), /* u16 */, SeqNo::new(0), ActionId::new(0));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:247:20
+    |
+247 |         let key2 = compute_idempotency_key(RunId::new(2), SeqNo::new(0), ActionId::new(0));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+247 |         let key2 = compute_idempotency_key(RunId::new(2), /* u16 */, SeqNo::new(0), ActionId::new(0));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:253:20
+    |
+253 |         let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+253 |         let key1 = compute_idempotency_key(RunId::new(1), /* u16 */, SeqNo::new(0), ActionId::new(0));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:254:20
+    |
+254 |         let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(1), ActionId::new(0));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+254 |         let key2 = compute_idempotency_key(RunId::new(1), /* u16 */, SeqNo::new(1), ActionId::new(0));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:260:20
+    |
+260 |         let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+260 |         let key1 = compute_idempotency_key(RunId::new(1), /* u16 */, SeqNo::new(0), ActionId::new(0));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:261:20
+    |
+261 |         let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(1));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+261 |         let key2 = compute_idempotency_key(RunId::new(1), /* u16 */, SeqNo::new(0), ActionId::new(1));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:267:20
+    |
+267 |         let key1 = compute_idempotency_key(RunId::new(0), SeqNo::new(0), ActionId::new(0));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+267 |         let key1 = compute_idempotency_key(RunId::new(0), /* u16 */, SeqNo::new(0), ActionId::new(0));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:268:20
+    |
+268 |         let key2 = compute_idempotency_key(RunId::new(0), SeqNo::new(0), ActionId::new(0));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+268 |         let key2 = compute_idempotency_key(RunId::new(0), /* u16 */, SeqNo::new(0), ActionId::new(0));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:278:20
+    |
+278 |         let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0x100), ActionId::new(0));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ----------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+278 |         let key1 = compute_idempotency_key(RunId::new(1), /* u16 */, SeqNo::new(0x100), ActionId::new(0));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:279:20
+    |
+279 |         let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0x100));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^                ------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+279 |         let key2 = compute_idempotency_key(RunId::new(1), /* u16 */, SeqNo::new(0), ActionId::new(0x100));
+    |                                                           ++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:288:20
+    |
+288 |         let key1 = compute_idempotency_key(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^
+289 |             RunId::new(u64::MAX),
+290 |             SeqNo::new(u64::MAX),
+    |             -------------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+288 |         let key1 = compute_idempotency_key(
+289 |             RunId::new(u64::MAX),
+290 ~             /* u16 */,
+291 ~             SeqNo::new(u64::MAX),
+    |
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:293:20
+    |
+293 |         let key2 = compute_idempotency_key(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^
+294 |             RunId::new(u64::MAX),
+295 |             SeqNo::new(u64::MAX),
+    |             -------------------- argument #2 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:209:8
+    |
+209 | pub fn compute_idempotency_key(run: RunId, run_attempt: u16, seq: SeqNo, action: ActionId) -> u128 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^             ----------------
+help: provide the argument
+    |
+293 |         let key2 = compute_idempotency_key(
+294 |             RunId::new(u64::MAX),
+295 ~             /* u16 */,
+296 ~             SeqNo::new(u64::MAX),
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:537:22
+    |
+537 |           let result = execute_do(
+    |  ______________________^^^^^^^^^^-
+538 | |             &run,
+539 | |             StepIdx::new(0),
+540 | |             action,
+...   |
+546 | |             RetryPolicy::NEVER,
+547 | |         );
+    | |_________- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:20:8
+    |
+ 20 | pub fn execute_do(
+    |        ^^^^^^^^^^
+...
+ 30 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+537 |         let result = execute_do(
+...
+546 |             RetryPolicy::NEVER,
+547 ~             /* u16 */,
+548 ~         );
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/action.rs:570:22
+    |
+570 |           let result = execute_do(
+    |  ______________________^^^^^^^^^^-
+571 | |             &run,
+572 | |             StepIdx::new(0),
+573 | |             action,
+...   |
+579 | |             RetryPolicy::DEFAULT,
+580 | |         );
+    | |_________- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:20:8
+    |
+ 20 | pub fn execute_do(
+    |        ^^^^^^^^^^
+...
+ 30 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+570 |         let result = execute_do(
+...
+579 |             RetryPolicy::DEFAULT,
+580 ~             /* u16 */,
+581 ~         );
+    |
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/engine/action.rs:592:22
+    |
+592 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/engine/action.rs:624:22
+    |
+624 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/engine/action.rs:656:22
+    |
+656 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/cat_advanced.rs:138:19
+    |
+138 |           let sig = drive_deterministic_full(
+    |  ___________________^^^^^^^^^^^^^^^^^^^^^^^^-
+139 | |             &wf,
+140 | |             &mut r,
+141 | |             &mut b,
+...   |
+147 | |             &g,
+148 | |         )
+    | |_________- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/drive/loop_step.rs:27:8
+    |
+ 27 | pub fn drive_deterministic_full(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 37 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+138 |         let sig = drive_deterministic_full(
+...
+147 |             &g,
+148 ~             /* u16 */,
+149 ~         )
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/cat_regression.rs:277:22
+    |
+277 |           let result = drive_deterministic_full(
+    |  ______________________^^^^^^^^^^^^^^^^^^^^^^^^-
+278 | |             &wf,
+279 | |             &mut run,
+280 | |             &mut budget,
+...   |
+286 | |             &CapabilitySet::empty(),
+287 | |         );
+    | |_________- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/drive/loop_step.rs:27:8
+    |
+ 27 | pub fn drive_deterministic_full(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 37 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+277 |         let result = drive_deterministic_full(
+...
+286 |             &CapabilitySet::empty(),
+287 ~             /* u16 */,
+288 ~         );
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/cat_regression.rs:345:22
+    |
+345 |           let result = drive_deterministic_full(
+    |  ______________________^^^^^^^^^^^^^^^^^^^^^^^^-
+346 | |             &wf,
+347 | |             &mut run,
+348 | |             &mut budget,
+...   |
+354 | |             &CapabilitySet::empty(),
+355 | |         );
+    | |_________- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/drive/loop_step.rs:27:8
+    |
+ 27 | pub fn drive_deterministic_full(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 37 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+345 |         let result = drive_deterministic_full(
+...
+354 |             &CapabilitySet::empty(),
+355 ~             /* u16 */,
+356 ~         );
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/common.rs:206:5
+    |
+206 |       drive_deterministic_full(
+    |  _____^^^^^^^^^^^^^^^^^^^^^^^^-
+207 | |         wf,
+208 | |         r,
+209 | |         b,
+...   |
+215 | |         &CapabilitySet::empty(),
+216 | |     )
+    | |_____- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/drive/loop_step.rs:27:8
+    |
+ 27 | pub fn drive_deterministic_full(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 37 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+206 |     drive_deterministic_full(
+...
+215 |         &CapabilitySet::empty(),
+216 ~         /* u16 */,
+217 ~     )
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/common.rs:229:5
+    |
+229 |       drive_deterministic_full(
+    |  _____^^^^^^^^^^^^^^^^^^^^^^^^-
+230 | |         wf,
+231 | |         r,
+232 | |         b,
+...   |
+238 | |         g,
+239 | |     )
+    | |_____- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/drive/loop_step.rs:27:8
+    |
+ 27 | pub fn drive_deterministic_full(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 37 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+229 |     drive_deterministic_full(
+...
+238 |         g,
+239 ~         /* u16 */,
+240 ~     )
+    |
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/engine/signal.rs:217:79
+    |
+217 |                 EngineSignal::AwaitingAction => RuntimeSignal::AwaitingAction(ActionTicket {
+    |                                                                               ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/engine/tests.rs:289:18
+    |
+289 |     let ticket = ActionTicket {
+    |                  ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/engine/tests.rs:305:43
+    |
+305 |     let a = RuntimeSignal::AwaitingAction(ActionTicket {
+    |                                           ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/engine/tests.rs:314:43
+    |
+314 |     let b = RuntimeSignal::AwaitingAction(ActionTicket {
+    |                                           ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/tests.rs:488:18
+    |
+488 |       let result = execute_do(
+    |  __________________^^^^^^^^^^-
+489 | |         &run,
+490 | |         StepIdx::new(0),
+491 | |         ActionId::new(1),
+...   |
+497 | |         RetryPolicy::DEFAULT,
+498 | |     );
+    | |_____- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:20:8
+    |
+ 20 | pub fn execute_do(
+    |        ^^^^^^^^^^
+...
+ 30 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+488 |     let result = execute_do(
+...
+497 |         RetryPolicy::DEFAULT,
+498 ~         /* u16 */,
+499 ~     );
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/tests.rs:550:18
+    |
+550 |       let result = execute_do(
+    |  __________________^^^^^^^^^^-
+551 | |         &run,
+552 | |         StepIdx::new(0),
+553 | |         ActionId::new(1),
+...   |
+559 | |         RetryPolicy::DEFAULT,
+560 | |     );
+    | |_____- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:20:8
+    |
+ 20 | pub fn execute_do(
+    |        ^^^^^^^^^^
+...
+ 30 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+550 |     let result = execute_do(
+...
+559 |         RetryPolicy::DEFAULT,
+560 ~         /* u16 */,
+561 ~     );
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/tests.rs:590:18
+    |
+590 |       let result = execute_do(
+    |  __________________^^^^^^^^^^-
+591 | |         &run,
+592 | |         StepIdx::new(0),
+593 | |         ActionId::new(5),
+...   |
+599 | |         RetryPolicy::DEFAULT,
+600 | |     );
+    | |_____- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/action.rs:20:8
+    |
+ 20 | pub fn execute_do(
+    |        ^^^^^^^^^^
+...
+ 30 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+590 |     let result = execute_do(
+...
+599 |         RetryPolicy::DEFAULT,
+600 ~         /* u16 */,
+601 ~     );
+    |
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/engine/tests.rs:719:18
+    |
+719 |     let ticket = ActionTicket {
+    |                  ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/engine/tests.rs:733:42
+    |
+733 |         Ok(RuntimeSignal::AwaitingAction(ActionTicket {
+    |                                          ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+    --> crates/vb_runtime/src/engine/tests.rs:1263:18
+     |
+1263 |     let ticket = ActionTicket {
+     |                  ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+    --> crates/vb_runtime/src/engine/tests.rs:1285:18
+     |
+1285 |     let ticket = ActionTicket {
+     |                  ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+    --> crates/vb_runtime/src/engine/tests.rs:1307:18
+     |
+1307 |     let ticket = ActionTicket {
+     |                  ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+    --> crates/vb_runtime/src/engine/tests.rs:1323:27
+     |
+1323 |     let original_ticket = ActionTicket {
+     |                           ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+    --> crates/vb_runtime/src/engine/tests.rs:1366:20
+     |
+1366 |     let original = ActionTicket {
+     |                    ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+    --> crates/vb_runtime/src/engine/tests.rs:1436:18
+     |
+1436 |       let result = execute_do(
+     |  __________________^^^^^^^^^^-
+1437 | |         &run,
+1438 | |         StepIdx::new(0),
+1439 | |         ActionId::new(0),
+...    |
+1445 | |         RetryPolicy::DEFAULT,
+1446 | |     );
+     | |_____- argument #10 of type `u16` is missing
+     |
+note: function defined here
+    --> crates/vb_runtime/src/engine/action.rs:20:8
+     |
+  20 | pub fn execute_do(
+     |        ^^^^^^^^^^
+...
+  30 |     state_run_attempt: u16,
+     |     ----------------------
+help: provide the argument
+     |
+1436 |     let result = execute_do(
+ ...
+1445 |         RetryPolicy::DEFAULT,
+1446 ~         /* u16 */,
+1447 ~     );
+     |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+    --> crates/vb_runtime/src/engine/tests.rs:1729:22
+     |
+1729 |           let result = drive_deterministic_full(
+     |  ______________________^^^^^^^^^^^^^^^^^^^^^^^^-
+1730 | |             &wf,
+1731 | |             &mut run,
+1732 | |             &mut budget,
+...    |
+1738 | |             &CapabilitySet::empty(),
+1739 | |         );
+     | |_________- argument #10 of type `u16` is missing
+     |
+note: function defined here
+    --> crates/vb_runtime/src/engine/drive/loop_step.rs:27:8
+     |
+  27 | pub fn drive_deterministic_full(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+  37 |     state_run_attempt: u16,
+     |     ----------------------
+help: provide the argument
+     |
+1729 |         let result = drive_deterministic_full(
+ ...
+1738 |             &CapabilitySet::empty(),
+1739 ~             /* u16 */,
+1740 ~         );
+     |
+
+error[E0061]: this function takes 9 arguments but 8 arguments were supplied
+    --> crates/vb_runtime/src/engine/tests.rs:1881:22
+     |
+1881 |           let result = execute_node_full(
+     |  ______________________^^^^^^^^^^^^^^^^^-
+1882 | |             &wf,
+1883 | |             &mut run,
+1884 | |             &mut store,
+...    |
+1889 | |             &CapabilitySet::empty(),
+1890 | |         );
+     | |_________- argument #9 of type `u16` is missing
+     |
+note: function defined here
+    --> crates/vb_runtime/src/engine/execute/dispatch.rs:57:8
+     |
+  57 | pub fn execute_node_full(
+     |        ^^^^^^^^^^^^^^^^^
+...
+  66 |     state_run_attempt: u16,
+     |     ----------------------
+help: provide the argument
+     |
+1881 |         let result = execute_node_full(
+ ...
+1889 |             &CapabilitySet::empty(),
+1890 ~             /* u16 */,
+1891 ~         );
+     |
+
+error[E0061]: this function takes 9 arguments but 8 arguments were supplied
+    --> crates/vb_runtime/src/engine/tests.rs:1956:22
+     |
+1956 |           let result = execute_node_full(
+     |  ______________________^^^^^^^^^^^^^^^^^-
+1957 | |             &wf,
+1958 | |             &mut run,
+1959 | |             &mut store,
+...    |
+1964 | |             &CapabilitySet::empty(),
+1965 | |         );
+     | |_________- argument #9 of type `u16` is missing
+     |
+note: function defined here
+    --> crates/vb_runtime/src/engine/execute/dispatch.rs:57:8
+     |
+  57 | pub fn execute_node_full(
+     |        ^^^^^^^^^^^^^^^^^
+...
+  66 |     state_run_attempt: u16,
+     |     ----------------------
+help: provide the argument
+     |
+1956 |         let result = execute_node_full(
+ ...
+1964 |             &CapabilitySet::empty(),
+1965 ~             /* u16 */,
+1966 ~         );
+     |
+
+error[E0061]: this function takes 9 arguments but 8 arguments were supplied
+    --> crates/vb_runtime/src/engine/tests.rs:1995:22
+     |
+1995 |           let result = execute_node_full(
+     |  ______________________^^^^^^^^^^^^^^^^^-
+1996 | |             &wf,
+1997 | |             &mut run,
+1998 | |             &mut store,
+...    |
+2003 | |             &CapabilitySet::empty(),
+2004 | |         );
+     | |_________- argument #9 of type `u16` is missing
+     |
+note: function defined here
+    --> crates/vb_runtime/src/engine/execute/dispatch.rs:57:8
+     |
+  57 | pub fn execute_node_full(
+     |        ^^^^^^^^^^^^^^^^^
+...
+  66 |     state_run_attempt: u16,
+     |     ----------------------
+help: provide the argument
+     |
+1995 |         let result = execute_node_full(
+ ...
+2003 |             &CapabilitySet::empty(),
+2004 ~             /* u16 */,
+2005 ~         );
+     |
+
+error[E0061]: this function takes 9 arguments but 8 arguments were supplied
+    --> crates/vb_runtime/src/engine/tests.rs:2050:22
+     |
+2050 |           let result = execute_node_full(
+     |  ______________________^^^^^^^^^^^^^^^^^-
+2051 | |             &wf,
+2052 | |             &mut run,
+2053 | |             &mut store,
+...    |
+2058 | |             &CapabilitySet::empty(),
+2059 | |         );
+     | |_________- argument #9 of type `u16` is missing
+     |
+note: function defined here
+    --> crates/vb_runtime/src/engine/execute/dispatch.rs:57:8
+     |
+  57 | pub fn execute_node_full(
+     |        ^^^^^^^^^^^^^^^^^
+...
+  66 |     state_run_attempt: u16,
+     |     ----------------------
+help: provide the argument
+     |
+2050 |         let result = execute_node_full(
+ ...
+2058 |             &CapabilitySet::empty(),
+2059 ~             /* u16 */,
+2060 ~         );
+     |
+
+error[E0061]: this function takes 9 arguments but 8 arguments were supplied
+    --> crates/vb_runtime/src/engine/tests.rs:2098:22
+     |
+2098 |           let result = execute_node_full(
+     |  ______________________^^^^^^^^^^^^^^^^^-
+2099 | |             &wf,
+2100 | |             &mut run,
+2101 | |             &mut store,
+...    |
+2106 | |             &CapabilitySet::empty(),
+2107 | |         );
+     | |_________- argument #9 of type `u16` is missing
+     |
+note: function defined here
+    --> crates/vb_runtime/src/engine/execute/dispatch.rs:57:8
+     |
+  57 | pub fn execute_node_full(
+     |        ^^^^^^^^^^^^^^^^^
+...
+  66 |     state_run_attempt: u16,
+     |     ----------------------
+help: provide the argument
+     |
+2098 |         let result = execute_node_full(
+ ...
+2106 |             &CapabilitySet::empty(),
+2107 ~             /* u16 */,
+2108 ~         );
+     |
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+    --> crates/vb_runtime/src/engine/tests.rs:2236:24
+     |
+2236 |         let original = ActionTicket {
+     |                        ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+    --> crates/vb_runtime/src/engine/tests.rs:2315:32
+     |
+2315 |         let suspended_ticket = ActionTicket {
+     |                                ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+    --> crates/vb_runtime/src/engine/tests.rs:2324:24
+     |
+2324 |         let original = ActionTicket {
+     |                        ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+    --> crates/vb_runtime/src/engine/tests.rs:2376:22
+     |
+2376 |           let result = execute_do(
+     |  ______________________^^^^^^^^^^-
+2377 | |             &run,
+2378 | |             StepIdx::ZERO,
+2379 | |             ActionId::new(0),
+...    |
+2385 | |             RetryPolicy::NEVER,
+2386 | |         );
+     | |_________- argument #10 of type `u16` is missing
+     |
+note: function defined here
+    --> crates/vb_runtime/src/engine/action.rs:20:8
+     |
+  20 | pub fn execute_do(
+     |        ^^^^^^^^^^
+...
+  30 |     state_run_attempt: u16,
+     |     ----------------------
+help: provide the argument
+     |
+2376 |         let result = execute_do(
+ ...
+2385 |             RetryPolicy::NEVER,
+2386 ~             /* u16 */,
+2387 ~         );
+     |
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:153:22
+    |
+153 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:183:22
+    |
+183 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:220:22
+    |
+220 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:247:22
+    |
+247 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:276:22
+    |
+276 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:326:26
+    |
+326 |             let ticket = ActionTicket {
+    |                          ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:357:22
+    |
+357 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:397:22
+    |
+397 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:467:22
+    |
+467 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:497:22
+    |
+497 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:609:22
+    |
+609 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/mod.rs:107:43
+    |
+107 |                         let temp_ticket = ActionTicket {
+    |                                           ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/mod.rs:139:30
+    |
+139 |                 let ticket = ActionTicket {
+    |                              ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/mod.rs:184:30
+    |
+184 |                 let ticket = ActionTicket {
+    |                              ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/mod.rs:269:28
+    |
+269 |             let ticket_a = ActionTicket {
+    |                            ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/mod.rs:278:28
+    |
+278 |             let ticket_b = ActionTicket {
+    |                            ^^^^^^^^^^^^ missing `run_attempt`
+
+error: could not compile `vb_runtime` (lib test) due to 66 previous errors

@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "vb_79ffw_ticket_authority_probe",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 101,
+  "seconds": 0.276,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-79ffw/evidence/gate-all-probe-tests",
+  "coordinator_message": "Root v2 freshcontext: prior106knotice obsolete. Probev5 trueexit101 5/6pass, stale2retrytick got InvalidActionCompletion. If this is expected rejection of stale queuedfail, assert preciseErr then retain full no-mutation snapshot/currentticketcompletion checks; do not merely ignore .ok() or delete tick. Distinguish expected queuedvalidationerror from unintended earlier setup/currentticketerror with phase-labelledmessages. MUST actually tickcurrentticketandassertterminalcompletion after stalequeuedrejection so loss ofstate is caught. Compare full serializedjournal vector before/afterreject, pendingticket/currentframe/counters wherepublicAPI available. Do not downgrade tocounts only. Add oldwire exact423d8ae8fixture/publicdecoder probe early; newstructroundtripalone notcompatibility. Root preservedincomplete7c185f02 remotely, no productionfixauthorized forreviewer; report realcounterexample REJECTED. Root5090 repairs6source-lengthfiles/checkwarnings separately. LeavebeadOPEN."
+}

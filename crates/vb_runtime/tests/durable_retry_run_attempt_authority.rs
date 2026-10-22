@@ -261,7 +261,7 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
 
     // Complete the run with the NEW ticket to advance it past the pending action
     // so we can observe counter changes from old-ticket rejection attempts.
-    let tick_before = runtime.tick_all();
+    runtime.tick_all().ok();
     let counters_before = runtime.counters_snapshot();
 
     // Replay the OLD completion against the NEW attempt. Must be rejected
@@ -311,7 +311,7 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
     // when the command is processed. But because the pending action is still
     // awaiting completion with the NEW ticket, the old failure should not
     // be accepted. Verify by checking that the run is still pending after tick.
-    let tick_after_fail = runtime.tick_all();
+    runtime.tick_all().ok();
 
     // Run must still be pending (not completed, not failed).
     let counters_final = runtime.counters_snapshot();
@@ -350,7 +350,7 @@ fn run_attempt_advances_but_per_action_attempt_does_not() -> Result<(), String> 
     assert_eq!(old_ticket.run_attempt, 1);
     assert_eq!(old_ticket.attempt, 1);
 
-    let mut runtime = recover_and_schedule(&path, run, checkpoint, next_seq)?;
+    let runtime = recover_and_schedule(&path, run, checkpoint, next_seq)?;
     let new_ticket = pending_ticket(&runtime, run)?;
 
     // After durable run retry: run_attempt=2, but per-action attempt resets to 1.

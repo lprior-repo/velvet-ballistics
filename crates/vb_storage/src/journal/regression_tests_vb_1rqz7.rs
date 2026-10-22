@@ -35,6 +35,7 @@ fn sample_ticket() -> ActionTicket {
         step: StepIdx::new(0),
         seq: SeqNo::new(1),
         action: ActionId::new(7),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,

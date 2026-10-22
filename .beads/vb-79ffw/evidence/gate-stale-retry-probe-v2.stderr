@@ -1,0 +1,33 @@
+warning: unused variable: `workflow`
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:195:13
+    |
+195 |         let workflow = retry_action_workflow()?;
+    |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_workflow`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `contracts`
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:196:13
+    |
+196 |         let contracts = contracts()?;
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_contracts`
+
+warning: unused variable: `workflow`
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:221:13
+    |
+221 |         let workflow = retry_action_workflow()?;
+    |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_workflow`
+
+warning: unused variable: `contracts`
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:222:13
+    |
+222 |         let contracts = contracts()?;
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_contracts`
+
+warning: `vb_runtime` (test "vb_79ffw_ticket_authority_probe") generated 4 warnings (run `cargo fix --test "vb_79ffw_ticket_authority_probe" -p vb_runtime` to apply 4 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/vb_79ffw_ticket_authority_probe.rs (target/debug/deps/vb_79ffw_ticket_authority_probe-b689fe577635266d)
+Events before stale rejection: 14
+Tick rejected stale failure: invalid action completion
+Events after stale rejection: 14
+Events after completion: 18

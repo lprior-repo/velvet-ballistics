@@ -284,6 +284,7 @@ mod tests {
             &mut ev,
             &mut cs,
             &CapabilitySet::empty(),
+            1,
         );
 
         // Zero gaps → drive returns Ok(Finished(_)). The signal value
@@ -352,6 +353,7 @@ mod tests {
             &mut ev,
             &mut cs,
             &CapabilitySet::empty(),
+            1,
         );
 
         // >=1 gap AND natural Finished signal → drive returns the

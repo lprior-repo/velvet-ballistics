@@ -1,0 +1,11 @@
+   Compiling generator v0.8.8
+   Compiling regex-automata v0.4.14
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_core)
+   Compiling matchers v0.2.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling loom v0.7.2
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.29s
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-bda23c7f702841f8)

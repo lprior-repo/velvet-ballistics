@@ -6,6 +6,46 @@ JJ working copy: `wykpvurl 60fc3c45 vb-k5936: combine reviewed ticket generation
 Root owns ALL VCS/JJ mutations and final publication. Bead left OPEN (root continues for the
 LOCAL3090 fixture merge and canonical `moon ci`).
 
+## Bounded repair — this session (pre-fixture, worker)
+
+Two bounded source edits; no production-behavior change beyond the syntax parse fix; no VCS/JJ
+mutations; bead stays OPEN (no self-approval).
+
+1. `crates/vb_storage/src/types/flux_sequence.rs:132` — invalid `16#ffff#` Rust token
+   (Rust-2021 reserved prefixed literal, breaks `cargo fmt`) → `u16::MAX`. Identical mathematical
+   bound (u16 max = 65535); matches the file's own `u64::MAX` on line 23 and the repo's existing
+   `requires gen < u64::MAX` Flux pattern. `#[cfg(flux)]`-gated module, so no normal
+   build/clippy/test impact.
+2. `crates/vb_runtime/tests/durable_retry_boundary.rs` `shared_strict_journal_persists_each_append`
+   — replaced unchecked `events[0]` indexing with `events.first().ok_or(...)?` plus deref guards
+   (`*r == run`, `*seq == EventSeq::new(0)`, `*w == workflow`). Exact count/type/run/seq/workflow
+   assertions retained (count still asserted first via `assert_eq!(events.len(), 1, …)`).
+
+### Verification (all through `/tmp/vb-run-gate.py`, true exit codes)
+
+| Gate | Command | Result |
+|------|---------|--------|
+| bcd10_fix | `cargo test -p vb_runtime --test durable_retry_boundary` | **0** — 10 passed |
+| fmt_flux_fix | `rustfmt --edition 2024 --check crates/vb_storage/src/types/flux_sequence.rs` | **0** (parse fixed) |
+| fmt_all_check | `cargo fmt --all -- --check` | **1** — format diffs only, **no parse errors** |
+| clippy_fix | strict production clippy (canonical flags below) | **0** |
+
+`fmt_all_check` exit 1 is pre-existing format diffs in unrelated files only
+(`crates/vb_storage/src/codec/flux_validation.rs`, `.../events/wire_serialize_run.rs`,
+`.../executor/catalog.rs`, `.../executor/conformance.rs`, `.../recovery/hydrate.rs`,
+`.../tests.rs`). No `error:`/`cannot parse`/`unknown prefix` remain anywhere. `flux_sequence.rs`
+and `durable_retry_boundary.rs` are NOT in the diff list (both clean).
+
+Evidence: `.beads/vb-k5936/evidence/{bcd10_fix,fmt_flux_fix,fmt_all_check,clippy_fix}.{json,stdout,stderr}`.
+
+### Flux verification — NOT claimed
+
+`flux_sequence.rs` is `#[cfg(flux)]`-gated and only compiled under `cargo flux`. This repair is a
+syntactic Rust-token fix (fmt parse) only; no `cargo flux` run was performed and no Flux
+proof/verification is claimed. `u16::MAX` mirrors the file's existing `u64::MAX` refinement
+(line 23), the established repo pattern (`verification/flux/vb-fzgdn/PS-001-refinements.rs` uses
+`requires gen < u64::MAX`).
+
 ## Completed
 
 ### 1. Source conflict resolution — `crates/vb_runtime/src/runtime.rs`
@@ -57,32 +97,26 @@ fixture freeze).
 2. Line `922:9` `compute_idempotency_key(ticket.run, ticket.seq, ticket.action)` supplies 3 args
    (E0061, missing `run_attempt`).
 
-## Reported for root: `crates/vb_storage/src/types/flux_sequence.rs` fmt parse error
+## Resolved this session: `crates/vb_storage/src/types/flux_sequence.rs` fmt parse error
 
-Canonical fmt config: no `rustfmt.toml`/`.rustfmt.toml` at repo root; workspace `edition = "2024"`.
-`rustfmt --edition 2024 --check crates/vb_storage/src/types/flux_sequence.rs` fails:
-
-```
-error: prefix `ffff` is unknown
-   --> crates/vb_storage/src/types/flux_sequence.rs:132:59
-132 | #[flux_rs::sig(fn(idx: u16) -> bool[0 <= idx && idx <= 16#ffff#])]
-    |                                                           ^^^^ unknown prefix
-    = note: prefixed identifiers and literals are reserved since Rust 2021
-```
-
-Single occurrence in the file. `16#ffff#` is parsed as a Rust-2021 reserved prefixed literal; the
-intended u16-max refinement literal is likely `0xffff`. This is pre-existing, unrelated to this
-merge; bounded syntactic repair preserving the mathematical contract is a later task (per
-coordinator), not this bounded merge and not a `cargo fmt --all` waiver.
+`16#ffff#` on line 132 was the only parse error. Fixed to `u16::MAX` (identical u16-max bound).
+`rustfmt --edition 2024 --check crates/vb_storage/src/types/flux_sequence.rs` now exits 0, and
+full `cargo fmt --all -- --check` reports no parse errors (only unrelated pre-existing format
+diffs). See "Bounded repair" section above.
 
 ## Not done (root owns)
 
-JJ commit/describe/publish, `git add` of the resolved conflict, LOCAL3090 fixture freeze + merge,
-canonical `moon ci`, full `cargo fmt --all`, bead remote sync, close/status transitions. Finding A
-stale-ticket probes (`probe_old_*`) may remain RED until root merges LOCAL5090.
+JJ commit/describe/publish, `git add` of all working-tree changes (the resolved `runtime.rs`
+conflict plus this session's two repair edits), LOCAL3090 fixture freeze + merge, canonical
+`moon ci`, full `cargo fmt --all` (to fix the unrelated pre-existing format diffs listed above),
+`cargo flux` verification of the `#[cfg(flux)]` modules if a proof obligation requires it (not
+claimed here), bead remote sync, close/status transitions. Finding A stale-ticket probes
+(`probe_old_*`) may remain RED until root merges LOCAL5090.
 
 ## Rust rules (unchanged)
 
 No `unsafe`/`unwrap`/`expect`/`panic`/`todo`/`unimplemented`/`dbg`, no unchecked
 indexing/slicing/cast/arithmetic, no new lint allowances, no `.gitignore`/backup changes. Source
-change is the single conflict resolution in `runtime.rs`; all A/B semantics preserved.
+changes: the single conflict resolution in `runtime.rs` (A/B semantics preserved), plus this
+session's bounded `flux_sequence.rs` syntax-token fix and `durable_retry_boundary.rs` safe-getter
+replacement (assertions preserved).

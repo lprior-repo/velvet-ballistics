@@ -628,6 +628,7 @@ fn static_verifier_ignores_zero_numeric_ticket_key_when_contract_is_key_required
         step: StepIdx::ZERO,
         seq: SeqNo::ZERO,
         action: action(37),
+        run_attempt: 1,
         attempt: 1,
         idempotency_key: 0,
         capacity: 3,

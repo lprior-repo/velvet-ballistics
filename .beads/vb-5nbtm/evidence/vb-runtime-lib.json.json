@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-final-local5090-fixture-merge",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--lib"
+  ],
+  "exit_code": 0,
+  "seconds": 11.041,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-5nbtm/evidence/vb-runtime-lib.json"
+}

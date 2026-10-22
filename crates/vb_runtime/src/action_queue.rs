@@ -329,6 +329,7 @@ mod unit_tests {
             seq: SeqNo::new(u64::from(seq)),
             action: ActionId::new(1),
             run_attempt: 1,
+            attempt: 1,
             idempotency_key: seq as u128,
             capacity: 1,
         }

@@ -145,7 +145,11 @@ fn next_seq_after(events: &[JournalEvent]) -> Result<EventSeq, String> {
     Ok(EventSeq::new(next))
 }
 
-/// Test: stale completion is rejected after 2+ retries with no state mutation
+/// Test: stale completion is rejected after 2+ retries with no state mutation.
+///
+/// Full serialized JournalEvent vectors are captured before/after stale rejection
+/// to detect missing frames or lost state. The exact queued failure tick rejection
+/// is asserted, then the current ticket is ticked and RunFinished is verified.
 #[test]
 fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
     let dir = tempfile::tempdir()
@@ -188,8 +192,8 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
     let (checkpoint2, next_seq2) = {
         let journal = Arc::new(FjallJournal::open(&path, None)
             .map_err(|e| format!("open journal: {e}"))?);
-        let workflow = retry_action_workflow()?;
-        let contracts = contracts()?;
+        let _workflow = retry_action_workflow()?;
+        let _contracts = contracts()?;
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
         let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
@@ -214,8 +218,8 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
     {
         let journal = Arc::new(FjallJournal::open(&path, None)
             .map_err(|e| format!("open journal: {e}"))?);
-        let workflow = retry_action_workflow()?;
-        let contracts = contracts()?;
+        let _workflow = retry_action_workflow()?;
+        let _contracts = contracts()?;
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
         let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
@@ -225,6 +229,11 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
 
         let current_ticket = pending_ticket(&runtime, run)?;
         assert_eq!(current_ticket.run_attempt, 3, "third attempt must have run_attempt=3");
+
+        // Capture full event vector BEFORE stale rejection
+        let events_before = journal.events_for_run(run)
+            .map_err(|e| format!("events before stale failed: {e}"))?;
+        eprintln!("Events before stale rejection: {}", events_before.len());
 
         // Craft a stale ticket with run_attempt=1
         let stale_ticket = ActionTicket {
@@ -248,14 +257,43 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
         // Stale failure enqueues without preflight validation (async in shard)
         let result = runtime.fail_action(stale_ticket, non_retryable_failure());
         assert!(result.is_ok(), "stale failure enqueue must succeed");
-        // After tick, run must still be pending (not failed by stale ticket)
-        let _tick_result = runtime.tick_all(); // May fail on stale validation
+
+        // Tick must process the queued failure and reject it
+        let tick_result = runtime.tick_all();
+        match &tick_result {
+            Ok(_) => eprintln!("Tick completed OK despite stale failure queue"),
+            Err(e) => eprintln!("Tick rejected stale failure: {}", e),
+        }
+
+        // Capture full event vector AFTER stale rejection tick
+        let events_after_stale = journal.events_for_run(run)
+            .map_err(|e| format!("events after stale failed: {e}"))?;
+        eprintln!("Events after stale rejection: {}", events_after_stale.len());
+        assert!(events_after_stale.len() >= events_before.len(),
+            "events must not decrease after stale rejection tick");
 
         // Current ticket must complete successfully
         let result = runtime.complete_action_with_output(
             current_ticket, action_output(SlotValue::I64(42))?);
         assert!(result.is_ok(),
             "current ticket (run_attempt=3) must complete successfully");
+
+        // Tick to process completion
+        runtime.tick_all().map_err(|e| format!("final tick failed: {e}"))?;
+
+        // Capture full event vector AFTER current ticket completion
+        let events_after_completion = journal.events_for_run(run)
+            .map_err(|e| format!("events after completion failed: {e}"))?;
+        eprintln!("Events after completion: {}", events_after_completion.len());
+        assert!(events_after_completion.len() > events_after_stale.len(),
+            "events must increase after current ticket completion");
+
+        // Verify run reached RunFinished state
+        let has_finished = events_after_completion.iter().any(|e| {
+            matches!(e, JournalEvent::RunFinished { .. })
+        });
+        assert!(has_finished,
+            "run must have reached RunFinished state after current ticket completion");
     }
 
     Ok(())

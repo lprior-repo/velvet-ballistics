@@ -2984,6 +2984,7 @@ mod tests {
             step: StepIdx::new(0),
             seq: SeqNo::new(seq.get()),
             action: ActionId::new(1),
+            run_attempt: 1,
             attempt: 1,
             idempotency_key: 7,
             capacity: 3,
@@ -7641,7 +7642,9 @@ mod tests {
                 JournalError::PostcardEncodeFailed(_) => "postcard_encode_failed",
                 JournalError::InvalidEvent => "invalid_event",
                 JournalError::ArtifactMalformed => "artifact_malformed",
-                JournalError::ArtifactValidation(_) | JournalError::ArtifactActionRegistry(_) => "artifact_validation",
+                JournalError::ArtifactValidation(_) | JournalError::ArtifactActionRegistry(_) => {
+                    "artifact_validation"
+                }
                 JournalError::WorkflowReconstruction(_) => "workflow_reconstruction",
                 JournalError::CompiledIrReadback(_) => "compiled_ir_readback",
                 JournalError::AdmissionAllocationFailed(_) => "admission_allocation_failed",

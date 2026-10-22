@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-4qog3-local5090-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--test",
+    "vb_4qog3_independent_review",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 101,
+  "seconds": 0.164,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-4qog3/evidence/cargo_test_independent_review2"
+}

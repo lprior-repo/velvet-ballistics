@@ -1,0 +1,259 @@
+[ WARN 2026-10-21 21:32:16.607] moon_task_hasher::task_hasher  Attempted to hash input .beads/vb-jpq7/closure-evidence-manifest.jsonl but it does not exist, skipping 
+[ WARN 21:32:16.645] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:32:16.645] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:32:16.646] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:32:16.646] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:32:16.674] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:32:16.674] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:32:16.732] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:32:16.733] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:32:16.734] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:32:16.737] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                velvet-ballistics:benchmark-proof |     Blocking waiting for file lock on package cache
+                velvet-ballistics:benchmark-proof |     Blocking waiting for file lock on package cache
+                  velvet-ballistics:fuzz-proptest |     Blocking waiting for file lock on package cache
+                velvet-ballistics:benchmark-proof |     Blocking waiting for file lock on package cache
+                  velvet-ballistics:fuzz-proptest |     Blocking waiting for file lock on package cache
+                velvet-ballistics:benchmark-proof |    Compiling proc-macro2 v1.0.106
+                velvet-ballistics:benchmark-proof |    Compiling quote v1.0.45
+                  velvet-ballistics:fuzz-proptest |     Blocking waiting for file lock on build directory
+                velvet-ballistics:benchmark-proof |    Compiling unicode-ident v1.0.24
+                velvet-ballistics:benchmark-proof |    Compiling libc v0.2.186
+                    velvet-ballistics:verify-kani |     Blocking waiting for file lock on package cache
+        velvet-ballistics:verify-kani-vb-validate |     Blocking waiting for file lock on package cache
+                velvet-ballistics:benchmark-proof |    Compiling syn v2.0.117
+                velvet-ballistics:benchmark-proof |    Compiling cfg-if v1.0.4
+                velvet-ballistics:benchmark-proof |    Compiling serde_core v1.0.228
+                    velvet-ballistics:verify-kani |     Blocking waiting for file lock on package cache
+        velvet-ballistics:verify-kani-vb-validate |     Blocking waiting for file lock on package cache
+                    velvet-ballistics:verify-kani |     Blocking waiting for file lock on package cache
+        velvet-ballistics:verify-kani-vb-validate |     Blocking waiting for file lock on package cache
+                    velvet-ballistics:verify-kani |     Blocking waiting for file lock on package cache
+        velvet-ballistics:verify-kani-vb-validate |    Compiling proc-macro2 v1.0.106
+        velvet-ballistics:verify-kani-vb-validate |    Compiling unicode-ident v1.0.24
+                    velvet-ballistics:verify-kani |    Compiling proc-macro2 v1.0.106
+                    velvet-ballistics:verify-kani |    Compiling quote v1.0.45
+                velvet-ballistics:benchmark-proof |    Compiling serde v1.0.228
+        velvet-ballistics:verify-kani-vb-validate |    Compiling quote v1.0.45
+                velvet-ballistics:benchmark-proof |    Compiling serde_derive v1.0.228
+                    velvet-ballistics:verify-kani |    Compiling unicode-ident v1.0.24
+        velvet-ballistics:verify-kani-vb-validate |    Compiling serde_core v1.0.228
+                    velvet-ballistics:verify-kani |    Compiling serde_core v1.0.228
+        velvet-ballistics:verify-kani-vb-validate |    Compiling serde v1.0.228
+                    velvet-ballistics:verify-kani |    Compiling autocfg v1.5.1
+        velvet-ballistics:verify-kani-vb-validate |    Compiling autocfg v1.5.1
+                    velvet-ballistics:verify-kani |    Compiling serde v1.0.228
+        velvet-ballistics:verify-kani-vb-validate |    Compiling num-traits v0.2.19
+                    velvet-ballistics:verify-kani |    Compiling num-traits v0.2.19
+                    velvet-ballistics:verify-kani |    Compiling syn v2.0.117
+        velvet-ballistics:verify-kani-vb-validate |    Compiling syn v2.0.117
+                velvet-ballistics:benchmark-proof |    Compiling autocfg v1.5.1
+                velvet-ballistics:benchmark-proof |    Compiling num-traits v0.2.19
+                velvet-ballistics:benchmark-proof |    Compiling jobserver v0.1.35
+                velvet-ballistics:benchmark-proof |    Compiling shlex v1.3.0
+                velvet-ballistics:benchmark-proof |    Compiling find-msvc-tools v0.1.9
+                velvet-ballistics:benchmark-proof |    Compiling cc v1.2.62
+                velvet-ballistics:benchmark-proof |    Compiling once_cell v1.21.4
+                velvet-ballistics:benchmark-proof |    Compiling thiserror v2.0.18
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-utils v0.8.21
+                velvet-ballistics:benchmark-proof |    Compiling thiserror-impl v2.0.18
+                velvet-ballistics:benchmark-proof |    Compiling semver v1.0.28
+                velvet-ballistics:benchmark-proof |    Compiling rustc_version v0.4.1
+                    velvet-ballistics:verify-kani |    Compiling thiserror v2.0.18
+                    velvet-ballistics:verify-kani |    Compiling serde_derive v1.0.228
+                velvet-ballistics:benchmark-proof |    Compiling equivalent v1.0.2
+        velvet-ballistics:verify-kani-vb-validate |    Compiling serde_derive v1.0.228
+                velvet-ballistics:benchmark-proof |    Compiling zerocopy v0.8.48
+        velvet-ballistics:verify-kani-vb-validate |    Compiling thiserror v2.0.18
+                    velvet-ballistics:verify-kani |    Compiling thiserror-impl v2.0.18
+                velvet-ballistics:benchmark-proof |    Compiling zerocopy-derive v0.8.48
+                velvet-ballistics:benchmark-proof |    Compiling bitflags v2.11.1
+                velvet-ballistics:benchmark-proof |    Compiling getrandom v0.4.2
+                velvet-ballistics:benchmark-proof |    Compiling rustix v1.1.4
+                velvet-ballistics:benchmark-proof |    Compiling hashbrown v0.17.1
+                velvet-ballistics:benchmark-proof |    Compiling indexmap v2.14.0
+                velvet-ballistics:benchmark-proof |    Compiling getrandom v0.3.4
+        velvet-ballistics:verify-kani-vb-validate |    Compiling thiserror-impl v2.0.18
+                velvet-ballistics:benchmark-proof |    Compiling linux-raw-sys v0.12.1
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-epoch v0.9.18
+                velvet-ballistics:benchmark-proof |    Compiling iana-time-zone v0.1.65
+                velvet-ballistics:benchmark-proof |    Compiling fastrand v2.4.1
+                velvet-ballistics:benchmark-proof |    Compiling chrono v0.4.44
+                velvet-ballistics:benchmark-proof |    Compiling tempfile v3.27.0
+                    velvet-ballistics:verify-kani |    Compiling hashbrown v0.17.1
+                velvet-ballistics:benchmark-proof |    Compiling bytes v1.11.1
+        velvet-ballistics:verify-kani-vb-validate |    Compiling iana-time-zone v0.1.65
+        velvet-ballistics:verify-kani-vb-validate |    Compiling hashbrown v0.17.1
+                    velvet-ballistics:verify-kani |    Compiling equivalent v1.0.2
+                    velvet-ballistics:verify-kani |    Compiling iana-time-zone v0.1.65
+                    velvet-ballistics:verify-kani |    Compiling indexmap v2.14.0
+        velvet-ballistics:verify-kani-vb-validate |    Compiling equivalent v1.0.2
+                velvet-ballistics:benchmark-proof |    Compiling scopeguard v1.2.0
+        velvet-ballistics:verify-kani-vb-validate |    Compiling indexmap v2.14.0
+                velvet-ballistics:benchmark-proof |    Compiling memchr v2.8.0
+                    velvet-ballistics:verify-kani |    Compiling bytes v1.11.1
+                velvet-ballistics:benchmark-proof |    Compiling lock_api v0.4.14
+                velvet-ballistics:benchmark-proof |    Compiling regex-syntax v0.8.10
+                    velvet-ballistics:verify-kani |    Compiling chrono v0.4.44
+                velvet-ballistics:benchmark-proof |    Compiling spin v0.9.8
+                velvet-ballistics:benchmark-proof |    Compiling arrayvec v0.7.6
+        velvet-ballistics:verify-kani-vb-validate |    Compiling bytes v1.11.1
+                velvet-ballistics:benchmark-proof |    Compiling log v0.4.29
+                velvet-ballistics:benchmark-proof |    Compiling smallvec v1.15.1
+        velvet-ballistics:verify-kani-vb-validate |    Compiling chrono v0.4.44
+                velvet-ballistics:benchmark-proof |    Compiling zmij v1.0.21
+                velvet-ballistics:benchmark-proof |    Compiling rand_core v0.9.5
+                velvet-ballistics:benchmark-proof |    Compiling heapless v0.7.17
+                velvet-ballistics:benchmark-proof |    Compiling byteorder v1.5.0
+                velvet-ballistics:benchmark-proof |    Compiling hash32 v0.2.1
+                velvet-ballistics:benchmark-proof |    Compiling ppv-lite86 v0.2.21
+                velvet-ballistics:benchmark-proof |    Compiling blake3 v1.8.5
+                velvet-ballistics:benchmark-proof |    Compiling itoa v1.0.18
+                velvet-ballistics:benchmark-proof |    Compiling serde_json v1.0.150
+                    velvet-ballistics:verify-kani |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_core)
+                velvet-ballistics:benchmark-proof |    Compiling stable_deref_trait v1.2.1
+                velvet-ballistics:benchmark-proof |    Compiling anstyle v1.0.14
+        velvet-ballistics:verify-kani-vb-validate |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_core)
+
+  velvet-ballistics:verify-production-inner-drift | PRODUCTION-INNER DRIFT DETECTED. See target/verus-drift/drift.log
+                velvet-ballistics:benchmark-proof |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_core)
+                velvet-ballistics:benchmark-proof |    Compiling rand_chacha v0.9.0
+                velvet-ballistics:benchmark-proof |    Compiling cobs v0.3.0
+                velvet-ballistics:benchmark-proof |    Compiling byteorder-lite v0.1.0
+                velvet-ballistics:benchmark-proof |    Compiling cpufeatures v0.3.0
+                velvet-ballistics:benchmark-proof |    Compiling arrayref v0.3.9
+                velvet-ballistics:benchmark-proof |    Compiling constant_time_eq v0.4.2
+                velvet-ballistics:benchmark-proof |    Compiling postcard v1.1.3
+                velvet-ballistics:benchmark-proof |    Compiling rand v0.9.4
+        velvet-ballistics:verify-kani-vb-validate | error: could not compile `vb_core` (lib) due to 2 previous errors
+                    velvet-ballistics:verify-kani | error: could not compile `vb_core` (lib) due to 2 previous errors
+                velvet-ballistics:benchmark-proof |    Compiling aho-corasick v1.1.4
+                velvet-ballistics:benchmark-proof |    Compiling wait-timeout v0.2.1
+                velvet-ballistics:benchmark-proof |    Compiling parking_lot_core v0.9.12
+                velvet-ballistics:benchmark-proof |    Compiling bit-vec v0.8.0
+                velvet-ballistics:benchmark-proof |    Compiling quick-error v1.2.3
+                velvet-ballistics:benchmark-proof |    Compiling fnv v1.0.7
+                velvet-ballistics:benchmark-proof |    Compiling rusty-fork v0.3.1
+                velvet-ballistics:benchmark-proof |    Compiling bit-set v0.8.0
+                velvet-ballistics:benchmark-proof |    Compiling regex-automata v0.4.14
+                velvet-ballistics:benchmark-proof |    Compiling rand_xorshift v0.4.0
+                velvet-ballistics:benchmark-proof |    Compiling twox-hash v2.1.2
+                velvet-ballistics:benchmark-proof |    Compiling unarray v0.1.4
+                velvet-ballistics:benchmark-proof |    Compiling arraydeque v0.5.1
+                velvet-ballistics:benchmark-proof |    Compiling hashbrown v0.16.1
+                velvet-ballistics:benchmark-proof |    Compiling xxhash-rust v0.8.15
+                velvet-ballistics:benchmark-proof |    Compiling compare v0.0.6
+                velvet-ballistics:benchmark-proof |    Compiling interval-heap v0.0.5
+                velvet-ballistics:benchmark-proof |    Compiling sfa v1.0.0
+                velvet-ballistics:benchmark-proof |    Compiling quick_cache v0.6.22
+                velvet-ballistics:benchmark-proof |    Compiling proptest v1.11.0
+                velvet-ballistics:benchmark-proof |    Compiling lz4_flex v0.13.1
+                velvet-ballistics:benchmark-proof |    Compiling enum_dispatch v0.3.13
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-skiplist v0.1.3
+                velvet-ballistics:benchmark-proof |    Compiling hashbrown v0.14.5
+                velvet-ballistics:benchmark-proof |    Compiling varint-rs v2.2.0
+                velvet-ballistics:benchmark-proof |    Compiling rustc-hash v2.1.2
+                velvet-ballistics:benchmark-proof |    Compiling byteview v0.10.1
+                velvet-ballistics:benchmark-proof |    Compiling self_cell v1.2.2
+                velvet-ballistics:benchmark-proof |    Compiling foldhash v0.1.5
+                velvet-ballistics:benchmark-proof |    Compiling utf8parse v0.2.2
+                velvet-ballistics:benchmark-proof |    Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_validate)
+                velvet-ballistics:benchmark-proof |    Compiling anstyle-parse v1.0.0
+                velvet-ballistics:benchmark-proof |    Compiling hashbrown v0.15.5
+                velvet-ballistics:benchmark-proof |    Compiling lsm-tree v3.1.4
+                velvet-ballistics:benchmark-proof |    Compiling dashmap v6.2.1
+                velvet-ballistics:benchmark-proof |    Compiling flume v0.12.0
+                velvet-ballistics:benchmark-proof |    Compiling logos-codegen v0.15.1
+                velvet-ballistics:benchmark-proof |    Compiling crc32c v0.6.8
+                velvet-ballistics:benchmark-proof |    Compiling colorchoice v1.0.5
+                velvet-ballistics:benchmark-proof |    Compiling is_terminal_polyfill v1.70.2
+                velvet-ballistics:benchmark-proof |    Compiling anstyle-query v1.1.5
+                velvet-ballistics:benchmark-proof |    Compiling anstream v1.0.0
+                velvet-ballistics:benchmark-proof |    Compiling fjall v3.1.4
+                velvet-ballistics:benchmark-proof |    Compiling hashlink v0.10.0
+                   velvet-ballistics:verify-verus | Verus target failed: verification/verus/recovery_verification.rs (exit 1)
+                velvet-ballistics:benchmark-proof |    Compiling lazy_static v1.5.0
+                velvet-ballistics:benchmark-proof |    Compiling clap_lex v1.1.0
+                velvet-ballistics:benchmark-proof |    Compiling beef v0.5.2
+                velvet-ballistics:benchmark-proof |    Compiling strsim v0.11.1
+                velvet-ballistics:benchmark-proof |    Compiling heck v0.5.0
+                velvet-ballistics:benchmark-proof |    Compiling clap_derive v4.6.1
+                velvet-ballistics:benchmark-proof |    Compiling clap_builder v4.6.0
+                velvet-ballistics:benchmark-proof |    Compiling saphyr-parser v0.0.6
+                velvet-ballistics:benchmark-proof |    Compiling ordered-float v5.3.0
+                velvet-ballistics:benchmark-proof |    Compiling rayon-core v1.13.0
+                velvet-ballistics:benchmark-proof |    Compiling either v1.16.0
+                velvet-ballistics:benchmark-proof |    Compiling crc32fast v1.5.0
+                velvet-ballistics:benchmark-proof |    Compiling clap v4.6.1
+                velvet-ballistics:benchmark-proof |    Compiling saphyr v0.0.6
+                velvet-ballistics:benchmark-proof |    Compiling logos-derive v0.15.1
+                velvet-ballistics:benchmark-proof |    Compiling regex v1.12.3
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-deque v0.8.6
+                velvet-ballistics:benchmark-proof |    Compiling half v2.7.1
+                velvet-ballistics:benchmark-proof |    Compiling alloca v0.4.0
+                velvet-ballistics:benchmark-proof |    Compiling ciborium-io v0.2.2
+                velvet-ballistics:benchmark-proof |    Compiling plotters-backend v0.3.7
+                velvet-ballistics:benchmark-proof |    Compiling version_check v0.9.5
+                velvet-ballistics:benchmark-proof |    Compiling plotters-svg v0.3.7
+                velvet-ballistics:benchmark-proof |    Compiling ahash v0.8.12
+                velvet-ballistics:benchmark-proof |    Compiling ciborium-ll v0.2.2
+                velvet-ballistics:benchmark-proof |    Compiling logos v0.15.1
+                velvet-ballistics:benchmark-proof |    Compiling itertools v0.13.0
+                velvet-ballistics:benchmark-proof |    Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_storage)
+                velvet-ballistics:benchmark-proof |    Compiling crossbeam-queue v0.3.12
+                velvet-ballistics:benchmark-proof |    Compiling cast v0.3.0
+                velvet-ballistics:benchmark-proof |    Compiling rtrb v0.3.4
+                velvet-ballistics:benchmark-proof |    Compiling same-file v1.0.6
+                velvet-ballistics:benchmark-proof |    Compiling walkdir v2.5.0
+                velvet-ballistics:benchmark-proof |    Compiling criterion-plot v0.8.2
+                velvet-ballistics:benchmark-proof |    Compiling rayon v1.12.0
+                velvet-ballistics:benchmark-proof |    Compiling ciborium v0.2.2
+                velvet-ballistics:benchmark-proof |    Compiling plotters v0.3.7
+                velvet-ballistics:benchmark-proof |    Compiling tinytemplate v1.2.1
+PRODUCTION-INNER DRIFT DETECTED. See target/verus-drift/drift.log
+Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling syn v2.0.117
+   Compiling serde_derive v1.0.228
+   Compiling thiserror v2.0.18
+   Compiling thiserror-impl v2.0.18
+   Compiling iana-time-zone v0.1.65
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.2
+   Compiling indexmap v2.14.0
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_core)
+error: could not compile `vb_core` (lib) due to 2 previous errors
+Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling serde_core v1.0.228
+   Compiling autocfg v1.5.1
+   Compiling serde v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling syn v2.0.117
+   Compiling thiserror v2.0.18
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v2.0.18
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.2
+   Compiling iana-time-zone v0.1.65
+   Compiling indexmap v2.14.0
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-local5090-ci/crates/vb_core)
+error: could not compile `vb_core` (lib) due to 2 previous errors
+Verus target failed: verification/verus/recovery_verification.rs (exit 1)

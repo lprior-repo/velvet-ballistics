@@ -264,8 +264,9 @@ fn pending_ticket(run: RunId, action: ActionId) -> ActionTicket {
         step: StepIdx::ZERO,
         seq: SeqNo::ZERO,
         action,
+        run_attempt: 1,
         attempt: 1,
-        idempotency_key: compute_idempotency_key(run, SeqNo::ZERO, action),
+        idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, action),
         capacity: 1,
     }
 }
@@ -919,7 +920,7 @@ fn recover_and_resume_rehydrates_fjall_pending_action_ticket_after_reopen() -> R
         .ok_or_else(|| String::from("expected recovered pending action ticket"))?;
     assert_eq!(
         ticket.idempotency_key,
-        compute_idempotency_key(ticket.run, ticket.seq, ticket.action)
+        compute_idempotency_key(ticket.run, ticket.run_attempt, ticket.seq, ticket.action)
     );
     assert_eq!(ticket.run, run);
     assert_eq!(ticket.step, StepIdx::ZERO);

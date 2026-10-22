@@ -1,0 +1,6 @@
+error: no such command: `grep`
+
+help: a command with a similar name exists: `tree`
+
+help: view all installed commands with `cargo --list`
+help: find a package to install `grep` with `cargo search cargo-grep`

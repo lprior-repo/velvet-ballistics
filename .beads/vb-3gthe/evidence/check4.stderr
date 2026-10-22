@@ -1,0 +1,199 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_runtime)
+    Checking vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_ipc)
+    Checking velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/velvet_ballistics)
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/fuzz)
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/workspace_tests)
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+    --> crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs:1377:20
+     |
+1377 |     let ticket_a = ActionTicket {
+     |                    ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+    --> crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs:1386:20
+     |
+1386 |     let ticket_b = ActionTicket {
+     |                    ^^^^^^^^^^^^ missing `run_attempt`
+
+error[E0063]: missing field `run_attempt` in initializer of `ActionTicket`
+    --> crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs:1395:20
+     |
+1395 |     let ticket_c = ActionTicket {
+     |                    ^^^^^^^^^^^^ missing `run_attempt`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c1s0_orchestration_runtime_tests") due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/cat_advanced.rs:138:19
+    |
+138 |           let sig = drive_deterministic_full(
+    |  ___________________^^^^^^^^^^^^^^^^^^^^^^^^-
+139 | |             &wf,
+140 | |             &mut r,
+141 | |             &mut b,
+...   |
+147 | |             &g,
+148 | |         )
+    | |_________- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/drive/loop_step.rs:27:8
+    |
+ 27 | pub fn drive_deterministic_full(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 37 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+138 |         let sig = drive_deterministic_full(
+...
+147 |             &g,
+148 ~             /* u16 */,
+149 ~         )
+    |
+
+error[E0061]: this method takes 1 argument but 2 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/cat_advanced.rs:149:10
+    |
+149 |         .map_err(|e| format!("{e}"), 1)?;
+    |          ^^^^^^^                     - unexpected argument #2 of type `{integer}`
+    |
+note: method defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:962:18
+    |
+962 |     pub const fn map_err<F, O>(self, op: O) -> Result<T, F>
+    |                  ^^^^^^^
+help: remove the extra argument
+    |
+149 -         .map_err(|e| format!("{e}"), 1)?;
+149 +         .map_err(|e| format!("{e}"))?;
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/common.rs:206:5
+    |
+206 |       drive_deterministic_full(
+    |  _____^^^^^^^^^^^^^^^^^^^^^^^^-
+207 | |         wf,
+208 | |         r,
+209 | |         b,
+...   |
+215 | |         &CapabilitySet::empty(),
+216 | |     )
+    | |_____- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/drive/loop_step.rs:27:8
+    |
+ 27 | pub fn drive_deterministic_full(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 37 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+206 |     drive_deterministic_full(
+...
+215 |         &CapabilitySet::empty(),
+216 ~         /* u16 */,
+217 ~     )
+    |
+
+error[E0061]: this method takes 1 argument but 2 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/common.rs:217:6
+    |
+217 |     .map_err(|e| format!("{e}"), 1)
+    |      ^^^^^^^                     - unexpected argument #2 of type `{integer}`
+    |
+note: method defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:962:18
+    |
+962 |     pub const fn map_err<F, O>(self, op: O) -> Result<T, F>
+    |                  ^^^^^^^
+help: remove the extra argument
+    |
+217 -     .map_err(|e| format!("{e}"), 1)
+217 +     .map_err(|e| format!("{e}"))
+    |
+
+error[E0061]: this function takes 10 arguments but 9 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/common.rs:229:5
+    |
+229 |       drive_deterministic_full(
+    |  _____^^^^^^^^^^^^^^^^^^^^^^^^-
+230 | |         wf,
+231 | |         r,
+232 | |         b,
+...   |
+238 | |         g,
+239 | |     )
+    | |_____- argument #10 of type `u16` is missing
+    |
+note: function defined here
+   --> crates/vb_runtime/src/engine/drive/loop_step.rs:27:8
+    |
+ 27 | pub fn drive_deterministic_full(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 37 |     state_run_attempt: u16,
+    |     ----------------------
+help: provide the argument
+    |
+229 |     drive_deterministic_full(
+...
+238 |         g,
+239 ~         /* u16 */,
+240 ~     )
+    |
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+   --> crates/vb_runtime/src/engine/drive/tests/common.rs:248:5
+    |
+248 |     CapabilitySet::from_grants(Box::from([Capability::new(
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+251 |     )]), 1)
+    |          - unexpected argument #2 of type `{integer}`
+    |
+note: associated function defined here
+   --> crates/vb_core/src/capability.rs:40:12
+    |
+ 40 |     pub fn from_grants(grants: Box<[Capability]>) -> Self {
+    |            ^^^^^^^^^^^
+help: remove the extra argument
+    |
+251 -     )]), 1)
+251 +     )]))
+    |
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+    --> crates/vb_runtime/src/engine/tests.rs:2571:22
+     |
+2571 |         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+     |                      ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+2584 |         }), 1);
+     |             - unexpected argument #2 of type `{integer}`
+     |
+note: function defined here
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panic.rs:358:8
+     |
+ 358 | pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
+     |        ^^^^^^^^^^^^
+help: remove the extra argument
+     |
+2584 -         }), 1);
+2584 +         }));
+     |
+
+error[E0063]: missing field `run_attempt` in initializer of `vb_core::ActionTicket`
+   --> crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs:475:22
+    |
+475 |         let ticket = ActionTicket {
+    |                      ^^^^^^^^^^^^ missing `run_attempt`
+
+Some errors have detailed explanations: E0061, E0063.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `vb_runtime` (lib test) due to 8 previous errors

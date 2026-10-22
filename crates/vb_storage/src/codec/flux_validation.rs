@@ -57,11 +57,7 @@ fn model_ask_timed_out_kind_id_stable() -> bool {
 /// `AskTimedOut` payload implies wire kind 29 exactly.
 #[flux_rs::trusted]
 #[sig(fn(run_val: u64{run_val > 0}, seq_val: u64{seq_val < u64::MAX}, attempt_val: u16{attempt_val > 0}) -> bool[true])]
-fn model_ask_timed_out_payload_kind_is_29(
-    run_val: u64,
-    seq_val: u64,
-    attempt_val: u16,
-) -> bool {
+fn model_ask_timed_out_payload_kind_is_29(run_val: u64, seq_val: u64, attempt_val: u16) -> bool {
     let event = crate::JournalEvent::AskTimedOutEvent {
         run: vb_core::ids::RunId::new(run_val),
         seq: crate::EventSeq::new(seq_val),
@@ -238,7 +234,10 @@ mod flux_validation_tests {
     #[test]
     fn split_kinds_33_to_35_are_known_record_kinds() {
         for kind in 33..=35 {
-            assert!(model_is_known_record_kind(kind), "kind {kind} must be known");
+            assert!(
+                model_is_known_record_kind(kind),
+                "kind {kind} must be known"
+            );
         }
     }
 

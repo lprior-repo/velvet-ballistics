@@ -109,7 +109,8 @@ mod proptest_idempotency {
                             step: ticket.step,
                             seq: ticket.seq,
                             action: ticket.action,
-                            attempt: ticket.attempt,
+            run_attempt: 1,
+            attempt: ticket.attempt,
                             idempotency_key: key,
                             capacity: ticket.capacity,
                         };
@@ -141,7 +142,8 @@ mod proptest_idempotency {
                     step: base.step,
                     seq: base.seq,
                     action: base.action,
-                    attempt: base.attempt,
+            run_attempt: 1,
+            attempt: base.attempt,
                     idempotency_key: key_counter,
                     capacity: base.capacity,
                 };
@@ -186,7 +188,8 @@ mod proptest_idempotency {
                     step: base.step,
                     seq: base.seq,
                     action: base.action,
-                    attempt: base.attempt,
+            run_attempt: 1,
+            attempt: base.attempt,
                     idempotency_key: key_counter,
                     capacity: base.capacity,
                 };
@@ -271,7 +274,8 @@ mod proptest_idempotency {
                 step: StepIdx::new(0),
                 seq: SeqNo::new(1),
                 action: ActionId::new(1),
-                attempt: 1,
+            run_attempt: 1,
+            attempt: 1,
                 idempotency_key: key_a,
                 capacity: 1,
             };
@@ -280,7 +284,8 @@ mod proptest_idempotency {
                 step: StepIdx::new(0),
                 seq: SeqNo::new(2),
                 action: ActionId::new(2),
-                attempt: 1,
+            run_attempt: 1,
+            attempt: 1,
                 idempotency_key: key_b,
                 capacity: 1,
             };

@@ -6,6 +6,23 @@ Root owns ALL VCS/JJ mutations and final publication. This contract covers the b
 merge only; LOCAL3090 `vb-3gthe` fixture migration and canonical `moon ci` follow after root
 freezes the fixture merge.
 
+## Bounded repair — this session (pre-fixture, worker)
+
+Two bounded source edits (no production-behavior change beyond the syntax parse fix; no VCS/JJ
+mutations; bead stays OPEN):
+
+1. `crates/vb_storage/src/types/flux_sequence.rs:132` — `16#ffff#` (invalid Rust-2021 reserved
+   prefixed literal, breaks `cargo fmt`) → `u16::MAX`. Identical u16-max bound (65535), matching
+   the file's own `u64::MAX` on line 23 and the repo's `requires gen < u64::MAX` Flux pattern.
+   `#[cfg(flux)]`-gated module; no normal build/clippy/test impact.
+2. `crates/vb_runtime/tests/durable_retry_boundary.rs` `shared_strict_journal_persists_each_append`
+   — `events[0]` unchecked index → `events.first().ok_or(...)?` with deref guards. Exact
+   count/type/run/seq/workflow assertions retained.
+
+Verification (all through `/tmp/vb-run-gate.py`): `bcd10_fix` = 10 passed;
+`fmt_flux_fix` = 0 (parse fixed); `fmt_all_check` = exit 1, format diffs only, no parse errors;
+`clippy_fix` = 0 (strict production flags). Flux verification is NOT claimed (syntactic fix only).
+
 ## Parents merged
 
 - **A** `purzrpot 36936fcc` — `vb-absr9`: group ticket dispatch parameters (typed
@@ -40,8 +57,9 @@ dispatch, handlers, tests) and are untouched by this merge.
 
 - LOCAL3090 `vb-3gthe` ticket-fixture call-site migration (existing fixture compile errors in
   `vb_validate`/`vb_storage`/`vb_core` test code remain; reported, not rewritten here).
-- `crates/vb_storage/src/types/flux_sequence.rs` `cargo fmt` parse error — reported for root,
-  not waived; bounded repair is a later task, not this merge.
+- `crates/vb_storage/src/types/flux_sequence.rs` `cargo fmt` parse error — **resolved this
+  session** (`16#ffff#` → `u16::MAX`); no waiver. Full `cargo fmt --all` still reports
+  pre-existing format diffs in unrelated files (out of this bounded scope).
 - Finding A stale-ticket probes (`probe_old_*`) may remain RED until root merges LOCAL5090.
 - Canonical `moon ci` / full workspace `cargo fmt --all` / bead remote sync / commit-describe.
 
