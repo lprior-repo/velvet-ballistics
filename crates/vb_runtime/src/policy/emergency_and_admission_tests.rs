@@ -3,30 +3,17 @@
 use super::*;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 
-fn make_ticket(
-    run: u64,
-    step: u16,
-    seq: u64,
-    action: u16,
-    run_attempt: u16,
-    attempt: u16,
-    idempotency_key: u128,
-    capacity: u16,
-) -> ActionTicket {
-    ActionTicket {
-        run: RunId::new(run),
-        step: StepIdx::new(step),
-        seq: SeqNo::new(seq),
-        action: ActionId::new(action),
-        run_attempt,
-        attempt,
-        idempotency_key,
-        capacity,
-    }
-}
-
 fn baseline_ticket() -> ActionTicket {
-    make_ticket(1, 0, 0, 0, 1, 1, 0, 10)
+    ActionTicket {
+        run: RunId::new(1),
+        step: StepIdx::new(0),
+        seq: SeqNo::new(0),
+        action: ActionId::new(0),
+        run_attempt: 1,
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 10,
+    }
 }
 
 fn test_digest() -> PolicyDigest {

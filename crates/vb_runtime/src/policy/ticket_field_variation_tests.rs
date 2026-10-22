@@ -4,30 +4,17 @@
 use super::*;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 
-fn make_ticket(
-    run: u64,
-    step: u16,
-    seq: u64,
-    action: u16,
-    run_attempt: u16,
-    attempt: u16,
-    idempotency_key: u128,
-    capacity: u16,
-) -> ActionTicket {
-    ActionTicket {
-        run: RunId::new(run),
-        step: StepIdx::new(step),
-        seq: SeqNo::new(seq),
-        action: ActionId::new(action),
-        run_attempt,
-        attempt,
-        idempotency_key,
-        capacity,
-    }
-}
-
 fn baseline_ticket() -> ActionTicket {
-    make_ticket(1, 0, 0, 0, 1, 1, 0, 10)
+    ActionTicket {
+        run: RunId::new(1),
+        step: StepIdx::new(0),
+        seq: SeqNo::new(0),
+        action: ActionId::new(0),
+        run_attempt: 1,
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 10,
+    }
 }
 
 #[test]
@@ -41,7 +28,10 @@ fn varying_run_field_changes_digest() -> RuntimeResult<()> {
     )?;
 
     let varied = policy.evaluate(
-        make_ticket(2, 0, 0, 0, 1, 1, 0, 10),
+        ActionTicket {
+            run: RunId::new(2),
+            ..baseline_ticket()
+        },
         PinnedAdmissionPolicy::Unverified,
         b"input",
         Taint::Clean,
@@ -63,7 +53,10 @@ fn varying_step_field_changes_digest() -> RuntimeResult<()> {
     )?;
 
     let varied = policy.evaluate(
-        make_ticket(1, 5, 0, 0, 1, 1, 0, 10),
+        ActionTicket {
+            step: StepIdx::new(5),
+            ..baseline_ticket()
+        },
         PinnedAdmissionPolicy::Unverified,
         b"input",
         Taint::Clean,
@@ -85,7 +78,10 @@ fn varying_seq_field_changes_digest() -> RuntimeResult<()> {
     )?;
 
     let varied = policy.evaluate(
-        make_ticket(1, 0, 3, 0, 1, 1, 0, 10),
+        ActionTicket {
+            seq: SeqNo::new(3),
+            ..baseline_ticket()
+        },
         PinnedAdmissionPolicy::Unverified,
         b"input",
         Taint::Clean,
@@ -107,7 +103,10 @@ fn varying_action_field_changes_digest() -> RuntimeResult<()> {
     )?;
 
     let varied = policy.evaluate(
-        make_ticket(1, 0, 0, 7, 1, 1, 0, 10),
+        ActionTicket {
+            action: ActionId::new(7),
+            ..baseline_ticket()
+        },
         PinnedAdmissionPolicy::Unverified,
         b"input",
         Taint::Clean,
@@ -129,7 +128,10 @@ fn varying_run_attempt_field_changes_digest() -> RuntimeResult<()> {
     )?;
 
     let varied = policy.evaluate(
-        make_ticket(1, 0, 0, 0, 3, 1, 0, 10),
+        ActionTicket {
+            run_attempt: 3,
+            ..baseline_ticket()
+        },
         PinnedAdmissionPolicy::Unverified,
         b"input",
         Taint::Clean,
@@ -151,7 +153,10 @@ fn varying_attempt_field_changes_digest() -> RuntimeResult<()> {
     )?;
 
     let varied = policy.evaluate(
-        make_ticket(1, 0, 0, 0, 1, 2, 0, 10),
+        ActionTicket {
+            attempt: 2,
+            ..baseline_ticket()
+        },
         PinnedAdmissionPolicy::Unverified,
         b"input",
         Taint::Clean,
@@ -173,7 +178,10 @@ fn varying_idempotency_key_field_changes_digest() -> RuntimeResult<()> {
     )?;
 
     let varied = policy.evaluate(
-        make_ticket(1, 0, 0, 0, 1, 1, 999, 10),
+        ActionTicket {
+            idempotency_key: 999,
+            ..baseline_ticket()
+        },
         PinnedAdmissionPolicy::Unverified,
         b"input",
         Taint::Clean,
@@ -195,7 +203,10 @@ fn varying_capacity_field_changes_digest() -> RuntimeResult<()> {
     )?;
 
     let varied = policy.evaluate(
-        make_ticket(1, 0, 0, 0, 1, 1, 0, 20),
+        ActionTicket {
+            capacity: 20,
+            ..baseline_ticket()
+        },
         PinnedAdmissionPolicy::Unverified,
         b"input",
         Taint::Clean,

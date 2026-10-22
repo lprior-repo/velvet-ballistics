@@ -2,6 +2,7 @@
 
 use super::*;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+use vb_core::policy::CurrentPolicyIdentity;
 
 fn test_ticket(action: u16) -> ActionTicket {
     ActionTicket {
@@ -35,6 +36,10 @@ fn unconfigured_deny() -> RuntimeResult<()> {
     )?;
     assert_eq!(record.outcome, DecisionCode::Denied);
     assert_eq!(record.layer, PolicyLayer::Live);
+    assert!(
+        matches!(record.current_live, CurrentPolicyIdentity::Unconfigured),
+        "expected unconfigured live identity"
+    );
     Ok(())
 }
 
@@ -189,7 +194,7 @@ fn decision_record_preserves_ticket_identity() -> RuntimeResult<()> {
         b"input",
         Taint::Clean,
     )?;
-    assert_eq!(record.ticket, record.ticket);
+    assert_eq!(record.ticket, ticket);
     assert_eq!(record.ticket.run, RunId::new(1));
     assert_eq!(record.ticket.action, ActionId::new(42));
     Ok(())
@@ -197,10 +202,18 @@ fn decision_record_preserves_ticket_identity() -> RuntimeResult<()> {
 
 #[test]
 fn decision_record_preserves_policy_identities() -> RuntimeResult<()> {
-    let admission = PinnedAdmissionPolicy::Artifact(test_digest());
+    let admission_digest = PolicyDigest::from_bytes([
+        0x11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0x12,
+    ]);
+    let live_digest = PolicyDigest::from_bytes([
+        0x21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0x22,
+    ]);
+    let admission = PinnedAdmissionPolicy::Artifact(admission_digest);
     let mut policy = LivePolicy::new();
     policy.configure(
-        test_digest(),
+        live_digest,
         PolicyRule {
             action: ActionId::new(0),
             code: DecisionCode::Allowed,
@@ -212,7 +225,11 @@ fn decision_record_preserves_policy_identities() -> RuntimeResult<()> {
 
     assert_eq!(
         record.admission,
-        PinnedAdmissionPolicy::Artifact(test_digest())
+        PinnedAdmissionPolicy::Artifact(admission_digest)
+    );
+    assert!(
+        matches!(record.current_live, CurrentPolicyIdentity::Configured { digest } if digest == live_digest),
+        "expected configured live identity with live_digest"
     );
     Ok(())
 }
@@ -286,5 +303,19 @@ fn missing_admission_distinguishable_from_artifact() -> RuntimeResult<()> {
         Taint::Clean,
     )?;
     assert!(matches!(r2.admission, PinnedAdmissionPolicy::Artifact(_)));
+    Ok(())
+}
+
+#[test]
+fn same_inputs_produce_same_decision_record() -> RuntimeResult<()> {
+    let policy = LivePolicy::new();
+    let admission = PinnedAdmissionPolicy::Unverified;
+    let input = b"same input";
+    let taint = Taint::Clean;
+
+    let r1 = policy.evaluate(test_ticket(42), admission, input, taint)?;
+    let r2 = policy.evaluate(test_ticket(42), admission, input, taint)?;
+
+    assert_eq!(r1, r2);
     Ok(())
 }

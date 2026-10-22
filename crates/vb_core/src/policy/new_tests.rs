@@ -26,22 +26,49 @@ fn test_digest() -> PolicyDigest {
 #[test]
 fn policy_digest_roundtrip() {
     let digest = test_digest();
-    assert_eq!(digest.as_bytes()[0], 0xAB);
-    assert_eq!(digest.as_bytes()[31], 0xCD);
+    let expected: [u8; 32] = [
+        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0xCD,
+    ];
+    assert_eq!(digest.as_bytes().as_ref(), expected.as_ref());
 }
 
 #[test]
-fn decision_code_discriminants() {
-    assert_eq!(DecisionCode::Allowed as u8, 0);
-    assert_eq!(DecisionCode::Denied as u8, 1);
-    assert_eq!(DecisionCode::Suspended as u8, 2);
+fn decision_code_variants_are_distinct() {
+    assert_ne!(DecisionCode::Allowed, DecisionCode::Denied);
+    assert_ne!(DecisionCode::Allowed, DecisionCode::Suspended);
+    assert_ne!(DecisionCode::Denied, DecisionCode::Suspended);
 }
 
 #[test]
-fn policy_layer_discriminants() {
-    assert_eq!(PolicyLayer::Live as u8, 0);
-    assert_eq!(PolicyLayer::Admission as u8, 1);
-    assert_eq!(PolicyLayer::Emergency as u8, 2);
+fn decision_code_serde_encoding_is_stable() -> Result<(), Box<dyn std::error::Error>> {
+    let allowed_bytes = postcard::to_allocvec(&DecisionCode::Allowed)?;
+    let denied_bytes = postcard::to_allocvec(&DecisionCode::Denied)?;
+    let suspended_bytes = postcard::to_allocvec(&DecisionCode::Suspended)?;
+
+    assert_eq!(allowed_bytes, vec![0u8]);
+    assert_eq!(denied_bytes, vec![1u8]);
+    assert_eq!(suspended_bytes, vec![2u8]);
+    Ok(())
+}
+
+#[test]
+fn policy_layer_variants_are_distinct() {
+    assert_ne!(PolicyLayer::Live, PolicyLayer::Admission);
+    assert_ne!(PolicyLayer::Live, PolicyLayer::Emergency);
+    assert_ne!(PolicyLayer::Admission, PolicyLayer::Emergency);
+}
+
+#[test]
+fn policy_layer_serde_encoding_is_stable() -> Result<(), Box<dyn std::error::Error>> {
+    let live_bytes = postcard::to_allocvec(&PolicyLayer::Live)?;
+    let admission_bytes = postcard::to_allocvec(&PolicyLayer::Admission)?;
+    let emergency_bytes = postcard::to_allocvec(&PolicyLayer::Emergency)?;
+
+    assert_eq!(live_bytes, vec![0u8]);
+    assert_eq!(admission_bytes, vec![1u8]);
+    assert_eq!(emergency_bytes, vec![2u8]);
+    Ok(())
 }
 
 #[test]
@@ -88,7 +115,7 @@ fn decision_record_preserves_all_fields() {
         compat_influence: InfluenceState::NotEvaluated,
     };
 
-    assert_eq!(record.ticket, record.ticket);
+    assert_eq!(record.ticket, ticket);
     assert_eq!(record.admission, admission);
     assert_eq!(record.current_live, live_identity);
     assert_eq!(record.input_digest, input_digest);
@@ -106,8 +133,8 @@ fn pinned_admission_unverified_is_not_digest() {
 }
 
 #[test]
-fn influence_state_values() {
-    assert_eq!(InfluenceState::NotEvaluated, InfluenceState::NotEvaluated);
+fn influence_state_variants_are_distinct() {
     assert_ne!(InfluenceState::NotEvaluated, InfluenceState::Active);
+    assert_ne!(InfluenceState::NotEvaluated, InfluenceState::Inactive);
     assert_ne!(InfluenceState::Inactive, InfluenceState::Active);
 }

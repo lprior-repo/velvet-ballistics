@@ -1,0 +1,12 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local3090-test-strengthening/crates/vb_runtime/src/policy/tests.rs:223:
+     let ticket = test_ticket(0);
+     let record = policy.evaluate(ticket, admission, b"input", Taint::Clean)?;
+ 
+-    assert_eq!(record.admission, PinnedAdmissionPolicy::Artifact(admission_digest));
++    assert_eq!(
++        record.admission,
++        PinnedAdmissionPolicy::Artifact(admission_digest)
++    );
+     assert!(
+         matches!(record.current_live, CurrentPolicyIdentity::Configured { digest } if digest == live_digest),
+         "expected configured live identity with live_digest"

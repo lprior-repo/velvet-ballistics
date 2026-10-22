@@ -1,0 +1,5 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local3090-test-strengthening/crates/vb_runtime)
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local3090-test-strengthening/crates/vb_core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.63s
+     Running unittests src/lib.rs (target/debug/deps/vb_core-bfe5690cbd7c1ef9)
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-665d823205417eeb)

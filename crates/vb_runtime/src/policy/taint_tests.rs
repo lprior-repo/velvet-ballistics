@@ -4,30 +4,17 @@
 use super::*;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 
-fn make_ticket(
-    run: u64,
-    step: u16,
-    seq: u64,
-    action: u16,
-    run_attempt: u16,
-    attempt: u16,
-    idempotency_key: u128,
-    capacity: u16,
-) -> ActionTicket {
-    ActionTicket {
-        run: RunId::new(run),
-        step: StepIdx::new(step),
-        seq: SeqNo::new(seq),
-        action: ActionId::new(action),
-        run_attempt,
-        attempt,
-        idempotency_key,
-        capacity,
-    }
-}
-
 fn baseline_ticket() -> ActionTicket {
-    make_ticket(1, 0, 0, 0, 1, 1, 0, 10)
+    ActionTicket {
+        run: RunId::new(1),
+        step: StepIdx::new(0),
+        seq: SeqNo::new(0),
+        action: ActionId::new(0),
+        run_attempt: 1,
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 10,
+    }
 }
 
 #[test]
@@ -123,14 +110,20 @@ fn all_taint_variants_produce_distinct_digests() -> RuntimeResult<()> {
         digests.push((taint, record.input_digest));
     }
 
-    for i in 0..digests.len() {
-        for j in (i + 1)..digests.len() {
-            assert_ne!(
-                digests[i].1, digests[j].1,
-                "taint {:?} and {:?} produced identical digests",
-                digests[i].0, digests[j].0
-            );
+    // Verify all digests are distinct using pairwise comparison via iterators
+    let mut remaining = &digests[..];
+    while remaining.len() > 1 {
+        let (first, rest) = remaining.split_at(1);
+        if let Some(first_item) = first.first() {
+            for second_item in rest.iter() {
+                assert_ne!(
+                    first_item.1, second_item.1,
+                    "taint {:?} and {:?} produced identical digests",
+                    first_item.0, second_item.0
+                );
+            }
         }
+        remaining = rest;
     }
     Ok(())
 }
