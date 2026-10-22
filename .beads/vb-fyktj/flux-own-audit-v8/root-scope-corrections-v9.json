@@ -1,0 +1,16 @@
+{
+  "historical_commit": "56d14ca7878d011d1b12a5c12f230110ca41186a",
+  "current_main": "0210e36fc8961f7d4454eb4ca53b6a39948a28b8",
+  "actual_own_unified_hunks": 4,
+  "actual_affected_files": 3,
+  "review_status": "PROVISIONAL; source absence observed but report count and contract claims incorrect",
+  "corrections": [
+    "Report calls3files3hunks; actual4unifiedhunks across3files.",
+    "Master4656 documents existing singlepackage wrapper OR direct cargo flux -p; it does not require new --all/--crates/--dry-run flags or Moon tasks. Their absence is not itself master noncompliance.",
+    "Native source reads do not establish execution failures. Report never executed moon run or Flux; all such outcomes are inference only.",
+    "Historical --crates parsing consumes --lib as package name because its parser only breaks on4customflags; validation scans flux_args rather than extra_packages. Do not blindly restore.",
+    "Historical auto discovery and bulkverification require current contract/resource review before restoration.",
+    "Genuinely missing useful candidate: xtask routing through existing wrapper for consistent messageformat and validation. Need independent contract review and actual tests."
+  ],
+  "scope": "Own patch preservation audit only. No behavioral or proof acceptance, no inherited branch closure."
+}
