@@ -50,7 +50,7 @@ pub const PREFIX_INDEX_WORKFLOW: u8 = 0x31;
 /// `index_action` key prefix.
 pub const PREFIX_INDEX_ACTION: u8 = 0x32;
 /// `artifact_acceptance` key prefix.
-pub const PREFIX_ARTIFACT_ACCEPTANCE: u8 = 0x40;
+pub(crate) const PREFIX_ARTIFACT_ACCEPTANCE: u8 = 0x40;
 
 /// Minimum accepted byte value for `IndexStatusState::Other(_)`.
 ///
@@ -121,5 +121,5 @@ pub const MAX_BLOB_BYTES: u32 = 67_108_864;
 /// Maximum number of events permitted in a single journal write batch.
 pub const MAX_BATCH_COUNT: usize = 10_000;
 /// Fixed key name for the last-issued artifact sequence counter.
-pub const ARTIFACT_ACCEPTANCE_LAST_ISSUED: &str = "last_issued";
+pub(crate) const ARTIFACT_ACCEPTANCE_LAST_ISSUED: &str = "last_issued";
 const _PAYLOAD_LEN_CONVERSION_MAX: u32 = 4_294_967_295;

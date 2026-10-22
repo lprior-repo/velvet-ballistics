@@ -1,107 +1,198 @@
-use crate::constants::{ARTIFACT_ACCEPTANCE_LAST_ISSUED, PREFIX_ARTIFACT_ACCEPTANCE};
+//! Private artifact acceptance counter and issuance helpers.
+//!
+//! This module owns the artifact sequence counter stored in the
+//! `artifact_acceptance` metadata keyspace. It provides a single private
+//! helper, `issue_artifact`, that performs the entire RMW sequence:
+//! read counter, increment, stamp, rebind digest, encode record, stage
+//! both writes in one `fjall::OwnedWriteBatch`, and commit with policy-
+//! appropriate durability.
+//!
+//! All helpers here are private (`fn` not `pub fn`). No new public API is
+//! exposed through this module.
+
+use std::num::NonZeroU64;
+
+use crate::admission::AcceptedArtifact;
+use crate::admission::bind_artifact_digest;
+use crate::constants::MAGIC_COMPILED_ARTIFACT;
+use crate::constants::MAX_COMPILED_IR_BYTES;
 use crate::error::JournalError;
 use crate::journal::FjallJournal;
+use crate::journal::admission::verify_compiled_ir_record_digest;
+use crate::keys::compiled_ir_key;
+use crate::records::CompiledIrRecord;
+use crate::records::RecordKind;
 use crate::types::EventSeq;
+use vb_core::RuntimePolicy;
 
 /// Private wrapper for issued artifact sequence numbers.
 ///
 /// Wraps `NonZeroU64` because issued sequences always start at 1.
 /// This type is not exported; only `EventSeq` appears in the public API.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct IssuedArtifactSequence(u64);
+pub(crate) struct IssuedArtifactSequence(std::num::NonZeroU64);
 
 impl IssuedArtifactSequence {
     /// Creates a new issued sequence from a validated non-zero value.
-    /// The caller must have already incremented the counter.
+    /// The caller must have already incremented the counter and ensured
+    /// the value is strictly greater than zero.
     #[inline]
-    fn new(value: u64) -> Self {
-        // value is always >= 1 when called from increment_last_issued
-        Self(value)
+    fn new(value: u64) -> Result<Self, JournalError> {
+        let nz = NonZeroU64::new(value).ok_or(JournalError::SequenceOverflow)?;
+        Ok(Self(nz))
     }
 
     /// Converts to the public EventSeq type for embedding in the artifact.
     #[inline]
     pub(crate) fn to_event_seq(self) -> EventSeq {
-        EventSeq::new(self.0)
+        EventSeq::new(self.0.get())
     }
 }
+
+/// The literal key for the last-issued counter in the artifact_acceptance
+/// keyspace. The dedicated keyspace already isolates this key; no prefix
+/// is needed.
+const LAST_ISSUED_KEY: &[u8] = b"last_issued";
 
 /// Reads the last issued artifact sequence from the metadata keyspace.
 ///
 /// Returns 0 if the counter key is absent (no artifacts issued yet).
-fn read_last_issued(journal: &FjallJournal) -> Result<u64, JournalError> {
-    let key = artifact_acceptance_key(ARTIFACT_ACCEPTANCE_LAST_ISSUED)?;
-    match journal.artifact_acceptance.get(key.as_slice())? {
-        Some(value) => {
-            let value_len = u32::try_from(value.len()).map_err(|_| {
-                JournalError::MalformedKeyspaceRow {
-                    prefix: PREFIX_ARTIFACT_ACCEPTANCE,
-                    expected_len: 8,
-                    actual_len: value.len(),
-                }
-            })?;
-            if value_len != 8 {
-                return Err(JournalError::MalformedKeyspaceRow {
-                    prefix: PREFIX_ARTIFACT_ACCEPTANCE,
-                    expected_len: 8,
-                    actual_len: value.len(),
-                });
-            }
-            let mut bytes = [0u8; 8];
-            bytes.copy_from_slice(&value[..8]);
-            Ok(u64::from_be_bytes(bytes))
-        }
+fn read_counter(journal: &FjallJournal) -> Result<u64, JournalError> {
+    match journal.artifact_acceptance.get(LAST_ISSUED_KEY)? {
+        Some(value) => decode_counter_value(&value),
         None => Ok(0),
     }
 }
 
-/// Encodes a u64 as big-endian 8 bytes.
-fn encode_u64_be(value: u64) -> Vec<u8> {
-    let bytes = value.to_be_bytes();
-    bytes.to_vec()
+/// Decodes a counter value from bytes.
+///
+/// Uses safe fixed array TryFrom; no unchecked slicing or indexing.
+/// Value must be exactly 8 bytes (big-endian u64).
+fn decode_counter_value(value: &[u8]) -> Result<u64, JournalError> {
+    if value.len() != 8 {
+        return Err(JournalError::MalformedKeyspaceRow {
+            prefix: 0,
+            expected_len: 8,
+            actual_len: value.len(),
+        });
+    }
+    // Safe fixed array TryFrom (no unchecked indexing or copy_from_slice)
+    let bytes: [u8; 8] = value
+        .try_into()
+        .map_err(|_| JournalError::MalformedKeyspaceRow {
+            prefix: 0,
+            expected_len: 8,
+            actual_len: value.len(),
+        })?;
+    Ok(u64::from_be_bytes(bytes))
 }
 
-/// Builds the storage key for an artifact acceptance metadata entry.
-fn artifact_acceptance_key(name: &str) -> Result<Vec<u8>, JournalError> {
-    let name_bytes = name.as_bytes();
-    let name_len = u32::try_from(name_bytes.len()).map_err(|_| JournalError::KeyCapacity)?;
-    let mut key = Vec::with_capacity(1 + name_len as usize);
-    key.push(PREFIX_ARTIFACT_ACCEPTANCE);
-    key.extend_from_slice(name_bytes);
-    Ok(key)
+/// Encodes a counter value to big-endian bytes.
+fn encode_counter_value(value: u64) -> [u8; 8] {
+    value.to_be_bytes()
 }
 
-/// Atomically increments the artifact acceptance counter within a batch.
-///
-/// This is the core counter helper that performs the RMW sequence inside a
-/// single OwnedWriteBatch transaction. The caller must already hold the
-/// write_lock and must commit the batch before releasing the lock.
-///
-/// Returns the new issued sequence number (always >= 1).
+/// Increment the counter and prepare the stamped artifact.
+fn prepare_artifact(
+    last: u64,
+    artifact: AcceptedArtifact,
+) -> Result<(u64, AcceptedArtifact), JournalError> {
+    let next = last.checked_add(1).ok_or(JournalError::SequenceOverflow)?;
+    let seq = IssuedArtifactSequence::new(next)?;
+    let mut stamped = artifact;
+    stamped.accepted_at_seq = seq.to_event_seq();
+    bind_artifact_digest(&mut stamped)?;
+    Ok((next, stamped))
+}
+
+/// Encode the stamped artifact into a compiled IR record and envelope.
+fn encode_record(stamped: &AcceptedArtifact) -> Result<(CompiledIrRecord, Vec<u8>), JournalError> {
+    let ir = postcard::to_allocvec(stamped).map_err(JournalError::PostcardEncodeFailed)?;
+    let record = CompiledIrRecord {
+        digest: stamped.digest,
+        ir,
+    };
+    verify_compiled_ir_record_digest(&record)?;
+    let encoded = crate::codec::encode_record(
+        MAGIC_COMPILED_ARTIFACT,
+        RecordKind::CompiledIr,
+        0,
+        &record,
+        MAX_COMPILED_IR_BYTES,
+    )?;
+    Ok((record, encoded))
+}
+
+/// Build the raw OwnedWriteBatch with counter and artifact writes.
+fn build_batch(
+    journal: &FjallJournal,
+    next: u64,
+    stamped: &AcceptedArtifact,
+    encoded: &[u8],
+) -> Result<fjall::OwnedWriteBatch, JournalError> {
+    let mut batch = journal.database.batch();
+    let counter_value = encode_counter_value(next);
+    batch.insert(
+        &journal.artifact_acceptance,
+        LAST_ISSUED_KEY,
+        counter_value.as_ref(),
+    );
+    let artifact_key = compiled_ir_key(stamped.digest.as_bytes())?;
+    batch.insert(&journal.compiled_ir, &artifact_key, encoded);
+    Ok(batch)
+}
+
+/// Apply policy durability and commit the batch.
+fn commit_batch(
+    journal: &FjallJournal,
+    mut batch: fjall::OwnedWriteBatch,
+    policy: RuntimePolicy,
+) -> Result<(), JournalError> {
+    if policy == RuntimePolicy::Strict {
+        #[cfg(test)]
+        if journal.consume_persist_failure_for_test() {
+            return Err(JournalError::StrictDurabilityFailed);
+        }
+        batch = batch.durability(Some(fjall::PersistMode::SyncAll));
+    }
+    #[cfg(test)]
+    if journal.consume_batch_commit_failure_for_test() {
+        return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "injected batch commit failure (test hook)",
+        ))));
+    }
+    batch.commit()?;
+    Ok(())
+}
+
+/// Atomically issues the next artifact sequence and persists the
+/// stamped artifact in a single `fjall::OwnedWriteBatch`.
+fn issue_artifact(
+    journal: &FjallJournal,
+    artifact: AcceptedArtifact,
+    policy: RuntimePolicy,
+) -> Result<AcceptedArtifact, JournalError> {
+    let write_guard = journal
+        .write_lock
+        .lock()
+        .map_err(|_| JournalError::WriteLockPoisoned)?;
+
+    let last = read_counter(journal)?;
+    let (next, stamped) = prepare_artifact(last, artifact)?;
+    let (_record, encoded) = encode_record(&stamped)?;
+    let batch = build_batch(journal, next, &stamped, &encoded)?;
+    commit_batch(journal, batch, policy)?;
+
+    drop(write_guard);
+    Ok(stamped)
+}
+
+/// Exposes the private issuance helper to admission.rs via pub(crate).
 pub(crate) fn issue_next_artifact_sequence(
     journal: &FjallJournal,
-    batch: &mut crate::batch::JournalWriteBatch<'_>,
-) -> Result<IssuedArtifactSequence, JournalError> {
-    // Read the last issued value (0 means none issued yet)
-    let last = read_last_issued(journal)?;
-
-    // Increment with overflow check
-    let next = last
-        .checked_add(1)
-        .ok_or(JournalError::SequenceOverflow)?;
-
-    // Stage the updated counter in the batch
-    let counter_key = artifact_acceptance_key(ARTIFACT_ACCEPTANCE_LAST_ISSUED)?;
-    let counter_value = encode_u64_be(next);
-    batch
-        .inner
-        .insert(&journal.artifact_acceptance, counter_key, counter_value);
-
-    // Return the issued sequence
-    Ok(IssuedArtifactSequence::new(next))
-}
-
-#[cfg(test)]
-pub(crate) fn read_last_issued_for_test(journal: &FjallJournal) -> Result<u64, JournalError> {
-    read_last_issued(journal)
+    artifact: AcceptedArtifact,
+    policy: RuntimePolicy,
+) -> Result<AcceptedArtifact, JournalError> {
+    issue_artifact(journal, artifact, policy)
 }

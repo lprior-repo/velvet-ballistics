@@ -5,11 +5,9 @@
 
 use std::fmt;
 
-use crate::{error::JournalError, records::CompiledIrRecord, types::EventSeq};
+use crate::{error::JournalError, types::EventSeq};
 
 use crate::journal::FjallJournal;
-use crate::journal::artifact_acceptance::issue_next_artifact_sequence;
-use crate::batch::JournalWriteBatch;
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 
 /// A soft verification failure that does not block admission but should be reported.
@@ -178,7 +176,7 @@ pub fn accepted_artifact_digest(
     ))
 }
 
-fn bind_artifact_digest(artifact: &mut AcceptedArtifact) -> Result<(), JournalError> {
+pub(crate) fn bind_artifact_digest(artifact: &mut AcceptedArtifact) -> Result<(), JournalError> {
     let digest = accepted_artifact_digest(artifact)?;
     artifact.digest = digest;
     artifact.verification.digest = digest;
@@ -359,42 +357,15 @@ pub fn submit_artifact_with_contracts(
     // Prepare validates first; pure prepare stays seq=0/unpersisted unchanged.
     let artifact = prepare_compiled_artifact(workflow, policy, action_contracts)?;
 
-    // Internal issuance holds the actual write_lock continuously across
-    // read counter -> stamp/rebind -> encode -> same-batch commit.
-    let write_guard = journal
-        .write_lock
-        .lock()
-        .map_err(|_| JournalError::WriteLockPoisoned)?;
-
-    let mut batch = journal.batch();
-
-    // Issue next sequence within the batch (stages counter update).
-    let seq = issue_next_artifact_sequence(journal, &mut batch)?;
-
-    // Stamp the artifact with the issued sequence.
-    let mut stamped = artifact;
-    stamped.accepted_at_seq = seq.to_event_seq();
-
-    // Rebind the digest after stamping (digest includes accepted_at_seq).
-    bind_artifact_digest(&mut stamped)?;
-
-    // Encode and stage the compiled IR.
-    let ir =
-        postcard::to_allocvec(&stamped).map_err(JournalError::PostcardEncodeFailed)?;
-    batch.put_compiled_ir(&CompiledIrRecord {
-        digest: stamped.digest,
-        ir,
-    })?;
-
-    // Commit with appropriate durability.
-    if policy == vb_core::RuntimePolicy::Strict {
-        batch.strict().commit()?;
-    } else {
-        batch.commit()?;
-    }
+    // Delegate issuance to private journal helper. The helper holds the
+    // write_lock across the entire RMW sequence: read counter, increment,
+    // stamp, rebind digest, encode, stage both writes in one batch, commit
+    // with policy-appropriate durability.
+    let stamped = crate::journal::artifact_acceptance::issue_next_artifact_sequence(
+        journal, artifact, policy,
+    )?;
 
     // Existing readback verification after commit.
-    drop(write_guard);
     verify_artifact_persisted(journal, stamped.digest)?;
     Ok(stamped)
 }
