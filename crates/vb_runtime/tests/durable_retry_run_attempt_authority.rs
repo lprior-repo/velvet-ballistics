@@ -261,7 +261,9 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
 
     // Complete the run with the NEW ticket to advance it past the pending action
     // so we can observe counter changes from old-ticket rejection attempts.
-    runtime.tick_all().ok();
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
     let counters_before = runtime.counters_snapshot();
 
     // Replay the OLD completion against the NEW attempt. Must be rejected
@@ -311,7 +313,29 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
     // when the command is processed. But because the pending action is still
     // awaiting completion with the NEW ticket, the old failure should not
     // be accepted. Verify by checking that the run is still pending after tick.
-    runtime.tick_all().ok();
+    //
+    // Unlike complete_action_with_output (which preflights the ticket and
+    // returns StaleAttempt synchronously), fail_action only enqueues. The
+    // shard rejects the stale failure while processing the command and
+    // surfaces `InvalidActionCompletion` from `require_pending_action_ownership`
+    // (the run-attempt mismatch does not match the per-action stale arm, so it
+    // falls through to the invalid-completion rejection).
+    let tick_result = runtime.tick_all();
+    match tick_result {
+        Ok(_) => {
+            return Err(
+                "DEFECT: stale failure tick was accepted (expected InvalidActionCompletion)"
+                    .to_string(),
+            );
+        }
+        Err(e) => {
+            if !format!("{e:?}").contains("InvalidActionCompletion") {
+                return Err(format!(
+                    "DEFECT: stale failure rejection must be InvalidActionCompletion: {e:?}"
+                ));
+            }
+        }
+    }
 
     // Run must still be pending (not completed, not failed).
     let counters_final = runtime.counters_snapshot();
@@ -324,7 +348,9 @@ fn stale_old_ticket_rejected_after_durable_retry() -> Result<(), String> {
     let result =
         runtime.complete_action_with_output(new_ticket, action_output(SlotValue::I64(42))?);
     assert!(result.is_ok(), "new ticket completion must succeed");
-    runtime.tick_all().ok();
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
     let counters_new = runtime.counters_snapshot();
     assert_eq!(
         counters_new.runs_completed, 1,

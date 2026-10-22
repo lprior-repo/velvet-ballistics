@@ -1,0 +1,8 @@
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair/crates/vb_core)
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair/crates/vb_validate)
+    Checking vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair/crates/vb_expr)
+    Checking vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair/crates/vb_yaml)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair/crates/vb_storage)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair/crates/vb_compile)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-deepseek-repair/crates/vb_runtime)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.81s

@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-t59ev-local5090-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "shard"
+  ],
+  "exit_code": 0,
+  "seconds": 0.214,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/tmp/gate-shard"
+}

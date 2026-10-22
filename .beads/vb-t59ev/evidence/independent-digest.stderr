@@ -1,0 +1,19 @@
+   Compiling foldhash v0.1.5
+   Compiling logos-codegen v0.15.1
+   Compiling hashbrown v0.15.5
+   Compiling hashlink v0.10.0
+   Compiling arraydeque v0.5.1
+   Compiling once_cell v1.21.4
+   Compiling saphyr-parser v0.0.6
+   Compiling tempfile v3.27.0
+   Compiling logos-derive v0.15.1
+   Compiling ordered-float v5.3.0
+   Compiling rusty-fork v0.3.1
+   Compiling logos v0.15.1
+   Compiling saphyr v0.0.6
+   Compiling proptest v1.11.0
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-t59ev-local5090-review/crates/vb_yaml)
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-t59ev-local5090-review/crates/vb_expr)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-t59ev-local5090-review/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.14s
+     Running unittests src/lib.rs (target/debug/deps/vb_compile-8066491fa4d2ba78)

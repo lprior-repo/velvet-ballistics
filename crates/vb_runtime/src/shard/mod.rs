@@ -12,6 +12,7 @@ pub mod snapshot;
 pub mod tests;
 pub mod timer_wheel;
 pub mod transitions;
+pub mod transitions_cleanup;
 pub mod types;
 
 pub use completion_watermark::{CompletionDrain, CompletionWatermark, CompletionWatermarkError};

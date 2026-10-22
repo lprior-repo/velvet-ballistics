@@ -10,6 +10,8 @@ pub(crate) use registered_completion::RegisteredActionContext;
 include!("lifecycle/chunk_003.rs");
 include!("lifecycle/chunk_001.rs");
 include!("lifecycle/chunk_002.rs");
+include!("lifecycle/chunk_005_prepare.rs");
+include!("lifecycle/chunk_005_drive_apply.rs");
 include!("lifecycle/chunk_005.rs");
 include!("lifecycle/chunk_004.rs");
 
