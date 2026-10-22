@@ -1,0 +1,224 @@
+{
+  "version": "source-map/v2",
+  "bead_id": "vb-hokkd",
+  "contract_version": "v2",
+  "generated_at": "2026-10-22",
+  "sources": [
+    {
+      "path": "crates/vb_runtime/src/runtime/registered_executor.rs",
+      "sha256": "42cebc4f6cbd4b2d5e1d70a0d730fb30064cbd13924630f95da235e6ef7acdfb",
+      "signatures": [
+        "pub fn execute_registered_action(&mut self, adapter: &mut FjallRegister, run: RunId, wire_step: u64, grant: &RegisterGrant) -> Result<RegisterReceipt, RegisteredExecutionError>",
+        "pub fn reconcile_registered_action(&mut self, adapter: &mut FjallRegister, run: RunId, wire_step: u64, grant: &RegisterGrant) -> Result<RegisterReceipt, RegisteredExecutionError>",
+        "fn registered_context(&self, run: RunId, wire_step: u64, grant: &RegisterGrant) -> Result<(ActionTicket, RegisteredActionContext), RegisteredExecutionError>",
+        "fn enqueue_registered_completion(&mut self, ticket: ActionTicket, output: ActionOutputReady, receipt: RegisterReceipt) -> Result<(), RegisteredExecutionError>"
+      ],
+      "role": "Current live effect dispatch boundary. Policy evaluation must be inserted before adapter.execute().",
+      "lines": {
+        "execute_registered_action": 26,
+        "reconcile_registered_action": 45,
+        "registered_context": 89,
+        "enqueue_registered_completion": 108
+      }
+    },
+    {
+      "path": "crates/vb_runtime/src/policy.rs",
+      "sha256": "2c11370fc1d07ae5edfd6c8e608126eaea6d6dc91f14d7e3b4c0c3bf8a159e50",
+      "signatures": [
+        "pub fn new() -> Self",
+        "pub fn live(&self) -> &CurrentLivePolicy",
+        "pub fn emergency_active(&self) -> bool",
+        "pub fn configure(&mut self, digest: PolicyDigest, rule: PolicyRule)",
+        "pub fn activate_emergency_deny(&mut self)",
+        "pub fn evaluate(&self, ticket: ActionTicket, pinned_admission: PinnedAdmissionPolicy, input_bytes: &[u8], taint: Taint) -> RuntimeResult<DecisionRecord>"
+      ],
+      "role": "Accepted pure policy evaluator. Not yet wired into Runtime.",
+      "lines": {
+        "new": 40,
+        "live": 48,
+        "emergency_active": 60,
+        "configure": 66,
+        "activate_emergency_deny": 73,
+        "evaluate": 91,
+        "compute_input_digest": 155
+      }
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime.rs",
+      "sha256": "999426cb8402d738fc4d801e208c04fd10d8543a6b4e0025d6ea4927a733d793",
+      "signatures": [
+        "pub fn new(shard_count: NonZeroUsize, config: ShardConfig, journal: SharedRuntimeJournal) -> Self",
+        "pub fn live_policy(&self) -> &LivePolicy",
+        "pub fn configure_live_policy(&mut self, digest: PolicyDigest, rule: PolicyRule)",
+        "pub fn activate_emergency_deny(&mut self)"
+      ],
+      "role": "Runtime struct owns live policy. Currently only has RuntimePolicy durability enum.",
+      "lines": {
+        "Runtime_struct": 189,
+        "new": 218
+      },
+      "fields": {
+        "policy": "vb_core::policy::RuntimePolicy (durability enum only, no LivePolicy instance)"
+      }
+    },
+    {
+      "path": "crates/vb_core/src/policy.rs",
+      "sha256": "35a38e9a64854755b76b72b12e7b30cd2d4184479dfc7dba19a91551c4633fdc",
+      "signatures": [
+        "pub struct PolicyDigest([u8; 32])",
+        "pub enum DecisionCode { Allowed, Denied, Suspended }",
+        "pub enum PolicyLayer { Live, Admission, Emergency }",
+        "pub enum PinnedAdmissionPolicy { Artifact(PolicyDigest), Unverified }",
+        "pub fn encode_taint_canonical(taint: Taint) -> Option<u8>",
+        "pub struct PolicyRule { action: ActionId, code: DecisionCode }",
+        "pub enum CurrentLivePolicy { Unconfigured, Configured { digest, rule } }",
+        "pub struct DecisionRecord { ticket, admission, current_live, input_digest, taint, outcome, layer, emergency_influence, compat_influence }"
+      ],
+      "role": "Core policy types. DecisionRecord is the durable decision unit with full 11-field identity.",
+      "lines": {
+        "PolicyDigest": 16,
+        "DecisionCode": 38,
+        "PolicyLayer": 49,
+        "PinnedAdmissionPolicy": 61,
+        "encode_taint_canonical": 72,
+        "PolicyRule": 84,
+        "CurrentLivePolicy": 91,
+        "CurrentPolicyIdentity": 112,
+        "InfluenceState": 149,
+        "DecisionRecord": 165,
+        "RuntimePolicy": 202
+      }
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_001.rs",
+      "sha256": "d2f915e6ad5217194c8a9704361628173ccc09c4a8234de4833662fe87b80aff",
+      "signatures": [
+        "pub enum RuntimeJournalEvent { RunSubmitted, RunAdmission, RetryCheckpoint, RunFinished, RunFailed, RunCancelled, RunKilled, ActionScheduled, ActionCompleted, ActionScheduledTicket, ActionCompletedEnvelope, ActionFailed, ActionAbandoned, WaitScheduled, WaitResolved, AskScheduled, AskAnswered, AskTimedOut, SlotWritten, StepStarted, StepSucceeded, Resumed }"
+      ],
+      "role": "Runtime journal event enum. Currently missing PolicyDecision variant. Will need: PolicyDecision { run: RunId, record: DecisionRecord }.",
+      "lines": {
+        "RuntimeJournalEvent_enum": 16
+      }
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_002.rs",
+      "sha256": "290303985f0b119d66efe4425eb3143994d4d72a6481e24d135e18c725d4a009",
+      "signatures": [
+        "fn storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<JournalEvent>"
+      ],
+      "role": "Runtime-to-storage event conversion. Must map PolicyDecision to PolicyDecisionEvent.",
+      "lines": {
+        "storage_event": 342
+      }
+    },
+    {
+      "path": "crates/vb_storage/src/events/event.rs",
+      "sha256": "65b9146f1f17ebe301057581ef528fbc9b2f88ecadc81fcff709cc6226f2e0fc",
+      "signatures": [
+        "pub enum JournalEvent { RunAccepted, RunAdmission, RetryCheckpoint, StepStarted, StepSucceeded, StepFailed, ActionScheduled, ActionCompletedEvent, ActionScheduledTicket, ActionCompletedEnvelope, ActionFailedEvent, ActionAbandoned, SlotWrittenEvent, WaitScheduledEvent, AskScheduledEvent, AskAnsweredEvent, WaitResolvedEvent, RetryScheduledEvent, RunCancelled, RunKilled, RunFinished, RunFailedEvent, RunResumed, RunRetried, RunAnswered, AskTimedOutEvent }"
+      ],
+      "role": "Storage-side journal event enum. Currently missing PolicyDecisionEvent variant. Will need: PolicyDecisionEvent { run: RunId, seq: EventSeq, decision: DecisionRecord }.",
+      "lines": {
+        "JournalEvent_enum": 37
+      }
+    },
+    {
+      "path": "crates/vb_storage/src/admission.rs",
+      "sha256": "206d6111c5f357f74a4900fa0e108ea83a21de0019a018cd8fa97ff007fcb52e",
+      "signatures": [
+        "pub struct AcceptedArtifact { digest, source_digest, policy_digest, ir, verification, accepted_at_seq, required_capabilities, action_contracts }"
+      ],
+      "role": "Accepted artifact carries policy_digest field (line 211). This is the per-run admission pin source. Not reconstructed at dispatch.",
+      "lines": {
+        "AcceptedArtifact_struct": 201,
+        "policy_digest_field": 211,
+        "compute_policy_digest": 230
+      }
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+      "sha256": "e2b041e1ce48911842ac8c7388ec76fed3cd9ff57aa1b74f892c87840dd0de5d",
+      "signatures": [
+        "pub(crate) fn registered_action_context(&self, ticket: ActionTicket) -> RuntimeResult<RegisteredActionContext>"
+      ],
+      "role": "Builds RegisteredActionContext from actual admitted artifact and slot value. Reads taint via state.frame.read_taint(input). Currently validates Taint::Clean (line 40-41). Returns context.value as i64 but the actual slot taint is in the output field.",
+      "lines": {
+        "RegisteredActionContext_struct": 7,
+        "registered_action_context": 17,
+        "taint_check": 40,
+        "read_slot": 51,
+        "output_encoding": 55
+      }
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/impl_parts/chunk_001.rs",
+      "sha256": "3a6a8a9deef10132a82ac925c3eadf7d5cb8b6d6b1ad8f18b786852d291ff0a3",
+      "signatures": [
+        "pub(crate) fn append_journal_event(&mut self, event: RuntimeJournalEvent) -> RuntimeResult<()>"
+      ],
+      "role": "Shard-owned journal sequence management. append_journal_event() calls journal_sequence_for() and advance_journal_sequence() to manage per-run sequences atomically.",
+      "lines": {
+        "append_journal_event": 195,
+        "journal_sequence_for": 271,
+        "advance_journal_sequence": 288,
+        "seed_journal_sequence": 308
+      }
+    },
+    {
+      "path": "crates/vb_storage/src/executor/register.rs",
+      "sha256": "78e07824071d7b7f47da988eb7bdbe6b6755afe795c5c9cf3afde2857b83cd8b",
+      "signatures": [
+        "pub fn execute(&mut self, grant: &RegisterGrant, ticket: ActionTicket, value: i64) -> Result<RegisterReceipt, ExecutorError>",
+        "pub fn reconcile(&mut self, grant: &RegisterGrant, ticket: ActionTicket, value: i64) -> Result<RegisterReceipt, ExecutorError>"
+      ],
+      "role": "FjallRegister adapter. execute() validates grant via grant.validate(ticket) (line 60) and commits effect with SyncAll. reconcile() reads existing receipt only (line 79).",
+      "lines": {
+        "execute": 53,
+        "grant_validate_in_execute": 60,
+        "persist_syncall": 67,
+        "reconcile": 76,
+        "grant_validate_in_reconcile": 79
+      }
+    }
+  ],
+  "accepted_dependencies": [
+    "LivePolicy evaluator in crates/vb_runtime/src/policy.rs",
+    "DecisionRecord in crates/vb_core/src/policy.rs",
+    "RuntimeJournalEvent enum in crates/vb_runtime/src/journal/chunk_001.rs",
+    "JournalEvent enum in crates/vb_storage/src/events/event.rs",
+    "execute_registered_action() in crates/vb_runtime/src/runtime/registered_executor.rs",
+    "reconcile_registered_action() in crates/vb_runtime/src/runtime/registered_executor.rs",
+    "RegisteredActionContext in crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+    "AcceptedArtifact.policy_digest field in crates/vb_storage/src/admission.rs",
+    "Shard journal sequence management in crates/vb_runtime/src/shard/impl_parts/chunk_001.rs",
+    "compute_input_digest() with BLAKE3 domain separation in crates/vb_runtime/src/policy.rs"
+  ],
+  "pending_dependencies": [
+    "RuntimeJournalEvent::PolicyDecision variant (NEW)",
+    "JournalEvent::PolicyDecisionEvent variant (NEW)",
+    "RuntimeControlRecord and control store for emergency deny durability (NEW)",
+    "Runtime.live_policy field and typed operations (NEW)",
+    "RegisteredExecutionError::PolicyDenied variant (NEW)"
+  ],
+  "not_in_scope": [
+    "RuntimeJournalEvent::PolicyConfigured variant — follow-up bead",
+    "Emergency deny deactivation API — follow-up bead",
+    "Full grant lifecycle expiry/revocation — vb-hk1j8",
+    "Per-tenant or global emergency deny scope — future bead",
+    "Non-I64 slot value inputs — pre-existing limitation"
+  ],
+  "key_corrections_from_v1": [
+    "Emergency deny must be durable and monotonic, NOT in-memory only that resets on restart",
+    "Per-run admission pin is retained from admitted artifact's policy_digest, NOT reconstructed from current context",
+    "Input bytes/taint must be read from actual slot, NOT hardcoded or re-serialized from unrelated value",
+    "Journal sequence allocation uses shard's existing machinery, NOT fabricated EventSeq::new(0)",
+    "No live_policy_mut() accessor — typed operations only (configure_live_policy, activate_emergency_deny)",
+    "Historical reconciliation preserves old decisions without creating new effects",
+    "Existing protections preserved: grant.validate, catalog.verify_artifact, SyncAll, idempotent receipts"
+  ],
+  "new_required_storage_seams": [
+    "RuntimeControlRecord struct in NEW file: crates/vb_storage/src/events/control.rs",
+    "persist_runtime_control() and load_runtime_control() methods on StorageRuntimeJournal",
+    "Control store is bounded: single RuntimeControlRecord with emergency flag and current policy config digest"
+  ]
+}
