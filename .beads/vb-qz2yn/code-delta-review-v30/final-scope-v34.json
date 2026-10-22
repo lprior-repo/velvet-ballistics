@@ -1,0 +1,8 @@
+{
+  "reviewed_source": "7e71ff4bbc7fe06b20fea3f07a770980e0ab0064",
+  "delta_base": "806917730d7013d973ed6d27d57b48a94db885ee",
+  "guard_helper_sha256": "52cd2b67020270ac748c25d4705616615c3af8a592d89134359786cd2040103d",
+  "core_sha256": "5baece2362bd9c7f9a8a6fba2c12577c9556c4e158a2f6ed0f97bd8aa69f6d87",
+  "extra_delta": "Remove needless & on fixed array artifact_key in batch.insert, per actualClippy; no changedkeybytes/ownershipeffects.",
+  "actual_source_gates": "V29failed Clippyneedlessborrow, V33retrycurrentlyactive. No passclaim."
+}
