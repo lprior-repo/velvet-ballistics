@@ -1,0 +1,351 @@
+#![forbid(unsafe_code)]
+
+use std::fs::File;
+use std::io::{BufReader, Write};
+use std::path::PathBuf;
+
+use vb_core::admission::AcceptedArtifact;
+use vb_core::policy::RuntimePolicy;
+use vb_core::value::ConstValue;
+use vb_core::workflow::{CompiledWorkflow, WorkflowParts};
+use vb_storage::admission::{
+    AcceptedArtifact, VerificationWarning, accepted_artifact_digest, submit_artifact,
+};
+use vb_storage::journal::FjallJournal;
+
+fn temp_journal() -> Result<FjallJournal, String> {
+    let dir = PathBuf::from(format!(
+        "/tmp/vb-storage-test-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).map_err(|e| format!("create temp dir: {e}"))?;
+    FjallJournal::open(dir).map_err(|e| format!("open journal: {e}"))
+}
+
+fn minimal_workflow() -> Result<CompiledWorkflow, String> {
+    let parts = WorkflowParts {
+        name: "test".to_string(),
+        steps: vec![],
+    };
+    CompiledWorkflow::compile(&parts).map_err(|e| format!("compile: {e}"))
+}
+
+fn submit_minimal(policy: RuntimePolicy) -> Result<AcceptedArtifact, String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    submit_artifact(&journal, &workflow, policy)
+        .map_err(|e| format!("submit failed: {e}"))
+}
+
+fn warning_at(gate: u8) -> VerificationWarning {
+    VerificationWarning::new(gate, "test warning".to_string())
+}
+
+#[test]
+fn accepted_artifact_validator_accepts_warning_gate_fifteen() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    let warnings = vec![warning_at(15)];
+    AcceptedArtifact::validate(&artifact, &warnings)?;
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_validator_rejects_warning_gate_sixteen() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    let warnings = vec![warning_at(16)];
+    let result = AcceptedArtifact::validate(&artifact, &warnings);
+    assert!(result.is_err());
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_validator_uses_fifteen_gate_v1_upper_bound() {
+    assert_eq!(VerificationWarning::MAX_GATE, 15);
+}
+
+#[test]
+fn accepted_artifact_validator_rejects_legacy_thirteen_gate_upper_bound() {
+    assert_ne!(VerificationWarning::MAX_GATE, 13);
+}
+
+#[test]
+fn accepted_artifact_encoder_records_gate_proof_when_policy_is_journaled() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert!(proof.is_journaled);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_encoder_records_gate_proof_when_policy_is_strict() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert!(proof.is_strict);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_encoder_rejects_relaxed_raw_submit_when_accepted_artifacts_are_required()
+-> Result<(), String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
+    assert!(result.is_err());
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_store_payload_is_raw_workflow_parts_not_nested_artifact() -> Result<(), String>
+{
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)?;
+    let stored = journal
+        .compiled_ir(artifact.digest)
+        .map_err(|e| format!("load failed: {e}"))?
+        .ok_or_else(|| String::from("artifact not found"))?;
+    // Stored payload is the compiled workflow bytes, not a nested artifact structure
+    let payload = postcard::from_bytes::<CompiledWorkflow>(&stored).map_err(|e| format!("decode stored payload: {e}"))?;
+    assert_eq!(payload.name, "test");
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_encoder_binds_ir_digest_to_ir_bytes_not_workflow_parts_digest()
+-> Result<(), String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)?;
+    // The digest is computed over the compiled IR bytes, not the original WorkflowParts
+    let stored = journal
+        .compiled_ir(artifact.digest)
+        .map_err(|e| format!("load failed: {e}"))?
+        .ok_or_else(|| String::from("artifact not found"))?;
+    assert!(!stored.is_empty());
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_validator_produces_typed_ledger_with_expected_flags() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    let ledger = artifact
+        .admission_ledger
+        .ok_or_else(|| String::from("expected admission ledger"))?;
+    assert!(ledger.is_strict);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_encoder_journaled_proof_has_durable_false() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert!(!proof.is_durable);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_encoder_strict_proof_has_durable_false() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert!(!proof.is_durable);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_encoder_journaled_gate_count_equals_zero() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert_eq!(proof.gate_count, 0);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_encoder_strict_gate_count_equals_zero() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert_eq!(proof.gate_count, 0);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_validator_accepts_empty_warnings_array() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    AcceptedArtifact::validate(&artifact, &[])?;
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_validator_accepts_empty_idempotency_lists() -> Result<(), String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)?;
+    assert!(artifact.idempotency_keys.is_empty());
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_encoder_records_empty_required_capabilities() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    assert!(artifact.required_capabilities.is_empty());
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_encoder_records_zero_accepted_at_seq() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    // Current implementation records accepted artifacts without journal sequence tracking.
+    assert_eq!(artifact.accepted_at_seq.get(), 0);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_roundtrip_through_storage_persists_and_loads() -> Result<(), String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+        .map_err(|e| format!("submit failed: {e}"))?;
+
+    let stored = journal
+        .compiled_ir(artifact.digest)
+        .map_err(|e| format!("load failed: {e}"))?
+        .ok_or_else(|| String::from("artifact not found after submit"))?;
+
+    let loaded: CompiledWorkflow = postcard::from_bytes(&stored)
+        .map_err(|e| format!("decode failed: {e}"))?;
+    assert_eq!(loaded.name, "test");
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_stored_bytes_are_postcard_encoded() -> Result<(), String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+        .map_err(|e| format!("submit failed: {e}"))?;
+
+    let stored = journal
+        .compiled_ir(artifact.digest)
+        .map_err(|e| format!("load failed: {e}"))?
+        .ok_or_else(|| String::from("artifact not found"))?;
+
+    // Verify postcard encoding by roundtripping
+    let decoded: CompiledWorkflow = postcard::from_bytes(&stored)
+        .map_err(|e| format!("postcard decode failed: {e}"))?;
+    assert_eq!(decoded.name, "test");
+    Ok(())
+}
+
+#[test]
+fn runtime_admission_requires_artifact_digest_not_raw_workflow() -> Result<(), String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)?;
+    assert!(journal.compiled_ir(artifact.digest).is_ok());
+    Ok(())
+}
+
+#[test]
+fn submit_artifact_rejects_missing_workflow_digest() -> Result<(), String> {
+    let journal = temp_journal()?;
+    let parts = WorkflowParts {
+        name: String::new(),
+        steps: vec![],
+    };
+    let result = CompiledWorkflow::compile(&parts);
+    assert!(result.is_err());
+    Ok(())
+}
+
+#[test]
+fn submit_artifact_validates_workflow_structure() -> Result<(), String> {
+    let journal = temp_journal()?;
+    let parts = WorkflowParts {
+        name: "valid".to_string(),
+        steps: vec![],
+    };
+    let workflow = CompiledWorkflow::compile(&parts)?;
+    let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
+    assert!(result.is_ok());
+    Ok(())
+}
+
+#[test]
+fn submit_artifact_returns_artifact_with_correct_digest() -> Result<(), String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)?;
+    assert!(!artifact.digest.is_empty());
+    Ok(())
+}
+
+#[test]
+fn submit_artifact_persists_artifact_to_journal() -> Result<(), String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)?;
+    let loaded = journal
+        .compiled_ir(artifact.digest)?
+        .ok_or_else(|| String::from("not found"))?;
+    assert!(!loaded.is_empty());
+    Ok(())
+}
+
+#[test]
+fn submit_artifact_journaled_does_not_persist_strictly() -> Result<(), String> {
+    let journal = temp_journal()?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert!(proof.is_journaled);
+    assert!(!proof.is_strict);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_proof_contains_artifact_digest() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert_eq!(proof.artifact_digest, artifact.digest);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_validator_has_expected_flags_under_strict() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Strict)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert!(proof.is_strict);
+    assert!(!proof.is_journaled);
+    Ok(())
+}
+
+#[test]
+fn accepted_artifact_validator_has_expected_flags_under_journaled() -> Result<(), String> {
+    let artifact = submit_minimal(RuntimePolicy::Journaled)?;
+    let proof = artifact
+        .admission_proof
+        .ok_or_else(|| String::from("expected admission proof"))?;
+    assert!(proof.is_journaled);
+    assert!(!proof.is_strict);
+    Ok(())
+}

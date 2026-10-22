@@ -242,10 +242,10 @@ fn accepted_artifact_encoder_records_empty_required_capabilities() -> Result<(),
 }
 
 #[test]
-fn accepted_artifact_encoder_records_zero_accepted_at_seq() -> Result<(), String> {
+fn accepted_artifact_submission_records_first_accepted_at_seq() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    // Current implementation records accepted artifacts without journal sequence tracking.
-    assert_eq!(artifact.accepted_at_seq.get(), 0);
+    // Fresh journal submissions start at the first issued artifact sequence.
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
     Ok(())
 }
 

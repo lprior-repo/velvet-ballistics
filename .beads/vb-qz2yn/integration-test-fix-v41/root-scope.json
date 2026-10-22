@@ -1,0 +1,9 @@
+{
+  "base": "7e71ff4bbc7fe06b20fea3f07a770980e0ab0064",
+  "file": "crates/vb_storage/tests/accepted_artifact_red_phase.rs",
+  "sha256": "b01cfec0647b9991cfb4db08bce6f278277b67db016e3dc182f973b795b96c39",
+  "actual_delta": "exact3lines: testname, stalecomment, exact fresh defaultsequence0->1; all other14167bytefilecontent preserved",
+  "rejected_v40": "Author copied truncated AST outline; owned OMP stopped before execution, exact original restored, bad candidate quarantined as text; no lost source and never compiled/merged",
+  "execution": "FullV36 failedactual staleassert; repairedsource notyetexecuted",
+  "scope": "No production change. Prior6fileCODE/10fileTEST reviews remain applicable; independent newdeltaTESTreview required."
+}
