@@ -369,7 +369,35 @@ fn given_completed_action_before_restart_when_replayed_then_no_redispatch_and_ev
     let replayed = vb_storage::replay_journal(&journal, run, &mut tracker, &expected, &[])
         .map_err(|error| error.to_string())?;
 
-    assert_eq!(replayed.len(), before.len(), "replayed all events");
+    assert!(tracker.is_resolved(ticket.action, ticket.step));
+    assert_eq!(replayed, before);
+
+    // Verify scheduled ABI equals completed ABI equals expected digest and is nonzero.
+    let scheduled_abi = before
+        .iter()
+        .find_map(|e| {
+            if let JournalEvent::ActionScheduledTicket { action_abi_digest, .. } = e {
+                Some(*action_abi_digest)
+            } else {
+                None
+            }
+        })
+        .expect("scheduled ticket event must exist");
+    let completed_abi = before
+        .iter()
+        .find_map(|e| {
+            if let JournalEvent::ActionCompletedEnvelope { action_abi_digest, .. } = e {
+                Some(*action_abi_digest)
+            } else {
+                None
+            }
+        })
+        .expect("completion envelope event must exist");
+    assert_eq!(scheduled_abi, abi_digest, "scheduled ABI must equal expected");
+    assert_eq!(completed_abi, abi_digest, "completed ABI must equal expected");
+    assert_eq!(scheduled_abi, completed_abi, "scheduled and completed ABI must match");
+    assert_ne!(scheduled_abi.as_bytes(), [0u8; 32], "scheduled ABI must be nonzero");
+    assert_ne!(completed_abi.as_bytes(), [0u8; 32], "completed ABI must be nonzero");
     assert_eq!(
         before.iter().filter(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })).count(),
         1,
@@ -425,7 +453,8 @@ fn given_evicted_runtime_key_when_durable_journal_replayed_then_recovery_resolve
     let replayed = vb_storage::replay_journal(&journal, run1, &mut tracker, &expected, &[])
         .map_err(|error| error.to_string())?;
 
-    assert_eq!(replayed.len(), before.len(), "replayed all events for run1");
+    assert!(tracker.is_resolved(ticket1.action, ticket1.step));
+    assert_eq!(replayed, before);
     assert!(
         replayed.iter().any(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })),
         "replayed journal contains scheduled ticket"
@@ -692,4 +721,83 @@ fn given_no_schedule_event_when_expected_abi_then_replay_journal_rejects_with_ab
         }
         other => Err(format!("expected ActionAbiMismatch, got {other:?}")),
     }
+}
+
+#[test]
+fn given_real_producer_wrong_expected_abi_when_replayed_then_rejected_with_abi_mismatch()
+-> Result<(), String> {
+    // Real producer schedule guard: if the expected ABI digest differs from the
+    // actual scheduled action's contract ABI, replay_journal must reject with
+    // ActionAbiMismatch, not accept a mismatched completion.
+    let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let run = RunId::new(2001);
+    let (ticket, abi_digest) =
+        vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
+    let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
+
+    let before = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+
+    // Expect a different ABI than what was actually scheduled.
+    let wrong_abi = digest(0xAA);
+    assert_ne!(wrong_abi, abi_digest, "wrong ABI must differ from actual");
+    let expected = vec![(ticket.action, wrong_abi)];
+
+    let mut tracker = vb_storage::ActionReplayTracker::default();
+    let result = vb_storage::replay_journal(&journal, run, &mut tracker, &expected, &[]);
+
+    match result {
+        Err(vb_storage::recovery::RecoveryError::ActionAbiMismatch { action_id }) => {
+            assert_eq!(action_id, ticket.action, "must report the expected action");
+        }
+        other => return Err(format!("expected ActionAbiMismatch, got {other:?}")),
+    }
+
+    // Journal must be unchanged.
+    let after = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(after, before, "journal unchanged by rejected replay");
+    Ok(())
+}
+
+#[test]
+fn given_real_producer_zero_expected_abi_when_replayed_then_rejected_with_abi_mismatch()
+-> Result<(), String> {
+    // Real producer schedule guard: a zero expected ABI digest must be rejected
+    // because real actions always have a nonzero contract ABI. This prevents
+    // callers from bypassing the schedule guard by passing a null digest.
+    let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let run = RunId::new(2002);
+    let (ticket, abi_digest) =
+        vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
+    let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
+
+    let before = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+
+    // Expect a zero ABI digest — should be rejected because real scheduled
+    // actions have nonzero contract ABIs.
+    let zero_abi = WorkflowDigest::from_bytes([0u8; 32]);
+    assert_ne!(zero_abi, abi_digest, "zero ABI must differ from actual");
+    let expected = vec![(ticket.action, zero_abi)];
+
+    let mut tracker = vb_storage::ActionReplayTracker::default();
+    let result = vb_storage::replay_journal(&journal, run, &mut tracker, &expected, &[]);
+
+    match result {
+        Err(vb_storage::recovery::RecoveryError::ActionAbiMismatch { action_id }) => {
+            assert_eq!(action_id, ticket.action, "must report the expected action");
+        }
+        other => return Err(format!("expected ActionAbiMismatch, got {other:?}")),
+    }
+
+    // Journal must be unchanged.
+    let after = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(after, before, "journal unchanged by rejected replay");
+    Ok(())
 }
