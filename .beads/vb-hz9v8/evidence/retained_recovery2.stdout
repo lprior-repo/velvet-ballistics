@@ -1,0 +1,12 @@
+
+running 1 test
+test recovered_run_continues_to_exact_finish_result_slot ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+
+running 1 test
+test retained_inputs_recovered_from_cold_storage_with_runtime_api ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+

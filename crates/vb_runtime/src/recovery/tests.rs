@@ -830,3 +830,80 @@ fn hydration_gap_full_run_state_not_yet_implemented() {
     //    let boundary = recovery_boundary_from_hydration(hydration);
     //    assert!(matches!(boundary.resume_status(), RecoveryResumeStatus::Resumable(_)));
 }
+
+// =============================================================================
+// vb-hz9v8 (finding C): run_is_currently_terminal attempt/suffix classification
+// =============================================================================
+
+fn rcp_event(run: RunId, seq: u64, attempt: u16) -> vb_storage::JournalEvent {
+    vb_storage::JournalEvent::RetryCheckpoint {
+        run,
+        seq: EventSeq::new(seq),
+        attempt,
+        step: StepIdx::ZERO,
+        payload_digest: [0u8; 32],
+        payload: Vec::new(),
+    }
+}
+
+fn failed_event(run: RunId, seq: u64, attempt: u16) -> vb_storage::JournalEvent {
+    vb_storage::JournalEvent::RunFailedEvent {
+        run,
+        seq: EventSeq::new(seq),
+        attempt,
+    }
+}
+
+fn started_event(run: RunId, seq: u64, attempt: u16) -> vb_storage::JournalEvent {
+    vb_storage::JournalEvent::StepStarted {
+        run,
+        seq: EventSeq::new(seq),
+        step: StepIdx::ZERO,
+        attempt,
+    }
+}
+
+fn finished_event(run: RunId, seq: u64, attempt: u16) -> vb_storage::JournalEvent {
+    vb_storage::JournalEvent::RunFinished {
+        run,
+        seq: EventSeq::new(seq),
+        result: SlotIdx::ZERO,
+        attempt,
+    }
+}
+
+#[test]
+fn terminal_gate_failed_run_with_checkpoint_is_terminal() {
+    let run = RunId::new(27_001);
+    // RunFailed(1) followed by RetryCheckpoint(2), no further events: the checkpoint's
+    // future attempt must not hide the current terminal RunFailed.
+    let events = vec![failed_event(run, 0, 1), rcp_event(run, 1, 2)];
+    assert!(super::run_is_currently_terminal(&events));
+}
+
+#[test]
+fn terminal_gate_explicitly_retried_active_run_is_not_terminal() {
+    let run = RunId::new(27_002);
+    // RunFailed(1), RetryCheckpoint(2), then a genuine attempt-2 execution: the stale
+    // attempt-1 terminal must not block resumption.
+    let events = vec![
+        failed_event(run, 0, 1),
+        rcp_event(run, 1, 2),
+        started_event(run, 2, 2),
+    ];
+    assert!(!super::run_is_currently_terminal(&events));
+}
+
+#[test]
+fn terminal_gate_finished_run_is_terminal() {
+    let run = RunId::new(27_003);
+    let events = vec![finished_event(run, 0, 1)];
+    assert!(super::run_is_currently_terminal(&events));
+}
+
+#[test]
+fn terminal_gate_suspended_run_without_terminal_is_not_terminal() {
+    let run = RunId::new(27_004);
+    let events = vec![started_event(run, 0, 1)];
+    assert!(!super::run_is_currently_terminal(&events));
+}

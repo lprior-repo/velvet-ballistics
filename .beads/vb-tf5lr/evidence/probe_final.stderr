@@ -1,0 +1,25 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/durable_retry_stale_probe.rs (target/debug/deps/durable_retry_stale_probe-bf610bf7b6354264)
+PROBE auto-recovery: recover_product is_resumable=true cannot_resume_reason=None
+PROBE auto-recovery: recover_and_resume=Ok(()) tick=Ok(true); events before=7 after=10; counters before=(0,0) after=(0,1)
+Error: "DEFECT: recover_product classifies a failed run (with a durable retry checkpoint) as Resumable"
+PROBE completion: old=ActionTicket { run: RunId(91002), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 192300896724771266487127083139216416276, capacity: 1 }
+PROBE completion: new=ActionTicket { run: RunId(91002), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 192300896724771266487127083139216416276, capacity: 1 }
+PROBE completion: complete_action_with_output(old) = Ok(())
+PROBE completion: tick_all = Ok(true)
+PROBE completion: counters before=(0, 0) after=(1, 0)
+Error: "DEFECT: old completion was ACCEPTED (no rejection). run completed=1 failed=0. old=ActionTicket { run: RunId(91002), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 192300896724771266487127083139216416276, capacity: 1 } new=ActionTicket { run: RunId(91002), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 192300896724771266487127083139216416276, capacity: 1 }"
+PROBE failure: old=ActionTicket { run: RunId(91003), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 131367629868582518664742240216808605926, capacity: 1 }
+PROBE failure: new=ActionTicket { run: RunId(91003), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 131367629868582518664742240216808605926, capacity: 1 }
+PROBE failure: fail_action(old) = Ok(())
+PROBE failure: tick_all = Ok(true)
+PROBE failure: counters before=(0, 0) after=(0, 1)
+Error: "DEFECT: old failure was ACCEPTED (no rejection). run completed=0 failed=1. old=ActionTicket { run: RunId(91003), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 131367629868582518664742240216808605926, capacity: 1 } new=ActionTicket { run: RunId(91003), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 131367629868582518664742240216808605926, capacity: 1 }"
+PROBE equality: old=ActionTicket { run: RunId(91001), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 253234163580960014309511926061624226626, capacity: 1 }
+PROBE equality: new=ActionTicket { run: RunId(91001), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 253234163580960014309511926061624226626, capacity: 1 }
+PROBE equality: old==new -> true
+Error: "DEFECT: old ticket == new ticket after durable retry (identical authority).\n  old=ActionTicket { run: RunId(91001), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 253234163580960014309511926061624226626, capacity: 1 }\n  new=ActionTicket { run: RunId(91001), step: StepIdx(0), seq: SeqNo(0), action: ActionId(0), attempt: 1, idempotency_key: 253234163580960014309511926061624226626, capacity: 1 }"
+PROBE tamper-run_attempt: recover_retry(run_attempt=99) = Ok(()) (durable original=2)
+PROBE tamper-run_attempt: tick=Ok(true); RunFinished attempts=[]
+Error: "OBSERVED: recover_retry accepted caller-supplied run_attempt=99 (durable chain original=2); RunFinished attempts=[]"
+error: test failed, to rerun pass `-p vb_runtime --test durable_retry_stale_probe`

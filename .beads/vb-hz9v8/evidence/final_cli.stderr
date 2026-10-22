@@ -1,0 +1,5 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-hz9v8-deepseek-boundaries/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.23s
+     Running tests/durable_retry_cli.rs (target/debug/deps/durable_retry_cli-8e6b942fd1bb4996)
