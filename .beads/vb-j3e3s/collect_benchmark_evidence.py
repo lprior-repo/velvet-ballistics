@@ -296,7 +296,7 @@ def parse_heaptrack_trace(text):
             if major != 3:
                 raise CollectorError(f"unknown heaptrack format major {major}")
         elif op == "a":
-            if len(tok) < 2:
+            if len(tok) < 3:
                 raise CollectorError(f"truncated allocation record at line {lineno}: {raw!r}")
             try:
                 sizes.append(int(tok[1], 16))
@@ -306,7 +306,7 @@ def parse_heaptrack_trace(text):
             if len(tok) < 2:
                 raise CollectorError(f"truncated event record at line {lineno}: {raw!r}")
             try:
-                idx = int(tok[1])
+                idx = int(tok[1], 16)
             except ValueError:
                 raise CollectorError(f"bad event index at line {lineno}: {raw!r}")
             if idx < 0 or idx >= len(sizes):
@@ -391,13 +391,17 @@ def run_plain(cmd, cwd=None):
 
 def system_metadata(root):
     kernel = run_plain(["uname", "-a"]).strip()
-    cpu = "unknown"
+    cpu = None
     for line in Path("/proc/cpuinfo").read_text().splitlines():
         if line.lower().startswith("model name"):
             cpu = line.split(":", 1)[1].strip()
             break
+    if cpu is None:
+        raise CollectorError("cpu model not found in /proc/cpuinfo")
     gov_path = Path("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor")
-    gov = gov_path.read_text().strip() if gov_path.is_file() else "unknown"
+    if not gov_path.is_file():
+        raise CollectorError("cpu scaling_governor not found at /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor")
+    gov = gov_path.read_text().strip()
     rustc = run_plain(["rustc", "--version"], cwd=str(root)).strip()
     toolchain_text = Path(root, "rust-toolchain.toml").read_text()
     nightly = parse_rust_toolchain(toolchain_text)
@@ -443,24 +447,27 @@ def check_commit(root, expected):
 
 
 # directories whose tracked/untracked changes are permitted (bead + evidence + docs)
-_ALLOWED_DIRS = ("evidence/", ".beads/", "docs/", "reports/", "design/", "target/")
+_ALLOWED_DIRS = ("evidence/", ".beads/", "docs/", "reports/", "design/", "target/", ".jj/", ".git/", ".moon/cache/")
 
 
 def check_clean(root):
-    out = _git(["status", "--porcelain", "--untracked-files=all"], root)
+    # Changed tracked files (NUL-delimited for robustness)
+    changed = _git(["diff", "HEAD", "--name-only", "-z"], root)
+    # Untracked + ignored files (NUL-delimited, no --exclude-standard)
+    untracked = _git(["ls-files", "--others", "-z"], root)
     dirty = []
-    for raw in out.splitlines():
-        line = raw.rstrip("\n")
-        if not line:
+    for path in changed.split("\0"):
+        path = path.strip()
+        if not path:
             continue
-        code = line[:2]
-        path = line[3:].strip()
-        if code == "??":
-            if not any(path == d or path.startswith(d) for d in _ALLOWED_DIRS):
-                dirty.append(f"untracked:{path}")
-        else:
-            if not any(path == d or path.startswith(d) for d in _ALLOWED_DIRS):
-                dirty.append(f"{code}:{path}")
+        if not any(path == d or path.startswith(d) for d in _ALLOWED_DIRS):
+            dirty.append(f"changed:{path}")
+    for path in untracked.split("\0"):
+        path = path.strip()
+        if not path:
+            continue
+        if not any(path == d or path.startswith(d) for d in _ALLOWED_DIRS):
+            dirty.append(f"untracked:{path}")
     if dirty:
         raise CollectorError("dirty benchmark/source/toolchain/Cargo/config/budget inputs: "
                              + ", ".join(dirty[:20]))
@@ -486,11 +493,16 @@ def find_binary(root, scratch):
             continue
         if obj.get("reason") != "compiler-artifact":
             continue
-        kind = obj.get("target", {}).get("kind", [])
+        target = obj.get("target", {})
+        if target.get("name") != "velvet_ballistics":
+            continue
+        kind = target.get("kind", [])
         if "bench" not in kind:
             continue
-        exe = obj.get("executable") or (obj.get("filenames") or [None])[0]
-        if exe and Path(exe).is_file():
+        exe = obj.get("executable")
+        if exe is None:
+            continue
+        if Path(exe).is_file():
             return os.path.relpath(exe, str(root))
     raise CollectorError("could not discover bench executable from cargo --no-run output")
 
@@ -515,22 +527,24 @@ def criterion_run(binary, metric, root, criterion_home, prefix):
         600, prefix, _env_cmd({"CRITERION_HOME": str(home), "LC_ALL": "C"}, cmd),
         cwd=str(root),
     )
-    # locate benchmark.json whose full_id matches the metric, only under the
-    # unique CRITERION_HOME (no target/criterion fallback)
+    # Criterion writes fresh results to {bench_name}/new/benchmark.json
+    # (never into base/ which holds historical results)
     match_dir = None
     full_id = None
-    for bj in home.rglob("benchmark.json"):
+    for bj in home.glob("*/new/benchmark.json"):
         try:
             data = json.loads(bj.read_text())
         except (ValueError, OSError):
             continue
         fid = data.get("full_id", "")
         if metric_matches(fid, metric):
+            if match_dir is not None:
+                raise CollectorError(f"multiple criterion benchmark.json matches for {metric}")
             match_dir = bj.parent
             full_id = fid
-            break
     if match_dir is None:
-        raise CollectorError(f"no criterion benchmark.json for {metric} under {home}")
+        raise CollectorError(f"no criterion benchmark.json for {metric} under {home}/new")
+
     check_no_forbidden_markers(full_id, f"criterion full_id for {metric}")
 
     estimates = json.loads((match_dir / "estimates.json").read_text())
@@ -561,7 +575,7 @@ def perf_run(binary, metric, root, criterion_home, perf_csv, prefix):
     )
     content = Path(perf_csv).read_text()
     instruction_count = parse_perf_csv(content)
-    return {"instruction_count": instruction_count, "stdout": stdout, "stderr": stderr}
+    return {"instruction_count": instruction_count, "csv_content": content, "stdout": stdout, "stderr": stderr}
 
 
 def heaptrack_run(binary, metric, root, criterion_home, ht_base, prefix):
@@ -586,7 +600,7 @@ def heaptrack_run(binary, metric, root, criterion_home, ht_base, prefix):
     zstd_cmd = ["zstd", "-dc", str(zst)]
     zstd_out, zstd_err, _meta = run_gated(120, zstd_prefix, zstd_cmd, cwd=str(root))
 
-    trace_count, _total_bytes, peak_bytes = parse_heaptrack_trace(
+    trace_count, total_bytes, peak_bytes = parse_heaptrack_trace(
         zstd_out.decode("utf-8", "replace")
     )
     text_count, peak_str = parse_heaptrack_text(print_out.decode("utf-8", "replace"))
@@ -598,7 +612,7 @@ def heaptrack_run(binary, metric, root, criterion_home, ht_base, prefix):
 
     return {
         "allocation_count": trace_count,
-        "bytes_allocated": peak_bytes,
+        "bytes_allocated": total_bytes,
         "record_stdout": rec_out,
         "record_stderr": rec_err,
         "print_stdout": print_out,
@@ -813,6 +827,7 @@ def main(argv=None):
             b"=== criterion stderr ===\n", crit["stderr"],
             b"=== perf stdout ===\n", perf["stdout"],
             b"=== perf stderr ===\n", perf["stderr"],
+            b"=== perf CSV ===\n", perf["csv_content"].encode("utf-8"),
             b"=== heaptrack stdout ===\n", ht["record_stdout"],
             b"=== heaptrack stderr ===\n", ht["record_stderr"],
             b"=== heaptrack_print stdout ===\n", ht["print_stdout"],

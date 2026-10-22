@@ -1,0 +1,5 @@
+heaptrack output will be written to "/tmp/vb-smoke/true-ht.zst"
+starting application, this might take some time...
+Heaptrack finished! Now run the following to investigate the data:
+
+  heaptrack --analyze "/tmp/vb-smoke/true-ht.zst"
