@@ -17,10 +17,11 @@ fn assert_readback_verified(
         .map_err(|e| format!("compiled_ir read: {e}"))?
         .ok_or_else(|| "compiled_ir read returned None")?;
 
+    let computed =
+        accepted_artifact_digest(artifact).map_err(|e| format!("accepted_artifact_digest: {e}"))?;
     assert_eq!(
-        digest_artifact(&artifact),
-        artifact.digest,
-        "readback digest must match accepted artifact digest"
+        computed, artifact.digest,
+        "readback digest must match artifact digest"
     );
 
     assert_eq!(
@@ -39,6 +40,35 @@ fn assert_readback_verified(
     Ok(())
 }
 
+fn assert_first_seq(accepted: &AcceptedArtifact) {
+    assert_eq!(
+        accepted.accepted_at_seq.get(),
+        1,
+        "first submission should be seq 1"
+    );
+}
+
+fn assert_second_seq(accepted: &AcceptedArtifact) {
+    assert_eq!(
+        accepted.accepted_at_seq.get(),
+        2,
+        "second submission should be seq 2"
+    );
+}
+
+fn assert_nonzero_digest(accepted: &AcceptedArtifact) {
+    assert_ne!(
+        accepted.digest.as_bytes(),
+        [0u8; 32],
+        "digest must be non-zero"
+    );
+    assert_ne!(
+        accepted.source_digest.as_bytes(),
+        [0u8; 32],
+        "source_digest must be non-zero"
+    );
+}
+
 #[test]
 fn first_submission_is_seq_1_for_all_policies() -> Result<(), String> {
     let policies = [
@@ -53,23 +83,8 @@ fn first_submission_is_seq_1_for_all_policies() -> Result<(), String> {
         let accepted = submit_artifact(&tj.journal, &workflow, policy)
             .map_err(|e| format!("submit_artifact policy={policy:?}: {e}"))?;
 
-        assert_eq!(
-            accepted.accepted_at_seq.get(),
-            1,
-            "first submission should be seq 1"
-        );
-
-        assert_ne!(
-            accepted.digest.as_bytes(),
-            [0u8; 32],
-            "digest must be non-zero"
-        );
-        assert_ne!(
-            accepted.source_digest.as_bytes(),
-            [0u8; 32],
-            "source_digest must be non-zero"
-        );
-
+        assert_first_seq(&accepted);
+        assert_nonzero_digest(&accepted);
         assert_readback_verified(&tj.journal, &accepted, policy)?;
     }
 
@@ -80,24 +95,15 @@ fn first_submission_is_seq_1_for_all_policies() -> Result<(), String> {
 fn repeated_submissions_get_distinct_digests_and_both_readback() -> Result<(), String> {
     let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
     let journal = &tj.journal;
-
     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
 
     let first = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed)
         .map_err(|e| format!("first submit: {e}"))?;
-    assert_eq!(
-        first.accepted_at_seq.get(),
-        1,
-        "first submission should be seq 1"
-    );
+    assert_first_seq(&first);
 
     let second = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed)
         .map_err(|e| format!("second submit: {e}"))?;
-    assert_eq!(
-        second.accepted_at_seq.get(),
-        2,
-        "second submission should be seq 2"
-    );
+    assert_second_seq(&second);
 
     assert_ne!(
         first.digest, second.digest,
@@ -114,7 +120,6 @@ fn repeated_submissions_get_distinct_digests_and_both_readback() -> Result<(), S
 fn pure_prepare_stays_seq_0_submit_after_gets_seq_1() -> Result<(), String> {
     let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
     let journal = &tj.journal;
-
     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
 
     let prepared = prepare_compiled_artifact(&workflow, RuntimePolicy::Relaxed, &[])
@@ -136,11 +141,7 @@ fn pure_prepare_stays_seq_0_submit_after_gets_seq_1() -> Result<(), String> {
 
     let accepted = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed)
         .map_err(|e| format!("submit_artifact: {e}"))?;
-    assert_eq!(
-        accepted.accepted_at_seq.get(),
-        1,
-        "first submit should be seq 1"
-    );
+    assert_first_seq(&accepted);
 
     Ok(())
 }
@@ -149,21 +150,14 @@ fn pure_prepare_stays_seq_0_submit_after_gets_seq_1() -> Result<(), String> {
 fn counter_persists_across_reopen() -> Result<(), String> {
     let dir = tempfile::tempdir().map_err(|e| format!("tempdir: {e}"))?;
     let journal_path = dir.path().to_path_buf();
+    let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
 
     {
         let journal =
             FjallJournal::open(&journal_path, None).map_err(|e| format!("journal open: {e}"))?;
-
-        let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
-
         let first = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
             .map_err(|e| format!("first submit: {e}"))?;
-        assert_eq!(
-            first.accepted_at_seq.get(),
-            1,
-            "first submission should be seq 1"
-        );
-
+        assert_first_seq(&first);
         assert_readback_verified(&journal, &first, RuntimePolicy::Strict)?;
     }
 
@@ -171,15 +165,21 @@ fn counter_persists_across_reopen() -> Result<(), String> {
         let journal =
             FjallJournal::open(&journal_path, None).map_err(|e| format!("journal reopen: {e}"))?;
 
-        let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+        let counter_bytes = journal
+            .artifact_acceptance
+            .get(b"last_issued")
+            .map_err(|e| format!("counter read: {e}"))?
+            .ok_or_else(|| "counter should be present after first submit")?;
+        assert_eq!(
+            counter_bytes,
+            [0, 0, 0, 0, 0, 0, 0, 1],
+            "counter should be exactly 1 (u64 BE)"
+        );
 
         let second = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
             .map_err(|e| format!("second submit: {e}"))?;
-        assert_eq!(
-            second.accepted_at_seq.get(),
-            2,
-            "second submission should be seq 2"
-        );
+        assert_second_seq(&second);
+        assert_readback_verified(&journal, &second, RuntimePolicy::Strict)?;
     }
 
     Ok(())
@@ -196,7 +196,6 @@ fn corrupted_counter_length_7_causes_malformed_row() -> Result<(), String> {
         .map_err(|e| format!("insert 7-byte counter: {e}"))?;
 
     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
-
     let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
 
     let matches_malformed = matches!(
@@ -209,7 +208,7 @@ fn corrupted_counter_length_7_causes_malformed_row() -> Result<(), String> {
     );
     assert!(
         matches_malformed,
-        "expected MalformedKeyspaceRow with prefix=0 expected=8 actual=7, got {result:?}"
+        "expected MalformedKeyspaceRow actual=7, got {result:?}"
     );
 
     let counter = journal
@@ -222,10 +221,9 @@ fn corrupted_counter_length_7_causes_malformed_row() -> Result<(), String> {
         &[0, 0, 0, 0, 0, 0, 0],
         "counter should be unchanged"
     );
-
     assert!(
         journal.compiled_ir.iter().next().is_none(),
-        "no compiled_ir should have been written"
+        "no compiled_ir written"
     );
 
     Ok(())
@@ -242,7 +240,6 @@ fn corrupted_counter_length_9_causes_malformed_row() -> Result<(), String> {
         .map_err(|e| format!("insert 9-byte counter: {e}"))?;
 
     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
-
     let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
 
     let matches_malformed = matches!(
@@ -255,7 +252,7 @@ fn corrupted_counter_length_9_causes_malformed_row() -> Result<(), String> {
     );
     assert!(
         matches_malformed,
-        "expected MalformedKeyspaceRow with prefix=0 expected=8 actual=9, got {result:?}"
+        "expected MalformedKeyspaceRow actual=9, got {result:?}"
     );
 
     let counter = journal
@@ -284,12 +281,10 @@ fn counter_at_u64_max_causes_sequence_overflow() -> Result<(), String> {
         .map_err(|e| format!("insert u64::MAX counter: {e}"))?;
 
     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
-
     let result = submit_artifact(journal, &workflow, RuntimePolicy::Relaxed);
 
-    let matches_overflow = matches!(result, Err(JournalError::SequenceOverflow));
     assert!(
-        matches_overflow,
+        matches!(result, Err(JournalError::SequenceOverflow)),
         "expected SequenceOverflow, got {result:?}"
     );
 
@@ -299,10 +294,9 @@ fn counter_at_u64_max_causes_sequence_overflow() -> Result<(), String> {
         .map_err(|e| format!("read counter: {e}"))?
         .ok_or_else(|| "counter should still exist")?;
     assert_eq!(counter, &max_bytes, "counter should be unchanged");
-
     assert!(
         journal.compiled_ir.iter().next().is_none(),
-        "no compiled_ir should have been written"
+        "no compiled_ir written"
     );
 
     Ok(())
