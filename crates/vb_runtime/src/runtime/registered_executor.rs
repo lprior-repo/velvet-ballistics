@@ -16,7 +16,7 @@ pub enum RegisteredExecutionError {
     Executor(#[from] ExecutorError),
     /// Live policy rejected execution before any adapter effect.
     #[error("policy denied execution: {0:?}")]
-    PolicyDenied(DecisionRecord),
+    PolicyDenied(Box<DecisionRecord>),
 }
 
 impl Runtime {
@@ -34,9 +34,9 @@ impl Runtime {
             return Err(ExecutorError::Unauthorized.into());
         }
         let eval_ctx = AdmissionEvalContext {
-            ticket: ticket.clone(),
+            ticket,
             admission_pin: context.admission_pin,
-            encoded_bytes: context.encoded_bytes.clone(),
+            encoded_bytes: context.encoded_bytes,
             input_taint: context.input_taint,
         };
         self.evaluate_admission_and_persist(eval_ctx)?;

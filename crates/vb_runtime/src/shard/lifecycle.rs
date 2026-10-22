@@ -5,6 +5,8 @@
 mod execution_binding;
 #[path = "lifecycle/registered_completion.rs"]
 mod registered_completion;
+#[path = "lifecycle/registered_context_helpers.rs"]
+mod registered_context_helpers;
 pub(crate) use registered_completion::RegisteredActionContext;
 
 include!("lifecycle/chunk_003.rs");
