@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-gl41l-local3090-retry-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics",
+    "--test",
+    "durable_retry_cli"
+  ],
+  "exit_code": 0,
+  "seconds": 10.367,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  }
+}

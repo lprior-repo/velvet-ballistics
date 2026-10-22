@@ -24,9 +24,6 @@ fuzz/target/
 
 # Beads / Dolt local state
 .dolt/
-.beads/dolt/
-.beads/backup/
-.beads/embeddeddolt/
 .beads-credential-key
 
 # Runtime lock/log/socket state
@@ -64,7 +61,6 @@ mutants.out.*/
 kani-list.json
 /*.rlib
 rustc-ice-*.txt
-.beads/moon-ci-output.md
 
 # TLA+/TLC generated model-checker state dumps
 specs/tla/states/
@@ -123,5 +119,3 @@ mutants.toml
 isolates/
 
 # Beads workspace state
-.beads/
-.beads/*/agent-invocation-ledger.jsonl
