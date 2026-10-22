@@ -1,0 +1,389 @@
+   Compiling num-traits v0.2.19
+   Compiling getrandom v0.3.4
+   Compiling zerocopy v0.8.48
+    Checking rand_core v0.9.5
+    Checking chrono v0.4.44
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-artifact-counter-impl-v2/crates/vb_core)
+    Checking ppv-lite86 v0.2.21
+    Checking wait-timeout v0.2.1
+    Checking fnv v1.0.7
+    Checking bit-vec v0.8.0
+    Checking quick-error v1.2.3
+    Checking rusty-fork v0.3.1
+    Checking bit-set v0.8.0
+    Checking rand_chacha v0.9.0
+    Checking rand_xorshift v0.4.0
+    Checking rand v0.9.4
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-artifact-counter-impl-v2/crates/vb_validate)
+    Checking unarray v0.1.4
+    Checking regex-syntax v0.8.10
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-artifact-counter-impl-v2/crates/vb_storage)
+    Checking proptest v1.11.0
+error[E0425]: cannot find value `policy` in this scope
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:25:66
+   |
+25 |     let verified = verify_accepted_artifact_for_policy(&record, &policy)?;
+   |                                                                  ^^^^^^ not found in this scope
+
+error[E0609]: no field `artifact_digest` on type `&admission::AcceptedArtifact`
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:21:31
+   |
+21 |         .compiled_ir(artifact.artifact_digest)
+   |                               ^^^^^^^^^^^^^^^ unknown field
+   |
+   = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0308]: mismatched types
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:25:56
+   |
+25 |     let verified = verify_accepted_artifact_for_policy(&record, &policy)?;
+   |                    ----------------------------------- ^^^^^^^ expected `&AcceptedArtifact`, found `&CompiledIrRecord`
+   |                    |
+   |                    arguments to this function are incorrect
+   |
+   = note: expected reference `&admission::AcceptedArtifact`
+              found reference `&records::CompiledIrRecord`
+note: function defined here
+  --> crates/vb_storage/src/admission/verification.rs:88:8
+   |
+88 | pub fn verify_accepted_artifact_for_policy(
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+89 |     artifact: &AcceptedArtifact,
+   |     ---------------------------
+
+error[E0277]: `?` couldn't convert the error to `std::string::String`
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:25:73
+   |
+19 | ) -> Result<(), String> {
+   |      ------------------ expected `std::string::String` because of this
+...
+25 |     let verified = verify_accepted_artifact_for_policy(&record, &policy)?;
+   |                    -----------------------------------------------------^ the trait `From<error::JournalError>` is not implemented for `std::string::String`
+   |                    |
+   |                    this can't be annotated with `?` because it has type `Result<_, error::JournalError>`
+   |
+note: `error::JournalError` needs to implement `Into<std::string::String>`
+  --> crates/vb_storage/src/error/mod.rs:21:1
+   |
+21 | pub enum JournalError {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: `std::string::String` implements trait `From<T>`:
+             From<&mut str>
+             From<&std::string::String>
+             From<&str>
+             From<Box<str>>
+             From<Cow<'_, str>>
+             From<char>
+
+error[E0600]: cannot apply unary operator `!` to type `vb_core::CompiledWorkflow`
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:26:5
+   |
+26 |     assert!(verified, "artifact verification should succeed");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot apply unary operator `!`
+   |
+note: `vb_core::CompiledWorkflow` does not implement `std::ops::Not`
+  --> crates/vb_core/src/workflow/mod.rs:19:1
+   |
+19 | pub struct CompiledWorkflow {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `vb_core::CompiledWorkflow` is defined in another crate
+
+error[E0609]: no field `sequence` on type `admission::AcceptedArtifact`
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:50:29
+   |
+50 |         assert_eq!(accepted.sequence, 1, "first submission should be seq 1");
+   |                             ^^^^^^^^ unknown field
+   |
+   = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0609]: no field `artifact_digest` on type `admission::AcceptedArtifact`
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:54:22
+   |
+54 |             accepted.artifact_digest.as_bytes(),
+   |                      ^^^^^^^^^^^^^^^ unknown field
+   |
+   = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0609]: no field `sequence` on type `admission::AcceptedArtifact`
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:82:22
+   |
+82 |     assert_eq!(first.sequence, 1, "first submission should be seq 1");
+   |                      ^^^^^^^^ unknown field
+   |
+   = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0609]: no field `sequence` on type `admission::AcceptedArtifact`
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:86:23
+   |
+86 |     assert_eq!(second.sequence, 2, "second submission should be seq 2");
+   |                       ^^^^^^^^ unknown field
+   |
+   = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0609]: no field `artifact_digest` on type `admission::AcceptedArtifact`
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:90:15
+   |
+90 |         first.artifact_digest, second.artifact_digest,
+   |               ^^^^^^^^^^^^^^^ unknown field
+   |
+   = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0609]: no field `artifact_digest` on type `admission::AcceptedArtifact`
+  --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:90:39
+   |
+90 |         first.artifact_digest, second.artifact_digest,
+   |                                       ^^^^^^^^^^^^^^^ unknown field
+   |
+   = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0061]: this function takes 3 arguments but 1 argument was supplied
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:110:20
+    |
+110 |     let prepared = prepare_compiled_artifact(&workflow)
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^----------- two arguments of type `vb_core::RuntimePolicy` and `&[vb_core::ActionContract]` are missing
+    |
+note: function defined here
+   --> crates/vb_storage/src/admission/verification.rs:18:8
+    |
+ 18 | pub fn prepare_compiled_artifact(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+ 19 |     workflow: &CompiledWorkflow,
+ 20 |     policy: RuntimePolicy,
+    |     ---------------------
+ 21 |     contracts: &[ActionContract],
+    |     ----------------------------
+help: provide the arguments
+    |
+110 |     let prepared = prepare_compiled_artifact(&workflow, /* vb_core::RuntimePolicy */, /* &[vb_core::ActionContract] */)
+    |                                                       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0609]: no field `sequence` on type `admission::AcceptedArtifact`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:112:25
+    |
+112 |     assert_eq!(prepared.sequence, 0, "pure prepare should be seq 0");
+    |                         ^^^^^^^^ unknown field
+    |
+    = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0609]: no field `sequence` on type `admission::AcceptedArtifact`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:127:25
+    |
+127 |     assert_eq!(accepted.sequence, 1, "first submit should be seq 1");
+    |                         ^^^^^^^^ unknown field
+    |
+    = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0609]: no field `sequence` on type `admission::AcceptedArtifact`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:144:22
+    |
+144 |     assert_eq!(first.sequence, 1, "first submission should be seq 1");
+    |                      ^^^^^^^^ unknown field
+    |
+    = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0277]: `?` couldn't convert the error to `std::string::String`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:153:45
+    |
+134 | fn counter_persists_across_reopen() -> Result<(), String> {
+    |                                        ------------------ expected `std::string::String` because of this
+...
+153 |     let tj2 = temp_journal_at(&journal_path)?;
+    |               ------------------------------^ the trait `From<error::JournalError>` is not implemented for `std::string::String`
+    |               |
+    |               this can't be annotated with `?` because it has type `Result<_, error::JournalError>`
+    |
+note: `error::JournalError` needs to implement `Into<std::string::String>`
+   --> crates/vb_storage/src/error/mod.rs:21:1
+    |
+ 21 | pub enum JournalError {
+    | ^^^^^^^^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = help: `std::string::String` implements trait `From<T>`:
+              From<&mut str>
+              From<&std::string::String>
+              From<&str>
+              From<Box<str>>
+              From<Cow<'_, str>>
+              From<char>
+
+error[E0609]: no field `sequence` on type `admission::AcceptedArtifact`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:162:23
+    |
+162 |     assert_eq!(second.sequence, 2, "second submission should be seq 2");
+    |                       ^^^^^^^^ unknown field
+    |
+    = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0026]: variant `error::JournalError::MalformedKeyspaceRow` does not have fields named `keyspace`, `key`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:185:13
+    |
+185 |             keyspace,
+    |             ^^^^^^^^
+186 |             key,
+    |             ^^^ variant `error::JournalError::MalformedKeyspaceRow` does not have these fields
+
+error[E0027]: pattern does not mention field `prefix`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:184:13
+    |
+184 |           Err(JournalError::MalformedKeyspaceRow {
+    |  _____________^
+185 | |             keyspace,
+186 | |             key,
+187 | |             actual_len,
+188 | |             expected_len,
+189 | |         }) => {
+    | |_________^ missing field `prefix`
+    |
+help: include the missing field in the pattern
+    |
+188 -             expected_len,
+189 -         }) => {
+188 +             expected_len, prefix }) => {
+    |
+help: if you don't care about this missing field, you can explicitly ignore it
+    |
+188 -             expected_len,
+189 -         }) => {
+188 +             expected_len, prefix: _ }) => {
+    |
+help: or always ignore missing fields here
+    |
+188 -             expected_len,
+189 -         }) => {
+188 +             expected_len, .. }) => {
+    |
+
+error[E0308]: mismatched types
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:199:24
+    |
+199 |             return Err("expected MalformedKeyspaceRow, got success");
+    |                    --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                    |
+    |                    arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:199:20
+    |
+199 |             return Err("expected MalformedKeyspaceRow, got success");
+    |                    ^^^^--------------------------------------------^
+    |                        |
+    |                        this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+199 |             return Err("expected MalformedKeyspaceRow, got success".to_string());
+    |                                                                    ++++++++++++
+
+error[E0599]: no method named `compiled_ir_iter` found for reference `&journal::core::FjallJournal` in the current scope
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:213:10
+    |
+212 |       let compiled = journal
+    |  ____________________-
+213 | |         .compiled_ir_iter()
+    | |_________-^^^^^^^^^^^^^^^^
+    |
+help: there is a method `compiled_ir` with a similar name, but with different arguments
+   --> crates/vb_storage/src/journal/source.rs:70:5
+    |
+ 70 | /     pub fn compiled_ir(
+ 71 | |         &self,
+ 72 | |         digest: vb_core::WorkflowDigest,
+ 73 | |     ) -> Result<Option<CompiledIrRecord>, JournalError> {
+    | |_______________________________________________________^
+
+error[E0026]: variant `error::JournalError::MalformedKeyspaceRow` does not have fields named `keyspace`, `key`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:239:13
+    |
+239 |             keyspace,
+    |             ^^^^^^^^
+240 |             key,
+    |             ^^^ variant `error::JournalError::MalformedKeyspaceRow` does not have these fields
+
+error[E0027]: pattern does not mention field `prefix`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:238:13
+    |
+238 |           Err(JournalError::MalformedKeyspaceRow {
+    |  _____________^
+239 | |             keyspace,
+240 | |             key,
+241 | |             actual_len,
+242 | |             expected_len,
+243 | |         }) => {
+    | |_________^ missing field `prefix`
+    |
+help: include the missing field in the pattern
+    |
+242 -             expected_len,
+243 -         }) => {
+242 +             expected_len, prefix }) => {
+    |
+help: if you don't care about this missing field, you can explicitly ignore it
+    |
+242 -             expected_len,
+243 -         }) => {
+242 +             expected_len, prefix: _ }) => {
+    |
+help: or always ignore missing fields here
+    |
+242 -             expected_len,
+243 -         }) => {
+242 +             expected_len, .. }) => {
+    |
+
+error[E0308]: mismatched types
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:253:24
+    |
+253 |             return Err("expected MalformedKeyspaceRow, got success");
+    |                    --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&str`
+    |                    |
+    |                    arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:253:20
+    |
+253 |             return Err("expected MalformedKeyspaceRow, got success");
+    |                    ^^^^--------------------------------------------^
+    |                        |
+    |                        this argument influences the type of `Err`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:566:5
+    |
+566 |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+    |     ^^^
+help: try using a conversion method
+    |
+253 |             return Err("expected MalformedKeyspaceRow, got success".to_string());
+    |                                                                    ++++++++++++
+
+error[E0609]: no field `sequence` on type `admission::AcceptedArtifact`
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:293:26
+    |
+293 |                 artifact.sequence
+    |                          ^^^^^^^^ unknown field
+    |
+    = note: available fields are: `digest`, `source_digest`, `policy_digest`, `ir`, `verification` ... and 3 others
+
+error[E0599]: no method named `compiled_ir_iter` found for reference `&journal::core::FjallJournal` in the current scope
+   --> crates/vb_storage/src/admission/acceptance_sequence_tests.rs:308:10
+    |
+307 |       let compiled = journal
+    |  ____________________-
+308 | |         .compiled_ir_iter()
+    | |_________-^^^^^^^^^^^^^^^^
+    |
+help: there is a method `compiled_ir` with a similar name, but with different arguments
+   --> crates/vb_storage/src/journal/source.rs:70:5
+    |
+ 70 | /     pub fn compiled_ir(
+ 71 | |         &self,
+ 72 | |         digest: vb_core::WorkflowDigest,
+ 73 | |     ) -> Result<Option<CompiledIrRecord>, JournalError> {
+    | |_______________________________________________________^
+
+Some errors have detailed explanations: E0026, E0027, E0061, E0277, E0308, E0425, E0599, E0600, E0609.
+For more information about an error, try `rustc --explain E0026`.
+error: could not compile `vb_storage` (lib test) due to 26 previous errors
