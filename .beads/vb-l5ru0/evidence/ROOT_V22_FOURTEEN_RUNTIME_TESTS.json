@@ -1,0 +1,32 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-policy-dispatch-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_7x0ol_probe_registered_executor",
+    "--test",
+    "vb_policy_dispatch_fail_closed",
+    "--test",
+    "vb_c4hzw_emergency_reopen",
+    "--test",
+    "vb_c4hzw_corrupt_marker"
+  ],
+  "exit_code": 0,
+  "seconds": 0.655,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-l5ru0/evidence/ROOT_V22_FOURTEEN_RUNTIME_TESTS"
+}

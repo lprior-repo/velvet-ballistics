@@ -4,9 +4,7 @@
 
 use blake3::Hasher;
 use vb_core::ActionTicket;
-use vb_core::policy::{
-    CurrentPolicyIdentity, PinnedAdmissionPolicy, PolicyDigest,
-};
+use vb_core::policy::{CurrentPolicyIdentity, PinnedAdmissionPolicy, PolicyDigest};
 use vb_core::value::{SlotValue, Taint};
 
 fn serialize_input_bytes(value: i64) -> Result<Vec<u8>, String> {
