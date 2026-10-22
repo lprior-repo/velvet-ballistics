@@ -1,8 +1,10 @@
 use super::Runtime;
+use super::registered_executor::RegisteredExecutionError;
 use crate::{RuntimeError, RuntimeResult};
 use vb_core::ActionTicket;
 use vb_core::Taint;
 use vb_core::policy::{DecisionCode, DecisionRecord, PinnedAdmissionPolicy, PolicyLayer};
+use vb_storage::journal::EmergencyDenyState;
 
 /// Context for evaluating and persisting admission decisions.
 pub(super) struct AdmissionEvalContext {
@@ -56,7 +58,7 @@ impl Runtime {
     pub(super) fn evaluate_admission_and_persist(
         &mut self,
         ctx: AdmissionEvalContext,
-    ) -> Result<DecisionRecord, DecisionRecord> {
+    ) -> Result<DecisionRecord, RegisteredExecutionError> {
         let durable_emergency = self.read_durable_emergency_state()?;
         if durable_emergency {
             self.live_policy.activate_emergency_deny();
@@ -71,7 +73,7 @@ impl Runtime {
         let shard = self.shard_for_mut(ctx.ticket.run)?;
         shard.append_policy_decision_strict(decision.clone())?;
         if decision.outcome != DecisionCode::Allowed {
-            return Err(decision);
+            return Err(RegisteredExecutionError::PolicyDenied(decision));
         }
         Ok(decision)
     }
@@ -94,7 +96,7 @@ impl Runtime {
             .storage_journal()
             .ok_or(RuntimeError::RecoveryNotAvailable)?;
         let state = journal.activate_emergency_deny()?;
-        if !matches!(state, vb_storage::EmergencyDenyState::Active) {
+        if !matches!(state, EmergencyDenyState::Active) {
             return Err(RuntimeError::RecoveryNotAvailable);
         }
         self.live_policy.activate_emergency_deny();
@@ -107,6 +109,6 @@ impl Runtime {
             .storage_journal()
             .ok_or(RuntimeError::RecoveryNotAvailable)?;
         let state = journal.emergency_deny_state()?;
-        Ok(matches!(state, vb_storage::EmergencyDenyState::Active))
+        Ok(matches!(state, EmergencyDenyState::Active))
     }
 }

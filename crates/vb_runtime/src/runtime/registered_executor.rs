@@ -1,11 +1,9 @@
 use super::Runtime;
+use super::live_policy_dispatch::AdmissionEvalContext;
 use crate::{RuntimeError, shard::ShardCommand};
 use vb_core::policy::DecisionRecord;
 use vb_core::{ActionTicket, RunId};
 use vb_storage::executor::{ExecutorError, FjallRegister, RegisterGrant, RegisterReceipt};
-
-#[path = "live_policy_dispatch.rs"]
-mod live_policy_dispatch;
 
 /// Runtime authority failures and uncertain adapter outcomes remain distinct.
 #[derive(Debug, thiserror::Error)]
@@ -35,18 +33,13 @@ impl Runtime {
         if context.mode != crate::shard::types::RegisteredExecutionMode::Live {
             return Err(ExecutorError::Unauthorized.into());
         }
-        let eval_ctx = live_policy_dispatch::AdmissionEvalContext {
+        let eval_ctx = AdmissionEvalContext {
             ticket: ticket.clone(),
             admission_pin: context.admission_pin,
             encoded_bytes: context.encoded_bytes.clone(),
             input_taint: context.input_taint,
         };
-        match self.evaluate_admission_and_persist(eval_ctx) {
-            Ok(_decision) => {}
-            Err(decision) => {
-                return Err(RegisteredExecutionError::PolicyDenied(decision));
-            }
-        }
+        self.evaluate_admission_and_persist(eval_ctx)?;
         let receipt = adapter.execute(grant, ticket, context.value)?;
         self.enqueue_registered_completion(ticket, context.output, receipt.clone())?;
         Ok(receipt)

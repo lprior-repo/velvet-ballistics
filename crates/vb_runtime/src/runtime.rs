@@ -1526,6 +1526,8 @@ impl Runtime {
     }
 }
 
+#[path = "runtime/live_policy_dispatch.rs"]
+mod live_policy_dispatch;
 #[path = "runtime/registered_executor.rs"]
 mod registered_executor;
 #[cfg(test)]
