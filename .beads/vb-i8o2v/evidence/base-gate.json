@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-i8o2v-native5090-records",
+  "argv": [
+    "bash",
+    "scripts/check-test-integrity.sh",
+    "--base",
+    "da633fe0bbde9e414173d5f7aabe314a37f8752d"
+  ],
+  "exit_code": 0,
+  "seconds": 8.824,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-i8o2v/evidence/base-gate"
+}
