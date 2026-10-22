@@ -1,0 +1,136 @@
+{
+  "command": "set",
+  "id": "fuzz-smoke",
+  "inputs": [
+    {
+      "file": "Cargo.toml"
+    },
+    {
+      "file": "Cargo.lock"
+    },
+    {
+      "file": "rust-toolchain.toml"
+    },
+    {
+      "file": "fuzz/Cargo.toml"
+    },
+    {
+      "file": "fuzz/Cargo.lock"
+    },
+    {
+      "file": "fuzz/fuzz_targets.rs"
+    },
+    {
+      "glob": "fuzz/fuzz_targets/**/*",
+      "cache": true
+    },
+    {
+      "glob": "fuzz/corpus/**/*",
+      "cache": true
+    },
+    {
+      "glob": "fuzz/src/**/*",
+      "cache": true
+    },
+    {
+      "glob": "crates/vb_core/**/*",
+      "cache": true
+    },
+    {
+      "glob": "crates/vb_compile/**/*",
+      "cache": true
+    },
+    {
+      "glob": "crates/vb_ipc/**/*",
+      "cache": true
+    },
+    {
+      "glob": "crates/vb_storage/**/*",
+      "cache": true
+    },
+    {
+      "glob": "/.moon/*.{yml,yaml,jsonc,json,pkl,hcl,toml}",
+      "cache": true
+    },
+    {
+      "file": "/.moon/tasks/all.yml"
+    }
+  ],
+  "inputFiles": {
+    "fuzz/fuzz_targets.rs": {},
+    "fuzz/Cargo.lock": {},
+    "Cargo.lock": {},
+    "Cargo.toml": {},
+    "fuzz/Cargo.toml": {},
+    "rust-toolchain.toml": {},
+    ".moon/tasks/all.yml": {}
+  },
+  "inputGlobs": {
+    "crates/vb_ipc/**/*": {
+      "cache": true
+    },
+    "crates/vb_core/**/*": {
+      "cache": true
+    },
+    "crates/vb_compile/**/*": {
+      "cache": true
+    },
+    "fuzz/fuzz_targets/**/*": {
+      "cache": true
+    },
+    "fuzz/src/**/*": {
+      "cache": true
+    },
+    "crates/vb_storage/**/*": {
+      "cache": true
+    },
+    ".moon/*.{yml,yaml,jsonc,json,pkl,hcl,toml}": {
+      "cache": true
+    },
+    "fuzz/corpus/**/*": {
+      "cache": true
+    }
+  },
+  "options": {
+    "allowFailure": false,
+    "cache": true,
+    "inferInputs": false,
+    "internal": false,
+    "interactive": false,
+    "mergeArgs": "append",
+    "mergeDeps": "append",
+    "mergeEnv": "append",
+    "mergeInputs": "append",
+    "mergeOutputs": "append",
+    "mergeToolchains": "append",
+    "persistent": false,
+    "priority": "normal",
+    "retryCount": 0,
+    "runDepsInParallel": true,
+    "runInCI": true,
+    "runInSyncPhase": false,
+    "runFromWorkspaceRoot": false,
+    "shell": true,
+    "unixShell": "bash",
+    "windowsShell": "powershell"
+  },
+  "outputs": [
+    {
+      "glob": "target/fuzz-smoke/**"
+    }
+  ],
+  "outputGlobs": {
+    "target/fuzz-smoke/**": {}
+  },
+  "script": "set -euo pipefail\nexport PATH=\"/cache/cargo-shared/bin:${PATH}\"\nmkdir -p target/moon-locks\nmkdir -p target/fuzz-smoke\nif ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS=\"-Dwarnings\" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu --target-dir \"$PWD/target/fuzz-asan/build\" >target/fuzz-smoke/build.log 2>target/fuzz-smoke/build.err; then\n  cat target/fuzz-smoke/build.log\n  cat target/fuzz-smoke/build.err\n  exit 1\nfi\nmapfile -t fuzz_targets < <(cargo fuzz list)\nif [ \"${#fuzz_targets[@]}\" -eq 0 ]; then\n  echo \"cargo fuzz list returned no targets\" >&2\n  exit 1\nfi\nbin_dir=\"target/fuzz-asan/build/x86_64-unknown-linux-gnu/release\"\nfor fuzz_target in \"${fuzz_targets[@]}\"; do\n  bin=\"${bin_dir}/${fuzz_target}\"\n  {\n    echo \"=== compile evidence: ${fuzz_target} ===\"\n    if [ -x \"${bin}\" ]; then\n      ls -la \"${bin}\"\n      echo \"OK: binary present\"\n    else\n      echo \"MISSING: ${bin}\"\n      exit 1\n    fi\n  } >\"target/fuzz-smoke/${fuzz_target}.compile.log\" 2>&1\n  corpus=\"target/fuzz-smoke/corpus/${fuzz_target}\"\n  artifacts=\"target/fuzz-smoke/artifacts/${fuzz_target}\"\n  rm -rf \"${corpus}\" \"${artifacts}\"\n  mkdir -p \"${corpus}\" \"${artifacts}\"\n  if [ -d \"fuzz/corpus/${fuzz_target}\" ]; then\n    cp -R \"fuzz/corpus/${fuzz_target}/.\" \"${corpus}/\"\n  fi\n  fuzz_args=(-artifact_prefix=\"${PWD}/${artifacts}/\" -max_total_time=1)\n  dict_file=\"fuzz/fuzz_targets/${fuzz_target}.dict\"\n  if [ -f \"${dict_file}\" ]; then\n    fuzz_args+=(-dict=\"${PWD}/${dict_file}\")\n    echo \"DICTIONARY: ${dict_file}\"\n  fi\n  flock --shared target/moon-locks/source-mutation.lock timeout 30s \"${bin}\" \"${fuzz_args[@]}\" \"${PWD}/${corpus}\" >\"target/fuzz-smoke/${fuzz_target}.log\" 2>\"target/fuzz-smoke/${fuzz_target}.err\"\ndone\n",
+  "state": {
+    "expanded": true,
+    "rootLevel": true,
+    "setRunInCi": true
+  },
+  "target": "velvet-ballistics:fuzz-smoke",
+  "toolchains": [
+    "rust"
+  ],
+  "type": "build"
+}
