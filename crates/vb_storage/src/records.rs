@@ -217,6 +217,8 @@ pub enum RecordKind {
     RunInputs = 4,
     /// Admission receipt carrying a canonical typed input digest.
     RunAdmissionBound = 36,
+    /// Policy decision event recorded at the action outbox boundary.
+    PolicyDecision = 38,
 }
 
 impl RecordKind {
@@ -256,6 +258,7 @@ impl RecordKind {
             Self::ActionScheduledTicket => 34,
             Self::ActionCompletedEnvelope => 35,
             Self::RetryCheckpoint => 37,
+            Self::PolicyDecision => 38,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -297,6 +300,7 @@ impl RecordKind {
             34 => Some(Self::ActionScheduledTicket),
             35 => Some(Self::ActionCompletedEnvelope),
             37 => Some(Self::RetryCheckpoint),
+            38 => Some(Self::PolicyDecision),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -333,6 +337,7 @@ impl RecordKind {
             | Self::StepSucceeded
             | Self::ActionScheduledTicket
             | Self::ActionCompletedEnvelope
+            | Self::PolicyDecision
             | Self::RetryCheckpoint => true,
             Self::WorkflowSource
             | Self::CompiledIr

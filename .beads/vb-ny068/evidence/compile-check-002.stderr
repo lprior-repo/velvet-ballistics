@@ -1,0 +1,61 @@
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl/crates/vb_storage)
+error: expected one of `=>`, `if`, or `|`, found `JournalEvent`
+  --> crates/vb_storage/src/recovery/replay/summary/apply.rs:84:9
+   |
+83 |         | JournalEvent::RunRetried { .. }
+   |                                          - expected one of `=>`, `if`, or `|`
+84 |         JournalEvent::PolicyDecisionEvent { .. } => {}
+   |         ^^^^^^^^^^^^ unexpected token
+
+error[E0408]: variable `ticket` is not bound in all patterns
+   --> crates/vb_storage/src/events.rs:199:3
+    |
+197 |             Self::ActionScheduledTicket { ticket, .. }
+    |                                           ------ variable not in all patterns
+198 |             | Self::ActionCompletedEnvelope { ticket, .. }
+    |                                               ------ variable not in all patterns
+199 | | Self::PolicyDecisionEvent { .. }
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern doesn't bind `ticket`
+200 |             | Self::ActionAbandoned { ticket, .. } => Some(ticket.run_attempt),
+    |                                       ------ variable not in all patterns
+
+error[E0381]: used binding `ticket` is possibly-uninitialized
+   --> crates/vb_storage/src/events.rs:200:60
+    |
+197 |             Self::ActionScheduledTicket { ticket, .. }
+    |                                           ------
+    |                                           |
+    |                                           binding initialized here in some conditions
+    |                                           binding declared here but left uninitialized
+198 |             | Self::ActionCompletedEnvelope { ticket, .. }
+    |                                               ------ binding initialized here in some conditions
+199 | | Self::PolicyDecisionEvent { .. }
+200 |             | Self::ActionAbandoned { ticket, .. } => Some(ticket.run_attempt),
+    |                                       ------               ^^^^^^^^^^^^^^^^^^ `ticket.run_attempt` used here but it is possibly-uninitialized
+    |                                       |
+    |                                       binding initialized here in some conditions
+
+error[E0004]: non-exhaustive patterns: `RecordKind::RetryCheckpoint` not covered
+   --> crates/vb_storage/src/records.rs:313:15
+    |
+313 |         match self {
+    |               ^^^^ pattern `RecordKind::RetryCheckpoint` not covered
+    |
+note: `RecordKind` defined here
+   --> crates/vb_storage/src/records.rs:139:10
+    |
+139 | pub enum RecordKind {
+    |          ^^^^^^^^^^
+...
+161 |     RetryCheckpoint = 37,
+    |     --------------- not covered
+    = note: the matched value is of type `RecordKind`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+347 ~             | Self::IndexUpdate => false,
+348 ~             RecordKind::RetryCheckpoint => todo!(),
+    |
+
+Some errors have detailed explanations: E0004, E0381, E0408.
+For more information about an error, try `rustc --explain E0004`.
+error: could not compile `vb_storage` (lib) due to 4 previous errors

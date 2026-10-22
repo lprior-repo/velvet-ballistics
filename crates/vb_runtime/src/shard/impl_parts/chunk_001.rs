@@ -1,4 +1,5 @@
 use crate::shard::types::{RunAggregate, RuntimeState};
+use std::sync::Arc;
 
 impl Shard {
     /// Creates a new shard with the given configuration.
@@ -16,26 +17,29 @@ impl Shard {
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> Self {
-        Self {
-            command_queue: ShardCommandQueue::from_config(config),
-            runs: IndexMap::new(),
-            run_aggregate: RunAggregate::new(),
-            journal_sequences: IndexMap::new(),
-            pending_ask_authorities: IndexMap::new(),
-            accounted_executed_steps: IndexMap::new(),
-            frame_pools: IndexMap::new(),
-            trace_ring: TraceRing::new(config.trace_capacity),
-            counters: ShardCounters::new(),
-            step_budget_per_tick: config.step_budget_per_tick,
-            max_active_runs: config.max_active_runs,
-            policy: config.policy,
-            artifact_store,
-            inspect_response: None,
-            shutting_down: false,
-            current_tick: TimerTick::new(0),
-            journal,
-        }
+    Self {
+        command_queue: ShardCommandQueue::from_config(config),
+        runs: IndexMap::new(),
+        run_aggregate: RunAggregate::new(),
+        journal_sequences: IndexMap::new(),
+        pending_ask_authorities: IndexMap::new(),
+        accounted_executed_steps: IndexMap::new(),
+        frame_pools: IndexMap::new(),
+        trace_ring: TraceRing::new(config.trace_capacity),
+        counters: ShardCounters::new(),
+        step_budget_per_tick: config.step_budget_per_tick,
+        max_active_runs: config.max_active_runs,
+        policy: config.policy,
+        artifact_store,
+        inspect_response: None,
+        shutting_down: false,
+        current_tick: TimerTick::new(0),
+        journal,
+        policy_recorder: Arc::new(
+            crate::policy::PolicyDecisionRecorder::new(WorkflowDigest::from_bytes([0u8; 32]))
+        ),
     }
+}
 
     /// Creates a new shard with the given configuration and journal sink.
     ///

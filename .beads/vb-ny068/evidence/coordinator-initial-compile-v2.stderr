@@ -1,0 +1,129 @@
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl/crates/vb_storage)
+error[E0004]: non-exhaustive patterns: `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+   --> crates/vb_storage/src/events.rs:179:15
+    |
+179 |         match self {
+    |               ^^^^ pattern `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+    |
+note: `JournalEvent` defined here
+   --> crates/vb_storage/src/events/event.rs:38:10
+    |
+ 38 | pub enum JournalEvent {
+    |          ^^^^^^^^^^^^
+...
+363 |     PolicyDecisionEvent {
+    |     ------------------- not covered
+    = note: the matched value is of type `&JournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+205 ~             | Self::RunAnswered { .. } => None,
+206 ~             &JournalEvent::PolicyDecisionEvent { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+   --> crates/vb_storage/src/events.rs:229:15
+    |
+229 |         match self {
+    |               ^^^^ pattern `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+    |
+note: `JournalEvent` defined here
+   --> crates/vb_storage/src/events/event.rs:38:10
+    |
+ 38 | pub enum JournalEvent {
+    |          ^^^^^^^^^^^^
+...
+363 |     PolicyDecisionEvent {
+    |     ------------------- not covered
+    = note: the matched value is of type `&JournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+255 ~             | Self::RunAnswered { .. } => true,
+256 ~             &JournalEvent::PolicyDecisionEvent { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+   --> crates/vb_storage/src/journal/incident.rs:187:11
+    |
+187 |     match event {
+    |           ^^^^^ pattern `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+    |
+note: `JournalEvent` defined here
+   --> crates/vb_storage/src/events/event.rs:38:10
+    |
+ 38 | pub enum JournalEvent {
+    |          ^^^^^^^^^^^^
+...
+363 |     PolicyDecisionEvent {
+    |     ------------------- not covered
+    = note: the matched value is of type `&JournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+213 ~         JournalEvent::AskTimedOutEvent { .. } => LifecycleState::Active,
+214 ~         &JournalEvent::PolicyDecisionEvent { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `RecordKind::PolicyDecision` not covered
+   --> crates/vb_storage/src/records.rs:313:15
+    |
+313 |         match self {
+    |               ^^^^ pattern `RecordKind::PolicyDecision` not covered
+    |
+note: `RecordKind` defined here
+   --> crates/vb_storage/src/records.rs:139:10
+    |
+139 | pub enum RecordKind {
+    |          ^^^^^^^^^^
+...
+221 |     PolicyDecision = 38,
+    |     -------------- not covered
+    = note: the matched value is of type `RecordKind`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+347 ~             | Self::IndexUpdate => false,
+348 ~             RecordKind::PolicyDecision => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+   --> crates/vb_storage/src/recovery/hydrate.rs:792:11
+    |
+792 |     match event {
+    |           ^^^^^ pattern `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+    |
+note: `JournalEvent` defined here
+   --> crates/vb_storage/src/events/event.rs:38:10
+    |
+ 38 | pub enum JournalEvent {
+    |          ^^^^^^^^^^^^
+...
+363 |     PolicyDecisionEvent {
+    |     ------------------- not covered
+    = note: the matched value is of type `&JournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+818 ~         | JournalEvent::RunAnswered { .. } => Ok(false),
+819 ~         &JournalEvent::PolicyDecisionEvent { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+   --> crates/vb_storage/src/recovery/replay/summary/apply.rs:24:11
+    |
+ 24 |     match event {
+    |           ^^^^^ pattern `&JournalEvent::PolicyDecisionEvent { .. }` not covered
+    |
+note: `JournalEvent` defined here
+   --> crates/vb_storage/src/events/event.rs:38:10
+    |
+ 38 | pub enum JournalEvent {
+    |          ^^^^^^^^^^^^
+...
+363 |     PolicyDecisionEvent {
+    |     ------------------- not covered
+    = note: the matched value is of type `&JournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+ 84 ~         | JournalEvent::RunAnswered { .. } => {},
+ 85 +         &JournalEvent::PolicyDecisionEvent { .. } => todo!()
+    |
+
+For more information about this error, try `rustc --explain E0004`.
+error: could not compile `vb_storage` (lib) due to 6 previous errors

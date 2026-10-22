@@ -1,0 +1,164 @@
+   Compiling cfg-if v1.0.4
+   Compiling libc v0.2.186
+   Compiling once_cell v1.21.4
+   Compiling serde_core v1.0.228
+   Compiling scopeguard v1.2.0
+   Compiling log v0.4.29
+   Compiling lock_api v0.4.14
+   Compiling num-traits v0.2.19
+   Compiling crossbeam-utils v0.8.21
+   Compiling equivalent v1.0.2
+   Compiling linux-raw-sys v0.12.1
+   Compiling bitflags v2.11.1
+   Compiling rustix v1.1.4
+   Compiling getrandom v0.4.2
+   Compiling fastrand v2.4.1
+   Compiling getrandom v0.3.4
+   Compiling smallvec v1.15.1
+   Compiling tempfile v3.27.0
+   Compiling thiserror v2.0.18
+   Compiling spin v0.9.8
+   Compiling rustversion v1.0.22
+   Compiling crossbeam-epoch v0.9.20
+   Compiling regex-syntax v0.8.10
+   Compiling byteorder-lite v0.1.0
+   Compiling serde v1.0.228
+   Compiling byteorder v1.5.0
+   Compiling iana-time-zone v0.1.65
+   Compiling twox-hash v2.1.2
+   Compiling xxhash-rust v0.8.15
+   Compiling compare v0.0.6
+   Compiling hashbrown v0.16.1
+   Compiling hashbrown v0.17.1
+   Compiling zerocopy v0.8.48
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling indexmap v2.14.0
+   Compiling quick_cache v0.6.22
+   Compiling interval-heap v0.0.5
+   Compiling sfa v1.0.0
+   Compiling lz4_flex v0.13.1
+   Compiling hash32 v0.2.1
+   Compiling rand_core v0.9.5
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling parking_lot_core v0.9.12
+   Compiling enum_dispatch v0.3.13
+   Compiling tracing-core v0.1.36
+   Compiling hashbrown v0.14.5
+   Compiling self_cell v1.2.2
+   Compiling byteview v0.10.1
+   Compiling rustc-hash v2.1.2
+   Compiling stable_deref_trait v1.2.1
+   Compiling varint-rs v2.2.0
+   Compiling heapless v0.7.17
+   Compiling lsm-tree v3.1.4
+   Compiling dashmap v6.2.1
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl/crates/vb_core)
+   Compiling generator v0.8.8
+   Compiling regex-automata v0.4.14
+   Compiling flume v0.12.0
+   Compiling cobs v0.3.0
+   Compiling constant_time_eq v0.4.2
+   Compiling arrayref v0.3.9
+   Compiling pin-project-lite v0.2.17
+   Compiling cpufeatures v0.3.0
+   Compiling arrayvec v0.7.6
+   Compiling lazy_static v1.5.0
+   Compiling sharded-slab v0.1.7
+   Compiling blake3 v1.8.5
+   Compiling tracing v0.1.44
+   Compiling postcard v1.1.3
+   Compiling fjall v3.1.4
+   Compiling matchers v0.2.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling crc32c v0.6.8
+   Compiling tracing-log v0.2.0
+   Compiling wait-timeout v0.2.1
+   Compiling thread_local v1.1.9
+   Compiling fnv v1.0.7
+   Compiling bit-vec v0.8.0
+   Compiling quick-error v1.2.3
+   Compiling nu-ansi-term v0.50.3
+   Compiling tracing-subscriber v0.3.23
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl/crates/vb_storage)
+   Compiling rusty-fork v0.3.1
+   Compiling bit-set v0.8.0
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.4
+   Compiling rand_xorshift v0.4.0
+   Compiling crossbeam-queue v0.3.12
+   Compiling unarray v0.1.4
+   Compiling rtrb v0.3.5
+   Compiling scoped-tls v1.0.1
+   Compiling loom v0.7.2
+   Compiling proptest v1.11.0
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl/crates/vb_runtime)
+warning: unused import: `Arc`
+ --> crates/vb_runtime/src/policy.rs:7:17
+  |
+7 | use std::sync::{Arc, RwLock};
+  |                 ^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `policy_recorder` is never read
+    --> crates/vb_runtime/src/shard/types.rs:1145:16
+     |
+1124 | pub struct Shard {
+     |            ----- field in this struct
+...
+1145 |     pub(crate) policy_recorder: Arc<crate::policy::PolicyDecisionRecorder>,
+     |                ^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 2 warnings (run `cargo fix --lib -p vb_runtime` to apply 1 suggestion)
+error[E0308]: mismatched types
+   --> crates/vb_runtime/src/policy.rs:204:32
+    |
+204 |             step: StepIdx::new(step),
+    |                   ------------ ^^^^ expected `u16`, found `u64`
+    |                   |
+    |                   arguments to this function are incorrect
+    |
+note: associated function defined here
+   --> crates/vb_core/src/ids/mod.rs:36:26
+    |
+ 36 |             pub const fn new(value: $inner) -> Self {
+    |                          ^^^
+...
+ 70 | numeric_id!(StepIdx, u16, get);
+    | ------------------------------ in this macro invocation
+    = note: this error originates in the macro `numeric_id` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you can convert a `u64` to a `u16` and panic if the converted value doesn't fit
+    |
+204 |             step: StepIdx::new(step.try_into().unwrap()),
+    |                                    ++++++++++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/src/policy.rs:206:35
+    |
+206 |             action: ActionId::new(action),
+    |                     ------------- ^^^^^^ expected `u16`, found `u64`
+    |                     |
+    |                     arguments to this function are incorrect
+    |
+note: associated function defined here
+   --> crates/vb_core/src/ids/mod.rs:36:26
+    |
+ 36 |             pub const fn new(value: $inner) -> Self {
+    |                          ^^^
+...
+ 73 | numeric_id!(ActionId, u16, get);
+    | ------------------------------- in this macro invocation
+    = note: this error originates in the macro `numeric_id` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you can convert a `u64` to a `u16` and panic if the converted value doesn't fit
+    |
+206 |             action: ActionId::new(action.try_into().unwrap()),
+    |                                         ++++++++++++++++++++
+
+For more information about this error, try `rustc --explain E0308`.
+warning: `vb_runtime` (lib test) generated 1 warning (1 duplicate)
+error: could not compile `vb_runtime` (lib test) due to 2 previous errors; 1 warning emitted
+warning: build failed, waiting for other jobs to finish...

@@ -46,6 +46,7 @@ impl RuntimeError {
     pub const SHARD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x201C);
     pub const MIGRATE_SELF_CODE: DiagnosticCode = DiagnosticCode::new(0x201D);
     pub const INTROSPECTION_EPOCH_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x201F);
+pub const ACTION_DENIED_BY_POLICY_CODE: DiagnosticCode = DiagnosticCode::new(0x2020);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -121,6 +122,7 @@ impl RuntimeError {
             }
             Self::RuntimeInputSlotKindMismatch { .. } => Self::UNSUPPORTED_OPERATION_CODE,
             Self::ContractValidationError { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
+Self::ActionDeniedByPolicy { .. } => Self::ACTION_DENIED_BY_POLICY_CODE,
         }
     }
 
@@ -189,6 +191,7 @@ impl RuntimeError {
             | Self::RecoveryCannotResume { .. }
             | Self::Recovery { .. }
             | Self::ContractValidationError { .. } => None,
+| Self::ActionDeniedByPolicy { .. } => None,
             Self::RuntimeInputSlotKindMismatch { .. } => None,
         }
     }

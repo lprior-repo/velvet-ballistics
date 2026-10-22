@@ -1,0 +1,257 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl/crates/vb_runtime)
+error[E0252]: the name `WorkflowDigest` is defined multiple times
+ --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:3:5
+  |
+3 | use vb_core::ids::WorkflowDigest;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `WorkflowDigest` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/impl_parts/chunk_004.rs:3:46
+  |
+3 | use vb_core::ids::{ActionId, RunId, SlotIdx, WorkflowDigest};
+  |                                              -------------- previous import of the type `WorkflowDigest` here
+  |
+  = note: `WorkflowDigest` must be defined only once in the type namespace of this module
+
+error[E0425]: cannot find type `Arc` in this scope
+    --> crates/vb_runtime/src/shard/types.rs:1144:33
+     |
+1144 |     pub(crate) policy_recorder: Arc<crate::policy::PolicyDecisionRecorder>,
+     |                                 ^^^ not found in this scope
+     |
+help: consider importing this struct
+     |
+   4 + use std::sync::Arc;
+     |
+
+warning: unused import: `Arc`
+ --> crates/vb_runtime/src/policy.rs:7:17
+  |
+7 | use std::sync::{Arc, RwLock};
+  |                 ^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `vb_core::workflow::CompiledWorkflow`
+  --> crates/vb_runtime/src/policy.rs:12:5
+   |
+12 | use vb_core::workflow::CompiledWorkflow;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::WorkflowDigest`
+ --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:3:5
+  |
+3 | use vb_core::ids::WorkflowDigest;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0616]: field `0` of struct `RunId` is private
+  --> crates/vb_runtime/src/policy.rs:73:35
+   |
+73 |         hasher.update(&ticket.run.0.to_be_bytes());
+   |                                   ^ private field
+
+error[E0616]: field `0` of struct `StepIdx` is private
+  --> crates/vb_runtime/src/policy.rs:74:36
+   |
+74 |         hasher.update(&ticket.step.0.to_be_bytes());
+   |                                    ^ private field
+
+error[E0616]: field `0` of struct `SeqNo` is private
+  --> crates/vb_runtime/src/policy.rs:75:35
+   |
+75 |         hasher.update(&ticket.seq.0.to_be_bytes());
+   |                                   ^ private field
+
+error[E0616]: field `0` of struct `ActionId` is private
+  --> crates/vb_runtime/src/policy.rs:76:38
+   |
+76 |         hasher.update(&ticket.action.0.to_be_bytes());
+   |                                      ^ private field
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+   --> crates/vb_runtime/src/policy.rs:81:22
+    |
+ 81 |         PolicyDigest(WorkflowDigest(digest_bytes))
+    |                      ^^^^^^^^^^^^^^
+    |
+note: constructor is not visible here due to private fields
+   --> crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:269:27
+    |
+269 | pub struct WorkflowDigest([u8; 32]);
+    |                           ^^^^^^^^ private field
+help: you might have meant to use the `from_bytes` associated function
+    |
+ 81 |         PolicyDigest(WorkflowDigest::from_bytes(digest_bytes))
+    |                                    ++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/src/policy.rs:102:29
+    |
+102 |             matches!(state, EmergencyDenyState::Active)
+    |                      -----  ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `RwLockReadGuard<'_, EmergencyDenyState>`, found `EmergencyDenyState`
+    |                      |
+    |                      this expression has type `std::sync::RwLockReadGuard<'_, EmergencyDenyState>`
+    |
+    = note: expected struct `std::sync::RwLockReadGuard<'_, EmergencyDenyState>`
+                 found enum `EmergencyDenyState`
+help: consider dereferencing to access the inner value using the `Deref` trait
+    |
+102 |             matches!(*state, EmergencyDenyState::Active)
+    |                      +
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+   --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:40:56
+    |
+ 40 |             crate::policy::PolicyDecisionRecorder::new(WorkflowDigest([0u8; 32]))
+    |                                                        ^^^^^^^^^^^^^^
+    |
+note: constructor is not visible here due to private fields
+   --> crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:269:27
+    |
+269 | pub struct WorkflowDigest([u8; 32]);
+    |                           ^^^^^^^^ private field
+help: you might have meant to use the `from_bytes` associated function
+    |
+ 40 |             crate::policy::PolicyDecisionRecorder::new(WorkflowDigest::from_bytes([0u8; 32]))
+    |                                                                      ++++++++++++
+
+error[E0004]: non-exhaustive patterns: `&RuntimeError::ActionDeniedByPolicy { .. }` not covered
+   --> crates/vb_runtime/src/error/diagnostics.rs:52:15
+    |
+ 52 |         match self {
+    |               ^^^^ pattern `&RuntimeError::ActionDeniedByPolicy { .. }` not covered
+    |
+note: `RuntimeError` defined here
+   --> crates/vb_runtime/src/error/mod.rs:7:10
+    |
+  7 | pub enum RuntimeError {
+    |          ^^^^^^^^^^^^
+...
+277 |     ActionDeniedByPolicy {
+    |     -------------------- not covered
+    = note: the matched value is of type `&RuntimeError`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+123 ~             Self::ContractValidationError { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
+124 ~             &RuntimeError::ActionDeniedByPolicy { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `&RuntimeError::ActionDeniedByPolicy { .. }` not covered
+   --> crates/vb_runtime/src/error/diagnostics.rs:129:15
+    |
+129 |         match self {
+    |               ^^^^ pattern `&RuntimeError::ActionDeniedByPolicy { .. }` not covered
+    |
+note: `RuntimeError` defined here
+   --> crates/vb_runtime/src/error/mod.rs:7:10
+    |
+  7 | pub enum RuntimeError {
+    |          ^^^^^^^^^^^^
+...
+277 |     ActionDeniedByPolicy {
+    |     -------------------- not covered
+    = note: the matched value is of type `&RuntimeError`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+192 ~             Self::RuntimeInputSlotKindMismatch { .. } => None,
+193 ~             &RuntimeError::ActionDeniedByPolicy { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `&RuntimeJournalEvent::PolicyDecision { .. }` not covered
+   --> crates/vb_runtime/src/journal/chunk_001.rs:244:15
+    |
+244 |         match self {
+    |               ^^^^ pattern `&RuntimeJournalEvent::PolicyDecision { .. }` not covered
+    |
+note: `RuntimeJournalEvent` defined here
+   --> crates/vb_runtime/src/journal/chunk_001.rs:17:10
+    |
+ 17 | pub enum RuntimeJournalEvent {
+    |          ^^^^^^^^^^^^^^^^^^^
+...
+222 |     PolicyDecision {
+    |     -------------- not covered
+    = note: the matched value is of type `&RuntimeJournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+266 ~             Self::RetryCheckpoint { run, .. } => *run,
+267 ~             &RuntimeJournalEvent::PolicyDecision { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `&RuntimeJournalEvent::PolicyDecision { .. }` not covered
+   --> crates/vb_runtime/src/journal/chunk_001.rs:273:15
+    |
+273 |         match self {
+    |               ^^^^ pattern `&RuntimeJournalEvent::PolicyDecision { .. }` not covered
+    |
+note: `RuntimeJournalEvent` defined here
+   --> crates/vb_runtime/src/journal/chunk_001.rs:17:10
+    |
+ 17 | pub enum RuntimeJournalEvent {
+    |          ^^^^^^^^^^^^^^^^^^^
+...
+222 |     PolicyDecision {
+    |     -------------- not covered
+    = note: the matched value is of type `&RuntimeJournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+295 ~             Self::Resumed { .. } => "Resumed",
+296 ~             &RuntimeJournalEvent::PolicyDecision { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `RuntimeJournalEvent::PolicyDecision { .. }` not covered
+   --> crates/vb_runtime/src/journal/chunk_002.rs:192:15
+    |
+192 |         match event {
+    |               ^^^^^ pattern `RuntimeJournalEvent::PolicyDecision { .. }` not covered
+    |
+note: `RuntimeJournalEvent` defined here
+   --> crates/vb_runtime/src/journal/chunk_001.rs:17:10
+    |
+ 17 | pub enum RuntimeJournalEvent {
+    |          ^^^^^^^^^^^^^^^^^^^
+...
+222 |     PolicyDecision {
+    |     -------------- not covered
+    = note: the matched value is of type `RuntimeJournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+278 ~             | RuntimeJournalEvent::Resumed { .. } => None,
+279 ~             RuntimeJournalEvent::PolicyDecision { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `RuntimeJournalEvent::PolicyDecision { .. }` not covered
+   --> crates/vb_runtime/src/journal/chunk_002.rs:286:15
+    |
+286 |         match event {
+    |               ^^^^^ pattern `RuntimeJournalEvent::PolicyDecision { .. }` not covered
+    |
+note: `RuntimeJournalEvent` defined here
+   --> crates/vb_runtime/src/journal/chunk_001.rs:17:10
+    |
+ 17 | pub enum RuntimeJournalEvent {
+    |          ^^^^^^^^^^^^^^^^^^^
+...
+222 |     PolicyDecision {
+    |     -------------- not covered
+    = note: the matched value is of type `RuntimeJournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+356 ~             | RuntimeJournalEvent::Resumed { .. } => Ok(None),
+357 ~             RuntimeJournalEvent::PolicyDecision { .. } => todo!(),
+    |
+
+error[E0594]: cannot assign to `self.live_effect_policy_digest`, which is behind a `&` reference
+   --> crates/vb_runtime/src/policy.rs:158:9
+    |
+158 |         self.live_effect_policy_digest = PolicyDigest(digest);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `self` is a `&` reference, so it cannot be written to
+    |
+help: consider changing this to be a mutable reference
+    |
+157 |     pub fn update_live_effect_policy(&mut self, digest: WorkflowDigest) {
+    |                                       +++
+
+Some errors have detailed explanations: E0004, E0252, E0308, E0423, E0425, E0594, E0616.
+For more information about an error, try `rustc --explain E0004`.
+warning: `vb_runtime` (lib) generated 3 warnings
+error: could not compile `vb_runtime` (lib) due to 16 previous errors; 3 warnings emitted

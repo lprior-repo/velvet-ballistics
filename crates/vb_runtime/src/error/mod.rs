@@ -273,6 +273,15 @@ pub enum RuntimeError {
         /// Human-readable validation error.
         error: String,
     },
+    /// Action was denied by the policy decision at the outbox boundary.
+    ActionDeniedByPolicy {
+        /// Run identifier.
+        run: RunId,
+        /// Step that attempted the action.
+        step: vb_core::ids::StepIdx,
+        /// Policy decision code.
+        code: vb_core::policy::DecisionCode,
+    },
 }
 
 impl From<std::io::Error> for RuntimeError {

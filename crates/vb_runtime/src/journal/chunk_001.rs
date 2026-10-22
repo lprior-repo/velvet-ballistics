@@ -3,6 +3,7 @@ use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 use vb_core::Taint;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::policy::{DecisionCode, PolicyDigest, PolicyLayer};
 use vb_storage::{
     DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterFlushReport,
     JournalWriterQueue,
@@ -216,6 +217,24 @@ pub enum RuntimeJournalEvent {
         /// Monotonic timestamp in seconds since epoch.
         timestamp: u64,
     },
+    /// Policy decision recorded at the action outbox boundary.
+    /// Includes policy layer, decision code, digests, and influence flags.
+    PolicyDecision {
+        /// Run identifier.
+        run: RunId,
+        /// Policy layer that made the decision.
+        layer: PolicyLayer,
+        /// Decision code.
+        code: DecisionCode,
+        /// Digest of the policy configuration.
+        policy_digest: PolicyDigest,
+        /// Digest of the input (ticket) to the decision.
+        input_digest: PolicyDigest,
+        /// Whether emergency deny overlay was active.
+        emergency_deny_active: bool,
+        /// Whether compatibility logic influenced the decision.
+        compatibility_influence: bool,
+    },
 }
 
 impl RuntimeJournalEvent {
@@ -239,6 +258,7 @@ impl RuntimeJournalEvent {
             | Self::SlotWritten { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }
+| Self::PolicyDecision { run, .. }
             | Self::Resumed { run, .. } => *run,
             Self::ActionScheduledTicket { ticket, .. }
             | Self::ActionCompletedEnvelope { ticket, .. }
@@ -271,6 +291,7 @@ impl RuntimeJournalEvent {
             Self::AskAnswered { .. } => "AskAnswered",
             Self::AskTimedOut { .. } => "AskTimedOut",
             Self::SlotWritten { .. } => "SlotWritten",
+Self::PolicyDecision { .. } => "PolicyDecision",
             Self::StepStarted { .. } => "StepStarted",
             Self::StepSucceeded { .. } => "StepSucceeded",
             Self::Resumed { .. } => "Resumed",

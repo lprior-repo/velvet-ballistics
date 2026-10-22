@@ -59,6 +59,7 @@ pub mod frame_pool;
 pub mod idempotency;
 pub mod ipc_refinement;
 pub mod journal;
+pub mod policy;
 #[cfg(all(kani, feature = "kani-capability-harnesses"))]
 pub mod kani_capability_harnesses;
 #[cfg(all(kani, feature = "kani-engine-yaml-admission"))]

@@ -1,0 +1,80 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl/crates/vb_runtime)
+error[E0252]: the name `WorkflowDigest` is defined multiple times
+ --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:3:5
+  |
+3 | use vb_core::ids::WorkflowDigest;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `WorkflowDigest` reimported here
+  |
+ ::: crates/vb_runtime/src/shard/impl_parts/chunk_004.rs:3:46
+  |
+3 | use vb_core::ids::{ActionId, RunId, SlotIdx, WorkflowDigest};
+  |                                              -------------- previous import of the type `WorkflowDigest` here
+  |
+  = note: `WorkflowDigest` must be defined only once in the type namespace of this module
+
+warning: unused import: `Arc`
+ --> crates/vb_runtime/src/policy.rs:7:17
+  |
+7 | use std::sync::{Arc, RwLock};
+  |                 ^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `vb_core::workflow::CompiledWorkflow`
+  --> crates/vb_runtime/src/policy.rs:12:5
+   |
+12 | use vb_core::workflow::CompiledWorkflow;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `vb_core::ids::WorkflowDigest`
+ --> crates/vb_runtime/src/shard/impl_parts/chunk_001.rs:3:5
+  |
+3 | use vb_core::ids::WorkflowDigest;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0004]: non-exhaustive patterns: `RuntimeJournalEvent::PolicyDecision { .. }` not covered
+   --> crates/vb_runtime/src/journal/chunk_002.rs:192:15
+    |
+192 |         match event {
+    |               ^^^^^ pattern `RuntimeJournalEvent::PolicyDecision { .. }` not covered
+    |
+note: `RuntimeJournalEvent` defined here
+   --> crates/vb_runtime/src/journal/chunk_001.rs:17:10
+    |
+ 17 | pub enum RuntimeJournalEvent {
+    |          ^^^^^^^^^^^^^^^^^^^
+...
+222 |     PolicyDecision {
+    |     -------------- not covered
+    = note: the matched value is of type `RuntimeJournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+278 ~             | RuntimeJournalEvent::Resumed { .. } => None,
+279 ~             RuntimeJournalEvent::PolicyDecision { .. } => todo!(),
+    |
+
+error[E0004]: non-exhaustive patterns: `RuntimeJournalEvent::PolicyDecision { .. }` not covered
+   --> crates/vb_runtime/src/journal/chunk_002.rs:286:15
+    |
+286 |         match event {
+    |               ^^^^^ pattern `RuntimeJournalEvent::PolicyDecision { .. }` not covered
+    |
+note: `RuntimeJournalEvent` defined here
+   --> crates/vb_runtime/src/journal/chunk_001.rs:17:10
+    |
+ 17 | pub enum RuntimeJournalEvent {
+    |          ^^^^^^^^^^^^^^^^^^^
+...
+222 |     PolicyDecision {
+    |     -------------- not covered
+    = note: the matched value is of type `RuntimeJournalEvent`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+    |
+356 ~             | RuntimeJournalEvent::Resumed { .. } => Ok(None),
+357 ~             RuntimeJournalEvent::PolicyDecision { .. } => todo!(),
+    |
+
+Some errors have detailed explanations: E0004, E0252.
+For more information about an error, try `rustc --explain E0004`.
+warning: `vb_runtime` (lib) generated 3 warnings
+error: could not compile `vb_runtime` (lib) due to 3 previous errors; 3 warnings emitted

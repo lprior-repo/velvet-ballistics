@@ -11,6 +11,7 @@ use vb_core::{
     ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, StepIdx,
     Taint, WorkflowDigest,
 };
+use vb_core::policy::{DecisionCode, PolicyDigest, PolicyLayer};
 
 /// Terminal action outcome captured by durable completion envelopes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -357,5 +358,24 @@ pub enum JournalEvent {
         step: StepIdx,
         /// Attempt number (1-based).
         attempt: u16,
+    },
+    /// Policy decision recorded at the action outbox boundary.
+    PolicyDecisionEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Policy layer that made the decision.
+        layer: PolicyLayer,
+        /// Decision code.
+        code: DecisionCode,
+        /// Digest of the policy configuration.
+        policy_digest: PolicyDigest,
+        /// Digest of the input to the decision.
+        input_digest: PolicyDigest,
+        /// Whether emergency deny overlay was active.
+        emergency_deny_active: bool,
+        /// Whether compatibility logic influenced the decision.
+        compatibility_influence: bool,
     },
 }

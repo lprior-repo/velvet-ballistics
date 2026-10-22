@@ -4,6 +4,7 @@
 use core::num::NonZeroU16;
 use crossbeam_queue::ArrayQueue;
 use indexmap::{IndexMap, IndexSet};
+use std::sync::Arc;
 use std::time::Instant;
 use vb_core::action::{ActionContract, ActionTicket};
 use vb_core::capability::CapabilitySet;
@@ -1141,6 +1142,7 @@ pub struct Shard {
     pub(crate) shutting_down: bool,
     pub(crate) current_tick: TimerTick,
     pub(crate) journal: SharedRuntimeJournal,
+    pub(crate) policy_recorder: Arc<crate::policy::PolicyDecisionRecorder>,
 }
 
 /// Read-only shard health snapshot for operator status reporting.

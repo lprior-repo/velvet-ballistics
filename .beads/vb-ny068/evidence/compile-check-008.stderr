@@ -1,0 +1,22 @@
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl/crates/vb_runtime)
+warning: unused import: `Arc`
+ --> crates/vb_runtime/src/policy.rs:7:17
+  |
+7 | use std::sync::{Arc, RwLock};
+  |                 ^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `policy_recorder` is never read
+    --> crates/vb_runtime/src/shard/types.rs:1145:16
+     |
+1124 | pub struct Shard {
+     |            ----- field in this struct
+...
+1145 |     pub(crate) policy_recorder: Arc<crate::policy::PolicyDecisionRecorder>,
+     |                ^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (lib) generated 2 warnings (run `cargo fix --lib -p vb_runtime` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.90s

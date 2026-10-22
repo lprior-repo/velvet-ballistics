@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ny068-local3090-impl",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "check",
+    "-p",
+    "vb_runtime"
+  ],
+  "exit_code": 101,
+  "seconds": 0.874,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ny068/evidence/compile-check-005",
+  "coordinator_message": "COORDINATOR: FIRST DRAFT IS NOT ACCEPTABLE YET. In policy.rs the live policy allows all actions, admission digest constructor useszero/default from Shard, inputdigest hashes ticket only, update_live_effect_policy(&self) assignsimmutablefield; reconstruct_from_journal clone is not replay wiring. Implement a concrete typed current live decision configuration (permit/deny/suspend) applied at actual effect boundary; digest alone is not authorization. No implicit alwaysallow fallback and no fabricated pinned artifactdigest. Actual acceptedartifact policy_digest must bind admission; unknown/missing policy authority typed failclosed. Bind actual action input/policycontext +ticket identity. Monotonic emergency deny must be enforced by API (cannotclear/recreateperadmission), not deferred; no ambientclock/network. Deny must durably record BEFORE state/outbox transitions; simplyErr beforeappend losesdecision. RuntimeJournalEvent needs real storage EventKind/codec append and replay/crashreopen handling, not enumonly. Preserve existing discriminants explicitly, no serde default substitution. Restore forbidunsafe and correct innerdoc placement. Tests must hit actual production seam anddurable storage not ownrecorderonly; allspecified scenarios requirepositivecallcounts/history. ArcMutex hotpath invention is unnecessarywhere boundedstate typedvalues suffice. Review your own contract against actualmaster and document unimplementedgaps honestly; do NOT selfapprove or claimbeadcomplete. Stop addinglarge surface until existing code compiles through officialrunner and errorsfixed. No fullfleetCI.\n"
+}

@@ -81,7 +81,8 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         // numbers and are not part of the durable event log ordering for recovery summary.
         JournalEvent::RunResumed { .. }
         | JournalEvent::RunRetried { .. }
-        | JournalEvent::RunAnswered { .. } => {}
+        | JournalEvent::RunAnswered { .. }
+        | JournalEvent::PolicyDecisionEvent { .. } => {}
     }
 }
 

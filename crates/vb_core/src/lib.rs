@@ -122,7 +122,7 @@ pub use ids::{
     FanoutLimit, ListId, MaxAttempts, ObjectId, RetryCount, RunId, SeqNo, SlotIdx, StepIdx,
     SymbolId, WorkflowDigest, WorkflowId,
 };
-pub use policy::RuntimePolicy;
+pub use policy::{DecisionCode, PolicyDigest, PolicyLayer, RuntimePolicy};
 pub use span::{Located, SourceMap, Span, SpanError, Spanned};
 pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 pub use value_store::{ObjectField, ValueStore};

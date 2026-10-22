@@ -1,6 +1,6 @@
-#![forbid(unsafe_code)]
 //! Runtime admission policy controlling verification strictness and durability.
 
+use super::ids::WorkflowDigest;
 /// Controls how strictly artifact admission verification is enforced.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
@@ -11,6 +11,33 @@ pub enum RuntimePolicy {
     Journaled,
     /// No verification required, testing only.
     Relaxed,
+}
+/// Policy digest identifying a specific policy configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct PolicyDigest(pub WorkflowDigest);
+
+/// Typed outcome of a policy decision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum DecisionCode {
+    /// The action was allowed to proceed.
+    Allowed,
+    /// The action was denied by the policy.
+    Denied,
+    /// The action was suspended pending external review.
+    Suspended,
+}
+
+/// Which policy layer produced the decision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum PolicyLayer {
+    /// Pinned at run admission.
+    Admission,
+    /// Used for replay reconstruction.
+    Replay,
+    /// Evaluated at effect dispatch.
+    LiveEffect,
+    /// Monotonic emergency deny overlay.
+    EmergencyDeny,
 }
 
 #[cfg(test)]

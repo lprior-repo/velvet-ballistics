@@ -139,6 +139,24 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::Resumed { run, timestamp } => {
                 resumed_storage_event(run, seq, timestamp).map(Some)
             }
+            RuntimeJournalEvent::PolicyDecision {
+                run,
+                layer,
+                code,
+                policy_digest,
+                input_digest,
+                emergency_deny_active,
+                compatibility_influence,
+            } => Ok(Some(JournalEvent::PolicyDecisionEvent {
+                run,
+                seq,
+                layer,
+                code,
+                policy_digest,
+                input_digest,
+                emergency_deny_active,
+                compatibility_influence,
+            })),
             RuntimeJournalEvent::StepStarted { run, step, attempt} => {
                 Ok(Some(JournalEvent::StepStarted {
                     run,
@@ -257,7 +275,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
-            | RuntimeJournalEvent::Resumed { .. } => None,
+            | RuntimeJournalEvent::Resumed { .. }
+            | RuntimeJournalEvent::PolicyDecision { .. } => None,
         }
     }
 
@@ -335,7 +354,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionAbandoned { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
-            | RuntimeJournalEvent::Resumed { .. } => Ok(None),
+            | RuntimeJournalEvent::Resumed { .. }
+            | RuntimeJournalEvent::PolicyDecision { .. } => Ok(None),
         }
     }
 
@@ -352,6 +372,7 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunCancelled { .. }
             | RuntimeJournalEvent::RunKilled { .. }
             | RuntimeJournalEvent::Resumed { .. }
+            | RuntimeJournalEvent::PolicyDecision { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. } => {
                 Self::run_storage_event(clone_for_dispatch(&event), seq)
