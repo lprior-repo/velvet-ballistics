@@ -1,0 +1,210 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy.rs:355:
+         assert_ne!(InfluenceState::Inactive, InfluenceState::Active);
+     }
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/lib.rs:83:
+ 
+ #[cfg(loom)]
+ pub mod models;
++pub mod policy;
+ pub mod primitives;
+ pub mod recovery;
+ pub mod retry;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/lib.rs:91:
+ mod run_checkpoint_tests;
+ pub mod runtime;
+ pub mod shard;
+-pub mod policy;
+ pub mod taint;
+ pub mod trace;
+ #[cfg(all(kani, feature = "kani-yaml-e2e-admission-matrix"))]
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:13:
+ 
+ use vb_core::action::ActionTicket;
+ use vb_core::policy::{
+-    CurrentLivePolicy, DecisionCode, DecisionRecord, InfluenceState,
+-    PinnedAdmissionPolicy, PolicyDigest, PolicyLayer, PolicyRule,
++    CurrentLivePolicy, DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy,
++    PolicyDigest, PolicyLayer, PolicyRule,
+ };
+ use vb_core::value::Taint;
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:61:
+     }
+ 
+     /// Configures the live policy with a verified artifact and rule.
+-    pub fn configure(
+-        &mut self,
+-        digest: PolicyDigest,
+-        rule: PolicyRule,
+-    ) {
++    pub fn configure(&mut self, digest: PolicyDigest, rule: PolicyRule) {
+         self.current_live = CurrentLivePolicy::Configured { digest, rule };
+     }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:115:
+         }
+ 
+         let (outcome, layer, emergency_influence) = match &self.current_live {
+-            CurrentLivePolicy::Unconfigured => {
+-                (DecisionCode::Denied, PolicyLayer::Live, InfluenceState::Inactive)
+-            }
++            CurrentLivePolicy::Unconfigured => (
++                DecisionCode::Denied,
++                PolicyLayer::Live,
++                InfluenceState::Inactive,
++            ),
+             CurrentLivePolicy::Configured { rule, .. } => {
+                 if rule.action == ticket.action {
+                     (rule.code, PolicyLayer::Live, InfluenceState::Inactive)
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:124:
+                 } else {
+-                    (DecisionCode::Denied, PolicyLayer::Live, InfluenceState::Inactive)
++                    (
++                        DecisionCode::Denied,
++                        PolicyLayer::Live,
++                        InfluenceState::Inactive,
++                    )
+                 }
+             }
+         };
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:416:
+         );
+ 
+         let ticket = test_ticket(0);
+-        let record = policy.evaluate(
+-            ticket,
+-            admission,
+-            b"input",
+-            Taint::Clean,
+-        );
++        let record = policy.evaluate(ticket, admission, b"input", Taint::Clean);
+ 
+         assert_eq!(record.admission, admission);
+         assert_eq!(record.current_live.digest(), Some(test_digest()));
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:432:
+         let policy = LivePolicy::new();
+ 
+         let t1 = test_ticket(0);
+-        let r1 = policy.evaluate(t1, PinnedAdmissionPolicy::Unverified, b"input", Taint::Clean);
++        let r1 = policy.evaluate(
++            t1,
++            PinnedAdmissionPolicy::Unverified,
++            b"input",
++            Taint::Clean,
++        );
+ 
+         let t2 = test_ticket(1);
+-        let r2 = policy.evaluate(t2, PinnedAdmissionPolicy::Unverified, b"input", Taint::Clean);
++        let r2 = policy.evaluate(
++            t2,
++            PinnedAdmissionPolicy::Unverified,
++            b"input",
++            Taint::Clean,
++        );
+ 
+         assert_ne!(r1.input_digest, r2.input_digest);
+         assert_eq!(r1.ticket.action, ActionId::new(0));
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:486:
+         assert!(matches!(r2.admission, PinnedAdmissionPolicy::Artifact(_)));
+     }
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy.rs:355:
+         assert_ne!(InfluenceState::Inactive, InfluenceState::Active);
+     }
+ }
++
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:13:
+ 
+ use vb_core::action::ActionTicket;
+ use vb_core::policy::{
+-    CurrentLivePolicy, DecisionCode, DecisionRecord, InfluenceState,
+-    PinnedAdmissionPolicy, PolicyDigest, PolicyLayer, PolicyRule,
++    CurrentLivePolicy, DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy,
++    PolicyDigest, PolicyLayer, PolicyRule,
+ };
+ use vb_core::value::Taint;
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:61:
+     }
+ 
+     /// Configures the live policy with a verified artifact and rule.
+-    pub fn configure(
+-        &mut self,
+-        digest: PolicyDigest,
+-        rule: PolicyRule,
+-    ) {
++    pub fn configure(&mut self, digest: PolicyDigest, rule: PolicyRule) {
+         self.current_live = CurrentLivePolicy::Configured { digest, rule };
+     }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:115:
+         }
+ 
+         let (outcome, layer, emergency_influence) = match &self.current_live {
+-            CurrentLivePolicy::Unconfigured => {
+-                (DecisionCode::Denied, PolicyLayer::Live, InfluenceState::Inactive)
+-            }
++            CurrentLivePolicy::Unconfigured => (
++                DecisionCode::Denied,
++                PolicyLayer::Live,
++                InfluenceState::Inactive,
++            ),
+             CurrentLivePolicy::Configured { rule, .. } => {
+                 if rule.action == ticket.action {
+                     (rule.code, PolicyLayer::Live, InfluenceState::Inactive)
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:124:
+                 } else {
+-                    (DecisionCode::Denied, PolicyLayer::Live, InfluenceState::Inactive)
++                    (
++                        DecisionCode::Denied,
++                        PolicyLayer::Live,
++                        InfluenceState::Inactive,
++                    )
+                 }
+             }
+         };
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:416:
+         );
+ 
+         let ticket = test_ticket(0);
+-        let record = policy.evaluate(
+-            ticket,
+-            admission,
+-            b"input",
+-            Taint::Clean,
+-        );
++        let record = policy.evaluate(ticket, admission, b"input", Taint::Clean);
+ 
+         assert_eq!(record.admission, admission);
+         assert_eq!(record.current_live.digest(), Some(test_digest()));
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:432:
+         let policy = LivePolicy::new();
+ 
+         let t1 = test_ticket(0);
+-        let r1 = policy.evaluate(t1, PinnedAdmissionPolicy::Unverified, b"input", Taint::Clean);
++        let r1 = policy.evaluate(
++            t1,
++            PinnedAdmissionPolicy::Unverified,
++            b"input",
++            Taint::Clean,
++        );
+ 
+         let t2 = test_ticket(1);
+-        let r2 = policy.evaluate(t2, PinnedAdmissionPolicy::Unverified, b"input", Taint::Clean);
++        let r2 = policy.evaluate(
++            t2,
++            PinnedAdmissionPolicy::Unverified,
++            b"input",
++            Taint::Clean,
++        );
+ 
+         assert_ne!(r1.input_digest, r2.input_digest);
+         assert_eq!(r1.ticket.action, ActionId::new(0));
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:486:
+         assert!(matches!(r2.admission, PinnedAdmissionPolicy::Artifact(_)));
+     }
+ }
++

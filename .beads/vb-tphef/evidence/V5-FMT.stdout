@@ -1,0 +1,86 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy/new_tests.rs:18:
+ 
+ fn test_digest() -> PolicyDigest {
+     PolicyDigest::from_bytes([
+-        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xCD,
++        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0xCD,
+     ])
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy/emergency_and_admission_tests.rs:31:
+ 
+ fn test_digest() -> PolicyDigest {
+     PolicyDigest::from_bytes([
+-        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xCD,
++        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0xCD,
+     ])
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:97:
+         let input_digest = compute_input_digest(input_bytes, taint, ticket)?;
+         let live_identity = self.current_live.identity();
+ 
+-        let (outcome, layer, emergency_influence) =
+-            self.evaluate_layer(ticket)?;
++        let (outcome, layer, emergency_influence) = self.evaluate_layer(ticket)?;
+ 
+         Ok(DecisionRecord {
+             ticket,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy/new_tests.rs:18:
+ 
+ fn test_digest() -> PolicyDigest {
+     PolicyDigest::from_bytes([
+-        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xCD,
++        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0xCD,
+     ])
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_core/src/policy/new_tests.rs:18:
+ 
+ fn test_digest() -> PolicyDigest {
+     PolicyDigest::from_bytes([
+-        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xCD,
++        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0xCD,
+     ])
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy/emergency_and_admission_tests.rs:31:
+ 
+ fn test_digest() -> PolicyDigest {
+     PolicyDigest::from_bytes([
+-        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xCD,
++        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0xCD,
+     ])
+ }
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy.rs:97:
+         let input_digest = compute_input_digest(input_bytes, taint, ticket)?;
+         let live_identity = self.current_live.identity();
+ 
+-        let (outcome, layer, emergency_influence) =
+-            self.evaluate_layer(ticket)?;
++        let (outcome, layer, emergency_influence) = self.evaluate_layer(ticket)?;
+ 
+         Ok(DecisionRecord {
+             ticket,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy/crates/vb_runtime/src/policy/emergency_and_admission_tests.rs:31:
+ 
+ fn test_digest() -> PolicyDigest {
+     PolicyDigest::from_bytes([
+-        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xCD,
++        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0xCD,
+     ])
+ }
+ 

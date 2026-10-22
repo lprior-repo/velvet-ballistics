@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-local5090-policy",
+  "argv": [
+    "cargo",
+    "fmt",
+    "--check",
+    "--",
+    "crates/vb_core/src/policy.rs",
+    "crates/vb_runtime/src/policy.rs"
+  ],
+  "exit_code": 1,
+  "seconds": 1.449,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-tphef/evidence/fmt-check",
+  "coordinator_message": "COORDINATOR REVIEW: current draft NOT accepted. Complete these scope corrections before handoff. (1) Restore ALL original seven core policy tests verbatim from git show 8707f8e9:crates/vb_core/src/policy.rs; do not replace/remove original tests. Retain RuntimePolicy non_exhaustive. (2) Actor evaluator must NOT store pinned_admission globally; each evaluate receives PinnedAdmissionPolicy for that run. Constructor initializes ONLY live/overlay. (3) evaluate must compute input digest itself from supplied canonical bytes + actual Taint + all8ticketfields. Merely accepting caller-supplied digest does NOT meet contract. Use existing canonical postcard encoding with typed failure or streaming Blake3; no madeup taints/defaults. (4) SIMPLIFY: fixed bounded permit/deny/suspend rule enum suffices for this slice; remove invented Vec<PolicyRule>,MAX64lookup,exposed unvalidated Configured Vec that bypasses bound, to_hex and unrelatedAPI. Avoid cloning policy rule Vec per decision. (5) Decision identity stores configured digest vs explicitly Unconfigured, not whole rule config. Typed emergency influence and compatibility NotEvaluated enum instead of bool+Option contradiction state. No 11argumentconstructor. (6) split files <=300lines, functions<=25logical. Newtests no unchecked bytes[0]/bytes[31], no casts/unwrap. Existing tests untouched except moving verbatim to submodule if needed. (7) Public ActionId is newtype not u16 in domainrules. (8) No broadfmt or changing existingtestfiles. Run official scoped compile/tests and strictlint; preserve every failurerawlog. Your outputs are foundation only, not fullparentauthorization.\n"
+}

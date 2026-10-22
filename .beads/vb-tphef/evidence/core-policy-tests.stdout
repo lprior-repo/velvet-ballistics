@@ -1,0 +1,54 @@
+
+running 49 tests
+test action::tests::action_failure_with_retryable_policy_is_retryable ... ok
+test budget::tests::blackhat_policy_rejects_one_over_limit ... ok
+test budget::tests::blackhat_policy_allows_exact_limit ... ok
+test budget::tests::boundedness_policy_custom_zero_limits_accept_zero_budget ... ok
+test budget::tests::aggregate_budget_error_policy_exceeded_debug ... ok
+test budget::tests::boundedness_policy_is_copy ... ok
+test budget::tests::boundedness_policy_custom_zero_limits_reject_nonzero ... ok
+test budget::tests::budget_accepts_within_policy ... ok
+test budget::tests::boundedness_policy_debug_format ... ok
+test budget::tests::budget_default_policy_accepts_reasonable_budget ... ok
+test budget::tests::boundedness_policy_default_values_are_sensible ... ok
+test budget::tests::default_policy_max_fanout_is_64 ... ok
+test budget::tests::default_policy_nesting_depth_is_8 ... ok
+test budget::tests::default_policy_total_steps_is_one_million ... ok
+test budget::tests::policy_allows_budget_at_exact_total_steps_limit ... ok
+test budget::tests::policy_boundary_exact_fanout ... ok
+test budget::tests::policy_boundary_exact_nesting_depth ... ok
+test budget::tests::policy_boundary_fanout_one_over ... ok
+test budget::tests::policy_boundary_nesting_depth_one_over ... ok
+test budget::tests::policy_check_order_slots_before_fanout ... ok
+test budget::tests::policy_check_order_total_steps_before_slots ... ok
+test budget::tests::policy_rejects_action_tickets_exceeded ... ok
+test budget::tests::policy_rejects_budget_one_over_total_steps_limit ... ok
+test budget::tests::policy_rejects_parallel_exceeded ... ok
+test budget::tests::policy_rejects_result_bytes_exceeded ... ok
+test budget::tests::policy_rejects_run_time_exceeded ... ok
+test budget::tests::policy_rejects_steps_executable_exceeded ... ok
+test budget::tests::policy_reports_first_violation_steps_over_slots_over ... ok
+test budget::tests::policy_validate_accepts_zero_budget ... ok
+test budget::tests::whole_workflow_budget_policy_at_exact_limit ... ok
+test budget::tests::whole_workflow_budget_policy_exceeds_limit ... ok
+test policy::new_tests::current_live_policy_configured_has_digest ... ok
+test policy::new_tests::current_live_policy_unconfigured_has_no_digest ... ok
+test policy::new_tests::decision_code_discriminants ... ok
+test policy::new_tests::decision_record_preserves_all_fields ... ok
+test policy::new_tests::influence_state_values ... ok
+test policy::new_tests::pinned_admission_unverified_is_not_digest ... ok
+test policy::new_tests::policy_digest_roundtrip ... ok
+test policy::new_tests::policy_layer_discriminants ... ok
+test policy::original_tests::policy_clone_produces_equal_value ... ok
+test policy::original_tests::policy_copy_semantics_preserve_equality ... ok
+test policy::original_tests::policy_debug_output_contains_variant_name ... ok
+test policy::original_tests::policy_journaled_is_not_relaxed ... ok
+test policy::original_tests::policy_strict_is_not_journaled ... ok
+test policy::original_tests::policy_strict_is_not_relaxed ... ok
+test policy::original_tests::policy_variants_are_distinct ... ok
+test workflow::tests::workflow_error_budget_policy_exceeded_display ... ok
+test budget::tests::property_boundedness_policy ... ok
+test budget::vb_qi37_2_4_state8_tests::prop_policy_rejection_includes_resource_and_values ... ok
+
+test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 2142 filtered out; finished in 0.00s
+

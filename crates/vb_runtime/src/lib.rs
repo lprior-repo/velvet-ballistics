@@ -83,6 +83,7 @@ pub mod kani_admission_store;
 
 #[cfg(loom)]
 pub mod models;
+pub mod policy;
 pub mod primitives;
 pub mod recovery;
 pub mod retry;
