@@ -142,6 +142,12 @@ pub struct ExActionScheduleEvidence(pub production::prod_src::ActionScheduleEvid
 #[verifier::external_type_specification]
 pub struct ExActionCompletionEvidence(pub production::prod_src::ActionCompletionEvidence);
 
+/// Spec-mode name for the production `WorkflowDigest` type
+/// (used as a field in `ActionScheduleEvidence` and
+/// `ActionCompletionEvidence`).
+#[verifier::external_type_specification]
+pub struct ExWorkflowDigest(pub production::prod_src::WorkflowDigest);
+
 /// Spec-mode name for the production `ActionTicket` struct
 /// (`crates/vb_storage/src/recovery/types.rs` — the wrapper around
 /// `(action: ActionId, step: StepIdx)` passed to

@@ -1,0 +1,2 @@
+[verus] verus --crate-type=lib verification/verus/vb-6da68-append-strict-commit.rs
+verification results:: 9 verified, 0 errors

@@ -1,0 +1,2 @@
+[verus] verus --crate-type=lib verification/verus/emit_single_body_set.rs
+verification results:: 35 verified, 0 errors
