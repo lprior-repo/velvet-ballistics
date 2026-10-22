@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-7x0ol-recovery-rereview",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_7x0ol_probe_registered_executor"
+  ],
+  "exit_code": 0,
+  "seconds": 0.331,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  }
+}

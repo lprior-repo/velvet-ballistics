@@ -1,0 +1,10 @@
+
+running 5 tests
+test recovery_of_pending_registered_action_blocked_pack_rejects ... ok
+test recovery_of_pending_registered_action_reconcile_pack_is_resumable ... ok
+test execute_registered_action_commits_one_effect_and_completes_run ... ok
+test execute_registered_action_rejects_mismatched_grant_artifact ... ok
+test reconcile_registered_action_reads_receipt_without_new_effect ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

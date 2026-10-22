@@ -1,0 +1,7 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-7x0ol-recovery-rereview/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.96s
+     Running tests/vb_7r7jv_executor_conformance.rs (target/debug/deps/vb_7r7jv_executor_conformance-6cae62a46b934199)

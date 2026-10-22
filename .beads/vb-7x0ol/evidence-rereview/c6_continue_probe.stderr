@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-7x0ol-recovery-rereview/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running tests/vb_7x0ol_probe_c6_continue.rs (target/debug/deps/vb_7x0ol_probe_c6_continue-46f3bf4bb971c7db)
