@@ -1,0 +1,27 @@
+{
+  "bead": "vb-fyktj",
+  "candidate": "62a2f47c2f2874d39dcb61466698e3f737e7d316",
+  "main": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "accepted_review": false,
+  "v1_rejected": "Conflates unchanged corpus comment with added max_len Command comment, so false already-landed classification.",
+  "v2_rejected": [
+    "Calls patch documentation-only despite actual constant change4096->100000.",
+    "Invents max_len1024 for yaml_events, actual candidate65536.",
+    "Misstates prior verified error; v1 claimed candidate Command already landed, root correction did not claim runtime command."
+  ],
+  "verified_actual_patch": {
+    "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs": "Adds doc command -max_len=65536 -runs=100000, absent main.",
+    "fuzz/fuzz_targets/yaml_events.rs": "Adds doc command -max_len=65536 -runs=100000, absent main.",
+    "fuzz/src/yaml_target.rs": "Changes assertion bound4096->100000; main4096."
+  },
+  "disposition": "Preserved, unresolved; no source integration based on these reviews. Numeric equality with max_nodes is insufficient; inspect actual parse/event/source map bounds and concrete regression.",
+  "evidence_command": [
+    "git",
+    "show",
+    "62a2f47c2f2874d39dcb61466698e3f737e7d316",
+    "--",
+    "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs",
+    "fuzz/fuzz_targets/yaml_events.rs",
+    "fuzz/src/yaml_target.rs"
+  ]
+}

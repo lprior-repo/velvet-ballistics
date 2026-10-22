@@ -1,0 +1,53 @@
+{
+  "bead": "vb-fyktj",
+  "disposition": "PARTIALLY_USEFUL",
+  "candidate": "62a2f47c2f2874d39dcb61466698e3f737e7d316",
+  "main": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "merge_base": "da633fe0bbde9e414173d5f7aabe314a37f8752d",
+  "files_analyzed": [
+    {
+      "path": "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs",
+      "change_type": "doc_comment_addition",
+      "status": "NOT_LANDED",
+      "useful": true,
+      "evidence": "Main file starts with #![no_main] directly, no doc comment with run command."
+    },
+    {
+      "path": "fuzz/fuzz_targets/yaml_events.rs",
+      "change_type": "doc_comment_addition",
+      "status": "ALREADY_LANDED",
+      "useful": false,
+      "evidence": "Main file already contains 'Corpus seeds are maintained in fuzz/corpus/yaml_events/' in doc comment."
+    },
+    {
+      "path": "fuzz/src/yaml_target.rs",
+      "change_type": "constant_change",
+      "old_value": "4096",
+      "new_value": "100000",
+      "status": "NOT_LANDED",
+      "useful": true,
+      "evidence": "Main file still has MAX_FUZZ_PAYLOAD_USIZE = 4096 at line 16. Production YamlLimits::default().max_nodes is 100000.",
+      "production_limit_ref": "crates/vb_yaml/src/yaml_limits.rs:29 (max_nodes: 100_000)"
+    }
+  ],
+  "production_yaml_limits": {
+    "max_source_bytes": 1048576,
+    "max_depth": 64,
+    "max_nodes": 100000,
+    "max_sequence_len": 10000,
+    "max_mapping_entries": 1024,
+    "max_scalar_bytes": 65536,
+    "source": "crates/vb_yaml/src/yaml_limits.rs"
+  },
+  "semantic_analysis": {
+    "max_fuzz_payload_usize_purpose": "Internal sanity assertion bound in fuzz target, not a production YAML parsing limit",
+    "alignment_with_production": "100000 matches production max_nodes default, providing consistent reference point",
+    "risk_of_current_4096": "Overly restrictive, may cause false assertion failures for legitimate large inputs"
+  },
+  "confidence": "HIGH",
+  "gaps": [
+    "No fuzz target execution performed (code inspection only)",
+    "No new tests included with constant change (acceptable for fuzz target constant)"
+  ],
+  "recommendation": "Merge doc comment addition to vb_f04l_yaml_compiler_compile.rs and MAX_FUZZ_PAYLOAD_USIZE change to 100000. Skip yaml_events.rs doc comment (already landed)."
+}
