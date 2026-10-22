@@ -8,13 +8,14 @@
 
 use std::path::PathBuf;
 use std::process::{Command, Output};
+use tempfile::TempDir;
+
 
 /// Helper to get the path to the velvet-ballistics binary.
 fn vb_binary() -> PathBuf {
-    // Use the cargo test environment or target directory
     std::env::var("CARGO_BIN_EXE_velvet-ballistics")
-        .map(PathBuf::from)
         .ok()
+        .map(PathBuf::from)
         .or_else(|| {
             std::fs::canonicalize(std::path::Path::new(env!("CARGO_MANIFEST_DIR")))
                 .ok()
@@ -23,12 +24,48 @@ fn vb_binary() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("velvet-ballistics"))
 }
 
-/// Run the velvet-ballistics binary with the given args and return the output.
-fn run_vb(args: &[&str]) -> Output {
+/// Internal helper: run velvet-ballistics with isolated temp dir,
+/// resolving binary to absolute path first. Returns Result so callers
+/// can propagate failures without adding expect/unwrap in run_vb.
+fn run_vb_internal(args: &[&str]) -> Result<Output, Box<dyn std::error::Error>> {
     let binary = vb_binary();
-    let mut cmd = Command::new(&binary);
+    let absolute_binary = std::fs::canonicalize(&binary)?;
+
+    let tmp_dir = TempDir::new()?;
+
+    let mut cmd = Command::new(absolute_binary);
+    cmd.current_dir(tmp_dir.path());
     cmd.args(args);
-    cmd.output().expect("failed to execute velvet-ballistics")
+    let output = cmd.output()?;
+
+    Ok(output)
+}
+
+/// Internal helper for regression tests: run doctor with isolated temp dir
+/// and return the temp dir path for inspection after the command completes.
+/// Proves that relative --db paths are resolved within the child's working
+/// directory, not the inherited repository cwd.
+fn run_vb_doctor_in_temp(
+    db_name: &str,
+) -> Result<(Output, TempDir), Box<dyn std::error::Error>> {
+    let binary = vb_binary();
+    let absolute_binary = std::fs::canonicalize(&binary)?;
+
+    let tmp_dir = TempDir::new()?;
+
+    let mut cmd = Command::new(absolute_binary);
+    cmd.current_dir(tmp_dir.path());
+    cmd.args(["doctor", "--db", db_name]);
+    let output = cmd.output()?;
+
+    Ok((output, tmp_dir))
+}
+
+/// Run the velvet-ballistics binary with the given args and return the output.
+/// All fallible operations are handled by run_vb_internal; this wrapper uses
+/// a single expect for the total operation.
+fn run_vb(args: &[&str]) -> Output {
+    run_vb_internal(args).expect("failed to execute velvet-ballistics")
 }
 
 /// Check that velvet-ballistics prints help and exits successfully.
@@ -714,6 +751,60 @@ mod doctor_command {
         );
     }
 
+    /// Regression test: CLI commands that create database files must not
+    /// write artifacts into the repository's source tree. Each CLI invocation
+    /// runs in an isolated temp working directory.
+    ///
+    /// This test proves:
+    /// 1. The doctor command succeeds with a relative --db name
+    /// 2. A Fjall journal is actually created in the child's working directory
+    /// 3. No journal artifacts appear in the inherited repository cwd
+    /// 4. The test fails if the child current_dir override is removed
+    #[test]
+    fn cli_doctor_with_relative_db_no_source_tree_artifacts() -> Result<(), Box<dyn std::error::Error>> {
+        let db_name = "vb-isolation-test.db";
+
+        // Run doctor with a relative db path in an isolated temp dir
+        let (output, tmp_dir) = run_vb_doctor_in_temp(db_name)?;
+
+        // Verify doctor succeeded
+        assert!(
+            output.status.success(),
+            "doctor with relative --db should succeed; exit code: {:?}\nstdout: {}\nstderr: {}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        // Verify doctor produced expected output
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("all checks passed") || stdout.contains("trim eligibility"),
+            "doctor should report checks passed or trim eligibility: {}",
+            stdout
+        );
+
+        // Verify Fjall journal was created in the child's temp working directory
+        let expected_db_path = tmp_dir.path().join(db_name);
+        assert!(
+            expected_db_path.exists(),
+            "doctor should create Fjall journal at relative path in child cwd: {:?}",
+            expected_db_path
+        );
+
+        // Verify no journal in inherited repository cwd
+        let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .ok_or("manifest dir has no parent")?;
+        let repo_db_path = repo_root.join(db_name);
+        assert!(
+            !repo_db_path.exists(),
+            "relative --db path should not create database in repo cwd: {:?}",
+            repo_db_path
+        );
+
+        Ok(())
+    }
     /// doctor with --db should also work.
     #[test]
     fn cli_doctor_with_db_runs() {
