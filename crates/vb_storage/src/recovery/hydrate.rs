@@ -449,9 +449,7 @@ fn validate_tail_events_after_snapshot(
     Ok(())
 }
 
-fn snapshot_input_violation_to_error(
-    violation: SnapshotRecoveryInputViolation,
-) -> RecoveryError {
+fn snapshot_input_violation_to_error(violation: SnapshotRecoveryInputViolation) -> RecoveryError {
     match violation {
         SnapshotRecoveryInputViolation::SnapshotRunMismatch {
             expected_run,

@@ -409,6 +409,7 @@ fn action_ticket_from_different_run_is_not_equal() {
         idempotency_key: 100,
         capacity: 1,
     };
+    assert_ne!(ticket_a, ticket_b);
 }
 
 #[test]
@@ -795,12 +796,16 @@ fn verify_idempotency_key_required_clean_keys_passes() {
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
     assert!(frame.is_ok());
     let mut frame = frame.ok().expect("test setup");
-    assert!(frame
-        .write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean)
-        .is_ok());
-    assert!(frame
-        .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Clean)
-        .is_ok());
+    assert!(
+        frame
+            .write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean)
+            .is_ok()
+    );
+    assert!(
+        frame
+            .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Clean)
+            .is_ok()
+    );
     let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
     let result = verify_idempotency(&action, &key_slots, &frame);
     assert_eq!(result, Ok(()));
@@ -837,12 +842,16 @@ fn validate_key_ingredients_clean_slots_pass() {
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
     assert!(frame.is_ok());
     let mut frame = frame.ok().expect("test setup");
-    assert!(frame
-        .write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean)
-        .is_ok());
-    assert!(frame
-        .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Clean)
-        .is_ok());
+    assert!(
+        frame
+            .write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean)
+            .is_ok()
+    );
+    assert!(
+        frame
+            .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Clean)
+            .is_ok()
+    );
     let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
     let result = validate_idempotency_key_ingredients(&key_slots, &frame);
     assert_eq!(result, Ok(()));

@@ -149,8 +149,12 @@ fn capacity_case(adapter: &mut FjallRegister, grant: &RegisterGrant) -> Result<(
 fn another_grant(grant: &RegisterGrant, seq: u32) -> RegisterGrant {
     let mut ticket = grant.ticket;
     ticket.seq = SeqNo::new(u64::from(seq));
-    ticket.idempotency_key =
-        vb_core::action::compute_action_idempotency_key(ticket.run, ticket.run_attempt, ticket.seq, ticket.action);
+    ticket.idempotency_key = vb_core::action::compute_action_idempotency_key(
+        ticket.run,
+        ticket.run_attempt,
+        ticket.seq,
+        ticket.action,
+    );
     RegisterGrant {
         ticket,
         ..grant.clone()

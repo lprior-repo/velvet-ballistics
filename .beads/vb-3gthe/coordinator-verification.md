@@ -1,0 +1,3 @@
+# Coordinator verification
+
+The foreground workspace test compilation and core/storage/runtime library commands have successful true-exit JSON metadata. The background cargo test --workspace invocation stopped when its OMP worker ended: no completed test_all_final.json exists and no associated gate/test process remains. Its stdout is partial execution evidence only. It must not be called running or passed. Final whole-workspace and canonical Moon validation remain required on the combined candidate. The source checkpoint a8452f9ecb2a is preserved and pushed independently of this incomplete broad run.

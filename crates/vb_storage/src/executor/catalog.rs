@@ -99,28 +99,35 @@ impl ExecutorCatalog {
         Ok(grant)
     }
     /// Recheck an opaque adapter receipt against the exact artifact and logical invocation.
-    pub fn validate_receipt(&self, artifact: &crate::AcceptedArtifact, ticket: ActionTicket,
-        value: i64, receipt: &super::RegisterReceipt) -> Result<(), ExecutorError>
-    {
+    pub fn validate_receipt(
+        &self,
+        artifact: &crate::AcceptedArtifact,
+        ticket: ActionTicket,
+        value: i64,
+        receipt: &super::RegisterReceipt,
+    ) -> Result<(), ExecutorError> {
         let pack = self.pack_for(artifact, ticket.action)?;
         let grant = self.issue_register_grant(artifact, ticket, pack.scope)?;
         let expected = super::receipt::record(&grant, value, receipt.effect_ordinal())?;
         super::receipt::validate_record(&receipt.0)?;
-        if receipt.0 != expected { return Err(ExecutorError::ReceiptConflict); }
+        if receipt.0 != expected {
+            return Err(ExecutorError::ReceiptConflict);
+        }
         Ok(())
     }
 
     /// Recovery authority is explicit and independent from idempotency enforcement.
-    pub fn require_receipt_recovery(&self, artifact: &crate::AcceptedArtifact, action: vb_core::ActionId)
-        -> Result<(), ExecutorError>
-    {
+    pub fn require_receipt_recovery(
+        &self,
+        artifact: &crate::AcceptedArtifact,
+        action: vb_core::ActionId,
+    ) -> Result<(), ExecutorError> {
         self.verify_artifact(artifact, vb_core::RuntimePolicy::Strict)?;
         if self.pack_for(artifact, action)?.recovery != RecoveryClass::ReconcileReceipt {
             return Err(ExecutorError::PackMismatch);
         }
         Ok(())
     }
-
 }
 
 fn check_contract(contract: &ActionContract) -> Result<(), ExecutorError> {

@@ -129,7 +129,7 @@ fn model_contiguity_extends(prefix: &[u64], next_val: u64) -> bool {
 // ============================================================================
 
 /// Step indices are bounded to [0, u16::MAX] by construction.
-#[flux_rs::sig(fn(idx: u16) -> bool[0 <= idx && idx <= 16#ffff#])]
+#[flux_rs::sig(fn(idx: u16) -> bool[0 <= idx && idx <= u16::MAX])]
 fn model_step_idx_in_bounds(idx: u16) -> bool {
     true
 }
