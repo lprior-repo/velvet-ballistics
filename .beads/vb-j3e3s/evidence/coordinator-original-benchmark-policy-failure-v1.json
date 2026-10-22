@@ -1,0 +1,27 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "run",
+    "--quiet",
+    "--manifest-path",
+    "xtask/Cargo.toml",
+    "--",
+    "benchmark-regression-policy",
+    "--budget",
+    "contracts/perf-budget.yaml",
+    "--evidence",
+    "evidence/benchmark-evidence.jsonl"
+  ],
+  "exit_code": 1,
+  "seconds": 0.072,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-j3e3s/evidence/coordinator-original-benchmark-policy-failure-v1"
+}
