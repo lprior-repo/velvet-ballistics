@@ -1,0 +1,14 @@
+.config/source-length-exceptions.txt:216 path is not a tracked first-party Rust source file: crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs
+FAIL verification/verus/extern_try_from_parts.rs [category=verus] has 828 physical lines (hard limit 800); add a row to .config/source-length-exceptions.txt or split
+FAIL verification/verus/production_inner/vb_xi2f_compile_source_production.rs [category=verus] has 805 physical lines (hard limit 800); add a row to .config/source-length-exceptions.txt or split
+source-length gate summary:
+  generated          scanned=1     excluded (no limit)
+  perf               scanned=0     excluded (no limit)
+  kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+  verus              scanned=220   warn=43   over_limit=2    limit=800 warn_at=640
+  flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+  verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+  test_in_src        scanned=304   warn=48   over_limit=0    limit=1500 warn_at=1200
+  test_top_level     scanned=385   warn=6    over_limit=0    limit=3000 warn_at=2400
+  production         scanned=943   warn=195  over_limit=0    limit=300 warn_at=240
+  ledger rows used:    383
