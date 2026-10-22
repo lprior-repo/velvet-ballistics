@@ -428,7 +428,9 @@ fn recovery_of_pending_registered_action_blocked_pack_rejects() -> TestResult {
             assert_eq!(reason.as_str(), "registered_recovery_blocked");
         }
         other => {
-            panic!("expected RecoveryCannotResume(registered_recovery_blocked), got: {other:?}")
+            return Err(format!(
+                "expected RecoveryCannotResume(registered_recovery_blocked), got: {other:?}"
+            ));
         }
     }
     Ok(())
@@ -468,7 +470,11 @@ fn recovery_of_pending_registered_action_reconcile_pack_is_resumable() -> TestRe
                 vb_runtime::recovery::RecoveredRunBoundaryKind::PendingAction
             );
         }
-        other => panic!("expected Resumable pending-action product, got: {other:?}"),
+        other => {
+            return Err(format!(
+                "expected Resumable pending-action product, got: {other:?}"
+            ));
+        }
     }
     Ok(())
 }

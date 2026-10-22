@@ -1,10 +1,50 @@
 use vb_core::policy::{
     CurrentPolicyIdentity, DecisionCode, DecisionRecord, PinnedAdmissionPolicy, PolicyDigest,
-    PolicyLayer, PolicyRule,
+    PolicyLayer, PolicyRule, encode_taint_canonical,
 };
+use vb_core::value::Taint;
 use vb_runtime::runtime::RegisteredExecutionError;
 
 use super::*;
+
+fn compute_expected_input_digest(
+    value: i64,
+    taint: Taint,
+    ticket: &ActionTicket,
+) -> Result<PolicyDigest, String> {
+    let input_bytes = postcard::to_allocvec(&SlotValue::I64(value))
+        .map_err(|e| format!("failed to serialize input: {e}"))?;
+    let taint_byte = encode_taint_canonical(taint)
+        .ok_or_else(|| "unexpected taint variant".to_string())?;
+
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(b"velvet-ballistics:policy:input:");
+    hasher.update(&input_bytes);
+    hasher.update(b"velvet-ballistics:policy:taint:");
+    hasher.update(&[taint_byte]);
+    hasher.update(b"velvet-ballistics:policy:ticket:");
+    hasher.update(b"run:");
+    hasher.update(&ticket.run.get().to_be_bytes());
+    hasher.update(b"step:");
+    hasher.update(&ticket.step.get().to_be_bytes());
+    hasher.update(b"seq:");
+    hasher.update(&ticket.seq.get().to_be_bytes());
+    hasher.update(b"action:");
+    hasher.update(&ticket.action.get().to_be_bytes());
+    hasher.update(b"run_attempt:");
+    hasher.update(&ticket.run_attempt.to_be_bytes());
+    hasher.update(b"attempt:");
+    hasher.update(&ticket.attempt.to_be_bytes());
+    hasher.update(b"key:");
+    hasher.update(&ticket.idempotency_key.to_be_bytes());
+    hasher.update(b"capacity:");
+    hasher.update(&ticket.capacity.to_be_bytes());
+
+    let result = hasher.finalize();
+    let mut output = [0u8; 32];
+    output.copy_from_slice(result.as_bytes());
+    Ok(PolicyDigest::from_bytes(output))
+}
 
 #[test]
 fn unconfigured_policy_denies_execution() -> TestResult {
@@ -47,14 +87,14 @@ fn unconfigured_policy_denies_execution() -> TestResult {
         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
             assert_eq!(decision.outcome, DecisionCode::Denied);
             assert_eq!(decision.layer, PolicyLayer::Live);
-            assert!(
-                matches!(decision.current_live, CurrentPolicyIdentity::Unconfigured),
-                "unconfigured policy must be recorded in decision"
-            );
+            if !matches!(decision.current_live, CurrentPolicyIdentity::Unconfigured) {
+                return Err("unconfigured policy must be recorded in decision".into());
+            }
             assert_eq!(decision.ticket, ticket);
-            assert_ne!(decision.input_digest, PolicyDigest::from_bytes([0u8; 32]));
+            let expected_digest = compute_expected_input_digest(42, Taint::Clean, &ticket)?;
+            assert_eq!(decision.input_digest, expected_digest);
         }
-        other => panic!("expected PolicyDenied, got: {other:?}"),
+        other => return Err(format!("expected PolicyDenied, got: {other:?}")),
     }
 
     assert_eq!(adapter.effect_count()?, 0);
@@ -122,18 +162,24 @@ fn after_scheduling_policy_change_to_deny() -> TestResult {
                     assert_eq!(digest, denied_digest);
                     assert_ne!(digest, allowed_digest);
                 }
-                other => panic!("expected Configured live policy, got: {other:?}"),
+                other => return Err(format!("expected Configured live policy, got: {other:?}")),
             }
+            let expected_admission =
+                PolicyDigest::from_bytes(artifact.policy_digest.as_bytes());
             match decision.admission {
                 PinnedAdmissionPolicy::Artifact(admitted_digest) => {
-                    assert_eq!(admitted_digest, allowed_digest);
+                    assert_eq!(admitted_digest, expected_admission);
                     assert_ne!(admitted_digest, denied_digest);
+                    assert_ne!(admitted_digest, allowed_digest);
                 }
-                other => panic!("expected Artifact admission pin, got: {other:?}"),
+                other => return Err(format!("expected Artifact admission pin, got: {other:?}")),
             }
             assert_eq!(decision.ticket, ticket);
+            let expected_input_digest =
+                compute_expected_input_digest(99, Taint::Clean, &ticket)?;
+            assert_eq!(decision.input_digest, expected_input_digest);
         }
-        other => panic!("expected PolicyDenied, got: {other:?}"),
+        other => return Err(format!("expected PolicyDenied, got: {other:?}")),
     }
 
     assert_eq!(adapter.effect_count()?, 0);
@@ -197,18 +243,23 @@ fn allowed_policy_permits_effect_and_records_decision() -> TestResult {
         })
         .collect();
 
-    assert!(!decision_events.is_empty(), "expected at least one policy decision event");
-    let last_decision = decision_events.last().expect("events non-empty");
+    if decision_events.is_empty() {
+        return Err("expected at least one policy decision event".into());
+    }
+    let last_decision = decision_events.last()
+        .ok_or_else(|| "decision events list should be non-empty".to_string())?;
     assert_eq!(last_decision.outcome, DecisionCode::Allowed);
     assert_eq!(last_decision.layer, PolicyLayer::Live);
     match last_decision.current_live {
         CurrentPolicyIdentity::Configured { digest } => {
             assert_eq!(digest, allowed_digest);
         }
-        other => panic!("expected Configured live policy, got: {other:?}"),
+        other => return Err(format!("expected Configured live policy, got: {other:?}")),
     }
     assert_eq!(last_decision.ticket, ticket);
-    assert_ne!(last_decision.input_digest, PolicyDigest::from_bytes([0u8; 32]));
+    let expected_input_digest =
+        compute_expected_input_digest(100, Taint::Clean, &ticket)?;
+    assert_eq!(last_decision.input_digest, expected_input_digest);
 
     Ok(())
 }
