@@ -352,5 +352,8 @@ fn versioned_decoder_preserves_pinned_admission_through_roundtrip() -> Result<()
         Some(RunPolicyPin::Pinned(policy_digest)),
         "policy pin must be preserved through version-aware decode roundtrip"
     );
+
+    // Verify the entire checkpoint is preserved, not just the policy pin.
+    assert_eq!(decoded, checkpoint, "full checkpoint must roundtrip exactly");
     Ok(())
 }

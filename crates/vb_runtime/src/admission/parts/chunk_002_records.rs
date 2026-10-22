@@ -100,8 +100,7 @@ impl RunAdmission {
     /// Use this after constructing an admission with the compatibility
     /// constructors to attach a real policy pin when the artifact's actual
     /// policy identity is available.
-    #[allow(clippy::missing_inline_in_public_items)]
-    pub fn with_policy_pin(mut self, policy_pin: RunPolicyPin) -> Self {
+    pub(crate) fn with_policy_pin(mut self, policy_pin: RunPolicyPin) -> Self {
         self.policy_pin = policy_pin;
         self
     }

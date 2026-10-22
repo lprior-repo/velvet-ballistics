@@ -1400,7 +1400,7 @@ fn admission_relaxed_admit_run_keeps_unverified_pin() {
 
 // ══ vb-h7rex: Checkpoint policy pin roundtrip tests ═════════════════════
 #[test]
-fn checkpoint_preserves_pinned_policy_pin_through_roundtrip() -> Result<(), String> {
+fn admission_record_preserves_policy_pin_through_roundtrip() -> Result<(), String> {
     // RA-022: new checkpoints with pinned policy identity must survive
     // serialize → deserialize without silent degradation to Unverified.
     let run_id = RunId::new(1);
