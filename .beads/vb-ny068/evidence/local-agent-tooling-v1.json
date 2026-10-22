@@ -1,0 +1,40 @@
+{
+  "scope": "Coordinator local OMP invocation correction, no repository product implementation or global provider/service changes",
+  "omp_version": "18.12.1",
+  "primary_source": "installed omp --help and omp config list --json",
+  "per_run_config_path": "/tmp/vb-omp-local-text-tools.yml",
+  "per_run_config_sha256": "d7f2f53825302dddd144ef53f183ded1122590d2d6688754c0f67b0288a10c7f",
+  "per_run_overrides": {
+    "images.blockImages": true,
+    "images.describeForTextModels": false,
+    "edit.mode": "replace",
+    "edit.fuzzyMatch": false,
+    "tools.format": "native",
+    "tools.xdev": false
+  },
+  "runner": "/tmp/vb-omp-worker-native-v6.py",
+  "runner_sha256": "c182869236db7103bca24cd4eaa9beac1db47fd8a393084631dc62f8828604a6",
+  "allowed_tools": [
+    "bash",
+    "read",
+    "edit",
+    "write",
+    "grep",
+    "glob"
+  ],
+  "models": [
+    "local-5090-ninfer/qwen3.8-27b-uncensored",
+    "local-3090-llama/qwen3.8-27b-uncensored"
+  ],
+  "all_model_roles_local": true,
+  "cloud_fallback": false,
+  "thinking": "high",
+  "observed": "5090 v4 actually invoked native read and edit with old_string/new_string arguments; no image retry observed at this record time. This confirms tool transport only, not implementation correctness.",
+  "quality_reference_files_used": [
+    "/home/lewis/.agents/skills/holzman-rust/references/nasa-jpl-standards.md",
+    "/home/lewis/.agents/skills/holzman-rust/references/runtime-performance-architecture.md",
+    "/home/lewis/.agents/skills/async-rust-reviewer/references/structural-correctness.md",
+    "/home/lewis/.agents/skills/async-rust-reviewer/references/cancellation-safety.md"
+  ],
+  "evidence_caution": "Original /tmp/vb-run-gate.py remains unchanged and read-only mode555. Worker vb-tphef v2 reused a prefix; those mixed intermediate files are not independent final acceptance. Final acceptance must use frozen source and fresh unique raw gate outputs."
+}
