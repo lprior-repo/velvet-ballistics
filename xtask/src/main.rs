@@ -5,6 +5,8 @@
 // reachable (bin entry-point, public API for tests) vs internal.
 
 mod ai_profile;
+mod benchmark_budget;
+mod benchmark_freshness;
 mod benchmark_policy;
 mod cli;
 mod contracts;
@@ -384,6 +386,8 @@ fn cmd_proof_affected(
     Ok(())
 }
 
+#[cfg(test)]
+mod benchmark_tests_support;
 #[cfg(test)]
 mod command_shell_tests;
 

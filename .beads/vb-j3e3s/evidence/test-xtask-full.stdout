@@ -1,0 +1,212 @@
+
+running 67 tests
+test contracts::tests::test_compare_semver_equal ... ok
+test contracts::tests::test_compare_semver_greater ... ok
+test contracts::tests::test_compare_semver_less ... ok
+test contracts::tests::test_contract_kind_display ... ok
+test contracts::tests::test_contract_error_display ... ok
+test contracts::tests::test_discover_nonexistent_dir ... ok
+test contracts::tests::test_extract_kind_not_found ... ok
+test contracts::tests::test_extract_kind_found ... ok
+test contracts::tests::test_extract_schema_version_found ... ok
+test contracts::tests::test_extract_schema_version_not_found ... ok
+test contracts::tests::test_gate_evidence_fail ... ok
+test contracts::tests::test_manifest_is_not_a_contract_discovery_candidate ... ok
+test contracts::tests::test_gate_evidence_pass ... ok
+test contracts::tests::test_parse_contract_kind_invalid ... ok
+test contracts::tests::test_parse_contract_kind_all ... ok
+test contracts::tests::test_parse_schema_version_empty ... ok
+test contracts::tests::test_parse_schema_version_malformed ... ok
+test contracts::tests::test_parse_schema_version_valid ... ok
+test contracts::tests::test_parse_vet_exit_code_nonzero ... ok
+test contracts::tests::test_parse_vet_exit_code_zero ... ok
+test contracts::tests::test_report_summary_parity ... ok
+test discovery::tests::test_filter_crates_exclude ... ok
+test discovery::tests::test_filter_crates_include ... ok
+test evidence::tests::evidence_path_stays_under_bead_directory ... ok
+test discovery::tests::test_filter_crates_include_and_exclude ... ok
+test evidence::tests::explain_failure_returns_none_when_status_is_pass ... ok
+test evidence::tests::explain_failure_returns_none_when_status_is_skipped ... ok
+test evidence::tests::failed_gate_explains_failure_with_hint_and_repair ... ok
+test evidence::tests::gate_profile_evidence_files_and_gates_are_stable ... ok
+test evidence::tests::release_bead_id_accepts_only_supported_release_bead ... ok
+test evidence_gate::tests::audit_failure_with_multiple_tools_lists_all ... ok
+test evidence_gate::tests::benchmark_evidence_complete_has_all_fields ... ok
+test evidence_gate::tests::benchmark_evidence_empty_baseline_is_incomplete ... ok
+test evidence::tests::validate_evidence_dir_returns_empty_vec_when_all_gates_present ... ok
+test evidence_gate::tests::benchmark_evidence_missing_baseline_is_incomplete ... ok
+test evidence::tests::validate_evidence_dir_returns_missing_evidence_error_for_each_absent_gate ... ok
+test evidence::tests::validate_evidence_dir_returns_partial_errors_when_some_gates_missing ... ok
+test evidence_gate::tests::enrich_benchmark_evidence_adds_command_and_environment ... ok
+test evidence_gate::tests::evidence_bundle_passes_with_complete_evidence ... ok
+test evidence_gate::tests::evidence_bundle_validates_audit_failure_blocks_gate ... ok
+test evidence_gate::tests::evidence_bundle_validates_missing_benchmark_baseline_blocks_speed_claim ... ok
+test evidence_gate::tests::evidence_bundle_validates_missing_supply_chain ... ok
+test evidence_gate::tests::evidence_gate_failure_display_formats ... ok
+test evidence_gate::tests::required_kernel_groups_lists_all_kernel_paths ... ok
+test evidence_gate::tests::parse_criterion_output_extracts_benchmark_names ... ok
+test lanes::tests::test_lane_command_clippy ... ok
+test lanes::tests::test_lane_command_test ... ok
+test logger::tests::test_generate_run_id ... ok
+test logger::tests::test_log_entry_serialization ... ok
+test profiles::tests::test_all_lanes ... ok
+test parser::tests::contracts_remains_routed_to_legacy_cli ... ok
+test parser::tests::unknown_top_level_command_still_fails_closed ... ok
+test profiles::tests::test_fast_lanes ... ok
+test profiles::tests::test_parse_profile ... ok
+test profiles::tests::test_profile_monotonicity ... ok
+test scheduler::tests::test_empty_schedule ... ok
+test scheduler::tests::test_bounded_parallelism ... ok
+test scheduler::tests::test_independent_crates ... ok
+test scheduler::tests::test_linear_chain ... ok
+test scheduler::tests::test_single_crate ... ok
+test summary::tests::test_pass_count ... ok
+test summary::tests::test_format_text_summary ... ok
+test summary::tests::test_has_failures ... ok
+test scheduler::proptests::proptest_bounded_parallelism ... ok
+test scheduler::proptests::proptest_topological_order ... ok
+test scheduler::proptests::proptest_dependency_order ... ok
+test lanes::tests::test_required_lanes_always_available ... ok
+
+test result: ok. 67 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 67 tests
+test benchmark_policy::tests::detects_integer_regression_threshold ... ok
+test benchmark_policy::tests::rejects_non_hex_commit_format ... ok
+test command_shell_tests::renderer_and_router_return_exact_command_error_variants ... ok
+test command_shell_tests::parser_returns_exact_command_error_variants ... ok
+test benchmark_policy::tests::rejects_empty_evidence_for_budgeted_metrics ... ok
+test benchmark_policy::tests::rejects_deferred_mode_in_claim ... ok
+test benchmark_policy::tests::rejects_placeholder_instruction_metadata ... ok
+test command_shell_tests::required_command_stdout_renders_parseable_json_line_with_exact_fields ... ok
+test contracts::tests::test_compare_semver_greater ... ok
+test contracts::tests::test_compare_semver_less ... ok
+test contracts::tests::test_contract_error_display ... ok
+test contracts::tests::test_compare_semver_equal ... ok
+test contracts::tests::test_contract_kind_display ... ok
+test contracts::tests::test_discover_nonexistent_dir ... ok
+test benchmark_policy::tests::rejects_deferred_generated_budget ... ok
+test contracts::tests::test_gate_evidence_pass ... ok
+test contracts::tests::test_manifest_is_not_a_contract_discovery_candidate ... ok
+test contracts::tests::test_extract_kind_found ... ok
+test contracts::tests::test_parse_contract_kind_all ... ok
+test contracts::tests::test_extract_kind_not_found ... ok
+test contracts::tests::test_parse_contract_kind_invalid ... ok
+test contracts::tests::test_extract_schema_version_found ... ok
+test contracts::tests::test_extract_schema_version_not_found ... ok
+test contracts::tests::test_parse_schema_version_empty ... ok
+test contracts::tests::test_parse_schema_version_malformed ... ok
+test contracts::tests::test_parse_schema_version_valid ... ok
+test contracts::tests::test_parse_vet_exit_code_nonzero ... ok
+test contracts::tests::test_parse_vet_exit_code_zero ... ok
+test contracts::tests::test_report_summary_parity ... ok
+test contracts::tests::test_gate_evidence_fail ... ok
+test evidence::tests::gate_profile_evidence_files_and_gates_are_stable ... ok
+test evidence::tests::evidence_path_stays_under_bead_directory ... ok
+test evidence::tests::explain_failure_returns_none_when_status_is_pass ... ok
+test evidence::tests::validate_evidence_dir_returns_missing_evidence_error_for_each_absent_gate ... ok
+test evidence::tests::validate_evidence_dir_returns_empty_vec_when_all_gates_present ... ok
+test evidence::tests::validate_evidence_dir_returns_partial_errors_when_some_gates_missing ... ok
+test evidence::tests::release_bead_id_accepts_only_supported_release_bead ... ok
+test gates::tests::every_gate_has_a_command_and_yaml_evidence_file ... ok
+test evidence::tests::explain_failure_returns_none_when_status_is_skipped ... ok
+test gates::tests::gate_names_and_evidence_files_match_expected_identifiers ... ok
+test gates::tests::representative_gate_commands_match_contract ... ok
+test gates::tests::run_fmt_gate_uses_default_bead_when_bead_is_omitted ... ok
+test evidence::tests::failed_gate_explains_failure_with_hint_and_repair ... ok
+test gates::tests::gate_runners_return_named_evidence_when_bead_is_provided ... ok
+test benchmark_freshness::tests::non_commit_blob_rejected ... ok
+test benchmark_freshness::tests::resolve_commit_full_sha ... ok
+test benchmark_freshness::tests::resolve_commit_unique_prefix ... ok
+test benchmark_freshness::tests::missing_commit_rejected ... ok
+test benchmark_freshness::tests::non_ancestor_commit_rejected ... ok
+test benchmark_freshness::tests::toolchain_mutation_rejected ... ok
+test benchmark_freshness::tests::dirty_working_tree_same_head_rejected ... ok
+test benchmark_freshness::tests::staged_change_same_head_rejected ... ok
+test benchmark_freshness::tests::cargo_lock_mutation_rejected ... ok
+test benchmark_freshness::tests::script_mutation_rejected ... ok
+test benchmark_freshness::tests::committed_source_change_rejected ... ok
+test benchmark_freshness::tests::xtask_policy_mutation_rejected ... ok
+test benchmark_freshness::tests::bench_fixture_mutation_rejected ... ok
+test benchmark_freshness::tests::perf_budget_mutation_rejected ... ok
+test benchmark_freshness::tests::unrelated_dirty_file_is_fresh ... ok
+test benchmark_freshness::tests::ignored_build_output_not_flagged ... ok
+test benchmark_freshness::tests::untracked_relevant_rust_rejected ... ok
+test benchmark_freshness::tests::touched_then_reverted_source_is_fresh ... ok
+test benchmark_freshness::tests::untracked_irrelevant_file_is_fresh ... ok
+test benchmark_freshness::tests::untracked_relevant_config_rejected ... ok
+test benchmark_freshness::tests::gitignored_relevant_config_rejected ... ok
+test benchmark_freshness::tests::clean_same_head_is_fresh ... ok
+test benchmark_freshness::tests::evidence_only_descendant_is_fresh ... ok
+
+test result: ok. 67 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 5 tests
+test benchmark_policy_missing_commit_rejected_end_to_end ... ok
+test benchmark_policy_dirty_source_same_head_rejected_end_to_end ... ok
+test benchmark_policy_staged_source_rejected_end_to_end ... ok
+test benchmark_policy_clean_same_head_passes_end_to_end ... ok
+test benchmark_policy_evidence_only_descendant_passes_end_to_end ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 10 tests
+test prop_format_extensions_distinct ... ok
+test yaml_roundtrip_preserves_trailing_spaces ... ok
+test prop_path_deterministic ... ok
+test prop_fail_closed_missing_bead_id ... ok
+test prop_write_read_roundtrip_postcard ... ok
+test prop_fail_closed_missing_agent ... ok
+test prop_fail_closed_missing_timestamp ... ok
+test prop_write_read_roundtrip_json ... ok
+test prop_fail_closed_missing_machine ... ok
+test prop_write_read_roundtrip_yaml ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.81s
+
+
+running 6 tests
+test cleanup_rejects_traversal_without_removing_outside_directory ... ok
+test existing_failed_yaml_evidence_has_diagnostic_or_repair_context ... ok
+test ai_fast_stdout_mode_outputs_structured_yaml_without_evidence_dir ... FAILED
+test ai_profiles_emit_yaml_evidence_and_required_gate_names ... FAILED
+test invalid_bead_and_unknown_subcommand_fail_closed ... FAILED
+test ai_release_fails_closed_for_unknown_bead_without_writing_evidence ... FAILED
+
+failures:
+
+---- ai_fast_stdout_mode_outputs_structured_yaml_without_evidence_dir stdout ----
+
+thread 'ai_fast_stdout_mode_outputs_structured_yaml_without_evidence_dir' (12023) panicked at tests/integration_gates.rs:106:5:
+ai-fast stdout failed: error: package(s) `xtask` not found in workspace `/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-deepseek-repair`
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- ai_profiles_emit_yaml_evidence_and_required_gate_names stdout ----
+
+thread 'ai_profiles_emit_yaml_evidence_and_required_gate_names' (12024) panicked at tests/integration_gates.rs:75:9:
+ai-fast failed: error: package(s) `xtask` not found in workspace `/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-deepseek-repair`
+
+
+---- invalid_bead_and_unknown_subcommand_fail_closed stdout ----
+
+thread 'invalid_bead_and_unknown_subcommand_fail_closed' (12028) panicked at tests/integration_gates.rs:120:5:
+assertion failed: String::from_utf8_lossy(&invalid.stderr).contains("Invalid bead id")
+
+---- ai_release_fails_closed_for_unknown_bead_without_writing_evidence stdout ----
+
+thread 'ai_release_fails_closed_for_unknown_bead_without_writing_evidence' (12025) panicked at tests/integration_gates.rs:99:5:
+assertion failed: String::from_utf8_lossy(&output.stderr).contains("unknown ai-release bead id")
+
+
+failures:
+    ai_fast_stdout_mode_outputs_structured_yaml_without_evidence_dir
+    ai_profiles_emit_yaml_evidence_and_required_gate_names
+    ai_release_fails_closed_for_unknown_bead_without_writing_evidence
+    invalid_bead_and_unknown_subcommand_fail_closed
+
+test result: FAILED. 2 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

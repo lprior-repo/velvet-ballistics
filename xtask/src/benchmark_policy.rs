@@ -1,68 +1,24 @@
 #![allow(unreachable_pub)]
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use anyhow::{Context, bail};
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::benchmark_budget::{
+    self, CURRENT_MILESTONE, PerfBudget, has_deferred_marker, normalized, normalized_set,
+};
+use crate::benchmark_freshness;
 use crate::shell::write_stdout;
 
-const CURRENT_MILESTONE: &str = "ir-interpreter";
-const REQUIRED_EVIDENCE_FIELDS: &[&str] = &[
-    "metric",
-    "claim",
-    "baseline_value",
-    "result_value",
-    "unit",
-    "threshold_percent",
-    "raw_log",
-    "command",
-    "commit",
-    "rustc_version",
-    "nightly_date",
-    "cpu_model",
-    "cpu_governor",
-    "kernel_version",
-    "build_profile",
-    "rustflags",
-    "benchmark_tool_version",
-    "sample_count_or_instruction_count",
-    "input_fixture_digest",
-    "durability_profile",
-    "mode",
-    "p50_latency",
-    "p95_latency",
-    "p99_latency",
-    "instruction_count",
-    "allocation_count",
-    "bytes_allocated",
-    "fjall_write_latency",
-    "direct_api_latency",
-    "ipc_latency",
-];
 const FORBIDDEN_EVIDENCE_MARKERS: &[&str] = &[
     "instructions=not-collected",
     "instruction_count=not-collected",
     "allocations=allocator-external",
     "allocation_count=allocator-external",
 ];
-
-#[derive(Debug, Deserialize)]
-struct PerfBudget {
-    current_milestone: String,
-    generated_maxperf_deferred: bool,
-    deferred_modes: Vec<String>,
-    required_evidence_fields: Vec<String>,
-    benchmarks: BTreeMap<String, BenchmarkBudget>,
-}
-
-#[derive(Debug, Deserialize)]
-struct BenchmarkBudget {
-    max_regression_percent: u64,
-}
 
 #[derive(Debug, Deserialize)]
 struct BenchmarkEvidenceClaim {
@@ -87,8 +43,8 @@ pub(crate) fn cmd_benchmark_policy(budget: &str, evidence: &str) -> anyhow::Resu
     let evidence_text = fs::read_to_string(&evidence_path)
         .with_context(|| format!("read benchmark evidence {}", evidence_path.display()))?;
 
-    let budget = parse_budget(&budget_text)?;
-    let current_commit = current_head_commit(&root)?;
+    let budget = benchmark_budget::parse_budget(&budget_text)?;
+    let current_commit = benchmark_freshness::current_head_commit(&root)?;
     let evidence_count = validate_evidence(&root, &budget, &evidence_text, &current_commit)?;
     write_stdout(format_args!(
         "BenchmarkRegressionPolicyOk budget={} evidence={} claims={evidence_count}",
@@ -96,74 +52,6 @@ pub(crate) fn cmd_benchmark_policy(budget: &str, evidence: &str) -> anyhow::Resu
         evidence_path.display()
     ))?;
     Ok(())
-}
-
-fn parse_budget(text: &str) -> anyhow::Result<PerfBudget> {
-    let budget: PerfBudget = serde_yaml::from_str(text).context("parse performance budget yaml")?;
-    validate_budget(&budget)?;
-    Ok(budget)
-}
-
-fn validate_budget(budget: &PerfBudget) -> anyhow::Result<()> {
-    if budget.current_milestone != CURRENT_MILESTONE {
-        bail!(
-            "performance budget milestone must be {CURRENT_MILESTONE}, got {}",
-            budget.current_milestone
-        );
-    }
-    if !budget.generated_maxperf_deferred {
-        bail!("performance budget must mark generated/maxperf claims as deferred");
-    }
-    let deferred = normalized_set(&budget.deferred_modes);
-    if !deferred.contains("generated") || !deferred.contains("maxperf") {
-        bail!("deferred_modes must include generated and maxperf");
-    }
-    let required = normalized_set(&budget.required_evidence_fields);
-    let missing = REQUIRED_EVIDENCE_FIELDS
-        .iter()
-        .filter(|field| !required.contains(**field))
-        .copied()
-        .collect::<Vec<_>>();
-    if !missing.is_empty() {
-        bail!(
-            "performance budget missing evidence fields: {}",
-            missing.join(", ")
-        );
-    }
-    if budget.benchmarks.is_empty() {
-        bail!("performance budget must define at least one benchmark threshold");
-    }
-    for (name, threshold) in &budget.benchmarks {
-        validate_benchmark_budget(name, threshold)?;
-    }
-    Ok(())
-}
-
-fn validate_benchmark_budget(name: &str, budget: &BenchmarkBudget) -> anyhow::Result<()> {
-    if has_deferred_marker(name) {
-        bail!("deferred generated/maxperf benchmark must not be budgeted: {name}");
-    }
-    if budget.max_regression_percent == 0 {
-        bail!("benchmark {name} must define a positive max_regression_percent");
-    }
-    Ok(())
-}
-
-fn current_head_commit(root: &Path) -> anyhow::Result<String> {
-    let output = Command::new("git")
-        .arg("rev-parse")
-        .arg("HEAD")
-        .current_dir(root)
-        .output()
-        .context("run git rev-parse HEAD for benchmark evidence policy")?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("git rev-parse HEAD failed: {}", stderr.trim());
-    }
-    let stdout = String::from_utf8(output.stdout).context("decode git rev-parse HEAD output")?;
-    let commit = stdout.trim();
-    validate_commit_format(commit, "current HEAD")?;
-    Ok(commit.to_owned())
 }
 
 fn validate_evidence(
@@ -220,7 +108,12 @@ fn validate_claim(
     validate_required_strings(claim, line_number)?;
     validate_mode(budget, claim, line_number)?;
     validate_commit(&claim.commit, line_number)?;
-    validate_current_commit(&claim.commit, current_commit, line_number)?;
+    benchmark_freshness::validate_evidence_freshness(
+        root,
+        &claim.commit,
+        current_commit,
+        line_number,
+    )?;
     validate_raw_log(root, &claim.raw_log, line_number)?;
     let Some(metric_budget) = budget.benchmarks.get(&claim.metric) else {
         bail!(
@@ -335,33 +228,10 @@ fn validate_mode(
 }
 
 fn validate_commit(commit: &str, line_number: usize) -> anyhow::Result<()> {
-    validate_commit_format(
+    benchmark_freshness::validate_commit_format(
         commit,
         &format!("benchmark evidence line {line_number} commit"),
     )
-}
-
-fn validate_commit_format(commit: &str, label: &str) -> anyhow::Result<()> {
-    let len = commit.len();
-    if !(7..=40).contains(&len) || !commit.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        bail!("{label} must be 7-40 ASCII hex chars");
-    }
-    Ok(())
-}
-
-fn validate_current_commit(
-    evidence_commit: &str,
-    current_commit: &str,
-    line_number: usize,
-) -> anyhow::Result<()> {
-    let evidence = evidence_commit.to_ascii_lowercase();
-    let current = current_commit.to_ascii_lowercase();
-    if !current.starts_with(&evidence) {
-        bail!(
-            "benchmark evidence line {line_number} commit is stale: evidence={evidence_commit} current_head={current_commit}"
-        );
-    }
-    Ok(())
 }
 
 fn validate_raw_log(root: &Path, raw_log: &str, line_number: usize) -> anyhow::Result<()> {
@@ -402,108 +272,6 @@ fn result_exceeds_threshold(result: u64, baseline: u64, threshold_percent: u64) 
     result > baseline.saturating_add(threshold_delta)
 }
 
-fn normalized(value: &str) -> String {
-    value.trim().to_ascii_lowercase()
-}
-
-fn normalized_set(values: &[String]) -> BTreeSet<String> {
-    values.iter().map(|value| normalized(value)).collect()
-}
-
-fn has_deferred_marker(value: &str) -> bool {
-    let normalized = normalized(value);
-    normalized.contains("generated") || normalized.contains("maxperf")
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const VALID_BUDGET: &str = r#"
-current_milestone: ir-interpreter
-generated_maxperf_deferred: true
-deferred_modes:
-  - generated
-  - maxperf
-required_evidence_fields:
-  - metric
-  - claim
-  - baseline_value
-  - result_value
-  - unit
-  - threshold_percent
-  - raw_log
-  - command
-  - commit
-  - rustc_version
-  - nightly_date
-  - cpu_model
-  - cpu_governor
-  - kernel_version
-  - build_profile
-  - rustflags
-  - benchmark_tool_version
-  - sample_count_or_instruction_count
-  - input_fixture_digest
-  - durability_profile
-  - mode
-  - p50_latency
-  - p95_latency
-  - p99_latency
-  - instruction_count
-  - allocation_count
-  - bytes_allocated
-  - fjall_write_latency
-  - direct_api_latency
-  - ipc_latency
-benchmarks:
-  transition_set:
-    max_regression_percent: 3
-"#;
-
-    #[test]
-    fn rejects_empty_evidence_for_budgeted_metrics() {
-        let budget = parse_budget(VALID_BUDGET).expect("valid budget");
-        let error = validate_evidence(Path::new("."), &budget, "\n", "326c7d0")
-            .expect_err("budgeted metrics require evidence");
-        assert!(error.to_string().contains("missing budgeted metrics"));
-    }
-
-    #[test]
-    fn rejects_deferred_generated_budget() {
-        let text = VALID_BUDGET.replace("transition_set", "generated_mode");
-        let error = parse_budget(&text).expect_err("generated budget is deferred");
-        assert!(error.to_string().contains("deferred"));
-    }
-
-    #[test]
-    fn detects_integer_regression_threshold() {
-        assert!(!result_exceeds_threshold(103, 100, 3));
-        assert!(result_exceeds_threshold(104, 100, 3));
-    }
-
-    #[test]
-    fn rejects_stale_benchmark_commit() {
-        let error =
-            validate_current_commit("deadbeef", "326c7d0f646e437f9adf18378afee0b21c38d522", 1)
-                .expect_err("stale benchmark commit is rejected");
-        assert!(error.to_string().contains("stale"));
-    }
-
-    #[test]
-    fn accepts_current_benchmark_commit_prefix() {
-        validate_current_commit("326c7d0", "326c7d0f646e437f9adf18378afee0b21c38d522", 1)
-            .expect("current commit prefix is valid");
-    }
-
-    #[test]
-    fn rejects_placeholder_instruction_metadata() {
-        let error = validate_no_forbidden_markers(
-            "mode=ir;instructions=not-collected",
-            1,
-            "benchmark evidence raw log",
-        )
-        .expect_err("placeholder instruction metadata is rejected");
-        assert!(error.to_string().contains("instructions=not-collected"));
-    }
-}
+#[path = "benchmark_policy_tests.rs"]
+mod tests;

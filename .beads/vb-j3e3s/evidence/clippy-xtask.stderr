@@ -1,0 +1,10 @@
+   Compiling libc v0.2.191
+   Compiling getrandom v0.4.3
+    Checking arraydeque v0.5.1
+    Checking saphyr-parser-bw v0.0.611
+    Checking getrandom v0.3.4
+    Checking ahash v0.8.12
+    Checking tempfile v3.27.0
+    Checking serde-saphyr v0.0.25
+    Checking xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-deepseek-repair/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.29s
