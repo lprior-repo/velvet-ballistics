@@ -1,0 +1,105 @@
+diff --git a/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs b/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs
+index 8a8a58bf7..f3a6c79b3 100644
+--- a/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs
++++ b/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs
+@@ -20,6 +20,7 @@ use vb_runtime::admission::{
+ };
+ use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
+ use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
++use vb_storage::RunPolicyPin;
+ use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+ use vb_storage::types::EventSeq;
+ 
+@@ -816,6 +817,7 @@ fn given_valid_accepted_artifact_when_admitted_then_admission_record_contains_di
+     let capability = cap("network.github", 0);
+     let artifact = build_do_artifact(Box::new([capability.clone()]), RuntimePolicy::Journaled)?;
+     let requested = artifact.digest;
++    let expected_policy_digest = artifact.policy_digest;
+     let run_id = RunId::new(51);
+     let granted = caps(Box::new([capability]));
+     let store = ScenarioStore { artifact };
+@@ -828,15 +830,21 @@ fn given_valid_accepted_artifact_when_admitted_then_admission_record_contains_di
+         granted.clone(),
+     );
+ 
++    let admission = match result {
++        Ok(a) => a,
++        Err(e) => return Err(format!("expected admission, got error: {e:?}")),
++    };
++
++    assert_eq!(admission.artifact_digest(), requested);
++    assert_eq!(admission.run_id(), run_id);
++    assert_eq!(admission.granted_capabilities(), &granted);
++    assert_eq!(admission.policy(), RuntimePolicy::Journaled);
+     assert_eq!(
+-        observed(result),
+-        ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(
+-            requested,
+-            run_id,
+-            granted,
+-            RuntimePolicy::Journaled,
+-        ))
++        admission.policy_pin(),
++        RunPolicyPin::Pinned(expected_policy_digest)
+     );
++    assert_eq!(admission.budget(), None);
++    assert_eq!(admission.idempotency_attested(), &[]);
+     Ok(())
+ }
+ 
+@@ -1307,6 +1315,7 @@ proptest! {
+         let artifact = build_do_artifact(Box::new([required.clone()]), RuntimePolicy::Strict)
+             .map_err(|error| TestCaseError::fail(format!("artifact build failed: {error}")))?;
+         let artifact_digest = artifact.digest;
++        let expected_policy_digest = artifact.policy_digest;
+         let granted = match mutation {
+             0 => caps(Box::new([required.clone()])),
+             1 => CapabilitySet::empty(),
+@@ -1316,27 +1325,26 @@ proptest! {
+             _ => caps(Box::new([required.clone(), required.clone()])),
+         };
+         let store = ScenarioStore { artifact };
+-        let result = observed(admit_artifact_run(
++        let result = admit_artifact_run(
+             &store,
+             RuntimePolicy::Strict,
+             RunId::new(501),
+             artifact_digest,
+             granted.clone(),
+-        ));
++        );
+ 
+         if mutation == 0 {
+-            prop_assert_eq!(
+-                result,
+-                ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(
+-                    artifact_digest,
+-                    RunId::new(501),
+-                    granted,
+-                    RuntimePolicy::Strict,
+-                ))
+-            );
++            let admission = result.map_err(|error| TestCaseError::fail(format!("expected admission, got error: {error:?}")))?;
++            prop_assert_eq!(admission.artifact_digest(), artifact_digest);
++            prop_assert_eq!(admission.run_id(), RunId::new(501));
++            prop_assert_eq!(admission.granted_capabilities(), &granted);
++            prop_assert_eq!(admission.policy(), RuntimePolicy::Strict);
++            prop_assert_eq!(admission.policy_pin(), RunPolicyPin::Pinned(expected_policy_digest));
++            prop_assert_eq!(admission.budget(), None);
++            prop_assert_eq!(admission.idempotency_attested(), &[]);
+         } else if mutation == 2 || mutation == 5 {
+             prop_assert_eq!(
+-                result,
++                observed(result),
+                 ObservedAdmissionDiagnostic::CapabilityCountMismatch {
+                     required_count: 1,
+                     granted_count: granted.len(),
+@@ -1344,7 +1352,7 @@ proptest! {
+             );
+         } else {
+             prop_assert_eq!(
+-                result,
++                observed(result),
+                 ObservedAdmissionDiagnostic::CapabilityDenied {
+                     action: ActionId::new(0),
+                     required,

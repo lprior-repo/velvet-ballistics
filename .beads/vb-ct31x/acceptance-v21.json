@@ -1,0 +1,66 @@
+{
+  "scope": "admitted policy pin durable recovery and dedicated monotonic durable emergency deny only",
+  "frozen_tested_source": "eccd15db8176c2278c47e3a57ef5e259a62d23a7",
+  "base_main": "58a1f9580ca8beb32f80118ce08df521688a249a",
+  "canonical": {
+    "cwd": "/home/lewis/src/isoloated/vb-policy-integration-v18",
+    "argv": [
+      "env",
+      "TEST_INTEGRITY_BASE=58a1f9580ca8beb32f80118ce08df521688a249a",
+      "NEXTEST_TEST_THREADS=16",
+      "moon",
+      "ci",
+      ":fmt",
+      ":source-length",
+      ":lint-src",
+      ":check",
+      ":test",
+      ":benchmark-regression-policy",
+      "--downstream",
+      "none",
+      "--force",
+      "--concurrency",
+      "2"
+    ],
+    "exit_code": 0,
+    "seconds": 455.701,
+    "timeout_seconds": 1200,
+    "timed_out": false,
+    "env_overrides": {
+      "CARGO_BUILD_JOBS": "2"
+    },
+    "log_prefix": ".beads/vb-ny068/evidence/FINAL_V21_CANONICAL"
+  },
+  "run_task_count": 17,
+  "tests": {
+    "passed": 14456,
+    "failed": 0,
+    "existing_skipped": 27,
+    "unrun": 0
+  },
+  "measurements": {
+    "exit": 0,
+    "seconds": 33.526,
+    "metrics": 3,
+    "baseline_equals_result": true,
+    "speedup_claim": false
+  },
+  "source_inputs_audited": 76,
+  "mismatches": [],
+  "code_reviews": [
+    "0eb0452279a9696517f8c27054b8664d0766df7c",
+    "c4b5ffaa8ccebe16031ccd138bc30a64e9a7945d"
+  ],
+  "test_reviews": [
+    "8f8995954447484fae74cb047c30a124de0f61ad",
+    "6e18c9ae52e03f285328c37300969baa3e63ed2b",
+    "31e1c868109531900d35edd997a30d0313fb2548"
+  ],
+  "limits": [
+    "Reviewed and tested Rust sources are byte-identical after metadata-only review/evidence merge. Canonical ran on frozen source, not a fabricated later Git HEAD.",
+    "Actual Runtime current-policy dispatch remains separate in-progress vb-z7ky4/vb-l5ru0.",
+    "No full v1 release, parent closure, formal proof closure or physical power-loss acceptance.",
+    "27 pre-existing skipped tests remain skipped. No gate or source-length exception added."
+  ],
+  "bead": "vb-ct31x"
+}
