@@ -1,0 +1,23 @@
+{
+  "raw_files_preserved": 250,
+  "omitted_duplicate_expanded_traces": [
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792704725462432276-zstd.stdout",
+      "bytes": 17700002,
+      "sha256": "5db7489d8e76d05b3067f9f5433e263d870666df1972cc43a6e0ad18a36c5c18",
+      "reason": "Expanded duplicate heaptrack trace; exact compressed .zst retained with manifest, decoding command and decoded summary. Full original remains in external cache."
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792704734440820698-zstd.stdout",
+      "bytes": 212135754,
+      "sha256": "a754163cc03b6aa8b5f0f660f583dfb9238764d2c8cb8f9b9caa9c6b8517f619",
+      "reason": "Expanded duplicate heaptrack trace; exact compressed .zst retained with manifest, decoding command and decoded summary. Full original remains in external cache."
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792704749317205108-zstd.stdout",
+      "bytes": 18166677,
+      "sha256": "e701132ffeb5706aa5560bcdebe771e8b34380981324ddda6b963f95b46c7a5e",
+      "reason": "Expanded duplicate heaptrack trace; exact compressed .zst retained with manifest, decoding command and decoded summary. Full original remains in external cache."
+    }
+  ]
+}

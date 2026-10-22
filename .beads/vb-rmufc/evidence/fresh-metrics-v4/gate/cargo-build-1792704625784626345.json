@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1",
+  "argv": [
+    "cargo",
+    "bench",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--bench",
+    "velvet_ballistics",
+    "--no-run",
+    "--message-format=json",
+    "--locked"
+  ],
+  "exit_code": 0,
+  "seconds": 94.991,
+  "timeout_seconds": 1800,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-rmufc-metrics-v4/gate/cargo-build-1792704625784626345"
+}
