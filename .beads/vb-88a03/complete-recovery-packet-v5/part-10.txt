@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:61:     )]))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:62: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:63: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:64: #[test]
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:65: fn forged_policy_pin_rejected_before_recovery_mutation() -> TestResult {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:66:     let action = ActionId::new(0);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:67:     let run = RunId::new(4_421);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:68:     let temp = tempfile::tempdir()?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:69: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:70:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:71:     let workflow = legacy_ask_action_workflow(action)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:72:     let contract = external_contract(action)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:73:     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:74: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:75:     let journal = open_journal(temp.path())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:76:     let artifact = catalog.submit_artifact(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:77:         &journal,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:78:         &workflow,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:79:         vb_core::policy::RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:80:         &[contract],
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:81:         &[pack],
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:82:     )?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:83:     drop(journal);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:84: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:85:     // Compute the genuine policy digest and construct a distinct wrong pin.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:86:     let real_policy_digest = artifact.policy_digest;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:87:     let wrong_pin = WorkflowDigest::from_bytes([0xFFu8; 32]);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:88:     assert_ne!(real_policy_digest, wrong_pin);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:89: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:90:     // Write the legacy prefix with a FORGED policy pin that does not match
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:91:     // the accepted artifact's actual policy digest.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:92:     let journal = open_journal(temp.path())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:93:     let forged_events = [
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:94:         JournalEvent::RunAccepted {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:95:             run,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:96:             seq: vb_storage::EventSeq::new(0),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:97:             workflow: workflow.digest(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:98:         },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:99:         JournalEvent::RunAdmission {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:100:             input_digest: RunInputBinding::LegacyUnbound,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:101:             run,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:102:             seq: vb_storage::EventSeq::new(1),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:103:             artifact_digest: artifact.digest,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:104:             policy_pin: RunPolicyPin::Pinned(wrong_pin),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:105:             granted_capabilities: action_grants(action),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:106:             policy: vb_core::policy::RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:107:         },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:108:         JournalEvent::StepStarted {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:109:             run,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:110:             seq: vb_storage::EventSeq::new(2),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:111:             step: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:112:             attempt: 1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:113:         },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:114:         JournalEvent::AskScheduledEvent {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:115:             run,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:116:             seq: vb_storage::EventSeq::new(3),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:117:             step: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:118:             attempt: 1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:119:         },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:120:     ];
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:121:     append_events(&journal, &forged_events)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:122: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:123:     // Capture full journal state before recovery.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:124:     let journal_before = vb_storage::read_run_events(&journal, run)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:125:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:126:         journal_before.len(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:127:         4,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:128:         "forged journal has exactly the legacy prefix events"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:129:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:130: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:131:     drop(journal);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:132: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:133:     // Reopen for recovery.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:134:     let journal = open_journal(temp.path())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:135:     let shared = StorageRuntimeJournal::shared_strict_with_catalog(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:136:         journal.clone(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:137:         Arc::new(catalog.clone()),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:138:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:139:     let runtime = Runtime::new(shard_count(1)?, strict_config(), shared);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:140: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:141:     // Capture full pending state before recovery.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:142:     let pending_before = runtime.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:143: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:144:     // Open a real FjallRegister to observe zero effects.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:145:     let register = FjallRegister::open(&temp.path().join("register"), 8)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:146: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:147:     // Verify register is clean before any recovery attempt.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:148:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:149:         register.effect_count()?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:150:         0,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:151:         "register must be clean before recovery"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:152:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:153:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:154:         register.value(scope())?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:155:         None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:156:         "register must have no value before recovery"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:157:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:158: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:159:     // Recover product must reject the forged pin.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:160:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:161:         runtime.recover_product(run),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:162:         Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:163:             reason: String::from("admission_policy_pin_mismatch")
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:164:         })
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:165:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:166: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:167:     // Verify full journal is unchanged after first rejected call.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:168:     let journal_after_product = vb_storage::read_run_events(&journal, run)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:169:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:170:         journal_before, journal_after_product,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:171:         "recover_product with forged policy pin must leave journal unmodified"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:172:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:173: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:174:     // Verify full pending state is unchanged after first rejected call.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:175:     let pending_after_product = runtime.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:176:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:177:         pending_before, pending_after_product,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:178:         "recover_product with forged policy pin must leave pending state unmodified"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:179:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:180: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:181:     // Verify register has no effects after first rejected call.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:182:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:183:         register.effect_count()?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:184:         0,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:185:         "recover_product with forged pin must produce zero register effects"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:186:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:187:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:188:         register.value(scope())?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:189:         None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:190:         "recover_product with forged pin must not set scope value"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:191:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:192: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:193:     // Recover and resume must also reject the forged pin.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:194:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:195:         runtime.recover_and_resume(run),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:196:         Err(vb_runtime::RuntimeError::RecoveryCannotResume {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:197:             reason: String::from("admission_policy_pin_mismatch")
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:198:         })
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:199:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:200: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:201:     // Verify full journal is unchanged after second rejected call.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:202:     let journal_after_resume = vb_storage::read_run_events(&journal, run)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:203:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:204:         journal_before, journal_after_resume,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:205:         "recover_and_resume with forged policy pin must leave journal unmodified"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:206:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:207: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:208:     // Verify full pending state is unchanged after second rejected call.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:209:     let pending_after_resume = runtime.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:210:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:211:         pending_before, pending_after_resume,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:212:         "recover_and_resume with forged policy pin must leave pending state unmodified"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:213:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:214: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:215:     // Verify register has no effects after second rejected call.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:216:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:217:         register.effect_count()?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:218:         0,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:219:         "recover_and_resume with forged pin must produce zero register effects"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:220:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:221:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:222:         register.value(scope())?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:223:         None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:224:         "recover_and_resume with forged pin must not set scope value"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:225:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:226: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:227:     drop(register);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:228:     drop(runtime);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:229:     drop(journal);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:230:     Ok(())
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:231: }
+FILE crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs SHA256 93068d2dd4d8e9b033f0c1ed83c2f2cdf86b209dd3945268a4dce48b00179354
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:1: use std::num::NonZeroUsize;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:2: use std::sync::Arc;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:3: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:4: use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:5: use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:6: use vb_core::capability::{Capability, CapabilitySet};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:7: use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:8: use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:9: use vb_core::value::SlotValue;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:10: use vb_runtime::journal::StorageRuntimeJournal;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:11: use vb_runtime::recovery::{RecoveredRunBoundaryKind, RuntimeRecoveryProduct};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:12: use vb_runtime::runtime::{RegisteredExecutionError, Runtime};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:13: use vb_runtime::shard::ShardConfig;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:14: use vb_storage::executor::{ExecutorCatalog, FjallRegister};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:15: use vb_storage::{FjallConfig, FjallJournal, JournalEvent, RunInputBinding, RunPolicyPin};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:16: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:17: use crate::legacy_workflow::legacy_ask_action_workflow;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:18: use crate::policy_dispatch::{
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:19:     admission_pin_unverified, compute_expected_input_digest, current_live_configured,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:20:     make_expected_decision,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:21: };
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:22: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:23: type TestResult = Result<(), Box<dyn std::error::Error>>;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:24: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:25: fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:26:     NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:27: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:28: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:29: fn strict_config() -> ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:30:     ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:31:         command_queue_capacity: 32,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:32:         trace_capacity: 64,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:33:         step_budget_per_tick: 16,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:34:         max_active_runs: 8,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:35:         policy: RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:36:     }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:37: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:38: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:39: fn scope() -> CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:40:     CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:41:         namespace: 15,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:42:         key: 29,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:43:     }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:44: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:45: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:46: fn external_contract(action: ActionId) -> Result<ActionContract, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:47:     Ok(ActionContract {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:48:         id: action,

@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:110: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:111:     let denied_digest = PolicyDigest::from_bytes([0x55u8; 32]);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:112:     runtime.configure_live_policy(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:113:         denied_digest,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:114:         PolicyRule {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:115:             action,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:116:             code: DecisionCode::Denied,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:117:         },
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:118:     )?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:119: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:120:     runtime.activate_emergency_deny()?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:121: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:122:     let deny_state = journal.emergency_deny_state()?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:123:     assert_eq!(deny_state, EmergencyDenyState::Active);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:124: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:125:     let product_after = runtime.recover_product(run)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:126:     let events_after = vb_storage::read_run_events(&journal, run)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:127:     let pending_after = runtime.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:128: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:129:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:130:         product_before, product_after,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:131:         "recovery product must be identical before and after current deny"
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:132:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:133:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:134:         product_before.summary(),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:135:         product_after.summary(),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:136:         "recovery summary must be identical before and after current deny"
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:137:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:138: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:139:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:140:         events_before, events_after,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:141:         "full journal must be unchanged after current deny"
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:142:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:143: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:144:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:145:         pending_before, pending_after,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:146:         "pending state must be unchanged after current deny"
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:147:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:148: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:149:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:150:         adapter.effect_count()?,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:151:         1,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:152:         "effect count must remain 1 after current deny"
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:153:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:154:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:155:         adapter.value(scope())?,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:156:         Some(100),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:157:         "register value must remain 100 after current deny"
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:158:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:159: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:160:     let stored_decisions = policy_dispatch::read_journal_decision_events(&journal, run)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:161:     assert_eq!(stored_decisions.len(), 1);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:162:     let stored = stored_decisions
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:163:         .first()
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:164:         .ok_or("expected exactly one decision")?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:165:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:166:         stored.outcome,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:167:         DecisionCode::Allowed,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:168:         "historical decision must remain Allowed"
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:169:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:170: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:171:     let input_digest = policy_dispatch::compute_expected_input_digest(100, Taint::Clean, &ticket)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:172:     let expected = policy_dispatch::make_expected_decision(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:173:         ticket,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:174:         policy_dispatch::admission_pin_from_artifact(artifact.policy_digest.as_bytes()),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:175:         policy_dispatch::current_live_configured(allowed_digest.as_bytes()),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:176:         input_digest,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:177:         DecisionCode::Allowed,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:178:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:179:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:180:         stored_decisions,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:181:         vec![expected],
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:182:         "historical decision record must match independent oracle"
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:183:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:184: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:185:     Ok(())
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:186: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:187: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:188: #[test]
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:189: fn historical_replay_preserves_state_under_current_deny() -> Result<(), Box<dyn std::error::Error>>
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:190: {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:191:     run_historical_replay_test()
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:192: }
+FILE crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs SHA256 31bbe6d77f450736bf85228ad690860a2c76c373fefe3b6eec1295b95318df09
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:1: use std::num::NonZeroUsize;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:2: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:3: use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:4: use vb_core::action_pack::CapabilityScopeSpec;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:5: use vb_core::capability::{Capability, CapabilitySet};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:6: use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:7: use vb_core::policy::RuntimePolicy;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:8: use vb_core::workflow::{
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:9:     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:10: };
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:11: use vb_runtime::shard::ShardConfig;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:12: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:13: pub(super) fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:14:     NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:15: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:16: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:17: pub(super) fn strict_config() -> ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:18:     ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:19:         command_queue_capacity: 32,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:20:         trace_capacity: 64,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:21:         step_budget_per_tick: 16,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:22:         max_active_runs: 8,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:23:         policy: RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:24:     }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:25: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:26: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:27: fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:28:     CompiledNode {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:29:         id: StepIdx::new(id),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:30:         output: output.map(SlotIdx::new),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:31:         next: next.map(StepIdx::new),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:32:         on_error: None,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:33:         error_slot: None,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:34:         kind,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:35:     }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:36: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:37: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:38: pub(super) fn build_workflow() -> Result<CompiledWorkflow, String> {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:39:     let parts = WorkflowParts {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:40:         semantic_source_identity: None,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:41:         input_slots: Box::new([]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:42:         name: Box::from("vb_c4hzw_emergency_reopen"),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:43:         digest: WorkflowDigest::from_bytes([0; 32]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:44:         nodes: Box::from([
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:45:             node(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:46:                 0,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:47:                 Some(1),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:48:                 Some(1),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:49:                 CompiledNodeKind::Do {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:50:                     action: ActionId::new(0),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:51:                     input: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:52:                 },
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:53:             ),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:54:             node(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:55:                 1,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:56:                 None,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:57:                 None,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:58:                 CompiledNodeKind::Finish {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:59:                     result: SlotIdx::new(1),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:60:                 },
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:61:             ),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:62:         ]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:63:         expressions: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:64:         accessors: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:65:         constants: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:66:         slot_count: 2,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:67:         symbols_count: 0,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:68:         entry: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:69:         step_names: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:70:         resource_contract: ResourceContract::DEFAULT,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:71:     };
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:72:     let hash = postcard::to_allocvec(&parts).map_err(|e| e.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:73:     let mut parts = parts;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:74:     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash).into());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:75:     CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:76: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:77: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:78: pub(super) fn build_contract(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:79:     action: ActionId,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:80: ) -> Result<ActionContract, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:81:     Ok(ActionContract {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:82:         id: action,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:83:         name: ActionName::new("vb_c4hzw_emergency_reopen_action")?,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:84:         input_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:85:         output_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:86:         max_input_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:87:         max_output_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:88:         timeout_ms: 1000,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:89:         idempotency: Idempotency::IdempotentExternal,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:90:         side_effect: SideEffect::Writes,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:91:         retry_safety: RetrySafety::KeyRequired,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:92:         required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:93:     })
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:94: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:95: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:96: pub(super) fn scope() -> CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:97:     CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:98:         namespace: 15,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:99:         key: 29,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:100:     }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:101: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:102: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:103: pub(super) fn action_grants(action: ActionId) -> CapabilitySet {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:104:     CapabilitySet::from_grants(Box::from([Capability::new(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:105:         "velvet.register.write".into(),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:106:         action,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:107:     )]))
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs:108: }
+FILE crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs SHA256 63fb9451e273c6304381fb12d31754d53a26871bbb94b1b2cce147523c8866c1
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:1: use std::sync::Arc;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:2: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:3: use blake3::Hasher;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:4: use vb_core::ActionTicket;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:5: use vb_core::policy::{
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:6:     CurrentPolicyIdentity, DecisionCode, InfluenceState, PinnedAdmissionPolicy, PolicyDigest,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:7:     PolicyLayer,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:8: };
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:9: use vb_core::value::{SlotValue, Taint};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:10: use vb_storage::FjallJournal;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:11: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:12: use super::*;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:13: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:14: // Oracle: compute the expected input digest independently of production code.
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:15: // Uses canonical I64 bytes, byte 0 for Clean taint, and all 8 ticket fields
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:16: // with domain separation. This matches the production encoding but is the
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:17: // test's own oracle, not a call to LivePolicy.evaluate or encode_taint_canonical.
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:18: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:19: fn serialize_input_bytes(value: i64) -> Result<Vec<u8>, String> {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:20:     postcard::to_allocvec(&SlotValue::I64(value))
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:21:         .map_err(|e| format!("failed to serialize input: {e}"))
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:22: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:23: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:24: fn taint_byte_clean() -> u8 {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:25:     // Canonical encoding: Clean = 0
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:26:     0
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:27: }

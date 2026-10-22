@@ -1,0 +1,192 @@
+{
+  "candidate": "b752db4c1a665caf90fa9e63e43d1505b0ba651d",
+  "reviewer": "RTX5090 native file review v5, 19completepacketreads verified; local no cloudfallback",
+  "verified_inputs": [
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs",
+      "sha256": "1cd50d9650bcc8e4c9e6488e35588540b6a094252bea09491bd40c071a38e854"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs",
+      "sha256": "c131b861ea70a34a5b3839920da1f00e88c12e6e14cbf8dba4943dbfcdd1abff"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs",
+      "sha256": "0df678a7a08d629764100117592b30f73dbb09a8276523dbc0393ac5fba8741b"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs",
+      "sha256": "31bbe6d77f450736bf85228ad690860a2c76c373fefe3b6eec1295b95318df09"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs",
+      "sha256": "8779676e72320576b00940b2fa46498a75e431ace06481d1ef0c75f76d1f90c9"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs",
+      "sha256": "27ce239b23e4bf03c17d87a8e6e4f19e272072843dd6baa83616635b74f5af1e"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs",
+      "sha256": "31bbe6d77f450736bf85228ad690860a2c76c373fefe3b6eec1295b95318df09"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs",
+      "sha256": "63fb9451e273c6304381fb12d31754d53a26871bbb94b1b2cce147523c8866c1"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs",
+      "sha256": "d58de309ad9373e6dad4769ac8cf0fc688006d74086c194a8d7491048aa82d61"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs",
+      "sha256": "62019bfa39b27e4d8d4380f610f39eb2d09086bbf82a6e46d3582f91db808878"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs",
+      "sha256": "93068d2dd4d8e9b033f0c1ed83c2f2cdf86b209dd3945268a4dce48b00179354"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs",
+      "sha256": "6e6a4be5835073f4512efe7bd4c5880805aad22862aa2b152eb1340cd8161f10"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs",
+      "sha256": "d307146f8b4ef747d3d0881365af1659a825c1fec77e7287cfc99ce511f1b60b"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "sha256": "6b2781bac0b472bb94426452a8272570d1aeeb21d0b22200682680b3329f1247"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs",
+      "sha256": "69e1d162dd4d609c6ce7cc28d470a8239cf02908430dc70fd02cf7979f60db28"
+    },
+    {
+      "path": "fuzz/src/yaml_target.rs",
+      "sha256": "878302d163b2de2bbc7e22fbce2f34edd7ecb6051d043852fddea3b164409bb5"
+    }
+  ],
+  "exact_test_definitions": [
+    {
+      "test": "recover_restores_action_contracts_schedules_completes_and_finishes",
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs",
+      "definition_line": 86
+    },
+    {
+      "test": "corrupt_emergency_marker_causes_precise_typed_failure",
+      "path": "crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs",
+      "definition_line": 133
+    },
+    {
+      "test": "emergency_deny_survives_journal_reopen",
+      "path": "crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs",
+      "definition_line": 110
+    },
+    {
+      "test": "historical_replay_preserves_state_under_current_deny",
+      "path": "crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs",
+      "definition_line": 189
+    },
+    {
+      "test": "forged_policy_pin_rejected_before_recovery_mutation",
+      "path": "crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs",
+      "definition_line": 65
+    },
+    {
+      "test": "legacy_unverified_admission_blocks_new_live_effect",
+      "path": "crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs",
+      "definition_line": 88
+    },
+    {
+      "test": "test_direct_api_submit_to_finish_returns_result_and_taint",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 315
+    },
+    {
+      "test": "test_direct_api_inspect_known_and_unknown_run_returns_exact_state",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 371
+    },
+    {
+      "test": "test_direct_api_cancel_known_run_records_cancellation",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 426
+    },
+    {
+      "test": "test_direct_api_action_completion_resumes_correct_run",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 467
+    },
+    {
+      "test": "test_direct_api_action_failure_records_typed_failure",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 536
+    },
+    {
+      "test": "test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 575
+    },
+    {
+      "test": "test_direct_api_answer_ask_resumes_suspended_run",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 622
+    },
+    {
+      "test": "test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 676
+    },
+    {
+      "test": "test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 749
+    },
+    {
+      "test": "test_direct_api_answer_ask_rejects_answer_slot_mismatch_without_mutating_unrelated_run",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 826
+    },
+    {
+      "test": "test_direct_api_list_events_and_drain_trace_have_exact_semantics",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 876
+    },
+    {
+      "test": "test_direct_api_health_and_shutdown_equivalent_behavior",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 907
+    },
+    {
+      "test": "test_direct_api_rejects_submission_when_accepted_artifact_required",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 942
+    },
+    {
+      "test": "test_direct_api_evidence_target_constant_matches_catalog_contract",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "definition_line": 963
+    },
+    {
+      "test": "test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run",
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs",
+      "definition_line": 10
+    },
+    {
+      "test": "large_yaml_exceeds_4096_bound",
+      "path": "fuzz/src/yaml_target.rs",
+      "definition_line": 170
+    }
+  ],
+  "root_scope_corrections": [
+    "22 actual #[test] bodies are in16manifestfiles:5recoveryintegration+15directAPI+1rawcheckpointunit+1YAMLregression. Actual3fuzzlibgate additionally executes2unchangedIPCtests outside this review source scope; targetgroup total24executes, not24reviewedbodies.",
+    "Reviewer section mislabels yaml regression as rawunit and maps fuzzfunctions to3entrypoints; authoritativeactual3fuzzlibnames:ipc_target::typed_ipc_error_tests::test_all_14_explicit_variants_match; ipc_target::typed_ipc_error_tests::test_malformed_header_decode; yaml_target::tests::large_yaml_exceeds_4096_bound.",
+    "Earlier rootv4rejection questioned corruptmarker variant based on stale summary. Fresh actualsource confirms reviewer exact EmergencyDenyMarkerUnsupportedVersion version99 chain was correct; root question withdrawn.",
+    "Forged admission test builds actual RunAdmission event not retry checkpoint. Internalrawunit separatelyattachescheckpoints.",
+    "No physicalcrash/powerloss/processrestart proof: sameprocesshandleclose/reopen and deliberateprecompletionwindow only.",
+    "Reviewer line ranges/fixture prose are secondary; exact sourcedefinitions/hashes and source assertion bodies authoritative. No actualmutationruns or independenthashcompute claimed byreviewer."
+  ],
+  "actual_root_execution": "6noufV11 1989pass0fail0ignore;V12 140pass0fail0ignore including17policy/recovery+123lifecycle;V35 3fuzzlibpass0fail0ignore;V36namesonlynotadditionalbehaviorproof",
+  "root_verdict": "Accept independent behavioral TEST review for22actualsourcebodies with these scope/provenance corrections; oldv4reportrejected; finalCODE+canonical+mainpending."
+}

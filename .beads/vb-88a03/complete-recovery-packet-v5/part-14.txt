@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:210:         timeout_ms: 5000,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:211:         idempotency: Idempotency::DeterministicPure,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:212:         side_effect: SideEffect::None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:213:         retry_safety: RetrySafety::Safe,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:214:         required_capabilities: if output_slots == 0 {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:215:             Box::from([])
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:216:         } else {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:217:             Box::from([required_capability(action)])
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:218:         },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:219:     }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:220: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:221: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:222: fn action_contracts_through(action: ActionId, output_slots: u16) -> Box<[ActionContract]> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:223:     let target = action.get();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:224:     let mut contracts = Vec::new();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:225:     let mut id = 0u16;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:226:     while id <= target {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:227:         let current = ActionId::new(id);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:228:         let outputs = if id == target { output_slots } else { 0 };
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:229:         contracts.push(action_contract(current, outputs));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:230:         id = id.saturating_add(1);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:231:     }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:232:     contracts.into_boxed_slice()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:233: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:234: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:235: fn action_grants(action: ActionId) -> CapabilitySet {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:236:     CapabilitySet::from_grants(Box::from([required_capability(action)]))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:237: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:238: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:239: fn submit_action_workflow(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:240:     runtime: &Runtime,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:241:     run: RunId,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:242:     workflow: CompiledWorkflow,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:243: ) -> RuntimeResult<()> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:244:     let action = ActionId::new(7);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:245:     runtime.submit_direct_with_inputs_grants_and_contracts(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:246:         run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:247:         workflow,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:248:         Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:249:         action_grants(action),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:250:         action_contracts_through(action, 1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:251:     )
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:252: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:253: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:254: fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:255:     ActionTicket {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:256:         run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:257:         step: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:258:         seq: SeqNo::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:259:         action,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:260:         run_attempt: 1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:261:         attempt: 1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:262:         idempotency_key: 0,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:263:         capacity: 1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:264:     }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:265: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:266: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:267: fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:268:     let encoded = postcard::to_allocvec(&value)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:269:         .map_err(|_| 8)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:270:         .unwrap_or_else(|_| vec![0]);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:271:     ActionOutputReady {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:272:         output_slot: SlotIdx::new(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:273:         value,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:274:         taint,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:275:         encoded_len: encoded.len() as u32,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:276:     }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:277: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:278: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:279: fn ask_answer(ticket: AskTicket, value: SlotValue, taint: Taint) -> AskAnswer {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:280:     AskAnswer {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:281:         ticket,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:282:         answer_slot: SlotIdx::new(2),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:283:         value,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:284:         taint,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:285:         encoded_len: 8,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:286:     }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:287: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:288: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:289: fn run_one_tick(runtime: &mut Runtime) -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:290:     assert_eq!(runtime.tick_all(), Ok(true));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:291:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:292: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:293: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:294: fn encoded(value: &SlotValue) -> Result<Vec<u8>, String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:295:     postcard::to_allocvec(value).map_err(|err| format!("postcard encode failed: {err:?}"))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:296: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:297: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:298: fn journal_events(journal: &VolatileRuntimeJournal) -> Result<Vec<RuntimeJournalEvent>, String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:299:     journal
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:300:         .snapshot()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:301:         .map_err(|err| format!("journal snapshot failed: {err:?}"))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:302: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:303: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:304: fn trace_events(runtime: &Runtime, run: RunId) -> Result<Vec<TraceEvent>, String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:305:     runtime
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:306:         .list_events(run)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:307:         .map_err(|err| format!("list_events({run:?}) failed: {err:?}"))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:308: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:309: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:310: fn count_events_for_run(events: &[TraceEvent], run: RunId) -> usize {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:311:     events.iter().filter(|event| event.run_id() == run).count()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:312: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:313: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:314: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:315: fn test_direct_api_submit_to_finish_returns_result_and_taint() -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:316:     // Given: SCN-VT2F-001 fresh relaxed runtime and deterministic public workflow fixture.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:317:     let journal = Arc::new(VolatileRuntimeJournal::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:318:     let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:319:     let run = RunId::new(1001);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:320:     let expected_value = SlotValue::Bool(true);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:321:     let expected_bytes = encoded(&expected_value)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:322: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:323:     // When: submitted via Runtime::submit_direct and driven by explicit public tick_all.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:324:     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:325:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:326: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:327:     // Then: exact result value, taint, event class, counters, and active-list state are observable.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:328:     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:329:     assert_eq!(runtime.list_active_runs(8, None), Vec::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:330:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:331:         runtime.list_events(run),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:332:         Ok(vec![
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:333:             TraceEvent::RunSubmitted { run },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:334:             TraceEvent::StepStarted {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:335:                 run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:336:                 step: StepIdx::ZERO
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:337:             },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:338:             TraceEvent::SlotWritten {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:339:                 run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:340:                 slot: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:341:                 value: expected_bytes.clone()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:342:             },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:343:             TraceEvent::StepStarted {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:344:                 run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:345:                 step: StepIdx::new(1)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:346:             },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:347:             TraceEvent::RunFinished { run },
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:348:         ])
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:349:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:350:     let events = journal_events(&journal)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:351:     let expected_slot_event = RuntimeJournalEvent::SlotWritten {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:352:         run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:353:         slot: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:354:         value: expected_bytes,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:355:         taint: Taint::Clean,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:356:         extra: None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:357:     };
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:358:     assert_eq!(events.contains(&expected_slot_event), true);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:359:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:360:         events.contains(&RuntimeJournalEvent::RunFinished {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:361:             run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:362:             result: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:363:             attempt: 1,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:364:         }),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:365:         true
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:366:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:367:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:368: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:369: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:370: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:371: fn test_direct_api_inspect_known_and_unknown_run_returns_exact_state() -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:372:     // Given: SCN-VT2F-002 one active suspended run and one absent run id.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:373:     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:374:     let run = RunId::new(1002);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:375:     let absent = RunId::new(9002);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:376:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:377:         submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:378:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:379:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:380:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:381: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:382:     // When: snapshot and queued inspect are requested through public APIs.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:383:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:384:         runtime.snapshot_run(absent, 777),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:385:         Ok(InspectResponse::NotFound {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:386:             run: absent,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:387:             correlation: 777
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:388:         })
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:389:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:390:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:391:         runtime.snapshot_run(run, 778),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:392:         Ok(InspectResponse::Found(vb_runtime::shard::InspectSnapshot {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:393:             run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:394:             correlation: 778,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:395:             pc: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:396:             executed: 0,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:397:         }))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:398:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:399:     assert_eq!(runtime.inspect_run(run, 779), Ok(()));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:400:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:401: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:402:     // Then: active list and inspect response preserve exact run/correlation/pc/executed state.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:403:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:404:         runtime
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:405:             .list_active_runs(8, None)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:406:             .iter()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:407:             .map(|summary| summary.run_id)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:408:             .collect::<Vec<_>>(),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:409:         vec![run]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:410:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:411:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:412:         runtime.take_inspect_response(run),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:413:         Ok(Some(InspectResponse::Found(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:414:             vb_runtime::shard::InspectSnapshot {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:415:                 run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:416:                 correlation: 779,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:417:                 pc: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:418:                 executed: 0,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:419:             }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:420:         )))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:421:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:422:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:423: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:424: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:425: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:426: fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:427:     // Given: SCN-VT2F-003 a known suspended run.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:428:     let journal = Arc::new(VolatileRuntimeJournal::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:429:     let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());

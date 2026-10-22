@@ -1,0 +1,25 @@
+{
+  "required_reads": [
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-01.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-02.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-03.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-04.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-05.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-06.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-07.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-08.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-09.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-10.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-11.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-12.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-13.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-14.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-15.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-16.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-17.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-18.txt",
+    ".beads/vb-88a03/complete-recovery-packet-v5/part-19.txt"
+  ],
+  "lines": 3997,
+  "source_files": 16
+}

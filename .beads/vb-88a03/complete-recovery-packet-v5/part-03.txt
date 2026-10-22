@@ -1,0 +1,220 @@
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:440:         result,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:441:         Err(crate::RuntimeError::RecoveryCannotResume {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:442:             reason: "admission_policy_pin_mismatch".to_string()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:443:         }),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:444:         "shard must reject retry checkpoint with mismatched policy pin"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:445:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:446: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:447:     // The failed probe must leave the shard's state, pending boundaries, and
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:448:     // journal exactly unchanged. Only the cloned failed fixture mutated; the
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:449:     // real shard's recovered run is untouched.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:450:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:451:         shard.run_state_get(run_id),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:452:         Some(&original),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:453:         "shard run state must be unchanged after rejected checkpoint probe"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:454:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:455:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:456:         shard.pending_boundary_snapshot(0, 8),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:457:         original_pending,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:458:         "pending boundaries must be unchanged after rejected checkpoint probe"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:459:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:460:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:461:         journal.snapshot()?,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:462:         original_journal,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:463:         "journal must be unchanged after rejected checkpoint probe"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:464:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:465: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:466:     // Second probe: admission policy mismatch (Strict configured vs Relaxed
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:467:     // actual shard policy) with a valid Unverified historical pin. The pin check
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:468:     // passes, but the configured policy in the admission record does not match
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:469:     // the shard's actual runtime policy. This should be rejected with
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:470:     // admission_policy_mismatch.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:471:     // Use a fresh shard so the run is not already tracked (avoids RunAlreadyExists
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:472:     // masking the policy admission check).
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:473:     let mut failed_policy = original.clone();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:474:     failed_policy
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:475:         .frame
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:476:         .mark_failed(vb_core::ids::StepIdx::ZERO)?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:477: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:478:     let strict_admission = crate::admission::RunAdmission::new(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:479:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:480:         run_id,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:481:         original
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:482:             .admission
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:483:             .as_ref()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:484:             .ok_or("original must carry admission record")?
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:485:             .granted_capabilities()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:486:             .clone(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:487:         vb_core::policy::RuntimePolicy::Strict,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:488:     )
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:489:     .with_policy_pin(vb_storage::RunPolicyPin::Unverified);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:490:     failed_policy.admission = Some(strict_admission);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:491: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:492:     let policy_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:493:         run_id,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:494:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:495:         core::num::NonZeroU16::new(2).ok_or("invalid checkpoint attempt number")?,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:496:         vb_core::ids::StepIdx::ZERO,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:497:         1,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:498:         &failed_policy,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:499:     )?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:500: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:501:     let policy_retry_frame =
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:502:         vb_core::frame::RunFrame::from_checkpoint_v1(policy_checkpoint.frame.clone())
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:503:             .map_err(|error| format!("policy retry frame fixture failed: {error:?}"))?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:504: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:505:     let policy_command = RecoverRunCommand::new(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:506:         run_id,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:507:         policy_retry_frame,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:508:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:509:         original.workflow.digest(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:510:         vb_storage::types::EventSeq::new(2),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:511:         crate::primitives::collect::CollectStates::new(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:512:         crate::recovery::RecoveredRunBoundary::none(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:513:     )
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:514:     .with_retry_checkpoint(policy_checkpoint);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:515: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:516:     // Fresh shard with matching Relaxed policy, same config as original.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:517:     let fresh_config = crate::shard::ShardConfig {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:518:         command_queue_capacity: 64,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:519:         trace_capacity: 64,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:520:         step_budget_per_tick: 4,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:521:         max_active_runs: 8,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:522:         policy: vb_core::policy::RuntimePolicy::Relaxed,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:523:     };
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:524:     let fresh_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:525:     let mut fresh_shard = crate::shard::Shard::new_with_journal_and_artifact_store(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:526:         fresh_config,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:527:         fresh_journal.clone(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:528:         shard.artifact_store.clone(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:529:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:530: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:531:     // Capture fresh shard pre-state: empty pending and journal.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:532:     let fresh_pending = fresh_shard.pending_boundary_snapshot(0, 8);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:533:     let fresh_journal_snapshot = fresh_journal.snapshot()?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:534: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:535:     // The fresh shard must reject because the admission's configured policy (Strict)
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:536:     // differs from the actual shard policy (Relaxed), even though the pin is
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:537:     // Unverified (historical) and therefore passes the pin check.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:538:     let policy_result = fresh_shard.handle_recover(policy_command);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:539:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:540:         policy_result,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:541:         Err(crate::RuntimeError::RecoveryCannotResume {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:542:             reason: "admission_policy_mismatch".to_string()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:543:         }),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:544:         "fresh shard must reject retry checkpoint with admission policy mismatch"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:545:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:546: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:547:     // The rejected policy probe must leave the fresh shard with no run state
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:548:     // and empty pending/journal.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:549:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:550:         fresh_shard.run_state_get(run_id),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:551:         None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:552:         "fresh shard run state must be empty after rejected policy mismatch probe"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:553:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:554:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:555:         fresh_shard.pending_boundary_snapshot(0, 8),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:556:         fresh_pending,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:557:         "fresh shard pending boundaries must be unchanged after rejected policy mismatch probe"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:558:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:559:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:560:         fresh_journal.snapshot()?,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:561:         fresh_journal_snapshot,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:562:         "fresh shard journal must be unchanged after rejected policy mismatch probe"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:563:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:564: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:565:     // The original shard's state must also remain unchanged from the first probe.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:566:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:567:         shard.run_state_get(run_id),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:568:         Some(&original),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:569:         "original shard run state must be unchanged after both checkpoint probes"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:570:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:571:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:572:         shard.pending_boundary_snapshot(0, 8),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:573:         original_pending,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:574:         "original shard pending boundaries must be unchanged after both checkpoint probes"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:575:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:576:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:577:         journal.snapshot()?,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:578:         original_journal,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:579:         "original shard journal must be unchanged after both checkpoint probes"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:580:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:581: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:582:     // Positive control: a valid failed checkpoint with matching admission,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:583:     // correct artifact identity, and genuine policy provenance must recover
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:584:     // successfully. This proves the checkpoint machinery works when fixtures
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:585:     // are internally consistent, not just that invalid fixtures are rejected.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:586:     let mut valid_failed = original.clone();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:587:     valid_failed
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:588:         .frame
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:589:         .mark_failed(vb_core::ids::StepIdx::ZERO)?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:590: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:591:     let valid_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:592:         run_id,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:593:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:594:         core::num::NonZeroU16::new(2).ok_or("invalid valid checkpoint attempt number")?,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:595:         vb_core::ids::StepIdx::ZERO,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:596:         1,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:597:         &valid_failed,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:598:     )?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:599: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:600:     let valid_retry_frame =
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:601:         vb_core::frame::RunFrame::from_checkpoint_v1(valid_checkpoint.frame.clone())
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:602:             .map_err(|error| format!("valid retry frame fixture failed: {error:?}"))?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:603: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:604:     let valid_command = RecoverRunCommand::new(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:605:         run_id,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:606:         valid_retry_frame,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:607:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:608:         original.workflow.digest(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:609:         vb_storage::types::EventSeq::new(2),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:610:         crate::primitives::collect::CollectStates::new(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:611:         crate::recovery::RecoveredRunBoundary::none(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:612:     )
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:613:     .with_retry_checkpoint(valid_checkpoint);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:614: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:615:     // Fresh shard with matching Relaxed policy. Must recover successfully.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:616:     let positive_config = crate::shard::ShardConfig {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:617:         command_queue_capacity: 64,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:618:         trace_capacity: 64,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:619:         step_budget_per_tick: 4,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:620:         max_active_runs: 8,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:621:         policy: vb_core::policy::RuntimePolicy::Relaxed,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:622:     };
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:623:     let positive_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:624:     let mut positive_shard = crate::shard::Shard::new_with_journal_and_artifact_store(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:625:         positive_config,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:626:         positive_journal.clone(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:627:         shard.artifact_store.clone(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:628:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:629: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:630:     let valid_result = positive_shard.handle_recover(valid_command);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:631:     assert!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:632:         valid_result.is_ok(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:633:         "valid checkpoint with matching provenance must recover successfully"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:634:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:635: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:636:     let restored = positive_shard
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:637:         .run_state_get(run_id)
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:638:         .ok_or("positive control run state not found after recovery")?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:639: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:640:     // Admission restored exactly from the valid checkpoint.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:641:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:642:         restored.admission, original.admission,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:643:         "positive control: admission must match original (Unverified, correct run/artifact/policy)"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:644:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:645: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:646:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:647:         restored.workflow.digest(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:648:         original.workflow.digest(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:649:         "positive control: workflow digest must match original"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:650:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:651: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:652:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:653:         restored.registered_execution,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:654:         crate::shard::types::RegisteredExecutionMode::ReconcileOnly,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:655:         "positive control: execution must be ReconcileOnly for recovered run"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:656:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:657: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:658:     // Verify the Do action was rescheduled after positive control recovery.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:659:     let restored_ticket = positive_shard

@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:269:         .collect();
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:270:     assert_eq!(decisions, vec![expected_decision]);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:271: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:272:     drop(recovered);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:273:     Ok(())
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:274: }
+FILE crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs SHA256 6e6a4be5835073f4512efe7bd4c5880805aad22862aa2b152eb1340cd8161f10
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:1: use blake3::Hasher;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:2: use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:3: use vb_core::workflow::{
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:4:     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:5: };
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:6: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:7: fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:8:     CompiledNode {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:9:         id: StepIdx::new(id),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:10:         output: output.map(SlotIdx::new),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:11:         next: next.map(StepIdx::new),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:12:         on_error: None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:13:         error_slot: None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:14:         kind,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:15:     }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:16: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:17: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:18: /// Workflow with genuine Ask step (slot 0), AskResume (slot 1),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:19: /// Do action (slot 1→2), Finish (slot 2). Three slots.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:20: pub(super) fn legacy_ask_action_workflow(action: ActionId) -> Result<CompiledWorkflow, String> {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:21:     let mut parts = WorkflowParts {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:22:         semantic_source_identity: None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:23:         input_slots: Box::new([]),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:24:         name: Box::from("vb_c4hzw_legacy_admission"),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:25:         digest: WorkflowDigest::from_bytes([0; 32]),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:26:         nodes: Box::from([
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:27:             node(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:28:                 0,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:29:                 None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:30:                 Some(1),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:31:                 CompiledNodeKind::Ask {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:32:                     prompt: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:33:                     timeout_slot: None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:34:                 },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:35:             ),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:36:             node(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:37:                 1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:38:                 None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:39:                 Some(2),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:40:                 CompiledNodeKind::AskResume {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:41:                     answer: SlotIdx::new(1),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:42:                 },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:43:             ),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:44:             node(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:45:                 2,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:46:                 Some(2),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:47:                 Some(3),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:48:                 CompiledNodeKind::Do {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:49:                     action,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:50:                     input: SlotIdx::new(1),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:51:                 },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:52:             ),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:53:             node(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:54:                 3,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:55:                 None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:56:                 None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:57:                 CompiledNodeKind::Finish {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:58:                     result: SlotIdx::new(2),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:59:                 },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:60:             ),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:61:         ]),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:62:         expressions: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:63:         accessors: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:64:         constants: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:65:         slot_count: 3,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:66:         symbols_count: 0,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:67:         entry: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:68:         step_names: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:69:         resource_contract: ResourceContract::DEFAULT,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:70:     };
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:71: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:72:     let mut hasher = Hasher::new();
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:73:     let parts_bytes = postcard::to_allocvec(&parts).map_err(|err| err.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:74:     hasher.update(&parts_bytes);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:75:     let result = hasher.finalize();
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:76:     let mut digest_bytes = [0u8; 32];
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:77:     digest_bytes.copy_from_slice(result.as_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:78:     parts.digest = WorkflowDigest::from_bytes(digest_bytes);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:79: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:80:     CompiledWorkflow::try_from_parts(parts).map_err(|err| err.to_string())
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs:81: }
+FILE crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs SHA256 d307146f8b4ef747d3d0881365af1659a825c1fec77e7287cfc99ce511f1b60b
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:1: use blake3::Hasher;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:2: use vb_core::ActionTicket;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:3: use vb_core::policy::{
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:4:     CurrentPolicyIdentity, DecisionCode, InfluenceState, PinnedAdmissionPolicy, PolicyDigest,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:5:     PolicyLayer,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:6: };
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:7: use vb_core::value::{SlotValue, Taint};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:8: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:9: /// Oracle: compute the expected input digest independently of production code.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:10: /// Uses canonical I64 bytes, byte 0 for Clean taint, and all 8 ticket fields
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:11: /// with domain separation.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:12: fn serialize_input_bytes(value: i64) -> Result<Vec<u8>, String> {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:13:     postcard::to_allocvec(&SlotValue::I64(value))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:14:         .map_err(|e| format!("failed to serialize input: {e}"))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:15: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:16: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:17: fn taint_byte_clean() -> u8 {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:18:     0
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:19: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:20: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:21: fn new_policy_hasher() -> Hasher {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:22:     Hasher::new()
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:23: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:24: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:25: fn hash_input_domain(hasher: &mut Hasher, input_bytes: &[u8]) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:26:     hasher.update(b"velvet-ballistics:policy:input:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:27:     hasher.update(input_bytes);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:28: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:29: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:30: fn hash_taint_domain(hasher: &mut Hasher, taint_byte: u8) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:31:     hasher.update(b"velvet-ballistics:policy:taint:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:32:     hasher.update(&[taint_byte]);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:33: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:34: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:35: fn hash_ticket_domain_prefix(hasher: &mut Hasher) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:36:     hasher.update(b"velvet-ballistics:policy:ticket:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:37: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:38: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:39: fn hash_run_field(hasher: &mut Hasher, run: u64) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:40:     hasher.update(b"run:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:41:     hasher.update(&run.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:42: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:43: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:44: fn hash_step_field(hasher: &mut Hasher, step: u16) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:45:     hasher.update(b"step:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:46:     hasher.update(&step.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:47: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:48: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:49: fn hash_seq_field(hasher: &mut Hasher, seq: u64) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:50:     hasher.update(b"seq:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:51:     hasher.update(&seq.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:52: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:53: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:54: fn hash_action_field(hasher: &mut Hasher, action: u16) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:55:     hasher.update(b"action:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:56:     hasher.update(&action.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:57: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:58: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:59: fn hash_run_attempt_field(hasher: &mut Hasher, run_attempt: u16) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:60:     hasher.update(b"run_attempt:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:61:     hasher.update(&run_attempt.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:62: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:63: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:64: fn hash_attempt_field(hasher: &mut Hasher, attempt: u16) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:65:     hasher.update(b"attempt:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:66:     hasher.update(&attempt.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:67: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:68: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:69: fn hash_idempotency_key_field(hasher: &mut Hasher, key: u128) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:70:     hasher.update(b"key:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:71:     hasher.update(&key.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:72: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:73: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:74: fn hash_capacity_field(hasher: &mut Hasher, capacity: u16) {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:75:     hasher.update(b"capacity:");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:76:     hasher.update(&capacity.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:77: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:78: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:79: fn finalize_policy_hash(hasher: Hasher) -> PolicyDigest {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:80:     let result = hasher.finalize();
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:81:     let mut output = [0u8; 32];
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:82:     output.copy_from_slice(result.as_bytes());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:83:     PolicyDigest::from_bytes(output)
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:84: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:85: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:86: pub(super) fn compute_expected_input_digest(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:87:     value: i64,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:88:     taint: Taint,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:89:     ticket: &ActionTicket,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:90: ) -> Result<PolicyDigest, String> {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:91:     let input_bytes = serialize_input_bytes(value)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:92:     let taint_byte = match taint {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:93:         Taint::Clean => taint_byte_clean(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:94:         other => return Err(format!("unexpected taint variant for oracle: {other:?}")),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:95:     };
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:96: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:97:     let mut hasher = new_policy_hasher();
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:98:     hash_input_domain(&mut hasher, &input_bytes);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:99:     hash_taint_domain(&mut hasher, taint_byte);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:100:     hash_ticket_domain_prefix(&mut hasher);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:101:     hash_run_field(&mut hasher, ticket.run.get());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:102:     hash_step_field(&mut hasher, ticket.step.get());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:103:     hash_seq_field(&mut hasher, ticket.seq.get());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:104:     hash_action_field(&mut hasher, ticket.action.get());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:105:     hash_run_attempt_field(&mut hasher, ticket.run_attempt);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:106:     hash_attempt_field(&mut hasher, ticket.attempt);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:107:     hash_idempotency_key_field(&mut hasher, ticket.idempotency_key);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:108:     hash_capacity_field(&mut hasher, ticket.capacity);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:109: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:110:     Ok(finalize_policy_hash(hasher))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:111: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:112: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:113: pub(super) fn make_expected_decision(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:114:     ticket: ActionTicket,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:115:     admission_pin: PinnedAdmissionPolicy,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:116:     current_live: CurrentPolicyIdentity,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:117:     input_digest: PolicyDigest,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:118:     outcome: DecisionCode,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:119: ) -> vb_core::policy::DecisionRecord {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:120:     vb_core::policy::DecisionRecord {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:121:         ticket,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:122:         admission: admission_pin,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:123:         current_live,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:124:         input_digest,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:125:         taint: Taint::Clean,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:126:         outcome,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:127:         layer: PolicyLayer::Admission,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:128:         emergency_influence: InfluenceState::Inactive,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:129:         compat_influence: InfluenceState::NotEvaluated,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:130:     }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/policy_dispatch.rs:131: }

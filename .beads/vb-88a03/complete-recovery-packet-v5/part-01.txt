@@ -1,0 +1,220 @@
+FILE crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs SHA256 1cd50d9650bcc8e4c9e6488e35588540b6a094252bea09491bd40c071a38e854
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:1: use crate::journal::VolatileRuntimeJournal;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:2: use crate::recovery::RecoveredRunBoundary;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:3: use crate::shard::types::RecoverRunCommand;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:4: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:5: fn action_recovery_test_contract()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:6: -> Result<vb_core::action::ActionContract, Box<dyn std::error::Error>> {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:7:     let name = vb_core::action::ActionName::new("recovery-action")?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:8:     Ok(vb_core::action::ActionContract {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:9:         id: vb_core::ids::ActionId::new(0),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:10:         name,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:11:         input_slot_count: 1,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:12:         output_slot_count: 1,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:13:         max_input_bytes: 1024,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:14:         max_output_bytes: 1024,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:15:         timeout_ms: 5000,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:16:         idempotency: vb_core::action::Idempotency::DeterministicPure,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:17:         side_effect: vb_core::action::SideEffect::None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:18:         retry_safety: vb_core::action::RetrySafety::Safe,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:19:         required_capabilities: Box::new([]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:20:     })
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:21: }
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:22: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:23: fn action_recovery_contract_store(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:24:     digest: vb_core::ids::WorkflowDigest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:25:     source_digest: vb_core::ids::WorkflowDigest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:26:     policy_digest: vb_core::ids::WorkflowDigest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:27:     workflow_ir: Vec<u8>,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:28:     contract: vb_core::action::ActionContract,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:29: ) -> crate::admission::SharedAcceptedArtifactStore {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:30:     #[derive(Debug)]
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:31:     struct ActionRecoveryContractStore {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:32:         digest: vb_core::ids::WorkflowDigest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:33:         source_digest: vb_core::ids::WorkflowDigest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:34:         policy_digest: vb_core::ids::WorkflowDigest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:35:         workflow_ir: Vec<u8>,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:36:         contract: vb_core::action::ActionContract,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:37:     }
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:38: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:39:     impl crate::admission::AcceptedArtifactStore for ActionRecoveryContractStore {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:40:         fn load_accepted_artifact(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:41:             &self,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:42:             artifact_digest: vb_core::ids::WorkflowDigest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:43:         ) -> Result<vb_storage::admission::AcceptedArtifact, crate::admission::ArtifactEnvelopeError>
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:44:         {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:45:             if artifact_digest != self.digest {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:46:                 return Err(crate::admission::ArtifactEnvelopeError::ArtifactNotFound {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:47:                     digest: artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:48:                 });
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:49:             }
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:50:             Ok(vb_storage::admission::AcceptedArtifact {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:51:                 digest: self.digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:52:                 source_digest: self.source_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:53:                 policy_digest: self.policy_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:54:                 ir: self.workflow_ir.clone(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:55:                 verification: vb_storage::admission::VerificationProof {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:56:                     evidence: vb_core::artifact::ArtifactEvidence::Unverified,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:57:                     digest: self.digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:58:                     gate_count: 8,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:59:                     durable: true,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:60:                     bounded_claimed: true,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:61:                     taint_safe_claimed: true,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:62:                     retry_safe_claimed: true,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:63:                     idempotency_verified_claimed: true,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:64:                     replayable_claimed: true,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:65:                     idempotency_keyed: Box::new([]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:66:                     idempotency_attested: Box::new([]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:67:                     warnings: Vec::new(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:68:                 },
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:69:                 accepted_at_seq: vb_storage::types::EventSeq::new(0),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:70:                 required_capabilities: Box::new([]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:71:                 action_contracts: Box::from([self.contract.clone()]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:72:             })
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:73:         }
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:74:     }
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:75: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:76:     std::sync::Arc::new(ActionRecoveryContractStore {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:77:         digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:78:         source_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:79:         policy_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:80:         workflow_ir,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:81:         contract,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:82:     })
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:83: }
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:84: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:85: #[test]
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:86: fn recover_restores_action_contracts_schedules_completes_and_finishes()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:87: -> Result<(), Box<dyn std::error::Error>> {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:88:     let run_id = vb_core::ids::RunId::new(1);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:89:     let workflow_digest = vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:90:     // vb-peb9u: artifact identity differs from workflow identity. The artifact
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:91:     // digest is the content hash of the compiled artifact; the workflow digest
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:92:     // is the semantic hash of the workflow. Mocked as distinct byte patterns.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:93:     let artifact_digest = vb_core::ids::WorkflowDigest::from_bytes([43u8; 32]);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:94:     assert_ne!(artifact_digest, workflow_digest);
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:95: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:96:     let do_node = vb_core::workflow::CompiledNode {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:97:         id: vb_core::ids::StepIdx::ZERO,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:98:         output: Some(vb_core::ids::SlotIdx::new(1)),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:99:         next: Some(vb_core::ids::StepIdx::new(1)),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:100:         on_error: None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:101:         error_slot: None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:102:         kind: vb_core::workflow::CompiledNodeKind::Do {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:103:             action: vb_core::ids::ActionId::new(0),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:104:             input: vb_core::ids::SlotIdx::new(0),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:105:         },
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:106:     };
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:107:     let finish_node = vb_core::workflow::CompiledNode {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:108:         id: vb_core::ids::StepIdx::new(1),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:109:         output: None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:110:         next: None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:111:         on_error: None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:112:         error_slot: None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:113:         kind: vb_core::workflow::CompiledNodeKind::Finish {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:114:             result: vb_core::ids::SlotIdx::new(1),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:115:         },
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:116:     };
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:117:     let parts = vb_core::workflow::WorkflowParts {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:118:         semantic_source_identity: None,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:119:         name: Box::from("recovery-test"),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:120:         digest: workflow_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:121:         nodes: Box::from([do_node, finish_node]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:122:         expressions: Box::from([]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:123:         accessors: Box::from([]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:124:         constants: Box::from([]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:125:         slot_count: 2,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:126:         symbols_count: 0,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:127:         entry: vb_core::ids::StepIdx::ZERO,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:128:         step_names: Box::from([]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:129:         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:130:         input_slots: Box::from([]),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:131:     };
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:132: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:133:     let workflow_ir = postcard::to_allocvec(&parts)?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:134:     let contract = action_recovery_test_contract()?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:135: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:136:     // Compute the actual policy digest from the workflow for fixture provenance.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:137:     // The parts are consumed here after serialization, so the mock store can
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:138:     // carry the genuine computed digest rather than a made-up one.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:139:     let policy_digest = vb_storage::admission::compute_policy_digest(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:140:         &vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:141:     )?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:142: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:143:     let config = crate::shard::ShardConfig {
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:144:         command_queue_capacity: 64,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:145:         trace_capacity: 64,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:146:         step_budget_per_tick: 4,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:147:         max_active_runs: 8,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:148:         policy: vb_core::policy::RuntimePolicy::Relaxed,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:149:     };
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:150:     // vb-peb9u: Mocked store with internally consistent provenance. The artifact
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:151:     // digest is content hash [43u8;32]; source digest matches workflow identity
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:152:     // [42u8;32]; policy digest is the real computed value. Full admission would
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:153:     // accept these together; the Unverified pin remains the test subject.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:154:     let store = action_recovery_contract_store(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:155:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:156:         workflow_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:157:         policy_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:158:         workflow_ir,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:159:         contract.clone(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:160:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:161:     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:162:     let shared_journal = journal.clone();
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:163:     let mut shard = crate::shard::Shard::new_with_journal_and_artifact_store(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:164:         config,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:165:         shared_journal,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:166:         store.clone(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:167:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:168: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:169:     let mut frame = vb_core::frame::RunFrame::new(run_id, vb_core::ids::StepIdx::ZERO, 2, 2)?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:170:     frame.write_slot(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:171:         vb_core::ids::SlotIdx::new(0),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:172:         vb_core::value::SlotValue::I64(0),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:173:     )?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:174: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:175:     let command = RecoverRunCommand::new(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:176:         run_id,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:177:         frame,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:178:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:179:         workflow_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:180:         vb_storage::types::EventSeq::new(1),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:181:         crate::primitives::collect::CollectStates::new(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:182:         RecoveredRunBoundary::none(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:183:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:184: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:185:     // Phase 1: Drive recovery — restores action contracts and schedules Do
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:186:     shard.handle_recover(command)?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:187: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:188:     // Verify action contracts were restored from the artifact (exact match)
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:189:     let state = shard
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:190:         .run_state_get(run_id)
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:191:         .ok_or("run state not found after recovery; recovery failed")?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:192:     let expected_artifact = store.load_accepted_artifact(artifact_digest)?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:193:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:194:         state.action_contracts, expected_artifact.action_contracts,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:195:         "recovered run action_contracts must exactly match artifact"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:196:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:197: 
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:198:     // vb-peb9u: Raw 7-argument recovery cannot gain a verified policy pin.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:199:     // The Unverified admission record is built from the accepted artifact's
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:200:     // required capabilities and current runtime policy, but the pin remains
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:201:     // Unverified. This must never promote to Pinned.
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:202:     let admission = state
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:203:         .admission
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:204:         .as_ref()
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:205:         .ok_or("raw recovery must build an Unverified admission from the accepted artifact")?;
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:206:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:207:         admission.run_id(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:208:         run_id,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:209:         "recovered admission must carry the correct run identity"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:210:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:211:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:212:         admission.artifact_digest(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:213:         artifact_digest,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:214:         "recovered admission must carry the correct artifact digest"
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:215:     );
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:216:     assert_eq!(
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:217:         admission.policy_pin(),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:218:         vb_storage::RunPolicyPin::Unverified,
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:219:         "raw 7-argument recovery must remain Unverified; cannot gain policy pin"

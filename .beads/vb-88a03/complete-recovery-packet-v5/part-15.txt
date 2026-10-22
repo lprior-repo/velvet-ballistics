@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:430:     let run = RunId::new(1003);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:431:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:432:         submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:433:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:434:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:435:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:436: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:437:     // When: cancel_run is called and the runtime is deterministically drained.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:438:     assert_eq!(runtime.cancel_run(run), Ok(()));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:439:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:440: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:441:     // Then: cancellation evidence is exact and the run is not active.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:442:     assert_eq!(runtime.counters_snapshot().runs_failed, 1);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:443:     assert_eq!(runtime.list_active_runs(8, None), Vec::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:444:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:445:         runtime.snapshot_run(run, 55),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:446:         Ok(InspectResponse::NotFound {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:447:             run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:448:             correlation: 55
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:449:         })
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:450:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:451:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:452:         trace_events(&runtime, run)?.contains(&TraceEvent::RunCancelled { run }),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:453:         true
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:454:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:455:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:456:         journal_events(&journal)?.contains(&RuntimeJournalEvent::RunCancelled {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:457:             run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:458:             reason: None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:459:             attempt: 1
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:460:         }),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:461:         true
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:462:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:463:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:464: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:465: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:466: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:467: fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:468:     // Given: SCN-VT2F-004 two suspended runs and a public action ticket for one run.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:469:     let journal = Arc::new(VolatileRuntimeJournal::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:470:     let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:471:     let run = RunId::new(1004);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:472:     let unrelated = RunId::new(2004);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:473:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:474:         submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:475:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:476:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:477:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:478:         submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:479:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:480:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:481:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:482:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:483:     let unrelated_before = runtime.snapshot_run(unrelated, 44);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:484:     let unrelated_events_before = trace_events(&runtime, unrelated)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:485:     let expected_value = SlotValue::I64(4242);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:486:     let expected_taint = Taint::DerivedFromSecret;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:487:     let expected_bytes = encoded(&expected_value)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:488: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:489:     // When: the matching runtime-issued ticket completes with exact output value and taint.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:490:     let ticket = runtime
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:491:         .lookup_pending_action_ticket(run, 0)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:492:         .ok_or("suspended action must have a runtime-issued ticket")?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:493:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:494:         runtime.complete_action_with_output(ticket, action_output(expected_value, expected_taint)),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:495:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:496:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:497:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:498:     // Then: only the matching run completes and writes the exact output.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:499:     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:500:     assert_eq!(runtime.snapshot_run(unrelated, 44), unrelated_before);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:501:     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:502:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:503:         trace_events(&runtime, run)?.contains(&TraceEvent::ActionCompleted {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:504:             run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:505:             step: StepIdx::ZERO
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:506:         }),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:507:         true
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:508:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:509:     let expected_slot_event = RuntimeJournalEvent::SlotWritten {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:510:         run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:511:         slot: SlotIdx::new(1),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:512:         value: expected_bytes,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:513:         taint: expected_taint,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:514:         extra: None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:515:     };
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:516:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:517:         journal_events(&journal)?.contains(&expected_slot_event),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:518:         true
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:519:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:520: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:521:     // And: a mismatched action ticket is rejected with the exact public error and does not mutate the unrelated run.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:522:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:523:         runtime.complete_action_with_output(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:524:             action_ticket(unrelated, ActionId::new(99)),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:525:             action_output(SlotValue::I64(9), Taint::Clean)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:526:         ),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:527:         Err(RuntimeError::InvalidActionCompletion)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:528:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:529:     assert_eq!(runtime.tick_all(), Ok(true));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:530:     assert_eq!(runtime.snapshot_run(unrelated, 44), unrelated_before);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:531:     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:532:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:533: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:534: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:535: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:536: fn test_direct_api_action_failure_records_typed_failure() -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:537:     // Given: SCN-VT2F-005 a suspended action workflow.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:538:     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:539:     let run = RunId::new(1005);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:540:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:541:         submit_action_workflow(&runtime, run, action_then_finish_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:542:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:543:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:544:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:545:     let failure = ActionFailure {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:546:         code: ActionFailureCode::Timeout,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:547:         retry_policy: RetryPolicy::NonRetryable,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:548:         taint: Taint::Clean,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:549:         detail: None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:550:         encoded_len: 0,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:551:     };
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:552: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:553:     // When: fail_action is called with a typed non-retryable failure.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:554:     let ticket = runtime
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:555:         .lookup_pending_action_ticket(run, 0)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:556:         .ok_or("suspended action must have a runtime-issued ticket")?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:557:     assert_eq!(runtime.fail_action(ticket, failure), Ok(()));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:558:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:559: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:560:     // Then: the failure type is visible and the run does not complete successfully.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:561:     assert_eq!(runtime.counters_snapshot().runs_failed, 1);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:562:     assert_eq!(runtime.counters_snapshot().runs_completed, 0);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:563:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:564:         trace_events(&runtime, run)?.contains(&TraceEvent::ActionFailed {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:565:             run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:566:             step: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:567:             code: ActionFailureCode::Timeout,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:568:         }),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:569:         true
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:570:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:571:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:572: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:573: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:574: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:575: fn test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:576: -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:577:     // Given: SCN-VT2F-005 / ERR-003 one unrelated suspended action run and an absent-run ticket.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:578:     let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count(1)?, relaxed_config());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:579:     let unrelated = RunId::new(2505);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:580:     let absent = RunId::new(9505);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:581:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:582:         submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:583:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:584:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:585:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:586:     let unrelated_before = runtime.snapshot_run(unrelated, 505);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:587:     let unrelated_events_before = trace_events(&runtime, unrelated)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:588:     let counters_before = runtime.counters_snapshot();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:589:     let failure = ActionFailure {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:590:         code: ActionFailureCode::Timeout,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:591:         retry_policy: RetryPolicy::NonRetryable,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:592:         taint: Taint::Clean,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:593:         detail: None,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:594:         encoded_len: 0,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:595:     };
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:596: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:597:     // When: fail_action is enqueued for a wrong/absent run id.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:598:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:599:         runtime.fail_action(action_ticket(absent, ActionId::new(7)), failure),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:600:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:601:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:602: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:603:     let tick_result = runtime.tick_all();
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:604: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:605:     // Then: the unrelated run is unchanged and the deterministic tick returns the exact typed error.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:606:     assert_eq!(runtime.snapshot_run(unrelated, 505), unrelated_before);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:607:     assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:608:     assert_eq!(runtime.counters_snapshot(), counters_before);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:609:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:610:         runtime
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:611:             .list_active_runs(8, None)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:612:             .iter()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:613:             .map(|summary| summary.run_id)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:614:             .collect::<Vec<_>>(),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:615:         vec![unrelated]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:616:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:617:     assert_eq!(tick_result, Err(RuntimeError::InvalidActionCompletion));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:618:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:619: }
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:620: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:621: #[test]
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:622: fn test_direct_api_answer_ask_resumes_suspended_run() -> Result<(), String> {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:623:     // Given: SCN-VT2F-006 a run suspended on Ask with an exact public AskTicket.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:624:     let journal = Arc::new(VolatileRuntimeJournal::new());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:625:     let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:626:     let run = RunId::new(1006);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:627:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:628:         runtime.submit_direct(run, ask_then_finish_workflow()?),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:629:         Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:630:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:631:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:632:     let answer_value = SlotValue::I64(6060);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:633:     let answer_taint = Taint::DerivedFromSecret;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:634:     let answer_bytes = encoded(&answer_value)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:635:     let ticket = runtime
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:636:         .lookup_pending_ask_ticket(run, StepIdx::new(2))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:637:         .ok_or("suspended ask must have a runtime-issued ticket")?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:638:     let answer = ask_answer(ticket, answer_value, answer_taint);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:639: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:640:     // When: answer_ask resumes the run.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:641:     assert_eq!(runtime.answer_ask(answer), Ok(()));
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:642:     run_one_tick(&mut runtime)?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:643: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:644:     // Then: answer value/taint and terminal state are exact.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:645:     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:646:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:647:         trace_events(&runtime, run)?.contains(&TraceEvent::AskAnswered {
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:648:             run,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs:649:             step: StepIdx::new(2),

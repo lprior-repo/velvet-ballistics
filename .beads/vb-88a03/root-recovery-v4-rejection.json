@@ -1,0 +1,12 @@
+{
+  "verdict": "REJECT_REPORT_INACCURATE_AND_INCOMPLETE",
+  "reasons": [
+    "Report says Unverified correctly promotes toPinned; contract/test do exactly opposite; neverpromotes.",
+    "Says processrestart but actualtests drop/reopen handles in sameprocess; no powerloss/processrestart evidence.",
+    "Invented corrupt marker error variantchain: must quoteactual exacterror fromsource.",
+    "Manifest16 notallreadfull; helperoracles/fixtures, original14retention and YAMLregression afterline100 omitted. No YAMLreview atall.",
+    "Scopecountomitsactual3fuzzlibtests. Derive exactcasecount fromsource; testbodyadditionwrongrun only1.",
+    "Allfields/sourcecites/actualcommandprovenance missing; no evidence that reviewercomputedhash or verifiedoriginal14 independently.",
+    "Do not claim each of5recovery tests coversbothpositive/negative; map actualassertions only."
+  ]
+}

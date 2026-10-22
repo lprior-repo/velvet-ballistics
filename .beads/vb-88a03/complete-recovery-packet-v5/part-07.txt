@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:8: use vb_core::value::{SlotValue, Taint};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:9: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:10: fn serialize_input_bytes(value: i64) -> Result<Vec<u8>, String> {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:11:     postcard::to_allocvec(&SlotValue::I64(value))
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:12:         .map_err(|e| format!("failed to serialize input: {e}"))
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:13: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:14: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:15: fn new_policy_hasher() -> Hasher {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:16:     Hasher::new()
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:17: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:18: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:19: fn hash_input_domain(hasher: &mut Hasher, input_bytes: &[u8]) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:20:     hasher.update(b"velvet-ballistics:policy:input:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:21:     hasher.update(input_bytes);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:22: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:23: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:24: fn hash_taint_domain(hasher: &mut Hasher, taint_byte: u8) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:25:     hasher.update(b"velvet-ballistics:policy:taint:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:26:     hasher.update(&[taint_byte]);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:27: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:28: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:29: fn hash_ticket_domain_prefix(hasher: &mut Hasher) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:30:     hasher.update(b"velvet-ballistics:policy:ticket:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:31: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:32: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:33: fn hash_run_field(hasher: &mut Hasher, run: u64) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:34:     hasher.update(b"run:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:35:     hasher.update(&run.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:36: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:37: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:38: fn hash_step_field(hasher: &mut Hasher, step: u16) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:39:     hasher.update(b"step:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:40:     hasher.update(&step.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:41: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:42: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:43: fn hash_seq_field(hasher: &mut Hasher, seq: u64) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:44:     hasher.update(b"seq:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:45:     hasher.update(&seq.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:46: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:47: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:48: fn hash_action_field(hasher: &mut Hasher, action: u16) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:49:     hasher.update(b"action:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:50:     hasher.update(&action.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:51: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:52: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:53: fn hash_run_attempt_field(hasher: &mut Hasher, run_attempt: u16) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:54:     hasher.update(b"run_attempt:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:55:     hasher.update(&run_attempt.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:56: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:57: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:58: fn hash_attempt_field(hasher: &mut Hasher, attempt: u16) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:59:     hasher.update(b"attempt:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:60:     hasher.update(&attempt.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:61: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:62: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:63: fn hash_idempotency_key_field(hasher: &mut Hasher, key: u128) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:64:     hasher.update(b"key:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:65:     hasher.update(&key.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:66: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:67: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:68: fn hash_capacity_field(hasher: &mut Hasher, capacity: u16) {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:69:     hasher.update(b"capacity:");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:70:     hasher.update(&capacity.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:71: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:72: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:73: fn finalize_policy_hash(hasher: Hasher) -> PolicyDigest {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:74:     let result = hasher.finalize();
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:75:     let mut output = [0u8; 32];
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:76:     output.copy_from_slice(result.as_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:77:     PolicyDigest::from_bytes(output)
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:78: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:79: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:80: pub(super) fn compute_expected_input_digest(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:81:     value: i64,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:82:     taint: Taint,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:83:     ticket: &ActionTicket,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:84: ) -> Result<PolicyDigest, String> {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:85:     let input_bytes = serialize_input_bytes(value)?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:86:     let taint_byte = match taint {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:87:         Taint::Clean => 0,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:88:         other => {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:89:             return Err(format!("unexpected taint variant for oracle: {other:?}"));
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:90:         }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:91:     };
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:92: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:93:     let mut hasher = new_policy_hasher();
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:94:     hash_input_domain(&mut hasher, &input_bytes);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:95:     hash_taint_domain(&mut hasher, taint_byte);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:96:     hash_ticket_domain_prefix(&mut hasher);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:97:     hash_run_field(&mut hasher, u64::from(ticket.run.get()));
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:98:     hash_step_field(&mut hasher, u16::from(ticket.step.get()));
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:99:     hash_seq_field(&mut hasher, ticket.seq.get());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:100:     hash_action_field(&mut hasher, u16::from(ticket.action.get()));
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:101:     hash_run_attempt_field(&mut hasher, ticket.run_attempt);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:102:     hash_attempt_field(&mut hasher, ticket.attempt);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:103:     hash_idempotency_key_field(&mut hasher, ticket.idempotency_key);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:104:     hash_capacity_field(&mut hasher, ticket.capacity);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:105: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:106:     Ok(finalize_policy_hash(hasher))
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:107: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:108: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:109: pub(super) fn admission_pin_from_artifact(policy_digest: [u8; 32]) -> PinnedAdmissionPolicy {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:110:     PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(policy_digest))
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:111: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:112: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:113: pub(super) fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:114:     CurrentPolicyIdentity::Configured {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:115:         digest: PolicyDigest::from_bytes(digest),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:116:     }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:117: }
+FILE crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs SHA256 27ce239b23e4bf03c17d87a8e6e4f19e272072843dd6baa83616635b74f5af1e
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:1: #![forbid(unsafe_code)]
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:2: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:3: #[path = "vb_c4hzw_historical_replay/fixtures.rs"]
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:4: mod fixtures;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:5: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:6: #[path = "vb_c4hzw_historical_replay/policy_dispatch.rs"]
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:7: mod policy_dispatch;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:8: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:9: use std::sync::Arc;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:10: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:11: use vb_core::ids::{ActionId, RunId, SlotIdx};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:12: use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:13: use vb_core::value::{SlotValue, Taint};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:14: use vb_runtime::journal::StorageRuntimeJournal;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:15: use vb_runtime::recovery::{RecoveredRunBoundaryKind, RuntimeRecoveryProduct};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:16: use vb_runtime::runtime::Runtime;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:17: use vb_storage::executor::{ExecutorCatalog, FjallRegister};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:18: use vb_storage::journal::EmergencyDenyState;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:19: use vb_storage::{FjallConfig, FjallJournal};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:20: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:21: use fixtures::{action_grants, build_contract, build_workflow, scope, shard_count, strict_config};
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:22: use vb_core::action_pack::RecoveryClass;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:23: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:24: fn run_historical_replay_test() -> Result<(), Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:25:     let dir = tempfile::tempdir()?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:26:     let run = RunId::new(9_200);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:27:     let action = ActionId::new(0);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:28: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:29:     let workflow = build_workflow()?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:30:     let contract = build_contract(action)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:31:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:32:     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:33: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:34:     let journal = Arc::new(FjallJournal::open(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:35:         dir.path(),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:36:         Some(FjallConfig::default()),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:37:     )?);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:38: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:39:     let artifact = catalog.submit_artifact(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:40:         &journal,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:41:         &workflow,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:42:         RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:43:         &[contract.clone()],
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:44:         &[pack.clone()],
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:45:     )?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:46: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:47:     let storage = StorageRuntimeJournal::shared_strict_with_catalog(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:48:         journal.clone(),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:49:         Arc::new(catalog.clone()),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:50:     );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:51:     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:52: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:53:     let allowed_digest = PolicyDigest::from_bytes([0x33u8; 32]);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:54:     runtime.configure_live_policy(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:55:         allowed_digest,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:56:         PolicyRule {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:57:             action,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:58:             code: DecisionCode::Allowed,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:59:         },
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:60:     )?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:61: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:62:     runtime.submit_direct_with_inputs_grants_and_contracts(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:63:         run,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:64:         workflow,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:65:         Box::from([(SlotIdx::ZERO, SlotValue::I64(100))]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:66:         action_grants(action),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:67:         Box::from([contract.clone()]),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:68:     )?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:69: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:70:     runtime.tick_all()?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:71: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:72:     let ticket = runtime
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:73:         .lookup_pending_action_ticket(run, 0)
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:74:         .ok_or("expected pending action ticket")?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:75:     let grant = catalog.issue_register_grant(&artifact, ticket.clone(), scope())?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:76: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:77:     let register_path = dir.path().join("register");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:78:     let mut adapter = FjallRegister::open(&register_path, 8)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:79:     let receipt = runtime.execute_registered_action(&mut adapter, run, 0, &grant)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:80: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:81:     assert_eq!(receipt.value(), 100);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:82:     assert_eq!(adapter.effect_count()?, 1);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:83:     assert_eq!(adapter.value(scope())?, Some(100));
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:84: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:85:     // Crash window: real registered effect executed once, durable receipt recorded.
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:86:     // Do NOT tick completion. Journal has scheduled PendingAction + historical Allowed.
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:87:     // Recovery reconstructs PendingAction without re-executing nondeterministic Do.
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:88: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:89:     let product_before = runtime.recover_product(run)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:90:     match &product_before {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:91:         RuntimeRecoveryProduct::Resumable(product) => {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:92:             assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:93:                 product.boundary_kind(),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:94:                 RecoveredRunBoundaryKind::PendingAction,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:95:                 "pending action crash window must recover as resumable pending action"
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:96:             );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:97:         }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:98:         other => {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:99:             panic!(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:100:                 "expected Resumable with PendingAction boundary, got: {:?}",
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:101:                 other
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:102:             );
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:103:         }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:104:     }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:105:     let events_before = vb_storage::read_run_events(&journal, run)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:106:     let pending_before = runtime.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:107: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:108:     let stored_decisions_before = policy_dispatch::read_journal_decision_events(&journal, run)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay.rs:109:     assert_eq!(stored_decisions_before.len(), 1);
