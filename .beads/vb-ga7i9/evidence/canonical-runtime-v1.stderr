@@ -1,0 +1,54 @@
+[ WARN 2026-10-22 09:21:50.405] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:21:56.676] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:22:26.926] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+ velvet-ballistics:test | ────────────
+ velvet-ballistics:test |  Nextest run ID b8625cd3-332e-489b-b4ae-c60f48b19914 with nextest profile: default
+ velvet-ballistics:test |     Starting 14400 tests across 290 binaries (27 tests skipped)
+ velvet-ballistics:test |   Cancelling due to signal: 4 tests still running
+ velvet-ballistics:test |      SIGTERM [ 274.003s] (14397/14400) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_relaxed
+ velvet-ballistics:test |   stdout ───
+
+ velvet-ballistics:test |     running 1 test
+ velvet-ballistics:test |     test pi_02_digest_roundtrip_relaxed has been running for over 60 seconds
+ velvet-ballistics:test |   stderr ───
+ velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+ velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+ velvet-ballistics:test |      SIGTERM [ 284.851s] (14398/14400) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs
+ velvet-ballistics:test |   stdout ───
+
+ velvet-ballistics:test |     running 1 test
+ velvet-ballistics:test |     test source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs has been running for over 60 seconds
+ velvet-ballistics:test |   stderr ───
+ velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+ velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+ velvet-ballistics:test |      SIGTERM [ 275.559s] (14399/14400) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_journaled
+ velvet-ballistics:test |   stdout ───
+
+ velvet-ballistics:test |     running 1 test
+ velvet-ballistics:test |     test pi_02_digest_roundtrip_journaled has been running for over 60 seconds
+ velvet-ballistics:test |   stderr ───
+ velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+ velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+ velvet-ballistics:test |      SIGTERM [ 273.076s] (14400/14400) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_strict
+ velvet-ballistics:test |   stdout ───
+
+ velvet-ballistics:test |     running 1 test
+ velvet-ballistics:test |     test pi_02_digest_roundtrip_strict has been running for over 60 seconds
+ velvet-ballistics:test |   stderr ───
+ velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+ velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+ velvet-ballistics:test | ────────────
+ velvet-ballistics:test |      Summary [ 399.934s] 14400 tests run: 14396 passed (25 slow), 4 failed, 27 skipped
+ velvet-ballistics:test |      SIGTERM [ 274.003s] (14397/14400) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_relaxed
+ velvet-ballistics:test |      SIGTERM [ 284.851s] (14398/14400) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs
+ velvet-ballistics:test |      SIGTERM [ 275.559s] (14399/14400) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_journaled
+ velvet-ballistics:test |      SIGTERM [ 273.076s] (14400/14400) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_strict
+ velvet-ballistics:test | error: test run failed

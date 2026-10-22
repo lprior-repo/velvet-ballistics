@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing",
+  "argv": [
+    "heaptrack_print",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing/.beads/vb-ga7i9/evidence/actual-collection-v1/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst"
+  ],
+  "exit_code": 0,
+  "seconds": 0.221,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing/.beads/vb-ga7i9/evidence/actual-collection-v1/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792679190008803041-print"
+}

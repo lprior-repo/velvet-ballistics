@@ -1,0 +1,43 @@
+Gnuplot not found, using plotters backend
+NOTE: heaptrack detected DEBUGINFOD_URLS but will disable it to prevent 
+unintended network delays during recording
+If you really want to use DEBUGINFOD, export HEAPTRACK_ENABLE_DEBUGINFOD=1
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...: Warming up for 1.0000 s
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=11; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=2; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=56; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=2; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=13; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=5; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=29; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=167; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=136; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=67; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=219; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=359; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=409; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=376; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=980; budget_us=100000; utilization_pct=0
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...: Collecting 10 samples in estimated 1.0000 s (1.9M iterations)
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=215; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1683; budget_us=100000; utilization_pct=1
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=199; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=196; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=364; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=267; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=730; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=489; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=236; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=745; budget_us=100000; utilization_pct=0
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...: Analyzing
+heaptrack stats:
+	allocations:          	8664380
+	leaked allocations:   	993
+	temporary allocations:	110688

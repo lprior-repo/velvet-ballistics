@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing",
+  "argv": [
+    "cargo",
+    "test",
+    "--manifest-path",
+    "xtask/Cargo.toml",
+    "benchmark"
+  ],
+  "exit_code": 0,
+  "seconds": 7.099,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ga7i9/evidence/benchmark-validator-suite-v2"
+}

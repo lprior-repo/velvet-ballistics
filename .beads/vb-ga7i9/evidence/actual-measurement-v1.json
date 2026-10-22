@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+    "--root",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing",
+    "--commit",
+    "741c61563599982b33a3057f23859d41fb137ffc",
+    "--output-dir",
+    ".beads/vb-ga7i9/evidence/actual-collection-v1"
+  ],
+  "exit_code": 0,
+  "seconds": 106.67,
+  "timeout_seconds": 1800,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ga7i9/evidence/actual-measurement-v1"
+}

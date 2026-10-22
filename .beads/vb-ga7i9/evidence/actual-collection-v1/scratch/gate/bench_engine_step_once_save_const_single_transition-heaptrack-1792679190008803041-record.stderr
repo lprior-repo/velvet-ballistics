@@ -1,0 +1,47 @@
+NOTE: heaptrack detected DEBUGINFOD_URLS but will disable it to prevent 
+unintended network delays during recording
+If you really want to use DEBUGINFOD, export HEAPTRACK_ENABLE_DEBUGINFOD=1
+Gnuplot not found, using plotters backend
+Benchmarking runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...
+Benchmarking runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...: Warming up for 1.0000 s
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=2; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=9; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=3; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=14; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=7; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=3; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=493; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=15; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=21; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=9; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=10; budget_us=100000; utilization_pct=0
+Benchmarking runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...: Collecting 10 samples in estimated 1.0000 s (24M iterations)
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=4; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=3; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=5; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=7; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=6; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=18; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=9; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=8; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=11; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=9; budget_us=100000; utilization_pct=0
+Benchmarking runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...: Analyzing
+heaptrack stats:
+	allocations:          	615466
+	leaked allocations:   	501
+	temporary allocations:	109566

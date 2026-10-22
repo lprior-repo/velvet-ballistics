@@ -1,0 +1,28 @@
+[ WARN 2026-10-22 09:34:27.474] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:34:27.481] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:34:28.260] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:34:29.743] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:34:30.081] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:34:33.568] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:34:39.182] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:34:39.616] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID 5b3f49b0-98d3-40c6-a73c-f60930e293ea with nextest profile: default
+                       velvet-ballistics:test |     Starting 14400 tests across 290 binaries (27 tests skipped)
+[ WARN 09:35:01.021] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:35:53.614] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:35:53.754] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 09:36:12.674] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+              velvet-ballistics:source-length | source-length gate summary:
+              velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+              velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+              velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+              velvet-ballistics:source-length |   test_in_src        scanned=312   warn=48   over_limit=0    limit=1500 warn_at=1200
+              velvet-ballistics:source-length |   test_top_level     scanned=386   warn=6    over_limit=0    limit=3000 warn_at=2400
+              velvet-ballistics:source-length |   production         scanned=947   warn=197  over_limit=0    limit=300 warn_at=240
+              velvet-ballistics:source-length |   ledger rows used:    383
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 433.577s] 14400 tests run: 14400 passed (29 slow), 27 skipped

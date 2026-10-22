@@ -1,0 +1,87 @@
+{
+  "scope": "Typed policy foundation only; actual live dispatch and durable policy admission/decision recovery remain open",
+  "source_commit": "741c61563599982b33a3057f23859d41fb137ffc",
+  "base": "8707f8e976f9a1f936a65341c924468be57f2920",
+  "all_product_rust_authored_by_local_models": true,
+  "rust_source_hashes_match": {
+    "crates/vb_core/src/policy.rs": true,
+    "crates/vb_core/src/policy/new_tests.rs": true,
+    "crates/vb_runtime/src/lib.rs": true,
+    "crates/vb_runtime/src/policy.rs": true,
+    "crates/vb_runtime/src/policy/emergency_and_admission_tests.rs": true,
+    "crates/vb_runtime/src/policy/taint_tests.rs": true,
+    "crates/vb_runtime/src/policy/tests.rs": true,
+    "crates/vb_runtime/src/policy/ticket_field_variation_tests.rs": true
+  },
+  "independent_code_review": "ec52b6324aefa3f48f8bf845e281b39386804d67",
+  "independent_test_review": "d203952721f0340859be2426aa37a520db5a9568",
+  "review_applicability": ".beads/vb-ga7i9/review-applicability-v3.md",
+  "canonical_selected_gate_result": {
+    "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing",
+    "argv": [
+      "env",
+      "TEST_INTEGRITY_BASE=8707f8e976f9a1f936a65341c924468be57f2920",
+      "moon",
+      "ci",
+      ":fmt",
+      ":source-length",
+      ":lint-src",
+      ":check",
+      ":test",
+      ":benchmark-regression-policy",
+      "--downstream",
+      "none",
+      "--force",
+      "--concurrency",
+      "2"
+    ],
+    "exit_code": 0,
+    "seconds": 446.808,
+    "timeout_seconds": 1800,
+    "timed_out": false,
+    "env_overrides": {
+      "CARGO_BUILD_JOBS": "2"
+    },
+    "log_prefix": ".beads/vb-ga7i9/evidence/canonical-combined-warm-v3"
+  },
+  "canonical_tasks_completed": 17,
+  "nextest_summary": "velvet-ballistics:test |      Summary [ 433.577s] 14400 tests run: 14400 passed (29 slow), 27 skipped",
+  "existing_skipped": 27,
+  "new_behavioral_cases": 41,
+  "benchmark_collection": {
+    "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing",
+    "argv": [
+      "python3",
+      ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+      "--root",
+      "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing",
+      "--commit",
+      "741c61563599982b33a3057f23859d41fb137ffc",
+      "--output-dir",
+      ".beads/vb-ga7i9/evidence/actual-collection-v1"
+    ],
+    "exit_code": 0,
+    "seconds": 106.67,
+    "timeout_seconds": 1800,
+    "timed_out": false,
+    "env_overrides": {
+      "CARGO_BUILD_JOBS": "2"
+    },
+    "log_prefix": ".beads/vb-ga7i9/evidence/actual-measurement-v1"
+  },
+  "benchmark_rust_validator_tests": 40,
+  "benchmark_collector_tests": 80,
+  "no_speedup_claim": true,
+  "historical_failures_preserved": [
+    "canonical-static-v1: original test relocation integrity rejected, repaired unchanged body inline",
+    "canonical-runtime-v1:10minute build+test timeout, superseded by warm identical settings all14400pass",
+    "benchmark-validator-suite-v1:xtask excludedworkspace package invocation, rerun propermanifest40pass",
+    "collector-synthetic-suite-v1:generated xtask/target misidentified source, moved generatedcache under target,80pass"
+  ],
+  "not_claimed": [
+    "unrestricted complete moon ci",
+    "fullv1",
+    "productionpolicyenforcement",
+    "fullformalproofclosure"
+  ]
+}

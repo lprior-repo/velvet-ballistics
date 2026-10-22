@@ -1,0 +1,34 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing",
+  "argv": [
+    "/usr/bin/env",
+    "CRITERION_HOME=/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing/.beads/vb-ga7i9/evidence/actual-collection-v1/scratch/criterion-home/perf-bench_engine_step_once_save_const_single_transition",
+    "LC_ALL=C",
+    "perf",
+    "stat",
+    "-x",
+    ";",
+    "-e",
+    "instructions",
+    "-o",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing/.beads/vb-ga7i9/evidence/actual-collection-v1/scratch/perf/bench_engine_step_once_save_const_single_transition.csv",
+    "--",
+    "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313",
+    "bench_engine_step_once_save_const_single_transition",
+    "--bench",
+    "--sample-size",
+    "10",
+    "--warm-up-time",
+    "1",
+    "--measurement-time",
+    "1"
+  ],
+  "exit_code": 0,
+  "seconds": 2.839,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing/.beads/vb-ga7i9/evidence/actual-collection-v1/scratch/gate/bench_engine_step_once_save_const_single_transition-perf-1792679187138599136"
+}
