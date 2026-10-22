@@ -1,0 +1,656 @@
+error[E0425]: cannot find type `CompiledWorkflow` in this scope
+ --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:9:15
+  |
+9 |     workflow: CompiledWorkflow,
+  |               ^^^^^^^^^^^^^^^^ not found in this scope
+  |
+help: consider importing this struct
+  |
+1 + use vb_core::CompiledWorkflow;
+  |
+
+error[E0425]: cannot find type `ActionContract` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:10:15
+   |
+10 |     contract: ActionContract,
+   |               ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_core::ActionContract;
+   |
+
+error[E0425]: cannot find type `Artifact` in module `vb_storage::executor`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:12:37
+   |
+12 |     artifact: vb_storage::executor::Artifact,
+   |                                     ^^^^^^^^ not found in `vb_storage::executor`
+   |
+help: there is an enum variant `crate::PinnedAdmissionPolicy::Artifact` and 3 others; try using the variant's enum
+   |
+12 -     artifact: vb_storage::executor::Artifact,
+12 +     artifact: crate::PinnedAdmissionPolicy,
+   |
+12 -     artifact: vb_storage::executor::Artifact,
+12 +     artifact: vb_core::policy::PinnedAdmissionPolicy,
+   |
+12 -     artifact: vb_storage::executor::Artifact,
+12 +     artifact: vb_storage::executor::ExecutorError,
+   |
+
+error[E0425]: cannot find type `RegisterGrant` in module `vb_core::capability`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:16:33
+   |
+16 |     grant: vb_core::capability::RegisterGrant,
+   |                                 ^^^^^^^^^^^^^ not found in `vb_core::capability`
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_storage::executor::RegisterGrant;
+   |
+help: if you import `RegisterGrant`, refer to it directly
+   |
+16 -     grant: vb_core::capability::RegisterGrant,
+16 +     grant: RegisterGrant,
+   |
+
+error[E0433]: cannot find `RegisterGrant` in `capability`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:51:37
+   |
+51 |         grant: vb_core::capability::RegisterGrant::default(),
+   |                                     ^^^^^^^^^^^^^ could not find `RegisterGrant` in `capability`
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_storage::executor::RegisterGrant;
+   |
+help: if you import `RegisterGrant`, refer to it directly
+   |
+51 -         grant: vb_core::capability::RegisterGrant::default(),
+51 +         grant: RegisterGrant::default(),
+   |
+
+error[E0425]: cannot find type `CompiledWorkflow` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:70:15
+   |
+70 |     workflow: CompiledWorkflow,
+   |               ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_core::CompiledWorkflow;
+   |
+
+error[E0425]: cannot find type `ActionContract` in this scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:71:15
+   |
+71 |     contract: ActionContract,
+   |               ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_core::ActionContract;
+   |
+
+error[E0425]: cannot find type `Artifact` in module `vb_storage::executor`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:87:38
+   |
+87 |     artifact: &vb_storage::executor::Artifact,
+   |                                      ^^^^^^^^ not found in `vb_storage::executor`
+   |
+help: there is an enum variant `crate::PinnedAdmissionPolicy::Artifact` and 3 others; try using the variant's enum
+   |
+87 -     artifact: &vb_storage::executor::Artifact,
+87 +     artifact: &crate::PinnedAdmissionPolicy,
+   |
+87 -     artifact: &vb_storage::executor::Artifact,
+87 +     artifact: &vb_core::policy::PinnedAdmissionPolicy,
+   |
+87 -     artifact: &vb_storage::executor::Artifact,
+87 +     artifact: &vb_storage::executor::ExecutorError,
+   |
+
+error[E0425]: cannot find type `RegisterGrant` in module `vb_core::capability`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:89:70
+   |
+89 | ) -> TestResult<(vb_core::action::ActionTicket, vb_core::capability::RegisterGrant)> {
+   |                                                                      ^^^^^^^^^^^^^ not found in `vb_core::capability`
+   |
+help: consider importing this struct
+   |
+ 1 + use vb_storage::executor::RegisterGrant;
+   |
+help: if you import `RegisterGrant`, refer to it directly
+   |
+89 - ) -> TestResult<(vb_core::action::ActionTicket, vb_core::capability::RegisterGrant)> {
+89 + ) -> TestResult<(vb_core::action::ActionTicket, RegisterGrant)> {
+   |
+
+error[E0425]: cannot find type `Artifact` in module `vb_storage::executor`
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:98:38
+   |
+98 |     artifact: &vb_storage::executor::Artifact,
+   |                                      ^^^^^^^^ not found in `vb_storage::executor`
+   |
+help: there is an enum variant `crate::PinnedAdmissionPolicy::Artifact` and 3 others; try using the variant's enum
+   |
+98 -     artifact: &vb_storage::executor::Artifact,
+98 +     artifact: &crate::PinnedAdmissionPolicy,
+   |
+98 -     artifact: &vb_storage::executor::Artifact,
+98 +     artifact: &vb_core::policy::PinnedAdmissionPolicy,
+   |
+98 -     artifact: &vb_storage::executor::Artifact,
+98 +     artifact: &vb_storage::executor::ExecutorError,
+   |
+
+error[E0425]: cannot find type `RegisterGrant` in module `vb_core::capability`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:124:34
+    |
+124 |     grant: &vb_core::capability::RegisterGrant,
+    |                                  ^^^^^^^^^^^^^ not found in `vb_core::capability`
+    |
+help: consider importing this struct
+    |
+  1 + use vb_storage::executor::RegisterGrant;
+    |
+help: if you import `RegisterGrant`, refer to it directly
+    |
+124 -     grant: &vb_core::capability::RegisterGrant,
+124 +     grant: &RegisterGrant,
+    |
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:19:30
+   |
+19 | fn build_suspended_case() -> TestResult<SuspendedTestCase> {
+   |                              ^^^^^^^^^^------------------- help: remove the unnecessary generics
+   |                              |
+   |                              expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+   |
+29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+   |      ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:59:6
+   |
+59 | ) -> TestResult<()> {
+   |      ^^^^^^^^^^---- help: remove the unnecessary generics
+   |      |
+   |      expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+   |
+29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+   |      ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:72:6
+   |
+72 | ) -> TestResult<()> {
+   |      ^^^^^^^^^^---- help: remove the unnecessary generics
+   |      |
+   |      expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+   |
+29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+   |      ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:89:6
+   |
+89 | ) -> TestResult<(vb_core::action::ActionTicket, vb_core::capability::RegisterGrant)> {
+   |      ^^^^^^^^^^--------------------------------------------------------------------- help: remove the unnecessary generics
+   |      |
+   |      expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+   |
+29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+   |      ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:101:6
+    |
+101 | ) -> TestResult<DecisionRecord> {
+    |      ^^^^^^^^^^---------------- help: remove the unnecessary generics
+    |      |
+    |      expected 0 generic arguments
+    |
+note: type alias defined here, with 0 generic parameters
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+    |
+ 29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+    |      ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:138:6
+    |
+138 | ) -> TestResult<()> {
+    |      ^^^^^^^^^^---- help: remove the unnecessary generics
+    |      |
+    |      expected 0 generic arguments
+    |
+note: type alias defined here, with 0 generic parameters
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+    |
+ 29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+    |      ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:186:52
+    |
+186 | fn assert_zero_effects(adapter: &FjallRegister) -> TestResult<()> {
+    |                                                    ^^^^^^^^^^---- help: remove the unnecessary generics
+    |                                                    |
+    |                                                    expected 0 generic arguments
+    |
+note: type alias defined here, with 0 generic parameters
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+    |
+ 29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+    |      ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:200:6
+    |
+200 | ) -> TestResult<()> {
+    |      ^^^^^^^^^^---- help: remove the unnecessary generics
+    |      |
+    |      expected 0 generic arguments
+    |
+note: type alias defined here, with 0 generic parameters
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+    |
+ 29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+    |      ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:222:6
+    |
+222 | ) -> TestResult<()> {
+    |      ^^^^^^^^^^---- help: remove the unnecessary generics
+    |      |
+    |      expected 0 generic arguments
+    |
+note: type alias defined here, with 0 generic parameters
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+    |
+ 29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+    |      ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:248:60
+    |
+248 | fn suspended_policy_denies_execution_with_full_record() -> TestResult<()> {
+    |                                                            ^^^^^^^^^^---- help: remove the unnecessary generics
+    |                                                            |
+    |                                                            expected 0 generic arguments
+    |
+note: type alias defined here, with 0 generic parameters
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:29:6
+    |
+ 29 | type TestResult = Result<(), Box<dyn std::error::Error>>;
+    |      ^^^^^^^^^^
+
+error[E0599]: no associated function or constant named `default` found for struct `ActionTicket` in the current scope
+  --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:50:48
+   |
+50 |         ticket: vb_core::action::ActionTicket::default(),
+   |                                                ^^^^^^^ associated function or constant not found in `ActionTicket`
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:47:8
+    |
+ 47 |       Ok(SuspendedTestCase {
+    |  _____--_^
+    | |     |
+    | |     arguments to this enum variant are incorrect
+ 48 | |         dir, run, action, catalog, workflow, contract, journal, artifact, runtime,
+ 49 | |         suspended_digest: PolicyDigest::from_bytes([0x99u8; 32]),
+ 50 | |         ticket: vb_core::action::ActionTicket::default(),
+ 51 | |         grant: vb_core::capability::RegisterGrant::default(),
+ 52 | |     })
+    | |_____^ expected `()`, found `SuspendedTestCase`
+    |
+help: the type constructed contains `SuspendedTestCase` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:47:5
+    |
+ 47 |        Ok(SuspendedTestCase {
+    |   _____^  -
+    |  |________|
+ 48 | ||         dir, run, action, catalog, workflow, contract, journal, artifact, runtime,
+ 49 | ||         suspended_digest: PolicyDigest::from_bytes([0x99u8; 32]),
+ 50 | ||         ticket: vb_core::action::ActionTicket::default(),
+ 51 | ||         grant: vb_core::capability::RegisterGrant::default(),
+ 52 | ||     })
+    | ||_____-^
+    | |______|
+    |        this argument influences the type of `Ok`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:561:5
+    |
+561 |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ^^
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:94:8
+    |
+ 94 |     Ok((ticket, grant))
+    |     -- ^^^^^^^^^^^^^^^ expected `()`, found `(ActionTicket, RegisterGrant)`
+    |     |
+    |     arguments to this enum variant are incorrect
+    |
+    = note: expected unit type `()`
+                   found tuple `(ActionTicket, RegisterGrant)`
+help: the type constructed contains `(ActionTicket, RegisterGrant)` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:94:5
+    |
+ 94 |     Ok((ticket, grant))
+    |     ^^^---------------^
+    |        |
+    |        this argument influences the type of `Ok`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:561:5
+    |
+561 |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ^^
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:117:8
+    |
+117 |     Ok(expected)
+    |     -- ^^^^^^^^ expected `()`, found `DecisionRecord`
+    |     |
+    |     arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `vb_core::policy::DecisionRecord` due to the type of the argument passed
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:117:5
+    |
+117 |     Ok(expected)
+    |     ^^^--------^
+    |        |
+    |        this argument influences the type of `Ok`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:561:5
+    |
+561 |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ^^
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:126:5
+    |
+125 |   ) -> Result<(), RegisteredExecutionError> {
+    |        ------------------------------------ expected `Result<(), vb_runtime::runtime::RegisteredExecutionError>` because of return type
+126 | /     runtime.execute_registered_action(
+127 | |         adapter,
+128 | |         run,
+129 | |         u64::from(StepIdx::ZERO.get()),
+130 | |         grant,
+131 | |     )
+    | |_____^ expected `Result<(), RegisteredExecutionError>`, found `Result<RegisterReceipt, ...>`
+    |
+    = note: expected enum `Result<(), _>`
+               found enum `Result<RegisterReceipt, _>`
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:158:49
+    |
+158 |                     assert_eq!(admitted_digest, expected.admission.clone());
+    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PolicyDigest`, found `PinnedAdmissionPolicy`
+
+error[E0277]: can't compare `vb_core::policy::DecisionRecord` with `&vb_core::policy::DecisionRecord`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:171:13
+    |
+171 | /             assert_eq!(
+172 | |                 decision.as_ref(),
+173 | |                 &expected,
+174 | |                 "returned decision must match full expected record"
+175 | |             );
+    | |_____________^ no implementation for `vb_core::policy::DecisionRecord == &vb_core::policy::DecisionRecord`
+    |
+help: the trait `PartialEq<&vb_core::policy::DecisionRecord>` is not implemented for `vb_core::policy::DecisionRecord`
+      but trait `PartialEq<vb_core::policy::DecisionRecord>` is implemented for it
+   --> crates/vb_core/src/policy.rs:164:24
+    |
+164 | #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    |                        ^^^^^^^^^
+    = help: for that trait implementation, expected `vb_core::policy::DecisionRecord`, found `&vb_core::policy::DecisionRecord`
+    = note: required for `&vb_core::policy::DecisionRecord` to implement `PartialEq<&&vb_core::policy::DecisionRecord>`
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:203:24
+    |
+203 |         pending_after, pending_before,
+    |                        ^^^^^^^^^^^^^^ expected `RuntimePendingBoundarySnapshot`, found `Vec<u64>`
+    |
+    = note: expected struct `RuntimePendingBoundarySnapshot`
+               found struct `Vec<u64>`
+
+error[E0609]: no field `runtime` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:250:42
+    |
+250 |     configure_suspended_policy(&mut case.runtime, case.action, case.suspended_digest)?;
+    |                                          ^^^^^^^ unknown field
+
+error[E0609]: no field `action` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:250:56
+    |
+250 |     configure_suspended_policy(&mut case.runtime, case.action, case.suspended_digest)?;
+    |                                                        ^^^^^^ unknown field
+
+error[E0609]: no field `suspended_digest` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:250:69
+    |
+250 |     configure_suspended_policy(&mut case.runtime, case.action, case.suspended_digest)?;
+    |                                                                     ^^^^^^^^^^^^^^^^ unknown field
+
+error[E0609]: no field `runtime` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:252:19
+    |
+252 |         &mut case.runtime,
+    |                   ^^^^^^^ unknown field
+
+error[E0609]: no field `run` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:253:14
+    |
+253 |         case.run,
+    |              ^^^ unknown field
+
+error[E0609]: no field `workflow` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:254:14
+    |
+254 |         case.workflow.clone(),
+    |              ^^^^^^^^ unknown field
+
+error[E0609]: no field `contract` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:255:14
+    |
+255 |         case.contract.clone(),
+    |              ^^^^^^^^ unknown field
+
+error[E0609]: no field `runtime` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:259:15
+    |
+259 |         &case.runtime,
+    |               ^^^^^^^ unknown field
+
+error[E0609]: no field `catalog` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:260:15
+    |
+260 |         &case.catalog,
+    |               ^^^^^^^ unknown field
+
+error[E0609]: no field `artifact` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:261:15
+    |
+261 |         &case.artifact,
+    |               ^^^^^^^^ unknown field
+
+error[E0609]: no field `run` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:262:14
+    |
+262 |         case.run,
+    |              ^^^ unknown field
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:258:9
+    |
+258 |       let (ticket, grant) = get_ticket_and_grant(
+    |  _________^^^^^^^^^^^^^^^___-
+    | |         |
+    | |         expected `()`, found `(_, _)`
+259 | |         &case.runtime,
+260 | |         &case.catalog,
+261 | |         &case.artifact,
+262 | |         case.run,
+263 | |     )?;
+    | |______- this expression has type `()`
+    |
+    = note: expected unit type `()`
+                   found tuple `(_, _)`
+
+error[E0609]: no field `ticket` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:264:10
+    |
+264 |     case.ticket = ticket.clone();
+    |          ^^^^^^ unknown field
+
+error[E0609]: no field `grant` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:265:10
+    |
+265 |     case.grant = grant.clone();
+    |          ^^^^^ unknown field
+
+error[E0609]: no field `artifact` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:268:15
+    |
+268 |         &case.artifact,
+    |               ^^^^^^^^ unknown field
+
+error[E0609]: no field `ticket` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:269:15
+    |
+269 |         &case.ticket,
+    |               ^^^^^^ unknown field
+
+error[E0609]: no field `suspended_digest` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:270:14
+    |
+270 |         case.suspended_digest,
+    |              ^^^^^^^^^^^^^^^^ unknown field
+
+error[E0609]: no field `runtime` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:273:31
+    |
+273 |     let pending_before = case.runtime.pending_boundary_snapshot(8);
+    |                               ^^^^^^^ unknown field
+
+error[E0609]: no field `dir` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:275:30
+    |
+275 |     let register_path = case.dir.path().join("register");
+    |                              ^^^ unknown field
+
+error[E0609]: no field `runtime` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:278:19
+    |
+278 |         &mut case.runtime,
+    |                   ^^^^^^^ unknown field
+
+error[E0609]: no field `run` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:280:14
+    |
+280 |         case.run,
+    |              ^^^ unknown field
+
+error[E0609]: no field `grant` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:281:15
+    |
+281 |         &case.grant,
+    |               ^^^^^ unknown field
+
+error[E0609]: no field `suspended_digest` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:284:62
+    |
+284 |     assert_policy_denied_full_record(result, &expected, case.suspended_digest)?;
+    |                                                              ^^^^^^^^^^^^^^^^ unknown field
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:284:46
+    |
+284 |     assert_policy_denied_full_record(result, &expected, case.suspended_digest)?;
+    |     --------------------------------         ^^^^^^^^^ expected `&DecisionRecord`, found `&()`
+    |     |
+    |     arguments to this function are incorrect
+    |
+    = note: expected reference `&vb_core::policy::DecisionRecord`
+               found reference `&()`
+note: function defined here
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:134:4
+    |
+134 | fn assert_policy_denied_full_record(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+135 |     result: Result<(), RegisteredExecutionError>,
+136 |     expected: &DecisionRecord,
+    |     -------------------------
+
+error[E0609]: no field `runtime` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:286:36
+    |
+286 |     assert_pending_unchanged(&case.runtime, case.run, pending_before, &case.ticket)?;
+    |                                    ^^^^^^^ unknown field
+
+error[E0609]: no field `run` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:286:50
+    |
+286 |     assert_pending_unchanged(&case.runtime, case.run, pending_before, &case.ticket)?;
+    |                                                  ^^^ unknown field
+
+error[E0609]: no field `ticket` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:286:77
+    |
+286 |     assert_pending_unchanged(&case.runtime, case.run, pending_before, &case.ticket)?;
+    |                                                                             ^^^^^^ unknown field
+
+error[E0609]: no field `journal` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:287:34
+    |
+287 |     assert_stored_decision(&case.journal, case.run, &expected)?;
+    |                                  ^^^^^^^ unknown field
+
+error[E0609]: no field `run` on type `()`
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:287:48
+    |
+287 |     assert_stored_decision(&case.journal, case.run, &expected)?;
+    |                                                ^^^ unknown field
+
+error[E0308]: mismatched types
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:287:53
+    |
+287 |     assert_stored_decision(&case.journal, case.run, &expected)?;
+    |     ----------------------                          ^^^^^^^^^ expected `&DecisionRecord`, found `&()`
+    |     |
+    |     arguments to this function are incorrect
+    |
+    = note: expected reference `&vb_core::policy::DecisionRecord`
+               found reference `&()`
+note: function defined here
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:218:4
+    |
+218 | fn assert_stored_decision(
+    |    ^^^^^^^^^^^^^^^^^^^^^^
+...
+221 |     expected: &DecisionRecord,
+    |     -------------------------
+
+Some errors have detailed explanations: E0107, E0277, E0308, E0425, E0433, E0599, E0609.
+For more information about an error, try `rustc --explain E0107`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_policy_dispatch_fail_closed") due to 59 previous errors
