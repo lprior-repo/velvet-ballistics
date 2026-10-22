@@ -1,0 +1,5 @@
+    Fetching advisory database from `https://github.com/RustSec/advisory-db.git`
+      Loaded 1348 security advisories (from /cache/cargo-shared/advisory-db)
+    Updating crates.io index
+    Scanning Cargo.lock for vulnerabilities (263 crate dependencies)
+error: 6 denied warnings found!
