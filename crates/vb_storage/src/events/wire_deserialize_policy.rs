@@ -10,7 +10,9 @@ where
 {
     match kind {
         RecordKind::PolicyDecision => deserialize_policy_decision(variant),
-        _ => Err(de::Error::custom("record kind is not a policy decision event")),
+        _ => Err(de::Error::custom(
+            "record kind is not a policy decision event",
+        )),
     }
 }
 
@@ -18,6 +20,18 @@ fn deserialize_policy_decision<'de, A>(variant: A) -> Result<JournalEvent, A::Er
 where
     A: VariantAccess<'de>,
 {
-    let (run, seq, decision) = variant.newtype_variant()?;
+    let payload: (
+        vb_core::RunId,
+        crate::EventSeq,
+        vb_core::policy::DecisionRecord,
+    ) = variant.newtype_variant()?;
+    let (run, seq, decision) = payload;
+    if decision.ticket.run != run {
+        return Err(de::Error::custom(format_args!(
+            "PolicyDecisionEvent outer run {} must equal decision.ticket.run {}",
+            run.get(),
+            decision.ticket.run.get()
+        )));
+    }
     Ok(JournalEvent::PolicyDecisionEvent { run, seq, decision })
 }

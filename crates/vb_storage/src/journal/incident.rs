@@ -5,7 +5,7 @@
 
 use crate::events::JournalEvent;
 #[allow(unused_imports)]
-use vb_core::{ActionId, RunId, StepIdx, workflow::LifecycleState};
+use vb_core::{workflow::LifecycleState, ActionId, RunId, StepIdx};
 
 /// Side effect recorded from an action event.
 #[derive(Debug, Clone)]
@@ -148,8 +148,14 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 
 /// Derives the final lifecycle state from a sequence of journal events.
 ///
-/// The last event in the sequence determines the final state. Every known
-/// `JournalEvent` variant is enumerated explicitly:
+/// Scans events in reverse and returns the lifecycle state implied by the
+/// last non-neutral event. Policy decision events (`PolicyDecisionEvent`)
+/// are neutral facts that do not affect lifecycle; they are skipped during
+/// derivation so a terminal state such as `Failed`, `Cancelled`, or
+/// `Completed` is not overwritten by a subsequent policy decision.
+///
+/// Every known `JournalEvent` variant is enumerated explicitly in the
+/// `event_to_lifecycle` mapping:
 ///
 /// - `RunCancelled`, `RunKilled` → `Cancelled` (terminal)
 /// - `RunFinished`, `RunAnswered` → `Completed` (terminal)
@@ -169,13 +175,23 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 /// build will fail, forcing it to be handled explicitly. Downstream crates
 /// that consume this function may keep their own wildcards.
 ///
-/// If no events exist, defaults to `Pending`.
+/// If no events exist or all events are neutral, defaults to `Pending`.
 #[must_use]
 pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleState {
-    events
-        .last()
-        .map(event_to_lifecycle)
-        .unwrap_or(LifecycleState::Pending)
+    for event in events.iter().rev() {
+        if is_lifecycle_affecting(event) {
+            return event_to_lifecycle(event);
+        }
+    }
+    LifecycleState::Pending
+}
+
+/// Returns true if the event affects lifecycle state derivation.
+///
+/// Policy decision events are neutral facts and do not affect lifecycle.
+#[inline]
+fn is_lifecycle_affecting(event: &JournalEvent) -> bool {
+    !matches!(event, JournalEvent::PolicyDecisionEvent { .. })
 }
 
 /// Map a single `JournalEvent` to the lifecycle state implied by that event.
