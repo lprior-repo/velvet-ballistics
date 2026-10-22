@@ -1,0 +1,29 @@
+{
+  "event": "initial main source publication verified",
+  "published_main": "fd1cde54357fbdf0d3a1757ad33907863e112f9e",
+  "remote": "origin refs/heads/main",
+  "verified_utc": "2026-10-22T08:01:55.303706+00:00",
+  "main_published": true,
+  "saved_source_checkpoints": 13,
+  "local_models": "RTX5090 viaOMP authored bounded collector repair; RTX3090 viaOMP independently verified actual final measurements; root coordinated VCS/gates/evidence",
+  "proof_debt_stays_open": [
+    "vb-heuiz",
+    "vb-73gp3",
+    "vb-z9jmf"
+  ],
+  "followups_stay_open": [
+    "vb-x6o83",
+    "vb-8li6d"
+  ],
+  "final_static_benchmark_exit_code": 0,
+  "final_post_review_benchmark_exit_code": 0,
+  "benchmark_tests_passed": 40,
+  "runtime_tests_passed": 14358,
+  "runtime_tests_preexisting_skipped": 27,
+  "unrestricted_ci_or_full_proof_closure_claimed": false,
+  "preserved_stashes": 29,
+  "preserved_trace_files": 6,
+  "coordination_checkout_updated_to_source_publication": true,
+  "completed_integration_beads_closed": 70,
+  "beads_dolt_push_succeeded": true
+}

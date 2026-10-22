@@ -1,5 +1,4 @@
 {
-  "candidate": "7eeb0797b2b6301e924304d07d295b49097bc761",
   "sources": [
     {
       "source": "reviewed-base",
@@ -67,14 +66,15 @@
       "ancestor_of_assembled_candidate": true
     }
   ],
-  "main_published": false,
+  "main_published": true,
   "independent_source_counterpart_audit": ".beads/vb-1tq2d/coverage.md",
   "later_repairs": "symbolic ticket attempt, input slots, assert_ne, public Ask rejection and public durable replay oracles repaired and independently reviewed in candidate history",
   "actual_latest_test_gate": {
-    "log": ".beads/vb-2lyiw/evidence/replay-integrated-canonical-scope-v1.stdout",
+    "runtime_log": ".beads/vb-2lyiw/evidence/final-assembled-canonical-runtime-v2.json",
     "tests_passed": 14358,
-    "tests_skipped": 27,
-    "scope_limit": "Two non-test tasks failed: formatting (locally repaired) and stale benchmark evidence (repair active). Not an unrestricted CI pass."
+    "preexisting_tests_skipped": 27,
+    "command_exit_code": 1,
+    "scope_limit": "Runtime passed; two xtask test style violations subsequently fixed; final40benchmarktests and finalstatic/benchmark gates passed. UnrestrictedCI not claimed."
   },
   "sanitizer_lane": {
     "log": ".beads/vb-2lyiw/evidence/replay-integrated-nightly-lanes-v1.json",
@@ -86,5 +86,9 @@
     "vb-heuiz",
     "vb-73gp3",
     "vb-z9jmf"
-  ]
+  ],
+  "historical_candidate": "7eeb0797b2b6301e924304d07d295b49097bc761",
+  "published_main": "fd1cde54357fbdf0d3a1757ad33907863e112f9e",
+  "final_static_benchmark_gate": ".beads/vb-2lyiw/evidence/final-assembled-static-benchmark-v6.json",
+  "final_measurement_review": ".beads/vb-3iflr/actual-measurement-independent-review.md"
 }

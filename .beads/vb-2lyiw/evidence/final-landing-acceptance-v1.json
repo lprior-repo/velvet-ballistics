@@ -66,5 +66,8 @@
     "stashes_retained": 29,
     "runtime_databases_or_bytecode_added": false
   },
-  "main_published": false
+  "main_published": true,
+  "published_main": "fd1cde54357fbdf0d3a1757ad33907863e112f9e",
+  "independent_measurement_review": ".beads/vb-3iflr/actual-measurement-independent-review.md",
+  "independent_measurement_assertions_passed": 57
 }
