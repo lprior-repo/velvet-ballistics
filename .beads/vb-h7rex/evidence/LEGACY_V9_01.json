@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h7rex-assembly-v8",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "--all-features"
+  ],
+  "exit_code": 0,
+  "seconds": 6.651,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-h7rex/evidence/LEGACY_V9_01",
+  "coordinator_message": "Coordinator scope update after actual ASSEMBLY_V8_codec compile failure14E0063: approved mechanical compatibility repair of existing JournalEvent::RunAdmission struct literals in actual compiler-reported test/fixture paths by adding policy_pin: vb_storage::RunPolicyPin::Unverified (or crate::RunPolicyPin in vb_storage), preserving original legacy fixture meaning, every existing assertion, and all other fields. These literals are missing because accepted main added original tests after candidate fork. Do NOT invent Pinned identities for legacyfixtures or change production enforcement. Same mechanical field addition permitted in actual workspace focused compile paths. Keep all14failure rawlogs; freshgateprefix perrerun, reportexactchangedpaths. Then run focusedcodec/workspace33 andfmt. No allowances, no deletions or weakasserts, no broadformal/fullworkspace. If nonmechanical behavior conflict, report instead. Root ownsVCS/beads.\n"
+}

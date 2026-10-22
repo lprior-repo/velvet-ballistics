@@ -22,6 +22,7 @@ fn receipt(record: &RunInputsRecord) -> JournalEvent {
         input_digest: RunInputBinding::Digest(record.input_digest()),
         granted_capabilities: CapabilitySet::empty(),
         policy: RuntimePolicy::Strict,
+        policy_pin: crate::RunPolicyPin::Unverified,
     }
 }
 

@@ -3014,6 +3014,7 @@ mod tests {
                     artifact_digest: test_digest(2),
                     granted_capabilities: CapabilitySet::empty(),
                     policy: RuntimePolicy::Strict,
+                    policy_pin: crate::RunPolicyPin::Unverified,
                 },
                 RecordKind::RunAdmission,
             ),

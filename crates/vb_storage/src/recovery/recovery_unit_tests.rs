@@ -522,6 +522,7 @@ mod tests {
                 artifact_digest: first,
                 granted_capabilities: CapabilitySet::empty(),
                 policy: RuntimePolicy::Relaxed,
+                policy_pin: crate::RunPolicyPin::Unverified,
             },
             JournalEvent::RunAdmission {
                 input_digest: crate::RunInputBinding::LegacyUnbound,
@@ -530,6 +531,7 @@ mod tests {
                 artifact_digest: latest,
                 granted_capabilities: CapabilitySet::empty(),
                 policy: RuntimePolicy::Strict,
+                policy_pin: crate::RunPolicyPin::Unverified,
             },
         ];
         let admission = recover_run_admission_from_events(&events);
@@ -716,6 +718,7 @@ mod tests {
             artifact_digest: sample_digest(16),
             granted_capabilities: CapabilitySet::empty(),
             policy: RuntimePolicy::Strict,
+            policy_pin: crate::RunPolicyPin::Unverified,
         };
         apply_summary_event(&mut summary, &event);
         assert_eq!(summary.terminal, None);

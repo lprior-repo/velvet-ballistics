@@ -244,6 +244,7 @@ fn run_admission_maps_to_active() {
         artifact_digest: WorkflowDigest::from_bytes([0u8; 32]),
         granted_capabilities: CapabilitySet::empty(),
         policy: RuntimePolicy::Relaxed,
+        policy_pin: crate::RunPolicyPin::Unverified,
     };
     assert_eq!(event_to_lifecycle(&event), LifecycleState::Active);
 }
@@ -409,6 +410,7 @@ fn every_known_variant_has_an_event_to_lifecycle_mapping() {
             artifact_digest: WorkflowDigest::from_bytes([0u8; 32]),
             granted_capabilities: CapabilitySet::empty(),
             policy: RuntimePolicy::Relaxed,
+            policy_pin: crate::RunPolicyPin::Unverified,
         },
         JournalEvent::StepStarted {
             run: run(),

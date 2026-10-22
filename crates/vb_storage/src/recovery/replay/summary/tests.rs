@@ -128,6 +128,7 @@ fn summary_events_cover_workflow_admission_retry_and_terminals() {
             artifact_digest: digest(8),
             granted_capabilities: CapabilitySet::empty(),
             policy: RuntimePolicy::Strict,
+            policy_pin: crate::RunPolicyPin::Unverified,
         },
         JournalEvent::StepStarted {
             run,
@@ -222,6 +223,7 @@ fn recover_run_admission_returns_latest_metadata_or_none() {
             artifact_digest: first,
             granted_capabilities: CapabilitySet::empty(),
             policy: RuntimePolicy::Relaxed,
+            policy_pin: crate::RunPolicyPin::Unverified,
         },
         JournalEvent::RunAdmission {
             input_digest: crate::RunInputBinding::LegacyUnbound,
@@ -230,6 +232,7 @@ fn recover_run_admission_returns_latest_metadata_or_none() {
             artifact_digest: latest,
             granted_capabilities: CapabilitySet::empty(),
             policy: RuntimePolicy::Journaled,
+            policy_pin: crate::RunPolicyPin::Unverified,
         },
     ];
 

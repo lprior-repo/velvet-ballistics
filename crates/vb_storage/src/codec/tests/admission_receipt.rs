@@ -10,6 +10,7 @@ fn admission(binding: crate::RunInputBinding) -> JournalEvent {
         input_digest: binding,
         granted_capabilities: CapabilitySet::empty(),
         policy: RuntimePolicy::Strict,
+        policy_pin: crate::RunPolicyPin::Unverified,
     }
 }
 

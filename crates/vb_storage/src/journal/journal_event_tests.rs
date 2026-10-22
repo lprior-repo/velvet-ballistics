@@ -618,6 +618,7 @@ fn parse_event_result_is_valid_is_true_for_all_variants() {
             artifact_digest: digest,
             granted_capabilities: CapabilitySet::empty(),
             policy: vb_core::RuntimePolicy::Relaxed,
+            policy_pin: crate::RunPolicyPin::Unverified,
         },
         JournalEvent::StepStarted {
             run,
