@@ -28,6 +28,8 @@ pub const KEYSPACE_INDEX_WORKFLOW: &str = "index_workflow";
 pub const KEYSPACE_INDEX_ACTION: &str = "index_action";
 /// Monotonic emergency-deny overlay marker.
 pub const KEYSPACE_EMERGENCY_DENY: &str = "emergency_deny";
+/// Artifact acceptance sequence metadata (last issued counter).
+pub const KEYSPACE_ARTIFACT_ACCEPTANCE: &str = "artifact_acceptance";
 
 /// `workflow_source` key prefix.
 pub const PREFIX_WORKFLOW_SOURCE: u8 = 0x01;
@@ -47,6 +49,8 @@ pub const PREFIX_INDEX_STATUS: u8 = 0x30;
 pub const PREFIX_INDEX_WORKFLOW: u8 = 0x31;
 /// `index_action` key prefix.
 pub const PREFIX_INDEX_ACTION: u8 = 0x32;
+/// `artifact_acceptance` key prefix.
+pub const PREFIX_ARTIFACT_ACCEPTANCE: u8 = 0x40;
 
 /// Minimum accepted byte value for `IndexStatusState::Other(_)`.
 ///
@@ -116,4 +120,6 @@ pub const MAX_SNAPSHOT_BYTES: u32 = 67_108_864;
 pub const MAX_BLOB_BYTES: u32 = 67_108_864;
 /// Maximum number of events permitted in a single journal write batch.
 pub const MAX_BATCH_COUNT: usize = 10_000;
+/// Fixed key name for the last-issued artifact sequence counter.
+pub const ARTIFACT_ACCEPTANCE_LAST_ISSUED: &str = "last_issued";
 const _PAYLOAD_LEN_CONVERSION_MAX: u32 = 4_294_967_295;
