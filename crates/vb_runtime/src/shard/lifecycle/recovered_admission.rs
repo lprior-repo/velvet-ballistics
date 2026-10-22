@@ -85,10 +85,10 @@ pub(crate) fn validate_checkpoint_pin(
     checkpoint: Option<&RunCheckpointV1>,
     artifact: &AcceptedArtifact,
 ) -> RuntimeResult<()> {
-    if let Some(checkpoint) = checkpoint {
-        if let Some(admission) = checkpoint.admission.as_ref() {
-            validate_recovered_policy_pin(admission, artifact)?;
-        }
+    if let Some(checkpoint) = checkpoint
+        && let Some(admission) = checkpoint.admission.as_ref()
+    {
+        validate_recovered_policy_pin(admission, artifact)?;
     }
     Ok(())
 }

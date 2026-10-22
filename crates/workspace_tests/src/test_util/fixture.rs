@@ -55,7 +55,7 @@ impl FixtureBuilder {
 
         let mut rng = StdRng::seed_from_u64(seed);
         let mut vec = vec![0u8; self.capacity.value];
-        rng.fill(&mut vec[..]);
+        rng.fill(vec.as_mut_slice());
         vec
     }
 }

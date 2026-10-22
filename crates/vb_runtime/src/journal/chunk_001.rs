@@ -281,7 +281,9 @@ impl RuntimeJournalEvent {
 /// Append-only port used by runtime shards for lifecycle journaling.
 pub trait RuntimeJournal: Send + Sync {
     /// Explicit trusted startup catalog; raw serialized reports cannot create this value.
-    fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> { None }
+    fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> {
+        None
+    }
 
     /// Appends a lifecycle event.
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()>;
