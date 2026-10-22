@@ -1,0 +1,38 @@
+Extracted actual supply-chain script to /tmp/vb-selftest-hmWppI/work/actual_supply_chain.sh
+
+=== FULL ACTUAL SCRIPT: all tools exit 0 -> task exits 0 ===
+task exit code: 0 (expect 0)
+PASS: all tools ok -> exit 0
+PASS: audit.status=0
+PASS: all 11 geiger statuses=0
+PASS: 11 per-package geiger status files
+
+=== FULL ACTUAL SCRIPT: advisory tools fail, audit ok -> task exits 0 ===
+task exit code: 0 (expect 0, advisory failures do not fail task)
+PASS: advisory failures -> exit 0
+PASS: deny.status=1 (actual exit code preserved)
+PASS: vet.status=2
+PASS: machete.status=1
+PASS: all 11 geiger statuses=1 (real exit, not relabeled)
+
+=== FULL ACTUAL SCRIPT: audit exit 1 -> task exits 1 (fail-closed) ===
+task exit code: 1 (expect 1)
+PASS: audit exit 1 -> task exit 1
+PASS: audit.status=1
+
+=== FULL ACTUAL SCRIPT: audit exit 3 -> task exits 3 (fail-closed) ===
+task exit code: 3 (expect 3)
+PASS: audit exit 3 -> task exit 3
+PASS: audit.status=3
+
+=== FUNCTION-LEVEL: real run_advisory_report exit-code capture ===
+PASS: run_advisory_report preserves exit 0
+PASS: run_advisory_report preserves exit 1
+PASS: run_advisory_report preserves exit 2
+PASS: run_advisory_report preserves exit 124 (timeout)
+PASS: run_advisory_report preserves exit 127 (missing)
+
+=== RESULTS ===
+PASS: 18
+FAIL: 0
+All supply-chain script tests passed.
