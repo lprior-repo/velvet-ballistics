@@ -1,0 +1,15 @@
+error[E0433]: cannot find type `EventSeq` in this scope
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:616:9
+    |
+616 |         EventSeq::new(next)
+    |         ^^^^^^^^ use of undeclared type `EventSeq`
+    |
+help: consider importing one of these structs
+    |
+ 13 + use vb_core::EventSeq;
+    |
+ 13 + use vb_storage::EventSeq;
+    |
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_policy_dispatch_fail_closed") due to 1 previous error

@@ -24,7 +24,7 @@ use vb_runtime::RuntimeError;
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::{RegisteredExecutionError, Runtime};
 use vb_storage::executor::{ExecutorCatalog, FjallRegister};
-use vb_storage::{FjallConfig, FjallJournal};
+use vb_storage::{EventSeq, FjallConfig, FjallJournal};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -601,17 +601,52 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
         "strict port failure must not store any policy decision"
     );
 
-    // Verify the port was called once with the expected decision.
+    // Verify the port was called exactly once with the expected decision
+    // and the actual current sequence number.
+    let expected_seq = {
+        let events = vb_storage::read_run_events(&journal, run)?;
+        let last = events
+            .last()
+            .ok_or("expected at least one prior event for seq computation")?;
+        let next = last
+            .seq()
+            .get()
+            .checked_add(1)
+            .ok_or("expected seq arithmetic to stay within u64")?;
+        EventSeq::new(next)
+    };
+
+    let expected_input_digest = compute_expected_input_digest(77, Taint::Clean, &ticket)?;
+    let expected_record = DecisionRecord {
+        ticket,
+        admission: PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(
+            artifact.policy_digest.as_bytes(),
+        )),
+        current_live: CurrentPolicyIdentity::Configured {
+            digest: allowed_digest,
+        },
+        input_digest: expected_input_digest,
+        taint: Taint::Clean,
+        outcome: DecisionCode::Allowed,
+        layer: PolicyLayer::Live,
+        emergency_influence: InfluenceState::Inactive,
+        compat_influence: InfluenceState::NotEvaluated,
+    };
+
     assert!(
         wrapped.policy_port_called(),
         "strict port must have been called"
     );
-    let decision = wrapped.captured_decision()?.ok_or("no decision captured")?;
-    assert_eq!(decision.outcome, DecisionCode::Allowed);
-    assert_eq!(decision.layer, PolicyLayer::Live);
-    assert_eq!(decision.ticket, ticket);
-    let expected_input_digest = compute_expected_input_digest(77, Taint::Clean, &ticket)?;
-    assert_eq!(decision.input_digest, expected_input_digest);
+    let captured = wrapped.captured_decision()?.ok_or("no decision captured")?;
+    assert_eq!(
+        captured, expected_record,
+        "single-decision view must match full oracle"
+    );
+    assert_eq!(
+        wrapped.captured_calls()?,
+        vec![(expected_record, expected_seq)],
+        "exact single call with full record and correct seq must be captured"
+    );
 
     Ok(())
 }

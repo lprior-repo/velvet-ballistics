@@ -15,6 +15,7 @@ pub(crate) struct FailingPolicyPortJournal {
     inner: SharedRuntimeJournal,
     policy_port_called: Arc<AtomicBool>,
     captured_decision: Arc<Mutex<Option<vb_core::policy::DecisionRecord>>>,
+    captured_calls: Arc<Mutex<Vec<(vb_core::policy::DecisionRecord, EventSeq)>>>,
 }
 
 impl FailingPolicyPortJournal {
@@ -26,6 +27,7 @@ impl FailingPolicyPortJournal {
             inner: StorageRuntimeJournal::shared_strict_with_catalog(inner, Arc::new(catalog)),
             policy_port_called: Arc::new(AtomicBool::new(false)),
             captured_decision: Arc::new(Mutex::new(None)),
+            captured_calls: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -39,6 +41,15 @@ impl FailingPolicyPortJournal {
         self.captured_decision
             .lock()
             .map_err(|_| "captured_decision mutex poisoned".to_owned())
+            .map(|guard| guard.clone())
+    }
+
+    pub(crate) fn captured_calls(
+        &self,
+    ) -> Result<Vec<(vb_core::policy::DecisionRecord, EventSeq)>, String> {
+        self.captured_calls
+            .lock()
+            .map_err(|_| "captured_calls mutex poisoned".to_owned())
             .map(|guard| guard.clone())
     }
 }
@@ -79,9 +90,23 @@ impl RuntimeJournal for FailingPolicyPortJournal {
     fn append_policy_decision_strict(
         &self,
         decision: vb_core::policy::DecisionRecord,
-        _seq: EventSeq,
+        seq: EventSeq,
     ) -> RuntimeResult<()> {
         self.policy_port_called.store(true, Ordering::SeqCst);
+
+        // Capture (decision, seq) pair BEFORE old single-decision capture
+        // so exact single-call + seq verification is possible.
+        {
+            let mut calls = self.captured_calls.lock().map_err(|_| RuntimeError::Core {
+                source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+                    reason: "captured_calls mutex poisoned",
+                }),
+            })?;
+            calls.push((decision.clone(), seq));
+        }
+
+        // Old single-decision capture for backwards compat with existing
+        // test assertions.
         let mut captured = self
             .captured_decision
             .lock()
@@ -91,6 +116,7 @@ impl RuntimeJournal for FailingPolicyPortJournal {
                 }),
             })?;
         *captured = Some(decision);
+
         Err(RuntimeError::UnsupportedOperation {
             operation: "test_policy_decision_failure",
         })
