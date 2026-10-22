@@ -1,0 +1,74 @@
+[ WARN 2026-10-22 17:32:34.736] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:32:34.828] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:32:36.503] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:32:38.422] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:32:38.483] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:32:39.471] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:32:45.256] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:32:53.240] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:33:03.042] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:33:45.523] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 17:33:46.664] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID 60479b12-2e5f-40a0-8b45-1d3e9a0ca30d with nextest profile: default
+                       velvet-ballistics:test |     Starting 14477 tests across 299 binaries (27 tests skipped)
+[ WARN 17:35:17.957] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+              velvet-ballistics:source-length | source-length gate summary:
+              velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+              velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+              velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+              velvet-ballistics:source-length |   test_in_src        scanned=316   warn=48   over_limit=0    limit=1500 warn_at=1200
+              velvet-ballistics:source-length |   test_top_level     scanned=415   warn=6    over_limit=0    limit=3000 warn_at=2400
+              velvet-ballistics:source-length |   production         scanned=957   warn=196  over_limit=0    limit=300 warn_at=240
+              velvet-ballistics:source-length |   ledger rows used:    383
+                       velvet-ballistics:test |   Cancelling due to signal: 4 tests still running
+                       velvet-ballistics:test |      SIGTERM [ 357.524s] (14474/14477) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_journaled
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test pi_02_digest_roundtrip_journaled has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 357.321s] (14475/14477) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_strict
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test pi_02_digest_roundtrip_strict has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 357.431s] (14476/14477) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_relaxed
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test pi_02_digest_roundtrip_relaxed has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 367.303s] (14477/14477) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 489.502s] 14477 tests run: 14473 passed (25 slow), 4 failed, 27 skipped
+                       velvet-ballistics:test |      SIGTERM [ 357.524s] (14474/14477) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_journaled
+                       velvet-ballistics:test |      SIGTERM [ 357.321s] (14475/14477) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_strict
+                       velvet-ballistics:test |      SIGTERM [ 357.431s] (14476/14477) velvet-ballistics-workspace-tests::vb_lp2v_admission_proptests pi_02_digest_roundtrip_relaxed
+                       velvet-ballistics:test |      SIGTERM [ 367.303s] (14477/14477) velvet-ballistics-workspace-tests::vb_core_yaml_e2e_chain_contract source_digest_mismatch_returns_payload_digest_mismatch_when_claimed_digest_differs
+                       velvet-ballistics:test | error: test run failed

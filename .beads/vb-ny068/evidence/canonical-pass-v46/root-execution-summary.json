@@ -1,0 +1,12 @@
+{
+  "frozen_source": "0dd55b94cbdd05c21951e6e239313d393816a99d",
+  "gate_exit": 0,
+  "tasks_passed": 17,
+  "test_run": 14477,
+  "tests_passed": 14477,
+  "preexisting_skips": 27,
+  "unchanged_reviewed_source_files": 53,
+  "prior_v45_timeout_preserved": true,
+  "deadline_or_test_configuration_relaxed": false,
+  "scope": "Selected canonical tasks plus existing independent scoped reviews. No full v1, formal closure, power-loss or performance improvement claim."
+}

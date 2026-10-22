@@ -1,0 +1,39 @@
+Gnuplot not found, using plotters backend
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...: Warming up for 1.0000 s
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=0; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=11; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=1; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=3; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=2; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=4; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=4; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=11; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=6; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=8; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=4; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=10; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=11; budget_us=100000; utilization_pct=0
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...: Collecting 10 samples in estimated 1.0000 s (10M iterations)
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=5; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=5; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=4; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=7; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=9; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=16; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=6; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=13; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=13; budget_us=100000; utilization_pct=0
+latency budget ok: benchmark=ipc_frame_decode; max_iteration_us=15; budget_us=100000; utilization_pct=0
+Benchmarking storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...: Analyzing

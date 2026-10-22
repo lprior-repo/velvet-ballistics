@@ -1,0 +1,3 @@
+storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
+                        time:   [78.573 ns 78.723 ns 78.858 ns]
+
