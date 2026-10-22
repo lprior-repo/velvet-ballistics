@@ -1,3 +1,7 @@
+//! Fuzz target for YAML compiler with strict profile validation.
+//!
+//! Command: cargo fuzz run vb_f04l_yaml_compiler_compile -- -max_len=65536 -runs=100000
+
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
