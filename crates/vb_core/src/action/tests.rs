@@ -1836,8 +1836,8 @@ fn test_key_computation_deterministic() {
         let seq = SeqNo::new(u64::from(deterministic_rand_u16_bounded(64, iter, 1)));
         let action = ActionId::new(deterministic_rand_u16_bounded(16, iter, 2));
 
-        let key1 = compute_action_idempotency_key(run, 1, 1, seq, action);
-        let key2 = compute_action_idempotency_key(run, 1, 1, seq, action);
+        let key1 = compute_action_idempotency_key(run, 1, seq, action);
+        let key2 = compute_action_idempotency_key(run, 1, seq, action);
 
         assert_eq!(key1, key2, "key computation must be deterministic");
     }
@@ -1851,7 +1851,7 @@ fn test_canonical_key_validates() {
         let seq = SeqNo::new(u64::from(deterministic_rand_u16_bounded(64, iter, 11)));
         let action = ActionId::new(deterministic_rand_u16_bounded(16, iter, 12));
 
-        let canonical_key = compute_action_idempotency_key(run, 1, 1, seq, action);
+        let canonical_key = compute_action_idempotency_key(run, 1, seq, action);
 
         // Canonical ticket should validate
         let canonical_ticket = ActionTicket {
@@ -1900,7 +1900,7 @@ fn action_ticket_postcard_roundtrip_preserves_idempotency_key() {
     let step = StepIdx::new(0x00C3);
     let seq = SeqNo::new(0x0042_1337_9000_0001_u64);
     let action = ActionId::new(0x07B7);
-    let idempotency_key = compute_action_idempotency_key(run, 1, 1, seq, action);
+    let idempotency_key = compute_action_idempotency_key(run, 1, seq, action);
     let original = ActionTicket {
         run,
         step,

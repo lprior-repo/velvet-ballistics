@@ -1,0 +1,233 @@
+   Compiling serde_core v1.0.228
+   Compiling jobserver v0.1.35
+   Compiling cc v1.2.62
+   Compiling byteorder v1.5.0
+   Compiling hash32 v0.2.1
+   Compiling blake3 v1.8.5
+   Compiling aho-corasick v1.1.4
+   Compiling regex-automata v0.4.14
+   Compiling arraydeque v0.5.1
+   Compiling foldhash v0.1.5
+   Compiling hashbrown v0.15.5
+   Compiling hashlink v0.10.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling serde v1.0.228
+   Compiling serde_json v1.0.150
+   Compiling bytes v1.11.1
+   Compiling chrono v0.4.44
+   Compiling heapless v0.7.17
+   Compiling postcard v1.1.3
+   Compiling logos-codegen v0.15.1
+   Compiling rand_chacha v0.9.0
+   Compiling saphyr-parser v0.0.6
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_core)
+   Compiling ordered-float v5.3.0
+   Compiling saphyr v0.0.6
+   Compiling rand v0.9.4
+   Compiling logos-derive v0.15.1
+   Compiling logos v0.15.1
+   Compiling proptest v1.11.0
+   Compiling utf8parse v0.2.2
+   Compiling anstyle-parse v1.0.0
+   Compiling anstyle-query v1.1.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling colorchoice v1.0.5
+   Compiling anstream v1.0.0
+   Compiling strsim v0.11.1
+   Compiling clap_builder v4.6.0
+   Compiling clap v4.6.1
+   Compiling regex v1.12.3
+   Compiling crossbeam-channel v0.5.15
+   Compiling mio v1.2.0
+   Compiling crc32fast v1.5.0
+   Compiling encoding_rs v0.8.35
+   Compiling unicode-width v0.2.2
+   Compiling annotate-snippets v0.12.16
+   Compiling encoding_rs_io v0.1.7
+   Compiling ahash v0.8.12
+   Compiling saphyr-parser-bw v0.0.611
+   Compiling nohash-hasher v0.2.0
+   Compiling base64 v0.22.1
+   Compiling serde-saphyr v0.0.25
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_validate)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_yaml)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_storage)
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_expr)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_compile)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_runtime)
+   Compiling simd-adler32 v0.3.9
+   Compiling adler2 v2.0.1
+   Compiling miniz_oxide v0.8.9
+   Compiling winnow v1.0.3
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling flate2 v1.1.9
+   Compiling fdeflate v0.3.7
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.1
+   Compiling toml_writer v1.1.1+spec-1.1.0
+   Compiling unsafe-libyaml v0.2.11
+   Compiling ryu v1.0.23
+   Compiling winnow v0.7.15
+   Compiling pxfm v0.1.29
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/vb_ipc)
+   Compiling moxcms v0.8.1
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling png v0.18.1
+   Compiling camino v1.2.2
+   Compiling cargo-platform v0.1.9
+   Compiling semver v1.0.28
+   Compiling bytemuck v1.25.0
+   Compiling image v0.25.10
+   Compiling anyhow v1.0.102
+   Compiling cargo_metadata v0.19.2
+   Compiling alloca v0.4.0
+   Compiling ciborium v0.2.2
+   Compiling tinytemplate v1.2.1
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/xtask)
+   Compiling criterion v0.8.2
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/crates/workspace_tests)
+   Compiling libfuzzer-sys v0.4.13
+   Compiling arbitrary v1.4.2
+   Compiling generator v0.8.8
+   Compiling matchers v0.2.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling loom v0.7.2
+   Compiling velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-3gthe-local3090-fixtures/fuzz)
+warning: unused import: `AdmissionError`
+ --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:8:52
+  |
+8 | use vb_runtime::admission::{AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError};
+  |                                                    ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `ActionReplayTracker` and `replay_journal`
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:10:5
+   |
+10 |     ActionReplayTracker, EventSeq, FjallJournal, JournalError, JournalEvent, replay_journal,
+   |     ^^^^^^^^^^^^^^^^^^^                                                      ^^^^^^^^^^^^^^
+
+warning: struct `FixedArtifactStore` is never constructed
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:14:8
+   |
+14 | struct FixedArtifactStore {
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `ticket` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:37:4
+   |
+37 | fn ticket(run: u64, step: u16, key: u128) -> ActionTicket {
+   |    ^^^^^^
+
+warning: function `valid_artifact` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:50:4
+   |
+50 | fn valid_artifact(_artifact_digest: WorkflowDigest) -> vb_storage::AcceptedArtifact {
+   |    ^^^^^^^^^^^^^^
+
+warning: function `count_scheduled` is never used
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:389:4
+    |
+389 | fn count_scheduled(events: &[JournalEvent]) -> usize {
+    |    ^^^^^^^^^^^^^^^
+
+warning: function `count_completed` is never used
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:396:4
+    |
+396 | fn count_completed(events: &[JournalEvent]) -> usize {
+    |    ^^^^^^^^^^^^^^^
+
+warning: `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") generated 7 warnings (run `cargo fix --test "vb_ko29_5_public_idempotency" -p velvet-ballistics-workspace-tests` to apply 2 suggestions)
+warning: function `assert_tick_cannot_resume` is never used
+   --> crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs:564:4
+    |
+564 | fn assert_tick_cannot_resume(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `velvet-ballistics-workspace-tests` (test "runtime_fjall_pending_action_recovery") generated 1 warning
+warning: unused imports: `ActionContract`, `ActionName`, `Idempotency`, `RetrySafety`, and `SideEffect`
+ --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:5:23
+  |
+5 | use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+  |                       ^^^^^^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^^  ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `CompiledNodeKind`, `CompiledNode`, `ResourceContract`, and `WorkflowParts`
+ --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:6:25
+  |
+6 | use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+  |                         ^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused imports: `SlotIdx` and `StepIdx`
+ --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:8:64
+  |
+8 |     ActionId, Capability, CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
+  |                                                                ^^^^^^^  ^^^^^^^
+
+warning: unused imports: `VerificationProof` and `accepted_artifact_digest`
+  --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:15:23
+   |
+15 |     AcceptedArtifact, VerificationProof, accepted_artifact_digest, prepare_compiled_artifact,
+   |                       ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `EventSeq`
+  --> crates/workspace_tests/tests/vb_lp2v_proof_admission_bdd.rs:17:36
+   |
+17 | use vb_storage::{CompiledIrRecord, EventSeq, FjallJournal, put_compiled_ir};
+   |                                    ^^^^^^^^
+
+warning: `velvet-ballistics-workspace-tests` (test "vb_lp2v_proof_admission_bdd") generated 5 warnings (run `cargo fix --test "vb_lp2v_proof_admission_bdd" -p velvet-ballistics-workspace-tests` to apply 5 suggestions)
+warning: unused variable: `ticket_a`
+   --> crates/vb_core/src/action/tests.rs:392:9
+    |
+392 |     let ticket_a = ActionTicket {
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ticket_a`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ticket_b`
+   --> crates/vb_core/src/action/tests.rs:402:9
+    |
+402 |     let ticket_b = ActionTicket {
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ticket_b`
+
+warning: `vb_core` (lib test) generated 2 warnings (run `cargo fix --lib -p vb_core --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 13s
+     Running unittests src/lib.rs (target/debug/deps/vb_compile-eac6521d7f4d67d9)
+     Running tests/compiled_digest_payload.rs (target/debug/deps/compiled_digest_payload-7b3f10bc35578f6d)
+     Running tests/digest_ask_determinism.rs (target/debug/deps/digest_ask_determinism-d065b6000753c093)
+     Running tests/digest_ask_empty_prompt.rs (target/debug/deps/digest_ask_empty_prompt-9793f1e3887f51e5)
+     Running tests/digest_ask_explicit_arm.rs (target/debug/deps/digest_ask_explicit_arm-505206ae33309e6a)
+     Running tests/digest_ask_prompt_sensitivity.rs (target/debug/deps/digest_ask_prompt_sensitivity-6abc50c15fb6305e)
+     Running tests/digest_ask_timeout_sensitivity.rs (target/debug/deps/digest_ask_timeout_sensitivity-e7db8cb5410aa4d2)
+     Running tests/digest_compilation_pipeline.rs (target/debug/deps/digest_compilation_pipeline-7e3500df6314d1d4)
+     Running tests/digest_framing_collision.rs (target/debug/deps/digest_framing_collision-50f66b7f496a2458)
+     Running tests/digest_repeat_unit.rs (target/debug/deps/digest_repeat_unit-74b80d4dfa8eff67)
+     Running tests/digest_set_finish_regression.rs (target/debug/deps/digest_set_finish_regression-8159b169d9fc7d1c)
+     Running tests/digest_structural_fields.rs (target/debug/deps/digest_structural_fields-23c5d11e9500fc6a)
+     Running tests/digest_yaml_e2e.rs (target/debug/deps/digest_yaml_e2e-36ba471437fa2a8b)
+     Running tests/finish_digest_integration.rs (target/debug/deps/finish_digest_integration-99e9289e30376215)
+     Running tests/finish_digest_structural.rs (target/debug/deps/finish_digest_structural-d23e844a2f426ba9)
+     Running tests/idempotency_parity.rs (target/debug/deps/idempotency_parity-4b13b6e5c6caafeb)
+     Running tests/integration_choose_body.rs (target/debug/deps/integration_choose_body-acabba0c5b973c79)
+     Running tests/proptest/proptest_choose_depth.rs (target/debug/deps/proptest_choose_depth-47f9e348435c490a)
+     Running tests/proptest/proptest_choose_emission.rs (target/debug/deps/proptest_choose_emission-c65925fe8b811513)
+     Running tests/proptest/proptest_choose_fallthrough.rs (target/debug/deps/proptest_choose_fallthrough-fcbf8c6bd63b761a)
+     Running tests/proptest/proptest_choose_otherwise.rs (target/debug/deps/proptest_choose_otherwise-0d79ee55caf25115)
+     Running tests/proptest/proptest_choose_width.rs (target/debug/deps/proptest_choose_width-38c011bada06c77c)
+     Running tests/proptest_digest_ask_ordering.rs (target/debug/deps/proptest_digest_ask_ordering-5bb499b4d76e8842)
+     Running tests/proptest_digest_ask_prompt_sensitivity.rs (target/debug/deps/proptest_digest_ask_prompt_sensitivity-c7df812307365ca0)
+     Running tests/proptest_digest_ask_timeout_sensitivity.rs (target/debug/deps/proptest_digest_ask_timeout_sensitivity-6a500b2ce360b56d)
+     Running tests/proptest_digest_determinism.rs (target/debug/deps/proptest_digest_determinism-514750e906a6c320)
+     Running tests/proptest_digest_foreach.rs (target/debug/deps/proptest_digest_foreach-445a26206cc1848f)
+     Running tests/proptest_secret_results_digest_sensitivity.rs (target/debug/deps/proptest_secret_results_digest_sensitivity-a92d3488095b8bf8)
+     Running tests/repeat_digest_integration.rs (target/debug/deps/repeat_digest_integration-2ff12070b21a7563)
+     Running tests/repeat_digest_proptest.rs (target/debug/deps/repeat_digest_proptest-aaaa6425b87f4235)
+     Running tests/together_digest_sensitivity.rs (target/debug/deps/together_digest_sensitivity-a6f63ed300380f57)
