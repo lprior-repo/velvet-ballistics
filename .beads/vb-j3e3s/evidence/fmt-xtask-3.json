@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-deepseek-repair",
+  "argv": [
+    "cargo",
+    "fmt",
+    "--manifest-path",
+    "xtask/Cargo.toml"
+  ],
+  "exit_code": 0,
+  "seconds": 0.079,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-j3e3s/evidence/fmt-xtask-3",
+  "coordinator_message": "ROOT CURRENT FINAL OBSERVATIONS: New xtask/src/benchmark_freshness_tests.rs has386lines, exceeds300 cap. Split testfixture helper/types into separate <300 modules, no newallow/ledgerexception. Existing policy303 now nearcap aim<300. Strictxtasklint/source-length actualrun beforeEND. Alreadyverified currentproduction dirty+ignoredconfig defenses added, good; test output is6evidencegate +29benchmarkunit+5publicCLI actual40tests, 0filters inotherbinaries notextra. Do NOT spendmoretimebroadexploration. Benchmarkmetadata placeholderremoval neutral fields alreadyobserved13benchfiles, no workloadedits. FinalpublicCLI andunit actualtests0 beforeEND; ROOT willfreeze/push/independentlyreview thenmergewithnewchecker/TSV. Your oldchecker base differsroot but3waymerge preservesfinalchecker; no edits tochecker/TSV inyourworkspace. No productbenchmeasurements until finalsourcefreeze. END sourcehandoff promptly after targetedgates.\n"
+}

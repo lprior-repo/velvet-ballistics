@@ -773,6 +773,8 @@ tasks:
       - 'evidence/benchmark-logs/**/*'
       - 'xtask/Cargo.toml'
       - 'xtask/src/benchmark_policy.rs'
+      - 'xtask/src/benchmark_budget.rs'
+      - 'xtask/src/benchmark_freshness.rs'
       - 'xtask/src/cli.rs'
       - 'xtask/src/main.rs'
       - '.moon/tasks/all.yml'
