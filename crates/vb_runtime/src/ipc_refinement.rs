@@ -208,7 +208,13 @@ mod tests {
         let digest = WorkflowDigest::from_bytes([7; 32]);
         let run = RunId::new(9);
         let policy = RuntimePolicy::Strict;
-        let admission = RunAdmission::new(digest, run, CapabilitySet::empty(), policy);
+        let admission = RunAdmission::new(
+            digest,
+            run,
+            CapabilitySet::empty(),
+            policy,
+            RunPolicyPin::Unverified,
+        );
 
         let refined = strict_admission_refinement(&admission, digest, run, policy);
 

@@ -56,6 +56,7 @@ pub(crate) fn validate_recovered_admission_evidence(
         return Err(cannot_resume_error("workflow_digest_mismatch"));
     }
     validate_recovered_policy_digest(evidence.artifact, evidence.workflow)?;
+    validate_recovered_policy_pin(evidence.admission, evidence.artifact)?;
     validate_recovered_capabilities(evidence.admission.granted_capabilities(), evidence.artifact)
 }
 
@@ -69,6 +70,27 @@ fn validate_recovered_policy_digest(
         Ok(())
     } else {
         Err(cannot_resume_error("admission_policy_mismatch"))
+    }
+}
+
+fn validate_recovered_policy_pin(
+    admission: &crate::admission::RunAdmission,
+    artifact: &vb_storage::admission::AcceptedArtifact,
+) -> RuntimeResult<()> {
+    match admission.policy_pin() {
+        vb_storage::RunPolicyPin::Unverified => {
+            // Legacy or relaxed admission: no actual policy identity bound.
+            // Accept as historical record; cannot authorize live effects.
+            Ok(())
+        }
+        vb_storage::RunPolicyPin::Pinned(pin_digest) => {
+            // Actual policy identity was bound. Validate it matches the artifact.
+            if pin_digest == artifact.policy_digest {
+                Ok(())
+            } else {
+                Err(cannot_resume_error("admission_policy_pin_mismatch"))
+            }
+        }
     }
 }
 

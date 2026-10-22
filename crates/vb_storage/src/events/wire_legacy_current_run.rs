@@ -80,6 +80,7 @@ pub(super) fn admission(
         run,
         seq,
         artifact_digest,
+        policy_pin: crate::RunPolicyPin::Unverified,
         granted_capabilities,
         policy,
     }

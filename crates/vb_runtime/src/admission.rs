@@ -36,6 +36,7 @@ use vb_core::budget::{
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, WorkflowDigest};
+use vb_storage::RunPolicyPin;
 use vb_core::policy::RuntimePolicy;
 use vb_storage::EventSeq;
 
@@ -92,6 +93,7 @@ pub fn admit_run_with_budget_policy(
         run_id,
         caps,
         policy,
+        RunPolicyPin::Unverified,
         budget.requested,
     ))
 }

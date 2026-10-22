@@ -9,6 +9,8 @@ pub struct RunAdmission {
     granted_capabilities: CapabilitySet,
     /// Admission policy that governed this admission decision.
     policy: RuntimePolicy,
+    /// Actual policy identity from the accepted artifact, or explicit absence.
+    policy_pin: RunPolicyPin,
     /// Aggregate budget admitted for this run, when budget admission is used.
     budget: Option<AggregateResourceBudget>,
     /// Actions whose idempotency evidence passed artifact admission.
@@ -33,12 +35,14 @@ impl RunAdmission {
         run_id: RunId,
         caps: CapabilitySet,
         policy: RuntimePolicy,
+        policy_pin: RunPolicyPin,
     ) -> Self {
         Self {
             artifact_digest: digest,
             run_id,
             granted_capabilities: caps,
             policy,
+            policy_pin,
             budget: None,
             idempotency_attested: Box::new([]),
         }
@@ -50,6 +54,7 @@ impl RunAdmission {
         run_id: RunId,
         caps: CapabilitySet,
         policy: RuntimePolicy,
+        policy_pin: RunPolicyPin,
         idempotency_attested: Box<[ActionId]>,
     ) -> Self {
         Self {
@@ -57,6 +62,7 @@ impl RunAdmission {
             run_id,
             granted_capabilities: caps,
             policy,
+            policy_pin,
             budget: None,
             idempotency_attested,
         }
@@ -68,6 +74,7 @@ impl RunAdmission {
         run_id: RunId,
         caps: CapabilitySet,
         policy: RuntimePolicy,
+        policy_pin: RunPolicyPin,
         budget: AggregateResourceBudget,
     ) -> Self {
         Self {
@@ -75,6 +82,7 @@ impl RunAdmission {
             run_id,
             granted_capabilities: caps,
             policy,
+            policy_pin,
             budget: Some(budget),
             idempotency_attested: Box::new([]),
         }
@@ -102,6 +110,12 @@ impl RunAdmission {
     #[must_use]
     pub fn policy(&self) -> RuntimePolicy {
         self.policy
+    }
+
+    /// Returns the actual policy identity from the accepted artifact, or explicit absence.
+    #[must_use]
+    pub fn policy_pin(&self) -> RunPolicyPin {
+        self.policy_pin
     }
 
     /// Returns the admitted aggregate budget when budget admission was used.

@@ -28,7 +28,13 @@ fn admission_new_stores_all_fields() {
     let digest = test_digest();
     let run_id = RunId::new(42);
     let caps = CapabilitySet::from_grants(Box::new([Capability::new("".into(), ActionId::new(0))]));
-    let admission = RunAdmission::new(digest, run_id, caps.clone(), RuntimePolicy::Strict);
+    let admission = RunAdmission::new(
+        digest,
+        run_id,
+        caps.clone(),
+        RuntimePolicy::Strict,
+        RunPolicyPin::Unverified,
+    );
     assert_eq!(admission.artifact_digest(), digest);
     assert_eq!(admission.run_id(), run_id);
     assert_eq!(admission.granted_capabilities(), &caps);

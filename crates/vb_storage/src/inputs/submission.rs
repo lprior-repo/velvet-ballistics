@@ -125,6 +125,7 @@ impl RunSubmission {
             run: self.header.run,
             seq: EventSeq::new(1),
             artifact_digest: self.artifact.digest,
+            policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
             granted_capabilities: vb_core::CapabilitySet::empty(),
             policy,
         }

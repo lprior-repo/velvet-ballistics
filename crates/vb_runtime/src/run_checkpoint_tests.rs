@@ -56,6 +56,7 @@ fn failed_state(workflow: vb_core::workflow::CompiledWorkflow, run_id: RunId) ->
             run_id,
             CapabilitySet::empty(),
             RuntimePolicy::Strict,
+            RunPolicyPin::Unverified,
         )),
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),

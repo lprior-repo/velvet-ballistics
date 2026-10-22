@@ -33,3 +33,17 @@ pub fn compute_input_digest(
     let bytes = postcard::to_allocvec(&canonical).map_err(JournalError::PostcardEncodeFailed)?;
     Ok(WorkflowDigest::from_bytes(blake3::hash(&bytes).into()))
 }
+
+/// Policy identity pin for admission receipts.
+///
+/// Historical admission records did not bind policy identity. New Strict/Journaled
+/// admission records carry the actual `AcceptedArtifact.policy_digest` as an
+/// explicit binding. Relaxed admission and legacy records use `Unverified`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum RunPolicyPin {
+    /// Explicit compatibility state for historical admission records or relaxed admission.
+    /// Not a new authority; cannot authorize live effects.
+    Unverified,
+    /// Actual policy digest from the accepted artifact that governed this admission.
+    Pinned(WorkflowDigest),
+}
