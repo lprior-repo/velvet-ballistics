@@ -1,0 +1,5 @@
+crates/vb_runtime/src/run_checkpoint.rs:263:         1 => Err(RunCheckpointV1Error::UnsupportedVersion),
+crates/vb_runtime/src/run_checkpoint.rs:264:         2 => postcard::from_bytes(payload).map_err(|_| RunCheckpointV1Error::DecodeError),
+crates/vb_runtime/src/run_checkpoint.rs:265:         _ => Err(RunCheckpointV1Error::UnsupportedVersion),
+crates/vb_runtime/src/run_checkpoint.rs:266:     }
+crates/vb_runtime/src/run_checkpoint.rs:267: }

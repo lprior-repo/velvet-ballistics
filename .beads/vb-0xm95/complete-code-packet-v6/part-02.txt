@@ -1,0 +1,220 @@
+     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
+         Ok(JournalWriterFlushReport {
+             drained: 0,
+             written: 0,
+         })
+     }
+ }
+ 
+ /// Shared journal trait object.
+ pub type SharedRuntimeJournal = Arc<dyn RuntimeJournal>;
+ 
+ /// Journal implementation that intentionally drops all events.
+ #[derive(Debug, Default)]
+ pub struct NoopRuntimeJournal;
+ 
+ impl NoopRuntimeJournal {
+     /// Creates a shared noop journal for explicitly non-durable tests or benchmarks.
+     #[must_use]
+     pub fn shared_for_tests_and_benchmarks() -> SharedRuntimeJournal {
+         Arc::new(Self)
+     }
+ 
+     /// Creates a shared noop journal for callers that explicitly select no durability.
+     #[must_use]
+     pub fn shared() -> SharedRuntimeJournal {
+         Self::shared_for_tests_and_benchmarks()
+     }
+ }
+ 
+ impl RuntimeJournal for NoopRuntimeJournal {
+FILE crates/vb_runtime/src/journal/chunk_002.rs SHA256 aba492125dba5b4d1d8cd7ff67ada0273e3fbeb64621acae4ce4dd52f9848576
+diff --git a/crates/vb_runtime/src/journal/chunk_002.rs b/crates/vb_runtime/src/journal/chunk_002.rs
+index f6b4b7121..d12383846 100644
+--- a/crates/vb_runtime/src/journal/chunk_002.rs
++++ b/crates/vb_runtime/src/journal/chunk_002.rs
+@@ -1,39 +1,46 @@
+ impl StorageRuntimeJournal {
+     /// Strict journal with explicitly checked registered executor startup authority.
+-    pub fn shared_strict_with_catalog(journal: Arc<FjallJournal>, catalog: Arc<vb_storage::executor::ExecutorCatalog>) -> SharedRuntimeJournal {
+-        Arc::new(Self { journal, catalog: Some(catalog), profile: DurabilityProfile::Strict })
++    pub fn shared_strict_with_catalog(
++        journal: Arc<FjallJournal>,
++        catalog: Arc<vb_storage::executor::ExecutorCatalog>,
++    ) -> SharedRuntimeJournal {
++        Arc::new(Self {
++            journal,
++            catalog: Some(catalog),
++            profile: DurabilityProfile::Strict,
++        })
+     }
+ 
+     /// Creates an adapter that uses journaled appends without a per-event sync barrier.
+     #[must_use]
+     pub fn journaled(journal: Arc<FjallJournal>) -> Self {
+         Self {
+             journal,
+             catalog: None,
+             profile: DurabilityProfile::Journaled,
+         }
+     }
+ 
+     /// Creates an adapter that forces a strict durability barrier for every append.
+     #[must_use]
+     pub fn strict(journal: Arc<FjallJournal>) -> Self {
+         Self {
+             journal,
+             catalog: None,
+             profile: DurabilityProfile::Strict,
+         }
+     }
+ 
+     /// Creates a shared journaled adapter for direct runtime construction.
+     #[must_use]
+     pub fn shared_journaled(journal: Arc<FjallJournal>) -> SharedRuntimeJournal {
+         Arc::new(Self::journaled(journal))
+     }
+ 
+     /// Creates a shared strict adapter for direct runtime construction.
+     #[must_use]
+     pub fn shared_strict(journal: Arc<FjallJournal>) -> SharedRuntimeJournal {
+         Arc::new(Self::strict(journal))
+     }
+ 
+     fn append_storage_event(&self, event: &JournalEvent) -> RuntimeResult<()> {
+@@ -108,71 +115,71 @@ impl StorageRuntimeJournal {
+                 seq,
+                 attempt,
+                 step,
+                 payload_digest,
+                 payload,
+             })),
+             RuntimeJournalEvent::RunFinished {
+                 run,
+                 result,
+                 attempt,
+             } => Ok(Some(JournalEvent::RunFinished {
+                 run,
+                 seq,
+                 result,
+                 attempt,
+             })),
+             RuntimeJournalEvent::RunFailed { run, attempt } => {
+                 Ok(Some(JournalEvent::RunFailedEvent { run, seq, attempt }))
+             }
+             RuntimeJournalEvent::RunCancelled {
+                 run,
+                 reason,
+                 attempt,
+             } => Ok(Some(JournalEvent::RunCancelled {
+                 run,
+                 seq,
+                 attempt,
+                 reason,
+             })),
+             RuntimeJournalEvent::RunKilled { run, attempt } => {
+                 Ok(Some(JournalEvent::RunKilled { run, seq, attempt }))
+             }
+             RuntimeJournalEvent::Resumed { run, timestamp } => {
+                 resumed_storage_event(run, seq, timestamp).map(Some)
+             }
+-            RuntimeJournalEvent::StepStarted { run, step, attempt} => {
++            RuntimeJournalEvent::StepStarted { run, step, attempt } => {
+                 Ok(Some(JournalEvent::StepStarted {
+                     run,
+                     seq,
+                     step,
+                     attempt,
+                 }))
+             }
+             RuntimeJournalEvent::StepSucceeded {
+                 run, step, output, ..
+             } => Ok(Some(JournalEvent::StepSucceeded {
+                 run,
+                 seq,
+                 step,
+                 output,
+             })),
+             RuntimeJournalEvent::ActionScheduled { .. }
+             | RuntimeJournalEvent::ActionCompleted { .. }
+             | RuntimeJournalEvent::ActionScheduledTicket { .. }
+             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
+             | RuntimeJournalEvent::ActionFailed { .. }
+             | RuntimeJournalEvent::ActionAbandoned { .. }
+             | RuntimeJournalEvent::WaitScheduled { .. }
+             | RuntimeJournalEvent::WaitResolved { .. }
+             | RuntimeJournalEvent::AskScheduled { .. }
+             | RuntimeJournalEvent::AskAnswered { .. }
+             | RuntimeJournalEvent::AskTimedOut { .. }
+             | RuntimeJournalEvent::SlotWritten { .. } => Ok(None),
+         }
+     }
+ 
+     fn action_storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> Option<JournalEvent> {
+         match event {
+             RuntimeJournalEvent::ActionScheduled { run, step, action } => {
+                 Some(JournalEvent::ActionScheduled {
+                     run,
+@@ -400,91 +407,108 @@ fn resumed_storage_event(run: RunId, seq: EventSeq, timestamp: u64) -> RuntimeRe
+         seq,
+         timestamp,
+     })
+ }
+ 
+ /// Counts the number of times `clone_for_dispatch` is invoked. Used by the
+ /// `storage_event_clones_the_event_exactly_once_per_dispatch` regression test
+ /// to assert that dispatching a `RuntimeJournalEvent` through `storage_event`
+ /// performs exactly one full-event clone.
+ #[cfg(test)]
+ static STORAGE_EVENT_CLONE_COUNT: std::sync::atomic::AtomicUsize =
+     std::sync::atomic::AtomicUsize::new(0);
+ 
+ /// Clones a `RuntimeJournalEvent` for dispatch into one of the per-variant
+ /// helpers. In test builds this also increments `STORAGE_EVENT_CLONE_COUNT`
+ /// so the single-clone invariant is enforced by an executable assertion; in
+ /// release builds it is a plain clone.
+ fn clone_for_dispatch(event: &RuntimeJournalEvent) -> RuntimeJournalEvent {
+     #[cfg(test)]
+     {
+         STORAGE_EVENT_CLONE_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+     }
+     event.clone()
+ }
+ 
+ fn encoded_slot_taint_extra(
+     taint: Taint,
+     extra: Option<Vec<u8>>,
+ ) -> RuntimeResult<Option<Vec<u8>>> {
+     vb_storage::encode_slot_written_extra(taint, extra)
+         .map(Some)
+         .map_err(|_| RuntimeError::EncodeFailed)
+ }
+ 
+ impl RuntimeJournal for StorageRuntimeJournal {
+-    fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> { self.catalog.clone() }
++    fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> {
++        self.catalog.clone()
++    }
+ 
+     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
+         Err(RuntimeError::UnsupportedOperation {
+             operation: "unsequenced_storage_journal_append",
+         })
+     }
+ 
+     fn append_sequenced(&self, event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<()> {
+         let storage_event = Self::storage_event(event, seq)?;
+         self.append_storage_event(&storage_event)?;
+         Ok(())
+     }
+     fn convert_to_storage_event(
+         &self,
+         event: RuntimeJournalEvent,
+         seq: EventSeq,
+     ) -> RuntimeResult<vb_storage::JournalEvent> {
+         Self::storage_event(event, seq)
+     }
+ 
++    fn append_policy_decision_strict(
++        &self,
++        decision: vb_core::policy::DecisionRecord,

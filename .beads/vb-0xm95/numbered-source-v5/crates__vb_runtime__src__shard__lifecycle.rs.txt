@@ -1,0 +1,43 @@
+1: #![forbid(unsafe_code)]
+2: //! Run lifecycle management: submit, resume, cancel, action completion, timers.
+3: 
+4: #[path = "lifecycle/execution_binding.rs"]
+5: mod execution_binding;
+6: #[path = "lifecycle/recovered_admission.rs"]
+7: mod recovered_admission;
+8: #[path = "lifecycle/registered_completion.rs"]
+9: mod registered_completion;
+10: #[path = "lifecycle/registered_completion_context.rs"]
+11: mod registered_completion_context;
+12: #[path = "lifecycle/registered_context_helpers.rs"]
+13: mod registered_context_helpers;
+14: pub(crate) use registered_completion::RegisteredActionContext;
+15: 
+16: include!("lifecycle/chunk_003.rs");
+17: include!("lifecycle/chunk_001.rs");
+18: include!("lifecycle/chunk_002.rs");
+19: include!("lifecycle/chunk_005_prepare.rs");
+20: include!("lifecycle/chunk_005_drive_apply.rs");
+21: include!("lifecycle/chunk_005.rs");
+22: include!("lifecycle/chunk_004.rs");
+23: 
+24: #[cfg(test)]
+25: mod tests {
+26:     include!("lifecycle_tests/chunk_001.rs");
+27:     include!("lifecycle_tests/chunk_002.rs");
+28:     include!("lifecycle_tests/chunk_003.rs");
+29:     include!("lifecycle_tests/chunk_004.rs");
+30:     include!("lifecycle_tests/chunk_005.rs");
+31:     include!("lifecycle_tests/chunk_006.rs");
+32:     include!("lifecycle_tests/chunk_007.rs");
+33:     include!("lifecycle_tests/chunk_008.rs");
+34:     include!("lifecycle_tests/chunk_009.rs");
+35:     include!("lifecycle_tests/chunk_010.rs");
+36:     include!("lifecycle_tests/recovery_context_tests.rs");
+37:     include!("lifecycle_tests/contract_validation_tests.rs");
+38:     include!("lifecycle_tests/action_recovery_tests.rs");
+39: 
+40:     mod strict_policy_sequence {
+41:         include!("lifecycle_tests/strict_policy_sequence.rs");
+42:     }
+43: }

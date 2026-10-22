@@ -1,0 +1,228 @@
+1: #![forbid(unsafe_code)]
+2: //! Runtime recovery boundary over storage summary hydration.
+3: 
+4: mod frame;
+5: mod full;
+6: mod input_binding;
+7: mod product;
+8: 
+9: use vb_core::frame::RunFrame;
+10: use vb_storage::recovery::{
+11:     RecoveryCannotResumeState, RecoveryFrameSeed, RecoveryFrameSeedProduct, RecoveryHydration,
+12:     RecoveryRuntimeSummary, UnsupportedRecoveryState,
+13: };
+14: 
+15: pub use full::{
+16:     NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind,
+17:     ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
+18: };
+19: pub(crate) use full::{
+20:     RecoveredAdmissionContext, RecoveredAdmissionEvidence, ResumableRecoveryParts,
+21:     action_abi_digests_from_contracts, action_contract_abi_digest, classify_full_recovery_resume,
+22:     hydrate_frame_for_full_recovery_with_inputs, pending_action_ticket_from_events,
+23:     recovered_run_boundary_from_seed, run_is_currently_terminal,
+24:     validate_recovered_admission_evidence,
+25: };
+26: 
+27: pub use input_binding::{
+28:     admission_is_new_bound, validate_input_record_artifact, validate_input_record_binding,
+29:     validate_input_record_workflow,
+30: };
+31: 
+32: use crate::{RuntimeError, RuntimeResult};
+33: use product::DurableFrameRecoveryProduct;
+34: 
+35: /// Hydrates the latest run admission metadata from durable storage events.
+36: #[must_use]
+37: pub fn hydrate_run_admission_from_events(
+38:     events: &[vb_storage::JournalEvent],
+39: ) -> Option<crate::admission::RunAdmission> {
+40:     vb_storage::recovery::replay::summary::recover_run_admission_from_events(events).map(
+41:         |admission| {
+42:             crate::admission::RunAdmission::new(
+43:                 admission.artifact_digest,
+44:                 admission.run_id,
+45:                 admission.granted_capabilities,
+46:                 admission.policy,
+47:             )
+48:             .with_policy_pin(admission.policy_pin)
+49:         },
+50:     )
+51: }
+52: 
+53: /// Runtime-facing recovery entrypoint.
+54: pub trait RuntimeRecoveryBoundary {
+55:     /// Returns summary data that can be safely recovered from durable events.
+56:     fn summary(&self) -> RecoveryRuntimeSummary;
+57: 
+58:     /// Reports whether durable recovery evidence is sufficient to resume.
+59:     fn resume_status(&self) -> RecoveryResumeStatus;
+60: 
+61:     /// Attempts to hydrate a live run frame.
+62:     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame>;
+63: }
+64: 
+65: /// Runtime-facing resume decision from durable recovery evidence.
+66: ///
+67: /// `Resumable` is intentionally not a variant today: a `RunFrame`
+68: /// seed alone never carries the full runtime boundary state required
+69: /// for live execution (workflow, store, action attempts, admission,
+70: /// collect states, action contracts, action ABI digests), so the
+71: /// typed never-resume witness is the only state a frame seed can
+72: /// emit. When a future recovery path can hydrate a complete
+73: /// `RunState`, add a `Resumable(FullRunState { ... })` carrying the
+74: /// full evidence.
+75: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+76: pub enum RecoveryResumeStatus {
+77:     /// Recovery has precise evidence explaining why execution cannot resume.
+78:     CannotResume(RecoveryCannotResumeState),
+79:     /// Storage exposed summary data only; no live frame seed exists.
+80:     SummaryOnly,
+81: }
+82: 
+83: /// Runtime recovery boundary backed by a parsed durable frame product.
+84: #[derive(Debug, Clone, PartialEq, Eq)]
+85: pub struct DurableFrameRecoveryBoundary {
+86:     product: DurableFrameRecoveryProduct,
+87: }
+88: 
+89: impl DurableFrameRecoveryBoundary {
+90:     /// Builds a runtime boundary from a raw durable storage frame seed.
+91:     ///
+92:     /// The raw seed is consumed at the boundary and classified into a typed
+93:     /// product: malformed shape or shape-checked cannot-resume. The public
+94:     /// boundary never treats a frame seed as a resumable `RunState` claim.
+95:     ///
+96:     /// **Compat-only constructor (FINDING-001).** Production
+97:     /// `Runtime::recover_product` / `Runtime::recover_and_resume` callers
+98:     /// do **not** route through this constructor. They route through the
+99:     /// parallel layered boundary that emits
+100:     /// [`RuntimeRecoveryProduct`]. This `from_seed` constructor exists
+101:     /// for:
+102:     ///
+103:     /// - low-level replay tests (e.g. `crates/vb_runtime/tests/recovery_hydration_tests.rs`,
+104:     ///   `crates/workspace_tests/tests/vb_qi37_1_1_red_recovery_contract_test.rs`),
+105:     /// - Verus verifier mirrors under `verification/verus/extern_recovery_verification.rs`
+106:     ///   that bind to the raw [`RecoveryFrameSeed`] DTO,
+107:     /// - storage-only compat paths that already materialize a raw seed
+108:     ///   via `RecoveryFrameSeedBuilder::build` or
+109:     ///   `vb_storage::recovery::recover::recover_raw_*`.
+110:     ///
+111:     /// New code MUST prefer [`Self::from_product`] when the storage layer
+112:     /// has already typed-classified the seed (see also bead `vb-sixsf`).
+113:     /// Full closure of this compat surface is not yet claimed.
+114:     #[must_use]
+115:     pub fn from_seed(seed: RecoveryFrameSeed) -> Self {
+116:         Self {
+117:             product: DurableFrameRecoveryProduct::from_seed(seed),
+118:         }
+119:     }
+120: 
+121:     /// Builds a runtime boundary from a storage-classified frame product.
+122:     ///
+123:     /// The runtime boundary preserves the storage typestate instead of
+124:     /// erasing it back into a raw frame seed. A storage `CannotResume`
+125:     /// product carries its witness into the runtime layer; a storage
+126:     /// `Resumable` product is still rejected here because a frame seed
+127:     /// alone does not contain the full live `RunState` components.
+128:     ///
+129:     /// **Layered boundary contract (FINDING-001).** The
+130:     /// `DurableFrameRecoveryBoundary` is a *non-production* public surface.
+131:     /// Production callers (`Runtime::recover_product`,
+132:     /// `Runtime::recover_and_resume`) do **not** use this constructor.
+133:     /// They go through a parallel layered boundary that emits the
+134:     /// [`RuntimeRecoveryProduct`] enum (`SummaryOnly` / `CannotResume {
+135:     /// reason }` / `Resumable`). That parallel boundary keeps the typed
+136:     /// `RecoveryCannotResumeState` reason and the broader live-`RunState`
+137:     /// cannot-resume classification (pending actions, pending timers,
+138:     /// pending asks, missing workflow/store/admission/etc.) co-located on
+139:     /// the runtime product. This `from_product` constructor exists so
+140:     /// callers who only need the storage-typestate boundary (storage-side
+141:     /// tests, recovery-pipeline integration tests) can still consume the
+142:     /// typed product directly without going through the layered runtime
+143:     /// boundary.
+144:     ///
+145:     /// Callers who need the full live-`RunState` cannot-resume witness
+146:     /// (the production cannot-resume reason emitted on
+147:     /// `RuntimeRecoveryProduct::CannotResume`) must use
+148:     /// `Runtime::recover_product`. See bead `vb-sixsf`.
+149:     #[must_use]
+150:     pub fn from_product(product: RecoveryFrameSeedProduct) -> Self {
+151:         Self {
+152:             product: DurableFrameRecoveryProduct::from_product(product),
+153:         }
+154:     }
+155: 
+156:     /// Returns state that the current durable events still cannot hydrate.
+157:     #[must_use]
+158:     pub fn unsupported_state(&self) -> UnsupportedRecoveryState {
+159:         self.product.unsupported_state()
+160:     }
+161: 
+162:     /// Returns the typed cannot-resume classification for this frame seed.
+163:     #[must_use]
+164:     pub fn cannot_resume_state(&self) -> RecoveryCannotResumeState {
+165:         self.product.cannot_resume_state()
+166:     }
+167: }
+168: 
+169: impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
+170:     fn summary(&self) -> RecoveryRuntimeSummary {
+171:         self.product.summary()
+172:     }
+173: 
+174:     fn resume_status(&self) -> RecoveryResumeStatus {
+175:         self.product.resume_status()
+176:     }
+177: 
+178:     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {
+179:         self.product.hydrate_run_frame()
+180:     }
+181: }
+182: 
+183: /// Recovery boundary factory that selects summary-only or full-frame
+184: /// hydration based on the storage recovery product.
+185: pub fn recovery_boundary_from_hydration(
+186:     hydration: RecoveryHydration,
+187: ) -> Box<dyn RuntimeRecoveryBoundary> {
+188:     let summary = hydration.summary();
+189:     match hydration {
+190:         RecoveryHydration::Summary(summary) => Box::new(SummaryRecoveryBoundary { summary }),
+191:         RecoveryHydration::FrameSeed(product) => {
+192:             Box::new(DurableFrameRecoveryBoundary::from_product(product))
+193:         }
+194:         _ => Box::new(SummaryRecoveryBoundary { summary }),
+195:     }
+196: }
+197: 
+198: /// Summary-only recovery product accepted by the runtime.
+199: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+200: pub struct SummaryRecoveryBoundary {
+201:     summary: RecoveryRuntimeSummary,
+202: }
+203: 
+204: impl SummaryRecoveryBoundary {
+205:     /// Builds a runtime recovery boundary from a storage recovery hydration.
+206:     #[must_use]
+207:     pub const fn from_summary(summary: RecoveryRuntimeSummary) -> Self {
+208:         Self { summary }
+209:     }
+210: }
+211: 
+212: impl RuntimeRecoveryBoundary for SummaryRecoveryBoundary {
+213:     fn summary(&self) -> RecoveryRuntimeSummary {
+214:         self.summary
+215:     }
+216: 
+217:     fn resume_status(&self) -> RecoveryResumeStatus {
+218:         RecoveryResumeStatus::SummaryOnly
+219:     }
+220: 
+221:     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {
+222:         Err(RuntimeError::UnsupportedFullRecoveryHydration)
+223:     }
+224: }
+225: 
+226: #[cfg(test)]
+227: #[path = "recovery/tests.rs"]
+228: mod tests;

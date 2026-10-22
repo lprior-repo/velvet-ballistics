@@ -1,0 +1,790 @@
+1: impl Shard {
+2:     pub(crate) fn handle_submit(
+3:         &mut self,
+4:         run: RunId,
+5:         workflow: CompiledWorkflow,
+6:         caps: CapabilitySet,
+7:     ) -> RuntimeResult<()> {
+8:         self.handle_submit_with_inputs_contracts_and_header_mode(
+9:             run,
+10:             workflow,
+11:             &[],
+12:             caps,
+13:             &[],
+14:             true,
+15:         )
+16:     }
+17: 
+18:     pub(crate) fn handle_submit_pre_persisted(
+19:         &mut self,
+20:         run: RunId,
+21:         workflow: CompiledWorkflow,
+22:         caps: CapabilitySet,
+23:     ) -> RuntimeResult<()> {
+24:         self.handle_submit_with_inputs_contracts_and_header_mode(
+25:             run,
+26:             workflow,
+27:             &[],
+28:             caps,
+29:             &[],
+30:             false,
+31:         )
+32:     }
+33: 
+34:     pub(crate) fn handle_submit_with_inputs(
+35:         &mut self,
+36:         run: RunId,
+37:         workflow: CompiledWorkflow,
+38:         inputs: &[(SlotIdx, SlotValue)],
+39:         caps: CapabilitySet,
+40:     ) -> RuntimeResult<()> {
+41:         self.handle_submit_with_inputs_contracts_and_header_mode(
+42:             run,
+43:             workflow,
+44:             inputs,
+45:             caps,
+46:             &[],
+47:             true,
+48:         )
+49:     }
+50: 
+51:     pub(crate) fn handle_submit_with_contracts(
+52:         &mut self,
+53:         run: RunId,
+54:         workflow: CompiledWorkflow,
+55:         caps: CapabilitySet,
+56:         action_contracts: &[vb_core::action::ActionContract],
+57:     ) -> RuntimeResult<()> {
+58:         self.validate_submit_admission_with_contracts(
+59:             run,
+60:             &workflow,
+61:             caps.clone(),
+62:             action_contracts,
+63:         )?;
+64:         self.handle_submit_with_inputs_contracts_and_header_mode(
+65:             run,
+66:             workflow,
+67:             &[],
+68:             caps,
+69:             action_contracts,
+70:             true,
+71:         )
+72:     }
+73: 
+74:     pub(crate) fn handle_submit_with_inputs_and_contracts(
+75:         &mut self,
+76:         run: RunId,
+77:         workflow: CompiledWorkflow,
+78:         inputs: &[(SlotIdx, SlotValue)],
+79:         caps: CapabilitySet,
+80:         action_contracts: &[vb_core::action::ActionContract],
+81:     ) -> RuntimeResult<()> {
+82:         self.validate_submit_admission_with_contracts(
+83:             run,
+84:             &workflow,
+85:             caps.clone(),
+86:             action_contracts,
+87:         )?;
+88:         self.handle_submit_with_inputs_contracts_and_header_mode(
+89:             run,
+90:             workflow,
+91:             inputs,
+92:             caps,
+93:             action_contracts,
+94:             true,
+95:         )
+96:     }
+97: 
+98:     fn handle_submit_with_inputs_contracts_and_header_mode(
+99:         &mut self,
+100:         run: RunId,
+101:         workflow: CompiledWorkflow,
+102:         inputs: &[(SlotIdx, SlotValue)],
+103:         caps: CapabilitySet,
+104:         action_contracts: &[vb_core::action::ActionContract],
+105:         persist_header: bool,
+106:     ) -> RuntimeResult<()> {
+107:         if self.run_state_contains(run) {
+108:             return Err(RuntimeError::RunAlreadyExists);
+109:         }
+110:         if self.active_run_count() >= self.max_active_runs {
+111:             return Err(RuntimeError::ActiveRunCapacityExceeded {
+112:                 capacity: self.max_active_runs,
+113:             });
+114:         }
+115:         let digest = workflow.digest();
+116:         let admission = self.build_admission(run, digest, caps)?;
+117:         execution_binding::validate(
+118:             self.artifact_store.as_ref(),
+119:             self.policy,
+120:             &workflow,
+121:             action_contracts,
+122:         )?;
+123:         self.prepare_run_slots(run)?;
+124:         let mut frame = self.take_frame_for(run, &workflow)?;
+125:         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
+126:         self.trace_ring.push(TraceEvent::RunSubmitted { run });
+127:         if persist_header {
+128:             self.append_admission_header_journal_event(
+129:                 run,
+130:                 RuntimeJournalEvent::RunSubmitted {
+131:                     run,
+132:                     workflow: digest,
+133:                 },
+134:             )?;
+135:         }
+136:         if let Some(admission) = admission.as_ref() {
+137:             self.append_admission_header_journal_event(
+138:                 run,
+139:                 RuntimeJournalEvent::RunAdmission {
+140:                     admission: admission.clone(),
+141:                 },
+142:             )?;
+143:         }
+144:         self.counters.inc_submitted();
+145:         let frame_step_count = frame.step_count();
+146:         let max_slots = workflow.resource_contract().max_slots;
+147:         let state = RunState {
+148:             registered_execution: crate::shard::types::RegisteredExecutionMode::Live,
+149:             frame,
+150:             run_attempt: core::num::NonZeroU16::MIN,
+151:             workflow,
+152:             store: ValueStore::with_max_slots(max_slots),
+153:             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+154:             admission,
+155:             collect_states: CollectStates::new(),
+156:             action_contracts: action_contracts.to_vec().into_boxed_slice(),
+157:         };
+158:         self.terminal_runs_remove(run);
+159:         if let Err(error) = self.admit_run_state(run, state, RuntimeState::Initial) {
+160:             let removed = self.run_state_remove(run);
+161:             if let Some(state) = removed {
+162:                 self.release_frame(state.frame);
+163:             }
+164:             self.discard_journal_sequence(run);
+165:             return Err(error);
+166:         }
+167:         match self.drive_run(run) {
+168:             Ok(()) => Ok(()),
+169:             Err(error) => {
+170:                 if !self.run_state_contains(run) {
+171:                     self.discard_journal_sequence(run);
+172:                 }
+173:                 Err(error)
+174:             }
+175:         }
+176:     }
+177: 
+178:     fn append_admission_header_journal_event(
+179:         &mut self,
+180:         run: RunId,
+181:         event: RuntimeJournalEvent,
+182:     ) -> RuntimeResult<()> {
+183:         match self.append_journal_event(event) {
+184:             Ok(()) => Ok(()),
+185:             Err(error) => {
+186:                 self.discard_journal_sequence(run);
+187:                 Err(RuntimeError::admission_header_persistence_failed(error))
+188:             }
+189:         }
+190:     }
+191: 
+192:     pub(crate) fn build_admission(
+193:         &self,
+194:         run: RunId,
+195:         digest: vb_core::ids::WorkflowDigest,
+196:         caps: CapabilitySet,
+197:     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
+198:         use crate::admission::{AdmissionError, admit_artifact_run};
+199: 
+200:         match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
+201:             Ok(admission) => Ok(Some(admission)),
+202:             Err(AdmissionError::ArtifactNotFound { digest }) => {
+203:                 Err(RuntimeError::AdmissionArtifactNotFound { digest })
+204:             }
+205:             Err(AdmissionError::CapabilityDenied {
+206:                 action,
+207:                 required,
+208:                 granted,
+209:             }) => Err(RuntimeError::AdmissionCapabilityDenied {
+210:                 action,
+211:                 required,
+212:                 granted,
+213:             }),
+214:             Err(AdmissionError::ResourceCapacityExceeded { available, .. }) => {
+215:                 Err(RuntimeError::ActiveRunCapacityExceeded {
+216:                     capacity: usize::try_from(available).map_or(usize::MAX, |value| value),
+217:                 })
+218:             }
+219:             Err(AdmissionError::BudgetPolicyExceeded { .. }) => {
+220:                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+221:             }
+222:             Err(AdmissionError::ResourceBudgetOverflow { .. }) => {
+223:                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+224:             }
+225:             Err(AdmissionError::ResourceBudgetUnderflow { .. }) => {
+226:                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+227:             }
+228:             Err(AdmissionError::ResourceBudgetInvalidCapacity { .. }) => {
+229:                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+230:             }
+231:             Err(AdmissionError::ResourceStepCeilingExceeded { .. }) => {
+232:                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+233:             }
+234:             Err(AdmissionError::ResourcePerTickCeilingExceeded { .. }) => {
+235:                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+236:             }
+237:             Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
+238:                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+239:             }
+240:             Err(AdmissionError::ArtifactInvalidGateCount { .. }) => {
+241:                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+242:             }
+243:             Err(AdmissionError::ArtifactInvalidProofFlag { .. }) => {
+244:                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
+245:             }
+246:             Err(AdmissionError::ArtifactDigestMismatch { requested, found }) => {
+247:                 Err(RuntimeError::AdmissionArtifactDigestMismatch { requested, found })
+248:             }
+249:             Err(AdmissionError::ArtifactCertificateStale { digest, .. }) => {
+250:                 Err(RuntimeError::AdmissionArtifactStale { digest })
+251:             }
+252:             Err(AdmissionError::CapabilityCountMismatch {
+253:                 required_count,
+254:                 granted_count,
+255:             }) => Err(RuntimeError::AdmissionCapabilityCountMismatch {
+256:                 required_count,
+257:                 granted_count,
+258:             }),
+259:         }
+260:     }
+261: 
+262:     pub(crate) fn validate_submit_admission(
+263:         &self,
+264:         run: RunId,
+265:         workflow: &CompiledWorkflow,
+266:         caps: CapabilitySet,
+267:     ) -> RuntimeResult<()> {
+268:         self.build_admission(run, workflow.digest(), caps)?;
+269:         execution_binding::validate(self.artifact_store.as_ref(), self.policy, workflow, &[])?;
+270:         Ok(())
+271:     }
+272: 
+273:     /// Validates admission requirements for a submitted run with action contracts.
+274:     ///
+275:     /// Checks: contract ID matches its registry index, duplicate action IDs,
+276:     /// well-formed contract names, that granted capabilities cover the required
+277:     /// capabilities declared by the contracts, and that each workflow Do action
+278:     /// has a corresponding contract at its registry index.
+279:     pub(crate) fn validate_submit_admission_with_contracts(
+280:         &self,
+281:         run: RunId,
+282:         workflow: &CompiledWorkflow,
+283:         caps: CapabilitySet,
+284:         action_contracts: &[vb_core::action::ActionContract],
+285:     ) -> RuntimeResult<()> {
+286:         let digest = workflow.digest();
+287:         self.build_admission(run, digest, caps.clone())?;
+288:         super::contract_validation::validate_contract_ids(action_contracts)?;
+289:         super::contract_validation::validate_contract_capabilities(action_contracts, &caps)?;
+290:         super::contract_validation::validate_workflow_action_binding(workflow, action_contracts)?;
+291:         execution_binding::validate(
+292:             self.artifact_store.as_ref(),
+293:             self.policy,
+294:             workflow,
+295:             action_contracts,
+296:         )?;
+297:         Ok(())
+298:     }
+299:     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
+300:         self.validate_run_exists(run)?;
+301:         let current_state = self.get_runtime_state_or_running(run);
+302:         if current_state == RuntimeState::Running {
+303:             return Ok(ResumeResult {
+304:                 run_id: run,
+305:                 status: ResumeStatus::AlreadyRunning,
+306:                 timestamp: current_timestamp(),
+307:             });
+308:         }
+309:         if current_state != RuntimeState::Resumable {
+310:             return Err(ResumeError::NotResumable {
+311:                 run_id: run,
+312:                 current_state,
+313:             });
+314:         }
+315:         let timestamp = self.append_resumed_event(run)?;
+316:         let drive_result = self.drive_run(run);
+317:         self.observe_resume_drive_result(run, drive_result)?;
+318:         Ok(ResumeResult {
+319:             run_id: run,
+320:             status: ResumeStatus::Resumed,
+321:             timestamp,
+322:         })
+323:     }
+324: 
+325:     /// Recovers a run from a pre-hydrated `RunFrame` by loading the
+326:     /// compiled workflow from the artifact store and constructing a full
+327:     /// `RunState`.
+328:     ///
+329:     /// The workflow digest comes from the journal recovery summary and is
+330:     /// used to look up the `AcceptedArtifact` whose `ir` field contains the
+331:     /// postcard-encoded `WorkflowParts`. The parts are deserialized and
+332:     /// validated via `CompiledWorkflow::try_from_parts`.
+333:     ///
+334:     /// Recovery differs from submit in three ways:
+335:     /// - No `prepare_run_slots` / `take_frame_for` — the frame is pre-hydrated.
+336:     /// - The artifact store is queried by digest rather than the workflow being
+337:     ///   passed directly.
+338:     /// - Admission is built with empty capabilities (caps are not persisted
+339:     ///   per-run in the journal; runs requiring non-empty caps will fail
+340:     ///   admission during recovery, which is the correct fail-closed behavior).
+341:     ///
+342:     /// Recovers a run from full recovery context provided by journal replay.
+343:     ///
+344:     /// The typed `RecoverRunCommand` carries all recovery evidence: artifact
+345:     /// digest for verification, workflow digest for identity validation,
+346:     /// journal sequence for sequencing, collect states for pagination
+347:     /// resumption, and boundary classification for suspended operations.
+348:     ///
+349:     /// Recovery flow:
+350:     /// 1. Load artifact by artifact_digest (verification)
+351:     /// 2. Deserialize and compile workflow from artifact IR
+352:     /// 3. Verify workflow identity matches command workflow_digest
+353:     /// 4. Seed journal sequence from command next_seq
+354:     /// 5. Build admission with artifact's required capabilities
+355:     /// 6. Construct RunState restoring collect_states
+356:     /// 7. Handle boundary (pending action / open ask)
+357:     /// 8. Drive run from recovered state
+358:     pub(crate) fn handle_recover(
+359:         &mut self,
+360:         command: crate::shard::types::RecoverRunCommand,
+361:     ) -> RuntimeResult<()> {
+362:         let run = command.run;
+363:         let frame = command.frame;
+364:         let artifact_digest = command.artifact_digest;
+365:         let workflow_digest = command.workflow_digest;
+366:         let next_seq = command.next_seq;
+367:         let collect_states = command.collect_states;
+368:         let retry_checkpoint = command.retry_checkpoint;
+369:         let boundary = command.boundary;
+370:         let admission = command.admission;
+371: 
+372:         // Step 1: Load artifact by artifact_digest for verification
+373:         let artifact = self
+374:             .artifact_store
+375:             .load_accepted_artifact(artifact_digest)
+376:             .map_err(|e| match e {
+377:                 crate::admission::ArtifactEnvelopeError::ArtifactNotFound { digest } => {
+378:                     RuntimeError::Recovery {
+379:                         error: format!("artifact not found during recovery: {digest:?}"),
+380:                     }
+381:                 }
+382:                 other => RuntimeError::Recovery {
+383:                     error: format!("artifact load failed: {other}"),
+384:                 },
+385:             })?;
+386: 
+387:         // Step 2: Deserialize and compile workflow from artifact IR
+388:         let parts: vb_core::workflow::WorkflowParts =
+389:             postcard::from_bytes(&artifact.ir).map_err(|_| RuntimeError::Recovery {
+390:                 error: "artifact IR decode failed".to_string(),
+391:             })?;
+392: 
+393:         let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|e| {
+394:             RuntimeError::Recovery {
+395:                 error: format!("workflow compile failed: {e}"),
+396:             }
+397:         })?;
+398: 
+399:         // Step 3: Verify workflow identity matches command workflow_digest
+400:         if workflow.digest() != workflow_digest {
+401:             return Err(RuntimeError::Recovery {
+402:                 error: format!(
+403:                     "workflow digest mismatch: expected {workflow_digest:?}, got {:?}",
+404:                     workflow.digest()
+405:                 ),
+406:             });
+407:         }
+408: 
+409:         // Phase A: Validate the command's admission evidence.
+410:         // Runs for all recovery paths (full, raw, retry) because the
+411:         // raw command path bypasses the Runtime prefix validation.
+412:         recovered_admission::validate_recovered_admission(
+413:             &admission,
+414:             crate::recovery::RecoveredAdmissionContext {
+415:                 run,
+416:                 expected_workflow: workflow_digest,
+417:                 runtime_policy: self.policy,
+418:             },
+419:             &artifact,
+420:             &workflow,
+421:         )?;
+422: 
+423:         // Phase B: Validate the full retry checkpoint before any state mutation.
+424:         // Checks nested identities against the compiled workflow, and if the
+425:         // checkpoint carries an admission, validates the full recovered
+426:         // admission evidence. Applies to both Historical and Unverified
+427:         // command paths because the public new(...).with_retry_checkpoint(...)
+428:         // API can attach a checkpoint to an Unverified command without Runtime
+429:         // prefix validation.
+430:         recovered_admission::validate_retry_checkpoint(
+431:             retry_checkpoint.as_ref(),
+432:             crate::recovery::RecoveredAdmissionContext {
+433:                 run,
+434:                 expected_workflow: workflow_digest,
+435:                 runtime_policy: self.policy,
+436:             },
+437:             &artifact,
+438:             &workflow,
+439:         )?;
+440: 
+441:         // Phase C: Build unverified admission for legacy recovery.
+442:         // For Unverified kind, build admission using the artifact's required
+443:         // capabilities and current policy, then force the Unverified pin so
+444:         // recovery never promotes to Pinned.
+445:         let unverified_admission = if matches!(
+446:             admission,
+447:             crate::shard::types::RecoveredAdmissionKind::Unverified { .. }
+448:         ) {
+449:             recovered_admission::build_unverified_admission(self, run, artifact_digest, &artifact)?
+450:         } else {
+451:             None
+452:         };
+453: 
+454:         // Step 5: Seed journal sequence from recovered next_seq
+455:         self.seed_journal_sequence(run, next_seq)?;
+456: 
+457:         // Step 6: Restore the full validated checkpoint when this is a retry.
+458:         // The checkpoint's accepted artifact digest and action registry are
+459:         // checked against the independently loaded artifact before run state mutates.
+460:         let registered_execution =
+461:             if boundary.kind() == crate::recovery::RecoveredRunBoundaryKind::PendingAction {
+462:                 crate::shard::types::RegisteredExecutionMode::ReconcileOnly
+463:             } else {
+464:                 crate::shard::types::RegisteredExecutionMode::Live
+465:             };
+466:         let state = if let Some(checkpoint) = retry_checkpoint {
+467:             let (state, _attempt, _retry_step, _prior_seq) = checkpoint
+468:                 .restore(workflow, artifact_digest, &artifact.action_contracts)
+469:                 .map_err(|error| RuntimeError::Recovery {
+470:                     error: format!("retry checkpoint validation failed: {error}"),
+471:                 })?;
+472:             if state.frame.run_id() != run {
+473:                 return Err(RuntimeError::Recovery {
+474:                     error: "retry checkpoint run identity mismatch".to_string(),
+475:                 });
+476:             }
+477:             self.prepare_run_slots(run)?;
+478:             state
+479:         } else {
+480:             // Step 7: Restore the original historical admission validated by the
+481:             // recovery prefix flow (validate_recovery_admission) rather than
+482:             // rebuilding admission from current policy. Rebuilding could upgrade
+483:             // a legacy Unverified admission to Pinned, authorizing external
+484:             // effects the original run never had authority for.
+485:             let frame_step_count = frame.step_count();
+486:             let max_slots = workflow.resource_contract().max_slots;
+487:             self.prepare_run_slots(run)?;
+488:             let state_admission = match admission {
+489:                 crate::shard::types::RecoveredAdmissionKind::Historical(h) => Some(h),
+490:                 crate::shard::types::RecoveredAdmissionKind::Unverified { .. } => {
+491:                     unverified_admission
+492:                 }
+493:             };
+494:             crate::shard::types::RunState {
+495:                 registered_execution,
+496:                 frame,
+497:                 run_attempt: core::num::NonZeroU16::MIN,
+498:                 workflow,
+499:                 store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
+500:                 action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+501:                 admission: state_admission,
+502:                 collect_states,
+503:                 action_contracts: artifact.action_contracts.clone(),
+504:             }
+505:         };
+506: 
+507:         self.terminal_runs_remove(run);
+508:         self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
+509: 
+510:         // Step 7: Handle boundary for suspended operations
+511:         match boundary.kind() {
+512:             crate::recovery::RecoveredRunBoundaryKind::None => {}
+513:             crate::recovery::RecoveredRunBoundaryKind::PendingAction => {
+514:                 // Re-inject the durable pending-action ticket and leave the run
+515:                 // suspended at the pending action. Recovery MUST NOT re-drive the
+516:                 // Do node: the action is already durably scheduled
+517:                 // (ActionScheduledTicket) and its input slot may not be re-readable
+518:                 // (legacy unbound admission does not retain inputs). Re-driving would
+519:                 // emit a duplicate StepStarted and, for legacy runs, fail closed on
+520:                 // the un-rehydrated input slot. The recovered run resumes only on the
+521:                 // external action completion/failure signal.
+522:                 if let Some(t) = boundary.pending_action_ticket().map(|t| t.ticket()) {
+523:                     // Restore the per-step attempt counter so a later completion or
+524:                     // failure can validate the recovered ticket's attempt
+525:                     // (validate_ticket_attempt requires action_attempts[step] to
+526:                     // equal the scheduled ticket's attempt).
+527:                     if let Some(state) = self.run_state_get_mut(run) {
+528:                         crate::shard::helpers::record_scheduled_attempt(state, t);
+529:                     }
+530:                     self.reinject_pending_action(run, t)?;
+531:                     self.apply(run, crate::shard::types::RuntimeEvent::AwaitAction)?;
+532:                     return Ok(());
+533:                 }
+534:             }
+535:             crate::recovery::RecoveredRunBoundaryKind::OpenAsk => {
+536:                 if let Some(ask) = boundary.open_ask() {
+537:                     self.record_pending_ask_authority(run, ask.step(), ask.boundary_seq());
+538:                     self.apply(run, crate::shard::types::RuntimeEvent::AwaitTimer)?;
+539:                     return Ok(());
+540:                 }
+541:             }
+542:         }
+543: 
+544:         // Step 8: Drive run from recovered state
+545:         match self.drive_run(run) {
+546:             Ok(()) => Ok(()),
+547:             Err(error) => {
+548:                 if !self.run_state_contains(run) {
+549:                     self.discard_journal_sequence(run);
+550:                 }
+551:                 Err(error)
+552:             }
+553:         }
+554:     }
+555: 
+556:     fn validate_run_exists(&self, run: RunId) -> Result<(), ResumeError> {
+557:         if !self.run_state_contains(run) {
+558:             return Err(ResumeError::RunIdNotFound { run_id: run });
+559:         }
+560:         Ok(())
+561:     }
+562: 
+563:     fn get_runtime_state_or_running(&self, run: RunId) -> RuntimeState {
+564:         self.runtime_state_get(run).unwrap_or(RuntimeState::Running)
+565:     }
+566: 
+567:     fn append_resumed_event(&mut self, run: RunId) -> Result<u64, ResumeError> {
+568:         if !self.is_run_tracked(run) {
+569:             return Err(ResumeError::IncompleteHydration { run_id: run });
+570:         }
+571:         self.apply(run, RuntimeEvent::Resume)
+572:             .map_err(ResumeError::journal_append_failed_with_source)?;
+573:         let timestamp = current_timestamp();
+574:         let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
+575:         if let Err(source) = self.append_journal_event(resumed_event) {
+576:             self.apply(run, RuntimeEvent::ResumeRollback)
+577:                 .map_err(ResumeError::journal_append_failed_with_source)?;
+578:             return Err(ResumeError::journal_append_failed_with_source(source));
+579:         }
+580:         Ok(timestamp)
+581:     }
+582: 
+583:     fn is_run_tracked(&self, run: RunId) -> bool {
+584:         self.runtime_state_get(run).is_some()
+585:     }
+586: 
+587:     fn observe_resume_drive_result(
+588:         &mut self,
+589:         run: RunId,
+590:         result: RuntimeResult<()>,
+591:     ) -> Result<(), ResumeError> {
+592:         if let Err(source) = result {
+593:             return Err(self.restore_resumable_after_drive_failure(run, source));
+594:         }
+595:         Ok(())
+596:     }
+597: 
+598:     fn restore_resumable_after_drive_failure(
+599:         &mut self,
+600:         run: RunId,
+601:         source: RuntimeError,
+602:     ) -> ResumeError {
+603:         match self.apply(run, RuntimeEvent::ResumeRollback) {
+604:             Ok(()) => ResumeError::journal_append_failed_with_source(source),
+605:             Err(rollback_error) => ResumeError::journal_append_failed_with_source(rollback_error),
+606:         }
+607:     }
+608: 
+609:     #[allow(clippy::needless_pass_by_value)]
+610:     pub(crate) fn handle_action_completion(
+611:         &mut self,
+612:         ticket: ActionTicket,
+613:         output: ActionOutputReady,
+614:     ) -> RuntimeResult<()> {
+615:         self.reject_unregistered_completion(ticket)?;
+616:         self.apply_action_completion(ticket, output)
+617:     }
+618: 
+619:     pub(crate) fn apply_action_completion(
+620:         &mut self,
+621:         ticket: ActionTicket,
+622:         output: ActionOutputReady,
+623:     ) -> RuntimeResult<()> {
+624:         let run = ticket.run;
+625:         self.require_pending_action_ownership(ticket)?;
+626:         let (preflight, action_abi_digest) = {
+627:             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+628:             let pf = preflight_action_completion(state, ticket, output)?;
+629:             let abi = schedule_action_abi_digest(state, ticket.action)?;
+630:             (pf, abi)
+631:         };
+632:         self.append_journal_event(RuntimeJournalEvent::ActionCompletedEnvelope {
+633:             ticket: preflight.ticket,
+634:             output: preflight.output_slot,
+635:             value: preflight.encoded_value.clone(),
+636:             encoded_len: preflight.encoded_len,
+637:             taint: preflight.taint,
+638:             value_digest: preflight.value_digest,
+639:             action_abi_digest,
+640:         })?;
+641:         let state = self
+642:             .run_state_get_mut(run)
+643:             .ok_or(RuntimeError::RunNotFound)?;
+644:         state
+645:             .frame
+646:             .write_slot_with_taint(preflight.output_slot, preflight.value, preflight.taint)
+647:             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+648:         state
+649:             .frame
+650:             .mark_succeeded(preflight.ticket.step)
+651:             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+652:         crate::shard::helpers::advance_after_action_completion(state, preflight.ticket.step)?;
+653:         let _removed_ticket = self.pending_action_remove(run);
+654:         self.trace_ring.push(TraceEvent::SlotWritten {
+655:             run,
+656:             slot: preflight.output_slot,
+657:             value: preflight.encoded_value,
+658:         });
+659:         self.trace_ring.push(TraceEvent::ActionCompleted {
+660:             run,
+661:             step: preflight.ticket.step,
+662:         });
+663:         self.drive_run(run)
+664:     }
+665: 
+666:     pub(crate) fn handle_legacy_action_completion(
+667:         &mut self,
+668:         run: RunId,
+669:         step: StepIdx,
+670:     ) -> RuntimeResult<()> {
+671:         let ticket = self.require_legacy_pending_action_ownership(run, step)?;
+672:         self.reject_unregistered_completion(ticket)?;
+673:         let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+674:         state
+675:             .frame
+676:             .step_state(ticket.step)
+677:             .map_err(|_| RuntimeError::RunNotFound)?;
+678:         // Evidence chain: emit StepSucceeded for legacy action completion.
+679:         // Legacy path has no output slot information.
+680:         // Journal append FIRST so a journal failure does not diverge frame and journal.
+681:         self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
+682:             run,
+683:             step: ticket.step,
+684:             output: SlotIdx::ZERO,
+685:             attempt: ticket.attempt,
+686:         })?;
+687:         let state = self
+688:             .run_state_get_mut(run)
+689:             .ok_or(RuntimeError::RunNotFound)?;
+690:         state
+691:             .frame
+692:             .mark_succeeded(ticket.step)
+693:             .map_err(|_| RuntimeError::RunNotFound)?;
+694:         crate::shard::helpers::advance_after_action_completion(state, ticket.step)?;
+695:         let _removed_ticket = self.pending_action_remove(run);
+696:         self.trace_ring.push(TraceEvent::ActionCompleted {
+697:             run,
+698:             step: ticket.step,
+699:         });
+700:         self.drive_run(run)
+701:     }
+702: 
+703:     #[allow(clippy::needless_pass_by_value)]
+704:     pub(crate) fn handle_action_failure(
+705:         &mut self,
+706:         ticket: ActionTicket,
+707:         failure: ActionFailure,
+708:     ) -> RuntimeResult<()> {
+709:         let run = ticket.run;
+710:         let code = failure.code;
+711:         self.require_pending_action_ownership(ticket)?;
+712:         let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
+713:         // 1. Preflight (read-only): validate and decide the failure outcome.
+714:         //    No mutation has occurred yet, so a journal append failure
+715:         //    below cannot diverge memory-only state from durable evidence.
+716:         let preflight = {
+717:             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+718:             preflight_action_failure(state, ticket, &failure)?
+719:         };
+720:         // 2. Journal append FIRST. FailRun needs both ActionFailed and
+721:         //    RunFailed to append as one same-run batch before any pending
+722:         //    action, trace, frame, counter, or terminal-state mutation. If
+723:         //    the batch is rejected by a bounded queued journal, no partial
+724:         //    ActionFailed prefix can consume the last queue slot.
+725:         let action_failed_event = RuntimeJournalEvent::ActionFailed {
+726:             run,
+727:             step: preflight.ticket.step,
+728:             action: preflight.ticket.action,
+729:             attempt: preflight.ticket.attempt,
+730:         };
+731:         if preflight.outcome == ActionFailureOutcome::FailRun {
+732:             let attempt = self
+733:                 .run_state_get(run)
+734:                 .map(|state| state.run_attempt.get())
+735:                 .ok_or(RuntimeError::RunNotFound)?;
+736:             self.append_journal_events_atomically([
+737:                 action_failed_event,
+738:                 RuntimeJournalEvent::RunFailed { run, attempt },
+739:             ])?;
+740:         } else {
+741:             self.append_journal_event(action_failed_event)?;
+742:         }
+743:         // 3. Apply preflight mutations to the run frame / action_attempts.
+744:         //    Held in a narrow scope so `pending_action_remove` and
+745:         //    `trace_ring.push` can borrow `self` after the mutable
+746:         //    state borrow ends.
+747:         {
+748:             let state = self
+749:                 .run_state_get_mut(run)
+750:                 .ok_or(RuntimeError::RunNotFound)?;
+751:             apply_action_failure_preflight(state, &preflight)?;
+752:         }
+753:         let _removed_ticket = self.pending_action_remove(run);
+754:         self.trace_ring.push(TraceEvent::ActionFailed {
+755:             run,
+756:             step: preflight.ticket.step,
+757:             code,
+758:         });
+759:         // 4. Drive the run state machine forward using the preflighted outcome.
+760:         match preflight.outcome {
+761:             ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
+762:                 self.drive_run(run)
+763:             }
+764:             ActionFailureOutcome::FailRun => {
+765:                 let state = self.take_run_state(run)?;
+766:                 self.fail_run_state_with_retry_checkpoint(run, preflight.ticket.step, state)
+767:             }
+768:         }
+769:     }
+770: 
+771:     pub fn ticket_with_retry_capacity(
+772:         &self,
+773:         ticket: ActionTicket,
+774:         retry_policy: VbCoreRetryPolicy,
+775:     ) -> RuntimeResult<ActionTicket> {
+776:         let Some(state) = self.run_state_get(ticket.run) else {
+777:             return Err(RuntimeError::RunNotFound);
+778:         };
+779:         if retry_policy != VbCoreRetryPolicy::Retryable
+780:             || !crate::shard::helpers::retry_metadata_exists(state, ticket.step)
+781:         {
+782:             return Ok(ticket);
+783:         }
+784:         let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
+785:         Ok(ActionTicket {
+786:             capacity: ticket.capacity.max(policy.max_attempts),
+787:             ..ticket
+788:         })
+789:     }
+790: }

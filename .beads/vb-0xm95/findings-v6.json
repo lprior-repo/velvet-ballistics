@@ -1,0 +1,75 @@
+{
+  "bead": "vb-0xm95",
+  "version": 6,
+  "verdict": "APPROVED",
+  "candidate": "b752db4c1a665caf90fa9e63e43d1505b0ba651d",
+  "base": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "reviewed_files": 24,
+  "findings": [
+    {
+      "id": "FIND-001",
+      "severity": "INFO",
+      "file": "crates/vb_runtime/src/runtime/live_policy_dispatch.rs",
+      "description": "New policy evaluation dispatch layer with admission priority override. Unverified admission is forced to Denied at Admission layer; Emergency overlay has highest priority. Policy decision persisted before returning."
+    },
+    {
+      "id": "FIND-002",
+      "severity": "INFO",
+      "file": "crates/vb_runtime/src/shard/impl_parts/policy_decision.rs",
+      "description": "New shard policy decision port. Validates ticket ownership, computes overflow-safe next sequence, reserves capacity, calls journal strict port, updates sequence only after success."
+    },
+    {
+      "id": "FIND-003",
+      "severity": "INFO",
+      "file": "crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs",
+      "description": "New 3-phase recovery admission validation. Phase A: validate command admission evidence. Phase B: validate checkpoint policy pin. Phase C: build unverified admission for legacy recovery. All validation before state mutation."
+    },
+    {
+      "id": "FIND-004",
+      "severity": "INFO",
+      "file": "crates/vb_runtime/src/shard/types.rs",
+      "description": "Added RecoveredAdmissionKind enum (Historical vs Unverified). RecoverRunCommand carries admission evidence. Public 7-arg new() and for_retry() preserved."
+    },
+    {
+      "id": "FIND-005",
+      "severity": "INFO",
+      "file": "fuzz/src/yaml_target.rs",
+      "description": "MAX_FUZZ_PAYLOAD_USIZE increased from 4096 to 100,000 to match actual prepush bound. Regression test validates >4096 events and <=100,000 bound."
+    },
+    {
+      "id": "FIND-006",
+      "severity": "INFO",
+      "file": "crates/vb_runtime/src/journal/chunk_001.rs",
+      "description": "New append_policy_decision_strict trait method with fail-closed default. StorageRuntimeJournal and QueuedStorageRuntimeJournal implement it."
+    },
+    {
+      "id": "FIND-007",
+      "severity": "INFO",
+      "file": "crates/vb_runtime/src/runtime/registered_executor.rs",
+      "description": "execute_registered_action evaluates policy before adapter execution. reconcile_registered_action skips policy (recovery-only). New PolicyDenied error variant."
+    }
+  ],
+  "rubric": {
+    "existing_contracts": "PASS",
+    "helper_function_size": "PASS",
+    "strict_append_durability": "PASS",
+    "queue_prefix_sequence_ownership": "PASS",
+    "typed_errors": "PASS",
+    "fail_closed_before_effect": "PASS",
+    "identity_checks": "PASS",
+    "caps_policy_pins_all_paths": "PASS",
+    "unverified_never_promotes_pinned": "PASS",
+    "reconcile_only_no_new_effects": "PASS",
+    "public_7args_and_for_retry_preserved": "PASS",
+    "fuzz_bound_alignment": "PASS"
+  },
+  "not_covered": [
+    "Test suite (separate review)",
+    "Documentation/changelog updates",
+    "Benchmark results",
+    "Formal proof artifacts",
+    "CI status"
+  ],
+  "reviewer": "RTX3090 code review agent",
+  "date": "2026-10-22"
+}

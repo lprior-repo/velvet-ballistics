@@ -1,0 +1,220 @@
+ 
+     if let Ok(map) = build_semantic_source_map(text) {
+         let _root = map.span_for_path("$");
+         let _manual = map.span_for_path("$.when.manual");
+         let _step_zero = map.span_for_path("$.steps[0]");
+         // `_root`, `_manual`, and `_step_zero` are deliberately bound to
+         // underscore-prefixed identifiers so the strict
+         // `let_underscore_must_use` lint stays triggered only on
+         // bare `let _ = must_use_call()`. They prove the lookup table
+         // returns a span option without exercising it.
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn large_yaml_exceeds_4096_bound() -> Result<(), Box<dyn std::error::Error>> {
++        // Build valid YAML with >4096 events: a sequence of 5001 scalars
++        // stays within default max_sequence_len=10000 and max_source_bytes=1048576.
++        let item_count = 5001usize;
++        let mut yaml = "items:\n".to_string();
++        for i in 0..item_count {
++            yaml.push_str(&format!("  - item{}\n", i));
++        }
++
++        // Validate via the real compile pipeline
++        vb_compile::validate_yaml_profile(&yaml)?;
++
++        let events = vb_compile::parse_yaml_events(&yaml)?;
++        assert!(
++            events.len() > 4096,
++            "test YAML must produce >4096 events, got {}",
++            events.len()
++        );
++        assert!(
++            events.len() <= 100000,
++            "test YAML must stay within default max_nodes, got {}",
++            events.len()
++        );
++
++        let source_map = vb_compile::build_source_map(&yaml)?;
++        assert!(
++            source_map.len() > 4096,
++            "test YAML must produce >4096 source map entries, got {}",
++            source_map.len()
++        );
++        assert!(
++            source_map.len() <= 100000,
++            "test YAML must stay within default max_nodes, got {}",
++            source_map.len()
++        );
++
++        // This assertion will fail with MAX_FUZZ_PAYLOAD_USIZE=4096 (RED)
++        // and pass once the constant is fixed to 100000 (GREEN).
++        fuzz_yaml_events(yaml.as_bytes());
++        Ok(())
++    }
++}
+TRANSITIVE REFERENCE crates/vb_runtime/src/recovery/full/admission.rs
+crates/vb_runtime/src/recovery/full/admission.rs:1: use vb_core::action::ActionContract;
+crates/vb_runtime/src/recovery/full/admission.rs:2: use vb_core::ids::{ActionId, RunId, WorkflowDigest};
+crates/vb_runtime/src/recovery/full/admission.rs:3: use vb_core::{CapabilitySet, CompiledWorkflow, RuntimePolicy};
+crates/vb_runtime/src/recovery/full/admission.rs:4: 
+crates/vb_runtime/src/recovery/full/admission.rs:5: use crate::{RuntimeError, RuntimeResult};
+crates/vb_runtime/src/recovery/full/admission.rs:6: 
+crates/vb_runtime/src/recovery/full/admission.rs:7: pub(crate) struct RecoveredAdmissionContext {
+crates/vb_runtime/src/recovery/full/admission.rs:8:     pub(crate) run: RunId,
+crates/vb_runtime/src/recovery/full/admission.rs:9:     pub(crate) expected_workflow: WorkflowDigest,
+crates/vb_runtime/src/recovery/full/admission.rs:10:     pub(crate) runtime_policy: RuntimePolicy,
+crates/vb_runtime/src/recovery/full/admission.rs:11: }
+crates/vb_runtime/src/recovery/full/admission.rs:12: 
+crates/vb_runtime/src/recovery/full/admission.rs:13: pub(crate) struct RecoveredAdmissionEvidence<'a> {
+crates/vb_runtime/src/recovery/full/admission.rs:14:     pub(crate) context: RecoveredAdmissionContext,
+crates/vb_runtime/src/recovery/full/admission.rs:15:     pub(crate) admission: &'a crate::admission::RunAdmission,
+crates/vb_runtime/src/recovery/full/admission.rs:16:     pub(crate) artifact: &'a vb_storage::admission::AcceptedArtifact,
+crates/vb_runtime/src/recovery/full/admission.rs:17:     pub(crate) workflow: &'a CompiledWorkflow,
+crates/vb_runtime/src/recovery/full/admission.rs:18: }
+crates/vb_runtime/src/recovery/full/admission.rs:19: 
+crates/vb_runtime/src/recovery/full/admission.rs:20: pub(crate) fn action_abi_digests_from_contracts(
+crates/vb_runtime/src/recovery/full/admission.rs:21:     contracts: &[ActionContract],
+crates/vb_runtime/src/recovery/full/admission.rs:22: ) -> RuntimeResult<Box<[(ActionId, WorkflowDigest)]>> {
+crates/vb_runtime/src/recovery/full/admission.rs:23:     let mut digests = Vec::new();
+crates/vb_runtime/src/recovery/full/admission.rs:24:     digests
+crates/vb_runtime/src/recovery/full/admission.rs:25:         .try_reserve(contracts.len())
+crates/vb_runtime/src/recovery/full/admission.rs:26:         .map_err(|_| cannot_resume_error("action_abi_digests_missing"))?;
+crates/vb_runtime/src/recovery/full/admission.rs:27:     for contract in contracts {
+crates/vb_runtime/src/recovery/full/admission.rs:28:         digests.push((contract.id, action_contract_abi_digest(contract)?));
+crates/vb_runtime/src/recovery/full/admission.rs:29:     }
+crates/vb_runtime/src/recovery/full/admission.rs:30:     Ok(digests.into_boxed_slice())
+crates/vb_runtime/src/recovery/full/admission.rs:31: }
+crates/vb_runtime/src/recovery/full/admission.rs:32: 
+crates/vb_runtime/src/recovery/full/admission.rs:33: pub(crate) fn action_contract_abi_digest(
+crates/vb_runtime/src/recovery/full/admission.rs:34:     contract: &ActionContract,
+crates/vb_runtime/src/recovery/full/admission.rs:35: ) -> RuntimeResult<WorkflowDigest> {
+crates/vb_runtime/src/recovery/full/admission.rs:36:     let bytes = postcard::to_allocvec(contract)
+crates/vb_runtime/src/recovery/full/admission.rs:37:         .map_err(|_| cannot_resume_error("action_abi_digests_missing"))?;
+crates/vb_runtime/src/recovery/full/admission.rs:38:     Ok(WorkflowDigest::from_bytes(blake3::hash(&bytes).into()))
+crates/vb_runtime/src/recovery/full/admission.rs:39: }
+crates/vb_runtime/src/recovery/full/admission.rs:40: 
+crates/vb_runtime/src/recovery/full/admission.rs:41: pub(crate) fn validate_recovered_admission_evidence(
+crates/vb_runtime/src/recovery/full/admission.rs:42:     evidence: RecoveredAdmissionEvidence<'_>,
+crates/vb_runtime/src/recovery/full/admission.rs:43: ) -> RuntimeResult<()> {
+crates/vb_runtime/src/recovery/full/admission.rs:44:     if evidence.admission.run_id() != evidence.context.run {
+crates/vb_runtime/src/recovery/full/admission.rs:45:         return Err(cannot_resume_error("admission_run_mismatch"));
+crates/vb_runtime/src/recovery/full/admission.rs:46:     }
+crates/vb_runtime/src/recovery/full/admission.rs:47:     if evidence.admission.policy() != evidence.context.runtime_policy {
+crates/vb_runtime/src/recovery/full/admission.rs:48:         return Err(cannot_resume_error("admission_policy_mismatch"));
+crates/vb_runtime/src/recovery/full/admission.rs:49:     }
+crates/vb_runtime/src/recovery/full/admission.rs:50:     if evidence.artifact.digest != evidence.admission.artifact_digest() {
+crates/vb_runtime/src/recovery/full/admission.rs:51:         return Err(cannot_resume_error("artifact_digest_mismatch"));
+crates/vb_runtime/src/recovery/full/admission.rs:52:     }
+crates/vb_runtime/src/recovery/full/admission.rs:53:     if evidence.artifact.source_digest != evidence.context.expected_workflow
+crates/vb_runtime/src/recovery/full/admission.rs:54:         || evidence.workflow.digest() != evidence.context.expected_workflow
+crates/vb_runtime/src/recovery/full/admission.rs:55:     {
+crates/vb_runtime/src/recovery/full/admission.rs:56:         return Err(cannot_resume_error("workflow_digest_mismatch"));
+crates/vb_runtime/src/recovery/full/admission.rs:57:     }
+crates/vb_runtime/src/recovery/full/admission.rs:58:     validate_recovered_policy_digest(evidence.artifact, evidence.workflow)?;
+crates/vb_runtime/src/recovery/full/admission.rs:59:     validate_recovered_policy_pin(evidence.admission, evidence.artifact)?;
+crates/vb_runtime/src/recovery/full/admission.rs:60:     validate_recovered_capabilities(evidence.admission.granted_capabilities(), evidence.artifact)
+crates/vb_runtime/src/recovery/full/admission.rs:61: }
+crates/vb_runtime/src/recovery/full/admission.rs:62: 
+crates/vb_runtime/src/recovery/full/admission.rs:63: fn validate_recovered_policy_digest(
+crates/vb_runtime/src/recovery/full/admission.rs:64:     artifact: &vb_storage::admission::AcceptedArtifact,
+crates/vb_runtime/src/recovery/full/admission.rs:65:     workflow: &CompiledWorkflow,
+crates/vb_runtime/src/recovery/full/admission.rs:66: ) -> RuntimeResult<()> {
+crates/vb_runtime/src/recovery/full/admission.rs:67:     let expected = vb_storage::admission::compute_policy_digest(workflow)
+crates/vb_runtime/src/recovery/full/admission.rs:68:         .map_err(|_| cannot_resume_error("admission_policy_mismatch"))?;
+crates/vb_runtime/src/recovery/full/admission.rs:69:     if artifact.policy_digest == expected {
+crates/vb_runtime/src/recovery/full/admission.rs:70:         Ok(())
+crates/vb_runtime/src/recovery/full/admission.rs:71:     } else {
+crates/vb_runtime/src/recovery/full/admission.rs:72:         Err(cannot_resume_error("admission_policy_mismatch"))
+crates/vb_runtime/src/recovery/full/admission.rs:73:     }
+crates/vb_runtime/src/recovery/full/admission.rs:74: }
+crates/vb_runtime/src/recovery/full/admission.rs:75: 
+crates/vb_runtime/src/recovery/full/admission.rs:76: pub(crate) fn validate_recovered_policy_pin(
+crates/vb_runtime/src/recovery/full/admission.rs:77:     admission: &crate::admission::RunAdmission,
+crates/vb_runtime/src/recovery/full/admission.rs:78:     artifact: &vb_storage::admission::AcceptedArtifact,
+crates/vb_runtime/src/recovery/full/admission.rs:79: ) -> RuntimeResult<()> {
+crates/vb_runtime/src/recovery/full/admission.rs:80:     match admission.policy_pin() {
+crates/vb_runtime/src/recovery/full/admission.rs:81:         vb_storage::RunPolicyPin::Unverified => {
+crates/vb_runtime/src/recovery/full/admission.rs:82:             // Legacy or relaxed admission: no actual policy identity bound.
+crates/vb_runtime/src/recovery/full/admission.rs:83:             // Accept as historical record; cannot authorize live effects.
+crates/vb_runtime/src/recovery/full/admission.rs:84:             Ok(())
+crates/vb_runtime/src/recovery/full/admission.rs:85:         }
+crates/vb_runtime/src/recovery/full/admission.rs:86:         vb_storage::RunPolicyPin::Pinned(pin_digest) => {
+crates/vb_runtime/src/recovery/full/admission.rs:87:             // Actual policy identity was bound. Validate it matches the artifact.
+crates/vb_runtime/src/recovery/full/admission.rs:88:             if pin_digest == artifact.policy_digest {
+crates/vb_runtime/src/recovery/full/admission.rs:89:                 Ok(())
+crates/vb_runtime/src/recovery/full/admission.rs:90:             } else {
+crates/vb_runtime/src/recovery/full/admission.rs:91:                 Err(cannot_resume_error("admission_policy_pin_mismatch"))
+crates/vb_runtime/src/recovery/full/admission.rs:92:             }
+crates/vb_runtime/src/recovery/full/admission.rs:93:         }
+crates/vb_runtime/src/recovery/full/admission.rs:94:     }
+crates/vb_runtime/src/recovery/full/admission.rs:95: }
+crates/vb_runtime/src/recovery/full/admission.rs:96: 
+crates/vb_runtime/src/recovery/full/admission.rs:97: fn validate_recovered_capabilities(
+crates/vb_runtime/src/recovery/full/admission.rs:98:     granted: &CapabilitySet,
+crates/vb_runtime/src/recovery/full/admission.rs:99:     artifact: &vb_storage::admission::AcceptedArtifact,
+crates/vb_runtime/src/recovery/full/admission.rs:100: ) -> RuntimeResult<()> {
+crates/vb_runtime/src/recovery/full/admission.rs:101:     if artifact.required_capabilities.len() != granted.len() {
+crates/vb_runtime/src/recovery/full/admission.rs:102:         return Err(cannot_resume_error("admission_capabilities_mismatch"));
+crates/vb_runtime/src/recovery/full/admission.rs:103:     }
+crates/vb_runtime/src/recovery/full/admission.rs:104:     for required in artifact.required_capabilities.iter() {
+crates/vb_runtime/src/recovery/full/admission.rs:105:         if !granted.grants(required) {
+crates/vb_runtime/src/recovery/full/admission.rs:106:             return Err(cannot_resume_error("admission_capabilities_mismatch"));
+crates/vb_runtime/src/recovery/full/admission.rs:107:         }
+crates/vb_runtime/src/recovery/full/admission.rs:108:     }
+crates/vb_runtime/src/recovery/full/admission.rs:109:     Ok(())
+crates/vb_runtime/src/recovery/full/admission.rs:110: }
+crates/vb_runtime/src/recovery/full/admission.rs:111: 
+crates/vb_runtime/src/recovery/full/admission.rs:112: fn cannot_resume_error(reason: &'static str) -> RuntimeError {
+crates/vb_runtime/src/recovery/full/admission.rs:113:     RuntimeError::RecoveryCannotResume {
+crates/vb_runtime/src/recovery/full/admission.rs:114:         reason: String::from(reason),
+crates/vb_runtime/src/recovery/full/admission.rs:115:     }
+crates/vb_runtime/src/recovery/full/admission.rs:116: }
+TRANSITIVE REFERENCE crates/vb_runtime/src/run_checkpoint.rs
+crates/vb_runtime/src/run_checkpoint.rs:1: #![forbid(unsafe_code)]
+crates/vb_runtime/src/run_checkpoint.rs:2: //! Versioned complete checkpoint payload for one retry boundary.
+crates/vb_runtime/src/run_checkpoint.rs:3: 
+crates/vb_runtime/src/run_checkpoint.rs:4: use core::num::NonZeroU16;
+crates/vb_runtime/src/run_checkpoint.rs:5: 
+crates/vb_runtime/src/run_checkpoint.rs:6: use serde::{Deserialize, Serialize};
+crates/vb_runtime/src/run_checkpoint.rs:7: use vb_core::action::ActionContract;
+crates/vb_runtime/src/run_checkpoint.rs:8: use vb_core::frame::{CheckpointStepState, RunFrame, RunFrameCheckpointV1};
+crates/vb_runtime/src/run_checkpoint.rs:9: use vb_core::ids::{RunId, StepIdx, WorkflowDigest};
+crates/vb_runtime/src/run_checkpoint.rs:10: use vb_core::value_store::{ValueStore, ValueStoreCheckpointV1};
+crates/vb_runtime/src/run_checkpoint.rs:11: use vb_core::workflow::CompiledWorkflow;
+crates/vb_runtime/src/run_checkpoint.rs:12: 
+crates/vb_runtime/src/run_checkpoint.rs:13: use crate::admission::RunAdmission;
+crates/vb_runtime/src/run_checkpoint.rs:14: use crate::primitives::collect::{CollectStates, CollectStatesCheckpointV1};
+crates/vb_runtime/src/run_checkpoint.rs:15: use crate::shard::types::RunState;
+crates/vb_runtime/src/run_checkpoint.rs:16: 
+crates/vb_runtime/src/run_checkpoint.rs:17: /// Complete v1 state needed to restore a run at a retry boundary.
+crates/vb_runtime/src/run_checkpoint.rs:18: #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+crates/vb_runtime/src/run_checkpoint.rs:19: pub struct RunCheckpointV1 {
+crates/vb_runtime/src/run_checkpoint.rs:20:     /// Checkpoint format version.
+crates/vb_runtime/src/run_checkpoint.rs:21:     pub version: u16,
+crates/vb_runtime/src/run_checkpoint.rs:22:     /// Run whose state is captured.
+crates/vb_runtime/src/run_checkpoint.rs:23:     pub run_id: RunId,
+crates/vb_runtime/src/run_checkpoint.rs:24:     /// Accepted artifact identity used to load the immutable workflow.
+crates/vb_runtime/src/run_checkpoint.rs:25:     pub artifact_digest: WorkflowDigest,
+crates/vb_runtime/src/run_checkpoint.rs:26:     /// Compiled workflow identity checked on restore.
+crates/vb_runtime/src/run_checkpoint.rs:27:     pub workflow_digest: WorkflowDigest,
+crates/vb_runtime/src/run_checkpoint.rs:28:     /// Durable attempt represented by this checkpoint.
+crates/vb_runtime/src/run_checkpoint.rs:29:     pub run_attempt: NonZeroU16,
+crates/vb_runtime/src/run_checkpoint.rs:30:     /// Failed step the retry command is authorized to execute again.
+crates/vb_runtime/src/run_checkpoint.rs:31:     pub retry_step: StepIdx,
+crates/vb_runtime/src/run_checkpoint.rs:32:     /// Journal sequence immediately before the checkpoint is appended.
+crates/vb_runtime/src/run_checkpoint.rs:33:     pub prior_seq: u64,
+crates/vb_runtime/src/run_checkpoint.rs:34:     /// Full execution frame, including slots, taint, PC, counters, and every step state.
+crates/vb_runtime/src/run_checkpoint.rs:35:     pub frame: RunFrameCheckpointV1,
+crates/vb_runtime/src/run_checkpoint.rs:36:     /// Full cold value-store arenas and limits.
+crates/vb_runtime/src/run_checkpoint.rs:37:     pub value_store: ValueStoreCheckpointV1,
+crates/vb_runtime/src/run_checkpoint.rs:38:     /// Per-action-step attempt counters.
+crates/vb_runtime/src/run_checkpoint.rs:39:     pub action_attempts: Box<[u16]>,
+crates/vb_runtime/src/run_checkpoint.rs:40:     /// Admission authority captured with the state.
+crates/vb_runtime/src/run_checkpoint.rs:41:     pub admission: Option<RunAdmission>,
+crates/vb_runtime/src/run_checkpoint.rs:42:     /// Pagination state and page lineage captured with the state.

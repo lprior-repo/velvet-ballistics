@@ -1,0 +1,126 @@
+1: //! Recovery admission validation and construction phases.
+2: //!
+3: //! Separates recovery admission into distinct phases that complete before
+4: //! any sequence or slot mutation:
+5: //! - Phase A: Validate the command's recovered admission evidence
+6: //! - Phase B: Validate checkpoint policy pin if present
+7: //! - Phase C: Build unverified admission for legacy recovery
+8: 
+9: use vb_core::ids::{RunId, WorkflowDigest};
+10: use vb_core::{CapabilitySet, CompiledWorkflow};
+11: use vb_storage::RunPolicyPin;
+12: use vb_storage::admission::AcceptedArtifact;
+13: 
+14: use crate::admission::RunAdmission;
+15: use crate::recovery::{
+16:     RecoveredAdmissionContext, RecoveredAdmissionEvidence, validate_recovered_admission_evidence,
+17: };
+18: use crate::run_checkpoint::RunCheckpointV1;
+19: use crate::shard::types::RecoveredAdmissionKind;
+20: use crate::{RuntimeError, RuntimeResult};
+21: 
+22: /// Phase A: Validate the command's recovered admission evidence.
+23: ///
+24: /// For Historical admissions, validates the full recovered admission evidence
+25: /// using the existing RecoveredAdmissionContext/Evidence types.
+26: ///
+27: /// For Unverified admissions, validates only run identity and artifact
+28: /// digest matching. Policy pin cannot be validated without historical
+29: /// admission, which is the correct fail-closed behavior for legacy
+30: /// raw recovery.
+31: pub(crate) fn validate_recovered_admission(
+32:     kind: &RecoveredAdmissionKind,
+33:     context: RecoveredAdmissionContext,
+34:     artifact: &AcceptedArtifact,
+35:     workflow: &CompiledWorkflow,
+36: ) -> RuntimeResult<()> {
+37:     match kind {
+38:         RecoveredAdmissionKind::Historical(historical) => {
+39:             validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
+40:                 context,
+41:                 admission: historical,
+42:                 artifact,
+43:                 workflow,
+44:             })
+45:         }
+46:         RecoveredAdmissionKind::Unverified {
+47:             run_id,
+48:             artifact_digest: cmd_digest,
+49:         } => validate_unverified_identity(context.run, *run_id, artifact.digest, *cmd_digest),
+50:     }
+51: }
+52: 
+53: fn validate_unverified_identity(
+54:     run: RunId,
+55:     admission_run_id: RunId,
+56:     expected_artifact_digest: WorkflowDigest,
+57:     admission_digest: WorkflowDigest,
+58: ) -> RuntimeResult<()> {
+59:     if admission_run_id != run {
+60:         return Err(RuntimeError::Recovery {
+61:             error: format!(
+62:                 "admission run identity mismatch: expected {run:?}, got {admission_run_id:?}"
+63:             ),
+64:         });
+65:     }
+66:     if admission_digest != expected_artifact_digest {
+67:         return Err(RuntimeError::Recovery {
+68:             error: format!(
+69:                 "admission artifact digest mismatch: expected {expected_artifact_digest:?}, got {admission_digest:?}"
+70:             ),
+71:         });
+72:     }
+73:     Ok(())
+74: }
+75: 
+76: /// Phase B: Validate the full retry checkpoint before any state mutation.
+77: ///
+78: /// When a retry checkpoint is provided, validates its nested identities
+79: /// against the compiled workflow, then if the checkpoint carries an
+80: /// admission, validates the full recovered admission evidence. This
+81: /// must complete before any sequence or slot mutation so that the
+82: /// correct exact reason propagates. Applies to both Historical and
+83: /// Unverified command paths because the public
+84: /// new(...).with_retry_checkpoint(...) API can attach a checkpoint
+85: /// to an Unverified command without Runtime prefix validation.
+86: pub(crate) fn validate_retry_checkpoint(
+87:     checkpoint: Option<&RunCheckpointV1>,
+88:     context: RecoveredAdmissionContext,
+89:     artifact: &AcceptedArtifact,
+90:     workflow: &CompiledWorkflow,
+91: ) -> RuntimeResult<()> {
+92:     if let Some(checkpoint) = checkpoint {
+93:         checkpoint
+94:             .validate_against(workflow, artifact.digest, &artifact.action_contracts)
+95:             .map_err(|error| RuntimeError::Recovery {
+96:                 error: format!("retry checkpoint validation failed: {error}"),
+97:             })?;
+98:         if let Some(admission) = checkpoint.admission.as_ref() {
+99:             validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
+100:                 context,
+101:                 admission,
+102:                 artifact,
+103:                 workflow,
+104:             })?;
+105:         }
+106:     }
+107:     Ok(())
+108: }
+109: 
+110: /// Phase C: Build unverified admission for legacy recovery.
+111: ///
+112: /// For Unverified kind recovery, build admission using the artifact's
+113: /// required capabilities and current policy, then force the Unverified pin
+114: /// so recovery never promotes to Pinned.
+115: pub(crate) fn build_unverified_admission(
+116:     shard: &crate::shard::Shard,
+117:     run: RunId,
+118:     artifact_digest: WorkflowDigest,
+119:     artifact: &AcceptedArtifact,
+120: ) -> RuntimeResult<Option<RunAdmission>> {
+121:     let caps = CapabilitySet::from_grants(artifact.required_capabilities.clone());
+122:     match shard.build_admission(run, artifact_digest, caps)? {
+123:         Some(adm) => Ok(Some(adm.with_policy_pin(RunPolicyPin::Unverified))),
+124:         None => Ok(None),
+125:     }
+126: }
