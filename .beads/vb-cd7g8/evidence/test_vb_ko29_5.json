@@ -1,0 +1,16 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_ko29_5_public_idempotency",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 0.37705230712890625,
+  "stdout": "\nrunning 10 tests\ntest given_completed_run_when_lifecycle_retry_uses_stale_key_then_lifecycle_stale_request ... ok\ntest given_distinct_run_scopes_when_lifecycle_retry_runs_then_each_scope_appends_its_own_retry ... ok\ntest given_diverged_attempt_count_when_duplicate_appended_then_duplicate_event_variant ... ok\ntest given_duplicate_failure_event_when_appended_then_duplicate_event_variant_and_count_unchanged ... ok\ntest given_duplicate_lifecycle_command_when_retried_then_lifecycle_duplicate_request_and_count_unchanged ... ok\ntest given_duplicate_success_event_when_appended_then_duplicate_event_variant_and_count_unchanged ... ok\ntest given_retry_required_policy_when_same_key_dispatched_twice_then_second_dispatch_is_denied ... ok\ntest given_same_run_different_sequence_when_appended_then_order_is_preserved ... ok\ntest given_same_sequence_different_run_when_appended_then_cross_run_sequences_are_independent ... ok\ntest given_same_sequence_in_different_runs_when_appended_then_cross_scope_journals_are_isolated ... ok\n\ntest result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s\n\n",
+  "stderr": "   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-cd7g8-local5090-review/crates/workspace_tests)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.28s\n     Running tests/vb_ko29_5_public_idempotency.rs (target/debug/deps/vb_ko29_5_public_idempotency-774d4b538d29970f)\n"
+}
