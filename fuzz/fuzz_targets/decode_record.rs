@@ -127,6 +127,8 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::ProcessLockIo { .. }
         | JournalError::ArtifactValidation(_)
         | JournalError::ArtifactActionRegistry(_)
-        | JournalError::Trim(_) => {}
+        | JournalError::Trim(_)
+        | JournalError::EmergencyDenyMarkerUnsupportedVersion { .. }
+        | JournalError::EmergencyDenyMarkerMalformed => {}
     }
 }

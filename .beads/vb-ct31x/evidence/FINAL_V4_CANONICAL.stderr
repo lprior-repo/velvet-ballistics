@@ -1,0 +1,54 @@
+[ WARN 2026-10-22 11:34:36.271] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:34:37.132] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:34:37.401] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:34:40.188] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:34:51.976] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:34:53.073] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:34:56.518] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:35:51.434] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:36:23.240] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:36:56.272] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:38:42.453] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID 6066c9e3-9380-4525-9dba-2f7c93bd82b6 with nextest profile: default
+                       velvet-ballistics:test |     Starting 14428 tests across 291 binaries (27 tests skipped)
+velvet-ballistics:benchmark-regression-policy | Error: benchmark evidence line 1 is stale: performance-relevant files differ from measured commit ffa76eb26b35de6c795be058d97a57ca0125e82c: crates/vb_storage/src/batch/emergency_deny.rs, crates/vb_storage/src/batch/mod.rs, crates/vb_storage/src/batch/putters.rs, crates/vb_storage/src/constants.rs, crates/vb_storage/src/error/codes.rs, crates/vb_storage/src/error/mod.rs, crates/vb_storage/src/journal/core.rs, crates/vb_storage/src/journal/emergency_deny.rs, crates/vb_storage/src/journal/emergency_deny_tests.rs, crates/vb_storage/src/journal/mod.rs, crates/vb_storage/src/journal/readonly.rs, crates/vb_storage/src/journal/tests.rs, crates/vb_storage/src/tests.rs
+[ WARN 11:38:59.397] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+              velvet-ballistics:source-length | source-length gate summary:
+              velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+              velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+              velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+              velvet-ballistics:source-length |   test_in_src        scanned=313   warn=48   over_limit=0    limit=1500 warn_at=1200
+              velvet-ballistics:source-length |   test_top_level     scanned=388   warn=6    over_limit=0    limit=3000 warn_at=2400
+              velvet-ballistics:source-length |   production         scanned=951   warn=197  over_limit=0    limit=300 warn_at=240
+              velvet-ballistics:source-length |   ledger rows used:    383
+                       velvet-ballistics:test |         FAIL [   0.002s] (11810/14428) velvet-ballistics-workspace-tests::fjall_keyspace_manifest_tests declared_keyspaces_count
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test declared_keyspaces_count ... FAILED
+
+                       velvet-ballistics:test |     failures:
+
+                       velvet-ballistics:test |     failures:
+                       velvet-ballistics:test |         declared_keyspaces_count
+
+                       velvet-ballistics:test |     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+                       velvet-ballistics:test |   stderr ───
+
+                       velvet-ballistics:test |     thread 'declared_keyspaces_count' (1243089) panicked at crates/workspace_tests/tests/fjall_keyspace_manifest_tests.rs:188:5:
+                       velvet-ballistics:test |     assertion `left == right` failed: declared_keyspaces must return exactly 10 entries
+                       velvet-ballistics:test |       left: 11
+                       velvet-ballistics:test |      right: 10
+                       velvet-ballistics:test |     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+                       velvet-ballistics:test |   Cancelling due to test failure: 15 tests still running
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 276.122s] 11825/14428 tests run: 11824 passed (18 slow), 1 failed, 27 skipped
+                       velvet-ballistics:test |         FAIL [   0.002s] (11810/14428) velvet-ballistics-workspace-tests::fjall_keyspace_manifest_tests declared_keyspaces_count
+                       velvet-ballistics:test | warning: 2603/14428 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+                       velvet-ballistics:test | error: test run failed

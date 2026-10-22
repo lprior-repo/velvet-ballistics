@@ -123,6 +123,8 @@ fn assert_known_journal_error(error: JournalError) -> Result<(), TestCaseError> 
         | JournalError::ProcessLockIo { .. }
         | JournalError::ArtifactValidation(_)
         | JournalError::ArtifactActionRegistry(_)
-        | JournalError::Trim(_) => Ok(()),
+        | JournalError::Trim(_)
+        | JournalError::EmergencyDenyMarkerUnsupportedVersion { .. }
+        | JournalError::EmergencyDenyMarkerMalformed => Ok(()),
     }
 }

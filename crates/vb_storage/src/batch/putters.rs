@@ -25,9 +25,7 @@ use crate::{
 };
 
 impl<'j> JournalWriteBatch<'j> {
-    /// Inserts a workflow source record into the batch.
-    ///
-    /// The source bytes are verified against the claimed digest before staging.
+    /// Inserts a workflow source record, verifying digest before staging.
     pub fn put_workflow_source(
         &mut self,
         record: &WorkflowSourceRecord,

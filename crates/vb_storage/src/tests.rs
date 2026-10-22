@@ -723,7 +723,7 @@ mod tests {
     fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        assert_eq!(FjallJournal::declared_keyspaces().len(), 10);
+        assert_eq!(FjallJournal::declared_keyspaces().len(), 11);
 
         let source_bytes = vec![b'n', b'a', b'm', b'e'];
         let workflow_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
@@ -1648,7 +1648,7 @@ mod tests {
 
         let reopened = init_keyspaces(temp_dir.path());
         assert!(reopened.is_ok(), "init_keyspaces should succeed");
-        assert_eq!(FjallJournal::declared_keyspaces().len(), 10);
+        assert_eq!(FjallJournal::declared_keyspaces().len(), 11);
     }
 
     #[test]
@@ -2264,12 +2264,12 @@ mod tests {
     }
 
     #[test]
-    fn declared_keyspaces_returns_ten_entries() {
+    fn declared_keyspaces_returns_eleven_entries() {
         // Given FjallJournal::declared_keyspaces()
         // When called
-        // Then it returns exactly 10 keyspace names
+        // Then it returns exactly 11 keyspace names including emergency_deny
         let keyspaces = FjallJournal::declared_keyspaces();
-        assert_eq!(keyspaces.len(), 10);
+        assert_eq!(keyspaces.len(), 11);
         assert_eq!(keyspaces[0], "workflow_source");
         assert_eq!(keyspaces[1], "compiled_ir");
         assert_eq!(keyspaces[2], "run_header");
@@ -2279,7 +2279,8 @@ mod tests {
         assert_eq!(keyspaces[6], "index_status");
         assert_eq!(keyspaces[7], "index_workflow");
         assert_eq!(keyspaces[8], "index_action");
-        assert_eq!(keyspaces.last(), Some(&"run_inputs"));
+        assert_eq!(keyspaces.get(9), Some(&"run_inputs"));
+        assert_eq!(keyspaces.get(10), Some(&"emergency_deny"));
     }
 
     #[test]
@@ -7677,6 +7678,10 @@ mod tests {
                 JournalError::IndexStatusStateCollision { .. } => "index_status_state_collision",
                 JournalError::InvalidConfig { .. } => "invalid_config",
                 JournalError::UnsupportedReadOnly => "unsupported_read_only",
+                JournalError::EmergencyDenyMarkerUnsupportedVersion { .. } => {
+                    "emergency_deny_marker_unsupported_version"
+                }
+                JournalError::EmergencyDenyMarkerMalformed => "emergency_deny_marker_malformed",
             }
         }
         let _ = _exhaustive_match;

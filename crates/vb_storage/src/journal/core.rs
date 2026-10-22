@@ -11,9 +11,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::{
     constants::{
-        KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
-        KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER, KEYSPACE_RUN_INPUTS,
-        KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE,
+        KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_EMERGENCY_DENY, KEYSPACE_INDEX_ACTION,
+        KEYSPACE_INDEX_STATUS, KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER,
+        KEYSPACE_RUN_INPUTS, KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE,
     },
     error::JournalError,
     process_lock::ProcessLock,
@@ -60,6 +60,7 @@ pub struct FjallJournal {
     pub(crate) index_status: fjall::Keyspace,
     pub(crate) index_workflow: fjall::Keyspace,
     pub(crate) index_action: fjall::Keyspace,
+    pub(crate) emergency_deny: fjall::Keyspace,
     #[cfg(test)]
     pub(crate) fail_next_persist: AtomicBool,
     #[cfg(test)]
@@ -128,6 +129,9 @@ impl FjallJournal {
         let index_action = database.keyspace(KEYSPACE_INDEX_ACTION, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
         })?;
+        let emergency_deny = database.keyspace(KEYSPACE_EMERGENCY_DENY, || {
+            crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+        })?;
         let _process_lock = ProcessLock::acquire(path_ref)?;
         Ok(Self {
             database,
@@ -141,6 +145,7 @@ impl FjallJournal {
             index_status,
             index_workflow,
             index_action,
+            emergency_deny,
             #[cfg(test)]
             fail_next_persist: AtomicBool::new(false),
             #[cfg(test)]
@@ -154,7 +159,7 @@ impl FjallJournal {
 
     /// Returns all declared keyspace names after a successful open.
     #[must_use]
-    pub const fn declared_keyspaces() -> [&'static str; 10] {
+    pub const fn declared_keyspaces() -> [&'static str; 11] {
         [
             KEYSPACE_WORKFLOW_SOURCE,
             KEYSPACE_COMPILED_IR,
@@ -166,6 +171,7 @@ impl FjallJournal {
             KEYSPACE_INDEX_WORKFLOW,
             KEYSPACE_INDEX_ACTION,
             KEYSPACE_RUN_INPUTS,
+            KEYSPACE_EMERGENCY_DENY,
         ]
     }
 
@@ -222,6 +228,7 @@ impl FjallJournal {
         let _ = self.index_status.contains_key(empty_key)?;
         let _ = self.index_workflow.contains_key(empty_key)?;
         let _ = self.index_action.contains_key(empty_key)?;
+        let _ = self.emergency_deny.contains_key(empty_key)?;
         Ok(())
     }
 

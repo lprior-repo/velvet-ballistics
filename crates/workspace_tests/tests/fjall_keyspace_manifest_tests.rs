@@ -187,8 +187,8 @@ fn declared_keyspaces_count() {
     let keyspaces = FjallJournal::declared_keyspaces();
     assert_eq!(
         keyspaces.len(),
-        10,
-        "declared_keyspaces must return exactly 10 entries"
+        11,
+        "declared_keyspaces must return exactly 11 entries"
     );
 }
 
@@ -206,6 +206,7 @@ fn declared_keyspaces_contains_required_names() {
         "index_status",
         "index_workflow",
         "index_action",
+        "emergency_deny",
     ];
 
     for name in required {

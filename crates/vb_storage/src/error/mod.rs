@@ -189,6 +189,10 @@ pub enum JournalError {
     },
     #[error("trim operation failed: {0}")]
     Trim(Box<crate::TrimError>),
+    #[error("emergency deny marker has unsupported version: {version}")]
+    EmergencyDenyMarkerUnsupportedVersion { version: u8 },
+    #[error("emergency deny marker is malformed (wrong length or encoding)")]
+    EmergencyDenyMarkerMalformed,
 }
 
 #[path = "conversions.rs"]

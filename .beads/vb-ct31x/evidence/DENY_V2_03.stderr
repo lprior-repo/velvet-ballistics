@@ -1,0 +1,42 @@
+[ WARN 2026-10-22 10:45:11.066] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:45:11.066] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:45:11.557] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:45:12.786] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:45:15.035] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:45:38.464] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:45:38.476] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:45:38.525] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:source-length | FAIL crates/vb_storage/src/batch/putters.rs [category=production] has 307 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+velvet-ballistics:source-length | FAIL crates/vb_storage/src/error/codes.rs [category=production] has 305 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+velvet-ballistics:source-length | FAIL crates/vb_storage/src/journal/core.rs [category=production] has 301 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+velvet-ballistics:source-length | source-length gate summary:
+velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+velvet-ballistics:source-length |   test_in_src        scanned=313   warn=48   over_limit=0    limit=1500 warn_at=1200
+velvet-ballistics:source-length |   test_top_level     scanned=386   warn=6    over_limit=0    limit=3000 warn_at=2400
+velvet-ballistics:source-length |   production         scanned=947   warn=194  over_limit=3    limit=300 warn_at=240
+velvet-ballistics:source-length |   ledger rows used:    383
+     velvet-ballistics:lint-src | error: indexing may panic
+     velvet-ballistics:lint-src |   --> crates/vb_storage/src/journal/emergency_deny.rs:60:12
+     velvet-ballistics:lint-src |    |
+     velvet-ballistics:lint-src | 60 |         if bytes[0] != EMERGENCY_DENY_VERSION {
+     velvet-ballistics:lint-src |    |            ^^^^^^^^
+     velvet-ballistics:lint-src |    |
+     velvet-ballistics:lint-src |    = help: consider using `.get(n)` or `.get_mut(n)` instead
+     velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+     velvet-ballistics:lint-src |    = note: requested on the command line with `-D clippy::indexing-slicing`
+
+     velvet-ballistics:lint-src | error: indexing may panic
+     velvet-ballistics:lint-src |   --> crates/vb_storage/src/journal/emergency_deny.rs:62:26
+     velvet-ballistics:lint-src |    |
+     velvet-ballistics:lint-src | 62 |                 version: bytes[0],
+     velvet-ballistics:lint-src |    |                          ^^^^^^^^
+     velvet-ballistics:lint-src |    |
+     velvet-ballistics:lint-src |    = help: consider using `.get(n)` or `.get_mut(n)` instead
+     velvet-ballistics:lint-src |    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
+
+     velvet-ballistics:lint-src | error: could not compile `vb_storage` (lib) due to 2 previous errors

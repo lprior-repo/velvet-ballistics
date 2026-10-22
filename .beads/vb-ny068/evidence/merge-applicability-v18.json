@@ -1,0 +1,14 @@
+{
+  "admission": {
+    "inputs": 44,
+    "differs_in_assembly": [
+      "crates/vb_storage/src/tests.rs"
+    ]
+  },
+  "deny": {
+    "inputs": 18,
+    "differs_in_assembly": [
+      "crates/vb_storage/src/tests.rs"
+    ]
+  }
+}
