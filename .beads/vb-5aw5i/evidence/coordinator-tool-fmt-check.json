@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-5aw5i-local3090-tool-fixtures",
+  "argv": [
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "rustfmt",
+    "--edition",
+    "2024",
+    "--check",
+    "crates/workspace_tests/tests/vb_eepg_bdd_tests.rs",
+    "crates/workspace_tests/tests/vb_8ma2_workspace_assertions.rs",
+    "crates/workspace_tests/tests/vb_kkvb_xtask_command_shell_coverage.rs",
+    "crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs"
+  ],
+  "exit_code": 1,
+  "seconds": 0.015,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-5aw5i/evidence/coordinator-tool-fmt-check"
+}

@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates",
+  "argv": [
+    "moon",
+    "run",
+    ":verify-kani-vb-validate",
+    "--concurrency",
+    "1"
+  ],
+  "exit_code": 0,
+  "seconds": 276.696,
+  "timeout_seconds": 1500,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/repaired-four-accessor-harnesses"
+}

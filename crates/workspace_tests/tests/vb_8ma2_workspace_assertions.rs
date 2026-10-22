@@ -9,7 +9,8 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 const EXTRA_MEMBER_MANIFESTS: &[(&str, &str)] = &[
     ("crates/vb_validate", "vb_validate"),
     ("crates/vb_compile", "vb_compile"),
-    ("crates/vb_queue_semantics", "vb_queue_semantics"),
+    ("crates/vb_yaml", "vb_yaml"),
+    ("crates/vb_expr", "vb_expr"),
     ("crates/velvet_ballistics", "velvet-ballistics"),
     (
         "crates/workspace_tests",
@@ -45,25 +46,21 @@ fn write_file(path: &Path, contents: &str) -> Result<(), std::io::Error> {
 
 fn write_manifest(root: &Path, extra_member: Option<&str>) -> Result<(), std::io::Error> {
     let extra = extra_member.map_or(String::new(), |member| format!("    \"{member}\",\n"));
-    write_file(
-        &root.join("Cargo.toml"),
-        &format!(
-            r#"[workspace]
-members = [
-    "crates/velvet_ballistics",
-    "crates/vb_compile",
-    "crates/vb_core",
-    "crates/vb_ipc",
-    "crates/vb_queue_semantics",
-    "crates/vb_runtime",
-    "crates/vb_storage",
-    "crates/vb_validate",
-    "crates/workspace_tests",
- {extra}]
-exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
-"#
-        ),
-    )
+    let content = format!(
+        "[workspace]\nmembers = [\n\
+         \"crates/vb_core\",\n\
+         \"crates/vb_yaml\",\n\
+         \"crates/vb_validate\",\n\
+         \"crates/vb_expr\",\n\
+         \"crates/vb_compile\",\n\
+         \"crates/vb_storage\",\n\
+         \"crates/vb_runtime\",\n\
+         \"crates/vb_ipc\",\n\
+         \"crates/velvet_ballistics\",\n\
+         \"crates/workspace_tests\",\n\
+         \"fuzz\",\n{extra}]\nexclude = [\"xtask\", \"target/miri-tmp\"]\n"
+    );
+    write_file(&root.join("Cargo.toml"), &content)
 }
 
 fn write_boundary_crates(root: &Path, forbidden_dep: Option<&str>) -> Result<(), std::io::Error> {

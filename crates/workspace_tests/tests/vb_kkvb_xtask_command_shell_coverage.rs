@@ -5,7 +5,6 @@ use std::process::{Command, Output};
 use tempfile::TempDir;
 
 const WORKSPACE_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
-const WORKSPACE_MANIFEST: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.toml");
 const TOKENS_FILE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../design/tokens/velvet_ui_tokens.toml"
@@ -14,10 +13,10 @@ const TOKENS_FILE: &str = concat!(
 #[test]
 fn xtask_help_lists_required_and_legacy_commands_when_requested() -> Result<(), Box<dyn Error>> {
     // Given
-    let workspace = TempDir::new()?;
+    let workspace = Path::new(WORKSPACE_ROOT);
 
     // When
-    let output = run_xtask(workspace.path(), &["--help"])?;
+    let output = run_xtask(workspace, &["--help"])?;
 
     // Then
     assert_eq!(output.status.code(), Some(0));
@@ -32,10 +31,10 @@ fn xtask_help_lists_required_and_legacy_commands_when_requested() -> Result<(), 
 #[test]
 fn xtask_version_prints_package_version_when_requested() -> Result<(), Box<dyn Error>> {
     // Given
-    let workspace = TempDir::new()?;
+    let workspace = Path::new(WORKSPACE_ROOT);
 
     // When
-    let output = run_xtask(workspace.path(), &["--version"])?;
+    let output = run_xtask(workspace, &["--version"])?;
 
     // Then
     assert_eq!(output.status.code(), Some(0));
@@ -45,8 +44,8 @@ fn xtask_version_prints_package_version_when_requested() -> Result<(), Box<dyn E
 
 #[test]
 #[ignore] // UI commands moved to velvet-optional repo
-fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen()
--> Result<(), Box<dyn Error>> {
+fn xtask_legacy_separator_routes_ui_overlap_check_and_reports_missing_screen(
+) -> Result<(), Box<dyn Error>> {
     // Given
     let workspace = TempDir::new()?;
 
@@ -233,9 +232,7 @@ fn run_xtask(current_dir: &Path, args: &[&str]) -> Result<Output, Box<dyn Error>
         .args([
             "run",
             "--manifest-path",
-            WORKSPACE_MANIFEST,
-            "-p",
-            "xtask",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../xtask/Cargo.toml"),
             "--",
         ])
         .args(args)

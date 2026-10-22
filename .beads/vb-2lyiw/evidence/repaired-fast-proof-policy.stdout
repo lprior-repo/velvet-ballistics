@@ -1,0 +1,278 @@
+▮▮▮▮ velvet-ballistics:blocker-closure-evidence (b89722cd)
+▮▮▮▮ velvet-ballistics:verify-production-inner-drift (174a17b9)
+       velvet-ballistics:blocker-closure-evidence | VB_JPQ7_CLOSURE_EVIDENCE_PASS closed_children=55
+▮▮▮▮ velvet-ballistics:blocker-closure-evidence (271ms, b89722cd)
+▮▮▮▮ velvet-ballistics:verify-verus (d616a456)
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/taint_lattice.rs
+                   velvet-ballistics:verify-verus | verification results:: 25 verified, 0 errors
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/step_state_machine.rs
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |   --> verification/verus/production_inner/step_state_machine_production.rs:68:10
+                   velvet-ballistics:verify-verus |    |
+                   velvet-ballistics:verify-verus | 68 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |    |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/production_inner/step_state_machine_production.rs:100:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 100 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/production_inner/step_state_machine_production.rs:120:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 120 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/production_inner/step_state_machine_production.rs:144:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 144 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+                   velvet-ballistics:verify-verus | verification results:: 32 verified, 0 errors
+                   velvet-ballistics:verify-verus | warning: 4 warnings emitted
+
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/step_budget.rs
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |   --> verification/verus/production_inner/signals_production.rs:58:10
+                   velvet-ballistics:verify-verus |    |
+                   velvet-ballistics:verify-verus | 58 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |    |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |   --> verification/verus/production_inner/signals_production.rs:76:10
+                   velvet-ballistics:verify-verus |    |
+                   velvet-ballistics:verify-verus | 76 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |    |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/production_inner/signals_production.rs:194:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 194 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+                   velvet-ballistics:verify-verus | verification results:: 21 verified, 0 errors
+                   velvet-ballistics:verify-verus | warning: 3 warnings emitted
+
+                   velvet-ballistics:verify-verus | [verus] verus --no-lifetime --crate-type=lib verification/verus/budget_bounded.rs
+                   velvet-ballistics:verify-verus | verification results:: 65 verified, 0 errors
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/budget_computation.rs
+                   velvet-ballistics:verify-verus | verification results:: 30 verified, 0 errors
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/vb_jpq724_events_for_run_production.rs
+                   velvet-ballistics:verify-verus | verification results:: 37 verified, 0 errors
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/vb_runtime_execute_do_spec.rs
+                   velvet-ballistics:verify-verus | verification results:: 30 verified, 0 errors
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/budget_monotonic.rs
+                   velvet-ballistics:verify-verus | verification results:: 50 verified, 0 errors
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/run_frame_invariant.rs
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/production_inner/run_frame_invariant_production.rs:176:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 176 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+                   velvet-ballistics:verify-verus | verification results:: 47 verified, 0 errors
+                   velvet-ballistics:verify-verus | warning: 1 warning emitted
+
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/value_store_invariant.rs
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |   --> verification/verus/value_store_invariant.rs:78:17
+                   velvet-ballistics:verify-verus |    |
+                   velvet-ballistics:verify-verus | 78 | #[derive(Debug, Clone, PartialEq, Eq)]
+                   velvet-ballistics:verify-verus |    |                 ^^^^^
+
+                   velvet-ballistics:verify-verus | verification results:: 20 verified, 0 errors
+                   velvet-ballistics:verify-verus | warning: 1 warning emitted
+
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/signals_invariant.rs
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |   --> verification/verus/production_inner/signals_production.rs:58:10
+                   velvet-ballistics:verify-verus |    |
+                   velvet-ballistics:verify-verus | 58 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |    |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |   --> verification/verus/production_inner/signals_production.rs:76:10
+                   velvet-ballistics:verify-verus |    |
+                   velvet-ballistics:verify-verus | 76 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |    |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/production_inner/signals_production.rs:194:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 194 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+
+  velvet-ballistics:verify-production-inner-drift | === Summary ===
+  velvet-ballistics:verify-production-inner-drift | Mirror files checked:  64
+  velvet-ballistics:verify-production-inner-drift | Extern files scanned:  78
+  velvet-ballistics:verify-production-inner-drift | Drift findings:        0
+  velvet-ballistics:verify-production-inner-drift | Log:                   target/verus-drift/drift.log
+
+  velvet-ballistics:verify-production-inner-drift | Production-inner drift gate: PASS
+▮▮▮▮ velvet-ballistics:verify-production-inner-drift (6s 767ms, 174a17b9)
+velvet-ballistics:verify-verus-production-binding | ================================================================
+velvet-ballistics:verify-verus-production-binding |   Verus production-binding audit (ABSOLUTE — no exceptions)
+velvet-ballistics:verify-verus-production-binding | ================================================================
+velvet-ballistics:verify-verus-production-binding |   STRONG (direct crates/ binding): 0
+velvet-ballistics:verify-verus-production-binding |   WEAK (production_inner/ mirror): 72
+velvet-ballistics:verify-verus-production-binding |   VACUUM (no production binding):  0
+▮▮▮▮ velvet-ballistics:verify-verus-production-binding (cached, 79614b28)
+                   velvet-ballistics:verify-verus | verification results:: 21 verified, 0 errors
+                   velvet-ballistics:verify-verus | warning: 3 warnings emitted
+
+▮▮▮▮ velvet-ballistics:supply-chain (c60db390)
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/signals_try_take.rs
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |   --> verification/verus/production_inner/signals_production.rs:58:10
+                   velvet-ballistics:verify-verus |    |
+                   velvet-ballistics:verify-verus | 58 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |    |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |   --> verification/verus/production_inner/signals_production.rs:76:10
+                   velvet-ballistics:verify-verus |    |
+                   velvet-ballistics:verify-verus | 76 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |    |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/production_inner/signals_production.rs:194:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 194 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+                   velvet-ballistics:verify-verus | verification results:: 20 verified, 0 errors
+                   velvet-ballistics:verify-verus | warning: 3 warnings emitted
+
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/step_offset.rs
+                   velvet-ballistics:verify-verus | verification results:: 13 verified, 0 errors
+                   velvet-ballistics:verify-verus | [verus] verus --crate-type=lib verification/verus/try_from_parts.rs
+                   velvet-ballistics:verify-verus | warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/extern_try_from_parts.rs:244:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 244 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/extern_try_from_parts.rs:366:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 366 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+                   velvet-ballistics:verify-verus | warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+                   velvet-ballistics:verify-verus |    --> verification/verus/extern_try_from_parts.rs:410:10
+                   velvet-ballistics:verify-verus |     |
+                   velvet-ballistics:verify-verus | 410 | #[derive(Clone)]
+                   velvet-ballistics:verify-verus |     |          ^^^^^
+
+                   velvet-ballistics:supply-chain | warning[license-exception-not-encountered]: license exception was not encountered
+                   velvet-ballistics:supply-chain |    ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/deny.toml:26:37
+                   velvet-ballistics:supply-chain |    │
+                   velvet-ballistics:supply-chain | 26 │     { allow = ["MPL-2.0"], crate = "resvg" },
+                   velvet-ballistics:supply-chain |    │                                     ━━━━━ unmatched license exception
+
+                   velvet-ballistics:supply-chain | warning[license-exception-not-encountered]: license exception was not encountered
+                   velvet-ballistics:supply-chain |    ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/deny.toml:27:37
+                   velvet-ballistics:supply-chain |    │
+                   velvet-ballistics:supply-chain | 27 │     { allow = ["MPL-2.0"], crate = "usvg" },
+                   velvet-ballistics:supply-chain |    │                                     ━━━━ unmatched license exception
+
+                   velvet-ballistics:supply-chain | warning[license-not-encountered]: license was not encountered
+                   velvet-ballistics:supply-chain |    ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/deny.toml:15:6
+                   velvet-ballistics:supply-chain |    │
+                   velvet-ballistics:supply-chain | 15 │     "ISC",
+                   velvet-ballistics:supply-chain |    │      ━━━ unmatched license allowance
+
+                   velvet-ballistics:supply-chain | warning[duplicate]: found 2 duplicate entries for crate 'getrandom'
+                   velvet-ballistics:supply-chain |    ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/Cargo.lock:83:1
+                   velvet-ballistics:supply-chain |    │  
+                   velvet-ballistics:supply-chain | 83 │ ╭ getrandom 0.3.4 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain | 84 │ │ getrandom 0.4.2 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain |    │ ╰─────────────────────────────────────────────────────────────────────┘ lock entries
+
+                   velvet-ballistics:supply-chain | warning[duplicate]: found 4 duplicate entries for crate 'hashbrown'
+                   velvet-ballistics:supply-chain |    ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/Cargo.lock:87:1
+                   velvet-ballistics:supply-chain |    │  
+                   velvet-ballistics:supply-chain | 87 │ ╭ hashbrown 0.14.5 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain | 88 │ │ hashbrown 0.15.5 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain | 89 │ │ hashbrown 0.16.1 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain | 90 │ │ hashbrown 0.17.1 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain |    │ ╰──────────────────────────────────────────────────────────────────────┘ lock entries
+
+                   velvet-ballistics:supply-chain | warning[duplicate]: found 2 duplicate entries for crate 'r-efi'
+                   velvet-ballistics:supply-chain |     ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/Cargo.lock:143:1
+                   velvet-ballistics:supply-chain |     │  
+                   velvet-ballistics:supply-chain | 143 │ ╭ r-efi 5.3.0 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain | 144 │ │ r-efi 6.0.0 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain |     │ ╰─────────────────────────────────────────────────────────────────┘ lock entries
+
+                   velvet-ballistics:supply-chain | warning[duplicate]: found 2 duplicate entries for crate 'winnow'
+                   velvet-ballistics:supply-chain |     ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/Cargo.lock:240:1
+                   velvet-ballistics:supply-chain |     │  
+                   velvet-ballistics:supply-chain | 240 │ ╭ winnow 0.7.15 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain | 241 │ │ winnow 1.0.3 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain |     │ ╰──────────────────────────────────────────────────────────────────┘ lock entries
+
+                   velvet-ballistics:supply-chain | warning[duplicate]: found 2 duplicate entries for crate 'wit-bindgen'
+                   velvet-ballistics:supply-chain |     ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/Cargo.lock:242:1
+                   velvet-ballistics:supply-chain |     │  
+                   velvet-ballistics:supply-chain | 242 │ ╭ wit-bindgen 0.51.0 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain | 243 │ │ wit-bindgen 0.57.1 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain |     │ ╰────────────────────────────────────────────────────────────────────────┘ lock entries
+
+                   velvet-ballistics:supply-chain | error[unmaintained]: unsafe-libyaml is unmaintained
+                   velvet-ballistics:supply-chain |     ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/Cargo.lock:204:1
+                   velvet-ballistics:supply-chain |     │
+                   velvet-ballistics:supply-chain | 204 │ unsafe-libyaml 0.2.11 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain |     │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ unmaintained advisory detected
+                   velvet-ballistics:supply-chain |     │
+                   velvet-ballistics:supply-chain |     ├ ID: RUSTSEC-2024-0449
+                   velvet-ballistics:supply-chain |     ├ Advisory: https://rustsec.org/advisories/RUSTSEC-2024-0449
+                   velvet-ballistics:supply-chain |     ├ The [repository](https://github.com/dtolnay/unsafe-libyaml) was archived by
+                   velvet-ballistics:supply-chain |       its owner on 2024-03-25 and is read-only. The last release is 0.2.11
+                   velvet-ballistics:supply-chain |       (March 2024).
+                   velvet-ballistics:supply-chain |       
+                   velvet-ballistics:supply-chain |       `unsafe-libyaml` is a machine translation of libyaml's C code into unsafe
+                   velvet-ballistics:supply-chain |       Rust (c2rust). Bugs found in it will not be fixed upstream. It is used by
+                   velvet-ballistics:supply-chain |       `serde_yaml` (itself deprecated) and by forks such as `serde_yaml_ng`.
+                   velvet-ballistics:supply-chain |       
+                   velvet-ballistics:supply-chain |       ## Alternatives
+                   velvet-ballistics:supply-chain |       
+                   velvet-ballistics:supply-chain |       Consider a YAML parser written in safe Rust, for example:
+                   velvet-ballistics:supply-chain |       
+                   velvet-ballistics:supply-chain |       - [saphyr](https://crates.io/crates/saphyr) ([serde-saphyr](https://crates.io/crates/serde-saphyr) for serde users)
+                   velvet-ballistics:supply-chain |       - [noyalib](https://crates.io/crates/noyalib)
+                   velvet-ballistics:supply-chain |     ├ Announcement: https://github.com/dtolnay/unsafe-libyaml
+                   velvet-ballistics:supply-chain |     ├ Solution: No safe upgrade is available!
+
+                   velvet-ballistics:supply-chain | warning[yanked]: detected yanked crate (try `cargo update -p fjall`)
+                   velvet-ballistics:supply-chain |    ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/Cargo.lock:74:1
+                   velvet-ballistics:supply-chain |    │
+                   velvet-ballistics:supply-chain | 74 │ fjall 3.1.4 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain |    │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ yanked version
+
+                   velvet-ballistics:supply-chain | warning[yanked]: detected yanked crate (try `cargo update -p lsm-tree`)
+                   velvet-ballistics:supply-chain |     ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/Cargo.lock:114:1
+                   velvet-ballistics:supply-chain |     │
+                   velvet-ballistics:supply-chain | 114 │ lsm-tree 3.1.4 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain |     │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ yanked version
+
+                   velvet-ballistics:supply-chain | warning[yanked]: detected yanked crate (try `cargo update -p spin`)
+                   velvet-ballistics:supply-chain |     ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/Cargo.lock:183:1
+                   velvet-ballistics:supply-chain |     │
+                   velvet-ballistics:supply-chain | 183 │ spin 0.9.8 registry+https://github.com/rust-lang/crates.io-index
+                   velvet-ballistics:supply-chain |     │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ yanked version
+
+                   velvet-ballistics:supply-chain | warning[advisory-not-detected]: advisory was not encountered
+                   velvet-ballistics:supply-chain |    ┌─ /home/lewis/src/isoloated/velvet-ballistics-vb-2lyiw-reviewed-gates/deny.toml:70:6
+                   velvet-ballistics:supply-chain |    │
+                   velvet-ballistics:supply-chain | 70 │     "RUSTSEC-2025-0057",
+                   velvet-ballistics:supply-chain |    │      ━━━━━━━━━━━━━━━━━ no crate matched advisory criteria
+
+                   velvet-ballistics:supply-chain | advisories FAILED, bans ok, licenses ok, sources ok
+▮▮▮▮ velvet-ballistics:supply-chain (1s 219ms, c60db390)
+                   velvet-ballistics:verify-verus | verification results:: 67 verified, 0 errors
+                   velvet-ballistics:verify-verus | warning: 3 warnings emitted
+
