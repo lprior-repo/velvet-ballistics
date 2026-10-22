@@ -1,0 +1,182 @@
+# Final Test Coverage Disposition — vb-vzyac (Corrected)
+
+Base: da633fe0bbde9e414173d5f7aabe314a37f8752d
+Candidate: f003129c2e9c1c502c7c236e16c9e72592d4c967
+
+## A. Deleted `crates/vb_compile/tests/digest_duplicate_parity.rs` — COVERED
+
+Original file: 5e67c48082a91c49ac82c03c2991bc56a4fa4478
+Deleted with 4 tests:
+- `ask_prompt_some_timeout_parity` — Ask with Some("30s") timeout
+- `ask_prompt_none_timeout_parity` — Ask with None timeout
+- `ask_empty_prompt_parity` — Ask with empty prompt
+- `set_finish_parity` — Set + Finish source
+
+Replacement tests (compiled and passing):
+
+| Original | Replacement | Oracle | Evidence |
+|----------|-------------|--------|----------|
+| ask_prompt_some_timeout_parity | `digest_ask_prompt_sensitivity.rs::canonical_digest_produces_distinct_digests_when_ask_prompt_differs_simple` | Digest changes when prompt string differs | File a10680166e54d42a62618d3f22eac5501f466cba |
+| ask_prompt_none_timeout_parity | `digest_ask_timeout_sensitivity.rs::canonical_digest_produces_distinct_digests_when_ask_timeout_none_vs_some` | Digest changes when timeout None vs Some | File 94f1ec10a2ac68692d76cbc21c28a24d367a7d5e |
+| ask_empty_prompt_parity | `digest_ask_prompt_sensitivity.rs::canonical_digest_produces_distinct_digests_when_ask_prompt_one_empty_one_nonempty` | Digest changes when one prompt empty vs non-empty | Same file as above |
+| set_finish_parity | `digest_set_finish_regression.rs` (12 tests, not 11) | Set/Finish determinism and sensitivity | File d158ef38e2de67899c418e066f673ab6fb4ab87b |
+
+Additional compiled artifact digest tests: `compiled_digest_payload.rs` (3 tests, file 91320215dfa7809ccd112e520e7fbfb3c0b66fdc).
+
+Note: `canonical_digest` is the public source-level identity function. The compiled artifact digest (`compiled_digest_is_hash_of_serialized_parts_with_digest_zeroed`) is a separate serialization hash. These are distinct authorities; parity tests verified the former.
+
+Test run: 27 tests passed (6 + 6 + 12 + 3), 0 failed, RUSTFLAGS=-Dwarnings.
+
+No gap. Behavior tests are stronger than parity tests.
+
+## B. `crates/vb_compile/tests/v1_primitive_lowering.rs` — COVERED
+
+Original: 985e8cc6c5b1b14aec538d0ca32417697641c5cb
+Current: e16ca50cab96288b59fccdf195f7afd969d59031
+
+Removed 2 rows (one each in `compile_source_returns_exact_error_variants_for_contract_taxonomy` and `public_compile_apis_return_exact_error_variants_for_contract_taxonomy`) that expected `CompileError::UnsupportedTopLevelDeclaration("inputs")`.
+
+The `inputs` top-level field is now supported. Positive compilation/execution tests:
+
+- `crates/workspace_tests/tests/cli/finish_input_execution.rs::finish_input_execution` (file e76625447c117fdb2499db1ed5b81f073f2c2e03) — End-to-end public CLI test. Creates workflow with `inputs:\n  count: number`, submits via `velvet-ballistics submit`, runs via `velvet-ballistics run`, and verifies result `42`. This is the definitive positive test that the `inputs` field compiles and executes.
+
+Other unsupported declaration cases (result, name, retry, on_error) retained as exact typed error tests.
+
+Test run: 1 test passed, 0 failed.
+
+No gap.
+
+## C. `crates/vb_runtime/tests/vb_wave16_mqa.rs` — COVERED
+
+Original: 86c1d855aa97369f7f773b3f23bc0d04a907d011
+Current: 844335d3e3efed03af644d10381c204c6cd0da59
+
+Deleted helper function `test_digest() -> WorkflowDigest` (not a `#[test]` function). Replaced by importing from `crates/vb_runtime/tests/support/verified_artifact.rs` via `accepted_artifact_with_caps`.
+
+Exact 3 retained tests with oracles:
+
+1. `mqa01_scenario1_rp018_len_counts_registered_not_sparse_slots` — `mq.length()` returns count of registered slots, not highest slot index. Allocates sparse slots (0, 3, 7), verifies `length()` == 3.
+2. `mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5` — Backpressure triggers at 6 registered slots with threshold 7 (not 5).
+3. `mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error` — `acquire()` with wrong count returns typed `Error::CapabilityCountMismatch`, not panic.
+
+Test run: 3 tests passed, 0 failed.
+
+No gap.
+
+## D. `crates/velvet_ballistics/tests/admission_evidence_integration/` — COVERED
+
+Original location: `crates/vb_cli/tests/admission_evidence_integration/chunk_00{1,2,3,4}.rs`
+New location: `crates/velvet_ballistics/tests/admission_evidence_integration/chunk_00{1,2,3,4}.rs`
+
+Original chunk_001: d7512ef1692d91e75d19eaee397d14be27e2a697
+Current chunk_001: adc2b8264f660d4066ad0dfd4332865e6fbe85a5
+
+Macro `fail_assert` definition (unchanged):
+```rust
+fn fail_assert(_message: std::fmt::Arguments<'_>) -> bool {
+    false
+}
+macro_rules! fail_assert {
+    ($($arg:tt)*) => {
+        assert!(fail_assert(format_args!($($arg)*)), $($arg)*)
+    }
+}
+```
+This macro calls `assert!(false, ...)` which panics on failure. Any `return;` after `fail_assert!` is unreachable code, not a skipped test. Verified across all 4 chunks.
+
+No assertions removed; all original test logic preserved with API updates.
+
+Test run: 25 tests passed (across all 4 chunks), 0 failed.
+
+No gap.
+
+## E. `crates/workspace_tests/tests/runtime_version_barrier_tests.rs` — INTENTIONAL REDUCTION
+
+Original: 695cdd2a7f1a13b14413e40c69673cc297c4c882 (19 tests)
+Current: 066b602a83f71bdf3d81a16d46da5000dd5c125f (10 tests)
+
+Exact old → new disposition table:
+
+| Old Test | Disposition | New Coverage |
+|----------|-------------|--------------|
+| gate_count_zero_rejected | Replaced | `any_claimed_gate_count_without_evidence_is_rejected` (proptest all u8) |
+| gate_count_fourteen_rejected | Replaced | Same proptest |
+| gate_count_sixteen_rejected | Replaced | Same proptest |
+| gate_count_fifteen_accepted | Obsolete | Gate count no longer authority; evidence-based |
+| bounded_false_rejected | Replaced | `changed_proof_claims_rejected_even_after_checksum_rebinding` (loops all 6 flags) |
+| taint_safe_false_rejected | Replaced | Same |
+| retry_safe_false_rejected | Replaced | Same |
+| durable_false_rejected | Replaced | Same |
+| replayable_false_rejected | Replaced | Same |
+| idempotency_verified_false_rejected | Replaced | Same |
+| artifact_digest_mismatch_rejected | Replaced | `requested_digest_mismatch_has_exact_error` (exact error payload) |
+| artifact_digest_match_accepted | Replaced | `verified_artifact_admitted_without_fabricated_claims` |
+| unsupported_step_primitive_rejected_at_compile | Retained | Same test name and behavior |
+| relaxed_policy_skips_barrier_validation | Retained | Same test name and behavior |
+| missing_artifact_rejected_under_strict_policy | Retained | Same test name and behavior |
+| all_proof_flags_true_accepted | Obsolete | Flag truth no longer establishes evidence |
+| validate_gate_count_rejects_invalid_counts | Replaced | `any_claimed_gate_count_without_evidence_is_rejected` (proptest u8::ANY) |
+| validate_gate_count_accepts_fifteen | Obsolete | Gate count 15 no longer special |
+| digest_mismatch_detected_by_admission | Replaced | `matching_digest_does_not_authorize_changed_ir` |
+
+Additional new tests:
+- `all_legacy_claims_true_do_not_establish_evidence` — All 6 flags true + gate count 15 still rejected without compiled artifact
+- `unsupported_evidence_version_rejected` — New version check
+- `changed_proof_claims_rejected_even_after_checksum_rebinding` — Flips each of 7 fields (6 flags + gate count) individually, recomputes digest, verifies rejection
+
+Verification: `changed_proof_claims_rejected_even_after_checksum_rebinding` loops `field` 0..7, covering all 6 proof flags (fields 0-5) and gate count (field 6 via `_` arm). `any_claimed_gate_count_without_evidence_is_rejected` uses `proptest::num::u8::ANY` (all 256 values). Error assertions use exact payloads (`assert_eq!(admit(artifact), evidence_error())`), not blanket `is_err()`.
+
+Test run: 10 tests passed, 0 failed, RUSTFLAGS=-Dwarnings.
+
+No gap. Architectural shift from flag-based to evidence-based admission.
+
+## F. `fuzz/fuzz_targets/kind_validation.rs` — COVERED
+
+Original: 152057e0c564ef139450a5274e48e6e3f9eb0b99
+Current: c2c9ac24c87e3a00cefeb280a47a9d2509242f5e
+
+Changes:
+1. `assert_eq!(bool_expr, true, "msg")` → `assert!(bool_expr, "msg")` at line 36 (is_known_record_kind check)
+2. `assert_eq!(bool_expr, true, "msg")` → `assert!(bool_expr, "msg")` at line 57 (RecordKind family check)
+
+Semantic equivalence: Both forms panic on false, pass on true. No behavioral change.
+
+All known record kind family checks and unknown kind type error assertions (4 known wrong families + unknown type guard) retained. No fake 255-combo claims.
+
+No gap.
+
+## G. UI 662-line archive — PREVIOUSLY MISSTATED; NOW CORRECTED
+
+Previous artifact incorrectly claimed "no active UI test coverage existed at base."
+
+FACT: Base commit da633fe0bbde9e414173d5f7aabe314a37f8752d contained `crates/workspace_tests/tests/vb_nf2u_ui_release_acceptance.rs` (662 lines, blob 756e5cbfbbe65cf577bd6d22cec4f7f926432774).
+
+Archive: `docs/history/vb_nf2u_ui_release_acceptance.rs.pre-vb-5aw5i` has identical hash 756e5cbfbbe65cf577bd6d22cec4f7f926432774 — byte-exact preservation verified.
+
+Replacement: `crates/workspace_tests/tests/vb_nf2u_current_scope_tests.rs` (file 98294c97ffc164e957e3ee9e706fb2a67a467c91) with 6 current-scope backend/CLI tests:
+
+1. `removed_ui_command_is_refused_with_unknown_command_error` — Exit code + exact error message
+2. `removed_ui_release_command_is_not_registered` — Exit code + exact error message
+3. `cli_help_lists_current_command_surface` — 7 current commands present, 2 removed absent
+4. `cli_version_prints_version_string` — Version command works
+5. `validate_command_runs_on_valid_workflow` — Actual CLI validation with real workflow file
+6. `removed_codegen_ui_crates_are_not_workspace_members` — Cargo.toml structure verified
+
+Test run: 6 tests passed, 0 failed, RUSTFLAGS=-Dwarnings.
+
+Note: Per AGENTS.md and MASTER scope, UI was explicitly removed from scope. These backend CLI tests do not prove UI behavior; they prove the UI surface is correctly removed from the CLI. Independent acceptance (bbe4588) retained for 48 tool tests + 6 existing ignored.
+
+No gap for current scope.
+
+## Conclusion
+
+All identified test changes are intentional. No actual coverage loss. Tests either:
+1. Moved to new crate location (vb_cli → velvet_ballistics)
+2. Replaced with stronger behavior tests (digest_duplicate_parity → 27 sensitivity/regression/payload tests)
+3. Updated for API changes (v1_primitive_lowering, wave16_mqa, runtime_version_barrier)
+4. Purely syntactic (kind_validation.rs)
+5. Scope change with byte-exact archive (UI → CLI current-scope tests)
+
+The old "proof flag" validation model (15 gates, 6 flags) has been intentionally replaced with actual evidence-based admission. This is a genuine architectural shift, not test weakening.
+
+STATUS: APPROVED
