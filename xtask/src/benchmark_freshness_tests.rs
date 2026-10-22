@@ -4,10 +4,10 @@ use super::{resolve_commit, validate_evidence_freshness};
 use crate::benchmark_tests_support::{GitFixture, valid_repo};
 
 fn stale_rejection(fixture: &GitFixture, measured: &str, head: &str) -> anyhow::Result<String> {
-    validate_evidence_freshness(fixture.path(), measured, head, 1)
-        .err()
-        .context("expected a staleness rejection")
-        .map(|error| error.to_string())
+    match validate_evidence_freshness(fixture.path(), measured, head, 1) {
+        Ok(()) => anyhow::bail!("expected a staleness rejection"),
+        Err(error) => Ok(error.to_string()),
+    }
 }
 
 #[test]
@@ -246,9 +246,11 @@ fn missing_commit_rejected() -> anyhow::Result<()> {
     let fixture = valid_repo()?;
     let head = fixture.head()?;
     let missing = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    let error = validate_evidence_freshness(fixture.path(), missing, &head, 1)
-        .err()
-        .context("missing commit must be rejected")?;
+    let result = validate_evidence_freshness(fixture.path(), missing, &head, 1);
+    let error = match result {
+        Ok(()) => anyhow::bail!("missing commit must be rejected"),
+        Err(e) => e,
+    };
     assert!(
         error.to_string().contains("not a valid commit"),
         "{}",
@@ -261,9 +263,11 @@ fn missing_commit_rejected() -> anyhow::Result<()> {
 fn non_commit_blob_rejected() -> anyhow::Result<()> {
     let fixture = valid_repo()?;
     let blob = fixture.run_git(&["rev-parse", "HEAD:crates/vb_core/src/lib.rs"])?;
-    let error = resolve_commit(fixture.path(), &blob, 1)
-        .err()
-        .context("blob object must not resolve as a commit")?;
+    let result = resolve_commit(fixture.path(), &blob, 1);
+    let error = match result {
+        Ok(s) => anyhow::bail!("blob object must not resolve as a commit, got: {}", s),
+        Err(e) => e,
+    };
     assert!(
         error.to_string().contains("not a valid commit"),
         "{}",

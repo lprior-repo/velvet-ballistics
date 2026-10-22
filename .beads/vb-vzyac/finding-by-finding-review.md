@@ -64,7 +64,7 @@ These are 12 new test files added in the candidate. They have `removed_exact=0` 
 
 | File | Exact | Weak | Purpose |
 |---|---|---|---|
-| expr_bytecode_tests.rs | 49 | 2 | Expression evaluation semantics (bytecode interpreter) |
+| expr_bytecode_tests.rs | 49 | 2 | Expression evaluation semantics (bytecode interpreter) — MOVED from vb_compile, not new |
 | lifecycle_tests/chunk_009.rs | 80 | 14 | Shard lifecycle command handling (re-stated existing + 14 new guards) |
 | submission_parity.rs | 13 | 3 | Direct submit vs admission parity for various failure modes |
 | durable_retry_run_attempt_authority.rs | 12 | 1 | Retry attempt tracking and lifecycle abort authority |

@@ -168,13 +168,16 @@ Note: Per AGENTS.md and MASTER scope, UI was explicitly removed from scope. Thes
 
 No gap for current scope.
 
-## H. New test files with weak assertions — NO LOSS (added coverage)
+## H. Moved and new test files — NO LOSS
 
-13 new test files added in candidate with 110 exact + 32 weak assertions total. These are pure additions, not weakenings.
+### Moved (not new): `crates/vb_expr/src/expr_bytecode/tests/expr_bytecode_tests.rs`
+
+The expression bytecode test suite was MOVED from `crates/vb_compile/src/expr_bytecode/tests.rs` to the new `crates/vb_expr` crate as part of the crate split. The first 80+ lines are identical; old `.unwrap()` patterns were cleaned up to fallible `?` returns. All test bodies and assertions were retained. This is not new coverage — it is relocated coverage with style improvements.
+
+### New test files (11 genuinely new):
 
 | File | Exact Added | Weak Added | Purpose |
 |------|-------------|------------|---------|
-| `crates/vb_expr/src/expr_bytecode/tests/expr_bytecode_tests.rs` (67462a4) | 49 | 2 | Expression bytecode evaluation semantics |
 | `crates/vb_runtime/src/shard/lifecycle_tests/chunk_009.rs` (ddb26ab) | 80 re-stated | 14 added | Lifecycle shard command handling |
 | `crates/vb_runtime/src/shard/tests/submission_parity.rs` (b384e18) | 13 | 3 | Direct submit vs admission parity |
 | `crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs` (3ef1139) | 12 | 1 | Retry attempt tracking authority |
@@ -185,6 +188,9 @@ No gap for current scope.
 | `crates/workspace_tests/tests/cli/submit_input_boundary.rs` (3c36a08) | 29 | 2 | CLI input submission edge cases |
 | `crates/workspace_tests/tests/cli/submit_retained_inputs.rs` (8490e4b) | 7 | 3 | Retained input behavior |
 | `crates/workspace_tests/tests/cli/verify_budget_profiles.rs` (98a6fcd) | 8 | 2 | Budget profile verification |
+| `crates/vb_runtime/src/admission/tests.rs` (e5240f2) | 1 | 1 | Admission certificate validation addition |
+
+Total new coverage: 175 exact + 32 weak assertions across 11 new files (plus the moved expr_bytecode_tests.rs with 49 exact + 2 weak assertions).
 
 Weak assertions are legitimate: boolean expectations (`is_ok()`, `is_err()`, `is_some()`), error-message substring checks, and supplementary guards paired with stronger exact assertions. No required behavior lost.
 
@@ -217,6 +223,7 @@ All identified test changes are intentional. No actual coverage loss. Tests eith
 3. Updated for API changes (v1_primitive_lowering, wave16_mqa, runtime_version_barrier)
 4. Purely syntactic (kind_validation.rs)
 5. Scope change with byte-exact archive (UI → CLI current-scope tests)
+6. MOVED between crates (vb_compile → vb_expr bytecode tests)
 
 The old "proof flag" validation model (15 gates, 6 flags) has been intentionally replaced with actual evidence-based admission. This is a genuine architectural shift, not test weakening.
 
