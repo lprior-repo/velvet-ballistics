@@ -1,28 +1,28 @@
 //! Public behavior tests for bead vb-ko29.5 idempotency permutations.
 
 use tempfile::TempDir;
+use vb_core::action::ActionTicket;
 use vb_core::action::Idempotency;
 use vb_core::errors::CoreError;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::policy::RuntimePolicy;
+use vb_runtime::admission::{
+    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, admit_artifact_run,
+    admit_artifact_run_with_certificate_floor,
+};
+use vb_storage::ActionReplayTracker;
+use vb_storage::admission::{accepted_artifact_digest, prepare_compiled_artifact};
+use vb_storage::replay_journal;
 use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
 use velvet_ballistics::lifecycle;
-use vb_core::policy::RuntimePolicy;
-use vb_core::action::ActionTicket;
-use vb_runtime::admission::{
-    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
-    admit_artifact_run, admit_artifact_run_with_certificate_floor,
-};
-use vb_storage::admission::{prepare_compiled_artifact, accepted_artifact_digest};
-use vb_storage::ActionReplayTracker;
-use vb_storage::replay_journal;
 
-fn compile_fixture() -> vb_core::CompiledWorkflow {
+fn compile_fixture() -> Result<vb_core::CompiledWorkflow, String> {
     let source = "version: velvet-ballistics/v1\nname: idempotency_fixture\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";
-    vb_compile::compile_workflow(source.as_bytes()).expect("compile fixture")
+    vb_compile::compile_workflow(source.as_bytes()).map_err(|error| error.to_string())
 }
 
 fn accepted_artifact_fixture() -> Result<vb_storage::AcceptedArtifact, String> {
-    let workflow = compile_fixture();
+    let workflow = compile_fixture()?;
     prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])
         .map_err(|error| error.to_string())
 }
@@ -259,8 +259,9 @@ fn given_stale_certificate_floor_when_strict_admission_runs_then_stale_error_and
     let artifact = accepted_artifact_fixture()?;
     let mut tampered = artifact.clone();
     tampered.accepted_at_seq = EventSeq::new(4);
-    let tampered_digest = accepted_artifact_digest(&tampered)
-        .map_err(|error| error.to_string())?;
+    let tampered_digest = accepted_artifact_digest(&tampered).map_err(|error| error.to_string())?;
+    tampered.digest = tampered_digest;
+    tampered.verification.digest = tampered_digest;
     let store = FixedAcceptedStore { artifact: tampered };
     let run = RunId::new(41);
     append_run_accepted(&journal, run, 0)?;
@@ -290,9 +291,15 @@ fn given_stale_certificate_floor_when_strict_admission_runs_then_stale_error_and
     );
     let error = result.err().ok_or("expected stale certificate error")?;
     let display = error.to_string();
-    assert!(
-        display.contains("stale"),
-        "error display should mention staleness, got: {display}"
+    let expected_display = format!(
+        "admission rejected: artifact certificate stale for digest {:?}: accepted_at_seq {:?} < required_at_least {:?}",
+        tampered_digest,
+        EventSeq::new(4),
+        EventSeq::new(5)
+    );
+    assert_eq!(
+        display, expected_display,
+        "stale certificate Display must match exact production format"
     );
     let after = journal
         .events_for_run(run)
@@ -310,8 +317,9 @@ fn given_wrong_digest_and_stale_floor_when_strict_admission_runs_then_digest_mis
     let artifact = accepted_artifact_fixture()?;
     let mut tampered = artifact.clone();
     tampered.accepted_at_seq = EventSeq::new(4);
-    let stored = accepted_artifact_digest(&tampered)
-        .map_err(|error| error.to_string())?;
+    let stored = accepted_artifact_digest(&tampered).map_err(|error| error.to_string())?;
+    tampered.digest = stored;
+    tampered.verification.digest = stored;
     let requested = digest(0x42);
     let store = FixedAcceptedStore { artifact: tampered };
     let run = RunId::new(42);
@@ -380,6 +388,15 @@ fn given_completed_action_before_restart_when_replayed_then_no_redispatch_and_ev
     let replayed = replay_journal(&journal, run, &mut replay_tracker, &[], &[])
         .map_err(|error| error.to_string())?;
 
+    // Full journal event vector unchanged after replay
+    let after_events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(
+        replayed, after_events,
+        "replayed events must exactly match full journal event vector"
+    );
+
     // Then
     assert_eq!(replayed.len(), 3);
     assert!(
@@ -432,6 +449,15 @@ fn given_evicted_runtime_key_when_durable_journal_replayed_then_recovery_resolve
     let mut durable_tracker = ActionReplayTracker::new();
     let events = replay_journal(&journal, run, &mut durable_tracker, &[], &[])
         .map_err(|error| error.to_string())?;
+
+    // Full journal event vector unchanged after replay
+    let after_events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(
+        events, after_events,
+        "replayed events must exactly match full journal event vector"
+    );
 
     // Then: durable tracker resolves the action despite volatile eviction.
     assert_eq!(events.len(), 2);
@@ -523,8 +549,7 @@ fn given_duplicate_lifecycle_command_when_retried_then_lifecycle_duplicate_reque
     let first = lifecycle::retry(run, &journal);
     let before = journal
         .events_for_run(run)
-        .map_err(|error| error.to_string())?
-        .len();
+        .map_err(|error| error.to_string())?;
     let second = lifecycle::retry(run, &journal);
 
     // Then
@@ -539,9 +564,11 @@ fn given_duplicate_lifecycle_command_when_retried_then_lifecycle_duplicate_reque
     }
     let after = journal
         .events_for_run(run)
-        .map_err(|error| error.to_string())?
-        .len();
-    assert_eq!(after, before, "duplicate retry must not append new journal events");
+        .map_err(|error| error.to_string())?;
+    assert_eq!(
+        after, before,
+        "duplicate retry must not append new journal events"
+    );
     Ok(())
 }
 
@@ -564,8 +591,7 @@ fn given_completed_run_when_lifecycle_retry_uses_stale_key_then_lifecycle_stale_
     // When
     let before = journal
         .events_for_run(run)
-        .map_err(|error| error.to_string())?
-        .len();
+        .map_err(|error| error.to_string())?;
     let result = lifecycle::retry(run, &journal);
 
     // Then
@@ -579,9 +605,11 @@ fn given_completed_run_when_lifecycle_retry_uses_stale_key_then_lifecycle_stale_
     }
     let after = journal
         .events_for_run(run)
-        .map_err(|error| error.to_string())?
-        .len();
-    assert_eq!(after, before, "stale retry must not append new journal events");
+        .map_err(|error| error.to_string())?;
+    assert_eq!(
+        after, before,
+        "stale retry must not append new journal events"
+    );
     Ok(())
 }
 

@@ -1,0 +1,3 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/vb_ko29_5_public_idempotency.rs (target/debug/deps/vb_ko29_5_public_idempotency-6b2f252d1e1a5a3d)
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_ko29_5_public_idempotency`
