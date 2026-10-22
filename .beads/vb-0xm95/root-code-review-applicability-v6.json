@@ -1,0 +1,113 @@
+{
+  "candidate": "b752db4c1a665caf90fa9e63e43d1505b0ba651d",
+  "independent_reviewer": "RTX3090 local OMP v6 high no cloudfallback",
+  "verified_hashes": [
+    {
+      "path": "crates/vb_ipc/src/frame_types.rs",
+      "sha256": "d8231b69c173cb6a125f4be3828758c9ada61d424b0f771bd81eda45df50f784"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal.rs",
+      "sha256": "b2470cd450b09ad74c7be10da41eedcf3cae262c6de4e2ad70911c609eb655a2"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_001.rs",
+      "sha256": "95cffd3789e2e30285c7116da972aa8b2aeb56300df67d8bd96b441ba765bcc2"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_002.rs",
+      "sha256": "aba492125dba5b4d1d8cd7ff67ada0273e3fbeb64621acae4ce4dd52f9848576"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_003.rs",
+      "sha256": "2525fb7460ce649a4fcd825ee52fbaffa712882438f021e63dac0791fdefb599"
+    },
+    {
+      "path": "crates/vb_runtime/src/recovery.rs",
+      "sha256": "7bbe2a28545b35a4ce3444e588ba1dffe4bc3cb1796d1882148335e881590739"
+    },
+    {
+      "path": "crates/vb_runtime/src/recovery/full.rs",
+      "sha256": "5ceef2b4dec9e19ec605242e4b370bef9e6d0984e88a6a861a5edb65912defdf"
+    },
+    {
+      "path": "crates/vb_runtime/src/recovery/full/product.rs",
+      "sha256": "dedef606c0f5a4a5e3c1eb21e6a846b6b0ecb6b759d680c0fdfb2d4231c2e9d6"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime.rs",
+      "sha256": "b292409cb5ef3cd9672271f60abbf57c46ab99ebc1528fe2dfb2217e4dd8e74b"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/live_policy_dispatch.rs",
+      "sha256": "4aab043f11828426ac4ae8a11fd2c48b556faf27ee53d65dcc0c991afd79ae6d"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/registered_executor.rs",
+      "sha256": "8ce1ff241a6896c60821c8052ce131637d7369d4f1fa0a046a628d18009f1368"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/impl_.rs",
+      "sha256": "c2b206285b5c16e9200a10e24d37cb521eebea5158e05993a89fb951d9acd039"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/impl_parts/policy_decision.rs",
+      "sha256": "c6210a2723cf4e5262a6241cbe15d47d3468938bdb5e3779ec66f95a5a0f0763"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle.rs",
+      "sha256": "99398079741b116d558380dd848f98a8a2488a511a2b611ab66e00bb64d2465d"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/chunk_001.rs",
+      "sha256": "a05960a3724965480504a73d94364245306e4d1919769afc4ddf6d7ae9dcb87d"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/chunk_004.rs",
+      "sha256": "893b0f152edd2b55b526d214f1a27fd31fcea4ad24951bfc01e9a7791494c274"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs",
+      "sha256": "055fffb445451a0277a0fddd8ab24481471eb9464bd6bfdaf6d271ca99021e72"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+      "sha256": "9825672451ec4a2d8640c9d9a7c6e12d16eec6c0dea4991304ec543c27bbfe80"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion_context.rs",
+      "sha256": "df1252d315e83deda54295771f2983842b0aa0944c0375a57591414f16e2a1cf"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs",
+      "sha256": "c9cdaa00debd2c96c37a6e1ed98fba8cd03beb22bfb1d402fd1d68fe239070af"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/types.rs",
+      "sha256": "c34eb18fcc77620309ea707fd36e55632ba8a4b78ba4b171e0003ade9b9cc57d"
+    },
+    {
+      "path": "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs",
+      "sha256": "795852155207cb6f5848a3d80ffcd5b4d5f376b8f6eb6094eb2b4178754ccfdc"
+    },
+    {
+      "path": "fuzz/fuzz_targets/yaml_events.rs",
+      "sha256": "497e38991ea248e6c3d65dc606e55c1243327703ce1aeeb6a0ca9f22a3a662be"
+    },
+    {
+      "path": "fuzz/src/yaml_target.rs",
+      "sha256": "878302d163b2de2bbc7e22fbce2f34edd7ecb6051d043852fddea3b164409bb5"
+    }
+  ],
+  "complete_actual_diff_packet_reads": 16,
+  "scope": "24 changed production source paths and transitive fulladmission/checkpoint refs; CODEonly nottests/proof/benchmark/canonical",
+  "root_corrections": [
+    "INFO findings in reviewerJSON are descriptive notes not openP0/P1/P2 issues.",
+    "PhaseB is fullcheckpoint structural validation AND fulladmission policy/caps/source/run/artifact/pin validation, not pin-only; see exactsource.",
+    "Root earlier parameter-count correction was wrong and is withdrawn: actual RecoverRunCommand::for_retry(checkpoint,next_seq) has TWO parameters and reviewer shorthand was correct. Original public signature retained.",
+    "Helper counts/prose approximate; actual14-task fmt/source-length/lint/check gateV10 pass retained; no addedwaivers.",
+    "StrictSyncAllAPIbarrier and sameprocessreopen checks do not prove physicalpowerloss.",
+    "Do not generalize existing rawframehandling to allpossible publicAPIinputs: approval scoped exactchangedpaths/contract; finalcanonical stillrequired."
+  ],
+  "root_verdict": "Accept independent scoped CODE review with no open actionable findings; no wholev1 or formalproof acceptance."
+}

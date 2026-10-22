@@ -1,0 +1,86 @@
+1: use crate::shard::Shard;
+2: use crate::{RuntimeError, RuntimeResult};
+3: use vb_core::ActionTicket;
+4: use vb_core::Taint;
+5: use vb_core::action::ActionOutputReady;
+6: use vb_core::policy::PinnedAdmissionPolicy;
+7: use vb_storage::executor::RegisterReceipt;
+8: 
+9: use super::registered_completion_context::{
+10:     build_registered_action_context, convert_policy_pin, load_admitted_artifact,
+11: };
+12: 
+13: pub(crate) struct RegisteredActionContext {
+14:     pub artifact: vb_storage::AcceptedArtifact,
+15:     pub output: ActionOutputReady,
+16:     pub value: i64,
+17:     pub mode: crate::shard::types::RegisteredExecutionMode,
+18:     /// Admission policy pin converted from RunPolicyPin.
+19:     pub admission_pin: PinnedAdmissionPolicy,
+20:     /// Canonical serialized bytes of the action input value.
+21:     pub encoded_bytes: Vec<u8>,
+22:     /// Actual frame input taint at evaluation time.
+23:     pub input_taint: Taint,
+24: }
+25: 
+26: impl Shard {
+27:     pub(crate) fn registered_action_context(
+28:         &self,
+29:         ticket: ActionTicket,
+30:     ) -> RuntimeResult<RegisteredActionContext> {
+31:         self.require_pending_action_ownership(ticket)?;
+32:         let state = self
+33:             .run_state_get(ticket.run)
+34:             .ok_or(RuntimeError::RunNotFound)?;
+35:         let admission = state
+36:             .admission
+37:             .as_ref()
+38:             .ok_or(RuntimeError::InvalidActionCompletion)?;
+39:         let artifact =
+40:             load_admitted_artifact(self.artifact_store.as_ref(), admission.artifact_digest())?;
+41:         let admission_pin = convert_policy_pin(&admission.policy_pin());
+42:         build_registered_action_context(state, ticket, artifact, admission_pin)
+43:     }
+44: 
+45:     pub(crate) fn reject_unregistered_completion(&self, ticket: ActionTicket) -> RuntimeResult<()> {
+46:         if self.artifact_store.executor_catalog().is_none() {
+47:             return Ok(());
+48:         }
+49:         let Some(state) = self.run_state_get(ticket.run) else {
+50:             return Ok(());
+51:         };
+52:         let Some(admission) = &state.admission else {
+53:             return Ok(());
+54:         };
+55:         let artifact = self
+56:             .artifact_store
+57:             .load_accepted_artifact(admission.artifact_digest())
+58:             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+59:         if let vb_core::artifact::ArtifactEvidence::Packed(packed) = artifact.verification.evidence
+60:             && packed.packs.iter().any(|pack| pack.action == ticket.action)
+61:         {
+62:             return Err(RuntimeError::InvalidActionCompletion);
+63:         }
+64:         Ok(())
+65:     }
+66: 
+67:     pub(crate) fn handle_registered_action_completion(
+68:         &mut self,
+69:         ticket: ActionTicket,
+70:         receipt: RegisterReceipt,
+71:         output: ActionOutputReady,
+72:     ) -> RuntimeResult<()> {
+73:         let context = self.registered_action_context(ticket)?;
+74:         let catalog = self
+75:             .artifact_store
+76:             .executor_catalog()
+77:             .ok_or(RuntimeError::InvalidActionCompletion)?;
+78:         catalog
+79:             .validate_receipt(&context.artifact, ticket, context.value, &receipt)
+80:             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+81:         if output != context.output || receipt.value() != context.value {
+82:             return Err(RuntimeError::InvalidActionCompletion);
+83:         }
+84:         self.apply_action_completion(ticket, output)
+85:     }
+86: }

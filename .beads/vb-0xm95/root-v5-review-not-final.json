@@ -1,0 +1,5 @@
+{
+  "reason": "Worker returned narrative APPROVED but wrote no native report artifacts; reads did not cover all manifest/diff. Line guesses and production-ready claim not accepted as final. Draft preserved. Require completepacketread and native reportwrites.",
+  "v5_actual_exit": 0,
+  "source_unchanged": true
+}

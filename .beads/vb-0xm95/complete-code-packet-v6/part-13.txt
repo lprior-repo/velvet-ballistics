@@ -1,0 +1,220 @@
++        checkpoint.admission.clone().map_or(
++            RecoveredAdmissionKind::Unverified {
++                run_id: checkpoint.run_id,
++                artifact_digest: checkpoint.artifact_digest,
++            },
++            RecoveredAdmissionKind::Historical,
++        )
++    }
++
+     /// Builds a recovery command that restores a full retry checkpoint instead of the
+     /// legacy resumable frame seed. The checkpoint's own frame, value store, collect
+     /// states, and admission are authoritative; the independently loaded accepted
+     /// artifact is still validated by `handle_recover` before any mutation.
++    ///
++    /// Checkpoints without a recorded admission retain Unverified authority,
++    /// preserving legacy checkpoint semantics.
+     pub fn for_retry(
+         checkpoint: crate::run_checkpoint::RunCheckpointV1,
+         next_seq: EventSeq,
+     ) -> RuntimeResult<Self> {
+-        let frame = RunFrame::from_checkpoint_v1(checkpoint.frame.clone()).map_err(|error| {
+-            crate::RuntimeError::Recovery {
+-                error: format!("retry checkpoint frame restore failed: {error:?}"),
+-            }
+-        })?;
+-        let collect_states = CollectStates::from_checkpoint_v1(checkpoint.collect_states.clone())
+-            .map_err(|error| crate::RuntimeError::Recovery {
+-            error: format!("retry checkpoint collect restore failed: {error:?}"),
+-        })?;
++        let frame = Self::restore_retry_frame(checkpoint.frame.clone())?;
++        let collect_states = Self::restore_retry_collect_states(checkpoint.collect_states.clone())?;
++        let admission = Self::retry_admission(&checkpoint);
+         Ok(Self {
+             run: checkpoint.run_id,
+             frame,
+             artifact_digest: checkpoint.artifact_digest,
+             workflow_digest: checkpoint.workflow_digest,
+             next_seq,
+             collect_states,
+             retry_checkpoint: Some(checkpoint),
+             boundary: crate::recovery::RecoveredRunBoundary::none(),
++            admission,
+         })
+     }
+ }
+ 
+ /// Ticket identifying where an ask answer must resume execution.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct AskTicket {
+     /// Owning run.
+     pub(crate) run: RunId,
+     /// Step that issued the ask and is currently marked asking.
+     pub(crate) ask_step: StepIdx,
+     /// Step that consumes the answer slot, usually an AskResume node.
+     pub(crate) resume_step: StepIdx,
+     /// Slot authorized by the compiled AskResume node.
+     pub(crate) answer_slot: SlotIdx,
+     /// Durable per-run sequence identifying this exact AskScheduled boundary.
+     pub(crate) boundary_seq: EventSeq,
+ }
+ 
+ impl AskTicket {
+     /// Returns the owning run.
+     #[must_use]
+     pub const fn run(self) -> RunId {
+         self.run
+     }
+ 
+     /// Returns the step that issued the ask.
+     #[must_use]
+     pub const fn ask_step(self) -> StepIdx {
+         self.ask_step
+     }
+ 
+     /// Returns the step that consumes the answer.
+     #[must_use]
+     pub const fn resume_step(self) -> StepIdx {
+FILE fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs SHA256 795852155207cb6f5848a3d80ffcd5b4d5f376b8f6eb6094eb2b4178754ccfdc
+diff --git a/fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs b/fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs
+index cc68897b0..f1868fc05 100644
+--- a/fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs
++++ b/fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs
+@@ -1,29 +1,33 @@
++//! Fuzz target for YAML compiler with strict profile validation.
++//!
++//! Command: cargo fuzz run vb_f04l_yaml_compiler_compile -- -max_len=65536 -runs=100000
++
+ #![no_main]
+ 
+ use libfuzzer_sys::fuzz_target;
+ use vb_compile::{CompileError, YamlCompiler};
+ 
+ fuzz_target!(|data: &[u8]| {
+     let result = YamlCompiler::default().compile(data);
+     if let Err(errors) = result {
+         for error in errors.iter() {
+             match error {
+                 CompileError::CanonicalYaml { .. }
+                 | CompileError::EmptySteps
+                 | CompileError::UnsupportedTopLevelDeclaration { .. }
+                 | CompileError::UnsupportedTopLevelResult
+                 | CompileError::UnsupportedStepControlField { .. }
+                 | CompileError::DuplicateStepId { .. }
+                 | CompileError::DuplicateOutputName { .. }
+                 | CompileError::UnknownOutputName { .. }
+                 | CompileError::StepFieldShape { .. }
+                 | CompileError::StepIndexOutOfRange { .. }
+                 | CompileError::SlotIndexOutOfRange { .. }
+                 | CompileError::PrimitiveLoweringLimitExceeded { .. }
+                 | CompileError::Workflow(_)
+                 | CompileError::UnsupportedStepPrimitive { .. } => {}
+                 _ => {}
+             }
+         }
+     }
+ });
+FILE fuzz/fuzz_targets/yaml_events.rs SHA256 497e38991ea248e6c3d65dc606e55c1243327703ce1aeeb6a0ca9f22a3a662be
+diff --git a/fuzz/fuzz_targets/yaml_events.rs b/fuzz/fuzz_targets/yaml_events.rs
+index b68482f4c..b135cd5d1 100644
+--- a/fuzz/fuzz_targets/yaml_events.rs
++++ b/fuzz/fuzz_targets/yaml_events.rs
+@@ -1,14 +1,16 @@
+ //! Fuzz target for YAML event parsing.
+ //!
+ //! This target verifies that YAML profile validation and event parsing never panic
+ //! on any UTF-8 input.
+ //!
+ //! Corpus seeds are maintained in `fuzz/corpus/yaml_events/`.
++//!
++//! Command: cargo fuzz run yaml_events -- -max_len=65536 -runs=100000
+ 
+ #![no_main]
+ 
+ use libfuzzer_sys::fuzz_target;
+ 
+ fuzz_target!(|data: &[u8]| {
+     fuzz_lib::fuzz_yaml_events(data);
+ });
+FILE fuzz/src/yaml_target.rs SHA256 878302d163b2de2bbc7e22fbce2f34edd7ecb6051d043852fddea3b164409bb5
+diff --git a/fuzz/src/yaml_target.rs b/fuzz/src/yaml_target.rs
+index c616bcb35..e404c56f2 100644
+--- a/fuzz/src/yaml_target.rs
++++ b/fuzz/src/yaml_target.rs
+@@ -1,51 +1,51 @@
+ //! YAML parsing fuzzing targets.
+ //
+ // The strict fuzz clippy denies `indexing_slicing`, `as_conversions`,
+ // `let_underscore_must_use`, and `arithmetic_side_effects`. The broad
+ // `#![allow(...)]` lines that previously suppressed those lints have been
+ // removed so the strict gate is enforceable. The remaining allows are
+ // documentary lints the strict command does not deny.
+ #![allow(clippy::missing_errors_doc)]
+ #![allow(clippy::must_use_candidate)]
+ #![allow(clippy::missing_panics_doc)]
+ #![allow(clippy::too_many_lines)]
+ #![allow(clippy::items_after_statements)]
+ #![allow(clippy::doc_markdown)]
+ #![allow(clippy::len_zero)]
+ 
+-const MAX_FUZZ_PAYLOAD_USIZE: usize = 4096;
++const MAX_FUZZ_PAYLOAD_USIZE: usize = 100_000;
+ 
+ fn assert_typed_yaml_error(error: vb_compile::YamlError) {
+     use vb_compile::YamlError;
+     match error {
+         YamlError::UnsupportedTrigger { .. }
+         | YamlError::UnsupportedFeature { .. }
+         | YamlError::DuplicateKey { .. }
+         | YamlError::AnchorAliasMerge
+         | YamlError::CustomTag { .. }
+         | YamlError::BinaryScalar
+         | YamlError::MultipleDocuments { .. }
+         | YamlError::AmbiguousScalar { .. }
+         | YamlError::SourceTooLarge { .. }
+         | YamlError::NestingTooDeep { .. }
+         | YamlError::NodeLimitExceeded { .. }
+         | YamlError::ScalarTooLong { .. }
+         | YamlError::SequenceTooLong { .. }
+         | YamlError::MappingTooLarge { .. }
+         | YamlError::UnknownField { .. }
+         | YamlError::EmptySource
+         | YamlError::MissingField { .. }
+         | YamlError::FieldShape { .. }
+         | YamlError::ParseError { .. }
+         | YamlError::ForbiddenFeature { .. }
+         | YamlError::LegacyPrimitive { .. } => {}
+         _ => {}
+     }
+ }
+ 
+ pub fn fuzz_yaml_events(data: &[u8]) {
+     if let Ok(text) = std::str::from_utf8(data) {
+         let profile_result = vb_compile::validate_yaml_profile(text);
+         match profile_result {
+             Ok(()) => {}
+             Err(e) => {
+@@ -129,35 +129,83 @@ pub fn fuzz_span_bridge(data: &[u8]) {
+     for (slot, byte) in values.iter_mut().zip(data.iter().copied()) {
+         *slot = usize::from(byte);
+     }
+ 
+     let span = SourceSpan::new(
+         values[0], values[1], values[2], values[3], values[4], values[5],
+     );
+     assert_eq!(span.start_offset, values[0]);
+     assert_eq!(span.end_offset, values[1]);
+     assert_eq!(span.start_line, values[2]);
+     assert_eq!(span.start_col, values[3]);
+     assert_eq!(span.end_line, values[4]);
+     assert_eq!(span.end_col, values[5]);
+ 
+     let Ok(text) = std::str::from_utf8(data) else {
+         return;
+     };
+ 
+     if let Ok(map) = build_source_map(text) {
+         for (index, mapped_span) in map.iter() {
+             assert_eq!(map.span_for_node(index), Some(mapped_span));
+         }
+     }
