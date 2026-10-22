@@ -1,0 +1,10 @@
+error: unused import: `validate_recovered_policy_pin`
+  --> crates/vb_runtime/src/recovery.rs:24:44
+   |
+24 |     validate_recovered_admission_evidence, validate_recovered_policy_pin,
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unused-imports` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: could not compile `vb_runtime` (lib test) due to 1 previous error

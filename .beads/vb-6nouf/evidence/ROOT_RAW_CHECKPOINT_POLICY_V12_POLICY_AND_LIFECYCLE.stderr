@@ -1,0 +1,129 @@
+    Blocking waiting for file lock on build directory
+   Compiling serde_core v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling zerocopy v0.8.48
+   Compiling serde v1.0.228
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling memchr v2.8.0
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/vb_core)
+   Compiling byteorder v1.5.0
+   Compiling arraydeque v0.5.1
+   Compiling log v0.4.29
+   Compiling hash32 v0.2.1
+   Compiling zmij v1.0.21
+   Compiling foldhash v0.1.5
+   Compiling itoa v1.0.18
+   Compiling anstyle v1.0.14
+   Compiling heapless v0.7.17
+   Compiling hashbrown v0.15.5
+   Compiling sfa v1.0.0
+   Compiling lsm-tree v3.1.4
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/vb_validate)
+   Compiling postcard v1.1.3
+   Compiling hashlink v0.10.0
+   Compiling serde_json v1.0.150
+   Compiling simd-adler32 v0.3.9
+   Compiling utf8parse v0.2.2
+   Compiling anstyle-parse v1.0.0
+   Compiling logos-codegen v0.15.1
+   Compiling fjall v3.1.4
+   Compiling saphyr-parser v0.0.6
+   Compiling crc32fast v1.5.0
+   Compiling ordered-float v5.3.0
+   Compiling colorchoice v1.0.5
+   Compiling adler2 v2.0.1
+   Compiling anstyle-query v1.1.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling anstream v1.0.0
+   Compiling miniz_oxide v0.8.9
+   Compiling saphyr v0.0.6
+   Compiling logos-derive v0.15.1
+   Compiling aho-corasick v1.1.4
+   Compiling ppv-lite86 v0.2.21
+   Compiling encoding_rs v0.8.35
+   Compiling unicode-width v0.2.2
+   Compiling either v1.16.0
+   Compiling winnow v1.0.3
+   Compiling strsim v0.11.1
+   Compiling clap_lex v1.1.0
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling clap_builder v4.6.0
+   Compiling annotate-snippets v0.12.16
+   Compiling encoding_rs_io v0.1.7
+   Compiling regex-automata v0.4.14
+   Compiling rand_chacha v0.9.0
+   Compiling ahash v0.8.12
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/vb_storage)
+   Compiling logos v0.15.1
+   Compiling flate2 v1.1.9
+   Compiling fdeflate v0.3.7
+   Compiling saphyr-parser-bw v0.0.611
+   Compiling half v2.7.1
+   Compiling crossbeam-deque v0.8.6
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling alloca v0.4.0
+   Compiling crossbeam-channel v0.5.15
+   Compiling unsafe-libyaml v0.2.11
+   Compiling nohash-hasher v0.2.0
+   Compiling plotters-backend v0.3.7
+   Compiling ryu v1.0.23
+   Compiling base64 v0.22.1
+   Compiling winnow v0.7.15
+   Compiling toml_writer v1.1.1+spec-1.1.0
+   Compiling ciborium-io v0.2.2
+   Compiling pxfm v0.1.29
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/vb_runtime)
+   Compiling moxcms v0.8.1
+   Compiling ciborium-ll v0.2.2
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling serde-saphyr v0.0.25
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling plotters-svg v0.3.7
+   Compiling rayon-core v1.13.0
+   Compiling png v0.18.1
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/vb_expr)
+   Compiling rand v0.9.4
+   Compiling regex v1.12.3
+   Compiling clap v4.6.1
+   Compiling camino v1.2.2
+   Compiling itertools v0.13.0
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/vb_yaml)
+   Compiling mio v1.2.0
+   Compiling cargo-platform v0.1.9
+   Compiling semver v1.0.28
+   Compiling same-file v1.0.6
+   Compiling bytemuck v1.25.0
+   Compiling cast v0.3.0
+   Compiling criterion-plot v0.8.2
+   Compiling image v0.25.10
+   Compiling cargo_metadata v0.19.2
+   Compiling walkdir v2.5.0
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/vb_ipc)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/vb_compile)
+   Compiling rayon v1.12.0
+   Compiling plotters v0.3.7
+   Compiling anyhow v1.0.102
+   Compiling ciborium v0.2.2
+   Compiling tinytemplate v1.2.1
+   Compiling page_size v0.6.0
+   Compiling oorandom v11.1.5
+   Compiling anes v0.1.6
+   Compiling criterion v0.8.2
+   Compiling proptest v1.11.0
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/xtask)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 45.70s
+     Running tests/cancel_kill_lattice_tests.rs (target/debug/deps/cancel_kill_lattice_tests-92f055666bf20869)
+     Running tests/runtime_fjall_pending_action_recovery.rs (target/debug/deps/runtime_fjall_pending_action_recovery-5349c5e779c5a502)
+     Running tests/vb_7x0ol_probe_registered_executor.rs (target/debug/deps/vb_7x0ol_probe_registered_executor-7320c516bdc10565)
+     Running tests/vb_c1s0_orchestration_runtime_tests.rs (target/debug/deps/vb_c1s0_orchestration_runtime_tests-3840e9f43da33821)
+     Running tests/vb_c4hzw_corrupt_marker.rs (target/debug/deps/vb_c4hzw_corrupt_marker-d4e32016d0b6d9c6)
+     Running tests/vb_c4hzw_emergency_reopen.rs (target/debug/deps/vb_c4hzw_emergency_reopen-c1d59c747a44e835)
+     Running tests/vb_c4hzw_historical_replay.rs (target/debug/deps/vb_c4hzw_historical_replay-a53365c299ad1d00)
+     Running tests/vb_c4hzw_legacy_admission.rs (target/debug/deps/vb_c4hzw_legacy_admission-00380684af1886d9)
+     Running tests/vb_policy_dispatch_fail_closed.rs (target/debug/deps/vb_policy_dispatch_fail_closed-a667bc0baa7101ac)
+     Running tests/vb_test_runtime_lifecycle_state_behavior.rs (target/debug/deps/vb_test_runtime_lifecycle_state_behavior-354173e8e54df3e4)
+     Running tests/vb_vt2f_direct_runtime_api_acceptance.rs (target/debug/deps/vb_vt2f_direct_runtime_api_acceptance-1ae527bcf9238e7e)

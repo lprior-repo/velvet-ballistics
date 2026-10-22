@@ -1,0 +1,21 @@
+[ WARN 2026-10-22 16:28:32.802] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:28:33.451] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:28:35.121] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:28:35.520] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:28:38.979] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:28:39.669] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:28:39.795] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:29:08.621] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:29:08.704] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:29:21.157] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:source-length | source-length gate summary:
+velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+velvet-ballistics:source-length |   test_in_src        scanned=316   warn=48   over_limit=0    limit=1500 warn_at=1200
+velvet-ballistics:source-length |   test_top_level     scanned=415   warn=6    over_limit=0    limit=3000 warn_at=2400
+velvet-ballistics:source-length |   production         scanned=957   warn=196  over_limit=0    limit=300 warn_at=240
+velvet-ballistics:source-length |   ledger rows used:    383

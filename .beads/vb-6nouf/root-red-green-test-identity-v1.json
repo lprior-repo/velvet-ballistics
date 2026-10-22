@@ -1,0 +1,9 @@
+{
+  "red_commit": "7e1e502ae9bbcc7ad280deca747a897280fa0563",
+  "path": "crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs",
+  "sha256": "1cd50d9650bcc8e4c9e6488e35588540b6a094252bea09491bd40c071a38e854",
+  "byte_identical_red_to_green": true,
+  "red": "V6 actual Ok vs exact mismatch Err, exit101",
+  "green": "V9 exact same test source exit0; wrongpin rejection + differingpolicy rejection + matchingcheckpoint admission/state/ticket positive control + all original raw recovery completion checks",
+  "author": "local RTX5090 OMP thinking high; production 2files; root only unused private re-export compiler repair and rustfmt"
+}
