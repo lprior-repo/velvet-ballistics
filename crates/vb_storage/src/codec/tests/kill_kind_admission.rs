@@ -483,8 +483,9 @@ fn kind_28_does_not_affect_known_kinds_elsewhere() {
     assert!(!is_known_record_kind(5));
     assert!(!is_known_record_kind(5));
     assert!(!is_known_record_kind(9));
-    // kind 31 (WaitResolved) is admitted by RE-009; keep verifying other reserved/unknown kinds stay rejected.
-    assert!(!is_known_record_kind(39));
-    assert!(!is_known_record_kind(41));
+    // kind 31 (WaitResolved) is admitted by RE-009
+    // kinds 39 (RunAdmissionPinned) and 41 (RunAdmissionBoundPinned) are now admitted
+    assert!(is_known_record_kind(39));
+    assert!(is_known_record_kind(41));
     assert!(!is_known_record_kind(49));
 }

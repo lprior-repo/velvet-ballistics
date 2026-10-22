@@ -45,6 +45,7 @@ pub fn hydrate_run_admission_from_events(
                 admission.granted_capabilities,
                 admission.policy,
             )
+            .with_policy_pin(admission.policy_pin)
         },
     )
 }

@@ -54,6 +54,8 @@ pub enum JournalEvent {
         artifact_digest: WorkflowDigest,
         /// Canonical typed input identity, or explicit historical absence.
         input_digest: crate::RunInputBinding,
+        /// Actual policy identity from the accepted artifact, or explicit historical absence.
+        policy_pin: crate::RunPolicyPin,
         /// Capabilities granted for this run.
         granted_capabilities: CapabilitySet,
         /// Policy used to admit this run.

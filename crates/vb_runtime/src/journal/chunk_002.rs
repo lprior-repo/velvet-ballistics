@@ -92,6 +92,7 @@ impl StorageRuntimeJournal {
                     run: admission.run_id(),
                     seq,
                     artifact_digest: admission.artifact_digest(),
+                    policy_pin: admission.policy_pin(),
                     granted_capabilities: admission.granted_capabilities().clone(),
                     policy: admission.policy(),
                 }))

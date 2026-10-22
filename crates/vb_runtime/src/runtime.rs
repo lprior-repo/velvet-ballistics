@@ -494,8 +494,10 @@ impl Runtime {
         }
 
         // The supplied checkpoint must decode to the exact durable checkpoint value.
-        let durable_checkpoint: crate::run_checkpoint::RunCheckpointV1 =
-            postcard::from_bytes(durable_payload).map_err(|error| RuntimeError::Recovery {
+        // Use the version-aware decoder to reject historical version 1 payloads
+        // that lack the policy_pin field in RunAdmission.
+        let durable_checkpoint = crate::run_checkpoint::decode_checkpoint_payload(durable_payload)
+            .map_err(|error| RuntimeError::Recovery {
                 error: format!("durable retry checkpoint decode failed: {error}"),
             })?;
         if durable_checkpoint != *checkpoint {

@@ -103,11 +103,13 @@ pub fn recover_run_admission_from_events(events: &[JournalEvent]) -> Option<Reco
             run,
             artifact_digest,
             input_digest,
+            policy_pin,
             granted_capabilities,
             policy,
             ..
         } => Some(RecoveredRunAdmission {
             input_digest: *input_digest,
+            policy_pin: *policy_pin,
             artifact_digest: *artifact_digest,
             run_id: *run,
             granted_capabilities: granted_capabilities.clone(),

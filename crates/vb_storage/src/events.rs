@@ -95,12 +95,24 @@ impl JournalEvent {
             Self::RunAccepted { .. } => RecordKind::RunAccepted,
             Self::RunAdmission {
                 input_digest: crate::RunInputBinding::LegacyUnbound,
+                policy_pin: crate::RunPolicyPin::Unverified,
                 ..
             } => RecordKind::RunAdmission,
             Self::RunAdmission {
                 input_digest: crate::RunInputBinding::Digest(_),
+                policy_pin: crate::RunPolicyPin::Unverified,
                 ..
             } => RecordKind::RunAdmissionBound,
+            Self::RunAdmission {
+                input_digest: crate::RunInputBinding::LegacyUnbound,
+                policy_pin: crate::RunPolicyPin::Pinned(_),
+                ..
+            } => RecordKind::RunAdmissionPinned,
+            Self::RunAdmission {
+                input_digest: crate::RunInputBinding::Digest(_),
+                policy_pin: crate::RunPolicyPin::Pinned(_),
+                ..
+            } => RecordKind::RunAdmissionBoundPinned,
             Self::RetryCheckpoint { .. } => RecordKind::RetryCheckpoint,
             Self::StepStarted { .. } => RecordKind::StepStarted,
             Self::StepSucceeded { .. } => RecordKind::StepSucceeded,

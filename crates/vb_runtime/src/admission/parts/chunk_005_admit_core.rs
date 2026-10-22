@@ -37,7 +37,12 @@ pub fn admit_run(
             });
         }
     };
-    Ok(RunAdmission::new(admitted_digest, run_id, caps, policy))
+    Ok(RunAdmission::new(
+        admitted_digest,
+        run_id,
+        caps,
+        policy,
+    ))
 }
 
 /// Performs full admission gate check with artifact validation before run creation.
@@ -163,11 +168,17 @@ pub fn admit_artifact_run_with_certificate_floor(
                 caps,
                 policy,
                 artifact.verification.idempotency_attested,
-            ))
+            )
+            .with_policy_pin(RunPolicyPin::Pinned(artifact.policy_digest)))
         }
         RuntimePolicy::Relaxed => {
             // Relaxed: skip artifact loading and capability checking.
-            Ok(RunAdmission::new(artifact_digest, run_id, caps, policy))
+            Ok(RunAdmission::new(
+                artifact_digest,
+                run_id,
+                caps,
+                policy,
+            ))
         }
         _ => Err(AdmissionError::ArtifactInvalidProofFlag {
             flag: "runtime_policy",

@@ -593,6 +593,8 @@ pub struct RecoveryRuntimeSummary {
 pub struct RecoveredRunAdmission {
     /// Canonical retained input identity, or explicit historical absence.
     pub input_digest: crate::RunInputBinding,
+    /// Actual policy identity from the accepted artifact, or explicit historical absence.
+    pub policy_pin: crate::RunPolicyPin,
     /// Digest of the accepted compiled artifact.
     pub artifact_digest: WorkflowDigest,
     /// Run identifier assigned at admission.

@@ -12,6 +12,8 @@ where
         RecordKind::RunAccepted => deserialize_accepted(variant),
         RecordKind::RunAdmission => deserialize_admission(variant),
         RecordKind::RunAdmissionBound => deserialize_bound_admission(variant),
+        RecordKind::RunAdmissionPinned => deserialize_pinned_admission(variant),
+        RecordKind::RunAdmissionBoundPinned => deserialize_pinned_admission_bound(variant),
         RecordKind::RetryCheckpoint => deserialize_retry_checkpoint(variant),
         RecordKind::RunCancelled => deserialize_cancelled(variant),
         RecordKind::RunKilled => deserialize_killed(variant),
@@ -57,6 +59,7 @@ where
         seq,
         artifact_digest,
         input_digest: crate::RunInputBinding::LegacyUnbound,
+        policy_pin: crate::RunPolicyPin::Unverified,
         granted_capabilities,
         policy,
     })
@@ -73,6 +76,41 @@ where
         seq,
         artifact_digest,
         input_digest: crate::RunInputBinding::Digest(input_digest),
+        policy_pin: crate::RunPolicyPin::Unverified,
+        granted_capabilities,
+        policy,
+    })
+}
+
+fn deserialize_pinned_admission<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let (run, seq, artifact_digest, policy_digest, granted_capabilities, policy) =
+        variant.newtype_variant()?;
+    Ok(JournalEvent::RunAdmission {
+        run,
+        seq,
+        artifact_digest,
+        input_digest: crate::RunInputBinding::LegacyUnbound,
+        policy_pin: crate::RunPolicyPin::Pinned(policy_digest),
+        granted_capabilities,
+        policy,
+    })
+}
+
+fn deserialize_pinned_admission_bound<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let (run, seq, artifact_digest, input_digest, policy_digest, granted_capabilities, policy) =
+        variant.newtype_variant()?;
+    Ok(JournalEvent::RunAdmission {
+        run,
+        seq,
+        artifact_digest,
+        input_digest: crate::RunInputBinding::Digest(input_digest),
+        policy_pin: crate::RunPolicyPin::Pinned(policy_digest),
         granted_capabilities,
         policy,
     })

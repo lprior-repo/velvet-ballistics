@@ -1,0 +1,30 @@
+
+running 12 tests
+test primitives::collect::checkpoint::tests::collect_checkpoint_rejects_orphan_lineage ... ok
+test recovery::tests::terminal_gate_failed_run_with_checkpoint_is_terminal ... ok
+test admission::tests::checkpoint_preserves_pinned_policy_pin_through_roundtrip ... ok
+test run_checkpoint_tests::versioned_decoder_rejects_historical_version_1_payload ... ok
+test run_checkpoint_tests::versioned_decoder_rejects_truncated_payload ... ok
+test run_checkpoint_tests::restore_rejects_a_checkpoint_for_a_different_workflow ... ok
+test primitives::collect::checkpoint::tests::collect_checkpoint_roundtrips_canonical_state_and_lineage ... ok
+test run_checkpoint_tests::versioned_decoder_rejects_malformed_payload ... ok
+test run_checkpoint_tests::versioned_decoder_rejects_unrecognized_future_version ... ok
+test run_checkpoint_tests::versioned_checkpoint_roundtrips_version_2_through_decoder ... FAILED
+test run_checkpoint_tests::versioned_decoder_preserves_pinned_admission_through_roundtrip ... FAILED
+test run_checkpoint_tests::capture_resets_only_retry_step_and_preserves_action_attempts ... ok
+
+failures:
+
+---- run_checkpoint_tests::versioned_checkpoint_roundtrips_version_2_through_decoder stdout ----
+Error: "version-aware decode failed: unsupported runtime checkpoint version"
+
+---- run_checkpoint_tests::versioned_decoder_preserves_pinned_admission_through_roundtrip stdout ----
+Error: "version-aware decode failed: unsupported runtime checkpoint version"
+
+
+failures:
+    run_checkpoint_tests::versioned_checkpoint_roundtrips_version_2_through_decoder
+    run_checkpoint_tests::versioned_decoder_preserves_pinned_admission_through_roundtrip
+
+test result: FAILED. 10 passed; 2 failed; 0 ignored; 0 measured; 1967 filtered out; finished in 0.00s
+

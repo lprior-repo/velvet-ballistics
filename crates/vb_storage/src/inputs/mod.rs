@@ -7,7 +7,7 @@ mod validation;
 
 use crate::constants::{MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES};
 use crate::{FjallJournal, JournalError, RecordKind, codec::EnforceKindParity};
-pub use digest::{RunInputBinding, compute_input_digest};
+pub use digest::{RunInputBinding, RunPolicyPin, compute_input_digest};
 pub use submission::RunSubmission;
 use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest};
 

@@ -492,10 +492,11 @@ mod unknown_record_kind_rejection {
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
         // Given: kind values that are truly unknown (not in from_id).
-        // Known kinds: 1,2,3,4,10-29,30,31-37,36,37,40,50
-        // 36 (RunAdmissionBound) and 37 (RetryCheckpoint) are journal-event kinds.
+        // Known kinds: 1,2,3,4,10-29,30,31-37,39,40,41,50
+        // 36 (RunAdmissionBound), 37 (RetryCheckpoint), 39 (RunAdmissionPinned),
+        // and 41 (RunAdmissionBoundPinned) are journal-event kinds.
         let truly_unknown_kinds: Vec<u16> = vec![
-            0, 5, 6, 7, 8, 9, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 51, 52, 100, 255, 65535,
+            0, 5, 6, 7, 8, 9, 38, 42, 43, 44, 45, 46, 47, 48, 49, 51, 52, 100, 255, 65535,
         ];
         for &kind in &truly_unknown_kinds {
             let mut header = make_header_with_kind(kind);

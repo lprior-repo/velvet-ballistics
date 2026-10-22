@@ -1,0 +1,87 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-h7rex-assembly-v8/crates/vb_storage)
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+ --> crates/vb_storage/src/codec/tests/admission_receipt.rs:6:5
+  |
+6 |     JournalEvent::RunAdmission {
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+  --> crates/vb_storage/src/codec/tests.rs:61:13
+   |
+61 |             JournalEvent::RunAdmission {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/codec/tests.rs:599:23
+    |
+599 |             expected: JournalEvent::RunAdmission {
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+  --> crates/vb_storage/src/inputs/receipt_tests.rs:18:5
+   |
+18 |     JournalEvent::RunAdmission {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/journal/journal_event_tests.rs:614:9
+    |
+614 |         JournalEvent::RunAdmission {
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/journal/regression_tests_vb_1rqz7.rs:240:17
+    |
+240 |     let event = JournalEvent::RunAdmission {
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/journal/regression_tests_vb_1rqz7.rs:405:9
+    |
+405 |         JournalEvent::RunAdmission {
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/recovery/replay/summary/tests.rs:124:9
+    |
+124 |         JournalEvent::RunAdmission {
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/recovery/replay/summary/tests.rs:218:9
+    |
+218 |         JournalEvent::RunAdmission {
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/recovery/replay/summary/tests.rs:226:9
+    |
+226 |         JournalEvent::RunAdmission {
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/recovery/recovery_unit_tests.rs:518:13
+    |
+518 |             JournalEvent::RunAdmission {
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/recovery/recovery_unit_tests.rs:526:13
+    |
+526 |             JournalEvent::RunAdmission {
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+   --> crates/vb_storage/src/recovery/recovery_unit_tests.rs:712:21
+    |
+712 |         let event = JournalEvent::RunAdmission {
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+error[E0063]: missing field `policy_pin` in initializer of `event::JournalEvent`
+    --> crates/vb_storage/src/tests.rs:3010:17
+     |
+3010 |                 JournalEvent::RunAdmission {
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `vb_storage` (lib test) due to 14 previous errors
