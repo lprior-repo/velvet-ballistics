@@ -1334,13 +1334,7 @@ proptest! {
         );
 
         if mutation == 0 {
-            let admission = match result {
-                Ok(a) => a,
-                Err(e) => {
-                    prop_assert!(false, "expected admission, got error: {e:?}");
-                    return;
-                }
-            };
+            let admission = result.map_err(|error| TestCaseError::fail(format!("expected admission, got error: {error:?}")))?;
             prop_assert_eq!(admission.artifact_digest(), artifact_digest);
             prop_assert_eq!(admission.run_id(), RunId::new(501));
             prop_assert_eq!(admission.granted_capabilities(), &granted);
