@@ -549,12 +549,6 @@ pub proof fn lemma_projection_deterministic(parts: &SpecWorkflowParts)
 /// opaque to Verus; this mirror is the contract layer the spec
 /// proofs reason about.)
 pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecValidationResult {
-    // The spec mirror re-states the production decision at the
-    // mathematical layer. The actual projection body is opaque to
-    // Verus; the spec mirror is the contract that the
-    // `assume_specification` ensures clause references. The mirror
-    // uses an uninterpreted result encoding: every discriminant
-    // outcome is captured so the postcondition lemmas discharge.
     if parts.nodes_meta.len() == 0 {
         SpecValidationResult::Err(SpecWorkflowError::EmptyNodes)
     } else if parts.entry >= parts.nodes_len {
@@ -573,8 +567,43 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else if parts.slot_count > parts.resource_contract.max_slots {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
+    } else if !input_slots_valid(parts) {
+        SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds)
     } else {
         SpecValidationResult::Ok
+    }
+}
+
+/// Spec predicate: input slots are valid (all in-bounds, unique, strictly increasing).
+/// Mirrors production validate_input_slots at workflow/mod.rs:876-906.
+pub open spec fn input_slots_valid(parts: &SpecWorkflowParts) -> bool {
+    let slots = parts.input_slots;
+    let n = slots.len();
+    if n == 0 {
+        true
+    } else {
+        let all_in_bounds = true;
+        let i = 0;
+        while i < n && all_in_bounds {
+            if slots[i] >= parts.slot_count {
+                all_in_bounds = false;
+            }
+            i = i + 1;
+        }
+        if !all_in_bounds {
+            false
+        } else {
+            // Check strictly increasing
+            let strictly_increasing = true;
+            let j = 0;
+            while j < n - 1 && strictly_increasing {
+                if slots[j] >= slots[j + 1] {
+                    strictly_increasing = false;
+                }
+                j = j + 1;
+            }
+            strictly_increasing
+        }
     }
 }
 
@@ -662,6 +691,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        input_slots_valid(parts),
     ensures
         // The projection returns Ok for these inputs. The spec
         // mirror walks through the chain of conditional guards
@@ -690,6 +720,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Resource contract exceeded: skip.
     } else if parts.slot_count > parts.resource_contract.max_slots {
         // Resource contract exceeded: skip.
+    } else if !input_slots_valid(parts) {
+        // Input slot validation: skip (already required valid).
     } else {
         assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Ok);
     }
