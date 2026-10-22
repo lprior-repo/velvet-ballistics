@@ -233,7 +233,7 @@ fn unconfigured_policy_denies_execution() -> TestResult {
         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
             // Full 9-field DecisionRecord oracle comparison
             assert_eq!(
-                decision, expected_decision,
+                *decision, expected_decision,
                 "full DecisionRecord must match oracle for unconfigured deny"
             );
             // Run consistency: stored decision must reference the same run
@@ -359,7 +359,7 @@ fn after_scheduling_policy_change_to_deny() -> TestResult {
         Err(RegisteredExecutionError::PolicyDenied(decision)) => {
             // Full 9-field DecisionRecord oracle comparison
             assert_eq!(
-                decision, expected_decision,
+                *decision, expected_decision,
                 "full DecisionRecord must match oracle for policy-change deny"
             );
             // Distinct digests: admission differs from both manual live digests
