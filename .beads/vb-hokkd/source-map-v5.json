@@ -1,0 +1,92 @@
+{
+  "RunPolicyPin": {
+    "file": "crates/vb_storage/src/inputs/digest.rs",
+    "line": 43,
+    "sha256": "4f0f1c9f3274aff0305168f4854f285c289e6a6872b7e26df89e54f12ca248f2"
+  },
+  "RunAdmission::policy_pin": {
+    "file": "crates/vb_runtime/src/admission/parts/chunk_002_records.rs",
+    "line": 134,
+    "sha256": "47937a1ff0d069ba84f23e92d7c1b589cf3f59a2cee2e4a7ca7debba4eb4736f"
+  },
+  "PolicyDigest::from_bytes": {
+    "file": "crates/vb_core/src/policy.rs",
+    "line": 22,
+    "sha256": "35a38e9a64854755b76b72b12e7b30cd2d4184479dfc7dba19a91551c4633fdc"
+  },
+  "WorkflowDigest::as_bytes": {
+    "file": "crates/vb_core/src/ids/parts/chunk_001_custom_types.rs",
+    "line": 280,
+    "sha256": "98dce7ed0564cf27a3ba78c655c146abd8815ce3d269280ea807ad3325d82f4f"
+  },
+  "adapter.execute": {
+    "file": "crates/vb_storage/src/executor/register.rs",
+    "line": 53,
+    "sha256": "78e07824071d7b7f47da988eb7bdbe6b6755afe795c5c9cf3afde2857b83cd8b"
+  },
+  "adapter.reconcile": {
+    "file": "crates/vb_storage/src/executor/register.rs",
+    "line": 75,
+    "sha256": "78e07824071d7b7f47da988eb7bdbe6b6755afe795c5c9cf3afde2857b83cd8b"
+  },
+  "FjallJournal::emergency_deny_state": {
+    "file": "crates/vb_storage/src/journal/emergency_deny.rs",
+    "line": 44,
+    "sha256": "6f7b6d2950e47593bd7ceb1daf3f0428c77a76abb2d85d3d8534a3b507e00176"
+  },
+  "FjallJournal::activate_emergency_deny": {
+    "file": "crates/vb_storage/src/journal/emergency_deny.rs",
+    "line": 79,
+    "sha256": "6f7b6d2950e47593bd7ceb1daf3f0428c77a76abb2d85d3d8534a3b507e00176"
+  },
+  "FjallJournal::fail_next_persist": {
+    "file": "crates/vb_storage/src/journal/core.rs",
+    "line": 65,
+    "sha256": "ea6ca8f11cc73d64a85af432c9eaef7c71bad26abc9eabb397f0e8df7e177b80"
+  },
+  "Shard::registered_action_context": {
+    "file": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+    "line": 16,
+    "sha256": "e2b041e1ce48911842ac8c7388ec76fed3cd9ff57aa1b74f892c87840dd0de5d"
+  },
+  "LivePolicy::evaluate": {
+    "file": "crates/vb_runtime/src/policy.rs",
+    "line": 77,
+    "sha256": "2c11370fc1d07ae5edfd6c8e608126eaea6d6dc91f14d7e3b4c0c3bf8a159e50"
+  },
+  "RuntimeJournalAdapter::append": {
+    "file": "crates/vb_runtime/src/journal/chunk_001.rs",
+    "line": 287,
+    "sha256": "d2f915e6ad5217194c8a9704361628173ccc09c4a8234de4833662fe87b80aff"
+  },
+  "RuntimeJournalAdapter::append_sequenced": {
+    "file": "crates/vb_runtime/src/journal/chunk_001.rs",
+    "line": 300,
+    "sha256": "d2f915e6ad5217194c8a9704361628173ccc09c4a8234de4833662fe87b80aff"
+  },
+  "RuntimeJournalAdapter::to_storage_event": {
+    "file": "crates/vb_runtime/src/journal/chunk_001.rs",
+    "line": 304,
+    "sha256": "d2f915e6ad5217194c8a9704361628173ccc09c4a8234de4833662fe87b80aff"
+  },
+  "DecisionRecord": {
+    "file": "crates/vb_core/src/policy.rs",
+    "line": 165,
+    "sha256": "35a38e9a64854755b76b72b12e7b30cd2d4184479dfc7dba19a91551c4633fdc"
+  },
+  "DecisionCode": {
+    "file": "crates/vb_core/src/policy.rs",
+    "line": 30,
+    "sha256": "35a38e9a64854755b76b72b12e7b30cd2d4184479dfc7dba19a91551c4633fdc"
+  },
+  "RuntimeError": {
+    "file": "crates/vb_runtime/src/runtime.rs",
+    "line": 12,
+    "sha256": "6c1066b6ebb6f7ea5d82b466ca01680ea876aba03ba0fdd504ffc02c2ae93461"
+  },
+  "RuntimeResult": {
+    "file": "crates/vb_runtime/src/runtime.rs",
+    "line": 12,
+    "sha256": "6c1066b6ebb6f7ea5d82b466ca01680ea876aba03ba0fdd504ffc02c2ae93461"
+  }
+}
