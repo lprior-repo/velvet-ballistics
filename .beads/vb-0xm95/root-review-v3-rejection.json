@@ -1,0 +1,7 @@
+{
+  "review": "code-review-v3.md/findings-v3.json",
+  "accepted": false,
+  "reason": "Reviewer noted roughly130lines of new admission validation then approved using an unrecorded cold-path exemption. Master requires decomposed cold validation or bead-linked justification; skill disallows invented waivers. No source-bound justification was established.",
+  "source_repair": "Local5090 vb-i15qt v7 extracting bounded typed phases. Fresh CODE review required after new hash freeze.",
+  "scope": "Preserve original reviewer report as rejected evidence, not final acceptance. Behavioral gates are actual and remain usable only for their exact source versions."
+}
