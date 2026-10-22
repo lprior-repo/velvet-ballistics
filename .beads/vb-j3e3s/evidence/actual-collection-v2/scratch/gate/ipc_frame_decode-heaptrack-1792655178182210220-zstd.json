@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-final-measurements",
+  "argv": [
+    "zstd",
+    "-dc",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/actual-benchmark-collection-v2/scratch/heaptrack/ht-ipc_frame_decode.zst"
+  ],
+  "exit_code": 0,
+  "seconds": 0.045,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/actual-benchmark-collection-v2/scratch/gate/ipc_frame_decode-heaptrack-1792655178182210220-zstd"
+}
