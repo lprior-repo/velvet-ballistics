@@ -1,23 +1,28 @@
-#![forbid(unsafe_code)]
-//! Independent test probe for vb-79ffw ticket generation and authority.
+//! Runtime authority probe test for vb-79ffw ticket generation and authority.
 //!
 //! Tests the run-attempt ticket authority mechanism through the real
-//! Runtime/Fjall public API.
+//! Runtime/Fjall public API. Verifies that stale tickets (wrong run_attempt)
+//! are rejected with exact typed errors, and that no state mutation occurs
+//! on rejection.
+
+#![forbid(unsafe_code)]
 
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::action::{
-    ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
-    Idempotency, RetrySafety, SideEffect,
+    action_ticket_has_valid_key, compute_action_idempotency_key, ActionContract, ActionFailure,
+    ActionFailureCode, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
+    RetrySafety, SideEffect,
 };
 use vb_core::capability::CapabilitySet;
-use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
+use vb_runtime::RuntimeError;
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::run_checkpoint::RunCheckpointV1;
 use vb_runtime::runtime::Runtime;
@@ -101,55 +106,65 @@ fn contracts() -> Result<Box<[ActionContract]>, String> {
 
 fn non_retryable_failure() -> ActionFailure {
     ActionFailure {
-        code: ActionFailureCode::Unknown,
-        detail: None,
-        retry_policy: vb_core::action::RetryPolicy::NonRetryable,
-        encoded_len: 0,
+        code: ActionFailureCode::Timeout,
+        retry_policy: RetryPolicy::NonRetryable,
         taint: Taint::Clean,
+        detail: Box::from("non-retryable failure"),
+        encoded_len: 0,
     }
 }
 
 fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
     let encoded = postcard::to_allocvec(&value)
-        .map_err(|e| format!("encode failed: {e}"))?;
-    let encoded_len = u32::try_from(encoded.len())
-        .map_err(|_| "encoded length exceeds u32".to_string())?;
+        .map_err(|e| format!("slot encode failed: {e}"))?;
     Ok(ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint: Taint::Clean,
-        encoded_len,
+        encoded_len: encoded.len() as u32,
     })
 }
 
-fn pending_ticket(runtime: &Runtime, run: RunId) -> Result<ActionTicket, String> {
-    runtime
-        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
-        .ok_or_else(|| "run has no pending action ticket".to_string())
+/// Extract the latest pending action ticket from journal events.
+fn latest_pending_ticket(events: &[JournalEvent]) -> Result<ActionTicket, String> {
+    for event in events.iter().rev() {
+        if let JournalEvent::ActionScheduledTicket { ticket, .. } = event {
+            return Ok(ticket.clone());
+        }
+    }
+    Err("no ActionScheduledTicket event found".to_string())
 }
 
 fn latest_retry_checkpoint(events: &[JournalEvent]) -> Result<RunCheckpointV1, String> {
-    for event in events.iter().rev() {
-        if let JournalEvent::RetryCheckpoint { payload, .. } = event {
-            let checkpoint: RunCheckpointV1 = postcard::from_bytes(payload)
-                .map_err(|e| format!("checkpoint decode failed: {e}"))?;
-            return Ok(checkpoint);
-        }
-    }
-    Err("no retry checkpoint found".to_string())
+    let last = events
+        .iter()
+        .rev()
+        .find_map(|e| match e {
+            JournalEvent::RetryCheckpoint { checkpoint, .. } => Some(checkpoint.clone()),
+            _ => None,
+        })
+        .ok_or("no retry checkpoint event found".to_string())?;
+    Ok(last)
 }
 
 fn next_seq_after(events: &[JournalEvent]) -> Result<EventSeq, String> {
-    let max = events.iter().map(|e| e.seq()).max();
-    let next = max.map(|s| s.get().saturating_add(1)).unwrap_or(0);
-    Ok(EventSeq::new(next))
+    let max_seq = events.iter().map(|e| e.seq().get()).max()
+        .ok_or("no events to derive sequence from".to_string())?;
+    EventSeq::new(max_seq + 1).ok_or("sequence overflow".to_string())
+}
+
+/// Serialize events for exact comparison.
+fn serialize_events(events: &[JournalEvent]) -> Result<Vec<Vec<u8>>, String> {
+    let mut result = Vec::with_capacity(events.len());
+    for event in events {
+        let bytes = postcard::to_allocvec(event)
+            .map_err(|e| format!("event serialize failed: {e}"))?;
+        result.push(bytes);
+    }
+    Ok(result)
 }
 
 /// Test: stale completion is rejected after 2+ retries with no state mutation.
-///
-/// Full serialized JournalEvent vectors are captured before/after stale rejection
-/// to detect missing frames or lost state. The exact queued failure tick rejection
-/// is asserted, then the current ticket is ticked and RunFinished is verified.
 #[test]
 fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
     let dir = tempfile::tempdir()
@@ -175,8 +190,12 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
         ).map_err(|e| format!("submit failed: {e}"))?;
         runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
 
-        let ticket = pending_ticket(&runtime, run)?;
-        assert_eq!(ticket.run_attempt, 1, "first attempt must have run_attempt=1");
+        let events = journal.events_for_run(run)
+            .map_err(|e| format!("events failed: {e}"))?;
+        let ticket = latest_pending_ticket(&events)?;
+        if ticket.run_attempt != 1 {
+            return Err(format!("first attempt must have run_attempt=1, got {}", ticket.run_attempt));
+        }
 
         runtime.fail_action(ticket, non_retryable_failure())
             .map_err(|e| format!("fail_action failed: {e}"))?;
@@ -192,8 +211,6 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
     let (checkpoint2, next_seq2) = {
         let journal = Arc::new(FjallJournal::open(&path, None)
             .map_err(|e| format!("open journal: {e}"))?);
-        let _workflow = retry_action_workflow()?;
-        let _contracts = contracts()?;
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
         let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
@@ -201,8 +218,12 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
             .map_err(|e| format!("recover_retry failed: {e}"))?;
         runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
 
-        let ticket = pending_ticket(&runtime, run)?;
-        assert_eq!(ticket.run_attempt, 2, "second attempt must have run_attempt=2");
+        let events = journal.events_for_run(run)
+            .map_err(|e| format!("events failed: {e}"))?;
+        let ticket = latest_pending_ticket(&events)?;
+        if ticket.run_attempt != 2 {
+            return Err(format!("second attempt must have run_attempt=2, got {}", ticket.run_attempt));
+        }
 
         runtime.fail_action(ticket, non_retryable_failure())
             .map_err(|e| format!("fail_action failed: {e}"))?;
@@ -218,8 +239,6 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
     {
         let journal = Arc::new(FjallJournal::open(&path, None)
             .map_err(|e| format!("open journal: {e}"))?);
-        let _workflow = retry_action_workflow()?;
-        let _contracts = contracts()?;
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
         let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
@@ -227,12 +246,17 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
             .map_err(|e| format!("recover_retry failed: {e}"))?;
         runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
 
-        let current_ticket = pending_ticket(&runtime, run)?;
-        assert_eq!(current_ticket.run_attempt, 3, "third attempt must have run_attempt=3");
+        let events = journal.events_for_run(run)
+            .map_err(|e| format!("events failed: {e}"))?;
+        let current_ticket = latest_pending_ticket(&events)?;
+        if current_ticket.run_attempt != 3 {
+            return Err(format!("third attempt must have run_attempt=3, got {}", current_ticket.run_attempt));
+        }
 
         // Capture full event vector BEFORE stale rejection
         let events_before = journal.events_for_run(run)
             .map_err(|e| format!("events before stale failed: {e}"))?;
+        let serialized_before = serialize_events(&events_before)?;
         eprintln!("Events before stale rejection: {}", events_before.len());
 
         // Craft a stale ticket with run_attempt=1
@@ -243,63 +267,106 @@ fn stale_completion_rejected_after_two_retries() -> Result<(), String> {
             action: current_ticket.action,
             run_attempt: 1,
             attempt: 1,
-            idempotency_key: vb_core::action::compute_action_idempotency_key(
+            idempotency_key: compute_action_idempotency_key(
                 current_ticket.run, 1, current_ticket.seq, current_ticket.action),
             capacity: current_ticket.capacity,
         };
 
-        // Stale completion must be rejected
+        // Stale completion must be rejected with exact typed error
         let result = runtime.complete_action_with_output(
             stale_ticket, action_output(SlotValue::I64(42))?);
-        assert!(result.is_err(),
-            "stale completion (run_attempt=1 vs current=3) must be rejected");
+        match result {
+            Err(RuntimeError::StaleAttempt { incoming, current }) => {
+                if incoming != 1 || current != 3 {
+                    return Err(format!(
+                        "stale attempt error has wrong fields: incoming={} current={} (expected 1/3)",
+                        incoming, current));
+                }
+                eprintln!("Stale completion rejected with correct StaleAttempt error");
+            }
+            Err(e) => {
+                return Err(format!("stale completion rejected with wrong error type: {}", e));
+            }
+            Ok(()) => {
+                return Err("stale completion (run_attempt=1 vs current=3) must be rejected".to_string());
+            }
+        }
+
+        // Verify no state mutation after stale completion rejection
+        let events_after_completion = journal.events_for_run(run)
+            .map_err(|e| format!("events after stale completion failed: {e}"))?;
+        let serialized_after_completion = serialize_events(&events_after_completion)?;
+        if serialized_before != serialized_after_completion {
+            return Err("state mutated after stale completion rejection".to_string());
+        }
+        eprintln!("No state mutation after stale completion rejection");
 
         // Stale failure enqueues without preflight validation (async in shard)
         let result = runtime.fail_action(stale_ticket, non_retryable_failure());
-        assert!(result.is_ok(), "stale failure enqueue must succeed");
-
-        // Tick must process the queued failure and reject it
-        let tick_result = runtime.tick_all();
-        match &tick_result {
-            Ok(_) => eprintln!("Tick completed OK despite stale failure queue"),
-            Err(e) => eprintln!("Tick rejected stale failure: {}", e),
+        match result {
+            Ok(()) => eprintln!("Stale failure enqueued"),
+            Err(e) => {
+                return Err(format!("stale failure enqueue failed: {}", e));
+            }
         }
 
-        // Capture full event vector AFTER stale rejection tick
-        let events_after_stale = journal.events_for_run(run)
-            .map_err(|e| format!("events after stale failed: {e}"))?;
-        eprintln!("Events after stale rejection: {}", events_after_stale.len());
-        assert!(events_after_stale.len() >= events_before.len(),
-            "events must not decrease after stale rejection tick");
+        // Tick must process the queued failure and reject it with exact error
+        let tick_result = runtime.tick_all();
+        match tick_result {
+            Err(RuntimeError::StaleAttempt { incoming, current }) => {
+                if incoming != 1 || current != 3 {
+                    return Err(format!(
+                        "stale failure tick error has wrong fields: incoming={} current={} (expected 1/3)",
+                        incoming, current));
+                }
+                eprintln!("Tick rejected stale failure with correct StaleAttempt error");
+            }
+            Err(e) => {
+                return Err(format!("tick rejected stale failure with wrong error type: {}", e));
+            }
+            Ok(_) => {
+                return Err("tick must reject queued stale failure".to_string());
+            }
+        }
+
+        // Verify no state mutation after stale failure tick
+        let events_after_stale_tick = journal.events_for_run(run)
+            .map_err(|e| format!("events after stale tick failed: {e}"))?;
+        let serialized_after_stale_tick = serialize_events(&events_after_stale_tick)?;
+        if serialized_before != serialized_after_stale_tick {
+            return Err("state mutated after stale failure tick".to_string());
+        }
+        eprintln!("No state mutation after stale failure tick");
 
         // Current ticket must complete successfully
         let result = runtime.complete_action_with_output(
             current_ticket, action_output(SlotValue::I64(42))?);
-        assert!(result.is_ok(),
-            "current ticket (run_attempt=3) must complete successfully");
+        match result {
+            Ok(()) => eprintln!("Current ticket completed"),
+            Err(e) => {
+                return Err(format!("current ticket completion failed: {}", e));
+            }
+        }
 
         // Tick to process completion
         runtime.tick_all().map_err(|e| format!("final tick failed: {e}"))?;
 
-        // Capture full event vector AFTER current ticket completion
-        let events_after_completion = journal.events_for_run(run)
-            .map_err(|e| format!("events after completion failed: {e}"))?;
-        eprintln!("Events after completion: {}", events_after_completion.len());
-        assert!(events_after_completion.len() > events_after_stale.len(),
-            "events must increase after current ticket completion");
-
         // Verify run reached RunFinished state
-        let has_finished = events_after_completion.iter().any(|e| {
+        let events_after = journal.events_for_run(run)
+            .map_err(|e| format!("events after completion failed: {e}"))?;
+        let has_finished = events_after.iter().any(|e| {
             matches!(e, JournalEvent::RunFinished { .. })
         });
-        assert!(has_finished,
-            "run must have reached RunFinished state after current ticket completion");
+        if !has_finished {
+            return Err("run must have reached RunFinished state after current ticket completion".to_string());
+        }
+        eprintln!("Run reached RunFinished state");
     }
 
     Ok(())
 }
 
-/// Test: future run-attempt ticket is rejected
+/// Test: future run-attempt ticket is rejected with exact error.
 #[test]
 fn future_run_attempt_ticket_rejected() -> Result<(), String> {
     let dir = tempfile::tempdir()
@@ -323,8 +390,12 @@ fn future_run_attempt_ticket_rejected() -> Result<(), String> {
     ).map_err(|e| format!("submit failed: {e}"))?;
     runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
 
-    let ticket = pending_ticket(&runtime, run)?;
-    assert_eq!(ticket.run_attempt, 1);
+    let events = journal.events_for_run(run)
+        .map_err(|e| format!("events failed: {e}"))?;
+    let ticket = latest_pending_ticket(&events)?;
+    if ticket.run_attempt != 1 {
+        return Err(format!("expected run_attempt=1, got {}", ticket.run_attempt));
+    }
 
     // Craft a future ticket with run_attempt=99
     let future_ticket = ActionTicket {
@@ -334,20 +405,34 @@ fn future_run_attempt_ticket_rejected() -> Result<(), String> {
         action: ticket.action,
         run_attempt: 99,
         attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(
+        idempotency_key: compute_action_idempotency_key(
             ticket.run, 99, ticket.seq, ticket.action),
         capacity: ticket.capacity,
     };
 
     let result = runtime.complete_action_with_output(
         future_ticket, action_output(SlotValue::I64(42))?);
-    assert!(result.is_err(),
-        "future completion (run_attempt=99 vs current=1) must be rejected");
+    match result {
+        Err(RuntimeError::StaleAttempt { incoming, current }) => {
+            if incoming != 99 || current != 1 {
+                return Err(format!(
+                    "future attempt error has wrong fields: incoming={} current={} (expected 99/1)",
+                    incoming, current));
+            }
+            eprintln!("Future ticket rejected with correct StaleAttempt error");
+        }
+        Err(e) => {
+            return Err(format!("future ticket rejected with wrong error type: {}", e));
+        }
+        Ok(()) => {
+            return Err("future completion (run_attempt=99 vs current=1) must be rejected".to_string());
+        }
+    }
 
     Ok(())
 }
 
-/// Test: zero run-attempt ticket is rejected
+/// Test: zero run-attempt ticket is rejected with exact error.
 #[test]
 fn zero_run_attempt_ticket_rejected() -> Result<(), String> {
     let dir = tempfile::tempdir()
@@ -371,7 +456,9 @@ fn zero_run_attempt_ticket_rejected() -> Result<(), String> {
     ).map_err(|e| format!("submit failed: {e}"))?;
     runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
 
-    let ticket = pending_ticket(&runtime, run)?;
+    let events = journal.events_for_run(run)
+        .map_err(|e| format!("events failed: {e}"))?;
+    let ticket = latest_pending_ticket(&events)?;
 
     // Craft a zero run-attempt ticket
     let zero_ticket = ActionTicket {
@@ -381,19 +468,34 @@ fn zero_run_attempt_ticket_rejected() -> Result<(), String> {
         action: ticket.action,
         run_attempt: 0,
         attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(
+        idempotency_key: compute_action_idempotency_key(
             ticket.run, 0, ticket.seq, ticket.action),
         capacity: ticket.capacity,
     };
 
     let result = runtime.complete_action_with_output(
         zero_ticket, action_output(SlotValue::I64(42))?);
-    assert!(result.is_err(), "zero run-attempt must be rejected");
+    match result {
+        Err(RuntimeError::StaleAttempt { incoming, current }) => {
+            if incoming != 0 || current != 1 {
+                return Err(format!(
+                    "zero attempt error has wrong fields: incoming={} current={} (expected 0/1)",
+                    incoming, current));
+            }
+            eprintln!("Zero ticket rejected with correct StaleAttempt error");
+        }
+        Err(e) => {
+            return Err(format!("zero ticket rejected with wrong error type: {}", e));
+        }
+        Ok(()) => {
+            return Err("zero run-attempt must be rejected".to_string());
+        }
+    }
 
     Ok(())
 }
 
-/// Test: cold recovery preserves current generation
+/// Test: cold recovery preserves current generation.
 #[test]
 fn cold_recovery_preserves_run_attempt() -> Result<(), String> {
     let dir = tempfile::tempdir()
@@ -419,7 +521,9 @@ fn cold_recovery_preserves_run_attempt() -> Result<(), String> {
         ).map_err(|e| format!("submit failed: {e}"))?;
         runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
 
-        let ticket = pending_ticket(&runtime, run)?;
+        let events = journal.events_for_run(run)
+            .map_err(|e| format!("events failed: {e}"))?;
+        let ticket = latest_pending_ticket(&events)?;
         runtime.fail_action(ticket, non_retryable_failure())
             .map_err(|e| format!("fail_action failed: {e}"))?;
         runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
@@ -434,8 +538,6 @@ fn cold_recovery_preserves_run_attempt() -> Result<(), String> {
     {
         let journal = Arc::new(FjallJournal::open(&path, None)
             .map_err(|e| format!("open journal: {e}"))?);
-        let _workflow = retry_action_workflow()?;
-        let _contracts = contracts()?;
         let shared = StorageRuntimeJournal::shared_journaled(journal.clone());
         let mut runtime = Runtime::new(shard_count()?, ShardConfig::default(), shared);
 
@@ -443,9 +545,12 @@ fn cold_recovery_preserves_run_attempt() -> Result<(), String> {
             .map_err(|e| format!("recover_retry failed: {e}"))?;
         runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
 
-        let ticket = pending_ticket(&runtime, run)?;
-        assert_eq!(ticket.run_attempt, 2,
-            "cold recovery must preserve run_attempt=2");
+        let events = journal.events_for_run(run)
+            .map_err(|e| format!("events failed: {e}"))?;
+        let ticket = latest_pending_ticket(&events)?;
+        if ticket.run_attempt != 2 {
+            return Err(format!("cold recovery must preserve run_attempt=2, got {}", ticket.run_attempt));
+        }
 
         // Old ticket from run_attempt=1 must be rejected
         let old_ticket = ActionTicket {
@@ -455,43 +560,63 @@ fn cold_recovery_preserves_run_attempt() -> Result<(), String> {
             action: ticket.action,
             run_attempt: 1,
             attempt: 1,
-            idempotency_key: vb_core::action::compute_action_idempotency_key(
+            idempotency_key: compute_action_idempotency_key(
                 ticket.run, 1, ticket.seq, ticket.action),
             capacity: ticket.capacity,
         };
 
         let result = runtime.complete_action_with_output(
             old_ticket, action_output(SlotValue::I64(42))?);
-        assert!(result.is_err(),
-            "old ticket from run_attempt=1 must be rejected after cold recovery");
+        match result {
+            Err(RuntimeError::StaleAttempt { incoming, current }) => {
+                if incoming != 1 || current != 2 {
+                    return Err(format!(
+                        "old ticket after recovery error has wrong fields: incoming={} current={} (expected 1/2)",
+                        incoming, current));
+                }
+                eprintln!("Old ticket rejected after cold recovery with correct error");
+            }
+            Err(e) => {
+                return Err(format!("old ticket rejected with wrong error type: {}", e));
+            }
+            Ok(()) => {
+                return Err("old ticket from run_attempt=1 must be rejected after cold recovery".to_string());
+            }
+        }
     }
 
     Ok(())
 }
 
-/// Test: idempotency key differs across run attempts
+/// Test: idempotency key differs across run attempts.
 #[test]
 fn idempotency_key_differs_across_run_attempts() -> Result<(), String> {
     let run = RunId::new(90005);
-    let seq = vb_core::ids::SeqNo::ZERO;
+    let seq = SeqNo::ZERO;
     let action = ActionId::new(1);
 
-    let key1 = vb_core::action::compute_action_idempotency_key(run, 1, seq, action);
-    let key2 = vb_core::action::compute_action_idempotency_key(run, 2, seq, action);
-    let key3 = vb_core::action::compute_action_idempotency_key(run, 3, seq, action);
+    let key1 = compute_action_idempotency_key(run, 1, seq, action);
+    let key2 = compute_action_idempotency_key(run, 2, seq, action);
+    let key3 = compute_action_idempotency_key(run, 3, seq, action);
 
-    assert_ne!(key1, key2, "keys must differ between run_attempt 1 and 2");
-    assert_ne!(key2, key3, "keys must differ between run_attempt 2 and 3");
-    assert_ne!(key1, key3, "keys must differ between run_attempt 1 and 3");
+    if key1 == key2 {
+        return Err("keys must differ between run_attempt 1 and 2".to_string());
+    }
+    if key2 == key3 {
+        return Err("keys must differ between run_attempt 2 and 3".to_string());
+    }
+    if key1 == key3 {
+        return Err("keys must differ between run_attempt 1 and 3".to_string());
+    }
 
     Ok(())
 }
 
-/// Test: ticket has valid key after serialization roundtrip
+/// Test: ticket has valid key after serialization roundtrip.
 #[test]
 fn ticket_key_valid_after_serialization() -> Result<(), String> {
     let run = RunId::new(90006);
-    let seq = vb_core::ids::SeqNo::ZERO;
+    let seq = SeqNo::ZERO;
     let action = ActionId::new(1);
     let run_attempt = 2;
 
@@ -502,13 +627,14 @@ fn ticket_key_valid_after_serialization() -> Result<(), String> {
         action,
         run_attempt,
         attempt: 1,
-        idempotency_key: vb_core::action::compute_action_idempotency_key(
+        idempotency_key: compute_action_idempotency_key(
             run, run_attempt, seq, action),
         capacity: 3,
     };
 
-    assert!(vb_core::action::action_ticket_has_valid_key(ticket),
-        "ticket must have valid key");
+    if !action_ticket_has_valid_key(ticket) {
+        return Err("ticket must have valid key".to_string());
+    }
 
     // Serialize and deserialize
     let serialized = postcard::to_allocvec(&ticket)
@@ -516,9 +642,12 @@ fn ticket_key_valid_after_serialization() -> Result<(), String> {
     let deserialized: ActionTicket = postcard::from_bytes(&serialized)
         .map_err(|e| format!("deserialize failed: {e}"))?;
 
-    assert_eq!(ticket, deserialized, "roundtrip must preserve ticket");
-    assert!(vb_core::action::action_ticket_has_valid_key(deserialized),
-        "deserialized ticket must have valid key");
+    if ticket != deserialized {
+        return Err("roundtrip must preserve ticket".to_string());
+    }
+    if !action_ticket_has_valid_key(deserialized) {
+        return Err("deserialized ticket must have valid key".to_string());
+    }
 
     Ok(())
 }

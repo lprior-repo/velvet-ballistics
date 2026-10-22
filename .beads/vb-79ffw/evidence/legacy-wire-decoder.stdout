@@ -1,0 +1,10 @@
+
+running 5 tests
+test legacy_golden_provenance_and_limitations ... ok
+test legacy_golden_fixtures_have_valid_envelopes ... ok
+test legacy_high_values_rejected_by_current_decoder ... ok
+test legacy_max_attempt_capacity_rejected_by_current_decoder ... ok
+test legacy_small_canonical_rejected_by_current_decoder ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
