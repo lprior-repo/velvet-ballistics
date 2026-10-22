@@ -1,0 +1,26 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-c4hzw-policy-recovery-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_c4hzw_emergency_reopen"
+  ],
+  "exit_code": 101,
+  "seconds": 0.17,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-c4hzw/evidence/ROOT_REOPEN_TESTS_V5_MINIMAL"
+}

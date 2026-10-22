@@ -1,0 +1,38 @@
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:82:1
+   |
+82 |   pub fn compute_expected_input_digest(
+   |   ^--
+   |   |
+   |  _help: consider restricting its visibility: `pub(crate)`
+   | |
+83 | |     value: i64,
+84 | |     taint: Taint,
+85 | |     ticket: &ActionTicket,
+86 | | ) -> Result<PolicyDigest, String> {
+   | |_________________________________^
+   |
+   = help: or consider exporting it for use by other crates
+   = note: requested on the command line with `-D unreachable-pub`
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:111:1
+    |
+111 | pub fn admission_pin_from_artifact(policy_digest: [u8; 32]) -> PinnedAdmissionPolicy {
+    | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(crate)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:115:1
+    |
+115 | pub fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {
+    | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(crate)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_emergency_reopen") due to 3 previous errors
