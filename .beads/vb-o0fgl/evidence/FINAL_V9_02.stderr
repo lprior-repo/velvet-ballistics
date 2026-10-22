@@ -1,0 +1,7 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-o0fgl-local3090-rereview-v9/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.65s
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-ce7dc9c74a468062)

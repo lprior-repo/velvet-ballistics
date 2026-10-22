@@ -1,0 +1,36 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-o0fgl-local3090-rereview-v9/crates/vb_storage/src/codec/tests/replay_integrity.rs:229:
+         );
+     }
+     // Kinds outside the journal range remain rejected.
+-    assert!(is_known_record_kind(38), "kind 38 (PolicyDecision) must be known");
++    assert!(
++        is_known_record_kind(38),
++        "kind 38 (PolicyDecision) must be known"
++    );
+     assert!(
+         validate_kind_family(MAGIC_JOURNAL_EVENT, 38).is_ok(),
+         "kind 38 must be admitted for journal magic"
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-o0fgl-local3090-rereview-v9/crates/vb_storage/tests/policy_decision_full_record/pd_helpers.rs:1:
+ #![forbid(unsafe_code)]
+ 
+-use vb_core::action::{compute_action_idempotency_key, ActionTicket};
++use vb_core::action::{ActionTicket, compute_action_idempotency_key};
+ use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+ use vb_core::policy::{
+     DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy, PolicyDigest, PolicyLayer,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-o0fgl-local3090-rereview-v9/crates/vb_storage/tests/policy_decision_full_record.rs:9:
+ #[path = "policy_decision_full_record/pd_helpers.rs"]
+ mod pd_helpers;
+ use vb_core::workflow::LifecycleState;
++use vb_storage::JournalError;
+ use vb_storage::codec::{decode_journal_event, encode_record};
+ use vb_storage::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
+ use vb_storage::derive_lifecycle_state_from_events;
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-o0fgl-local3090-rereview-v9/crates/vb_storage/tests/policy_decision_full_record.rs:16:
+ use vb_storage::journal::FjallJournal;
+ use vb_storage::records::RecordKind;
+ use vb_storage::types::EventSeq;
+-use vb_storage::JournalError;
+ 
+ #[test]
+ fn policy_decision_event_round_trip() -> Result<(), Box<dyn std::error::Error>> {
