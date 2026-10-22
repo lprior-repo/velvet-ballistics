@@ -744,8 +744,8 @@ mod doctor_command {
     /// 4. The test fails if the child current_dir override is removed
     /// Isolated child cwd prevents relative DB from leaking into repo root.
     #[test]
-    fn cli_doctor_with_relative_db_no_source_tree_artifacts(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn cli_doctor_with_relative_db_no_source_tree_artifacts()
+    -> Result<(), Box<dyn std::error::Error>> {
         let db_name = "vb-isolation-v4.db";
         let (output, tmp_dir) = run_vb_internal(&["doctor", "--db", db_name])?;
 
