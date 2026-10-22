@@ -689,10 +689,9 @@ impl Runtime {
         context: RecoveredSeedProductContext,
         retained_inputs: Option<vb_storage::RunInputsRecord>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
-        let initial_inputs = match &retained_inputs {
-            Some(record) => Some(record.inputs().to_vec()),
-            None => None,
-        };
+        let initial_inputs = retained_inputs
+            .as_ref()
+            .map(|record| record.inputs().to_vec());
         let frame = crate::recovery::hydrate_frame_for_full_recovery_with_inputs(
             context.seed.seed(),
             context.boundary,
@@ -732,7 +731,7 @@ impl Runtime {
         let run = product.run_id();
         let command = product.into_recover_command();
         let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::Recover { command })
+        shard.enqueue(ShardCommand::Recover { command: Box::new(command) })
     }
 
     fn load_recovery_artifact_and_workflow(

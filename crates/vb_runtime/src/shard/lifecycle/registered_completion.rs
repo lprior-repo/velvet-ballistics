@@ -85,10 +85,9 @@ impl Shard {
             .load_accepted_artifact(admission.artifact_digest())
             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         if let vb_core::artifact::ArtifactEvidence::Packed(packed) = artifact.verification.evidence
+            && packed.packs.iter().any(|pack| pack.action == ticket.action)
         {
-            if packed.packs.iter().any(|pack| pack.action == ticket.action) {
-                return Err(RuntimeError::InvalidActionCompletion);
-            }
+            return Err(RuntimeError::InvalidActionCompletion);
         }
         Ok(())
     }
