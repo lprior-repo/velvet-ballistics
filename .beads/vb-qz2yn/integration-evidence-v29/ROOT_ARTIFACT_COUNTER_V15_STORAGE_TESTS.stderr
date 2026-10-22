@@ -1,0 +1,32 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.52s
+────────────
+ Nextest run ID 8d53a8f6-f2eb-4d9d-81dc-42535f429da1 with nextest profile: default
+    Starting 1637 tests across 1 binary
+        FAIL [   0.017s] (1400/1637) vb_storage tests::tests::journal_opens_declared_keyspaces_and_round_trips_typed_records
+  stdout ───
+
+    running 1 test
+    test tests::tests::journal_opens_declared_keyspaces_and_round_trips_typed_records ... FAILED
+
+    failures:
+
+    failures:
+        tests::tests::journal_opens_declared_keyspaces_and_round_trips_typed_records
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1636 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'tests::tests::journal_opens_declared_keyspaces_and_round_trips_typed_records' (34404) panicked at crates/vb_storage/src/tests.rs:726:9:
+    assertion `left == right` failed
+      left: 12
+     right: 11
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure: 31 tests still running
+────────────
+     Summary [   1.423s] 1431/1637 tests run: 1430 passed, 1 failed, 0 skipped
+        FAIL [   0.017s] (1400/1637) vb_storage tests::tests::journal_opens_declared_keyspaces_and_round_trips_typed_records
+warning: 206/1637 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed
