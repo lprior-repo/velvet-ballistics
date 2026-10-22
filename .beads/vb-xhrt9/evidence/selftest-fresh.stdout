@@ -1,0 +1,31 @@
+=== Velvet Ballistics Supply-Chain Status Handling Selftest ===
+Testing exit-status preservation in advisory report runner and audit block.
+
+--- Advisory Report Status Preservation ---
+PASS [geiger-ok]: status file has correct value 0
+  stdout captured: 22 bytes
+  stderr captured: 0 bytes
+PASS [deny-fail-1]: status file has correct value 1
+  stdout captured: 20 bytes
+  stderr captured: 19 bytes
+PASS [vet-fail-2]: status file has correct value 2
+  stdout captured: 19 bytes
+  stderr captured: 18 bytes
+PASS [machete-timeout]: status file has correct value 124
+  stdout captured: 23 bytes
+  stderr captured: 22 bytes
+PASS [tool-not-found]: status file has correct value 127
+  stdout captured: 28 bytes
+  stderr captured: 27 bytes
+
+--- Audit Block Fail-Closed Behavior ---
+PASS [audit-pass]: status file has 0
+PASS [audit-fail-1]: status file has correct value 1
+  script exit code matches: 1
+PASS [audit-fail-3]: status file has correct value 3
+  script exit code matches: 3
+
+=== Results ===
+PASS: 8
+FAIL: 0
+All status handling tests passed.

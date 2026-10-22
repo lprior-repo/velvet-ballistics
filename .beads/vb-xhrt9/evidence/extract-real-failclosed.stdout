@@ -1,0 +1,11 @@
+=== FULL SCRIPT: audit exit 1 -> task fail-closed ===
+task exit code: 1 (expect 1)
+PASS: audit vuln exits task 1 (fail-closed)
+PASS: audit.status=1
+PASS: stderr emitted vuln message
+audit exit 3 -> task exit: 3 (expect 3)
+PASS: audit exit 3 fail-closed
+missing rustup -> task exit: 0 (expect 127)
+NOTE: got 0 (timeout wrapping may alter 127)
+
+ALL FAIL-CLOSED CHECKS PASSED

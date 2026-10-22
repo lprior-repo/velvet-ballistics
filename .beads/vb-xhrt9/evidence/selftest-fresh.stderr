@@ -1,0 +1,10 @@
+Running advisory report: geiger
+Advisory report geiger completed with status 0
+Running advisory report: deny
+Advisory report deny completed with status 1
+Running advisory report: vet
+Advisory report vet completed with status 2
+Running advisory report: machete
+Advisory report machete completed with status 124
+Running advisory report: missing-tool
+Advisory report missing-tool completed with status 127
