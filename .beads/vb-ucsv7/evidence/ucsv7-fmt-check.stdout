@@ -1,0 +1,52 @@
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:1:
+ use std::sync::Arc;
+ 
+ use proptest::prelude::*;
++use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+ use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity};
+ use vb_core::capability::{Capability, CapabilitySet};
+ use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:7:
+ use vb_core::policy::RuntimePolicy;
+-use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+ use vb_core::value::ConstValue;
+ use vb_core::workflow::{
+     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:12:
+ };
+-use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+ use vb_runtime::RuntimeError;
+ use vb_runtime::admission::{
+     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, ArtifactStore,
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:18:
+ };
+ use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
+ use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
++use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+ 
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ enum ObservedAdmissionDiagnostic {
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:506:
+             next: None,
+             on_error: None,
+             error_slot: None,
+-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
++            kind: CompiledNodeKind::Finish {
++                result: SlotIdx::new(0),
++            },
+         },
+     ]);
+ 
+Diff in /home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review/crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs:546:
+         }]
+     };
+ 
+-    Ok(prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &contracts)?)
++    Ok(prepare_compiled_artifact(
++        &workflow,
++        RuntimePolicy::Strict,
++        &contracts,
++    )?)
+ }
+ 
+ #[test]

@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ucsv7-local5090-tool-review",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--tests",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 101,
+  "seconds": 11.754,
+  "timeout_seconds": 120,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ucsv7/evidence/ucsv7-strict-check"
+}
