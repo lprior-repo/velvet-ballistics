@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-b9sna-local5090-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--test",
+    "policy_decision_wire"
+  ],
+  "exit_code": 0,
+  "seconds": 9.61,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-b9sna/evidence/CODE-NEWUNIQUE"
+}

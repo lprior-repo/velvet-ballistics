@@ -1,0 +1,18 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-b9sna-local5090-review",
+  "argv": [
+    "cargo",
+    "fmt",
+    "-p",
+    "vb_storage",
+    "--check"
+  ],
+  "exit_code": 0,
+  "seconds": 0.376,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-b9sna/evidence/CODE-FMT"
+}
