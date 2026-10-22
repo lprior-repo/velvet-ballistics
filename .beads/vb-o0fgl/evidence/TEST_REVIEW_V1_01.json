@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-o0fgl-local3090-test-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_storage",
+    "--test",
+    "policy_decision_full_record"
+  ],
+  "exit_code": 0,
+  "seconds": 6.797,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-o0fgl/evidence/TEST_REVIEW_V1_01"
+}
