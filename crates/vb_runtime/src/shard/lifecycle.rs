@@ -3,12 +3,14 @@
 
 #[path = "lifecycle/execution_binding.rs"]
 mod execution_binding;
+#[path = "lifecycle/recovered_admission.rs"]
+mod recovered_admission;
 #[path = "lifecycle/registered_completion.rs"]
 mod registered_completion;
-#[path = "lifecycle/registered_context_helpers.rs"]
-mod registered_context_helpers;
 #[path = "lifecycle/registered_completion_context.rs"]
 mod registered_completion_context;
+#[path = "lifecycle/registered_context_helpers.rs"]
+mod registered_context_helpers;
 pub(crate) use registered_completion::RegisteredActionContext;
 
 include!("lifecycle/chunk_003.rs");

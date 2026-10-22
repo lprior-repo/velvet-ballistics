@@ -1,0 +1,6 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running tests/cancel_kill_lattice_tests.rs (target/debug/deps/cancel_kill_lattice_tests-92f055666bf20869)
+     Running tests/runtime_fjall_pending_action_recovery.rs (target/debug/deps/runtime_fjall_pending_action_recovery-5349c5e779c5a502)
+     Running tests/vb_c1s0_orchestration_runtime_tests.rs (target/debug/deps/vb_c1s0_orchestration_runtime_tests-3840e9f43da33821)
+     Running tests/vb_test_runtime_lifecycle_state_behavior.rs (target/debug/deps/vb_test_runtime_lifecycle_state_behavior-354173e8e54df3e4)
+     Running tests/vb_vt2f_direct_runtime_api_acceptance.rs (target/debug/deps/vb_vt2f_direct_runtime_api_acceptance-1ae527bcf9238e7e)
