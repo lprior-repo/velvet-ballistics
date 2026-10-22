@@ -1,0 +1,181 @@
+ACTUAL SOURCE crates/vb_storage/src/admission.rs
+190: ///
+191: /// Tracks the binding between a run and its accepting artifact per Backend DoD:
+192: /// - `source_digest` binds the run to the workflow source that produced the artifact
+193: /// - `policy_digest` binds the run to the policy/resource contract in effect
+194: ///
+195: /// GAP-004 FIX: Per-action digests are NOT added because actions are already
+196: /// cryptographically bound via the `CompiledWorkflow` digest. Each action's
+197: /// bytecode and parameters are part of the workflow structure that is hashed
+198: /// to produce the workflow digest. The workflow digest therefore serves as
+199: /// a composite binding for all actions in the workflow.
+200: #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+201: pub struct AcceptedArtifact {
+202:     /// The compiled artifact's content hash (matches `source_digest` when
+203:     /// artifact is produced directly from compilation without separate source).
+204:     pub digest: vb_core::WorkflowDigest,
+205:     /// Digest of the original workflow source that was compiled to produce this artifact.
+206:     /// For directly compiled workflows, this equals `digest`.
+207:     pub source_digest: vb_core::WorkflowDigest,
+208:     /// Digest of the resource/policy contract that governed this artifact's admission.
+209:     /// Derived from the `resource_contract` field of the compiled workflow.
+210:     pub policy_digest: vb_core::WorkflowDigest,
+211:     /// Serialized compiled IR (postcard).
+212:     pub ir: Vec<u8>,
+213:     /// Proof that verification passed.
+214:     pub verification: VerificationProof,
+215:     /// Journal sequence when accepted.
+216:     ///
+217:     /// GAP-007 FIX: This field is currently always set to `EventSeq::new(0)`
+218:     /// because actual sequence tracking is not implemented. The field is retained
+219:     /// as a placeholder for future implementation of proper sequence tracking.
+
+ACTUAL SOURCE crates/vb_storage/src/admission/verification.rs
+15: 
+16: /// Prepare a checked envelope without writing a journal or claiming a durable ack.
+17: /// External assumptions in the ledger remain assumptions, not executed evidence.
+18: pub fn prepare_compiled_artifact(
+19:     workflow: &CompiledWorkflow,
+20:     policy: RuntimePolicy,
+21:     contracts: &[ActionContract],
+22: ) -> Result<AcceptedArtifact, JournalError> {
+23:     prepare_with_profile(workflow, policy, contracts, ExecutorProfile::Legacy)
+24: }
+25: 
+
+ACTUAL SOURCE crates/vb_storage/src/admission/verification.rs
+51: }
+52: 
+53: /// Recompute checks and evidence from hostile artifact bytes before runtime use.
+54: /// Legacy claims require regeneration; a rehashed forged ledger is still rejected.
+55: pub fn verify_accepted_artifact(
+56:     artifact: &AcceptedArtifact,
+57: ) -> Result<CompiledWorkflow, JournalError> {
+58:     let len = u32::try_from(artifact.ir.len()).map_err(|_| JournalError::ArtifactMalformed)?;
+59:     if len > crate::constants::MAX_COMPILED_IR_BYTES {
+60:         return Err(JournalError::PayloadTooLarge {
+61:             len,
+62:             max: crate::constants::MAX_COMPILED_IR_BYTES,
+
+ACTUAL SOURCE crates/vb_storage/src/admission/verification.rs
+88: pub fn verify_accepted_artifact_for_policy(
+89:     artifact: &AcceptedArtifact,
+90:     policy: RuntimePolicy,
+91: ) -> Result<CompiledWorkflow, JournalError> {
+92:     let evidence = checked_evidence_schema(&artifact.verification.evidence)?;
+93:     if evidence.admission_policy != policy {
+94:         return Err(JournalError::ArtifactMalformed);
+95:     }
+96:     verify_accepted_artifact(artifact)
+97: }
+98: 
+99: fn checked_evidence_schema(
+100:     evidence: &ArtifactEvidence,
+101: ) -> Result<&ArtifactVerificationEvidence, JournalError> {
+102:     match evidence {
+103:         ArtifactEvidence::Packed(_) => Err(JournalError::ArtifactMalformed),
+104:         ArtifactEvidence::Unverified => Err(JournalError::MigrationRequired {
+
+ACTUAL SOURCE crates/vb_storage/src/journal/source.rs
+66:         Ok(())
+67:     }
+68: 
+69:     /// Loads compiled IR bytes by digest.
+70:     pub fn compiled_ir(
+71:         &self,
+72:         digest: vb_core::WorkflowDigest,
+73:     ) -> Result<Option<CompiledIrRecord>, JournalError> {
+74:         // SA-009: test-only hook forces the readback to report the artifact
+75:         // as missing even when the underlying LSM still holds it.
+76:         #[cfg(test)]
+77:         if self.consume_compiled_ir_readback_failure_for_test() {
+78:             return Ok(None);
+79:         }
+80:         let key = compiled_ir_key(digest.as_bytes())?;
+81:         self.decode_optional_with(
+82:             &self.compiled_ir,
+83:             key.as_slice(),
+84:             MAGIC_COMPILED_ARTIFACT,
+85:             MAX_COMPILED_IR_BYTES,
+86:             |_envelope, record| validate_compiled_ir_read(digest, record),
+87:         )
+88:     }
+89: 
+90:     /// Loads an accepted-artifact compiled IR record by the workflow/source digest.
+91:     ///
+92:     /// Compiled IR records are content-addressed by their artifact digest. Runtime
+93:     /// events and run headers carry the workflow digest, so operator/IPC cold paths
+94:     /// need a bounded fallback that resolves an accepted artifact whose
+95:     /// `source_digest` matches that workflow digest without weakening the primary
+96:     /// digest↔payload binding. Direct raw `WorkflowParts` records are ignored by
+
+ACTUAL SOURCE crates/vb_storage/src/error/mod.rs
+95:     PayloadDigestMismatch,
+96:     #[error("unexpected end of record")]
+97:     UnexpectedEof,
+98:     #[error(
+99:         "malformed keyspace row under prefix {prefix:#04x}: actual_len={actual_len} expected_len={expected_len}"
+100:     )]
+101:     MalformedKeyspaceRow {
+102:         prefix: u8,
+103:         expected_len: usize,
+104:         actual_len: usize,
+105:     },
+106:     #[error("postcard payload decode failed: {0}")]
+107:     PostcardDecodeFailed(#[source] postcard::Error),
+
+ACTUAL SOURCE crates/vb_storage/src/admission/tests.rs
+140:         gate: VerificationWarning::MAX_GATE,
+141:     };
+142:     assert!(w.is_valid());
+143: }
+144: 
+145: #[test]
+146: fn is_valid_accepts_gate_fourteen() {
+147:     let w = VerificationWarning {
+148:         code: 1,
+149:         message: Box::from("within gate range"),
+150:         gate: 14,
+151:     };
+152:     assert!(w.is_valid());
+153: }
+154: 
+155: // =========================================================================
+156: // submit_artifact: Relaxed policy
+157: // =========================================================================
+158: 
+159: /// Owns both a temporary directory path and a FjallJournal so the directory
+160: /// is not dropped while the journal is in use.
+161: struct TestJournal {
+162:     path: std::path::PathBuf,
+163:     journal: crate::FjallJournal,
+164: }
+165: 
+166: impl Drop for TestJournal {
+167:     fn drop(&mut self) {
+168:         if let Err(error) = std::fs::remove_dir_all(&self.path) {
+169:             std::hint::black_box(error.kind());
+170:         }
+171:     }
+172: }
+173: 
+174: impl std::ops::Deref for TestJournal {
+175:     type Target = crate::FjallJournal;
+176:     fn deref(&self) -> &Self::Target {
+177:         &self.journal
+178:     }
+179: }
+180: 
+181: /// Opens a temporary FjallJournal that is cleaned up when dropped.
+182: fn temp_journal() -> Result<TestJournal, JournalError> {
+183:     let dir = tempfile::tempdir().map_err(|_| JournalError::ArtifactMalformed)?;
+184:     let path = dir.keep();
+185:     let journal = crate::FjallJournal::open(&path, None)?;
+186:     Ok(TestJournal { path, journal })
+187: }
+188: 
+189: /// Builds a minimal valid CompiledWorkflow for testing.
+190: ///
+191: /// The digest is computed by serializing the parts with the digest field zeroed,
+192: /// then BLAKE3-hashing the result. This mirrors the checksum validation gate.
+193: fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
