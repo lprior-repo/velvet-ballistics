@@ -1,0 +1,4 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+exec timeout 180 cargo test -p velvet-ballistics-workspace-tests --test legacy_wire_decoder -- --nocapture

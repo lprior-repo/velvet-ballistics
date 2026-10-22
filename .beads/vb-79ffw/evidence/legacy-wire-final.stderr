@@ -1,0 +1,19 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running tests/legacy_wire_decoder.rs (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/target/debug/deps/legacy_wire_decoder-08edc29a5409958d)
+Golden fixture provenance:
+  Old production commit: 423d8ae8b667d82b4d36e57d29d7ef2aede08bdf
+  Event kind: ActionScheduledTicket only
+  Cases: 3 (small-canonical, high-values, max-attempt-capacity)
+
+Limitations:
+  - Does not cover other JournalEvent variants
+  - Does not cover pre-423d8ae8 layouts
+  - Fail-closed behavior established for these specific cases
+  - Universal legacy compatibility not claimed
+[OK] small-canonical envelope verified (122 bytes)
+[OK] high-values envelope verified (135 bytes)
+[OK] max-attempt-capacity envelope verified (128 bytes)
+[OK] max-attempt-capacity rejected: PostcardDecodeFailed(DeserializeBadVarint)
+[OK] small-canonical rejected: PostcardDecodeFailed(DeserializeBadVarint)
+[OK] high-values rejected: PostcardDecodeFailed(DeserializeBadVarint)

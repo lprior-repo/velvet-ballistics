@@ -20,8 +20,8 @@
 use std::path::{Path, PathBuf};
 
 use std::fs;
-use vb_storage::journal::parse_event;
 use vb_storage::error::JournalError;
+use vb_storage::journal::parse_event;
 
 /// Golden fixture provenance: commit 423d8ae8 old production serializer.
 const OLD_SHA: &str = "423d8ae8b667d82b4d36e57d29d7ef2aede08bdf";
@@ -29,15 +29,25 @@ const OLD_SHA: &str = "423d8ae8b667d82b4d36e57d29d7ef2aede08bdf";
 fn repo_root() -> Result<PathBuf, String> {
     // Try CARGO_MANIFEST_DIR first (set during compilation)
     if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let root = PathBuf::from(manifest_dir).parent().unwrap_or(Path::new("."))
-            .parent().unwrap_or(Path::new(".")).to_path_buf();
-        if root.join(".beads/vb-79ffw/old-golden/manifest.json").exists() {
+        let root = PathBuf::from(manifest_dir)
+            .parent()
+            .unwrap_or(Path::new("."))
+            .parent()
+            .unwrap_or(Path::new("."))
+            .to_path_buf();
+        if root
+            .join(".beads/vb-79ffw/old-golden/manifest.json")
+            .exists()
+        {
             return Ok(root);
         }
     }
     // Fall back to current directory
     let cwd = std::env::current_dir().map_err(|e| format!("current_dir: {}", e))?;
-    if cwd.join(".beads/vb-79ffw/old-golden/manifest.json").exists() {
+    if cwd
+        .join(".beads/vb-79ffw/old-golden/manifest.json")
+        .exists()
+    {
         return Ok(cwd);
     }
     Err("cannot locate repo root (missing .beads/vb-79ffw/old-golden/manifest.json)".to_string())
@@ -62,24 +72,27 @@ fn load_manifest() -> Result<serde_json::Value, String> {
     let root = repo_root()?;
     let path = root.join(".beads/vb-79ffw/old-golden/manifest.json");
     match fs::read_to_string(&path) {
-        Ok(content) => serde_json::from_str(&content)
-            .map_err(|e| format!("failed to parse manifest: {}", e)),
+        Ok(content) => {
+            serde_json::from_str(&content).map_err(|e| format!("failed to parse manifest: {}", e))
+        }
         Err(e) => Err(format!("failed to read manifest: {}", e)),
     }
 }
 
-
 /// Verify a golden fixture's length and BLAKE3 digest against the manifest.
 fn verify_fixture(name: &str, bytes: &[u8], manifest: &serde_json::Value) -> Result<(), String> {
-    let cases = manifest.get("cases")
+    let cases = manifest
+        .get("cases")
         .and_then(|v| v.as_array())
         .ok_or("manifest missing cases array")?;
-    
-    let case = cases.iter().find(|c| {
-        c.get("name").and_then(|v| v.as_str()) == Some(name)
-    }).ok_or(format!("manifest missing case {}", name))?;
-    
-    let expected_length = case.get("length")
+
+    let case = cases
+        .iter()
+        .find(|c| c.get("name").and_then(|v| v.as_str()) == Some(name))
+        .ok_or(format!("manifest missing case {}", name))?;
+
+    let expected_length = case
+        .get("length")
         .and_then(|v| v.as_u64())
         .ok_or(format!("manifest case {} missing length", name))?;
     let actual_length = u64::try_from(bytes.len())
@@ -90,8 +103,9 @@ fn verify_fixture(name: &str, bytes: &[u8], manifest: &serde_json::Value) -> Res
             name, expected_length, actual_length
         ));
     }
-    
-    let expected_digest = case.get("blake3")
+
+    let expected_digest = case
+        .get("blake3")
         .and_then(|v| v.as_str())
         .ok_or(format!("manifest case {} missing blake3", name))?;
     let actual_digest = blake3::hash(bytes).to_hex().to_string();
@@ -101,7 +115,7 @@ fn verify_fixture(name: &str, bytes: &[u8], manifest: &serde_json::Value) -> Res
             name, expected_digest, actual_digest
         ));
     }
-    
+
     Ok(())
 }
 
@@ -112,12 +126,21 @@ fn legacy_small_canonical_rejected_by_current_decoder() -> Result<(), String> {
     let bytes = load_golden(name)?;
     let manifest = load_manifest()?;
     verify_fixture(name, &bytes, &manifest)?;
-    
+
     let result = parse_event(&bytes);
-    
+
     match result {
         Err(JournalError::PostcardDecodeFailed(source)) => {
-            eprintln!("[OK] {} rejected: PostcardDecodeFailed: {}", name, source);
+            if !matches!(source, postcard::Error::DeserializeBadVarint) {
+                return Err(format!(
+                    "{}: wrong postcard variant: {:?} (expected DeserializeBadVarint)",
+                    name, source
+                ));
+            }
+            eprintln!(
+                "[OK] {} rejected: PostcardDecodeFailed(DeserializeBadVarint)",
+                name
+            );
             Ok(())
         }
         Err(e) => Err(format!(
@@ -138,12 +161,21 @@ fn legacy_high_values_rejected_by_current_decoder() -> Result<(), String> {
     let bytes = load_golden(name)?;
     let manifest = load_manifest()?;
     verify_fixture(name, &bytes, &manifest)?;
-    
+
     let result = parse_event(&bytes);
-    
+
     match result {
         Err(JournalError::PostcardDecodeFailed(source)) => {
-            eprintln!("[OK] {} rejected: PostcardDecodeFailed: {}", name, source);
+            if !matches!(source, postcard::Error::DeserializeBadVarint) {
+                return Err(format!(
+                    "{}: wrong postcard variant: {:?} (expected DeserializeBadVarint)",
+                    name, source
+                ));
+            }
+            eprintln!(
+                "[OK] {} rejected: PostcardDecodeFailed(DeserializeBadVarint)",
+                name
+            );
             Ok(())
         }
         Err(e) => Err(format!(
@@ -164,12 +196,21 @@ fn legacy_max_attempt_capacity_rejected_by_current_decoder() -> Result<(), Strin
     let bytes = load_golden(name)?;
     let manifest = load_manifest()?;
     verify_fixture(name, &bytes, &manifest)?;
-    
+
     let result = parse_event(&bytes);
-    
+
     match result {
         Err(JournalError::PostcardDecodeFailed(source)) => {
-            eprintln!("[OK] {} rejected: PostcardDecodeFailed: {}", name, source);
+            if !matches!(source, postcard::Error::DeserializeBadVarint) {
+                return Err(format!(
+                    "{}: wrong postcard variant: {:?} (expected DeserializeBadVarint)",
+                    name, source
+                ));
+            }
+            eprintln!(
+                "[OK] {} rejected: PostcardDecodeFailed(DeserializeBadVarint)",
+                name
+            );
             Ok(())
         }
         Err(e) => Err(format!(
@@ -188,13 +229,13 @@ fn legacy_max_attempt_capacity_rejected_by_current_decoder() -> Result<(), Strin
 fn legacy_golden_fixtures_have_valid_envelopes() -> Result<(), String> {
     let names = ["small-canonical", "high-values", "max-attempt-capacity"];
     let manifest = load_manifest()?;
-    
+
     for name in names {
         let bytes = load_golden(name)?;
         verify_fixture(name, &bytes, &manifest)?;
         eprintln!("[OK] {} envelope verified ({} bytes)", name, bytes.len());
     }
-    
+
     Ok(())
 }
 

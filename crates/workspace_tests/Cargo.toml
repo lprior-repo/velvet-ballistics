@@ -281,9 +281,6 @@ path = "tests/vb_ko29_5_public_idempotency.rs"
 name = "legacy_wire_decoder"
 path = "tests/legacy_wire_decoder.rs"
 
-[[test]]
-name = "vb_79ffw_ticket_authority_probe"
-path = "tests/vb_79ffw_ticket_authority_probe.rs"
 
 [[test]]
 name = "vb_doc_taint_regression"
