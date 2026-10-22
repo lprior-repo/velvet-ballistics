@@ -1,0 +1,34 @@
+error[E0599]: no method named `run` found for struct `ActionTicket` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/raw_recovery_test.rs:201:30
+    |
+201 |     assert_eq!(action_ticket.run(), run);
+    |                              ^^^-- help: remove the arguments
+    |                              |
+    |                              field, not a method
+
+error[E0599]: no method named `step` found for struct `ActionTicket` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/raw_recovery_test.rs:202:30
+    |
+202 |     assert_eq!(action_ticket.step(), StepIdx::new(2));
+    |                              ^^^^-- help: remove the arguments
+    |                              |
+    |                              field, not a method
+
+error[E0599]: no method named `action` found for struct `ActionTicket` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/raw_recovery_test.rs:203:30
+    |
+203 |     assert_eq!(action_ticket.action(), action);
+    |                              ^^^^^^-- help: remove the arguments
+    |                              |
+    |                              field, not a method
+
+error[E0599]: no method named `attempt` found for struct `ActionTicket` in the current scope
+   --> crates/workspace_tests/tests/vb_c4hzw_legacy_admission/raw_recovery_test.rs:204:30
+    |
+204 |     assert_eq!(action_ticket.attempt(), 1);
+    |                              ^^^^^^^-- help: remove the arguments
+    |                              |
+    |                              field, not a method
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_c4hzw_legacy_admission") due to 4 previous errors

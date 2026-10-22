@@ -81,6 +81,11 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
 -> Result<(), Box<dyn std::error::Error>> {
     let run_id = vb_core::ids::RunId::new(1);
     let workflow_digest = vb_core::ids::WorkflowDigest::from_bytes([42u8; 32]);
+    // vb-peb9u: artifact identity differs from workflow identity. The artifact
+    // digest is the content hash of the compiled artifact; the workflow digest
+    // is the semantic hash of the workflow. Mocked as distinct byte patterns.
+    let artifact_digest = vb_core::ids::WorkflowDigest::from_bytes([43u8; 32]);
+    assert_ne!(artifact_digest, workflow_digest);
 
     let do_node = vb_core::workflow::CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
@@ -129,7 +134,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         max_active_runs: 8,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let store = action_recovery_contract_store(workflow_digest, workflow_ir, contract.clone());
+    let store = action_recovery_contract_store(artifact_digest, workflow_ir, contract.clone());
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
     let mut shard = crate::shard::Shard::new_with_journal_and_artifact_store(
@@ -147,7 +152,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     let command = RecoverRunCommand::new(
         run_id,
         frame,
-        workflow_digest,
+        artifact_digest,
         workflow_digest,
         vb_storage::types::EventSeq::new(1),
         crate::primitives::collect::CollectStates::new(),
@@ -161,10 +166,44 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     let state = shard
         .run_state_get(run_id)
         .ok_or("run state not found after recovery; recovery failed")?;
-    let expected_artifact = store.load_accepted_artifact(workflow_digest)?;
+    let expected_artifact = store.load_accepted_artifact(artifact_digest)?;
     assert_eq!(
         state.action_contracts, expected_artifact.action_contracts,
         "recovered run action_contracts must exactly match artifact"
+    );
+
+    // vb-peb9u: Raw 7-argument recovery cannot gain a verified policy pin.
+    // The Unverified admission record is built from the accepted artifact's
+    // required capabilities and current runtime policy, but the pin remains
+    // Unverified. This must never promote to Pinned.
+    let admission = state
+        .admission
+        .as_ref()
+        .ok_or("raw recovery must build an Unverified admission from the accepted artifact")?;
+    assert_eq!(
+        admission.run_id(),
+        run_id,
+        "recovered admission must carry the correct run identity"
+    );
+    assert_eq!(
+        admission.artifact_digest(),
+        artifact_digest,
+        "recovered admission must carry the correct artifact digest"
+    );
+    assert_eq!(
+        admission.policy_pin(),
+        vb_storage::RunPolicyPin::Unverified,
+        "raw 7-argument recovery must remain Unverified; cannot gain policy pin"
+    );
+    assert_eq!(
+        admission.policy(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        "recovered admission must carry the current shard policy"
+    );
+    assert_eq!(
+        admission.granted_capabilities(),
+        &vb_core::CapabilitySet::from_grants(expected_artifact.required_capabilities.clone()),
+        "recovered admission must grant exactly the artifact's required capabilities"
     );
 
     // Verify the Do action was scheduled with the correct ticket fields

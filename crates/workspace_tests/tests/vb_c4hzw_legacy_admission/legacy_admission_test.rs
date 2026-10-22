@@ -66,14 +66,16 @@ fn action_grants(action: ActionId) -> CapabilitySet {
     )]))
 }
 
-fn open_journal(path: &std::path::Path) -> Result<Arc<FjallJournal>, String> {
+pub(super) fn open_journal(path: &std::path::Path) -> Result<Arc<FjallJournal>, String> {
     Ok(Arc::new(
-        FjallJournal::open(path, Some(FjallConfig::default()))
-            .map_err(|err| err.to_string())?,
+        FjallJournal::open(path, Some(FjallConfig::default())).map_err(|err| err.to_string())?,
     ))
 }
 
-fn append_events(journal: &FjallJournal, events: impl AsRef<[JournalEvent]>) -> Result<(), String> {
+pub(super) fn append_events(
+    journal: &FjallJournal,
+    events: impl AsRef<[JournalEvent]>,
+) -> Result<(), String> {
     for event in events.as_ref() {
         journal
             .append_strict(event)
@@ -102,8 +104,7 @@ fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
         &[contract],
         &[pack],
     )?;
-    let parts: vb_core::workflow::WorkflowParts =
-        postcard::from_bytes(&artifact.ir)?;
+    let parts: vb_core::workflow::WorkflowParts = postcard::from_bytes(&artifact.ir)?;
     assert_eq!(parts.digest, workflow.digest());
 
     let legacy_events = [
@@ -216,7 +217,8 @@ fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
     assert_eq!(decision.ticket.run, run);
     assert_eq!(decision.ticket.step, StepIdx::new(2));
 
-    let expected_digest = compute_expected_input_digest(99, vb_core::value::Taint::Clean, &action_ticket)?;
+    let expected_digest =
+        compute_expected_input_digest(99, vb_core::value::Taint::Clean, &action_ticket)?;
     assert_eq!(decision.input_digest, expected_digest);
 
     let expected_decision = make_expected_decision(
