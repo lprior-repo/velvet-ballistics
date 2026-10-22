@@ -1,341 +1,425 @@
 #!/usr/bin/env python3
-"""
-vb-j3e3s collector tests: real tool formats, fail-closed cases.
+"""vb-j3e3s collector tests: production parsers/functions, real formats, fail-closed.
 
-Tests production collector functions directly, not duplicated logic.
-Uses actual data shapes observed from criterion 0.8.2, perf, heaptrack.
+Imports collect_benchmark_evidence and exercises its actual functions with
+actual tool-format samples and invalid data (missing counters, bad samples,
+dirty trees, hash/forbidden-marker failures).  No duplicated helper logic.
 """
 
-import json
 import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-COLLECTOR = Path(__file__).parent / "collect_benchmark_evidence.py"
-ROOT = Path(__file__).parent.parent.parent
+BEAD_DIR = Path(__file__).resolve().parent
+ROOT = BEAD_DIR.parent.parent
+sys.path.insert(0, str(BEAD_DIR))
+
+import collect_benchmark_evidence as c  # noqa: E402
+
+PASS = 0
+FAIL = 0
 
 
-def run_collector_test(name, args, expect_fail=False):
-    """Run collector with given args."""
-    cmd = ["python3", str(COLLECTOR)] + args
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-    ok = (r.returncode == 0) != expect_fail
-    print(f"{'PASS' if ok else 'FAIL'}: {name}")
-    if not ok:
-        print(f"  returncode: {r.returncode}")
-        print(f"  stderr: {r.stderr[:200]}")
-    return ok
+def check(name, fn):
+    global PASS, FAIL
+    try:
+        fn()
+        print(f"PASS: {name}")
+        PASS += 1
+    except AssertionError as e:
+        print(f"FAIL: {name}: {e}")
+        FAIL += 1
+    except c.CollectorError as e:
+        print(f"FAIL: {name}: unexpected CollectorError: {e}")
+        FAIL += 1
 
 
-def test_parse_real_criterion_sample():
-    """Parse actual criterion sample.json shape from real run."""
-    # Real sample.json from expression/expr_eq_symbol benchmark
-    sample_json = {"sampling_mode": "Linear",
-                  "iters": [134296.0, 268592.0, 402888.0],
-                  "times": [15229887.0, 31277854.0, 48299277.0]}
+def raises(name, fn, needle=None):
+    global PASS, FAIL
+    try:
+        fn()
+    except c.CollectorError as e:
+        if needle and needle not in str(e):
+            print(f"FAIL: {name}: wrong message: {e}")
+            FAIL += 1
+            return
+        print(f"PASS: {name}")
+        PASS += 1
+        return
+    except Exception as e:  # noqa: BLE001
+        print(f"FAIL: {name}: wrong exception type {type(e).__name__}: {e}")
+        FAIL += 1
+        return
+    print(f"FAIL: {name}: did not raise")
+    FAIL += 1
 
-    # Compute per-iteration ns (what collector does)
-    per_iter = []
-    for t, i in zip(sample_json["times"], sample_json["iters"]):
-        if i > 0:
-            per_iter.append(t / i)
 
-    assert len(per_iter) == 3
-    assert 110 < per_iter[0] < 120  # ~115ns per iteration
-    print("PASS: parse_real_criterion_sample")
-    return True
+# --- criterion sample / estimates -------------------------------------------
+
+def t_parse_criterion_sample_real():
+    sample = {
+        "sampling_mode": "Linear",
+        "iters": [134296.0, 268592.0, 402888.0, 537184.0, 671480.0,
+                  805776.0, 940072.0, 1074368.0, 1208664.0, 1342960.0],
+        "times": [15229887.0, 31277854.0, 48299277.0, 65123456.0, 82345678.0,
+                  99234567.0, 116543210.0, 133456789.0, 150987654.0, 167654321.0],
+    }
+    per_iter, count = c.parse_criterion_sample(sample)
+    assert count == 10
+    assert len(per_iter) == 10
+    assert all(v > 0 for v in per_iter)
 
 
-def test_parse_real_criterion_estimates():
-    """Parse actual criterion estimates.json shape."""
-    estimates_json = {
+def t_parse_criterion_sample_too_few():
+    sample = {"iters": [1.0, 2.0], "times": [100.0, 200.0]}
+    raises("parse_criterion_sample too few", lambda: c.parse_criterion_sample(sample),
+           needle=">= 10")
+
+
+def t_parse_criterion_sample_unequal():
+    sample = {"iters": [1.0] * 10, "times": [100.0] * 9}
+    raises("parse_criterion_sample unequal", lambda: c.parse_criterion_sample(sample),
+           needle="length mismatch")
+
+
+def t_parse_criterion_sample_nonfinite():
+    sample = {"iters": [1.0] * 10, "times": [100.0] * 9 + [float("nan")]}
+    raises("parse_criterion_sample nan", lambda: c.parse_criterion_sample(sample),
+           needle="non-finite/non-positive times")
+
+
+def t_parse_criterion_estimates_real():
+    est = {
         "mean": {"point_estimate": 116.14077116995057,
-                "standard_error": 0.4733816269468655,
-                "confidence_interval": {
-                    "confidence_level": 0.95,
-                    "lower_bound": 115.25661206298855,
-                    "upper_bound": 117.13937632998086}},
-        "median": {"point_estimate": 115.96977130475112}}
-
-    assert "mean" in estimates_json
-    assert "point_estimate" in estimates_json["mean"]
-    assert 115 < estimates_json["mean"]["point_estimate"] < 117
-    print("PASS: parse_real_criterion_estimates")
-    return True
+                 "standard_error": 0.4733816269468655},
+        "median": {"point_estimate": 115.96977130475112},
+    }
+    assert abs(c.parse_criterion_estimates(est) - 116.14077116995057) < 1e-9
 
 
-def test_parse_real_perf_csv():
-    """Parse actual perf CSV format: count;;event;total;percent;;"""
-    # Real perf output from /usr/bin/true
-    perf_output = "233783;;instructions:u;300151;100.00;;"
-
-    lines = [l for l in perf_output.splitlines() if ";;" in l]
-    assert len(lines) == 1
-
-    found = False
-    count = None
-    for line in lines:
-        # Split by ;; gives: [count, event;total;percent, '']
-        parts = line.split(";;")
-        if len(parts) >= 2:
-            try:
-                count = int(parts[0].strip())
-                # Second field has event info separated by ;
-                inner = parts[1].split(";")
-                if len(inner) >= 1:
-                    event = inner[0].strip()
-                    if "instruction" in event:
-                        found = True
-            except ValueError:
-                pass
-
-    assert found
-    assert count == 233783
-    return True
+def t_parse_criterion_estimates_missing():
+    raises("parse_criterion_estimates missing", lambda: c.parse_criterion_estimates({}),
+           needle="missing mean")
 
 
-def test_parse_real_heaptrack_text():
-    """Parse actual heaptrack_print text format from /usr/bin/true."""
-    # Actual text output format
-    ht_text = """reading file - please wait
-Debuggee command was: /usr/bin/true
-finished reading file, now analyzing data:
+def t_percentile_linear():
+    vals = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+    assert c.percentile(vals, 50) == 5.5
+    assert c.percentile(vals, 0) == 1.0
+    assert c.percentile(vals, 100) == 10.0
 
-MOST CALLS TO ALLOCATION FUNCTIONS
-1 calls to allocation functions with 73.73K peak consumption from
-0x7fc1664b194f
-  in /usr/lib/libstdc++.so.6
 
-PEAK MEMORY CONSUMERS
-73.73K peak memory consumed over 1 calls from
-0x7fc1664b194f
+# --- perf CSV ---------------------------------------------------------------
 
-MOST TEMPORARY ALLOCATIONS
-1 temporary allocations of 1 allocations in total (100.00%) from
-0x7fc1664b194f
+def t_parse_perf_csv_real():
+    content = "# started on Thu Oct 22 02:06:57 2026\n\n"
+    content += "233853;;instructions:u;224053;100.00;;\n"
+    assert c.parse_perf_csv(content) == 233853
 
-total runtime: 0.00s.
-calls to allocation functions: 1 (1000/s)
-temporary memory allocations: 1 (1000/s)
-peak heap memory consumption: 73.73K
-peak RSS (including heaptrack overhead): 4.98M
-total memory leaked: 0B"""
 
-    import re
-    allocs = 0
-    peak = None
-    for line in ht_text.splitlines():
-        m = re.match(r"^calls to allocation functions:\s+(\d+)", line)
-        if m:
-            allocs = int(m.group(1))
-        m = re.match(r"^peak heap memory consumption:\s+(\S+)", line)
-        if m:
-            peak = m.group(1)
+def t_parse_perf_csv_missing():
+    raises("parse_perf_csv cycles-only",
+           lambda: c.parse_perf_csv("500;;cycles:u;500;100.00;;\n"),
+           needle="could not parse")
 
+
+def t_parse_perf_csv_zero():
+    raises("parse_perf_csv zero",
+           lambda: c.parse_perf_csv("0;;instructions:u;0;100.00;;\n"),
+           needle="not positive")
+
+
+def t_parse_perf_csv_not_counted():
+    raises("parse_perf_csv not counted",
+           lambda: c.parse_perf_csv("<not counted>;;instructions:u;0;0.00;;\n"),
+           needle="could not parse")
+
+
+# --- heaptrack --------------------------------------------------------------
+
+def t_parse_heaptrack_text_real():
+    text = (
+        "total runtime: 0.00s.\n"
+        "calls to allocation functions: 1 (1000/s)\n"
+        "temporary memory allocations: 1 (1000/s)\n"
+        "peak heap memory consumption: 73.73K\n"
+        "peak RSS (including heaptrack overhead): 4.98M\n"
+        "total memory leaked: 0B\n"
+    )
+    allocs, peak = c.parse_heaptrack_text(text)
     assert allocs == 1
     assert peak == "73.73K"
-    print("PASS: parse_real_heaptrack_text")
-    return True
 
 
-def test_fail_closed_missing_raw_log():
-    """Collector fails if raw log file cannot be written."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Use a read-only directory
-        os.chmod(tmpdir, 0o555)
-        try:
-            cmd = [
-                "python3", str(COLLECTOR),
-                "--commit", "deadbeef",
-                "--root", str(ROOT),
-                "--output-dir", tmpdir,
-                "--dry-run",
-            ]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            # Should fail due to write permission
-            assert r.returncode != 0
-        finally:
-            os.chmod(tmpdir, 0o755)
-    print("PASS: fail_closed_missing_raw_log")
-    return True
+def t_parse_heaptrack_text_missing():
+    raises("parse_heaptrack_text missing count",
+           lambda: c.parse_heaptrack_text("peak heap memory consumption: 73.73K\n"),
+           needle="allocation count")
 
 
-def test_fail_closed_commit_mismatch():
-    """Collector fails when commit SHA doesn't match HEAD."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        r = subprocess.run([
-            "python3", str(COLLECTOR),
-            "--commit", "0000000000000000000000000000000000000000",
-            "--root", str(ROOT),
-            "--output-dir", tmpdir,
-        ], capture_output=True, text=True, timeout=60)
-
-        assert r.returncode != 0
-        assert "commit mismatch" in r.stderr.lower() or "commit" in r.stderr.lower()
-    print("PASS: fail_closed_commit_mismatch")
-    return True
+def t_parse_byte_quantity():
+    assert c.parse_byte_quantity("73.73K") == 73730
+    assert c.parse_byte_quantity("8.04M") == 8040000
+    assert c.parse_byte_quantity("1.31M") == 1310000
+    assert c.parse_byte_quantity("0B") == 0
 
 
-def test_fail_closed_dirty_tree():
-    """Collector fails when working tree is dirty."""
-    # Create a temp file to dirty the tree
-    temp_file = ROOT / "test-dirty-file.txt"
-    temp_file.write_text("test")
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            r = subprocess.run([
-                "git", "rev-parse", "HEAD"
-            ], cwd=str(ROOT), capture_output=True, text=True)
-            actual_commit = r.stdout.strip()
-
-            r = subprocess.run([
-                "python3", str(COLLECTOR),
-                "--commit", actual_commit,
-                "--root", str(ROOT),
-                "--output-dir", tmpdir,
-            ], capture_output=True, text=True, timeout=60)
-
-            assert r.returncode != 0
-            assert "dirty" in r.stderr.lower()
-    finally:
-        temp_file.unlink()
-    print("PASS: fail_closed_dirty_tree")
-    return True
+def t_parse_byte_quantity_bad():
+    raises("parse_byte_quantity bad", lambda: c.parse_byte_quantity("abc"),
+           needle="unparseable")
 
 
-def test_fail_closed_missing_counter():
-    """Collector fails when perf instruction counter not found."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Write fake perf output with no instructions
-        perf_file = Path(tmpdir) / "perf-fake.txt"
-        perf_file.write_text("500;;cycles:u;500;100.00;;\n")
-
-        # Run collector with a benchmark that produces cycles only
-        # This simulates missing instruction counter
-        cmd = [
-            "python3", str(COLLECTOR),
-            "--commit", subprocess.check_output(
-                ["git", "rev-parse", "HEAD"],
-                cwd=str(ROOT), text=True).strip(),
-            "--root", str(ROOT),
-            "--output-dir", tmpdir,
-        ]
-        # Actually run - it should fail when parsing the fake output
-        # But we'd need to inject the fake file, which is complex
-        # Instead test the parsing directly
-        content = "500;;cycles:u;500;100.00;;"
-        lines = [l for l in content.splitlines() if ";;" in l]
-        found = False
-        for line in lines:
-            parts = line.split(";;")
-            if len(parts) >= 3:
-                try:
-                    int(parts[0].strip())
-                    event = parts[2].strip()
-                    if "instruction" in event:
-                        found = True
-                except ValueError:
-                    pass
-        assert not found, "should not find instructions in cycles-only output"
-    print("PASS: fail_closed_missing_counter")
-    return True
+def _trace(records):
+    return "v 10500 3\n" + "\n".join(records) + "\n"
 
 
-def test_jsonl_output_format():
-    """Collector produces valid JSONL with all required fields."""
-    # Test the record structure against perf-budget.yaml required fields
-    required_fields = [
-        "metric", "claim", "baseline_value", "result_value", "unit",
-        "threshold_percent", "raw_log", "command", "commit",
-        "rustc_version", "nightly_date", "cpu_model", "cpu_governor",
-        "kernel_version", "build_profile", "rustflags",
-        "benchmark_tool_version", "sample_count_or_instruction_count",
-        "input_fixture_digest", "durability_profile", "mode",
-        "p50_latency", "p95_latency", "p99_latency",
-        "instruction_count", "allocation_count", "bytes_allocated",
-        "fjall_write_latency", "direct_api_latency", "ipc_latency",
-    ]
-
-    # Check collector produces all fields
-    with open(COLLECTOR) as f:
-        content = f.read()
-
-    missing = []
-    for field in required_fields:
-        if field not in content:
-            missing.append(field)
-
-    assert not missing, f"missing fields: {missing}"
-    print("PASS: jsonl_output_format")
-    return True
+def t_parse_heaptrack_trace_real():
+    text = _trace(["X /usr/bin/true", "a 12000 4", "+ 0", "- 0", "c 0", "R 4bf"])
+    count, total, peak = c.parse_heaptrack_trace(text)
+    assert count == 1
+    assert total == 0x12000  # 73728
+    assert peak == 0x12000
 
 
-def test_benchmark_ids_match_contract():
-    """Collector benchmarks match contracts/perf-budget.yaml."""
-    with open(ROOT / "contracts" / "perf-budget.yaml") as f:
-        budget_text = f.read()
+def t_parse_heaptrack_trace_two_allocs():
+    text = _trace(["a 12000 4", "+ 0", "a 12d687 8", "+ 1", "- 1", "- 0"])
+    count, total, peak = c.parse_heaptrack_trace(text)
+    assert count == 2
+    assert total == 0x12000 + 0x12D687  # 1308295
+    assert peak == 0x12000 + 0x12D687
 
-    # Parse benchmark IDs: find lines under "benchmarks:" section
-    # that have exactly 2-space indent and end with colon
-    contract_benchmarks = []
-    in_benchmarks = False
-    for line in budget_text.splitlines():
-        if line == "benchmarks:":
-            in_benchmarks = True
-            continue
-        if in_benchmarks:
-            # Benchmark names are at exactly 2-space indent
-            if line.startswith("  ") and not line.startswith("    ") and line.endswith(":"):
-                name = line.strip().rstrip(":")
-                if name and not name.startswith("-"):
-                    contract_benchmarks.append(name)
-            elif not line.startswith(" "):
-                # Left indent = end of benchmarks section
-                break
 
-    # Extract collector benchmarks
-    import re
-    collector_benchmarks = []
-    with open(COLLECTOR) as f:
-        content = f.read()
-    for m in re.finditer(r'"id":\s*"([^"]+)"', content):
-        if '"threshold"' in content[m.end():m.end()+50]:
-            collector_benchmarks.append(m.group(1))
+def t_parse_heaptrack_trace_unknown_major():
+    raises("heaptrack_trace unknown major",
+           lambda: c.parse_heaptrack_trace("v 10500 4\na 12000 4\n+ 0\n"),
+           needle="major 4")
 
-    for bench_id in contract_benchmarks:
-        assert bench_id in collector_benchmarks, \
-            f"{bench_id} missing from collector"
-    print("PASS: benchmark_ids_match_contract")
-    return True
 
+def t_parse_heaptrack_trace_bad_index():
+    raises("heaptrack_trace bad index",
+           lambda: c.parse_heaptrack_trace(_trace(["a 12000 4", "+ 5"])),
+           needle="out-of-range")
+
+
+def t_parse_heaptrack_trace_truncated():
+    raises("heaptrack_trace truncated",
+           lambda: c.parse_heaptrack_trace(_trace(["a 12000", "+ 0"])),
+           needle="truncated")
+
+
+def t_parse_heaptrack_trace_zero_alloc():
+    raises("heaptrack_trace zero allocations",
+           lambda: c.parse_heaptrack_trace("v 10500 3\n"),
+           needle="zero allocations")
+
+
+# --- forbidden markers / matching -------------------------------------------
+
+def t_forbidden_markers_clean():
+    c.check_no_forbidden_markers("mode=ir;latency=p50-p95-p99", "test")  # no raise
+
+
+def t_forbidden_markers_reject():
+    raises("forbidden marker reject",
+           lambda: c.check_no_forbidden_markers(
+               "ipc_frame_decode;profile=bench;instructions=not-collected", "test"),
+           needle="instructions=not-collected")
+
+
+def t_metric_matches():
+    full = ("storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;"
+            "durability=mixed;mode=ir;instructions=not-collected")
+    assert c.metric_matches(full, "ipc_frame_decode")
+    assert c.metric_matches("ipc_frame_decode", "ipc_frame_decode")
+    assert not c.metric_matches("ipc_frame_decode_extra;x", "ipc_frame_decode")
+    assert not c.metric_matches("other_bench;x", "ipc_frame_decode")
+
+
+# --- budget / toolchain / criterion version ---------------------------------
+
+def t_parse_budget_real():
+    text = Path(ROOT, "contracts", "perf-budget.yaml").read_text()
+    benches = c.parse_budget(text)
+    assert set(benches) == {
+        "bench_engine_step_once_save_const_single_transition",
+        "ipc_frame_decode",
+        "engine_run_until_blocked_budget_10_small_workflow",
+    }
+    assert benches["bench_engine_step_once_save_const_single_transition"] == 3
+    assert benches["ipc_frame_decode"] == 5
+    assert benches["engine_run_until_blocked_budget_10_small_workflow"] == 3
+
+
+def t_parse_rust_toolchain_real():
+    text = Path(ROOT, "rust-toolchain.toml").read_text()
+    assert c.parse_rust_toolchain(text) == "2026-04-28"
+
+
+def t_parse_criterion_version_real():
+    text = Path(ROOT, "Cargo.lock").read_text()
+    assert c.parse_cargo_criterion_version(text) == "0.8.2"
+
+
+# --- record assembly --------------------------------------------------------
+
+def t_build_record_complete():
+    meta = {
+        "rustc_version": "rustc 1.97.0-nightly (52b6e2c20 2026-04-27)",
+        "nightly_date": "2026-04-28",
+        "cpu_model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+        "cpu_governor": "performance",
+        "kernel_version": "Linux omarchy 7.2.3-arch1-3 x86_64 GNU/Linux",
+        "criterion_version": "0.8.2",
+        "build_profile": "bench profile optimized",
+        "rustflags": "default bench invocation; no RUSTFLAGS override",
+    }
+    line = c.build_record(
+        "ipc_frame_decode", 5, 69.128, 10, 68.946805, 69.533149, 69.660534,
+        70411966259, 14464650, 8040000,
+        "2990ccb0e5db2f15046562adb20a5ea4e2d9591f", meta,
+        "target/release/deps/velvet_ballistics-abc123", "sha256:deadbeef crates/x",
+        "evidence/benchmark-logs/ipc_frame_decode.log",
+    )
+    rec = __import__("json").loads(line)
+    assert rec["metric"] == "ipc_frame_decode"
+    assert rec["baseline_value"] == 69128
+    assert rec["result_value"] == 69128
+    assert rec["unit"] == "picoseconds"
+    assert rec["baseline_value"] == rec["result_value"]
+    assert rec["instruction_count"] == 70411966259
+    assert rec["allocation_count"] == 14464650
+    assert rec["bytes_allocated"] == 8040000
+    assert rec["mode"] == "ir-interpreter"
+    assert "not applicable to ipc_frame_decode" == rec["fjall_write_latency"]
+    assert "69.128 ns Criterion mean estimate" == rec["ipc_latency"]
+    assert "not applicable to ipc_frame_decode" == rec["direct_api_latency"]
+    # every mandatory field present and non-empty, no None/unknown/0-fake
+    for k, v in rec.items():
+        assert v is not None, k
+        if isinstance(v, str):
+            assert v.strip() and "unknown" not in v.lower(), k
+
+
+def t_build_record_baseline_equals_result():
+    meta = {
+        "rustc_version": "r", "nightly_date": "2026-04-28", "cpu_model": "c",
+        "cpu_governor": "performance", "kernel_version": "k",
+        "criterion_version": "0.8.2", "build_profile": "bench",
+        "rustflags": "none",
+    }
+    line = c.build_record(
+        "engine_run_until_blocked_budget_10_small_workflow", 3, 16.640, 10,
+        16.653869, 16.705365, 16.719095, 54402803901, 888242, 7680000,
+        "a" * 40, meta, "bin", "sha256:x y", "evidence/benchmark-logs/e.log",
+    )
+    rec = __import__("json").loads(line)
+    assert rec["baseline_value"] == 16640
+    assert rec["result_value"] == 16640
+
+
+# --- commit / clean checks via temp git fixtures ----------------------------
+
+def _init_repo():
+    tmp = tempfile.mkdtemp(prefix="vb-collector-test-")
+    repo = Path(tmp)
+    subprocess.run([c.GIT, "init", "-q"], cwd=repo, check=True)
+    for rel, content in {
+        "contracts/perf-budget.yaml": "benchmarks:\n  x:\n    max_regression_percent: 3\n",
+        "crates/workspace_tests/benches/velvet_ballistics.rs": "fn main() {}\n",
+        "Cargo.toml": "[package]\nname = \"t\"\nversion = \"0.0.0\"\n",
+        "Cargo.lock": "",
+        "rust-toolchain.toml": 'channel = "nightly-2026-04-28"\n',
+    }.items():
+        p = repo / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content)
+    env = dict(os.environ)
+    env.update({"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"})
+    subprocess.run([c.GIT, "add", "-A"], cwd=repo, check=True, env=env)
+    subprocess.run([c.GIT, "commit", "-q", "-m", "init"], cwd=repo, check=True, env=env)
+    return repo, env
+
+
+def t_check_clean_ok():
+    repo, _env = _init_repo()
+    c.check_clean(repo)  # no raise
+
+
+def t_check_clean_dirty_source():
+    repo, _env = _init_repo()
+    (repo / "Cargo.toml").write_text("[package]\nname = \"changed\"\n")
+    raises("check_clean dirty source", lambda: c.check_clean(repo), needle="dirty")
+
+
+def t_check_clean_untracked_source():
+    repo, _env = _init_repo()
+    (repo / "new-source.rs").write_text("fn main() {}\n")
+    raises("check_clean untracked source", lambda: c.check_clean(repo),
+           needle="untracked")
+
+
+def t_check_clean_allowed_evidence():
+    repo, _env = _init_repo()
+    (repo / "evidence").mkdir(exist_ok=True)
+    (repo / "evidence" / "benchmark-evidence.jsonl").write_text("{}\n")
+    c.check_clean(repo)  # no raise
+
+
+def t_check_commit_mismatch():
+    repo, _env = _init_repo()
+    head = c.current_head(repo)
+    raises("check_commit mismatch",
+           lambda: c.check_commit(repo, "0" * 40), needle="mismatch")
+    assert c.check_commit(repo, head) == head
+
+
+def t_check_commit_bad_sha():
+    repo, _env = _init_repo()
+    raises("check_commit bad sha",
+           lambda: c.check_commit(repo, "xyz"), needle="40-hex")
+
+
+# --- runner -----------------------------------------------------------------
 
 if __name__ == "__main__":
-    tests = [
-        test_parse_real_criterion_sample,
-        test_parse_real_criterion_estimates,
-        test_parse_real_perf_csv,
-        test_parse_real_heaptrack_text,
-        test_fail_closed_missing_raw_log,
-        test_fail_closed_commit_mismatch,
-        test_fail_closed_dirty_tree,
-        test_fail_closed_missing_counter,
-        test_jsonl_output_format,
-        test_benchmark_ids_match_contract,
-    ]
+    check("parse_criterion_sample_real", t_parse_criterion_sample_real)
+    check("parse_criterion_sample_too_few", t_parse_criterion_sample_too_few)
+    check("parse_criterion_sample_unequal", t_parse_criterion_sample_unequal)
+    check("parse_criterion_sample_nonfinite", t_parse_criterion_sample_nonfinite)
+    check("parse_criterion_estimates_real", t_parse_criterion_estimates_real)
+    check("parse_criterion_estimates_missing", t_parse_criterion_estimates_missing)
+    check("percentile_linear", t_percentile_linear)
+    check("parse_perf_csv_real", t_parse_perf_csv_real)
+    check("parse_perf_csv_missing", t_parse_perf_csv_missing)
+    check("parse_perf_csv_zero", t_parse_perf_csv_zero)
+    check("parse_perf_csv_not_counted", t_parse_perf_csv_not_counted)
+    check("parse_heaptrack_text_real", t_parse_heaptrack_text_real)
+    check("parse_heaptrack_text_missing", t_parse_heaptrack_text_missing)
+    check("parse_byte_quantity", t_parse_byte_quantity)
+    check("parse_byte_quantity_bad", t_parse_byte_quantity_bad)
+    check("parse_heaptrack_trace_real", t_parse_heaptrack_trace_real)
+    check("parse_heaptrack_trace_two_allocs", t_parse_heaptrack_trace_two_allocs)
+    check("parse_heaptrack_trace_unknown_major", t_parse_heaptrack_trace_unknown_major)
+    check("parse_heaptrack_trace_bad_index", t_parse_heaptrack_trace_bad_index)
+    check("parse_heaptrack_trace_truncated", t_parse_heaptrack_trace_truncated)
+    check("parse_heaptrack_trace_zero_alloc", t_parse_heaptrack_trace_zero_alloc)
+    check("forbidden_markers_clean", t_forbidden_markers_clean)
+    check("forbidden_markers_reject", t_forbidden_markers_reject)
+    check("metric_matches", t_metric_matches)
+    check("parse_budget_real", t_parse_budget_real)
+    check("parse_rust_toolchain_real", t_parse_rust_toolchain_real)
+    check("parse_criterion_version_real", t_parse_criterion_version_real)
+    check("build_record_complete", t_build_record_complete)
+    check("build_record_baseline_equals_result", t_build_record_baseline_equals_result)
+    check("check_clean_ok", t_check_clean_ok)
+    check("check_clean_dirty_source", t_check_clean_dirty_source)
+    check("check_clean_untracked_source", t_check_clean_untracked_source)
+    check("check_clean_allowed_evidence", t_check_clean_allowed_evidence)
+    check("check_commit_mismatch", t_check_commit_mismatch)
+    check("check_commit_bad_sha", t_check_commit_bad_sha)
 
-    passed = 0
-    failed = 0
-    for test in tests:
-        try:
-            if test():
-                passed += 1
-            else:
-                failed += 1
-        except Exception as e:
-            print(f"FAIL: {test.__name__}: {e}")
-            failed += 1
-
-    print(f"\n{passed} passed, {failed} failed")
-    sys.exit(1 if failed else 0)
+    print(f"\n{PASS} passed, {FAIL} failed")
+    sys.exit(1 if FAIL else 0)
