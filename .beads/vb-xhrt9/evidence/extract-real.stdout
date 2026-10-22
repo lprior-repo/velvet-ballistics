@@ -1,0 +1,21 @@
+=== STATIC: forbidden masking patterns in real script ===
+PASS: no set +e / || true masking
+=== STATIC: return outside functions ===
+PASS: no top-level return (all return inside functions)
+=== FUNCTION-LEVEL: real run_advisory_report exit-code capture ===
+PASS: real fn captured exit 0 (status file=0)
+PASS: real fn captured exit 1 (status file=1)
+PASS: real fn captured exit 2 (status file=2)
+PASS: real fn captured exit 124 (status file=124)
+PASS: real fn captured exit 127 (status file=127)
+=== FULL SCRIPT: advisory tools fail(1/2/1/1), audit ok -> task exit 0 ===
+task exit code: 0
+PASS: audit.status=0
+PASS: deny.status=1 (real, not relabeled)
+PASS: vet.status=2
+PASS: machete.status=1
+geiger statuses (unique): 1 
+PASS: all 11 geiger statuses=1
+geiger status file count: 11 (expect 11)
+PASS: 11 per-package geiger status files
+=== FULL SCRIPT: audit exit 1 -> task fail-closed ===

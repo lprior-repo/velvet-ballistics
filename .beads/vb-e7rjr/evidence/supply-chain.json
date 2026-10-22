@@ -1,0 +1,17 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-e7rjr-local5090-gate-policy",
+  "argv": [
+    "moon",
+    "run",
+    ":supply-chain"
+  ],
+  "exit_code": 0,
+  "seconds": 44.78,
+  "timeout_seconds": 1800,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-e7rjr/evidence/supply-chain",
+  "coordinator_message": "CURRENT PATCH REJECTED pending repairs: (1) run_advisory_report uses command || true then rc=$? -> ALWAYS ZERO, destroys actual failures. Use if command >out 2>err; then rc=0; else rc=$?; fi. (2) audit if !command then rc=$? similarly0, local at script top-level invalid, return outside function invalid. Use if actual audit; then rc=0; else rc=$?; fi; write rc, if nonzero exit rc. (3) geiger currently runs bare under set-e, exits on report failure, must also run via explicit if/else capture and continue. (4) NO NEW BENCH SCAFFOLDS or Cargo.toml changes; restore crates/vb_validate/Cargo.toml from parent, use ONLY existing real Criterion aggregate_resource_budget target; package workspace_tests is wrong (actual velvet-ballistics-workspace-tests), never create targets to satisfy invented command. (5) Test shell with tiny FAKE REPORT commands exit0/1/2/124/127 and auditfail; verify persisted statuses EXACT and allreportcommandscontinue, no whole ||true. Actual optional benchmark one real target timeout300. Existing required benchbuild untouched. Do not claim ready until these exact failures fixed. No source changes outside assigned scope."
+}

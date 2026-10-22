@@ -24,7 +24,7 @@ For accepted-artifact verification, the test must assert:
 - `verify_accepted_artifact(artifact)` returns `Ok(CompiledWorkflow)` (positive typed proof)
 - `verification.evidence` is `ArtifactEvidence::Verified(Box<ArtifactVerificationEvidence>)` (not Unverified/Packed)
 - `ArtifactVerificationEvidence.ledger` has 10 entries (`VerificationLedgerEntry`)
-- At least one entry has `ObligationKind::TypedLedger`
+- At least one entry has `obligation` field set to an actual `ObligationKind` variant (e.g., `Determinism`, `Boundedness`, `ArtifactValidity`)
 - Binding predicates: `verification.digest == artifact.digest`
 - For tampered digests: `verify_accepted_artifact` returns `Err(JournalError::ArtifactChecksumMismatch)`
 
@@ -36,7 +36,7 @@ For accepted-artifact verification, the test must assert:
 | Runtime verifies artifact | `verify_accepted_artifact(artifact)` |
 | Typed evidence structure | `artifact.verification.evidence` -> `ArtifactEvidence::Verified` -> `ArtifactVerificationEvidence` |
 | Typed ledger | `evidence.ledger: [VerificationLedgerEntry; 10]` |
-| Obligation kind | `VerificationLedgerEntry::kind` -> `ObligationKind` enum |
+| Obligation kind | `VerificationLedgerEntry::obligation` -> `ObligationKind` enum (Determinism, EffectSafety, CapabilityNonMinting, Boundedness, ReplayEffectSeparation, ArtifactValidity, IdempotencyClassification, RecoveryClassification, TaintHandling, PolicyBinding) |
 | Binding | `artifact.digest == artifact.verification.digest` |
 
 ## Verification Strategy
@@ -46,3 +46,12 @@ For accepted-artifact verification, the test must assert:
 - Relaxed MUST reject tampered digest
 - No-action workflow requires 0 caps not 1
 - Do not turn desired successful strict admission into expected failure
+
+## Author Errata (vb-k8z9l)
+
+Original contract contained incorrect enum variant name `ObligationKind::TypedLedger` and field name `VerificationLedgerEntry::kind`. Both are now corrected to match the actual production code in `crates/vb_core/src/artifact.rs`:
+- `ObligationKind` is a 10-variant enum: Determinism, EffectSafety, CapabilityNonMinting, Boundedness, ReplayEffectSeparation, ArtifactValidity, IdempotencyClassification, RecoveryClassification, TaintHandling, PolicyBinding
+- `VerificationLedgerEntry` has field `obligation` (not `kind`) of type `ObligationKind`
+- Field `closure` (type `ObligationClosure`) and `policy_digest` (type `WorkflowDigest`) are also present
+
+No production source changes required for this correction; the contract document now accurately reflects the existing production API.

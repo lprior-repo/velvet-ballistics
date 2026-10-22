@@ -1,0 +1,8 @@
+aggregate_resource_budget_contract_surface
+                        time:   [366.15 ns 369.53 ns 373.76 ns]
+                        change: [+2.5806% +4.2390% +5.8952%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 12 outliers among 100 measurements (12.00%)
+  3 (3.00%) high mild
+  9 (9.00%) high severe
+

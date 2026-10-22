@@ -1,0 +1,1 @@
+Original immutable-runner v2 JSON/stdout/stderr were relocated byte-for-byte from isolated repository root into the corresponding bead evidence directory after agent_end. Recorded log_prefix fields retain the original execution location. This is artifact organization, not a rerun. Prior erroneous drafts remain in Git history.

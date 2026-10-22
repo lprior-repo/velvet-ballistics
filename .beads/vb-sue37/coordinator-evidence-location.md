@@ -1,0 +1,1 @@
+Original runner prefixes were at the workspace root: `verus-full-registry` and `actual-extracted-script-selftest-v2`. After the author ended, the coordinator moved all six artifacts byte for byte into `evidence/`. Recorded JSON log_prefix values intentionally retain their original execution locations.

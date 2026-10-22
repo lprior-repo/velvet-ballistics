@@ -1,0 +1,7 @@
+    Finished `bench` profile [optimized + debuginfo] target(s) in 0.30s
+     Running benches/aggregate_resource_budget.rs (target/release/deps/aggregate_resource_budget-9ee1df235eca24a6)
+Gnuplot not found, using plotters backend
+Benchmarking aggregate_resource_budget_contract_surface
+Benchmarking aggregate_resource_budget_contract_surface: Warming up for 3.0000 s
+Benchmarking aggregate_resource_budget_contract_surface: Collecting 100 samples in estimated 5.0006 s (13M iterations)
+Benchmarking aggregate_resource_budget_contract_surface: Analyzing
