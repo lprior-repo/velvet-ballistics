@@ -1,0 +1,35 @@
+[ WARN 2026-10-22 13:00:17.735] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 13:00:17.829] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 13:00:18.092] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 13:00:21.528] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 13:00:21.589] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 13:00:43.870] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 13:00:43.870] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 13:00:43.935] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+velvet-ballistics:source-length | source-length gate summary:
+velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+velvet-ballistics:source-length |   test_in_src        scanned=314   warn=48   over_limit=0    limit=1500 warn_at=1200
+velvet-ballistics:source-length |   test_top_level     scanned=391   warn=6    over_limit=0    limit=3000 warn_at=2400
+velvet-ballistics:source-length |   production         scanned=953   warn=196  over_limit=0    limit=300 warn_at=240
+velvet-ballistics:source-length |   ledger rows used:    383
+     velvet-ballistics:lint-src | error: associated items `append_policy_decision_strict` and `checked_next_seq` are never used
+     velvet-ballistics:lint-src |   --> crates/vb_runtime/src/shard/impl_parts/policy_decision.rs:8:19
+     velvet-ballistics:lint-src |    |
+     velvet-ballistics:lint-src |  1 | impl Shard {
+     velvet-ballistics:lint-src |    | ---------- associated items in this implementation
+     velvet-ballistics:lint-src | ...
+     velvet-ballistics:lint-src |  8 |     pub(crate) fn append_policy_decision_strict(
+     velvet-ballistics:lint-src |    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     velvet-ballistics:lint-src | ...
+     velvet-ballistics:lint-src | 37 |     fn checked_next_seq(seq: vb_storage::EventSeq) -> crate::RuntimeResult<vb_storage::EventSeq> {
+     velvet-ballistics:lint-src |    |        ^^^^^^^^^^^^^^^^
+     velvet-ballistics:lint-src |    |
+     velvet-ballistics:lint-src |    = note: `-D dead-code` implied by `-D warnings`
+     velvet-ballistics:lint-src |    = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+     velvet-ballistics:lint-src | error: could not compile `vb_runtime` (lib) due to 1 previous error
