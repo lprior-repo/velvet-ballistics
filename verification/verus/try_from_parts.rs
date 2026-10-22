@@ -115,6 +115,9 @@ pub open spec fn spec_workflow_error_is_bound_violation_spec(e: SpecWorkflowErro
             | SpecWorkflowError::ExpressionInvalid
             | SpecWorkflowError::SymbolOutOfBounds
             | SpecWorkflowError::AccessorPathTooDeep
+            | SpecWorkflowError::InputSlotOutOfBounds
+            | SpecWorkflowError::DuplicateInputSlot
+            | SpecWorkflowError::NonCanonicalInputSlotOrder
     )
 }
 
@@ -405,7 +408,10 @@ pub proof fn lemma_bound_violation_in_closed_set(e: SpecWorkflowError)
             || e == SpecWorkflowError::ConstOutOfBounds
             || e == SpecWorkflowError::ExpressionInvalid
             || e == SpecWorkflowError::SymbolOutOfBounds
-            || e == SpecWorkflowError::AccessorPathTooDeep,
+            || e == SpecWorkflowError::AccessorPathTooDeep
+            || e == SpecWorkflowError::InputSlotOutOfBounds
+            || e == SpecWorkflowError::DuplicateInputSlot
+            || e == SpecWorkflowError::NonCanonicalInputSlotOrder,
 {
     // The closed-set enumeration in spec_workflow_error_is_bound_violation_spec
     // exactly enumerates these 8 variants.
@@ -567,44 +573,43 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else if parts.slot_count > parts.resource_contract.max_slots {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
-    } else if !input_slots_valid(parts) {
-        SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds)
     } else {
-        SpecValidationResult::Ok
+        let slot_err = input_slots_valid(parts);
+        if (slot_err != None::<SpecWorkflowError>) {
+            SpecValidationResult::Err(slot_err.unwrap())
+        } else {
+            SpecValidationResult::Ok
+        }
     }
 }
 
-/// Spec predicate: input slots are valid (all in-bounds, unique, strictly increasing).
-/// Mirrors production validate_input_slots at workflow/mod.rs:876-906.
-pub open spec fn input_slots_valid(parts: &SpecWorkflowParts) -> bool {
-    let slots = parts.input_slots;
-    let n = slots.len();
-    if n == 0 {
-        true
+/// Spec predicate: check input slots for the first violation,
+/// returning the specific error variant or None if all valid.
+/// Mirrors production validate_input_slots at workflow/mod.rs:876-906
+/// with exact first-error semantics: bounds check first, then
+/// duplicate, then strict ordering.
+pub open spec fn check_input_slots(parts: &SpecWorkflowParts, index: int, prev: Option<int>) -> Option<SpecWorkflowError>
+    decreases parts.input_slots.len() - index
+{
+    if (index >= parts.input_slots.len()) {
+        None
     } else {
-        let all_in_bounds = true;
-        let i = 0;
-        while i < n && all_in_bounds {
-            if slots[i] >= parts.slot_count {
-                all_in_bounds = false;
-            }
-            i = i + 1;
-        }
-        if !all_in_bounds {
-            false
+        let current = parts.input_slots[index];
+        if (current >= parts.slot_count) {
+            Some(SpecWorkflowError::InputSlotOutOfBounds)
+        } else if (prev == Some(current as int)) {
+            Some(SpecWorkflowError::DuplicateInputSlot)
+        } else if (prev != None::<int> && current < prev.unwrap()) {
+            Some(SpecWorkflowError::NonCanonicalInputSlotOrder)
         } else {
-            // Check strictly increasing
-            let strictly_increasing = true;
-            let j = 0;
-            while j < n - 1 && strictly_increasing {
-                if slots[j] >= slots[j + 1] {
-                    strictly_increasing = false;
-                }
-                j = j + 1;
-            }
-            strictly_increasing
+            check_input_slots(parts, index + 1, Some(current as int))
         }
     }
+}
+
+/// Convenience wrapper: validate all input slots starting from index 0.
+pub open spec fn input_slots_valid(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    check_input_slots(parts, 0, None)
 }
 
 /// Lemma 10: the slot-bounds rejection. A per-node check whose
@@ -691,7 +696,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
-        input_slots_valid(parts),
+        input_slots_valid(parts) == None::<SpecWorkflowError>,
     ensures
         // The projection returns Ok for these inputs. The spec
         // mirror walks through the chain of conditional guards
@@ -720,7 +725,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Resource contract exceeded: skip.
     } else if parts.slot_count > parts.resource_contract.max_slots {
         // Resource contract exceeded: skip.
-    } else if !input_slots_valid(parts) {
+    } else if input_slots_valid(parts) != None::<SpecWorkflowError> {
         // Input slot validation: skip (already required valid).
     } else {
         assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Ok);

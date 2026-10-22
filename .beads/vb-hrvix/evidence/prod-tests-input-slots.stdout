@@ -1,0 +1,12 @@
+
+running 7 tests
+test engine::validate::tests::red_phase_behavior_tests::per_node_kind_invalid_configurations::rejects_do_with_out_of_bounds_input_slot ... ok
+test workflow::tests::workflow_input_slots_accept_empty ... ok
+test workflow::tests::workflow_input_slots_accept_valid_increasing_indices ... ok
+test workflow::tests::workflow_input_slots_reject_duplicate ... ok
+test workflow::tests::workflow_input_slots_out_of_bounds_before_duplicate ... ok
+test workflow::tests::workflow_input_slots_reject_out_of_bounds ... ok
+test workflow::tests::workflow_input_slots_reject_non_canonical_order ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 2176 filtered out; finished in 0.00s
+

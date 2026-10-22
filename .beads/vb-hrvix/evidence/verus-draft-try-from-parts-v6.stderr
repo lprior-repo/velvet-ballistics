@@ -1,0 +1,38 @@
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_try_from_parts.rs:244:10
+    |
+244 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_try_from_parts.rs:366:10
+    |
+366 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/extern_try_from_parts.rs:410:10
+    |
+410 | #[derive(Clone)]
+    |          ^^^^^
+
+error: postcondition not satisfied
+   --> verification/verus/try_from_parts.rs:386:9
+    |
+384 | pub proof fn lemma_error_classification_is_total(e: SpecWorkflowError)
+    | ---------------------------------------------------------------------- at the end of the function body
+385 |     ensures
+386 |         spec_workflow_error_is_bound_violation_spec(e) || spec_workflow_error_is_structural(e),
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition
+
+error: postcondition not satisfied
+   --> verification/verus/try_from_parts.rs:538:9
+    |
+534 | pub proof fn lemma_projection_deterministic(parts: &SpecWorkflowParts)
+    | ---------------------------------------------------------------------- at the end of the function body
+...
+538 |         spec_validation_result_valid(try_from_parts_pure_spec(parts)),
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition
+
+error: aborting due to 2 previous errors; 3 warnings emitted
+

@@ -1,0 +1,11 @@
+error: this file contains an unclosed delimiter
+   --> verification/verus/try_from_parts.rs:754:12
+    |
+ 65 | verus! {
+    |        - unclosed delimiter
+...
+754 | } // verus!
+    |            ^
+
+error: aborting due to 1 previous error
+

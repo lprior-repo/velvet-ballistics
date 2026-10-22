@@ -9,8 +9,6 @@ use crate::workflow::{
     CoreError, ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract,
     SlotBranch, WorkflowError, WorkflowParts, check_expr_stack_bound, validate_budget_result,
 };
-    check_expr_stack_bound, validate_budget_result,
-};
 use std::fmt::Debug;
 
 fn assert_pairwise_distinct<T>(values: &[T])
