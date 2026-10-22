@@ -173,7 +173,7 @@ fn issue_artifact(
     artifact: AcceptedArtifact,
     policy: RuntimePolicy,
 ) -> Result<AcceptedArtifact, JournalError> {
-    let write_guard = journal
+    let _write_guard = journal
         .write_lock
         .lock()
         .map_err(|_| JournalError::WriteLockPoisoned)?;
@@ -184,7 +184,6 @@ fn issue_artifact(
     let batch = build_batch(journal, next, &stamped, &encoded)?;
     commit_batch(journal, batch, policy)?;
 
-    drop(write_guard);
     Ok(stamped)
 }
 
