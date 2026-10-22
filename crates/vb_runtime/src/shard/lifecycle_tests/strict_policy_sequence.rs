@@ -114,6 +114,24 @@ fn test_decision_record(ticket: ActionTicket) -> DecisionRecord {
     }
 }
 
+fn assert_ticket_and_seq_unchanged(
+    shard: &Shard,
+    expected_ticket: ActionTicket,
+    expected_seq: vb_storage::EventSeq,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let run = expected_ticket.run;
+    let seq_after = shard.journal_sequence_for(run);
+    assert_eq!(seq_after, expected_seq, "sequence must remain unchanged");
+    let ticket_after = shard
+        .pending_action_get(run)
+        .ok_or("pending action ticket must still exist")?;
+    assert_eq!(
+        ticket_after, expected_ticket,
+        "pending ticket must remain unchanged"
+    );
+    Ok(())
+}
+
 fn make_shard_with_journal(
     run: RunId,
 ) -> Result<(Shard, Arc<RecordingJournal>, ActionTicket), Box<dyn std::error::Error>> {
@@ -162,11 +180,7 @@ fn successful_strict_policy_port() -> Result<(), Box<dyn std::error::Error>> {
         "journal must record exact decision at seq 5"
     );
 
-    let ticket_after = shard
-        .pending_action_get(run)
-        .ok_or("pending action ticket must still exist")?;
-    assert_eq!(ticket_after, ticket, "pending ticket must remain unchanged");
-
+    assert_ticket_and_seq_unchanged(&shard, ticket, seq_after)?;
     Ok(())
 }
 
@@ -195,20 +209,14 @@ fn typed_strict_policy_port_failure() -> Result<(), Box<dyn std::error::Error>> 
         _ => return Err("wrong typed error propagated".into()),
     }
 
-    let seq_after = shard.journal_sequence_for(run);
+    let calls = journal.strict_calls()?;
     assert_eq!(
-        seq_after, seq_before,
-        "sequence must remain unchanged on error"
+        calls,
+        vec![(test_decision_record(ticket), seq_before)],
+        "journal must record exact decision at seq before"
     );
 
-    let calls = journal.strict_calls()?;
-    assert_eq!(calls.len(), 1, "exactly one journal call must be attempted");
-
-    let ticket_after = shard
-        .pending_action_get(run)
-        .ok_or("pending action ticket must still exist")?;
-    assert_eq!(ticket_after, ticket, "pending ticket must remain unchanged");
-
+    assert_ticket_and_seq_unchanged(&shard, ticket, seq_before)?;
     Ok(())
 }
 
@@ -238,14 +246,7 @@ fn overflow_at_u64_max() -> Result<(), Box<dyn std::error::Error>> {
     let calls = journal.strict_calls()?;
     assert_eq!(calls.len(), 0, "journal must not be called on overflow");
 
-    let seq_after = shard.journal_sequence_for(run);
-    assert_eq!(seq_after, seq_max, "sequence must remain at u64::MAX");
-
-    let ticket_after = shard
-        .pending_action_get(run)
-        .ok_or("pending action ticket must still exist")?;
-    assert_eq!(ticket_after, ticket, "pending ticket must remain unchanged");
-
+    assert_ticket_and_seq_unchanged(&shard, ticket, seq_max)?;
     Ok(())
 }
 
@@ -277,13 +278,6 @@ fn wrong_ticket_rejected() -> Result<(), Box<dyn std::error::Error>> {
         "journal must not be called for wrong ticket"
     );
 
-    let seq_after = shard.journal_sequence_for(run);
-    assert_eq!(seq_after, seq_before, "sequence must remain unchanged");
-
-    let ticket_after = shard
-        .pending_action_get(run)
-        .ok_or("pending action ticket must still exist")?;
-    assert_eq!(ticket_after, ticket, "pending ticket must remain unchanged");
-
+    assert_ticket_and_seq_unchanged(&shard, ticket, seq_before)?;
     Ok(())
 }
