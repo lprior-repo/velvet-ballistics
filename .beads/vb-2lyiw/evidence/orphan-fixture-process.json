@@ -1,0 +1,7 @@
+{
+  "pid": 2990122,
+  "cmdline": "bash /tmp/vb-fixture-test-0LHGbO/timeout --kill-after=10s 90s bash -c cd 'crates/vb_compile' && rustup run nightly-2026-04-28 cargo geiger --all-features --all-dependencies --include-tests --output-format GitHubMarkdown ",
+  "deleted_stderr_size": 46173118464,
+  "cwd": "/tmp/vb-selftest-T3G3Hf (deleted)",
+  "reason": "orphan rejected selftest fixture runaway; no live worker parent"
+}
