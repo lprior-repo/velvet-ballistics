@@ -1,0 +1,53 @@
+{
+  "oldSHA": "423d8ae8b667d82b4d36e57d29d7ef2aede08bdf",
+  "cases": [
+      {
+        "name": "small-canonical",
+        "file": "small-canonical.bin",
+        "length": 122,
+        "blake3": "7b3b30032c8174b8d0c29898c90895524d375c51610dada1792dc3fdb26ded54",
+        "run": 1,
+        "seq": 1,
+        "step": 0,
+        "action": 0,
+        "attempt": 1,
+        "capacity": 3,
+        "input_slot": 0,
+        "output_slot": 1,
+        "record_kind": 34,
+        "valid": true
+      },
+      {
+        "name": "high-values",
+        "file": "high-values.bin",
+        "length": 135,
+        "blake3": "49b5d3967957648a2b7cc54a6fdf8490fb9014e1445eed0a883ab4684f0ca64d",
+        "run": 65535,
+        "seq": 65535,
+        "step": 65535,
+        "action": 65535,
+        "attempt": 10,
+        "capacity": 15,
+        "input_slot": 100,
+        "output_slot": 200,
+        "record_kind": 34,
+        "valid": true
+      },
+      {
+        "name": "max-attempt-capacity",
+        "file": "max-attempt-capacity.bin",
+        "length": 128,
+        "blake3": "23d289042d3e810f76af2963e908b54f07371f8e8890ed562134c8578c7a5ca6",
+        "run": 123,
+        "seq": 456,
+        "step": 7,
+        "action": 42,
+        "attempt": 65535,
+        "capacity": 65535,
+        "input_slot": 1,
+        "output_slot": 2,
+        "record_kind": 34,
+        "valid": true
+      }
+  ]
+}

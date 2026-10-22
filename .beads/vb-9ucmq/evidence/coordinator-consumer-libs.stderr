@@ -1,0 +1,20 @@
+   Compiling heapless v0.7.17
+   Compiling regex-automata v0.4.14
+   Compiling postcard v1.1.3
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9ucmq-local3090-deps/crates/vb_core)
+   Compiling proptest v1.11.0
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9ucmq-local3090-deps/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9ucmq-local3090-deps/crates/vb_storage)
+   Compiling matchers v0.2.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling regex v1.12.3
+   Compiling loom v0.7.2
+   Compiling criterion v0.8.2
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9ucmq-local3090-deps/crates/vb_runtime)
+   Compiling mio v1.2.0
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9ucmq-local3090-deps/crates/vb_ipc)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 19.73s
+     Running unittests src/lib.rs (target/debug/deps/vb_core-3ce1145ab197fdef)
+     Running unittests src/lib.rs (target/debug/deps/vb_ipc-2bbeb8a84f30ad33)
+     Running unittests src/lib.rs (target/debug/deps/vb_runtime-7140e74a62f769dd)
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-a6383fe52669d8f8)

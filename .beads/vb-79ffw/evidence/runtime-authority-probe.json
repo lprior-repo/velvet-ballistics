@@ -1,0 +1,22 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_79ffw_ticket_authority_probe",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 101,
+  "seconds": 0.346,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-79ffw/evidence/runtime-authority-probe",
+  "coordinator_message": "Root REJECTS v3 report as currently written. Concrete source defects: (1) legacy_wire_decoder.rs serializes bare LegacyActionScheduledTicketPayload WITHOUT the JournalEvent wire enum tag/newtype variant. Actual wire_serialize_action.rs routes through serialize_record_kind_variant. Thus run42 is read as wrong event tag and SerdeDeCustom can occur before any ticket field; valid envelope digest does not make a valid OLD event. Must construct actual OLD FULL event serialization and prove old decoder accepts it, ideally generate fixtures with actual423d8ae8 production. Do not claim legacy compatibility/failclosed from malformed event. (2) strengthened runtime probe only asserts events_after_stale.len() >= events_before.len(), NOT full byte/vector equality. Report claiming full serialized unchanged is false. Must serialize and assert exact equal vectors, assert precise expected tick rejection, snapshot pending ticket, then current completion/RunFinished. (3) new wire test introduces bytes[0], expect(), panic!, unchecked cast; forbidden by AGENTS. Repair with fallible Result helpers and checked conversion/safe get. (4) test uses noncanonical old key0x42 and onlyone case, not representative canonical old records. Preserve failed/passing logs and mark current evidence REJECTED, not passed. Root will provide dedicated old-production isolated fixture workspace if needed; do not create/clone yourself or edit production. Stop after writing an honest incomplete handoff if you cannot correct within context. No blanket APPROVED."
+}

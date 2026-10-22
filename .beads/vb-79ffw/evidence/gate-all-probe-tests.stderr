@@ -1,0 +1,257 @@
+    Blocking waiting for file lock on package cache
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/crates/vb_runtime)
+error[E0425]: cannot find value `workflow` in this scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:167:24
+    |
+164 |         let _workflow = retry_action_workflow()?;
+    |             --------- `_workflow` defined here
+...
+167 |             &journal, &workflow, RuntimePolicy::Strict, &contracts,
+    |                        ^^^^^^^^
+    |
+help: the leading underscore in `_workflow` marks it as unused, consider renaming it to `workflow`
+    |
+164 -         let _workflow = retry_action_workflow()?;
+164 +         let workflow = retry_action_workflow()?;
+    |
+
+error[E0425]: cannot find value `workflow` in this scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:173:18
+    |
+164 |         let _workflow = retry_action_workflow()?;
+    |             --------- `_workflow` defined here
+...
+173 |             run, workflow, Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+    |                  ^^^^^^^^
+    |
+help: the leading underscore in `_workflow` marks it as unused, consider renaming it to `workflow`
+    |
+164 -         let _workflow = retry_action_workflow()?;
+164 +         let workflow = retry_action_workflow()?;
+    |
+
+error[E0425]: cannot find value `workflow` in this scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:315:20
+    |
+312 |     let _workflow = retry_action_workflow()?;
+    |         --------- `_workflow` defined here
+...
+315 |         &journal, &workflow, RuntimePolicy::Strict, &contracts,
+    |                    ^^^^^^^^
+    |
+help: the leading underscore in `_workflow` marks it as unused, consider renaming it to `workflow`
+    |
+312 -     let _workflow = retry_action_workflow()?;
+312 +     let workflow = retry_action_workflow()?;
+    |
+
+error[E0425]: cannot find value `workflow` in this scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:321:14
+    |
+312 |     let _workflow = retry_action_workflow()?;
+    |         --------- `_workflow` defined here
+...
+321 |         run, workflow, Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+    |              ^^^^^^^^
+    |
+help: the leading underscore in `_workflow` marks it as unused, consider renaming it to `workflow`
+    |
+312 -     let _workflow = retry_action_workflow()?;
+312 +     let workflow = retry_action_workflow()?;
+    |
+
+error[E0425]: cannot find value `workflow` in this scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:363:20
+    |
+360 |     let _workflow = retry_action_workflow()?;
+    |         --------- `_workflow` defined here
+...
+363 |         &journal, &workflow, RuntimePolicy::Strict, &contracts,
+    |                    ^^^^^^^^
+    |
+help: the leading underscore in `_workflow` marks it as unused, consider renaming it to `workflow`
+    |
+360 -     let _workflow = retry_action_workflow()?;
+360 +     let workflow = retry_action_workflow()?;
+    |
+
+error[E0425]: cannot find value `workflow` in this scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:369:14
+    |
+360 |     let _workflow = retry_action_workflow()?;
+    |         --------- `_workflow` defined here
+...
+369 |         run, workflow, Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+    |              ^^^^^^^^
+    |
+help: the leading underscore in `_workflow` marks it as unused, consider renaming it to `workflow`
+    |
+360 -     let _workflow = retry_action_workflow()?;
+360 +     let workflow = retry_action_workflow()?;
+    |
+
+error[E0425]: cannot find value `workflow` in this scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:411:24
+    |
+408 |         let _workflow = retry_action_workflow()?;
+    |             --------- `_workflow` defined here
+...
+411 |             &journal, &workflow, RuntimePolicy::Strict, &contracts,
+    |                        ^^^^^^^^
+    |
+help: the leading underscore in `_workflow` marks it as unused, consider renaming it to `workflow`
+    |
+408 -         let _workflow = retry_action_workflow()?;
+408 +         let workflow = retry_action_workflow()?;
+    |
+
+error[E0425]: cannot find value `workflow` in this scope
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:417:18
+    |
+408 |         let _workflow = retry_action_workflow()?;
+    |             --------- `_workflow` defined here
+...
+417 |             run, workflow, Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+    |                  ^^^^^^^^
+    |
+help: the leading underscore in `_workflow` marks it as unused, consider renaming it to `workflow`
+    |
+408 -         let _workflow = retry_action_workflow()?;
+408 +         let workflow = retry_action_workflow()?;
+    |
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:167:57
+    |
+166 |         vb_storage::submit_artifact_with_contracts(
+    |         ------------------------------------------ arguments to this function are incorrect
+167 |             &journal, &workflow, RuntimePolicy::Strict, &contracts,
+    |                                                         ^^^^^^^^^^ expected `&[ActionContract]`, found `&fn() -> Result<..., ...> {contracts}`
+    |
+    = note: expected reference `&[ActionContract]`
+               found reference `&fn() -> Result<Box<[ActionContract]>, String> {contracts}`
+note: function defined here
+   --> crates/vb_storage/src/admission.rs:351:8
+    |
+351 | pub fn submit_artifact_with_contracts(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:174:37
+    |
+172 |         runtime.submit_direct_with_inputs_grants_and_contracts(
+    |                 ---------------------------------------------- arguments to this method are incorrect
+173 |             run, workflow, Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+174 |             CapabilitySet::empty(), contracts,
+    |                                     ^^^^^^^^^ expected `Box<[ActionContract]>`, found fn item
+    |
+    = note: expected struct `Box<[ActionContract]>`
+              found fn item `fn() -> Result<Box<[ActionContract]>, String> {contracts}`
+note: method defined here
+   --> crates/vb_runtime/src/runtime.rs:292:12
+    |
+292 |     pub fn submit_direct_with_inputs_grants_and_contracts(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:315:53
+    |
+314 |     vb_storage::submit_artifact_with_contracts(
+    |     ------------------------------------------ arguments to this function are incorrect
+315 |         &journal, &workflow, RuntimePolicy::Strict, &contracts,
+    |                                                     ^^^^^^^^^^ expected `&[ActionContract]`, found `&fn() -> Result<..., ...> {contracts}`
+    |
+    = note: expected reference `&[ActionContract]`
+               found reference `&fn() -> Result<Box<[ActionContract]>, String> {contracts}`
+note: function defined here
+   --> crates/vb_storage/src/admission.rs:351:8
+    |
+351 | pub fn submit_artifact_with_contracts(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:322:33
+    |
+320 |     runtime.submit_direct_with_inputs_grants_and_contracts(
+    |             ---------------------------------------------- arguments to this method are incorrect
+321 |         run, workflow, Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+322 |         CapabilitySet::empty(), contracts,
+    |                                 ^^^^^^^^^ expected `Box<[ActionContract]>`, found fn item
+    |
+    = note: expected struct `Box<[ActionContract]>`
+              found fn item `fn() -> Result<Box<[ActionContract]>, String> {contracts}`
+note: method defined here
+   --> crates/vb_runtime/src/runtime.rs:292:12
+    |
+292 |     pub fn submit_direct_with_inputs_grants_and_contracts(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:363:53
+    |
+362 |     vb_storage::submit_artifact_with_contracts(
+    |     ------------------------------------------ arguments to this function are incorrect
+363 |         &journal, &workflow, RuntimePolicy::Strict, &contracts,
+    |                                                     ^^^^^^^^^^ expected `&[ActionContract]`, found `&fn() -> Result<..., ...> {contracts}`
+    |
+    = note: expected reference `&[ActionContract]`
+               found reference `&fn() -> Result<Box<[ActionContract]>, String> {contracts}`
+note: function defined here
+   --> crates/vb_storage/src/admission.rs:351:8
+    |
+351 | pub fn submit_artifact_with_contracts(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:370:33
+    |
+368 |     runtime.submit_direct_with_inputs_grants_and_contracts(
+    |             ---------------------------------------------- arguments to this method are incorrect
+369 |         run, workflow, Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+370 |         CapabilitySet::empty(), contracts,
+    |                                 ^^^^^^^^^ expected `Box<[ActionContract]>`, found fn item
+    |
+    = note: expected struct `Box<[ActionContract]>`
+              found fn item `fn() -> Result<Box<[ActionContract]>, String> {contracts}`
+note: method defined here
+   --> crates/vb_runtime/src/runtime.rs:292:12
+    |
+292 |     pub fn submit_direct_with_inputs_grants_and_contracts(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:411:57
+    |
+410 |         vb_storage::submit_artifact_with_contracts(
+    |         ------------------------------------------ arguments to this function are incorrect
+411 |             &journal, &workflow, RuntimePolicy::Strict, &contracts,
+    |                                                         ^^^^^^^^^^ expected `&[ActionContract]`, found `&fn() -> Result<..., ...> {contracts}`
+    |
+    = note: expected reference `&[ActionContract]`
+               found reference `&fn() -> Result<Box<[ActionContract]>, String> {contracts}`
+note: function defined here
+   --> crates/vb_storage/src/admission.rs:351:8
+    |
+351 | pub fn submit_artifact_with_contracts(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/vb_runtime/tests/vb_79ffw_ticket_authority_probe.rs:418:37
+    |
+416 |         runtime.submit_direct_with_inputs_grants_and_contracts(
+    |                 ---------------------------------------------- arguments to this method are incorrect
+417 |             run, workflow, Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
+418 |             CapabilitySet::empty(), contracts,
+    |                                     ^^^^^^^^^ expected `Box<[ActionContract]>`, found fn item
+    |
+    = note: expected struct `Box<[ActionContract]>`
+              found fn item `fn() -> Result<Box<[ActionContract]>, String> {contracts}`
+note: method defined here
+   --> crates/vb_runtime/src/runtime.rs:292:12
+    |
+292 |     pub fn submit_direct_with_inputs_grants_and_contracts(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `vb_runtime` (test "vb_79ffw_ticket_authority_probe") due to 16 previous errors

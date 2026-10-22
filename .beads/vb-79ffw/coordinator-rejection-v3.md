@@ -1,0 +1,5 @@
+# Rejected evidence
+
+The v3 legacy test has actual exit0 but does not establish old-format compatibility: it serializes a bare payload without the JournalEvent enum/newtype wire tag, so SerdeDeCustom can result from reading run42 as an invalid tag before reaching the ticket. Valid envelope CRC/digest alone is insufficient. The old production decoder must accept any fixture before current-decoder rejection is evidence. Its fixture also uses a noncanonical key and forbidden new expect/panic/index/cast forms.
+
+The runtime probe now actually drives a current ticket to RunFinished after stale failure, which is useful. However it only asserts event-count monotonicity (>=), not equal serialized content; it logs rather than asserts the stale tick result. Reports claiming full byte equality or exact rejection assertions are unsupported and rejected. Root corrected the corresponding user-facing update immediately on source inspection. These passing test exits are retained as diagnostic facts, not acceptance evidence. All current source is checkpointed for correction; no production mutation was made by this reviewer.
