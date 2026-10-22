@@ -689,7 +689,7 @@ impl Shard {
             }
             ActionFailureOutcome::FailRun => {
                 let state = self.take_run_state(run)?;
-                self.fail_run_state_after_journaled(run, state)
+                self.fail_run_state_with_retry_checkpoint(run, preflight.ticket.step, state)
             }
         }
     }

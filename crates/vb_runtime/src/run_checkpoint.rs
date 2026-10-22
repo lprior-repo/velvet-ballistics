@@ -109,13 +109,15 @@ impl RunCheckpointV1 {
         if frame.states.get(retry_index) != Some(&CheckpointStepState::Failed) {
             return Err(RunCheckpointV1Error::RetryStepMismatch);
         }
-        let mut action_attempts = state.action_attempts.to_vec();
-        let action_attempt = action_attempts
-            .get_mut(retry_index)
-            .ok_or(RunCheckpointV1Error::ActionAttemptCountMismatch)?;
-        *action_attempt = action_attempt
-            .checked_add(1)
-            .ok_or(RunCheckpointV1Error::ActionAttemptOverflow)?;
+        // Per-action attempt counters are captured verbatim: the CLI retry advances
+        // the run attempt (checked), not the per-step action attempt. Advancing the
+        // action attempt here would drive the re-executed ticket past the action's
+        // max-attempts capacity, so the failed step's action re-executes as its first
+        // action attempt in the new run attempt.
+        let action_attempts = state.action_attempts.clone();
+        if action_attempts.get(retry_index).is_none() {
+            return Err(RunCheckpointV1Error::ActionAttemptCountMismatch);
+        }
         // Checkpoints are retry-ready state: keep the audited failed event in the journal,
         // while resetting only the selected step and PC in the new checkpoint.
         let retry_state = frame
@@ -134,7 +136,7 @@ impl RunCheckpointV1 {
             prior_seq,
             frame,
             value_store: state.store.checkpoint_v1(),
-            action_attempts: action_attempts.into_boxed_slice(),
+            action_attempts,
             admission: state.admission.clone(),
             collect_states: state.collect_states.checkpoint_v1(),
             action_contracts: state.action_contracts.clone(),
@@ -308,7 +310,7 @@ mod tests {
     }
 
     #[test]
-    fn capture_resets_only_retry_step_and_increments_its_action_attempt() -> Result<(), String> {
+    fn capture_resets_only_retry_step_and_preserves_action_attempts() -> Result<(), String> {
         let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
         let run_id = RunId::new(41);
         let state = failed_state(workflow, run_id)
@@ -328,7 +330,7 @@ mod tests {
             [vb_core::frame::CheckpointStepState::Pending]
         );
         assert_eq!(checkpoint.frame.pc, StepIdx::ZERO);
-        assert_eq!(checkpoint.action_attempts.as_ref(), [1]);
+        assert_eq!(checkpoint.action_attempts.as_ref(), [0]);
         assert_eq!(
             state.frame.step_state(StepIdx::ZERO),
             Ok(vb_core::frame::StepState::Failed)
@@ -353,7 +355,7 @@ mod tests {
             restored.frame.step_state(StepIdx::ZERO),
             Ok(vb_core::frame::StepState::Pending)
         );
-        assert_eq!(restored.action_attempts.as_ref(), [1]);
+        assert_eq!(restored.action_attempts.as_ref(), [0]);
         Ok(())
     }
 

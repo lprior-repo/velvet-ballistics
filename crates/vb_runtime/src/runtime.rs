@@ -408,6 +408,31 @@ impl Runtime {
         }
     }
 
+    /// Recovers a failed run from a validated retry checkpoint.
+    ///
+    /// Unlike [`Runtime::recover_and_resume`], this path uses the full
+    /// [`crate::run_checkpoint::RunCheckpointV1`] captured at the failure boundary,
+    /// rather than a legacy resumable frame seed. The checkpoint identity is checked
+    /// against the run before the recovery command is enqueued; `handle_recover`
+    /// re-validates the checkpoint against the independently loaded accepted artifact
+    /// (artifact digest, workflow digest, policy, ABI grant authority, frame/store/collect
+    /// integrity) before any runtime state mutation.
+    pub fn recover_retry(
+        &self,
+        run: RunId,
+        checkpoint: crate::run_checkpoint::RunCheckpointV1,
+        next_seq: vb_storage::EventSeq,
+    ) -> RuntimeResult<()> {
+        if checkpoint.run_id != run {
+            return Err(RuntimeError::Recovery {
+                error: "retry checkpoint run identity mismatch".to_string(),
+            });
+        }
+        let command = crate::shard::types::RecoverRunCommand::for_retry(checkpoint, next_seq)?;
+        let shard = self.shard_for(run)?;
+        shard.enqueue(ShardCommand::Recover { command })
+    }
+
     fn rejected_recovery_product_error(
         product: crate::recovery::RuntimeRecoveryProduct,
     ) -> RuntimeError {
