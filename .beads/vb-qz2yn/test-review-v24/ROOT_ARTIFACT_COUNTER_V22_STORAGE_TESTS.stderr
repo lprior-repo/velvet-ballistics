@@ -1,0 +1,30 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.45s
+────────────
+ Nextest run ID da27f517-c5f5-461a-92ca-f3e6b55b082e with nextest profile: default
+    Starting 1643 tests across 1 binary
+        FAIL [   0.018s] (1564/1643) vb_storage vb_2bok_durability_gate_tests::durability_gate_tests::accepted_at_seq_is_valid_event_seq
+  stdout ───
+
+    running 1 test
+    test vb_2bok_durability_gate_tests::durability_gate_tests::accepted_at_seq_is_valid_event_seq ... FAILED
+
+    failures:
+
+    failures:
+        vb_2bok_durability_gate_tests::durability_gate_tests::accepted_at_seq_is_valid_event_seq
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1642 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'vb_2bok_durability_gate_tests::durability_gate_tests::accepted_at_seq_is_valid_event_seq' (56138) panicked at crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:266:9:
+    assertion `left == right` failed: accepted_at_seq should be initialized to 0 in current implementation
+      left: 1
+     right: 0
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+────────────
+     Summary [   1.418s] 1643 tests run: 1642 passed, 1 failed, 0 skipped
+        FAIL [   0.018s] (1564/1643) vb_storage vb_2bok_durability_gate_tests::durability_gate_tests::accepted_at_seq_is_valid_event_seq
+error: test run failed
