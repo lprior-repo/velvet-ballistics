@@ -1,0 +1,22 @@
+error[E0716]: temporary value dropped while borrowed
+   --> crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs:497:20
+    |
+497 |       let decision = wrapped
+    |  ____________________^
+498 | |         .captured_decision()?
+    | |_____________________________^ creates a temporary value which is freed while still in use
+499 |           .as_ref()
+500 |           .ok_or("no decision captured")?;
+    |                                          - temporary value is freed at the end of this statement
+501 |       assert_eq!(decision.outcome, DecisionCode::Allowed);
+    |       --------------------------------------------------- borrow later used here
+    |
+help: consider using a `let` binding to create a longer lived value
+    |
+497 ~     let binding = wrapped
+498 +         .captured_decision()?;
+499 ~     let decision = binding
+    |
+
+For more information about this error, try `rustc --explain E0716`.
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_policy_dispatch_fail_closed") due to 1 previous error

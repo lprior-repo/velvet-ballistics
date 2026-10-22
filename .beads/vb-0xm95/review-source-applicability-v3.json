@@ -1,0 +1,78 @@
+{
+  "source_manifest": ".beads/vb-0xm95/source-manifest-v1.json",
+  "scope": "Production inputs only; tests and final acceptance not covered",
+  "production_inputs": 14,
+  "mismatches": [],
+  "inputs": [
+    {
+      "path": "crates/vb_runtime/src/journal.rs",
+      "expected": "b2470cd450b09ad74c7be10da41eedcf3cae262c6de4e2ad70911c609eb655a2",
+      "actual": "b2470cd450b09ad74c7be10da41eedcf3cae262c6de4e2ad70911c609eb655a2"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_001.rs",
+      "expected": "8aa0a314028a919f929deb9ca61b7390ab205af44ec11f7b94c7de6703e215f1",
+      "actual": "8aa0a314028a919f929deb9ca61b7390ab205af44ec11f7b94c7de6703e215f1"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_002.rs",
+      "expected": "e5ca3174e71976dce2d1e0a164a0d5c83a3f139e94075070f783b90dc932a682",
+      "actual": "e5ca3174e71976dce2d1e0a164a0d5c83a3f139e94075070f783b90dc932a682"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/chunk_003.rs",
+      "expected": "2525fb7460ce649a4fcd825ee52fbaffa712882438f021e63dac0791fdefb599",
+      "actual": "2525fb7460ce649a4fcd825ee52fbaffa712882438f021e63dac0791fdefb599"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime.rs",
+      "expected": "3e6b242d55a8d51081aeb580fc429386dfc3a0c6059798e18d57710743a302fe",
+      "actual": "3e6b242d55a8d51081aeb580fc429386dfc3a0c6059798e18d57710743a302fe"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/live_policy_dispatch.rs",
+      "expected": "4aab043f11828426ac4ae8a11fd2c48b556faf27ee53d65dcc0c991afd79ae6d",
+      "actual": "4aab043f11828426ac4ae8a11fd2c48b556faf27ee53d65dcc0c991afd79ae6d"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/registered_executor.rs",
+      "expected": "8ce1ff241a6896c60821c8052ce131637d7369d4f1fa0a046a628d18009f1368",
+      "actual": "8ce1ff241a6896c60821c8052ce131637d7369d4f1fa0a046a628d18009f1368"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/impl_.rs",
+      "expected": "c2b206285b5c16e9200a10e24d37cb521eebea5158e05993a89fb951d9acd039",
+      "actual": "c2b206285b5c16e9200a10e24d37cb521eebea5158e05993a89fb951d9acd039"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/impl_parts/policy_decision.rs",
+      "expected": "c6210a2723cf4e5262a6241cbe15d47d3468938bdb5e3779ec66f95a5a0f0763",
+      "actual": "c6210a2723cf4e5262a6241cbe15d47d3468938bdb5e3779ec66f95a5a0f0763"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle.rs",
+      "expected": "ddb90d97512acd71c7e2a4bfb4642bb3387365f8aebb0bc5e7895404a49fb56a",
+      "actual": "ddb90d97512acd71c7e2a4bfb4642bb3387365f8aebb0bc5e7895404a49fb56a"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/chunk_004.rs",
+      "expected": "e79dcbdaa905a9197a5ff9b30b9b83a5330214188b3b72729d8582d65294ee2e",
+      "actual": "e79dcbdaa905a9197a5ff9b30b9b83a5330214188b3b72729d8582d65294ee2e"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion.rs",
+      "expected": "9825672451ec4a2d8640c9d9a7c6e12d16eec6c0dea4991304ec543c27bbfe80",
+      "actual": "9825672451ec4a2d8640c9d9a7c6e12d16eec6c0dea4991304ec543c27bbfe80"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_completion_context.rs",
+      "expected": "df1252d315e83deda54295771f2983842b0aa0944c0375a57591414f16e2a1cf",
+      "actual": "df1252d315e83deda54295771f2983842b0aa0944c0375a57591414f16e2a1cf"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs",
+      "expected": "0a2e0a7f3906cfffc77be623db1a944cfbc4c9a66a9ecd3a23ca1d17b71940ad",
+      "actual": "0a2e0a7f3906cfffc77be623db1a944cfbc4c9a66a9ecd3a23ca1d17b71940ad"
+    }
+  ]
+}
