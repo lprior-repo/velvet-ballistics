@@ -578,7 +578,13 @@ tasks:
         if [ -d "fuzz/corpus/${fuzz_target}" ]; then
           cp -R "fuzz/corpus/${fuzz_target}/." "${corpus}/"
         fi
-        flock --shared target/moon-locks/source-mutation.lock timeout 30s "${bin}" -artifact_prefix="${PWD}/${artifacts}/" -max_total_time=1 "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
+        fuzz_args=(-artifact_prefix="${PWD}/${artifacts}/" -max_total_time=1)
+        dict_file="fuzz/fuzz_targets/${fuzz_target}.dict"
+        if [ -f "${dict_file}" ]; then
+          fuzz_args+=(-dict="${PWD}/${dict_file}")
+          echo "DICTIONARY: ${dict_file}"
+        fi
+        flock --shared target/moon-locks/source-mutation.lock timeout 30s "${bin}" "${fuzz_args[@]}" "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
       done
     toolchains:
       - rust
@@ -590,6 +596,7 @@ tasks:
       - 'fuzz/Cargo.lock'
       - 'fuzz/fuzz_targets.rs'
       - 'fuzz/fuzz_targets/**/*'
+      - 'fuzz/corpus/**/*'
       - 'fuzz/src/**/*'
       - 'crates/vb_core/**/*'
       - 'crates/vb_compile/**/*'

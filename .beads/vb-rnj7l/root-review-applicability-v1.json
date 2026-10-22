@@ -1,0 +1,18 @@
+{
+  "candidate": "d3dd3d7aade085979f2ac4868a90a7f41350f247",
+  "source_file": ".moon/tasks/all.yml",
+  "sha256": "f80a46d690517174c072f023dd0bceeb6aa0794beef16274c6e9226376f4ebe9",
+  "reviewer_exit": "0",
+  "actual_binary_cases": {
+    "present": 0,
+    "absent": 0,
+    "whitespace": 0,
+    "malformed": 1
+  },
+  "negative_case_exit_1_expected": true,
+  "limitations": [
+    "Direct CLI cases use the real compiled binary; they do not execute the actual Moon loop.",
+    "Resolved Moon task JSON captured; integrated full fuzz-smoke and canonical gates still required.",
+    "Scope is bounded optional dictionary config, no full fuzz campaign or formal proof closure."
+  ]
+}

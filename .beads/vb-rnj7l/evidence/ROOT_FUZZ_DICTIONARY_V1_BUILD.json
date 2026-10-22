@@ -1,0 +1,27 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "fuzz",
+    "build",
+    "vb_f04l_yaml_compiler_compile",
+    "--target",
+    "x86_64-unknown-linux-gnu",
+    "--target-dir",
+    "/home/lewis/src/isoloated/vb-rnj7l-fuzz-dictionaries-v1/target/fuzz-dictionary-baseline"
+  ],
+  "exit_code": 0,
+  "seconds": 103.258,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_FUZZ_DICTIONARY_V1_BUILD"
+}
