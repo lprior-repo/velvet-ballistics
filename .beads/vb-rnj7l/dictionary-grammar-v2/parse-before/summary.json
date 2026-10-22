@@ -1,0 +1,92 @@
+[
+  {
+    "dictionary": "fuzz/fuzz_targets/decode_record.dict",
+    "matching_binary": true,
+    "binary": "decode_record",
+    "exit_code": 1,
+    "parse_error": true,
+    "tail": [
+      "ParseDictionaryFile: error in line 1",
+      "\t\t\"MAGIC_JOURNAL_EVENT_LE=\"\\x45\\x4a\\x42\\x56"
+    ]
+  },
+  {
+    "dictionary": "fuzz/fuzz_targets/expression.dict",
+    "matching_binary": false,
+    "binary": "decode_record",
+    "exit_code": 0,
+    "parse_error": false,
+    "tail": [
+      "#2\tINITED cov: 51 ft: 52 corp: 1/1b exec/s: 0 rss: 33Mb",
+      "#2\tDONE   cov: 51 ft: 52 corp: 1/1b lim: 4 exec/s: 0 rss: 33Mb",
+      "Done 2 runs in 0 second(s)"
+    ]
+  },
+  {
+    "dictionary": "fuzz/fuzz_targets/ipc_frame.dict",
+    "matching_binary": false,
+    "binary": "decode_record",
+    "exit_code": 1,
+    "parse_error": true,
+    "tail": [
+      "ParseDictionaryFile: error in line 1",
+      "\t\t\"MAGIC_VBLT_LE=\"\\x54\\x4c\\x42\\x56"
+    ]
+  },
+  {
+    "dictionary": "fuzz/fuzz_targets/journal_decode.dict",
+    "matching_binary": true,
+    "binary": "journal_decode",
+    "exit_code": 1,
+    "parse_error": true,
+    "tail": [
+      "ParseDictionaryFile: error in line 1",
+      "\t\t\"MAGIC_JOURNAL_EVENT_LE=\"\\x45\\x4a\\x42\\x56"
+    ]
+  },
+  {
+    "dictionary": "fuzz/fuzz_targets/journal_event.dict",
+    "matching_binary": false,
+    "binary": "decode_record",
+    "exit_code": 1,
+    "parse_error": true,
+    "tail": [
+      "ParseDictionaryFile: error in line 1",
+      "\t\t\"MAGIC_JOURNAL_EVENT_LE=\"\\x45\\x4a\\x42\\x56"
+    ]
+  },
+  {
+    "dictionary": "fuzz/fuzz_targets/kind_validation.dict",
+    "matching_binary": true,
+    "binary": "kind_validation",
+    "exit_code": 1,
+    "parse_error": true,
+    "tail": [
+      "ParseDictionaryFile: error in line 1",
+      "\t\t\"MAGIC_JOURNAL_EVENT_LE=\"\\x45\\x4a\\x42\\x56"
+    ]
+  },
+  {
+    "dictionary": "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.dict",
+    "matching_binary": true,
+    "binary": "vb_f04l_yaml_compiler_compile",
+    "exit_code": 0,
+    "parse_error": false,
+    "tail": [
+      "#2\tINITED cov: 45 ft: 46 corp: 1/1b exec/s: 0 rss: 36Mb",
+      "#2\tDONE   cov: 45 ft: 46 corp: 1/1b lim: 4 exec/s: 0 rss: 36Mb",
+      "Done 2 runs in 0 second(s)"
+    ]
+  },
+  {
+    "dictionary": "fuzz/fuzz_targets/vb_storage_codec.dict",
+    "matching_binary": true,
+    "binary": "vb_storage_codec",
+    "exit_code": 1,
+    "parse_error": true,
+    "tail": [
+      "ParseDictionaryFile: error in line 1",
+      "\t\t\"MAGIC_JOURNAL_EVENT_LE=\"\\x45\\x4a\\x42\\x56"
+    ]
+  }
+]
