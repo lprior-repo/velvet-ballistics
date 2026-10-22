@@ -6,7 +6,9 @@ use vb_core::action::ActionOutputReady;
 use vb_core::policy::PinnedAdmissionPolicy;
 use vb_storage::executor::RegisterReceipt;
 
-use super::registered_completion_context::{convert_policy_pin, load_admitted_artifact};
+use super::registered_completion_context::{
+    build_registered_action_context, convert_policy_pin, load_admitted_artifact,
+};
 
 pub(crate) struct RegisteredActionContext {
     pub artifact: vb_storage::AcceptedArtifact,
@@ -36,22 +38,8 @@ impl Shard {
             .ok_or(RuntimeError::InvalidActionCompletion)?;
         let artifact =
             load_admitted_artifact(self.artifact_store.as_ref(), admission.artifact_digest())?;
-        let (value, input_taint) =
-            super::registered_context_helpers::resolve_action_input(state, ticket)?;
-        let encoded = super::registered_context_helpers::encode_action_input(value)?;
-        let output =
-            super::registered_context_helpers::build_action_output(state, ticket, value, &encoded)?;
-        super::preflight_action_completion(state, ticket, output)?;
-        let admission_pin = convert_policy_pin(admission.policy_pin());
-        Ok(RegisteredActionContext {
-            artifact,
-            output,
-            value,
-            mode: state.registered_execution,
-            admission_pin,
-            encoded_bytes: encoded,
-            input_taint,
-        })
+        let admission_pin = convert_policy_pin(&admission.policy_pin());
+        build_registered_action_context(state, ticket, artifact, admission_pin)
     }
 
     pub(crate) fn reject_unregistered_completion(&self, ticket: ActionTicket) -> RuntimeResult<()> {
