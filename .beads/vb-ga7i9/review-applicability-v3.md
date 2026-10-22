@@ -1,0 +1,7 @@
+# Final review applicability after test-layout-only repair
+
+CODE review ec52b632 applies to the exact production implementation: runtime policy/lib Rust bytes unchanged; core policy production prefix before #[cfg(test)] byte-identical. TEST review d2039527 applies to all ten new core and31new runtime test bodies (all seven new Rust file hashes unchanged); the original seven core tests were copied byte-for-byte from main8707 into their original inline mod tests. The feature-only duplicate original_tests.rs was removed. No test behavior or production logic changed during relocation repair. Original core255rawlines; source-test policy/tests.rs314rawlines uses test_in_src category, not production300line category. No gate exception added.
+
+Initial canonical static run exited1 because unchanged integrity gate cannot match moved originaltests across files. Targeted unchanged integritygate after local3090 repair exited0. Full scoped static confirmation is required on assembled v3 source. Old handoff prose and source manifests identify their historical snapshots, not this current layout. Final current Rust identity is final-rust-source-v3.json.
+
+This does not implement real dispatch, admission pin persistence, durable overlays, retry authorization or replay. Those remain parent vb-ny068, active storage vb-s4hfc and admission vb-h7rex. No performance improvement or full v1/proof closure claimed.

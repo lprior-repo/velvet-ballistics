@@ -1,0 +1,14 @@
+{
+  "base": "8707f8e976f9a1f936a65341c924468be57f2920",
+  "scope": "foundation only, original tests restored inline",
+  "files": {
+    "crates/vb_core/src/policy.rs": "35a38e9a64854755b76b72b12e7b30cd2d4184479dfc7dba19a91551c4633fdc",
+    "crates/vb_core/src/policy/new_tests.rs": "5e98029fcc2ba822b22a956a212dbf03fe384208ed19721a1e78418bfcbf96fe",
+    "crates/vb_runtime/src/lib.rs": "1d951ac8715b434507e7f8d003820bc054f87828561b5d7d8ae7309264758b61",
+    "crates/vb_runtime/src/policy.rs": "2c11370fc1d07ae5edfd6c8e608126eaea6d6dc91f14d7e3b4c0c3bf8a159e50",
+    "crates/vb_runtime/src/policy/emergency_and_admission_tests.rs": "7805e296f2c75922e3eede11aeef414107bc5e063328a94d7695e882fcf6ab59",
+    "crates/vb_runtime/src/policy/taint_tests.rs": "fb73afbbf9aaace6f098bb1228156fcc4221631ca1a79e17ae8e2d43b1a24e65",
+    "crates/vb_runtime/src/policy/tests.rs": "a0722aba0a6be8d105f0c5ff9dc21faf77e3311b9e9eed864fd45689ab29d2ea",
+    "crates/vb_runtime/src/policy/ticket_field_variation_tests.rs": "8da315189f79b228a380881c390f08429ac436c1501f697d73258951936c2d3f"
+  }
+}

@@ -1,0 +1,211 @@
+▮▮▮▮ Loading changed files
+Base revision: N/A
+Head revision: HEAD
+Changed files:
+	.beads/vb-g6d0j/coordinator-review-limits.md
+	.beads/vb-g6d0j/evidence/REV-1.json
+	.beads/vb-g6d0j/evidence/REV-1.stderr
+	.beads/vb-g6d0j/evidence/REV-1.stdout
+	.beads/vb-g6d0j/evidence/REV-2.json
+	.beads/vb-g6d0j/evidence/REV-2.stderr
+	.beads/vb-g6d0j/evidence/REV-2.stdout
+	.beads/vb-g6d0j/evidence/REV-3.json
+	.beads/vb-g6d0j/evidence/REV-3.stderr
+	.beads/vb-g6d0j/evidence/REV-3.stdout
+	.beads/vb-g6d0j/review.md
+	.beads/vb-ga7i9/scope.md
+	.beads/vb-kbjwj/contract.md
+	.beads/vb-kbjwj/coordinator-final-audit-v2.md
+	.beads/vb-kbjwj/evidence/TPHEF1.json
+	.beads/vb-kbjwj/evidence/TPHEF1.stderr
+	.beads/vb-kbjwj/evidence/TPHEF1.stdout
+	.beads/vb-kbjwj/evidence/TPHEF10.json
+	.beads/vb-kbjwj/evidence/TPHEF10.stderr
+	.beads/vb-kbjwj/evidence/TPHEF10.stdout
+	.beads/vb-kbjwj/evidence/TPHEF11.json
+	.beads/vb-kbjwj/evidence/TPHEF11.stderr
+	.beads/vb-kbjwj/evidence/TPHEF11.stdout
+	.beads/vb-kbjwj/evidence/TPHEF12.json
+	.beads/vb-kbjwj/evidence/TPHEF12.stderr
+	.beads/vb-kbjwj/evidence/TPHEF12.stdout
+	.beads/vb-kbjwj/evidence/TPHEF2.json
+	.beads/vb-kbjwj/evidence/TPHEF2.stderr
+	.beads/vb-kbjwj/evidence/TPHEF2.stdout
+	.beads/vb-kbjwj/evidence/TPHEF3.json
+	.beads/vb-kbjwj/evidence/TPHEF3.stderr
+	.beads/vb-kbjwj/evidence/TPHEF3.stdout
+	.beads/vb-kbjwj/evidence/TPHEF4.json
+	.beads/vb-kbjwj/evidence/TPHEF4.stderr
+	.beads/vb-kbjwj/evidence/TPHEF4.stdout
+	.beads/vb-kbjwj/evidence/TPHEF5.json
+	.beads/vb-kbjwj/evidence/TPHEF5.stderr
+	.beads/vb-kbjwj/evidence/TPHEF5.stdout
+	.beads/vb-kbjwj/evidence/TPHEF6.json
+	.beads/vb-kbjwj/evidence/TPHEF6.stderr
+	.beads/vb-kbjwj/evidence/TPHEF6.stdout
+	.beads/vb-kbjwj/evidence/TPHEF7.json
+	.beads/vb-kbjwj/evidence/TPHEF7.stderr
+	.beads/vb-kbjwj/evidence/TPHEF7.stdout
+	.beads/vb-kbjwj/evidence/TPHEF8.json
+	.beads/vb-kbjwj/evidence/TPHEF8.stderr
+	.beads/vb-kbjwj/evidence/TPHEF8.stdout
+	.beads/vb-kbjwj/evidence/TPHEF9.json
+	.beads/vb-kbjwj/evidence/TPHEF9.stderr
+	.beads/vb-kbjwj/evidence/TPHEF9.stdout
+	.beads/vb-kbjwj/evidence/V2-NEW-clippy.json
+	.beads/vb-kbjwj/evidence/V2-NEW-clippy.stderr
+	.beads/vb-kbjwj/evidence/V2-NEW-clippy.stdout
+	.beads/vb-kbjwj/evidence/V2-NEW-fmt.json
+	.beads/vb-kbjwj/evidence/V2-NEW-fmt.stderr
+	.beads/vb-kbjwj/evidence/V2-NEW-fmt.stdout
+	.beads/vb-kbjwj/evidence/V2-NEW-test.json
+	.beads/vb-kbjwj/evidence/V2-NEW-test.stderr
+	.beads/vb-kbjwj/evidence/V2-NEW-test.stdout
+	.beads/vb-kbjwj/evidence/coordinator-final-clippy-v2.json
+	.beads/vb-kbjwj/evidence/coordinator-final-clippy-v2.stderr
+	.beads/vb-kbjwj/evidence/coordinator-final-clippy-v2.stdout
+	.beads/vb-kbjwj/evidence/coordinator-final-pinned-fmt-v2.json
+	.beads/vb-kbjwj/evidence/coordinator-final-pinned-fmt-v2.stderr
+	.beads/vb-kbjwj/evidence/coordinator-final-pinned-fmt-v2.stdout
+	.beads/vb-kbjwj/evidence/coordinator-final-test-v2.json
+	.beads/vb-kbjwj/evidence/coordinator-final-test-v2.stderr
+	.beads/vb-kbjwj/evidence/coordinator-final-test-v2.stdout
+	.beads/vb-kbjwj/evidence/final-foundation-rust-v2.json
+	.beads/vb-kbjwj/handoff-v2.md
+	.beads/vb-kbjwj/handoff.md
+	.beads/vb-tphef/contract.md
+	.beads/vb-tphef/coordinator-freeze-audit-v2.md
+	.beads/vb-tphef/evidence/CLIPPY-CLEAN-001.json
+	.beads/vb-tphef/evidence/CLIPPY-CLEAN-001.stderr
+	.beads/vb-tphef/evidence/CLIPPY-CLEAN-001.stdout
+	.beads/vb-tphef/evidence/FMT-CHECK-002.json
+	.beads/vb-tphef/evidence/FMT-CHECK-002.stderr
+	.beads/vb-tphef/evidence/FMT-CHECK-002.stdout
+	.beads/vb-tphef/evidence/TEST-CLEAN-001.json
+	.beads/vb-tphef/evidence/TEST-CLEAN-001.stderr
+	.beads/vb-tphef/evidence/TEST-CLEAN-001.stdout
+	.beads/vb-tphef/evidence/V3-final-clippy.log
+	.beads/vb-tphef/evidence/V3-final-format.log
+	.beads/vb-tphef/evidence/V3-final-policy-tests.log
+	.beads/vb-tphef/evidence/V5-CLIPPY-POST.json
+	.beads/vb-tphef/evidence/V5-CLIPPY-POST.stderr
+	.beads/vb-tphef/evidence/V5-CLIPPY-POST.stdout
+	.beads/vb-tphef/evidence/V5-CLIPPY.json
+	.beads/vb-tphef/evidence/V5-CLIPPY.stderr
+	.beads/vb-tphef/evidence/V5-CLIPPY.stdout
+	.beads/vb-tphef/evidence/V5-FMT-CHECK.json
+	.beads/vb-tphef/evidence/V5-FMT-CHECK.stderr
+	.beads/vb-tphef/evidence/V5-FMT-CHECK.stdout
+	.beads/vb-tphef/evidence/V5-FMT-FIX.json
+	.beads/vb-tphef/evidence/V5-FMT-FIX.stderr
+	.beads/vb-tphef/evidence/V5-FMT-FIX.stdout
+	.beads/vb-tphef/evidence/V5-FMT.json
+	.beads/vb-tphef/evidence/V5-FMT.stderr
+	.beads/vb-tphef/evidence/V5-FMT.stdout
+	.beads/vb-tphef/evidence/V5-TESTS-POST.json
+	.beads/vb-tphef/evidence/V5-TESTS-POST.stderr
+	.beads/vb-tphef/evidence/V5-TESTS-POST.stdout
+	.beads/vb-tphef/evidence/V5-TESTS.json
+	.beads/vb-tphef/evidence/V5-TESTS.stderr
+	.beads/vb-tphef/evidence/V5-TESTS.stdout
+	.beads/vb-tphef/evidence/core-compile.json
+	.beads/vb-tphef/evidence/core-compile.stderr
+	.beads/vb-tphef/evidence/core-compile.stdout
+	.beads/vb-tphef/evidence/core-lint.json
+	.beads/vb-tphef/evidence/core-lint.stderr
+	.beads/vb-tphef/evidence/core-lint.stdout
+	.beads/vb-tphef/evidence/core-policy-tests.json
+	.beads/vb-tphef/evidence/core-policy-tests.stderr
+	.beads/vb-tphef/evidence/core-policy-tests.stdout
+	.beads/vb-tphef/evidence/core-tests.json
+	.beads/vb-tphef/evidence/core-tests.stderr
+	.beads/vb-tphef/evidence/core-tests.stdout
+	.beads/vb-tphef/evidence/fmt-apply.json
+	.beads/vb-tphef/evidence/fmt-apply.stderr
+	.beads/vb-tphef/evidence/fmt-apply.stdout
+	.beads/vb-tphef/evidence/fmt-check.json
+	.beads/vb-tphef/evidence/fmt-check.stderr
+	.beads/vb-tphef/evidence/fmt-check.stdout
+	.beads/vb-tphef/evidence/fmt-final.json
+	.beads/vb-tphef/evidence/fmt-final.stderr
+	.beads/vb-tphef/evidence/fmt-final.stdout
+	.beads/vb-tphef/evidence/fmt-verify.json
+	.beads/vb-tphef/evidence/fmt-verify.stderr
+	.beads/vb-tphef/evidence/fmt-verify.stdout
+	.beads/vb-tphef/evidence/foundation-source-freeze-v2.json
+	.beads/vb-tphef/evidence/runtime-compile.json
+	.beads/vb-tphef/evidence/runtime-compile.stderr
+	.beads/vb-tphef/evidence/runtime-compile.stdout
+	.beads/vb-tphef/evidence/runtime-lint.json
+	.beads/vb-tphef/evidence/runtime-lint.stderr
+	.beads/vb-tphef/evidence/runtime-lint.stdout
+	.beads/vb-tphef/evidence/runtime-policy-tests.json
+	.beads/vb-tphef/evidence/runtime-policy-tests.stderr
+	.beads/vb-tphef/evidence/runtime-policy-tests.stdout
+	.beads/vb-tphef/handoff.md
+	.beads/vb-tphef/historical/local5090-v5-worker-handoff.md
+	.beads/vb-tphef/test-cleanup-handoff.md
+	crates/vb_core/src/policy.rs
+	crates/vb_core/src/policy/new_tests.rs
+	crates/vb_core/src/policy/original_tests.rs
+	crates/vb_runtime/src/lib.rs
+	crates/vb_runtime/src/policy.rs
+	crates/vb_runtime/src/policy/emergency_and_admission_tests.rs
+	crates/vb_runtime/src/policy/taint_tests.rs
+	crates/vb_runtime/src/policy/tests.rs
+	crates/vb_runtime/src/policy/ticket_field_variation_tests.rs
+▮▮▮▮ Building action graph
+Action count: 11
+Requested targets: 3
+	:fmt
+	:source-length
+	:lint-src
+Resolved targets: 3
+	velvet-ballistics:lint-src
+	velvet-ballistics:source-length
+	velvet-ballistics:fmt
+▮▮▮▮ Executing action pipeline
+▮▮▮▮ velvet-ballistics:workspace-assertions (80ae4217)
+▮▮▮▮ velvet-ballistics:fmt (0768ac0e)
+▮▮▮▮ velvet-ballistics:workspace-assertions (100ms, 80ae4217)
+▮▮▮▮ velvet-ballistics:test-integrity (79af2e2f)
+▮▮▮▮ velvet-ballistics:test-integrity (261ms, 79af2e2f)
+▮▮▮▮ velvet-ballistics:unsafe-audit (bcb4d304)
+▮▮▮▮ velvet-ballistics:unsafe-audit (10ms, bcb4d304)
+▮▮▮▮ velvet-ballistics:panic-surface (c7097f7e)
+▮▮▮▮ velvet-ballistics:fmt (1s 525ms, 0768ac0e)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (7edde156)
+velvet-ballistics:panic-surface | CWD: /home/lewis/src/isoloated/velvet-ballistics-vb-tphef-final-landing
+velvet-ballistics:panic-surface | CommitSHA: 0bb483ede025960ad7e478c31d399ea2d37864ed
+velvet-ballistics:panic-surface | Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+velvet-ballistics:panic-surface | Command: bash scripts/check-panic-surface.sh
+velvet-ballistics:panic-surface | ScanDomain: crates/*/src
+velvet-ballistics:panic-surface | NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+velvet-ballistics:panic-surface | NoViolationFound
+velvet-ballistics:panic-surface | ExitCode: 0
+▮▮▮▮ velvet-ballistics:panic-surface (4s 995ms, c7097f7e)
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (running for 30s)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (36s 628ms, 7edde156)
+▮▮▮▮ velvet-ballistics:lint-src (d383fb9f)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, 87bbd5cf)
+▮▮▮▮ velvet-ballistics:source-length (skipped)
+▮▮▮▮ velvet-ballistics:lint-src (29s 752ms, d383fb9f)
+
+Tasks: 7 completed, 1 failed, 1 skipped
+ Time: 1m 8s 207ms
+
