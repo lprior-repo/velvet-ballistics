@@ -14,10 +14,10 @@ const TOKENS_FILE: &str = concat!(
 #[test]
 fn xtask_help_lists_required_and_legacy_commands_when_requested() -> Result<(), Box<dyn Error>> {
     // Given
-    let workspace = TempDir::new()?;
+    let workspace = Path::new(WORKSPACE_ROOT);
 
     // When
-    let output = run_xtask(workspace.path(), &["--help"])?;
+    let output = run_xtask(workspace, &["--help"])?;
 
     // Then
     assert_eq!(output.status.code(), Some(0));
@@ -32,10 +32,10 @@ fn xtask_help_lists_required_and_legacy_commands_when_requested() -> Result<(), 
 #[test]
 fn xtask_version_prints_package_version_when_requested() -> Result<(), Box<dyn Error>> {
     // Given
-    let workspace = TempDir::new()?;
+    let workspace = Path::new(WORKSPACE_ROOT);
 
     // When
-    let output = run_xtask(workspace.path(), &["--version"])?;
+    let output = run_xtask(workspace, &["--version"])?;
 
     // Then
     assert_eq!(output.status.code(), Some(0));
@@ -233,9 +233,7 @@ fn run_xtask(current_dir: &Path, args: &[&str]) -> Result<Output, Box<dyn Error>
         .args([
             "run",
             "--manifest-path",
-            WORKSPACE_MANIFEST,
-            "-p",
-            "xtask",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../xtask/Cargo.toml"),
             "--",
         ])
         .args(args)

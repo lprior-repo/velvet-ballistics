@@ -491,22 +491,19 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
-        // Given: kind values 0, 4..=9, 36..=39, 41..=49, 51..=65535
-        // (kind 31 is WaitResolved, kind 32 is ActionAbandoned, kind 33 is
-        // StepSucceeded, kind 34 is ActionScheduledTicket, kind 35 is
-        // ActionCompletedEnvelope — all five are admitted as journal kinds
-        // per the StepSucceeded split and the ticket/envelope enrichment;
-        // see `crates/vb_storage/src/records.rs` and PO-QXJGX-001..007).
-        // We test a representative sample due to the large range.
-        let invalid_kinds: Vec<u16> = vec![
-            0, 4, 5, 6, 7, 8, 9, // 4..=9
-            36, 37, 38, 39, // 36..=39 (31/32/33/34/35 are admitted journal kinds)
-            41, 42, 43, 44, 45, 46, 47, 48, 49, // 41..=49
-            51, 52, // small sample after 50
-            100, 255,   // edge cases
-            65535, // max u16
+        // Given: kind values that are truly unknown (not in from_id).
+        // Known kinds: 1,2,3,4,10-29,30,31-37,36,37,40,50
+        // 36 (RunAdmissionBound) and 37 (RetryCheckpoint) are journal-event kinds.
+        let truly_unknown_kinds: Vec<u16> = vec![
+            0,
+            5, 6, 7, 8, 9,
+            38, 39,
+            41, 42, 43, 44, 45, 46, 47, 48, 49,
+            51, 52,
+            100, 255,
+            65535,
         ];
-        for &kind in &invalid_kinds {
+        for &kind in &truly_unknown_kinds {
             let mut header = make_header_with_kind(kind);
             corrupt_kind_in_header(&mut header, kind);
 
@@ -524,6 +521,31 @@ mod unknown_record_kind_rejection {
                 result
             );
         }
+
+        // Kind 4 is a known compiled-artifact kind (MAGIC_COMPILED_ARTIFACT).
+        // When used with MAGIC_JOURNAL_EVENT, it must produce RecordKindFamilyMismatch,
+        // not UnknownRecordKind.
+        let kind4_header = make_header_with_kind(4);
+        let mut kind4_corrupted = kind4_header;
+        corrupt_kind_in_header(&mut kind4_corrupted, 4);
+
+        let result = decode_record_header(
+            &kind4_corrupted,
+            vb_storage::constants::MAGIC_JOURNAL_EVENT,
+            vb_storage::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
+
+        assert!(
+            matches!(
+                result,
+                Err(JournalError::RecordKindFamilyMismatch {
+                    magic: vb_storage::constants::MAGIC_COMPILED_ARTIFACT,
+                    kind: 4
+                })
+            ),
+            "kind 4 with journal magic must produce RecordKindFamilyMismatch, got {:?}",
+            result
+        );
     }
 }
 
