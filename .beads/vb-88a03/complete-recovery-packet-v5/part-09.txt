@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:28: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:29: fn new_policy_hasher() -> Hasher {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:30:     Hasher::new()
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:31: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:32: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:33: fn hash_input_domain(hasher: &mut Hasher, input_bytes: &[u8]) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:34:     hasher.update(b"velvet-ballistics:policy:input:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:35:     hasher.update(input_bytes);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:36: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:37: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:38: fn hash_taint_domain(hasher: &mut Hasher, taint_byte: u8) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:39:     hasher.update(b"velvet-ballistics:policy:taint:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:40:     hasher.update(&[taint_byte]);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:41: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:42: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:43: fn hash_ticket_domain_prefix(hasher: &mut Hasher) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:44:     hasher.update(b"velvet-ballistics:policy:ticket:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:45: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:46: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:47: fn hash_run_field(hasher: &mut Hasher, run: u64) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:48:     hasher.update(b"run:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:49:     hasher.update(&run.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:50: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:51: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:52: fn hash_step_field(hasher: &mut Hasher, step: u16) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:53:     hasher.update(b"step:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:54:     hasher.update(&step.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:55: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:56: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:57: fn hash_seq_field(hasher: &mut Hasher, seq: u64) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:58:     hasher.update(b"seq:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:59:     hasher.update(&seq.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:60: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:61: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:62: fn hash_action_field(hasher: &mut Hasher, action: u16) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:63:     hasher.update(b"action:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:64:     hasher.update(&action.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:65: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:66: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:67: fn hash_run_attempt_field(hasher: &mut Hasher, run_attempt: u16) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:68:     hasher.update(b"run_attempt:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:69:     hasher.update(&run_attempt.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:70: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:71: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:72: fn hash_attempt_field(hasher: &mut Hasher, attempt: u16) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:73:     hasher.update(b"attempt:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:74:     hasher.update(&attempt.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:75: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:76: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:77: fn hash_idempotency_key_field(hasher: &mut Hasher, key: u128) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:78:     hasher.update(b"key:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:79:     hasher.update(&key.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:80: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:81: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:82: fn hash_capacity_field(hasher: &mut Hasher, capacity: u16) {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:83:     hasher.update(b"capacity:");
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:84:     hasher.update(&capacity.to_be_bytes());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:85: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:86: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:87: fn finalize_policy_hash(hasher: Hasher) -> PolicyDigest {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:88:     let result = hasher.finalize();
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:89:     let mut output = [0u8; 32];
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:90:     output.copy_from_slice(result.as_bytes());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:91:     PolicyDigest::from_bytes(output)
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:92: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:93: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:94: pub(super) fn compute_expected_input_digest(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:95:     value: i64,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:96:     taint: Taint,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:97:     ticket: &ActionTicket,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:98: ) -> Result<PolicyDigest, String> {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:99:     let input_bytes = serialize_input_bytes(value)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:100:     let taint_byte = match taint {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:101:         Taint::Clean => taint_byte_clean(),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:102:         other => return Err(format!("unexpected taint variant for oracle: {other:?}")),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:103:     };
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:104: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:105:     let mut hasher = new_policy_hasher();
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:106:     hash_input_domain(&mut hasher, &input_bytes);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:107:     hash_taint_domain(&mut hasher, taint_byte);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:108:     hash_ticket_domain_prefix(&mut hasher);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:109:     hash_run_field(&mut hasher, ticket.run.get());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:110:     hash_step_field(&mut hasher, ticket.step.get());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:111:     hash_seq_field(&mut hasher, ticket.seq.get());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:112:     hash_action_field(&mut hasher, ticket.action.get());
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:113:     hash_run_attempt_field(&mut hasher, ticket.run_attempt);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:114:     hash_attempt_field(&mut hasher, ticket.attempt);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:115:     hash_idempotency_key_field(&mut hasher, ticket.idempotency_key);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:116:     hash_capacity_field(&mut hasher, ticket.capacity);
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:117: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:118:     Ok(finalize_policy_hash(hasher))
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:119: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:120: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:121: pub(super) fn make_expected_decision(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:122:     ticket: ActionTicket,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:123:     admission_pin: PinnedAdmissionPolicy,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:124:     current_live: CurrentPolicyIdentity,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:125:     input_digest: PolicyDigest,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:126:     outcome: DecisionCode,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:127: ) -> vb_core::policy::DecisionRecord {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:128:     vb_core::policy::DecisionRecord {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:129:         ticket,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:130:         admission: admission_pin,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:131:         current_live,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:132:         input_digest,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:133:         taint: Taint::Clean,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:134:         outcome,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:135:         layer: PolicyLayer::Live,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:136:         emergency_influence: InfluenceState::Inactive,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:137:         compat_influence: InfluenceState::NotEvaluated,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:138:     }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:139: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:140: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:141: pub(super) fn admission_pin_from_artifact(policy_digest: [u8; 32]) -> PinnedAdmissionPolicy {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:142:     PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(policy_digest))
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:143: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:144: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:145: pub(super) fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:146:     CurrentPolicyIdentity::Configured {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:147:         digest: PolicyDigest::from_bytes(digest),
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:148:     }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:149: }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:150: 
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:151: pub(super) fn read_journal_decision_events(
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:152:     journal: &Arc<FjallJournal>,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:153:     run: RunId,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:154: ) -> Result<Vec<vb_core::policy::DecisionRecord>, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:155:     let events = vb_storage::read_run_events(journal, run)?;
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:156:     Ok(events
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:157:         .iter()
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:158:         .filter_map(|e| match e {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:159:             vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => {
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:160:                 Some(decision.clone())
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:161:             }
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:162:             _ => None,
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:163:         })
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:164:         .collect())
+crates/workspace_tests/tests/vb_c4hzw_historical_replay/policy_dispatch.rs:165: }
+FILE crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs SHA256 d58de309ad9373e6dad4769ac8cf0fc688006d74086c194a8d7491048aa82d61
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:1: #![forbid(unsafe_code)]
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:2: // vb-c4hzw: Legacy unverified admission recovered NEW legal Live effect denial.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:3: //
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:4: // A genuine legacy RunAdmission with RunPolicyPin::Unverified is reconstructed
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:5: // from an accepted artifact and complete historical event prefix. Current
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:6: // Allowed policy cannot authorize its new effect: actual Runtime returns
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:7: // Admission-layer Denied with genuine Unverified pin, full independent record
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:8: // oracle, unchanged exact pending state and zero effects.
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:9: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:10: #[path = "vb_c4hzw_legacy_admission/policy_dispatch.rs"]
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:11: mod policy_dispatch;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:12: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:13: #[path = "vb_c4hzw_legacy_admission/legacy_workflow.rs"]
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:14: mod legacy_workflow;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:15: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:16: #[path = "vb_c4hzw_legacy_admission/legacy_admission_test.rs"]
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:17: mod legacy_admission_test;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:18: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:19: #[path = "vb_c4hzw_legacy_admission/forged_admission_test.rs"]
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission.rs:20: mod forged_admission_test;
+FILE crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs SHA256 62019bfa39b27e4d8d4380f610f39eb2d09086bbf82a6e46d3582f91db808878
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:1: use std::num::NonZeroUsize;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:2: use std::sync::Arc;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:3: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:4: use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:5: use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:6: use vb_core::capability::{Capability, CapabilitySet};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:7: use vb_core::ids::{ActionId, RunId, StepIdx, WorkflowDigest};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:8: use vb_runtime::journal::StorageRuntimeJournal;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:9: use vb_runtime::runtime::Runtime;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:10: use vb_runtime::shard::ShardConfig;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:11: use vb_storage::executor::ExecutorCatalog;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:12: use vb_storage::executor::FjallRegister;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:13: use vb_storage::{JournalEvent, RunInputBinding, RunPolicyPin};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:14: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:15: use crate::legacy_admission_test::{append_events, open_journal};
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:16: use crate::legacy_workflow::legacy_ask_action_workflow;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:17: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:18: type TestResult = Result<(), Box<dyn std::error::Error>>;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:19: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:20: fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:21:     NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:22: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:23: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:24: fn strict_config() -> ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:25:     ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:26:         command_queue_capacity: 32,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:27:         trace_capacity: 64,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:28:         step_budget_per_tick: 16,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:29:         max_active_runs: 8,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:30:         policy: vb_core::policy::RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:31:     }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:32: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:33: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:34: fn scope() -> CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:35:     CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:36:         namespace: 15,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:37:         key: 29,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:38:     }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:39: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:40: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:41: fn external_contract(action: ActionId) -> Result<ActionContract, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:42:     Ok(ActionContract {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:43:         id: action,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:44:         name: ActionName::new("vb_c4hzw_forged_action")?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:45:         input_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:46:         output_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:47:         max_input_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:48:         max_output_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:49:         timeout_ms: 1000,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:50:         idempotency: Idempotency::IdempotentExternal,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:51:         side_effect: SideEffect::Writes,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:52:         retry_safety: RetrySafety::KeyRequired,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:53:         required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:54:     })
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:55: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:56: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:57: fn action_grants(action: ActionId) -> CapabilitySet {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:58:     CapabilitySet::from_grants(Box::from([Capability::new(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:59:         "velvet.register.write".into(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/forged_admission_test.rs:60:         action,

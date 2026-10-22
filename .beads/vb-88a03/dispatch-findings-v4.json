@@ -1,0 +1,214 @@
+{
+  "bead_id": "vb-88a03",
+  "review_type": "dispatch_test_review_v4",
+  "candidate": "3fca010b5f5aaaafb5f41b08b95200db001bab3e",
+  "base": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "reviewer": "rtx3090",
+  "verdict": "APPROVED",
+  "total_tests_reviewed": 19,
+  "test_breakdown": {
+    "internal_shard_journal": 7,
+    "registered_executor_new_policy_dispatch": 4,
+    "registered_executor_retained_original": 5,
+    "fail_closed": 3
+  },
+  "failures": 0,
+  "findings": [],
+  "test_mapping": {
+    "internal_shard_journal": [
+      {
+        "test": "storage_adapter_persists_full_policy_decision_event",
+        "file": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs:116",
+        "coverage": "full durable roundtrip Journaled profile reopen verify complete DecisionRecord"
+      },
+      {
+        "test": "queued_adapter_drains_prefix_before_strict_decision",
+        "file": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs:140",
+        "coverage": "prefix flush before strict decision queue remains accepting run_a and run_b persistence"
+      },
+      {
+        "test": "noop_and_volatile_adapters_fail_closed",
+        "file": "crates/vb_runtime/src/journal/tests/strict_policy_port.rs:169",
+        "coverage": "exact UnsupportedOperation default trait implementations for noop and volatile"
+      },
+      {
+        "test": "successful_strict_policy_port",
+        "file": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs:167",
+        "coverage": "real shard sequence 5 to 6 exact DecisionRecord seq captured recording journal"
+      },
+      {
+        "test": "typed_strict_policy_port_failure",
+        "file": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs:198",
+        "coverage": "injected UnsupportedOperation propagates typed error sequence ticket unchanged"
+      },
+      {
+        "test": "overflow_at_u64_max",
+        "file": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs:231",
+        "coverage": "u64::MAX sequence triggers SequenceOverflow before journal call no state change"
+      },
+      {
+        "test": "wrong_ticket_rejected",
+        "file": "crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs:263",
+        "coverage": "wrong action ID 999 triggers InvalidActionCompletion no journal call"
+      }
+    ],
+    "registered_executor_new_policy_dispatch": [
+      {
+        "test": "allowed_policy_permits_effect_and_records_decision",
+        "file": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/allowed.rs:171",
+        "coverage": "Allowed decision real effect committed full 9-field record exact ticket preserved"
+      },
+      {
+        "test": "after_scheduling_policy_change_to_deny",
+        "file": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/changed_policy.rs:195",
+        "coverage": "policy changed to Denied after tick execution rejected typed PolicyDenied"
+      },
+      {
+        "test": "reconcile_ignores_policy_change_after_effect",
+        "file": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/reconcile.rs:173",
+        "coverage": "execute Allowed then policy changed to Denied reconcile reads same receipt"
+      },
+      {
+        "test": "unconfigured_policy_denies_execution",
+        "file": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs:143",
+        "coverage": "Unconfigured identity exact PolicyDenied with Admission layer full record"
+      }
+    ],
+    "fail_closed": [
+      {
+        "test": "suspended_policy_denies_execution_with_full_record",
+        "file": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs:229",
+        "coverage": "current Suspended exact PolicyDenied Suspended identity zero effects pending unchanged"
+      },
+      {
+        "test": "emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config",
+        "file": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/emergency.rs:269",
+        "coverage": "emergency overlay two executions both denied despite different later Allowed configs"
+      },
+      {
+        "test": "strict_port_failure_returns_typed_runtime_error_with_zero_effects",
+        "file": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/strict_failure.rs:4",
+        "coverage": "injected append failure exact UnsupportedOperation propagates zero effects no stored decision"
+      }
+    ]
+  },
+  "original_tests_retained": [
+    {
+      "test": "execute_registered_action_commits_one_effect_and_completes_run",
+      "file": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "status": "retained unaltered"
+    },
+    {
+      "test": "reconcile_registered_action_reads_receipt_without_new_effect",
+      "file": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "status": "retained unaltered"
+    },
+    {
+      "test": "execute_registered_action_rejects_mismatched_grant_artifact",
+      "file": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "status": "retained unaltered"
+    },
+    {
+      "test": "recovery_of_pending_registered_action_blocked_pack_rejects",
+      "file": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "status": "retained unaltered"
+    },
+    {
+      "test": "recovery_of_pending_registered_action_reconcile_pack_is_resumable",
+      "file": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "status": "retained unaltered"
+    }
+  ],
+  "rubric_compliance": {
+    "exact_error_fields_and_boundary_values": true,
+    "real_public_api_scoped_gates": true,
+    "no_ignored_cases": true,
+    "deterministic_fixtures": true,
+    "independent_expected_values_full_record_equality": true,
+    "named_mutation_thought_experiments": true,
+    "full_pending_state_retained_after_each_failure": true,
+    "real_actual_effects_not_flags": true,
+    "existing_original_tests_retained": true,
+    "no_new_tests_or_source_changes_by_reviewer": true
+  },
+  "oracle_independence": {
+    "test_side_compute_expected_input_digest": true,
+    "independent_blake3_hashing": true,
+    "all_eight_ticket_fields_hashed": true,
+    "domain_separation_prefix": "velvet-ballistics:policy:ticket:",
+    "no_production_encode_call": true
+  },
+  "mutation_killing": {
+    "omit_journal_append": {
+      "killed_by": "allowed_policy_permits_effect_and_records_decision",
+      "mechanism": "success path asserts exactly one stored decision with full record equality"
+    },
+    "move_effect_commit_before_strict_append": {
+      "killed_by": "strict_port_failure_returns_typed_runtime_error_with_zero_effects",
+      "mechanism": "injected append failure asserts ZERO actual effects on real FjallRegister"
+    },
+    "reuse_old_current_digest_after_policy_change": {
+      "killed_by": "after_scheduling_policy_change_to_deny",
+      "mechanism": "expected record uses new denied digest; full equality fails if old used"
+    },
+    "reuse_old_admission_pin": {
+      "killed_by": "after_scheduling_policy_change_to_deny",
+      "mechanism": "explicit assertion admission != allowed_digest and admission != denied_digest"
+    },
+    "ignore_swallow_append_error": {
+      "killed_by": "typed_strict_policy_port_failure",
+      "mechanism": "exact typed error must propagate to caller"
+    },
+    "change_any_field_in_decision_record": {
+      "killed_by": "all 7 new policy-dispatch tests",
+      "mechanism": "full record equality assert_eq(stored, expected) catches any single-field change"
+    },
+    "skip_sequence_advance": {
+      "killed_by": "successful_strict_policy_port",
+      "mechanism": "asserts exact sequence advance from 5 to 6"
+    },
+    "accept_wrong_ticket": {
+      "killed_by": "wrong_ticket_rejected",
+      "mechanism": "asserts InvalidActionCompletion and zero journal calls"
+    },
+    "append_after_u64_max_overflow": {
+      "killed_by": "overflow_at_u64_max",
+      "mechanism": "asserts SequenceOverflow and zero journal calls"
+    },
+    "treat_suspended_as_allowed": {
+      "killed_by": "suspended_policy_denies_execution_with_full_record",
+      "mechanism": "asserts exact DecisionCode::Suspended and full record"
+    },
+    "loosen_emergency_overlay_with_later_allowed": {
+      "killed_by": "emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config",
+      "mechanism": "two executions both denied despite different later Allowed configs"
+    },
+    "treat_unconfigured_as_allowed": {
+      "killed_by": "unconfigured_policy_denies_execution",
+      "mechanism": "asserts exact PolicyDenied with Unconfigured identity"
+    },
+    "re_evaluate_policy_on_reconcile": {
+      "killed_by": "reconcile_ignores_policy_change_after_effect",
+      "mechanism": "asserts exactly one stored decision after policy change and reconcile"
+    },
+    "silent_success_in_noop_volatile_adapters": {
+      "killed_by": "noop_and_volatile_adapters_fail_closed",
+      "mechanism": "asserts exact UnsupportedOperation error from defaults"
+    },
+    "prefix_not_flushed_before_strict_append": {
+      "killed_by": "queued_adapter_drains_prefix_before_strict_decision",
+      "mechanism": "asserts prefix events persisted before decision"
+    }
+  },
+  "explicitly_unreviewed": [
+    {
+      "behavior": "admission-pin rejection (wrong pin used at execution)",
+      "reason": "after_scheduling_policy_change_to_deny verifies pin differs from current live policy, not that wrong pin is rejected. Covered by separate recovery/forged-admission tests outside this scope.",
+      "covered_by_other_beads": ["vb_c4hzw_legacy_admission", "vb_c4hzw_forged_admission"]
+    }
+  ],
+  "reviewer_provenance": {
+    "execution_method": "reviewer has no runner; does not execute tests. All execution evidence from root prior logs and CI artifacts.",
+    "review_scope": "read-only inspection of test source and assertions only"
+  }
+}

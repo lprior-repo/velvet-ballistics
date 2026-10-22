@@ -1,0 +1,26 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-6nouf-checkpoint-guard-fix-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "rustup",
+    "run",
+    "nightly-2026-04-28",
+    "cargo",
+    "test",
+    "--quiet",
+    "--manifest-path",
+    "fuzz/Cargo.toml",
+    "--lib",
+    "--all-features"
+  ],
+  "exit_code": 0,
+  "seconds": 24.709,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_V35_RECOVERED_YAML_FUZZ_LIB"
+}

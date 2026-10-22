@@ -14,7 +14,6 @@ use vb_storage::admission::AcceptedArtifact;
 use crate::admission::RunAdmission;
 use crate::recovery::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, validate_recovered_admission_evidence,
-    validate_recovered_policy_pin,
 };
 use crate::run_checkpoint::RunCheckpointV1;
 use crate::shard::types::RecoveredAdmissionKind;
@@ -74,21 +73,36 @@ fn validate_unverified_identity(
     Ok(())
 }
 
-/// Phase B: Validate checkpoint policy pin if a retry checkpoint carries admission.
+/// Phase B: Validate the full retry checkpoint before any state mutation.
 ///
-/// When a retry checkpoint carries an admission, its policy pin must match
-/// the loaded artifact's policy before any state or journal mutation. This
-/// applies to both Historical and Unverified command paths because the
-/// public new(...).with_retry_checkpoint(...) API can attach a checkpoint
+/// When a retry checkpoint is provided, validates its nested identities
+/// against the compiled workflow, then if the checkpoint carries an
+/// admission, validates the full recovered admission evidence. This
+/// must complete before any sequence or slot mutation so that the
+/// correct exact reason propagates. Applies to both Historical and
+/// Unverified command paths because the public
+/// new(...).with_retry_checkpoint(...) API can attach a checkpoint
 /// to an Unverified command without Runtime prefix validation.
-pub(crate) fn validate_checkpoint_pin(
+pub(crate) fn validate_retry_checkpoint(
     checkpoint: Option<&RunCheckpointV1>,
+    context: RecoveredAdmissionContext,
     artifact: &AcceptedArtifact,
+    workflow: &CompiledWorkflow,
 ) -> RuntimeResult<()> {
-    if let Some(checkpoint) = checkpoint
-        && let Some(admission) = checkpoint.admission.as_ref()
-    {
-        validate_recovered_policy_pin(admission, artifact)?;
+    if let Some(checkpoint) = checkpoint {
+        checkpoint
+            .validate_against(workflow, artifact.digest, &artifact.action_contracts)
+            .map_err(|error| RuntimeError::Recovery {
+                error: format!("retry checkpoint validation failed: {error}"),
+            })?;
+        if let Some(admission) = checkpoint.admission.as_ref() {
+            validate_recovered_admission_evidence(RecoveredAdmissionEvidence {
+                context,
+                admission,
+                artifact,
+                workflow,
+            })?;
+        }
     }
     Ok(())
 }

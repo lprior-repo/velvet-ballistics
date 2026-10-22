@@ -420,11 +420,23 @@ impl Shard {
             &workflow,
         )?;
 
-        // Phase B: Validate checkpoint policy pin.
-        // Applies to both Historical and Unverified command paths because the
-        // public new(...).with_retry_checkpoint(...) API can attach a checkpoint
-        // to an Unverified command without Runtime prefix validation.
-        recovered_admission::validate_checkpoint_pin(retry_checkpoint.as_ref(), &artifact)?;
+        // Phase B: Validate the full retry checkpoint before any state mutation.
+        // Checks nested identities against the compiled workflow, and if the
+        // checkpoint carries an admission, validates the full recovered
+        // admission evidence. Applies to both Historical and Unverified
+        // command paths because the public new(...).with_retry_checkpoint(...)
+        // API can attach a checkpoint to an Unverified command without Runtime
+        // prefix validation.
+        recovered_admission::validate_retry_checkpoint(
+            retry_checkpoint.as_ref(),
+            crate::recovery::RecoveredAdmissionContext {
+                run,
+                expected_workflow: workflow_digest,
+                runtime_policy: self.policy,
+            },
+            &artifact,
+            &workflow,
+        )?;
 
         // Phase C: Build unverified admission for legacy recovery.
         // For Unverified kind, build admission using the artifact's required

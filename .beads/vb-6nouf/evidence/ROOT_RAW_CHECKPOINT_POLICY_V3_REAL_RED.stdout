@@ -1,0 +1,20 @@
+
+running 1 test
+shard::lifecycle::tests::recover_restores_action_contracts_schedules_completes_and_finishes --- FAILED
+
+failures:
+
+---- shard::lifecycle::tests::recover_restores_action_contracts_schedules_completes_and_finishes stdout ----
+
+thread 'shard::lifecycle::tests::recover_restores_action_contracts_schedules_completes_and_finishes' (3093809) panicked at crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:510:5:
+assertion `left == right` failed: fresh shard must reject retry checkpoint with admission policy mismatch
+  left: Ok(())
+ right: Err(RecoveryCannotResume { reason: "admission_policy_mismatch" })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    shard::lifecycle::tests::recover_restores_action_contracts_schedules_completes_and_finishes
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1988 filtered out; finished in 0.00s
+

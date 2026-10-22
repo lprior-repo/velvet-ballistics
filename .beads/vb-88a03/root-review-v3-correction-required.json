@@ -1,0 +1,9 @@
+{
+  "verdict": "NOT_ACCEPTED_AS_FINAL",
+  "reason": "Report conflates 19 scoped tests (7 internal + 12 integration) with 17 recovery-related cases; invents path-qualified test names/mutation evidence. Exact source line citations absent. Reviewer did not execute commands; must cite root artifacts accurately. Source remains unchanged.",
+  "specifics": [
+    "removed decision append is not caught by assertion no stored decision in strict failure; successful allowed full record catches omission",
+    "moved effect before append must be caught by strict append failure zero actual effects, not a success test merely checking eventual record+effect",
+    "changed current denied does not test removed admission pin denial: admission authority is pinned valid in that case; recovery forged/legacy tests are separately scoped"
+  ]
+}

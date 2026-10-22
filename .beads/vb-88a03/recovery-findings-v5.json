@@ -1,0 +1,37 @@
+{
+  "bead": "vb-88a03",
+  "review_version": 5,
+  "candidate": "b752db4c1a665caf90fa9e63e43d1505b0ba651d",
+  "verdict": "APPROVED",
+  "sources_reviewed": 16,
+  "parts_read": 19,
+  "lines_reviewed": 3997,
+  "test_breakdown": {
+    "recovery_integration": 5,
+    "direct_api_retained": 14,
+    "direct_api_new": 1,
+    "raw_unit": 1,
+    "fuzz_lib_entry_points": 3,
+    "total_executing_tests": 24
+  },
+  "corrections_from_v4": [
+    "Unverified pin does NOT promote to Pinned on recovery; stays Unverified",
+    "Tests prove handle reopen durability, not actual process restart/power loss",
+    "Corrupt marker error variant is real source code, not invented",
+    "All 16 source files and helper oracles/fixtures read in full",
+    "Test count includes 3 fuzz lib entry points and 1 new direct API test",
+    "YAML regression test (large_yaml_exceeds_4096_bound) is genuine 5001-item test"
+  ],
+  "new_test": "test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run",
+  "new_test_file": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs",
+  "recovered_admission_behavior": "Unverified stays Unverified; new legal live execution requires Pinned or AdmissionDenied",
+  "crash_window_proven": "execute_registered_action() returning to completion tick; recovery reconstructs PendingAction without duplicate execution",
+  "evidence": {
+    "source_sha256s_from_manifest": true,
+    "independent_hash_computation": false,
+    "independent_byte_comparison": false,
+    "oracle_matrix": true,
+    "mutation_thought_experiments": 6,
+    "all_match_production": true
+  }
+}

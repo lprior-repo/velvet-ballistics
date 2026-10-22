@@ -1,0 +1,2704 @@
+diff --git a/crates/vb_runtime/src/journal/tests/strict_policy_port.rs b/crates/vb_runtime/src/journal/tests/strict_policy_port.rs
+new file mode 100644
+index 000000000..8bf631b6c
+--- /dev/null
++++ b/crates/vb_runtime/src/journal/tests/strict_policy_port.rs
+@@ -0,0 +1,193 @@
++use std::sync::Arc;
++
++use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
++use vb_core::policy::{
++    DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy, PolicyDigest, PolicyLayer,
++};
++use vb_core::value::Taint;
++use vb_storage::{EventSeq, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits};
++
++use crate::RuntimeError;
++use crate::journal::VolatileRuntimeJournal;
++use crate::journal::{
++    QueuedStorageRuntimeJournal, RuntimeJournal, RuntimeJournalEvent, StorageRuntimeJournal,
++};
++
++fn fixture_ticket(run: RunId) -> vb_core::action::ActionTicket {
++    vb_core::action::ActionTicket {
++        run,
++        step: StepIdx::new(3),
++        seq: SeqNo::new(7),
++        action: ActionId::new(12),
++        run_attempt: 1,
++        attempt: 1,
++        idempotency_key: 0x0a0b0c0d0e0f1011u128,
++        capacity: 3,
++    }
++}
++
++fn fixture_decision(run: RunId) -> DecisionRecord {
++    DecisionRecord {
++        ticket: fixture_ticket(run),
++        admission: PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes([17; 32])),
++        current_live: vb_core::policy::CurrentPolicyIdentity::Configured {
++            digest: PolicyDigest::from_bytes([29; 32]),
++        },
++        input_digest: PolicyDigest::from_bytes([43; 32]),
++        taint: Taint::Clean,
++        outcome: DecisionCode::Allowed,
++        layer: PolicyLayer::Admission,
++        emergency_influence: InfluenceState::Inactive,
++        compat_influence: InfluenceState::NotEvaluated,
++    }
++}
++
++fn setup_queued_test() -> Result<
++    (
++        tempfile::TempDir,
++        Arc<FjallJournal>,
++        Arc<JournalWriterQueue>,
++        QueuedStorageRuntimeJournal,
++    ),
++    Box<dyn std::error::Error>,
++> {
++    let temp = tempfile::tempdir()?;
++    let journal = Arc::new(FjallJournal::open(temp.path(), None)?);
++    let queue = Arc::new(JournalWriterQueue::new(64, 16, StorageLimits::DEFAULT)?);
++    let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
++    Ok((temp, journal, queue, adapter))
++}
++
++fn assert_run_a_prefix_flushed(
++    journal: &FjallJournal,
++    run_a: RunId,
++    workflow: WorkflowDigest,
++    decision: &DecisionRecord,
++) -> Result<(), Box<dyn std::error::Error>> {
++    let initial_a = journal.events_for_run(run_a)?;
++    let expected = vec![
++        JournalEvent::RunAccepted {
++            run: run_a,
++            seq: EventSeq::new(0),
++            workflow,
++        },
++        JournalEvent::PolicyDecisionEvent {
++            run: run_a,
++            seq: EventSeq::new(1),
++            decision: decision.clone(),
++        },
++    ];
++    assert_eq!(
++        initial_a, expected,
++        "run_a prefix flushed before strict policy decision"
++    );
++    Ok(())
++}
++
++fn append_drain_assert_run_b(
++    adapter: &QueuedStorageRuntimeJournal,
++    journal: &FjallJournal,
++    run_b: RunId,
++) -> Result<(), Box<dyn std::error::Error>> {
++    adapter.append_sequenced(
++        RuntimeJournalEvent::RunFinished {
++            run: run_b,
++            result: SlotIdx::new(1),
++            attempt: 1,
++        },
++        EventSeq::new(0),
++    )?;
++    adapter.drain_all()?;
++    let actual_b = journal.events_for_run(run_b)?;
++    let expected_b = vec![JournalEvent::RunFinished {
++        run: run_b,
++        seq: EventSeq::new(0),
++        result: SlotIdx::new(1),
++        attempt: 1,
++    }];
++    assert_eq!(
++        actual_b, expected_b,
++        "run_b event persisted after strict decision"
++    );
++    Ok(())
++}
++
++#[test]
++fn storage_adapter_persists_full_policy_decision_event() -> Result<(), Box<dyn std::error::Error>> {
++    let temp = tempfile::tempdir()?;
++    let journal = Arc::new(FjallJournal::open(temp.path(), None)?);
++    let adapter = StorageRuntimeJournal::shared_journaled(journal.clone());
++    let run = RunId::new(1001);
++    let decision = fixture_decision(run);
++
++    adapter.append_policy_decision_strict(decision.clone(), EventSeq::new(0))?;
++
++    drop(adapter);
++    drop(journal);
++
++    let reopened = FjallJournal::open(temp.path(), None)?;
++    let actual = reopened.events_for_run(run)?;
++    let expected = vec![JournalEvent::PolicyDecisionEvent {
++        run,
++        seq: EventSeq::new(0),
++        decision: decision.clone(),
++    }];
++    assert_eq!(
++        actual, expected,
++        "full durable PolicyDecisionEvent roundtrip"
++    );
++    Ok(())
++}
++
++#[test]
++fn queued_adapter_drains_prefix_before_strict_decision() -> Result<(), Box<dyn std::error::Error>> {
++    let (_temp, journal, _queue, adapter) = setup_queued_test()?;
++    let run_a = RunId::new(2001);
++    let run_b = RunId::new(2002);
++    let workflow = WorkflowDigest::from_bytes([17; 32]);
++
++    adapter.append_sequenced(
++        RuntimeJournalEvent::RunSubmitted {
++            run: run_a,
++            workflow,
++        },
++        EventSeq::new(0),
++    )?;
++
++    let decision = fixture_decision(run_a);
++    adapter.append_policy_decision_strict(decision.clone(), EventSeq::new(1))?;
++
++    assert_run_a_prefix_flushed(&journal, run_a, workflow, &decision)?;
++
++    append_drain_assert_run_b(&adapter, &journal, run_b)?;
++
++    Ok(())
++}
++
++#[test]
++fn noop_and_volatile_adapters_fail_closed() {
++    let noop = crate::journal::NoopRuntimeJournal::shared();
++    let run = RunId::new(3001);
++    let result = noop.append_policy_decision_strict(fixture_decision(run), EventSeq::new(0));
++    assert!(
++        matches!(
++            result,
++            Err(RuntimeError::UnsupportedOperation {
++                operation: "append_policy_decision_strict"
++            })
++        ),
++        "noop adapter must return exact UnsupportedOperation"
++    );
++
++    let volatile = VolatileRuntimeJournal::shared();
++    let result = volatile.append_policy_decision_strict(fixture_decision(run), EventSeq::new(0));
++    assert!(
++        matches!(
++            result,
++            Err(RuntimeError::UnsupportedOperation {
++                operation: "append_policy_decision_strict"
++            })
++        ),
++        "volatile adapter must return exact UnsupportedOperation"
++    );
++}
+diff --git a/crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs b/crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs
+new file mode 100644
+index 000000000..3fd2f5750
+--- /dev/null
++++ b/crates/vb_runtime/src/shard/lifecycle_tests/strict_policy_sequence.rs
+@@ -0,0 +1,283 @@
++// Policy decision lifecycle tests: shard-level strict port behavior.
++// Tests call real Shard::append_policy_decision_strict with actual pending
++// action tickets obtained by submitting workflows and ticking to suspension.
++
++use std::sync::{Arc, Mutex};
++
++use vb_core::action::ActionTicket;
++use vb_core::ids::{ActionId, RunId, SlotIdx};
++use vb_core::policy::{
++    CurrentPolicyIdentity, DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy,
++    PolicyDigest, PolicyLayer,
++};
++use vb_core::value::{SlotValue, Taint};
++
++use crate::RuntimeError;
++use crate::error::RuntimeResult;
++use crate::journal::{RuntimeJournal, RuntimeJournalEvent};
++
++use super::super::super::types::{Shard, ShardCommand};
++use super::{require_workflow, small_config, suspended_workflow};
++
++// Test-local recording journal that captures strict policy decision calls.
++#[derive(Debug, Default)]
++struct RecordingJournal {
++    strict_calls: Mutex<Vec<(DecisionRecord, vb_storage::EventSeq)>>,
++    strict_error: Mutex<Option<RuntimeError>>,
++}
++
++impl RecordingJournal {
++    fn shared() -> Arc<Self> {
++        Arc::new(Self::default())
++    }
++
++    fn strict_calls(&self) -> RuntimeResult<Vec<(DecisionRecord, vb_storage::EventSeq)>> {
++        let calls = self
++            .strict_calls
++            .lock()
++            .map_err(|_| RuntimeError::JournalPoisoned)?;
++        Ok(calls.clone())
++    }
++
++    fn set_strict_error(&self, err: RuntimeError) -> RuntimeResult<()> {
++        let mut slot = self
++            .strict_error
++            .lock()
++            .map_err(|_| RuntimeError::JournalPoisoned)?;
++        *slot = Some(err);
++        Ok(())
++    }
++}
++
++impl RuntimeJournal for RecordingJournal {
++    fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
++        Ok(())
++    }
++
++    fn append_sequenced_batch(
++        &self,
++        events: &[RuntimeJournalEvent],
++        _start_seq: vb_storage::EventSeq,
++    ) -> RuntimeResult<()> {
++        // RecordingJournal is a test fixture that only observes the strict
++        // policy decision port; it does not claim real durability semantics
++        // or record lifecycle event payloads. The shard's lifecycle paths
++        // (submit, tick, policy decision) exercise this fake via
++        // append_sequenced_batch; for test purposes every event is accepted.
++        for event in events {
++            self.append(event.clone())?;
++        }
++        Ok(())
++    }
++
++    fn append_policy_decision_strict(
++        &self,
++        decision: vb_core::policy::DecisionRecord,
++        seq: vb_storage::EventSeq,
++    ) -> RuntimeResult<()> {
++        let mut err_slot = self
++            .strict_error
++            .lock()
++            .map_err(|_| RuntimeError::JournalPoisoned)?;
++        let pending_err = err_slot.take();
++
++        let mut calls = self
++            .strict_calls
++            .lock()
++            .map_err(|_| RuntimeError::JournalPoisoned)?;
++        calls.push((decision, seq));
++
++        if let Some(err) = pending_err {
++            return Err(err);
++        }
++        Ok(())
++    }
++
++    fn probe(&self) -> RuntimeResult<()> {
++        Ok(())
++    }
++}
++
++fn test_decision_record(ticket: ActionTicket) -> DecisionRecord {
++    DecisionRecord {
++        ticket,
++        admission: PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes([3; 32])),
++        current_live: CurrentPolicyIdentity::Configured {
++            digest: PolicyDigest::from_bytes([2; 32]),
++        },
++        input_digest: PolicyDigest::from_bytes([1; 32]),
++        taint: Taint::Clean,
++        outcome: DecisionCode::Allowed,
++        layer: PolicyLayer::Live,
++        emergency_influence: InfluenceState::NotEvaluated,
++        compat_influence: InfluenceState::NotEvaluated,
++    }
++}
++
++fn assert_ticket_and_seq_unchanged(
++    shard: &Shard,
++    expected_ticket: ActionTicket,
++    expected_seq: vb_storage::EventSeq,
++) -> Result<(), Box<dyn std::error::Error>> {
++    let run = expected_ticket.run;
++    let seq_after = shard.journal_sequence_for(run);
++    assert_eq!(seq_after, expected_seq, "sequence must remain unchanged");
++    let ticket_after = shard
++        .pending_action_get(run)
++        .ok_or("pending action ticket must still exist")?;
++    assert_eq!(
++        ticket_after, expected_ticket,
++        "pending ticket must remain unchanged"
++    );
++    Ok(())
++}
++
++fn make_shard_with_journal(
++    run: RunId,
++) -> Result<(Shard, Arc<RecordingJournal>, ActionTicket), Box<dyn std::error::Error>> {
++    let journal = RecordingJournal::shared();
++    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
++    let workflow = require_workflow("suspended", suspended_workflow())?;
++
++    shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
++        run,
++        workflow,
++        caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
++        action_contracts: crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0)),
++        inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
++    })?;
++    shard.tick()?;
++
++    let ticket = shard
++        .pending_action_get(run)
++        .ok_or(RuntimeError::InvalidActionCompletion)?;
++    Ok((shard, journal, ticket))
++}
++
++#[test]
++fn successful_strict_policy_port() -> Result<(), Box<dyn std::error::Error>> {
++    let run = RunId::new(90001);
++    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
++
++    shard.seed_journal_sequence(run, vb_storage::EventSeq::new(5))?;
++    let seq_before = shard.journal_sequence_for(run);
++    assert_eq!(seq_before.get(), 5, "sequence must be seeded at 5");
++
++    shard.append_policy_decision_strict(test_decision_record(ticket))?;
++
++    let seq_after = shard.journal_sequence_for(run);
++    assert_eq!(
++        seq_after.get(),
++        6,
++        "internal sequence must advance from 5 to 6"
++    );
++
++    let expected = test_decision_record(ticket);
++    let calls = journal.strict_calls()?;
++    assert_eq!(
++        calls,
++        vec![(expected, vb_storage::EventSeq::new(5))],
++        "journal must record exact decision at seq 5"
++    );
++
++    assert_ticket_and_seq_unchanged(&shard, ticket, seq_after)?;
++    Ok(())
++}
++
++#[test]
++fn typed_strict_policy_port_failure() -> Result<(), Box<dyn std::error::Error>> {
++    let run = RunId::new(90002);
++    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
++
++    let seq_before = shard.journal_sequence_for(run);
++
++    journal.set_strict_error(RuntimeError::UnsupportedOperation {
++        operation: "test_policy_port_failure",
++    })?;
++
++    let result = shard.append_policy_decision_strict(test_decision_record(ticket));
++    let err = result
++        .err()
++        .ok_or("expected shard to propagate journal error")?;
++    match err {
++        RuntimeError::UnsupportedOperation { operation } => {
++            assert_eq!(
++                operation, "test_policy_port_failure",
++                "exact error message must propagate"
++            );
++        }
++        _ => return Err("wrong typed error propagated".into()),
++    }
++
++    let calls = journal.strict_calls()?;
++    assert_eq!(
++        calls,
++        vec![(test_decision_record(ticket), seq_before)],
++        "journal must record exact decision at seq before"
++    );
++
++    assert_ticket_and_seq_unchanged(&shard, ticket, seq_before)?;
++    Ok(())
++}
++
++#[test]
++fn overflow_at_u64_max() -> Result<(), Box<dyn std::error::Error>> {
++    let run = RunId::new(90003);
++    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
++
++    shard.seed_journal_sequence(run, vb_storage::EventSeq::new(u64::MAX))?;
++    let seq_max = shard.journal_sequence_for(run);
++    assert_eq!(seq_max.get(), u64::MAX, "sequence must be at u64::MAX");
++
++    let result = shard.append_policy_decision_strict(test_decision_record(ticket));
++    let err = result
++        .err()
++        .ok_or("expected shard to detect sequence overflow")?;
++    match err {
++        RuntimeError::StorageJournalAppend { source } => {
++            assert!(
++                matches!(source.as_ref(), vb_storage::JournalError::SequenceOverflow),
++                "source must be JournalError::SequenceOverflow"
++            );
++        }
++        _ => return Err("wrong typed overflow error".into()),
++    }
++
++    let calls = journal.strict_calls()?;
++    assert_eq!(calls.len(), 0, "journal must not be called on overflow");
++
++    assert_ticket_and_seq_unchanged(&shard, ticket, seq_max)?;
++    Ok(())
++}
++
++#[test]
++fn wrong_ticket_rejected() -> Result<(), Box<dyn std::error::Error>> {
++    let run = RunId::new(90004);
++    let (mut shard, journal, ticket) = make_shard_with_journal(run)?;
++
++    let seq_before = shard.journal_sequence_for(run);
++
++    let wrong_ticket = ActionTicket {
++        action: ActionId::new(999),
++        ..ticket
++    };
++
++    let result = shard.append_policy_decision_strict(test_decision_record(wrong_ticket));
++    let err = result
++        .err()
++        .ok_or("expected shard to reject wrong ticket")?;
++    match err {
++        RuntimeError::InvalidActionCompletion => {}
++        _ => return Err("wrong typed wrong-ticket error".into()),
++    }
++
++    let calls = journal.strict_calls()?;
++    assert_eq!(
++        calls.len(),
++        0,
++        "journal must not be called for wrong ticket"
++    );
++
++    assert_ticket_and_seq_unchanged(&shard, ticket, seq_before)?;
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs
+index fab96f1d9..821ceef8b 100644
+--- a/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs
++++ b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs
+@@ -4,6 +4,9 @@
+ // with a real ExecutorCatalog + FjallRegister wired into a public Runtime
+ // via StorageRuntimeJournal::shared_strict_with_catalog.
+ 
++#[path = "vb_7x0ol_probe_registered_executor/policy_dispatch.rs"]
++mod policy_dispatch;
++
+ use std::num::NonZeroUsize;
+ use std::sync::Arc;
+ 
+@@ -11,7 +14,7 @@ use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, Side
+ use vb_core::action_pack::{CapabilityScopeSpec, RecoveryClass};
+ use vb_core::capability::{Capability, CapabilitySet};
+ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+-use vb_core::policy::RuntimePolicy;
++use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
+ use vb_core::value::SlotValue;
+ use vb_core::workflow::{
+     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+@@ -145,6 +148,16 @@ fn execute_registered_action_commits_one_effect_and_completes_run() -> TestResul
+         Arc::new(catalog.clone()),
+     );
+     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++
++    let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
++    runtime.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++
+     runtime.submit_direct_with_inputs_grants_and_contracts(
+         run,
+         workflow,
+@@ -211,6 +224,16 @@ fn reconcile_registered_action_reads_receipt_without_new_effect() -> TestResult
+         Arc::new(catalog.clone()),
+     );
+     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++
++    let allowed_digest = PolicyDigest::from_bytes([0x12u8; 32]);
++    runtime.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++
+     runtime.submit_direct_with_inputs_grants_and_contracts(
+         run,
+         workflow,
+@@ -316,6 +339,16 @@ fn execute_registered_action_rejects_mismatched_grant_artifact() -> TestResult {
+     )?;
+     let forged_grant = catalog.issue_register_grant(&other_artifact, ticket, scope())?;
+ 
++    // Configure live allowed policy so policy layer permits execution;
++    // grant artifact mismatch is the intended rejection point.
++    runtime.configure_live_policy(
++        vb_core::policy::PolicyDigest::from_bytes([0x7au8; 32]),
++        vb_core::policy::PolicyRule {
++            action,
++            code: vb_core::policy::DecisionCode::Allowed,
++        },
++    )?;
++
+     let register_path = dir.path().join("register");
+     let mut adapter = FjallRegister::open(&register_path, 8)?;
+     let result = runtime.execute_registered_action(
+@@ -361,6 +394,15 @@ fn submit_and_reach_pending(
+         Arc::new(catalog.clone()),
+     );
+     let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++    // Minimal live policy fixture: allow the action so it reaches the
++    // pending-scheduled boundary; recovery is the gate under test.
++    runtime.configure_live_policy(
++        vb_core::policy::PolicyDigest::from_bytes([0x80u8; 32]),
++        vb_core::policy::PolicyRule {
++            action,
++            code: vb_core::policy::DecisionCode::Allowed,
++        },
++    )?;
+     runtime.submit_direct_with_inputs_grants_and_contracts(
+         run,
+         workflow,
+@@ -412,7 +454,10 @@ fn recovery_of_pending_registered_action_blocked_pack_rejects() -> TestResult {
+             assert_eq!(reason.as_str(), "registered_recovery_blocked");
+         }
+         other => {
+-            panic!("expected RecoveryCannotResume(registered_recovery_blocked), got: {other:?}")
++            return Err(format!(
++                "expected RecoveryCannotResume(registered_recovery_blocked), got: {other:?}"
++            )
++            .into());
+         }
+     }
+     Ok(())
+@@ -452,7 +497,11 @@ fn recovery_of_pending_registered_action_reconcile_pack_is_resumable() -> TestRe
+                 vb_runtime::recovery::RecoveredRunBoundaryKind::PendingAction
+             );
+         }
+-        other => panic!("expected Resumable pending-action product, got: {other:?}"),
++        other => {
++            return Err(
++                format!("expected Resumable pending-action product, got: {other:?}").into(),
++            );
++        }
+     }
+     Ok(())
+ }
+diff --git a/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch.rs b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch.rs
+new file mode 100644
+index 000000000..96c6f12a1
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch.rs
+@@ -0,0 +1,175 @@
++use std::sync::Arc;
++
++use blake3::Hasher;
++use vb_core::ActionTicket;
++use vb_core::policy::{
++    CurrentPolicyIdentity, DecisionCode, InfluenceState, PinnedAdmissionPolicy, PolicyDigest,
++    PolicyLayer,
++};
++use vb_core::value::{SlotValue, Taint};
++use vb_runtime::runtime::RegisteredExecutionError;
++use vb_storage::{FjallConfig, FjallJournal};
++
++use super::*;
++
++// Oracle: compute the expected input digest independently of production code.
++// Uses canonical I64 bytes, byte 0 for Clean taint, and all 8 ticket fields
++// with domain separation. This matches the production encoding but is the
++// test's own oracle, not a call to LivePolicy.evaluate or encode_taint_canonical.
++
++fn serialize_input_bytes(value: i64) -> Result<Vec<u8>, String> {
++    postcard::to_allocvec(&SlotValue::I64(value))
++        .map_err(|e| format!("failed to serialize input: {e}"))
++}
++
++fn taint_byte_clean() -> u8 {
++    // Canonical encoding: Clean = 0
++    0
++}
++
++fn new_policy_hasher() -> Hasher {
++    Hasher::new()
++}
++
++fn hash_input_domain(hasher: &mut Hasher, input_bytes: &[u8]) {
++    hasher.update(b"velvet-ballistics:policy:input:");
++    hasher.update(input_bytes);
++}
++
++fn hash_taint_domain(hasher: &mut Hasher, taint_byte: u8) {
++    hasher.update(b"velvet-ballistics:policy:taint:");
++    hasher.update(&[taint_byte]);
++}
++
++fn hash_ticket_domain_prefix(hasher: &mut Hasher) {
++    hasher.update(b"velvet-ballistics:policy:ticket:");
++}
++
++fn hash_run_field(hasher: &mut Hasher, run: u64) {
++    hasher.update(b"run:");
++    hasher.update(&run.to_be_bytes());
++}
++
++fn hash_step_field(hasher: &mut Hasher, step: u16) {
++    hasher.update(b"step:");
++    hasher.update(&step.to_be_bytes());
++}
++
++fn hash_seq_field(hasher: &mut Hasher, seq: u64) {
++    hasher.update(b"seq:");
++    hasher.update(&seq.to_be_bytes());
++}
++
++fn hash_action_field(hasher: &mut Hasher, action: u16) {
++    hasher.update(b"action:");
++    hasher.update(&action.to_be_bytes());
++}
++
++fn hash_run_attempt_field(hasher: &mut Hasher, run_attempt: u16) {
++    hasher.update(b"run_attempt:");
++    hasher.update(&run_attempt.to_be_bytes());
++}
++
++fn hash_attempt_field(hasher: &mut Hasher, attempt: u16) {
++    hasher.update(b"attempt:");
++    hasher.update(&attempt.to_be_bytes());
++}
++
++fn hash_idempotency_key_field(hasher: &mut Hasher, key: u128) {
++    hasher.update(b"key:");
++    hasher.update(&key.to_be_bytes());
++}
++
++fn hash_capacity_field(hasher: &mut Hasher, capacity: u16) {
++    hasher.update(b"capacity:");
++    hasher.update(&capacity.to_be_bytes());
++}
++
++fn finalize_policy_hash(hasher: Hasher) -> PolicyDigest {
++    let result = hasher.finalize();
++    let mut output = [0u8; 32];
++    output.copy_from_slice(result.as_bytes());
++    PolicyDigest::from_bytes(output)
++}
++
++fn compute_expected_input_digest(
++    value: i64,
++    taint: Taint,
++    ticket: &ActionTicket,
++) -> Result<PolicyDigest, String> {
++    let input_bytes = serialize_input_bytes(value)?;
++    let taint_byte = match taint {
++        Taint::Clean => taint_byte_clean(),
++        other => return Err(format!("unexpected taint variant for oracle: {other:?}")),
++    };
++
++    let mut hasher = new_policy_hasher();
++    hash_input_domain(&mut hasher, &input_bytes);
++    hash_taint_domain(&mut hasher, taint_byte);
++    hash_ticket_domain_prefix(&mut hasher);
++    hash_run_field(&mut hasher, ticket.run.get());
++    hash_step_field(&mut hasher, ticket.step.get());
++    hash_seq_field(&mut hasher, ticket.seq.get());
++    hash_action_field(&mut hasher, ticket.action.get());
++    hash_run_attempt_field(&mut hasher, ticket.run_attempt);
++    hash_attempt_field(&mut hasher, ticket.attempt);
++    hash_idempotency_key_field(&mut hasher, ticket.idempotency_key);
++    hash_capacity_field(&mut hasher, ticket.capacity);
++
++    Ok(finalize_policy_hash(hasher))
++}
++
++fn make_expected_decision(
++    ticket: ActionTicket,
++    admission_pin: PinnedAdmissionPolicy,
++    current_live: CurrentPolicyIdentity,
++    input_digest: PolicyDigest,
++    outcome: DecisionCode,
++) -> vb_core::policy::DecisionRecord {
++    vb_core::policy::DecisionRecord {
++        ticket,
++        admission: admission_pin,
++        current_live,
++        input_digest,
++        taint: Taint::Clean,
++        outcome,
++        layer: PolicyLayer::Live,
++        emergency_influence: InfluenceState::Inactive,
++        compat_influence: InfluenceState::NotEvaluated,
++    }
++}
++
++fn admission_pin_from_artifact(policy_digest: [u8; 32]) -> PinnedAdmissionPolicy {
++    PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(policy_digest))
++}
++
++fn current_live_configured(digest: [u8; 32]) -> CurrentPolicyIdentity {
++    CurrentPolicyIdentity::Configured {
++        digest: PolicyDigest::from_bytes(digest),
++    }
++}
++
++fn read_journal_decision_events(
++    journal: &Arc<FjallJournal>,
++    run: RunId,
++) -> Result<Vec<vb_core::policy::DecisionRecord>, Box<dyn std::error::Error>> {
++    let events = vb_storage::read_run_events(journal, run)?;
++    Ok(events
++        .iter()
++        .filter_map(|e| match e {
++            vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => {
++                Some(decision.clone())
++            }
++            _ => None,
++        })
++        .collect())
++}
++
++#[path = "policy_dispatch/allowed.rs"]
++mod allowed;
++#[path = "policy_dispatch/changed_policy.rs"]
++mod changed_policy;
++#[path = "policy_dispatch/reconcile.rs"]
++mod reconcile;
++#[path = "policy_dispatch/unconfigured.rs"]
++mod unconfigured;
+diff --git a/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/allowed.rs b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/allowed.rs
+new file mode 100644
+index 000000000..1a09f4047
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/allowed.rs
+@@ -0,0 +1,180 @@
++use super::*;
++use vb_core::action_pack::ActionPack;
++use vb_core::policy::DecisionRecord;
++use vb_storage::AcceptedArtifact;
++use vb_storage::executor::{RegisterGrant, RegisterReceipt};
++
++struct TestCase {
++    dir: tempfile::TempDir,
++    run: RunId,
++    journal: Arc<FjallJournal>,
++    artifact: AcceptedArtifact,
++    runtime: Runtime,
++    ticket: ActionTicket,
++    grant: RegisterGrant,
++    allowed_digest: PolicyDigest,
++}
++
++fn build_test_case() -> Result<TestCase, Box<dyn std::error::Error>> {
++    let dir = tempfile::tempdir()?;
++    let run = RunId::new(9_103);
++    let action = ActionId::new(0);
++    let (catalog, pack) = create_catalog_and_pack(action)?;
++    let (journal, artifact) = create_journal_and_artifact(&dir, &catalog, &pack)?;
++    let mut runtime = create_and_submit_runtime(&journal, &catalog, run)?;
++    let allowed_digest = PolicyDigest::from_bytes([0x33u8; 32]);
++    runtime.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++    let (ticket, grant) = get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
++    Ok(TestCase {
++        dir,
++        run,
++        journal,
++        artifact,
++        runtime,
++        ticket,
++        grant,
++        allowed_digest,
++    })
++}
++
++fn create_catalog_and_pack(
++    action: ActionId,
++) -> Result<(ExecutorCatalog, ActionPack), Box<dyn std::error::Error>> {
++    let contract = external_contract(action)?;
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++    Ok((catalog, pack))
++}
++
++fn create_journal_and_artifact(
++    dir: &tempfile::TempDir,
++    catalog: &ExecutorCatalog,
++    pack: &ActionPack,
++) -> Result<(Arc<FjallJournal>, AcceptedArtifact), Box<dyn std::error::Error>> {
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(ActionId::new(0))?;
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract],
++        &[pack.clone()],
++    )?;
++    Ok((journal, artifact))
++}
++
++fn create_and_submit_runtime(
++    journal: &Arc<FjallJournal>,
++    catalog: &ExecutorCatalog,
++    run: RunId,
++) -> Result<Runtime, Box<dyn std::error::Error>> {
++    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(ActionId::new(0))?;
++    runtime.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        workflow,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(100))]),
++        action_grants(ActionId::new(0)),
++        Box::from([contract]),
++    )?;
++    runtime.tick_all()?;
++    Ok(runtime)
++}
++
++fn get_ticket_and_grant(
++    catalog: &ExecutorCatalog,
++    artifact: &AcceptedArtifact,
++    runtime: &Runtime,
++    run: RunId,
++) -> Result<(ActionTicket, RegisterGrant), Box<dyn std::error::Error>> {
++    let ticket = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket")?;
++    let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
++    Ok((ticket, grant))
++}
++
++fn execute_action(case: &mut TestCase) -> Result<RegisterReceipt, Box<dyn std::error::Error>> {
++    let register_path = case.dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let receipt = case.runtime.execute_registered_action(
++        &mut adapter,
++        case.run,
++        u64::from(StepIdx::ZERO.get()),
++        &case.grant,
++    )?;
++    Ok(receipt)
++}
++
++fn build_expected_decision(case: &TestCase) -> Result<DecisionRecord, Box<dyn std::error::Error>> {
++    let expected_admission = admission_pin_from_artifact(case.artifact.policy_digest.as_bytes());
++    let expected_input_digest = compute_expected_input_digest(100, Taint::Clean, &case.ticket)?;
++    let expected_decision = make_expected_decision(
++        case.ticket,
++        expected_admission,
++        current_live_configured(case.allowed_digest.as_bytes()),
++        expected_input_digest,
++        DecisionCode::Allowed,
++    );
++    Ok(expected_decision)
++}
++
++fn assert_receipt(receipt: &RegisterReceipt) {
++    assert_eq!(receipt.value(), 100);
++}
++
++fn assert_adapter_effects(case: &TestCase) -> Result<(), Box<dyn std::error::Error>> {
++    let register_path = case.dir.path().join("register");
++    let adapter = FjallRegister::open(&register_path, 8)?;
++    assert_eq!(adapter.effect_count()?, 1);
++    assert_eq!(adapter.value(scope())?, Some(100));
++    Ok(())
++}
++
++fn assert_stored_decisions(
++    case: &TestCase,
++    expected: &DecisionRecord,
++) -> Result<(), Box<dyn std::error::Error>> {
++    let stored_decisions = read_journal_decision_events(&case.journal, case.run)?;
++    assert_eq!(
++        stored_decisions.len(),
++        1,
++        "exactly one policy decision must be stored"
++    );
++    let stored = stored_decisions
++        .first()
++        .ok_or("expected exactly one decision")?;
++    assert_eq!(
++        stored, expected,
++        "full stored DecisionRecord must match oracle for allowed policy"
++    );
++    assert_eq!(stored.ticket.run, case.run);
++    assert_eq!(stored.ticket, case.ticket);
++    Ok(())
++}
++
++#[test]
++fn allowed_policy_permits_effect_and_records_decision() -> TestResult {
++    let mut case = build_test_case()?;
++    let expected = build_expected_decision(&case)?;
++    let receipt = execute_action(&mut case)?;
++    assert_receipt(&receipt);
++    assert_adapter_effects(&case)?;
++    assert_stored_decisions(&case, &expected)?;
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/changed_policy.rs b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/changed_policy.rs
+new file mode 100644
+index 000000000..21ff109b9
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/changed_policy.rs
+@@ -0,0 +1,204 @@
++use super::*;
++use vb_core::action_pack::ActionPack;
++use vb_core::policy::DecisionRecord;
++use vb_storage::AcceptedArtifact;
++use vb_storage::executor::RegisterGrant;
++
++type CaseResult<T> = Result<T, Box<dyn std::error::Error>>;
++
++struct TestCase {
++    dir: tempfile::TempDir,
++    run: RunId,
++    journal: Arc<FjallJournal>,
++    artifact: AcceptedArtifact,
++    runtime: Runtime,
++    ticket: ActionTicket,
++    grant: RegisterGrant,
++    denied_digest: PolicyDigest,
++}
++
++fn build_test_case() -> CaseResult<TestCase> {
++    let dir = tempfile::tempdir()?;
++    let run = RunId::new(9_102);
++    let action = ActionId::new(0);
++    let (catalog, pack) = create_catalog_and_pack(action)?;
++    let (journal, artifact) = create_journal_and_artifact(&dir, &catalog, &pack)?;
++    let mut runtime = create_and_submit_runtime(&journal, &catalog, run)?;
++    let (ticket, grant) = get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
++    let denied_digest = PolicyDigest::from_bytes([0x22u8; 32]);
++    runtime.configure_live_policy(
++        denied_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Denied,
++        },
++    )?;
++    Ok(TestCase {
++        dir,
++        run,
++        journal,
++        artifact,
++        runtime,
++        ticket,
++        grant,
++        denied_digest,
++    })
++}
++
++fn create_catalog_and_pack(action: ActionId) -> CaseResult<(ExecutorCatalog, ActionPack)> {
++    let contract = external_contract(action)?;
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++    Ok((catalog, pack))
++}
++
++fn create_journal_and_artifact(
++    dir: &tempfile::TempDir,
++    catalog: &ExecutorCatalog,
++    pack: &ActionPack,
++) -> CaseResult<(Arc<FjallJournal>, AcceptedArtifact)> {
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(ActionId::new(0))?;
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract],
++        &[pack.clone()],
++    )?;
++    Ok((journal, artifact))
++}
++
++fn create_and_submit_runtime(
++    journal: &Arc<FjallJournal>,
++    catalog: &ExecutorCatalog,
++    run: RunId,
++) -> CaseResult<Runtime> {
++    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(ActionId::new(0))?;
++    runtime.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        workflow,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(99))]),
++        action_grants(ActionId::new(0)),
++        Box::from([contract]),
++    )?;
++    runtime.tick_all()?;
++    Ok(runtime)
++}
++
++fn get_ticket_and_grant(
++    catalog: &ExecutorCatalog,
++    artifact: &AcceptedArtifact,
++    runtime: &Runtime,
++    run: RunId,
++) -> CaseResult<(ActionTicket, RegisterGrant)> {
++    let ticket = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket")?;
++    let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
++    Ok((ticket, grant))
++}
++
++fn execute_deny(case: &mut TestCase) -> CaseResult<DecisionRecord> {
++    let register_path = case.dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let result = case.runtime.execute_registered_action(
++        &mut adapter,
++        case.run,
++        u64::from(StepIdx::ZERO.get()),
++        &case.grant,
++    );
++    match result {
++        Err(RegisteredExecutionError::PolicyDenied(decision)) => Ok(*decision),
++        other => Err(format!("expected PolicyDenied, got: {other:?}").into()),
++    }
++}
++
++fn build_expected_decision(case: &TestCase) -> CaseResult<DecisionRecord> {
++    let expected_admission = admission_pin_from_artifact(case.artifact.policy_digest.as_bytes());
++    let expected_input_digest = compute_expected_input_digest(99, Taint::Clean, &case.ticket)?;
++    let expected_decision = make_expected_decision(
++        case.ticket,
++        expected_admission,
++        current_live_configured(case.denied_digest.as_bytes()),
++        expected_input_digest,
++        DecisionCode::Denied,
++    );
++    Ok(expected_decision)
++}
++
++fn assert_decision(
++    case: &TestCase,
++    decision: &DecisionRecord,
++    expected: &DecisionRecord,
++    allowed_digest: PolicyDigest,
++) {
++    assert_eq!(
++        decision, expected,
++        "full DecisionRecord must match oracle for policy-change deny"
++    );
++    match decision.admission {
++        PinnedAdmissionPolicy::Artifact(admitted) => {
++            assert_ne!(
++                admitted, case.denied_digest,
++                "admission must differ from current denied"
++            );
++            assert_ne!(
++                admitted, allowed_digest,
++                "admission must differ from original allowed"
++            );
++        }
++        _ => assert!(false, "admission checked in DecisionRecord equality"),
++    }
++}
++
++fn assert_adapter_effects(case: &TestCase) -> CaseResult<()> {
++    let register_path = case.dir.path().join("register");
++    let adapter = FjallRegister::open(&register_path, 8)?;
++    assert_eq!(adapter.effect_count()?, 0);
++    assert_eq!(
++        adapter.value(scope())?,
++        None,
++        "target value must remain unset after policy denial"
++    );
++    Ok(())
++}
++
++fn assert_stored_decisions(case: &TestCase, expected: &DecisionRecord) -> CaseResult<()> {
++    let stored_decisions = read_journal_decision_events(&case.journal, case.run)?;
++    assert_eq!(
++        stored_decisions.len(),
++        1,
++        "exactly one policy decision must be stored"
++    );
++    let stored = stored_decisions
++        .first()
++        .ok_or("expected exactly one decision")?;
++    assert_eq!(
++        stored, expected,
++        "stored DecisionRecord must match oracle for policy-change deny"
++    );
++    Ok(())
++}
++
++#[test]
++fn after_scheduling_policy_change_to_deny() -> TestResult {
++    let mut case = build_test_case()?;
++    let expected = build_expected_decision(&case)?;
++    let decision = execute_deny(&mut case)?;
++    let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
++    assert_decision(&case, &decision, &expected, allowed_digest);
++    assert_adapter_effects(&case)?;
++    assert_stored_decisions(&case, &expected)?;
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/reconcile.rs b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/reconcile.rs
+new file mode 100644
+index 000000000..090be8645
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/reconcile.rs
+@@ -0,0 +1,219 @@
++use super::*;
++use vb_core::action_pack::ActionPack;
++use vb_core::policy::DecisionRecord;
++use vb_storage::AcceptedArtifact;
++use vb_storage::executor::{RegisterGrant, RegisterReceipt};
++
++type CaseResult<T> = Result<T, Box<dyn std::error::Error>>;
++
++struct TestCase {
++    dir: tempfile::TempDir,
++    run: RunId,
++    journal: Arc<FjallJournal>,
++    artifact: AcceptedArtifact,
++    runtime: Runtime,
++    ticket: ActionTicket,
++    grant: RegisterGrant,
++    allowed_digest: PolicyDigest,
++}
++
++fn build_test_case() -> CaseResult<TestCase> {
++    let dir = tempfile::tempdir()?;
++    let run = RunId::new(9_104);
++    let action = ActionId::new(0);
++    let (catalog, pack) = create_catalog_and_pack(action)?;
++    let (journal, artifact) = create_journal_and_artifact(&dir, &catalog, &pack)?;
++    let mut runtime = create_and_submit_runtime(&journal, &catalog, run)?;
++    let allowed_digest = PolicyDigest::from_bytes([0x44u8; 32]);
++    runtime.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++    let (ticket, grant) = get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
++    Ok(TestCase {
++        dir,
++        run,
++        journal,
++        artifact,
++        runtime,
++        ticket,
++        grant,
++        allowed_digest,
++    })
++}
++
++fn create_catalog_and_pack(action: ActionId) -> CaseResult<(ExecutorCatalog, ActionPack)> {
++    let contract = external_contract(action)?;
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++    Ok((catalog, pack))
++}
++
++fn create_journal_and_artifact(
++    dir: &tempfile::TempDir,
++    catalog: &ExecutorCatalog,
++    pack: &ActionPack,
++) -> CaseResult<(Arc<FjallJournal>, AcceptedArtifact)> {
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(ActionId::new(0))?;
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract],
++        &[pack.clone()],
++    )?;
++    Ok((journal, artifact))
++}
++
++fn create_and_submit_runtime(
++    journal: &Arc<FjallJournal>,
++    catalog: &ExecutorCatalog,
++    run: RunId,
++) -> CaseResult<Runtime> {
++    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(ActionId::new(0))?;
++    runtime.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        workflow,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(55))]),
++        action_grants(ActionId::new(0)),
++        Box::from([contract]),
++    )?;
++    runtime.tick_all()?;
++    Ok(runtime)
++}
++
++fn get_ticket_and_grant(
++    catalog: &ExecutorCatalog,
++    artifact: &AcceptedArtifact,
++    runtime: &Runtime,
++    run: RunId,
++) -> CaseResult<(ActionTicket, RegisterGrant)> {
++    let ticket = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket")?;
++    let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
++    Ok((ticket, grant))
++}
++
++fn execute_allowed(case: &mut TestCase) -> CaseResult<RegisterReceipt> {
++    let register_path = case.dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let receipt = case.runtime.execute_registered_action(
++        &mut adapter,
++        case.run,
++        u64::from(StepIdx::ZERO.get()),
++        &case.grant,
++    )?;
++    assert_eq!(adapter.effect_count()?, 1);
++    Ok(receipt)
++}
++
++fn build_expected_allowed_decision(case: &TestCase) -> CaseResult<DecisionRecord> {
++    let expected_admission = admission_pin_from_artifact(case.artifact.policy_digest.as_bytes());
++    let expected_input_digest = compute_expected_input_digest(55, Taint::Clean, &case.ticket)?;
++    let expected = make_expected_decision(
++        case.ticket,
++        expected_admission,
++        current_live_configured(case.allowed_digest.as_bytes()),
++        expected_input_digest,
++        DecisionCode::Allowed,
++    );
++    Ok(expected)
++}
++
++fn assert_allowed_decision_stored(case: &TestCase, expected: &DecisionRecord) -> CaseResult<()> {
++    let decisions = read_journal_decision_events(&case.journal, case.run)?;
++    assert_eq!(
++        decisions.len(),
++        1,
++        "exactly one allowed decision must be stored before reconcile"
++    );
++    let stored = decisions.first().ok_or("expected exactly one decision")?;
++    assert_eq!(
++        stored, expected,
++        "stored allowed DecisionRecord must match oracle"
++    );
++    Ok(())
++}
++
++fn change_policy_to_deny(case: &mut TestCase) -> CaseResult<()> {
++    let denied_digest = PolicyDigest::from_bytes([0x55u8; 32]);
++    case.runtime.configure_live_policy(
++        denied_digest,
++        PolicyRule {
++            action: ActionId::new(0),
++            code: DecisionCode::Denied,
++        },
++    )?;
++    Ok(())
++}
++
++fn reconcile_action(case: &mut TestCase) -> CaseResult<RegisterReceipt> {
++    let register_path = case.dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let reconciled = case.runtime.reconcile_registered_action(
++        &mut adapter,
++        case.run,
++        u64::from(StepIdx::ZERO.get()),
++        &case.grant,
++    )?;
++    Ok(reconciled)
++}
++
++fn assert_reconciled_receipt(original: &RegisterReceipt, reconciled: &RegisterReceipt) {
++    assert_eq!(
++        reconciled, original,
++        "reconciled receipt must exactly match original"
++    );
++    assert_eq!(reconciled.value(), 55);
++}
++
++fn assert_adapter_effects(case: &TestCase) -> CaseResult<()> {
++    let register_path = case.dir.path().join("register");
++    let adapter = FjallRegister::open(&register_path, 8)?;
++    assert_eq!(adapter.effect_count()?, 1);
++    Ok(())
++}
++
++fn assert_no_new_decisions(case: &TestCase, expected: &DecisionRecord) -> CaseResult<()> {
++    let decisions = read_journal_decision_events(&case.journal, case.run)?;
++    assert_eq!(
++        decisions.len(),
++        1,
++        "reconcile must not add a new policy decision"
++    );
++    let stored = decisions.first().ok_or("expected exactly one decision")?;
++    assert_eq!(
++        stored, expected,
++        "stored decision list must be exactly the same before/after reconcile"
++    );
++    Ok(())
++}
++
++#[test]
++fn reconcile_ignores_policy_change_after_effect() -> TestResult {
++    let mut case = build_test_case()?;
++    let expected = build_expected_allowed_decision(&case)?;
++    let first = execute_allowed(&mut case)?;
++    assert_allowed_decision_stored(&case, &expected)?;
++    change_policy_to_deny(&mut case)?;
++    let reconciled = reconcile_action(&mut case)?;
++    assert_reconciled_receipt(&first, &reconciled);
++    assert_adapter_effects(&case)?;
++    assert_no_new_decisions(&case, &expected)?;
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs
+new file mode 100644
+index 000000000..50c49159b
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor/policy_dispatch/unconfigured.rs
+@@ -0,0 +1,192 @@
++use super::*;
++use vb_core::action_pack::ActionPack;
++use vb_core::policy::DecisionRecord;
++use vb_storage::AcceptedArtifact;
++use vb_storage::executor::RegisterGrant;
++
++struct TestCase {
++    dir: tempfile::TempDir,
++    run: RunId,
++    journal: Arc<FjallJournal>,
++    artifact: AcceptedArtifact,
++    runtime: Runtime,
++    ticket: ActionTicket,
++    grant: RegisterGrant,
++}
++
++fn build_test_case() -> Result<TestCase, Box<dyn std::error::Error>> {
++    let dir = tempfile::tempdir()?;
++    let run = RunId::new(9_101);
++    let action = ActionId::new(0);
++    let (catalog, pack) = create_catalog_and_pack(action)?;
++    let (journal, artifact) = create_journal_and_artifact(&dir, &catalog, &pack)?;
++    let runtime = create_and_submit_runtime(&journal, &catalog, run)?;
++    let (ticket, grant) = get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
++    Ok(TestCase {
++        dir,
++        run,
++        journal,
++        artifact,
++        runtime,
++        ticket,
++        grant,
++    })
++}
++
++fn create_catalog_and_pack(
++    action: ActionId,
++) -> Result<(ExecutorCatalog, ActionPack), Box<dyn std::error::Error>> {
++    let contract = external_contract(action)?;
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++    Ok((catalog, pack))
++}
++
++fn create_journal_and_artifact(
++    dir: &tempfile::TempDir,
++    catalog: &ExecutorCatalog,
++    pack: &ActionPack,
++) -> Result<(Arc<FjallJournal>, AcceptedArtifact), Box<dyn std::error::Error>> {
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(ActionId::new(0))?;
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract],
++        &[pack.clone()],
++    )?;
++    Ok((journal, artifact))
++}
++
++fn create_and_submit_runtime(
++    journal: &Arc<FjallJournal>,
++    catalog: &ExecutorCatalog,
++    run: RunId,
++) -> Result<Runtime, Box<dyn std::error::Error>> {
++    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(ActionId::new(0))?;
++    runtime.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        workflow,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(42))]),
++        action_grants(ActionId::new(0)),
++        Box::from([contract]),
++    )?;
++    runtime.tick_all()?;
++    Ok(runtime)
++}
++
++fn get_ticket_and_grant(
++    catalog: &ExecutorCatalog,
++    artifact: &AcceptedArtifact,
++    runtime: &Runtime,
++    run: RunId,
++) -> Result<(ActionTicket, RegisterGrant), Box<dyn std::error::Error>> {
++    let ticket = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket")?;
++    let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
++    Ok((ticket, grant))
++}
++
++fn execute_action(case: &mut TestCase) -> Result<DecisionRecord, Box<dyn std::error::Error>> {
++    let register_path = case.dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let result = case.runtime.execute_registered_action(
++        &mut adapter,
++        case.run,
++        u64::from(StepIdx::ZERO.get()),
++        &case.grant,
++    );
++    match result {
++        Err(RegisteredExecutionError::PolicyDenied(decision)) => Ok(*decision),
++        other => Err(format!("expected PolicyDenied, got: {other:?}").into()),
++    }
++}
++
++fn build_expected_decision(case: &TestCase) -> Result<DecisionRecord, Box<dyn std::error::Error>> {
++    let expected_admission = admission_pin_from_artifact(case.artifact.policy_digest.as_bytes());
++    let expected_input_digest = compute_expected_input_digest(42, Taint::Clean, &case.ticket)?;
++    let expected_decision = make_expected_decision(
++        case.ticket,
++        expected_admission,
++        CurrentPolicyIdentity::Unconfigured,
++        expected_input_digest,
++        DecisionCode::Denied,
++    );
++    Ok(expected_decision)
++}
++
++fn assert_decision(case: &TestCase, decision: &DecisionRecord, expected: &DecisionRecord) {
++    assert_eq!(
++        decision, expected,
++        "full DecisionRecord must match oracle for unconfigured deny"
++    );
++    assert_eq!(decision.ticket.run, case.run);
++}
++
++fn assert_adapter_effects(case: &TestCase) -> Result<(), Box<dyn std::error::Error>> {
++    let register_path = case.dir.path().join("register");
++    let adapter = FjallRegister::open(&register_path, 8)?;
++    assert_eq!(adapter.effect_count()?, 0);
++    assert_eq!(
++        adapter.value(scope())?,
++        None,
++        "target value must remain unset after policy denial"
++    );
++    Ok(())
++}
++
++fn assert_stored_decisions(
++    case: &TestCase,
++    expected: &DecisionRecord,
++) -> Result<(), Box<dyn std::error::Error>> {
++    let stored_decisions = read_journal_decision_events(&case.journal, case.run)?;
++    assert_eq!(
++        stored_decisions.len(),
++        1,
++        "exactly one policy decision must be stored"
++    );
++    let stored = stored_decisions
++        .first()
++        .ok_or("expected exactly one decision")?;
++    assert_eq!(
++        stored, expected,
++        "stored DecisionRecord must match oracle for unconfigured deny"
++    );
++    Ok(())
++}
++
++fn assert_ticket_preserved(case: &mut TestCase) -> Result<(), Box<dyn std::error::Error>> {
++    let after_ticket = case
++        .runtime
++        .lookup_pending_action_ticket(case.run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("pending ticket must remain after policy denial")?;
++    assert_eq!(
++        after_ticket, case.ticket,
++        "exact full ticket must be preserved after denial"
++    );
++    Ok(())
++}
++
++#[test]
++fn unconfigured_policy_denies_execution() -> TestResult {
++    let mut case = build_test_case()?;
++    let expected = build_expected_decision(&case)?;
++    let decision = execute_action(&mut case)?;
++    assert_decision(&case, &decision, &expected);
++    assert_adapter_effects(&case)?;
++    assert_stored_decisions(&case, &expected)?;
++    assert_ticket_preserved(&mut case)?;
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs
+new file mode 100644
+index 000000000..7370eaf41
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed.rs
+@@ -0,0 +1,38 @@
++#![forbid(unsafe_code)]
++//! Policy dispatch fail-closed tests (vb-l5ru0).
++//!
++//! Tests actual public Runtime APIs: live policy evaluation, emergency
++//! deny overlay, and strict policy port failure propagation. All three
++//! tests use genuine accepted artifacts, pending action tickets, and
++//! real FjallRegister effects (or lack thereof). No fake state or cache
++//! substitutes.
++
++#[path = "vb_policy_dispatch_fail_closed/fixtures.rs"]
++mod fixtures;
++
++use fixtures::*;
++
++use std::sync::Arc;
++use vb_core::action_pack::RecoveryClass;
++use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
++use vb_core::policy::{
++    CurrentPolicyIdentity, DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy,
++    PolicyDigest, PolicyLayer, PolicyRule, RuntimePolicy,
++};
++use vb_core::value::{SlotValue, Taint};
++use vb_runtime::RuntimeError;
++use vb_runtime::journal::StorageRuntimeJournal;
++use vb_runtime::runtime::{RegisteredExecutionError, Runtime};
++use vb_storage::executor::{ExecutorCatalog, FjallRegister};
++use vb_storage::{EventSeq, FjallConfig, FjallJournal};
++
++type TestResult = Result<(), Box<dyn std::error::Error>>;
++
++#[path = "vb_policy_dispatch_fail_closed/suspended.rs"]
++mod suspended;
++
++#[path = "vb_policy_dispatch_fail_closed/emergency.rs"]
++mod emergency;
++
++#[path = "vb_policy_dispatch_fail_closed/strict_failure.rs"]
++mod strict_failure;
+diff --git a/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/emergency.rs b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/emergency.rs
+new file mode 100644
+index 000000000..171afce82
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/emergency.rs
+@@ -0,0 +1,288 @@
++use super::*;
++use vb_core::action::ActionContract;
++use vb_core::workflow::CompiledWorkflow;
++
++type CaseResult<T> = Result<T, Box<dyn std::error::Error>>;
++
++/// Typed case struct for emergency deny overlay fail-closed tests.
++struct EmergencyTestCase {
++    dir: tempfile::TempDir,
++    run: RunId,
++    action: ActionId,
++    catalog: ExecutorCatalog,
++    workflow: CompiledWorkflow,
++    contract: ActionContract,
++    journal: Arc<FjallJournal>,
++    artifact: vb_storage::AcceptedArtifact,
++    runtime: Runtime,
++}
++
++fn build_emergency_case() -> CaseResult<EmergencyTestCase> {
++    let dir = tempfile::tempdir()?;
++    let run = RunId::new(11_002);
++    let action = ActionId::new(0);
++
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(action)?;
++
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract.clone()],
++        &[pack],
++    )?;
++
++    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    let runtime = Runtime::new(shard_count(1)?, strict_config(), storage);
++
++    Ok(EmergencyTestCase {
++        dir,
++        run,
++        action,
++        catalog,
++        workflow,
++        contract,
++        journal,
++        artifact,
++        runtime,
++    })
++}
++
++fn configure_allowed_policy(
++    runtime: &mut Runtime,
++    action: ActionId,
++    digest: PolicyDigest,
++) -> CaseResult<()> {
++    runtime.configure_live_policy(
++        digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++    Ok(())
++}
++
++fn submit_and_tick(
++    runtime: &mut Runtime,
++    run: RunId,
++    workflow: CompiledWorkflow,
++    action: ActionId,
++    contract: ActionContract,
++) -> CaseResult<()> {
++    runtime.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        workflow,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(100))]),
++        action_grants(action),
++        Box::from([contract]),
++    )?;
++    runtime.tick_all()?;
++    Ok(())
++}
++
++fn get_ticket_and_grant(
++    runtime: &Runtime,
++    catalog: &ExecutorCatalog,
++    artifact: &vb_storage::AcceptedArtifact,
++    run: RunId,
++) -> CaseResult<(
++    vb_core::action::ActionTicket,
++    vb_storage::executor::RegisterGrant,
++)> {
++    let ticket = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket")?;
++    let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
++    Ok((ticket, grant))
++}
++
++fn compute_expected_emergency_decision(
++    artifact: &vb_storage::AcceptedArtifact,
++    ticket: &vb_core::action::ActionTicket,
++    current_live_digest: PolicyDigest,
++) -> CaseResult<DecisionRecord> {
++    let expected_input_digest = compute_expected_input_digest(100, Taint::Clean, ticket)?;
++    let expected_admission = PolicyDigest::from_bytes(artifact.policy_digest.as_bytes());
++    Ok(DecisionRecord {
++        ticket: ticket.clone(),
++        admission: PinnedAdmissionPolicy::Artifact(expected_admission),
++        current_live: CurrentPolicyIdentity::Configured {
++            digest: current_live_digest,
++        },
++        input_digest: expected_input_digest,
++        taint: Taint::Clean,
++        outcome: DecisionCode::Denied,
++        layer: PolicyLayer::Emergency,
++        emergency_influence: InfluenceState::Active,
++        compat_influence: InfluenceState::NotEvaluated,
++    })
++}
++
++fn execute_with_adapter(
++    runtime: &mut Runtime,
++    adapter: &mut FjallRegister,
++    run: RunId,
++    grant: &vb_storage::executor::RegisterGrant,
++) -> Result<vb_storage::executor::RegisterReceipt, RegisteredExecutionError> {
++    runtime.execute_registered_action(adapter, run, u64::from(StepIdx::ZERO.get()), grant)
++}
++
++fn assert_emergency_denied_full_record(
++    result: Result<vb_storage::executor::RegisterReceipt, RegisteredExecutionError>,
++    expected: &DecisionRecord,
++) -> CaseResult<()> {
++    let Err(RegisteredExecutionError::PolicyDenied(decision)) = result else {
++        return Err(
++            format!("expected PolicyDenied with Emergency decision, got: {result:?}").into(),
++        );
++    };
++    assert_eq!(decision.outcome, DecisionCode::Denied);
++    assert_eq!(decision.layer, PolicyLayer::Emergency);
++    assert_eq!(decision.emergency_influence, InfluenceState::Active);
++    assert_eq!(decision.compat_influence, InfluenceState::NotEvaluated);
++    assert_eq!(decision.ticket, expected.ticket);
++    assert_eq!(decision.input_digest, expected.input_digest);
++    assert_eq!(decision.taint, Taint::Clean);
++    assert_eq!(
++        decision.as_ref(),
++        expected,
++        "returned decision must match full expected record"
++    );
++    Ok(())
++}
++
++fn assert_zero_effects(adapter: &FjallRegister) -> CaseResult<()> {
++    assert_eq!(
++        adapter.effect_count()?,
++        0,
++        "emergency deny must not produce any effect"
++    );
++    Ok(())
++}
++
++fn assert_pending_unchanged(
++    runtime: &Runtime,
++    run: RunId,
++    pending_before: vb_runtime::runtime::RuntimePendingBoundarySnapshot,
++    ticket: &vb_core::action::ActionTicket,
++) -> CaseResult<()> {
++    let pending_after = runtime.pending_boundary_snapshot(8);
++    assert_eq!(
++        pending_after, pending_before,
++        "emergency deny must not alter pending state"
++    );
++    let ticket_after = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket after deny")?;
++    assert_eq!(
++        Some(ticket_after),
++        Some(ticket.clone()),
++        "pending ticket must remain identical after emergency deny"
++    );
++    Ok(())
++}
++
++fn assert_stored_emergency_decisions(
++    journal: &Arc<FjallJournal>,
++    run: RunId,
++    expected_first: &DecisionRecord,
++    expected_second: &DecisionRecord,
++) -> CaseResult<()> {
++    let events = vb_storage::read_run_events(journal, run)?;
++    let decision_events: Vec<_> = events
++        .iter()
++        .filter_map(|e| match e {
++            vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision),
++            _ => None,
++        })
++        .collect();
++    assert_eq!(
++        decision_events.len(),
++        2,
++        "exactly two policy decision events must be stored"
++    );
++    assert_eq!(
++        decision_events,
++        vec![expected_first, expected_second],
++        "stored decision events must exactly match expected records in order"
++    );
++    Ok(())
++}
++
++fn run_first_emergency_attempt(
++    case: &mut EmergencyTestCase,
++    allowed_digest: PolicyDigest,
++) -> CaseResult<DecisionRecord> {
++    let (ticket, grant) =
++        get_ticket_and_grant(&case.runtime, &case.catalog, &case.artifact, case.run)?;
++    case.runtime.activate_emergency_deny()?;
++    let expected = compute_expected_emergency_decision(&case.artifact, &ticket, allowed_digest)?;
++    let pending_before = case.runtime.pending_boundary_snapshot(8);
++    let register_path = case.dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let result = execute_with_adapter(&mut case.runtime, &mut adapter, case.run, &grant);
++    assert_emergency_denied_full_record(result, &expected)?;
++    assert_zero_effects(&adapter)?;
++    assert_pending_unchanged(&case.runtime, case.run, pending_before, &ticket)?;
++    Ok(expected)
++}
++
++fn run_second_emergency_attempt(
++    case: &mut EmergencyTestCase,
++    later_allowed_digest: PolicyDigest,
++) -> CaseResult<DecisionRecord> {
++    configure_allowed_policy(&mut case.runtime, case.action, later_allowed_digest)?;
++    let (ticket, grant) =
++        get_ticket_and_grant(&case.runtime, &case.catalog, &case.artifact, case.run)?;
++    let expected =
++        compute_expected_emergency_decision(&case.artifact, &ticket, later_allowed_digest)?;
++    let pending_before = case.runtime.pending_boundary_snapshot(8);
++    let register_path = case.dir.path().join("register2");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let result = execute_with_adapter(&mut case.runtime, &mut adapter, case.run, &grant);
++    assert_emergency_denied_full_record(result, &expected)?;
++    assert_zero_effects(&adapter)?;
++    assert_pending_unchanged(&case.runtime, case.run, pending_before, &ticket)?;
++    Ok(expected)
++}
++
++/// Test 2: Configure Allowed, submit, tick, activate emergency deny via
++/// actual dedicated store persist, then execute. Expect typed Emergency
++/// Denied decision with Active influence, zero effects, unchanged pending.
++/// Show that configuring Allowed afterwards cannot loosen the overlay.
++#[test]
++fn emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config() -> CaseResult<()> {
++    let mut case = build_emergency_case()?;
++
++    let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
++    configure_allowed_policy(&mut case.runtime, case.action, allowed_digest)?;
++
++    submit_and_tick(
++        &mut case.runtime,
++        case.run,
++        case.workflow.clone(),
++        case.action,
++        case.contract.clone(),
++    )?;
++
++    let expected_first = run_first_emergency_attempt(&mut case, allowed_digest)?;
++
++    let later_allowed_digest = PolicyDigest::from_bytes([0x33u8; 32]);
++    let expected_second = run_second_emergency_attempt(&mut case, later_allowed_digest)?;
++
++    assert_stored_emergency_decisions(&case.journal, case.run, &expected_first, &expected_second)?;
++
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs
+new file mode 100644
+index 000000000..a07a82144
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs
+@@ -0,0 +1,161 @@
++//! Fixtures and helpers for policy dispatch fail-closed tests.
++
++use std::num::NonZeroUsize;
++
++use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
++use vb_core::action_pack::CapabilityScopeSpec;
++use vb_core::capability::{Capability, CapabilitySet};
++use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
++use vb_core::policy::{PolicyDigest, RuntimePolicy};
++use vb_core::value::{SlotValue, Taint};
++use vb_core::workflow::{
++    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
++};
++use vb_runtime::shard::ShardConfig;
++
++#[path = "test_journal.rs"]
++mod test_journal;
++pub(crate) use test_journal::FailingPolicyPortJournal;
++
++pub(super) fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
++    NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
++}
++
++pub(crate) fn strict_config() -> ShardConfig {
++    ShardConfig {
++        command_queue_capacity: 32,
++        trace_capacity: 64,
++        step_budget_per_tick: 16,
++        max_active_runs: 8,
++        policy: RuntimePolicy::Strict,
++    }
++}
++
++pub(crate) fn node(
++    id: u16,
++    output: Option<u16>,
++    next: Option<u16>,
++    kind: CompiledNodeKind,
++) -> CompiledNode {
++    CompiledNode {
++        id: StepIdx::new(id),
++        output: output.map(SlotIdx::new),
++        next: next.map(StepIdx::new),
++        on_error: None,
++        error_slot: None,
++        kind,
++    }
++}
++
++pub(crate) fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {
++    let mut parts = WorkflowParts {
++        semantic_source_identity: None,
++        input_slots: Box::new([]),
++        name: Box::from("vb_policy_dispatch_fail_closed"),
++        digest: WorkflowDigest::from_bytes([0; 32]),
++        nodes: Box::from([
++            node(
++                0,
++                Some(1),
++                Some(1),
++                CompiledNodeKind::Do {
++                    action: ActionId::new(0),
++                    input: SlotIdx::ZERO,
++                },
++            ),
++            node(
++                1,
++                None,
++                None,
++                CompiledNodeKind::Finish {
++                    result: SlotIdx::new(1),
++                },
++            ),
++        ]),
++        expressions: Box::from([]),
++        accessors: Box::from([]),
++        constants: Box::from([]),
++        slot_count: 2,
++        symbols_count: 0,
++        entry: StepIdx::ZERO,
++        step_names: Box::from([]),
++        resource_contract: ResourceContract::DEFAULT,
++    };
++    let hash_bytes = postcard::to_allocvec(&parts).map_err(|err| err.to_string())?;
++    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash_bytes).into());
++    CompiledWorkflow::try_from_parts(parts).map_err(|err| err.to_string())
++}
++
++pub(crate) fn external_contract(
++    action: ActionId,
++) -> Result<ActionContract, Box<dyn std::error::Error>> {
++    Ok(ActionContract {
++        id: action,
++        name: ActionName::new("vb_policy_dispatch_fail_closed_action")?,
++        input_slot_count: 1,
++        output_slot_count: 1,
++        max_input_bytes: 64,
++        max_output_bytes: 64,
++        timeout_ms: 1000,
++        idempotency: Idempotency::IdempotentExternal,
++        side_effect: SideEffect::Writes,
++        retry_safety: RetrySafety::KeyRequired,
++        required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
++    })
++}
++
++pub(crate) fn scope() -> CapabilityScopeSpec {
++    CapabilityScopeSpec {
++        namespace: 15,
++        key: 29,
++    }
++}
++
++pub(crate) fn action_grants(action: ActionId) -> CapabilitySet {
++    CapabilitySet::from_grants(Box::from([Capability::new(
++        "velvet.register.write".into(),
++        action,
++    )]))
++}
++
++/// Compute the expected input digest for a given value, matching the policy
++/// evaluator's canonical encoding.
++pub(crate) fn compute_expected_input_digest(
++    value: i64,
++    taint: Taint,
++    ticket: &vb_core::action::ActionTicket,
++) -> Result<PolicyDigest, String> {
++    let input_bytes = postcard::to_allocvec(&SlotValue::I64(value)).map_err(|e| e.to_string())?;
++    let taint_byte = match taint {
++        Taint::Clean => 0,
++        other => return Err(format!("unexpected taint variant: {other:?}")),
++    };
++
++    let mut hasher = blake3::Hasher::new();
++    hasher.update(b"velvet-ballistics:policy:input:");
++    hasher.update(&input_bytes);
++    hasher.update(b"velvet-ballistics:policy:taint:");
++    hasher.update(&[taint_byte]);
++    hasher.update(b"velvet-ballistics:policy:ticket:");
++    hasher.update(b"run:");
++    hasher.update(&ticket.run.get().to_be_bytes());
++    hasher.update(b"step:");
++    hasher.update(&ticket.step.get().to_be_bytes());
++    hasher.update(b"seq:");
++    hasher.update(&ticket.seq.get().to_be_bytes());
++    hasher.update(b"action:");
++    hasher.update(&ticket.action.get().to_be_bytes());
++    hasher.update(b"run_attempt:");
++    hasher.update(&ticket.run_attempt.to_be_bytes());
++    hasher.update(b"attempt:");
++    hasher.update(&ticket.attempt.to_be_bytes());
++    hasher.update(b"key:");
++    hasher.update(&ticket.idempotency_key.to_be_bytes());
++    hasher.update(b"capacity:");
++    hasher.update(&ticket.capacity.to_be_bytes());
++
++    let result = hasher.finalize();
++    let mut output = [0u8; 32];
++    output.copy_from_slice(result.as_bytes());
++    Ok(PolicyDigest::from_bytes(output))
++}
+diff --git a/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/strict_failure.rs b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/strict_failure.rs
+new file mode 100644
+index 000000000..e97ffec55
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/strict_failure.rs
+@@ -0,0 +1,178 @@
++use super::*;
++
++/// Test 3: Strict-port typed failure via test-only RuntimeJournal wrapper.
++/// Real store, journal, catalog, grants, register remain actual. Override
++/// only append_policy_decision_strict to inject a strict port failure.
++#[test]
++fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestResult {
++    let dir = tempfile::tempdir()?;
++    let run = RunId::new(11_003);
++    let action = ActionId::new(0);
++
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(action)?;
++    let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
++
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let artifact = catalog.submit_artifact(
++        &journal,
++        &workflow,
++        RuntimePolicy::Strict,
++        &[contract.clone()],
++        &[pack],
++    )?;
++
++    // Use a test wrapper that overrides only append_policy_decision_strict.
++    let wrapped = Arc::new(FailingPolicyPortJournal::new(
++        journal.clone(),
++        catalog.clone(),
++    ));
++    let mut runtime = Runtime::new(shard_count(1)?, strict_config(), wrapped.clone());
++
++    let allowed_digest = PolicyDigest::from_bytes([0x11u8; 32]);
++    runtime.configure_live_policy(
++        allowed_digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Allowed,
++        },
++    )?;
++
++    runtime.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        workflow,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(77))]),
++        action_grants(action),
++        Box::from([contract]),
++    )?;
++    runtime.tick_all()?;
++
++    let ticket = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket")?;
++    let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
++
++    // Save pending state before execute for fail-closed verification.
++    let pending_before = runtime.pending_boundary_snapshot(8);
++
++    let register_path = dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let result = runtime.execute_registered_action(
++        &mut adapter,
++        run,
++        u64::from(StepIdx::ZERO.get()),
++        &grant,
++    );
++
++    // Expect exact typed error propagation.
++    match result {
++        Err(RegisteredExecutionError::Runtime(runtime_err)) => {
++            assert!(
++                matches!(
++                    runtime_err,
++                    RuntimeError::UnsupportedOperation { operation }
++                        if operation == "test_policy_decision_failure"
++                ),
++                "expected exact UnsupportedOperation error, got: {runtime_err:?}"
++            );
++        }
++        other => {
++            return Err(format!(
++                "expected RegisteredExecutionError::Runtime with UnsupportedOperation, got: {other:?}"
++            )
++            .into());
++        }
++    }
++
++    // Zero effects on the real FjallRegister.
++    assert_eq!(
++        adapter.effect_count()?,
++        0,
++        "strict port failure must not produce any effect"
++    );
++
++    // Pending state unchanged after strict port failure.
++    let pending_after = runtime.pending_boundary_snapshot(8);
++    assert_eq!(
++        pending_after, pending_before,
++        "strict port failure must not alter pending state"
++    );
++
++    // Pending ticket unchanged — compare exact identity.
++    let ticket_after = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket after failure")?;
++    assert_eq!(
++        Some(ticket_after),
++        Some(ticket),
++        "pending ticket must remain identical after strict port failure"
++    );
++
++    // No stored decisions (strict port failed before any event).
++    let events = vb_storage::read_run_events(&journal, run)?;
++    let decision_events: Vec<_> = events
++        .iter()
++        .filter_map(|e| match e {
++            vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision),
++            _ => None,
++        })
++        .collect();
++    assert_eq!(
++        decision_events.len(),
++        0,
++        "strict port failure must not store any policy decision"
++    );
++
++    // Verify the port was called exactly once with the expected decision
++    // and the actual current sequence number.
++    let expected_seq = {
++        let events = vb_storage::read_run_events(&journal, run)?;
++        let last = events
++            .last()
++            .ok_or("expected at least one prior event for seq computation")?;
++        let next = last
++            .seq()
++            .get()
++            .checked_add(1)
++            .ok_or("expected seq arithmetic to stay within u64")?;
++        EventSeq::new(next)
++    };
++
++    let expected_input_digest = compute_expected_input_digest(77, Taint::Clean, &ticket)?;
++    let expected_record = DecisionRecord {
++        ticket,
++        admission: PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(
++            artifact.policy_digest.as_bytes(),
++        )),
++        current_live: CurrentPolicyIdentity::Configured {
++            digest: allowed_digest,
++        },
++        input_digest: expected_input_digest,
++        taint: Taint::Clean,
++        outcome: DecisionCode::Allowed,
++        layer: PolicyLayer::Live,
++        emergency_influence: InfluenceState::Inactive,
++        compat_influence: InfluenceState::NotEvaluated,
++    };
++
++    assert!(
++        wrapped.policy_port_called(),
++        "strict port must have been called"
++    );
++    let captured = wrapped.captured_decision()?.ok_or("no decision captured")?;
++    assert_eq!(
++        captured, expected_record,
++        "single-decision view must match full oracle"
++    );
++    assert_eq!(
++        wrapped.captured_calls()?,
++        vec![(expected_record, expected_seq)],
++        "exact single call with full record and correct seq must be captured"
++    );
++
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs
+new file mode 100644
+index 000000000..8ded50dcb
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/suspended.rs
+@@ -0,0 +1,276 @@
++use super::*;
++use vb_core::action::ActionContract;
++use vb_core::workflow::CompiledWorkflow;
++
++type CaseResult<T> = Result<T, Box<dyn std::error::Error>>;
++
++/// Typed case struct for suspended policy fail-closed tests.
++struct SuspendedTestCase {
++    dir: tempfile::TempDir,
++    run: RunId,
++    action: ActionId,
++    catalog: ExecutorCatalog,
++    workflow: CompiledWorkflow,
++    contract: ActionContract,
++    journal: Arc<FjallJournal>,
++    artifact: vb_storage::AcceptedArtifact,
++    runtime: Runtime,
++    suspended_digest: PolicyDigest,
++}
++
++fn submit_case_artifact(
++    journal: &Arc<FjallJournal>,
++    catalog: &ExecutorCatalog,
++    workflow: &CompiledWorkflow,
++    contract: &ActionContract,
++) -> CaseResult<vb_storage::AcceptedArtifact> {
++    let pack = catalog.register_pack(contract, scope(), RecoveryClass::ReconcileReceipt)?;
++    Ok(catalog.submit_artifact(
++        journal,
++        workflow,
++        RuntimePolicy::Strict,
++        &[contract.clone()],
++        &[pack],
++    )?)
++}
++
++fn make_case_runtime(
++    journal: &Arc<FjallJournal>,
++    catalog: &ExecutorCatalog,
++) -> CaseResult<Runtime> {
++    let storage = StorageRuntimeJournal::shared_strict_with_catalog(
++        journal.clone(),
++        Arc::new(catalog.clone()),
++    );
++    Ok(Runtime::new(shard_count(1)?, strict_config(), storage))
++}
++
++fn build_suspended_case() -> CaseResult<SuspendedTestCase> {
++    let dir = tempfile::tempdir()?;
++    let run = RunId::new(11_001);
++    let action = ActionId::new(0);
++
++    let catalog = ExecutorCatalog::run_registered_conformance()?;
++    let workflow = action_then_finish_workflow()?;
++    let contract = external_contract(action)?;
++
++    let journal = Arc::new(FjallJournal::open(
++        dir.path(),
++        Some(FjallConfig::default()),
++    )?);
++    let artifact = submit_case_artifact(&journal, &catalog, &workflow, &contract)?;
++    let runtime = make_case_runtime(&journal, &catalog)?;
++
++    Ok(SuspendedTestCase {
++        dir,
++        run,
++        action,
++        catalog,
++        workflow,
++        contract,
++        journal,
++        artifact,
++        runtime,
++        suspended_digest: PolicyDigest::from_bytes([0x99u8; 32]),
++    })
++}
++
++fn configure_suspended_policy(
++    runtime: &mut Runtime,
++    action: ActionId,
++    digest: PolicyDigest,
++) -> CaseResult<()> {
++    runtime.configure_live_policy(
++        digest,
++        PolicyRule {
++            action,
++            code: DecisionCode::Suspended,
++        },
++    )?;
++    Ok(())
++}
++
++fn submit_and_tick(
++    runtime: &mut Runtime,
++    run: RunId,
++    workflow: CompiledWorkflow,
++    contract: ActionContract,
++) -> CaseResult<()> {
++    runtime.submit_direct_with_inputs_grants_and_contracts(
++        run,
++        workflow,
++        Box::from([(SlotIdx::ZERO, SlotValue::I64(42))]),
++        action_grants(ActionId::new(0)),
++        Box::from([contract]),
++    )?;
++    runtime.tick_all()?;
++    Ok(())
++}
++
++fn get_ticket_and_grant(
++    runtime: &Runtime,
++    catalog: &ExecutorCatalog,
++    artifact: &vb_storage::AcceptedArtifact,
++    run: RunId,
++) -> CaseResult<(
++    vb_core::action::ActionTicket,
++    vb_storage::executor::RegisterGrant,
++)> {
++    let ticket = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket")?;
++    let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
++    Ok((ticket, grant))
++}
++
++fn compute_expected_decision(
++    artifact: &vb_storage::AcceptedArtifact,
++    ticket: &vb_core::action::ActionTicket,
++    suspended_digest: PolicyDigest,
++) -> CaseResult<DecisionRecord> {
++    let expected_input_digest = compute_expected_input_digest(42, Taint::Clean, ticket)?;
++    let expected_admission = PolicyDigest::from_bytes(artifact.policy_digest.as_bytes());
++    let expected = DecisionRecord {
++        ticket: ticket.clone(),
++        admission: PinnedAdmissionPolicy::Artifact(expected_admission),
++        current_live: CurrentPolicyIdentity::Configured {
++            digest: suspended_digest,
++        },
++        input_digest: expected_input_digest,
++        taint: Taint::Clean,
++        outcome: DecisionCode::Suspended,
++        layer: PolicyLayer::Live,
++        emergency_influence: InfluenceState::Inactive,
++        compat_influence: InfluenceState::NotEvaluated,
++    };
++    Ok(expected)
++}
++
++fn execute_with_adapter(
++    runtime: &mut Runtime,
++    adapter: &mut FjallRegister,
++    run: RunId,
++    grant: &vb_storage::executor::RegisterGrant,
++) -> Result<vb_storage::executor::RegisterReceipt, RegisteredExecutionError> {
++    runtime.execute_registered_action(adapter, run, u64::from(StepIdx::ZERO.get()), grant)
++}
++
++fn assert_policy_denied_full_record(
++    result: Result<vb_storage::executor::RegisterReceipt, RegisteredExecutionError>,
++    expected: &DecisionRecord,
++    suspended_digest: PolicyDigest,
++) -> CaseResult<()> {
++    let Err(RegisteredExecutionError::PolicyDenied(decision)) = result else {
++        return Err(
++            format!("expected PolicyDenied with Suspended decision, got: {result:?}").into(),
++        );
++    };
++    assert_eq!(decision.outcome, DecisionCode::Suspended);
++    assert_eq!(decision.layer, PolicyLayer::Live);
++    match decision.current_live {
++        CurrentPolicyIdentity::Configured { digest } => assert_eq!(digest, suspended_digest),
++        other => return Err(format!("expected Configured live policy, got: {other:?}").into()),
++    }
++    assert_eq!(decision.ticket, expected.ticket);
++    assert_eq!(decision.input_digest, expected.input_digest);
++    assert_eq!(decision.taint, Taint::Clean);
++    assert_eq!(decision.emergency_influence, InfluenceState::Inactive);
++    assert_eq!(decision.compat_influence, InfluenceState::NotEvaluated);
++    assert_eq!(
++        decision.as_ref(),
++        expected,
++        "returned decision must match full expected record"
++    );
++    Ok(())
++}
++
++fn assert_zero_effects(adapter: &FjallRegister) -> CaseResult<()> {
++    assert_eq!(
++        adapter.effect_count()?,
++        0,
++        "suspended policy must not produce any effect"
++    );
++    Ok(())
++}
++
++fn assert_pending_unchanged(
++    runtime: &Runtime,
++    run: RunId,
++    pending_before: vb_runtime::runtime::RuntimePendingBoundarySnapshot,
++    ticket: &vb_core::action::ActionTicket,
++) -> CaseResult<()> {
++    let pending_after = runtime.pending_boundary_snapshot(8);
++    assert_eq!(
++        pending_after, pending_before,
++        "suspended policy rejection must not alter pending state"
++    );
++
++    let ticket_after = runtime
++        .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
++        .ok_or("expected pending action ticket after rejection")?;
++    assert_eq!(
++        Some(ticket_after),
++        Some(ticket.clone()),
++        "pending ticket must remain identical after suspended policy rejection"
++    );
++    Ok(())
++}
++
++fn assert_stored_decision(
++    journal: &Arc<FjallJournal>,
++    run: RunId,
++    expected: &DecisionRecord,
++) -> CaseResult<()> {
++    let events = vb_storage::read_run_events(journal, run)?;
++    let decision_events: Vec<_> = events
++        .iter()
++        .filter_map(|e| match e {
++            vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision),
++            _ => None,
++        })
++        .collect();
++    assert_eq!(
++        decision_events.len(),
++        1,
++        "exactly one policy decision event must be stored"
++    );
++    assert_eq!(
++        decision_events,
++        vec![expected],
++        "stored decision event must exactly match expected full record"
++    );
++    Ok(())
++}
++
++/// Test 1: Actual current Suspended policy before execute on a genuine
++/// accepted artifact / pending action. Expect typed PolicyDenied with
++/// full 9-field DecisionRecord, zero effects, unchanged pending state.
++#[test]
++fn suspended_policy_denies_execution_with_full_record() -> CaseResult<()> {
++    let mut case = build_suspended_case()?;
++    configure_suspended_policy(&mut case.runtime, case.action, case.suspended_digest)?;
++    submit_and_tick(
++        &mut case.runtime,
++        case.run,
++        case.workflow.clone(),
++        case.contract.clone(),
++    )?;
++
++    let (ticket, grant) =
++        get_ticket_and_grant(&case.runtime, &case.catalog, &case.artifact, case.run)?;
++
++    let expected = compute_expected_decision(&case.artifact, &ticket, case.suspended_digest)?;
++
++    let pending_before = case.runtime.pending_boundary_snapshot(8);
++
++    let register_path = case.dir.path().join("register");
++    let mut adapter = FjallRegister::open(&register_path, 8)?;
++    let result = execute_with_adapter(&mut case.runtime, &mut adapter, case.run, &grant);
++
++    assert_policy_denied_full_record(result, &expected, case.suspended_digest)?;
++    assert_zero_effects(&adapter)?;
++    assert_pending_unchanged(&case.runtime, case.run, pending_before, &ticket)?;
++    assert_stored_decision(&case.journal, case.run, &expected)?;
++
++    Ok(())
++}
+diff --git a/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/test_journal.rs b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/test_journal.rs
+new file mode 100644
+index 000000000..b20d49751
+--- /dev/null
++++ b/crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/test_journal.rs
+@@ -0,0 +1,124 @@
++//! Test-only RuntimeJournal wrapper that overrides only
++//! append_policy_decision_strict to return a controlled failure.
++//! All other methods delegate to the real underlying journal.
++
++use std::sync::atomic::{AtomicBool, Ordering};
++use std::sync::{Arc, Mutex};
++
++use vb_runtime::journal::{RuntimeJournal, SharedRuntimeJournal, StorageRuntimeJournal};
++use vb_runtime::{RuntimeError, RuntimeResult};
++use vb_storage::{EventSeq, FjallJournal};
++
++/// Test wrapper that delegates all real methods but overrides
++/// append_policy_decision_strict to return a specific test error.
++pub(crate) struct FailingPolicyPortJournal {
++    inner: SharedRuntimeJournal,
++    policy_port_called: Arc<AtomicBool>,
++    captured_decision: Arc<Mutex<Option<vb_core::policy::DecisionRecord>>>,
++    captured_calls: Arc<Mutex<Vec<(vb_core::policy::DecisionRecord, EventSeq)>>>,
++}
++
++impl FailingPolicyPortJournal {
++    pub(crate) fn new(
++        inner: Arc<FjallJournal>,
++        catalog: vb_storage::executor::ExecutorCatalog,
++    ) -> Self {
++        Self {
++            inner: StorageRuntimeJournal::shared_strict_with_catalog(inner, Arc::new(catalog)),
++            policy_port_called: Arc::new(AtomicBool::new(false)),
++            captured_decision: Arc::new(Mutex::new(None)),
++            captured_calls: Arc::new(Mutex::new(Vec::new())),
++        }
++    }
++
++    pub(crate) fn policy_port_called(&self) -> bool {
++        self.policy_port_called.load(Ordering::SeqCst)
++    }
++
++    pub(crate) fn captured_decision(
++        &self,
++    ) -> Result<Option<vb_core::policy::DecisionRecord>, String> {
++        self.captured_decision
++            .lock()
++            .map_err(|_| "captured_decision mutex poisoned".to_owned())
++            .map(|guard| guard.clone())
++    }
++
++    pub(crate) fn captured_calls(
++        &self,
++    ) -> Result<Vec<(vb_core::policy::DecisionRecord, EventSeq)>, String> {
++        self.captured_calls
++            .lock()
++            .map_err(|_| "captured_calls mutex poisoned".to_owned())
++            .map(|guard| guard.clone())
++    }
++}
++
++impl RuntimeJournal for FailingPolicyPortJournal {
++    fn append(&self, event: vb_runtime::journal::RuntimeJournalEvent) -> RuntimeResult<()> {
++        self.inner.append(event)
++    }
++
++    fn append_sequenced(
++        &self,
++        event: vb_runtime::journal::RuntimeJournalEvent,
++        seq: EventSeq,
++    ) -> RuntimeResult<()> {
++        self.inner.append_sequenced(event, seq)
++    }
++
++    fn append_sequenced_batch(
++        &self,
++        events: &[vb_runtime::journal::RuntimeJournalEvent],
++        start_seq: EventSeq,
++    ) -> RuntimeResult<()> {
++        self.inner.append_sequenced_batch(events, start_seq)
++    }
++
++    fn probe(&self) -> RuntimeResult<()> {
++        self.inner.probe()
++    }
++
++    fn storage_journal(&self) -> Option<Arc<FjallJournal>> {
++        self.inner.storage_journal()
++    }
++
++    fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> {
++        self.inner.executor_catalog()
++    }
++
++    fn append_policy_decision_strict(
++        &self,
++        decision: vb_core::policy::DecisionRecord,
++        seq: EventSeq,
++    ) -> RuntimeResult<()> {
++        self.policy_port_called.store(true, Ordering::SeqCst);
++
++        // Capture (decision, seq) pair BEFORE old single-decision capture
++        // so exact single-call + seq verification is possible.
++        {
++            let mut calls = self.captured_calls.lock().map_err(|_| RuntimeError::Core {
++                source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
++                    reason: "captured_calls mutex poisoned",
++                }),
++            })?;
++            calls.push((decision.clone(), seq));
++        }
++
++        // Old single-decision capture for backwards compat with existing
++        // test assertions.
++        let mut captured = self
++            .captured_decision
++            .lock()
++            .map_err(|_| RuntimeError::Core {
++                source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
++                    reason: "captured_decision mutex poisoned",
++                }),
++            })?;
++        *captured = Some(decision);
++
++        Err(RuntimeError::UnsupportedOperation {
++            operation: "test_policy_decision_failure",
++        })
++    }
++}

@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:147:         run,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:148:         build_workflow()?,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:149:         Box::from([(SlotIdx::ZERO, SlotValue::I64(42))]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:150:         action_grants(action),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:151:         Box::from([build_contract(action)?]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:152:     )?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:153:     runtime_reopen.tick_all()?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:154: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:155:     let ticket = runtime_reopen
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:156:         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:157:         .ok_or("expected pending action ticket")?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:158: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:159:     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:160:     let register_path = dir.path().join("register");
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:161:     let mut adapter = FjallRegister::open(&register_path, 8)?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:162: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:163:     let boundary_before = runtime_reopen.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:164: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:165:     let result = runtime_reopen.execute_registered_action(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:166:         &mut adapter,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:167:         run,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:168:         u64::from(StepIdx::ZERO.get()),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:169:         &grant,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:170:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:171: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:172:     let decision = match result {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:173:         Err(vb_runtime::runtime::RegisteredExecutionError::PolicyDenied(record)) => record,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:174:         other => {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:175:             return Err(format!("expected PolicyDenied, got {:?}", other).into());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:176:         }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:177:     };
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:178: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:179:     // Verify full 9-field decision record
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:180:     let expected_input_digest = compute_expected_input_digest(42, Taint::Clean, &ticket)?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:181:     let expected_admission = admission_pin_from_artifact(artifact.policy_digest.as_bytes());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:182:     let expected_live = current_live_configured([0x11u8; 32]);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:183:     let expected = expected_emergency_decision(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:184:         ticket,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:185:         expected_admission,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:186:         expected_live,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:187:         expected_input_digest,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:188:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:189: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:190:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:191:         decision.as_ref(),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:192:         &expected,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:193:         "decision record must match full 9-field expected record"
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:194:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:195: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:196:     // Ticket unchanged after denied execution
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:197:     let ticket_after = runtime_reopen
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:198:         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:199:         .ok_or("expected pending action ticket after denied execution")?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:200:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:201:         ticket_after, ticket,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:202:         "ticket must be unchanged after denied execution"
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:203:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:204: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:205:     // No adapter effect
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:206:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:207:         adapter.effect_count()?,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:208:         0,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:209:         "no adapter effect on denied execution"
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:210:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:211:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:212:         adapter.value(scope())?,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:213:         None,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:214:         "adapter value must be None for denied execution"
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:215:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:216: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:217:     // Boundary unchanged after denied execution
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:218:     let boundary_after = runtime_reopen.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:219:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:220:         boundary_after, boundary_before,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:221:         "boundary must be unchanged after denied execution"
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:222:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:223: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:224:     // Verify exact PolicyDecisionEvent persisted in journal
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:225:     let events = vb_storage::read_run_events(&journal_reopen, run)?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:226:     let policy_events: Vec<&vb_core::policy::DecisionRecord> = events
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:227:         .iter()
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:228:         .filter_map(|e| match e {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:229:             vb_storage::JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:230:             _ => None,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:231:         })
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:232:         .collect();
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:233:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:234:         policy_events.len(),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:235:         1,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:236:         "exactly one policy decision event must be stored"
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:237:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:238:     let stored_decision = policy_events.first().ok_or("expected one decision event")?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:239:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:240:         *stored_decision, &expected,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:241:         "stored decision must match expected 9-field record"
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:242:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:243:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:244:         stored_decision.ticket.run, run,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:245:         "stored decision must reference correct run"
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:246:     );
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:247: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:248:     Ok(())
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen.rs:249: }
+FILE crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs SHA256 31bbe6d77f450736bf85228ad690860a2c76c373fefe3b6eec1295b95318df09
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:1: use std::num::NonZeroUsize;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:2: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:3: use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:4: use vb_core::action_pack::CapabilityScopeSpec;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:5: use vb_core::capability::{Capability, CapabilitySet};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:6: use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:7: use vb_core::policy::RuntimePolicy;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:8: use vb_core::workflow::{
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:9:     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:10: };
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:11: use vb_runtime::shard::ShardConfig;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:12: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:13: pub(super) fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:14:     NonZeroUsize::new(value).ok_or_else(|| format!("invalid shard count {value}"))
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:15: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:16: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:17: pub(super) fn strict_config() -> ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:18:     ShardConfig {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:19:         command_queue_capacity: 32,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:20:         trace_capacity: 64,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:21:         step_budget_per_tick: 16,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:22:         max_active_runs: 8,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:23:         policy: RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:24:     }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:25: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:26: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:27: fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:28:     CompiledNode {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:29:         id: StepIdx::new(id),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:30:         output: output.map(SlotIdx::new),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:31:         next: next.map(StepIdx::new),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:32:         on_error: None,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:33:         error_slot: None,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:34:         kind,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:35:     }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:36: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:37: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:38: pub(super) fn build_workflow() -> Result<CompiledWorkflow, String> {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:39:     let parts = WorkflowParts {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:40:         semantic_source_identity: None,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:41:         input_slots: Box::new([]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:42:         name: Box::from("vb_c4hzw_emergency_reopen"),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:43:         digest: WorkflowDigest::from_bytes([0; 32]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:44:         nodes: Box::from([
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:45:             node(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:46:                 0,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:47:                 Some(1),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:48:                 Some(1),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:49:                 CompiledNodeKind::Do {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:50:                     action: ActionId::new(0),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:51:                     input: SlotIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:52:                 },
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:53:             ),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:54:             node(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:55:                 1,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:56:                 None,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:57:                 None,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:58:                 CompiledNodeKind::Finish {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:59:                     result: SlotIdx::new(1),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:60:                 },
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:61:             ),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:62:         ]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:63:         expressions: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:64:         accessors: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:65:         constants: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:66:         slot_count: 2,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:67:         symbols_count: 0,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:68:         entry: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:69:         step_names: Box::from([]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:70:         resource_contract: ResourceContract::DEFAULT,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:71:     };
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:72:     let hash = postcard::to_allocvec(&parts).map_err(|e| e.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:73:     let mut parts = parts;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:74:     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash).into());
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:75:     CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:76: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:77: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:78: pub(super) fn build_contract(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:79:     action: ActionId,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:80: ) -> Result<ActionContract, Box<dyn std::error::Error>> {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:81:     Ok(ActionContract {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:82:         id: action,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:83:         name: ActionName::new("vb_c4hzw_emergency_reopen_action")?,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:84:         input_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:85:         output_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:86:         max_input_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:87:         max_output_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:88:         timeout_ms: 1000,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:89:         idempotency: Idempotency::IdempotentExternal,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:90:         side_effect: SideEffect::Writes,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:91:         retry_safety: RetrySafety::KeyRequired,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:92:         required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:93:     })
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:94: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:95: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:96: pub(super) fn scope() -> CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:97:     CapabilityScopeSpec {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:98:         namespace: 15,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:99:         key: 29,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:100:     }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:101: }
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:102: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:103: pub(super) fn action_grants(action: ActionId) -> CapabilitySet {
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:104:     CapabilitySet::from_grants(Box::from([Capability::new(
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:105:         "velvet.register.write".into(),
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:106:         action,
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:107:     )]))
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs:108: }
+FILE crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs SHA256 8779676e72320576b00940b2fa46498a75e431ace06481d1ef0c75f76d1f90c9
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:1: // Independent oracle for computing expected input digests and policy
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:2: // identity values. Not a call to production LivePolicy.evaluate or
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:3: // encode_taint_canonical; matches production encoding for verification.
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:4: 
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:5: use blake3::Hasher;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:6: use vb_core::ActionTicket;
+crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/oracle.rs:7: use vb_core::policy::{CurrentPolicyIdentity, PinnedAdmissionPolicy, PolicyDigest};

@@ -22,12 +22,16 @@ fn action_recovery_test_contract()
 
 fn action_recovery_contract_store(
     digest: vb_core::ids::WorkflowDigest,
+    source_digest: vb_core::ids::WorkflowDigest,
+    policy_digest: vb_core::ids::WorkflowDigest,
     workflow_ir: Vec<u8>,
     contract: vb_core::action::ActionContract,
 ) -> crate::admission::SharedAcceptedArtifactStore {
     #[derive(Debug)]
     struct ActionRecoveryContractStore {
         digest: vb_core::ids::WorkflowDigest,
+        source_digest: vb_core::ids::WorkflowDigest,
+        policy_digest: vb_core::ids::WorkflowDigest,
         workflow_ir: Vec<u8>,
         contract: vb_core::action::ActionContract,
     }
@@ -45,8 +49,8 @@ fn action_recovery_contract_store(
             }
             Ok(vb_storage::admission::AcceptedArtifact {
                 digest: self.digest,
-                source_digest: self.digest,
-                policy_digest: self.digest,
+                source_digest: self.source_digest,
+                policy_digest: self.policy_digest,
                 ir: self.workflow_ir.clone(),
                 verification: vb_storage::admission::VerificationProof {
                     evidence: vb_core::artifact::ArtifactEvidence::Unverified,
@@ -71,6 +75,8 @@ fn action_recovery_contract_store(
 
     std::sync::Arc::new(ActionRecoveryContractStore {
         digest,
+        source_digest,
+        policy_digest,
         workflow_ir,
         contract,
     })
@@ -127,6 +133,13 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     let workflow_ir = postcard::to_allocvec(&parts)?;
     let contract = action_recovery_test_contract()?;
 
+    // Compute the actual policy digest from the workflow for fixture provenance.
+    // The parts are consumed here after serialization, so the mock store can
+    // carry the genuine computed digest rather than a made-up one.
+    let policy_digest = vb_storage::admission::compute_policy_digest(
+        &vb_core::workflow::CompiledWorkflow::try_from_parts(parts)?,
+    )?;
+
     let config = crate::shard::ShardConfig {
         command_queue_capacity: 64,
         trace_capacity: 64,
@@ -134,7 +147,17 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         max_active_runs: 8,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let store = action_recovery_contract_store(artifact_digest, workflow_ir, contract.clone());
+    // vb-peb9u: Mocked store with internally consistent provenance. The artifact
+    // digest is content hash [43u8;32]; source digest matches workflow identity
+    // [42u8;32]; policy digest is the real computed value. Full admission would
+    // accept these together; the Unverified pin remains the test subject.
+    let store = action_recovery_contract_store(
+        artifact_digest,
+        workflow_digest,
+        policy_digest,
+        workflow_ir,
+        contract.clone(),
+    );
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared_journal = journal.clone();
     let mut shard = crate::shard::Shard::new_with_journal_and_artifact_store(
@@ -364,9 +387,15 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
     failed.frame.mark_failed(vb_core::ids::StepIdx::ZERO)?;
 
     // Forge a policy pin that differs from the artifact's actual policy digest.
-    // The original recovered admission has pin [43u8;32] (artifact identity);
-    // use [44u8;32] to guarantee mismatch.
+    // The original recovered admission has an Unverified raw pin (no digest).
+    // Use a fabricated digest to guarantee the forged pin mismatches the real
+    // computed policy digest, proving the checkpoint pin validation path.
     let wrong_pin = vb_core::ids::WorkflowDigest::from_bytes([44u8; 32]);
+    assert_ne!(
+        wrong_pin,
+        vb_storage::admission::compute_policy_digest(&original.workflow)?,
+        "forged pin must differ from the workflow's actual policy digest"
+    );
     let forged_admission = failed
         .admission
         .as_ref()
@@ -432,6 +461,224 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         journal.snapshot()?,
         original_journal,
         "journal must be unchanged after rejected checkpoint probe"
+    );
+
+    // Second probe: admission policy mismatch (Strict configured vs Relaxed
+    // actual shard policy) with a valid Unverified historical pin. The pin check
+    // passes, but the configured policy in the admission record does not match
+    // the shard's actual runtime policy. This should be rejected with
+    // admission_policy_mismatch.
+    // Use a fresh shard so the run is not already tracked (avoids RunAlreadyExists
+    // masking the policy admission check).
+    let mut failed_policy = original.clone();
+    failed_policy
+        .frame
+        .mark_failed(vb_core::ids::StepIdx::ZERO)?;
+
+    let strict_admission = crate::admission::RunAdmission::new(
+        artifact_digest,
+        run_id,
+        original
+            .admission
+            .as_ref()
+            .ok_or("original must carry admission record")?
+            .granted_capabilities()
+            .clone(),
+        vb_core::policy::RuntimePolicy::Strict,
+    )
+    .with_policy_pin(vb_storage::RunPolicyPin::Unverified);
+    failed_policy.admission = Some(strict_admission);
+
+    let policy_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
+        run_id,
+        artifact_digest,
+        core::num::NonZeroU16::new(2).ok_or("invalid checkpoint attempt number")?,
+        vb_core::ids::StepIdx::ZERO,
+        1,
+        &failed_policy,
+    )?;
+
+    let policy_retry_frame =
+        vb_core::frame::RunFrame::from_checkpoint_v1(policy_checkpoint.frame.clone())
+            .map_err(|error| format!("policy retry frame fixture failed: {error:?}"))?;
+
+    let policy_command = RecoverRunCommand::new(
+        run_id,
+        policy_retry_frame,
+        artifact_digest,
+        original.workflow.digest(),
+        vb_storage::types::EventSeq::new(2),
+        crate::primitives::collect::CollectStates::new(),
+        crate::recovery::RecoveredRunBoundary::none(),
+    )
+    .with_retry_checkpoint(policy_checkpoint);
+
+    // Fresh shard with matching Relaxed policy, same config as original.
+    let fresh_config = crate::shard::ShardConfig {
+        command_queue_capacity: 64,
+        trace_capacity: 64,
+        step_budget_per_tick: 4,
+        max_active_runs: 8,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let fresh_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let mut fresh_shard = crate::shard::Shard::new_with_journal_and_artifact_store(
+        fresh_config,
+        fresh_journal.clone(),
+        shard.artifact_store.clone(),
+    );
+
+    // Capture fresh shard pre-state: empty pending and journal.
+    let fresh_pending = fresh_shard.pending_boundary_snapshot(0, 8);
+    let fresh_journal_snapshot = fresh_journal.snapshot()?;
+
+    // The fresh shard must reject because the admission's configured policy (Strict)
+    // differs from the actual shard policy (Relaxed), even though the pin is
+    // Unverified (historical) and therefore passes the pin check.
+    let policy_result = fresh_shard.handle_recover(policy_command);
+    assert_eq!(
+        policy_result,
+        Err(crate::RuntimeError::RecoveryCannotResume {
+            reason: "admission_policy_mismatch".to_string()
+        }),
+        "fresh shard must reject retry checkpoint with admission policy mismatch"
+    );
+
+    // The rejected policy probe must leave the fresh shard with no run state
+    // and empty pending/journal.
+    assert_eq!(
+        fresh_shard.run_state_get(run_id),
+        None,
+        "fresh shard run state must be empty after rejected policy mismatch probe"
+    );
+    assert_eq!(
+        fresh_shard.pending_boundary_snapshot(0, 8),
+        fresh_pending,
+        "fresh shard pending boundaries must be unchanged after rejected policy mismatch probe"
+    );
+    assert_eq!(
+        fresh_journal.snapshot()?,
+        fresh_journal_snapshot,
+        "fresh shard journal must be unchanged after rejected policy mismatch probe"
+    );
+
+    // The original shard's state must also remain unchanged from the first probe.
+    assert_eq!(
+        shard.run_state_get(run_id),
+        Some(&original),
+        "original shard run state must be unchanged after both checkpoint probes"
+    );
+    assert_eq!(
+        shard.pending_boundary_snapshot(0, 8),
+        original_pending,
+        "original shard pending boundaries must be unchanged after both checkpoint probes"
+    );
+    assert_eq!(
+        journal.snapshot()?,
+        original_journal,
+        "original shard journal must be unchanged after both checkpoint probes"
+    );
+
+    // Positive control: a valid failed checkpoint with matching admission,
+    // correct artifact identity, and genuine policy provenance must recover
+    // successfully. This proves the checkpoint machinery works when fixtures
+    // are internally consistent, not just that invalid fixtures are rejected.
+    let mut valid_failed = original.clone();
+    valid_failed
+        .frame
+        .mark_failed(vb_core::ids::StepIdx::ZERO)?;
+
+    let valid_checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
+        run_id,
+        artifact_digest,
+        core::num::NonZeroU16::new(2).ok_or("invalid valid checkpoint attempt number")?,
+        vb_core::ids::StepIdx::ZERO,
+        1,
+        &valid_failed,
+    )?;
+
+    let valid_retry_frame =
+        vb_core::frame::RunFrame::from_checkpoint_v1(valid_checkpoint.frame.clone())
+            .map_err(|error| format!("valid retry frame fixture failed: {error:?}"))?;
+
+    let valid_command = RecoverRunCommand::new(
+        run_id,
+        valid_retry_frame,
+        artifact_digest,
+        original.workflow.digest(),
+        vb_storage::types::EventSeq::new(2),
+        crate::primitives::collect::CollectStates::new(),
+        crate::recovery::RecoveredRunBoundary::none(),
+    )
+    .with_retry_checkpoint(valid_checkpoint);
+
+    // Fresh shard with matching Relaxed policy. Must recover successfully.
+    let positive_config = crate::shard::ShardConfig {
+        command_queue_capacity: 64,
+        trace_capacity: 64,
+        step_budget_per_tick: 4,
+        max_active_runs: 8,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let positive_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
+    let mut positive_shard = crate::shard::Shard::new_with_journal_and_artifact_store(
+        positive_config,
+        positive_journal.clone(),
+        shard.artifact_store.clone(),
+    );
+
+    let valid_result = positive_shard.handle_recover(valid_command);
+    assert!(
+        valid_result.is_ok(),
+        "valid checkpoint with matching provenance must recover successfully"
+    );
+
+    let restored = positive_shard
+        .run_state_get(run_id)
+        .ok_or("positive control run state not found after recovery")?;
+
+    // Admission restored exactly from the valid checkpoint.
+    assert_eq!(
+        restored.admission, original.admission,
+        "positive control: admission must match original (Unverified, correct run/artifact/policy)"
+    );
+
+    assert_eq!(
+        restored.workflow.digest(),
+        original.workflow.digest(),
+        "positive control: workflow digest must match original"
+    );
+
+    assert_eq!(
+        restored.registered_execution,
+        crate::shard::types::RegisteredExecutionMode::ReconcileOnly,
+        "positive control: execution must be ReconcileOnly for recovered run"
+    );
+
+    // Verify the Do action was rescheduled after positive control recovery.
+    let restored_ticket = positive_shard
+        .pending_action_get(run_id)
+        .ok_or("positive control: pending action not found after recovery")?;
+    assert_eq!(restored_ticket.run, run_id);
+    assert_eq!(restored_ticket.step, vb_core::ids::StepIdx::ZERO);
+    assert_eq!(restored_ticket.action, vb_core::ids::ActionId::new(0));
+    assert_eq!(restored_ticket.attempt, 1);
+
+    // Original shard, its journal, and pending state remain unchanged.
+    assert_eq!(
+        shard.run_state_get(run_id),
+        Some(&original),
+        "original shard run state must be unchanged after positive control"
+    );
+    assert_eq!(
+        shard.pending_boundary_snapshot(0, 8),
+        original_pending,
+        "original shard pending boundaries must be unchanged after positive control"
+    );
+    assert_eq!(
+        journal.snapshot()?,
+        original_journal,
+        "original shard journal must be unchanged after positive control"
     );
 
     Ok(())

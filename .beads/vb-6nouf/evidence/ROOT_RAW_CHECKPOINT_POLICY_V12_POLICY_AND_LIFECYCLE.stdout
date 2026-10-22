@@ -1,0 +1,195 @@
+
+running 18 tests
+test action_completion_after_kill_returns_error ... ok
+test action_completion_after_cancel_returns_error ... ok
+test cancel_after_kill_is_idempotent ... ok
+test cancel_missing_run_returns_run_not_found_error ... ok
+test action_failure_after_cancel_returns_error ... ok
+test cancel_terminal_run_produces_no_side_effects ... ok
+test ec1_terminal_cancelled_state_does_not_regress ... ok
+test hp1_cancel_running_run_transitions_to_cancelled ... ok
+test hp4_action_after_cancel_returns_error ... ok
+test hp3_cancel_action_suspended_run_removes_pending_action ... ok
+test inv1_completed_run_terminal_never_regresses ... ok
+test kill_live_run_produces_runkilled_journal_event ... ok
+test inv1_terminal_never_regresses_after_cancel ... ok
+test kill_missing_run_returns_run_not_found_error ... ok
+test kill_on_cancelled_run_is_idempotent ... ok
+test second_cancel_after_first_cancel_retains_one_event ... ok
+test stale_action_after_cancel_does_not_mutate_state ... ok
+test second_kill_after_first_kill_produces_no_extra_event ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 20 tests
+test recover_and_resume_fails_closed_for_fjall_wait_timer_after_reopen ... ok
+test recover_and_resume_fails_closed_for_fjall_timed_ask_after_reopen ... ok
+test recover_and_resume_fails_closed_for_store_dependent_fjall_pending_action_after_reopen ... ok
+test recover_and_resume_fails_closed_for_store_dependent_fjall_open_ask_after_reopen ... ok
+test recover_and_resume_rehydrates_fjall_pending_action_ticket_after_reopen ... ok
+test recover_and_resume_rejects_action_abi_digest_mismatch ... ok
+test recover_and_resume_rejects_admission_policy_mismatch ... ok
+test recover_and_resume_rejects_capability_mismatch ... ok
+test recover_and_resume_rejects_source_digest_as_artifact_digest ... ok
+test recover_and_resume_rejects_workflow_source_digest_mismatch ... ok
+test recovered_fjall_open_ask_with_scalar_prompt_can_answer_after_reopen ... ok
+test recovered_fjall_open_ask_can_answer_after_reopen ... ok
+test recovered_fjall_pending_action_can_complete_after_reopen ... ok
+test runtime_records_actual_action_abi_at_schedule_boundary ... ok
+test runtime_recover_product_cannot_resume_witness_carries_through_for_pending_asks ... ok
+test runtime_recover_product_cannot_resume_witness_carries_through_for_pending_timers ... ok
+test runtime_submit_drive_persists_recoverable_fjall_pending_action_abi_digest ... ok
+test runtime_recover_product_cannot_resume_witness_carries_through_for_store_missing ... ok
+test runtime_submit_drive_without_action_abi_authority_fails_before_ticket_persist ... ok
+test strict_submit_rejects_unbound_action_abi_before_ticket_persist ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+
+running 9 tests
+test execute_registered_action_commits_one_effect_and_completes_run ... ok
+test execute_registered_action_rejects_mismatched_grant_artifact ... ok
+test policy_dispatch::allowed::allowed_policy_permits_effect_and_records_decision ... ok
+test policy_dispatch::changed_policy::after_scheduling_policy_change_to_deny ... ok
+test policy_dispatch::reconcile::reconcile_ignores_policy_change_after_effect ... ok
+test policy_dispatch::unconfigured::unconfigured_policy_denies_execution ... ok
+test recovery_of_pending_registered_action_blocked_pack_rejects ... ok
+test reconcile_registered_action_reads_receipt_without_new_effect ... ok
+test recovery_of_pending_registered_action_reconcile_pack_is_resumable ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+
+running 30 tests
+test action_queue_dequeue_respects_fifo_order_with_values ... ok
+test answer_ask_returns_run_not_found_for_terminal_run ... ok
+test action_completion_resumes_at_correct_step_when_valid_ticket ... ok
+test answer_ask_returns_run_not_found_for_unknown_run ... ok
+test drive_step_budget_bounds_each_drive_and_preserves_final_output ... ok
+test complete_action_returns_invalid_ticket_error_when_ticket_unknown ... ok
+test fifo_queue_dequeue_content_matches_enqueue_order ... ok
+test migrate_shard_to_self_returns_migrate_self_error ... ok
+test fail_action_transitions_run_to_failed_state ... ok
+test run_reaches_cancelled_state_when_cancel_called ... ok
+test run_reaches_finished_state_when_workflow_complete ... ok
+test run_reaches_failed_state_when_action_fails ... ok
+test runtime_respects_step_budget_per_tick ... ok
+test runtime_routes_run_to_correct_shard_by_run_id_modulo ... ok
+test same_run_id_routes_to_same_shard_always ... ok
+test shard_commands_processed_in_fifo_order ... ok
+test snapshot_run_returns_not_found_for_unknown_run ... ok
+test snapshot_run_returns_shard_not_found_for_invalid_run ... ok
+test step_budget_decrements_correctly_on_each_step ... ok
+test submit_direct_returns_admission_rejected_for_missing_capability ... ok
+test terminal_run_ignores_subsequent_commands ... ok
+test tick_all_processes_at_most_one_command_per_shard ... ok
+test terminal_state_guard_mutation_would_be_caught ... ok
+test tick_all_returns_false_after_graceful_shutdown ... ok
+test tick_all_returns_false_when_any_shard_shutting_down ... ok
+test tick_all_returns_true_when_all_shards_alive ... ok
+test tick_shard_migrate_directive_transfers_commands ... ok
+test tick_shard_continue_directive_processes_command ... ok
+test tick_shard_returns_shard_not_found_for_invalid_index ... ok
+test tick_shard_shutdown_directive_returns_false ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test corrupt_emergency_marker_causes_precise_typed_failure ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 1 test
+test emergency_deny_survives_journal_reopen ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 1 test
+test historical_replay_preserves_state_under_current_deny ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 2 tests
+test legacy_admission_test::legacy_unverified_admission_blocks_new_live_effect ... ok
+test forged_admission_test::forged_policy_pin_rejected_before_recovery_mutation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 3 tests
+test strict_failure::strict_port_failure_returns_typed_runtime_error_with_zero_effects ... ok
+test emergency::emergency_deny_overlay_cannot_be_loosened_by_later_allowed_config ... ok
+test suspended::suspended_policy_denies_execution_with_full_record ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 40 tests
+test action_scheduled_lifecycle_event_recorded ... ok
+test action_completion_transitions_run_from_resumable_to_finished ... ok
+test action_suspension_transitions_run_to_resumable ... ok
+test active_runs_tracked_per_shard_independently ... ok
+test counters_return_exact_zero_initially ... ok
+test cancel_run_transitions_run_to_failed ... ok
+test counters_updated_on_completion ... ok
+test counters_updated_on_submit ... ok
+test counters_updated_on_failure ... ok
+test drain_trace_removes_events ... ok
+test frame_released_on_run_finish ... ok
+test fail_action_transitions_run_to_failed ... ok
+test list_events_is_non_destructive ... ok
+test pending_timers_cleaned_up_on_run_finish ... ok
+test run_finished_lifecycle_event_recorded ... ok
+test run_failed_lifecycle_event_recorded ... ok
+test runtime_state_is_resumable_is_exact ... ok
+test shard_directive_barrier_is_unsupported ... ok
+test shard_directive_cancel_is_unsupported ... ok
+test same_run_id_routes_to_same_shard ... ok
+test shard_directive_migrate_to_invalid_returns_shard_not_found ... ok
+test shard_directive_continue_processes_one_command ... ok
+test shard_directive_migrate_to_self_returns_migrate_self ... ok
+test shard_directive_shutdown_drains_and_returns_false ... ok
+test shard_directive_suspend_preserves_queue ... ok
+test shutdown_drains_before_journal_drain ... ok
+test shutdown_processes_all_shards ... ok
+test snapshot_run_returns_not_found_for_finished_run ... ok
+test snapshot_run_returns_found_with_exact_fields ... ok
+test step_started_lifecycle_event_recorded ... ok
+test submit_returns_exact_queue_full_on_full_queue ... ok
+test submit_lifecycle_event_recorded_before_tick ... ok
+test submit_transitions_run_from_absent_to_initial ... ok
+test terminal_state_is_final_no_further_transitions ... ok
+test tick_all_returns_exact_false_after_shutdown ... ok
+test tick_all_returns_exact_true_when_alive ... ok
+test tick_shard_returns_exact_shard_not_found ... ok
+test tick_all_processes_one_command_per_shard ... ok
+test trace_events_appear_in_deterministic_order ... ok
+test trace_events_recorded_for_run_lifecycle ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 15 tests
+test test_direct_api_action_failure_records_typed_failure ... ok
+test test_direct_api_action_completion_resumes_correct_run ... ok
+test test_direct_api_action_failure_rejects_wrong_run_ticket_without_mutating_unrelated_run ... ok
+test test_direct_api_answer_ask_rejects_answer_slot_mismatch_without_mutating_unrelated_run ... ok
+test test_direct_api_answer_ask_rejects_stale_ticket_without_mutating_unrelated_run ... ok
+test test_direct_api_answer_ask_rejects_stale_ticket_when_terminal_trace_was_evicted ... ok
+test test_direct_api_answer_ask_resumes_suspended_run ... ok
+test test_direct_api_evidence_target_constant_matches_catalog_contract ... ok
+test test_direct_api_health_and_shutdown_equivalent_behavior ... ok
+test test_direct_api_cancel_known_run_records_cancellation ... ok
+test test_direct_api_inspect_known_and_unknown_run_returns_exact_state ... ok
+test test_direct_api_rejects_submission_when_accepted_artifact_required ... ok
+test test_direct_api_submit_to_finish_returns_result_and_taint ... ok
+test test_direct_api_list_events_and_drain_trace_have_exact_semantics ... ok
+test wrong_run_ask::test_direct_api_answer_ask_rejects_wrong_run_ticket_without_mutating_unrelated_run ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

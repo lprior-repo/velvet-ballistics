@@ -1,0 +1,37 @@
+fuzz/src/yaml_target.rs:175:         for i in 0..item_count {
+fuzz/src/yaml_target.rs:176:             yaml.push_str(&format!("  - item{}\n", i));
+fuzz/src/yaml_target.rs:177:         }
+fuzz/src/yaml_target.rs:178: 
+fuzz/src/yaml_target.rs:179:         // Validate via the real compile pipeline
+fuzz/src/yaml_target.rs:180:         vb_compile::validate_yaml_profile(&yaml)?;
+fuzz/src/yaml_target.rs:181: 
+fuzz/src/yaml_target.rs:182:         let events = vb_compile::parse_yaml_events(&yaml)?;
+fuzz/src/yaml_target.rs:183:         assert!(
+fuzz/src/yaml_target.rs:184:             events.len() > 4096,
+fuzz/src/yaml_target.rs:185:             "test YAML must produce >4096 events, got {}",
+fuzz/src/yaml_target.rs:186:             events.len()
+fuzz/src/yaml_target.rs:187:         );
+fuzz/src/yaml_target.rs:188:         assert!(
+fuzz/src/yaml_target.rs:189:             events.len() <= 100000,
+fuzz/src/yaml_target.rs:190:             "test YAML must stay within default max_nodes, got {}",
+fuzz/src/yaml_target.rs:191:             events.len()
+fuzz/src/yaml_target.rs:192:         );
+fuzz/src/yaml_target.rs:193: 
+fuzz/src/yaml_target.rs:194:         let source_map = vb_compile::build_source_map(&yaml)?;
+fuzz/src/yaml_target.rs:195:         assert!(
+fuzz/src/yaml_target.rs:196:             source_map.len() > 4096,
+fuzz/src/yaml_target.rs:197:             "test YAML must produce >4096 source map entries, got {}",
+fuzz/src/yaml_target.rs:198:             source_map.len()
+fuzz/src/yaml_target.rs:199:         );
+fuzz/src/yaml_target.rs:200:         assert!(
+fuzz/src/yaml_target.rs:201:             source_map.len() <= 100000,
+fuzz/src/yaml_target.rs:202:             "test YAML must stay within default max_nodes, got {}",
+fuzz/src/yaml_target.rs:203:             source_map.len()
+fuzz/src/yaml_target.rs:204:         );
+fuzz/src/yaml_target.rs:205: 
+fuzz/src/yaml_target.rs:206:         // This assertion will fail with MAX_FUZZ_PAYLOAD_USIZE=4096 (RED)
+fuzz/src/yaml_target.rs:207:         // and pass once the constant is fixed to 100000 (GREEN).
+fuzz/src/yaml_target.rs:208:         fuzz_yaml_events(yaml.as_bytes());
+fuzz/src/yaml_target.rs:209:         Ok(())
+fuzz/src/yaml_target.rs:210:     }
+fuzz/src/yaml_target.rs:211: }

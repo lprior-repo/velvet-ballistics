@@ -1,0 +1,10 @@
+{
+  "bead": "vb-6nouf",
+  "source_sha256": "1cd50d9650bcc8e4c9e6488e35588540b6a094252bea09491bd40c071a38e854",
+  "source": "crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs",
+  "author": "local RTX5090 through mise OMP thinking high no cloud fallback",
+  "root_changes": "compiler-directed RegisteredExecutionMode enum name and mut bindings plus rustfmt only",
+  "actual_red": "ROOT_RAW_CHECKPOINT_POLICY_V6_VALIDATED_FIXTURE_REAL_RED exit101: Ok(()) versus exact RecoveryCannotResume admission_policy_mismatch, 1 executed test",
+  "positive_control": "matching valid failed checkpoint must recover ReconcileOnly with unchanged historical Unverified admission; executes after failing policy guard is fixed",
+  "prototype_failures": "V4 and V5 compile errors retained; not counted as behavior RED"
+}

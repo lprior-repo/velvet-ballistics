@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:117:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:118: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:119:     // Issuer: the originating run is also completely unchanged — the answer was rejected
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:120:     // at the receiver's boundary before any propagation.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:121:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:122:         issuer.snapshot_run(issuer_run, 606),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:123:         issuer_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:124:         "issuer snapshot must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:125:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:126:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:127:         trace_events(&issuer, issuer_run)?,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:128:         issuer_events_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:129:         "issuer trace must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:130:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:131:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:132:         issuer
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:133:             .list_active_runs(8, None)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:134:             .iter()
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:135:             .map(|summary| summary.run_id)
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:136:             .collect::<Vec<_>>(),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:137:         issuer_active_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:138:         "issuer active list must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:139:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:140:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:141:         issuer.counters_snapshot(),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:142:         issuer_counters_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:143:         "issuer counters must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:144:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:145:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:146:         issuer.pending_boundary_snapshot(8),
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:147:         issuer_boundary_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:148:         "issuer pending boundary must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:149:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:150: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:151:     // The receiver's run remains genuinely suspended with its own ticket unchanged.
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:152:     let receiver_ticket = receiver
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:153:         .lookup_pending_ask_ticket(receiver_run, StepIdx::new(2))
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:154:         .ok_or("receiver unrelated run must still be suspended on ask after rejection")?;
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:155:     assert_eq!(
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:156:         receiver_ticket, receiver_ticket_before,
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:157:         "receiver ticket must be unchanged after rejected wrong-run answer"
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:158:     );
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:159: 
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:160:     Ok(())
+crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance/wrong_run_ask.rs:161: }
+FILE fuzz/src/yaml_target.rs SHA256 878302d163b2de2bbc7e22fbce2f34edd7ecb6051d043852fddea3b164409bb5
+fuzz/src/yaml_target.rs:1: //! YAML parsing fuzzing targets.
+fuzz/src/yaml_target.rs:2: //
+fuzz/src/yaml_target.rs:3: // The strict fuzz clippy denies `indexing_slicing`, `as_conversions`,
+fuzz/src/yaml_target.rs:4: // `let_underscore_must_use`, and `arithmetic_side_effects`. The broad
+fuzz/src/yaml_target.rs:5: // `#![allow(...)]` lines that previously suppressed those lints have been
+fuzz/src/yaml_target.rs:6: // removed so the strict gate is enforceable. The remaining allows are
+fuzz/src/yaml_target.rs:7: // documentary lints the strict command does not deny.
+fuzz/src/yaml_target.rs:8: #![allow(clippy::missing_errors_doc)]
+fuzz/src/yaml_target.rs:9: #![allow(clippy::must_use_candidate)]
+fuzz/src/yaml_target.rs:10: #![allow(clippy::missing_panics_doc)]
+fuzz/src/yaml_target.rs:11: #![allow(clippy::too_many_lines)]
+fuzz/src/yaml_target.rs:12: #![allow(clippy::items_after_statements)]
+fuzz/src/yaml_target.rs:13: #![allow(clippy::doc_markdown)]
+fuzz/src/yaml_target.rs:14: #![allow(clippy::len_zero)]
+fuzz/src/yaml_target.rs:15: 
+fuzz/src/yaml_target.rs:16: const MAX_FUZZ_PAYLOAD_USIZE: usize = 100_000;
+fuzz/src/yaml_target.rs:17: 
+fuzz/src/yaml_target.rs:18: fn assert_typed_yaml_error(error: vb_compile::YamlError) {
+fuzz/src/yaml_target.rs:19:     use vb_compile::YamlError;
+fuzz/src/yaml_target.rs:20:     match error {
+fuzz/src/yaml_target.rs:21:         YamlError::UnsupportedTrigger { .. }
+fuzz/src/yaml_target.rs:22:         | YamlError::UnsupportedFeature { .. }
+fuzz/src/yaml_target.rs:23:         | YamlError::DuplicateKey { .. }
+fuzz/src/yaml_target.rs:24:         | YamlError::AnchorAliasMerge
+fuzz/src/yaml_target.rs:25:         | YamlError::CustomTag { .. }
+fuzz/src/yaml_target.rs:26:         | YamlError::BinaryScalar
+fuzz/src/yaml_target.rs:27:         | YamlError::MultipleDocuments { .. }
+fuzz/src/yaml_target.rs:28:         | YamlError::AmbiguousScalar { .. }
+fuzz/src/yaml_target.rs:29:         | YamlError::SourceTooLarge { .. }
+fuzz/src/yaml_target.rs:30:         | YamlError::NestingTooDeep { .. }
+fuzz/src/yaml_target.rs:31:         | YamlError::NodeLimitExceeded { .. }
+fuzz/src/yaml_target.rs:32:         | YamlError::ScalarTooLong { .. }
+fuzz/src/yaml_target.rs:33:         | YamlError::SequenceTooLong { .. }
+fuzz/src/yaml_target.rs:34:         | YamlError::MappingTooLarge { .. }
+fuzz/src/yaml_target.rs:35:         | YamlError::UnknownField { .. }
+fuzz/src/yaml_target.rs:36:         | YamlError::EmptySource
+fuzz/src/yaml_target.rs:37:         | YamlError::MissingField { .. }
+fuzz/src/yaml_target.rs:38:         | YamlError::FieldShape { .. }
+fuzz/src/yaml_target.rs:39:         | YamlError::ParseError { .. }
+fuzz/src/yaml_target.rs:40:         | YamlError::ForbiddenFeature { .. }
+fuzz/src/yaml_target.rs:41:         | YamlError::LegacyPrimitive { .. } => {}
+fuzz/src/yaml_target.rs:42:         _ => {}
+fuzz/src/yaml_target.rs:43:     }
+fuzz/src/yaml_target.rs:44: }
+fuzz/src/yaml_target.rs:45: 
+fuzz/src/yaml_target.rs:46: pub fn fuzz_yaml_events(data: &[u8]) {
+fuzz/src/yaml_target.rs:47:     if let Ok(text) = std::str::from_utf8(data) {
+fuzz/src/yaml_target.rs:48:         let profile_result = vb_compile::validate_yaml_profile(text);
+fuzz/src/yaml_target.rs:49:         match profile_result {
+fuzz/src/yaml_target.rs:50:             Ok(()) => {}
+fuzz/src/yaml_target.rs:51:             Err(e) => {
+fuzz/src/yaml_target.rs:52:                 assert_typed_yaml_error(e);
+fuzz/src/yaml_target.rs:53:             }
+fuzz/src/yaml_target.rs:54:         }
+fuzz/src/yaml_target.rs:55: 
+fuzz/src/yaml_target.rs:56:         let events_result = vb_compile::parse_yaml_events(text);
+fuzz/src/yaml_target.rs:57:         match events_result {
+fuzz/src/yaml_target.rs:58:             Ok(events) => {
+fuzz/src/yaml_target.rs:59:                 if !text.trim().is_empty() {
+fuzz/src/yaml_target.rs:60:                     assert!(
+fuzz/src/yaml_target.rs:61:                         !events.is_empty(),
+fuzz/src/yaml_target.rs:62:                         "non-empty YAML input must produce non-empty events"
+fuzz/src/yaml_target.rs:63:                     );
+fuzz/src/yaml_target.rs:64:                 }
+fuzz/src/yaml_target.rs:65:                 assert!(
+fuzz/src/yaml_target.rs:66:                     events.len() <= MAX_FUZZ_PAYLOAD_USIZE,
+fuzz/src/yaml_target.rs:67:                     "event count {} exceeds max payload bound",
+fuzz/src/yaml_target.rs:68:                     events.len()
+fuzz/src/yaml_target.rs:69:                 );
+fuzz/src/yaml_target.rs:70:             }
+fuzz/src/yaml_target.rs:71:             Err(e) => {
+fuzz/src/yaml_target.rs:72:                 assert_typed_yaml_error(e);
+fuzz/src/yaml_target.rs:73:             }
+fuzz/src/yaml_target.rs:74:         }
+fuzz/src/yaml_target.rs:75: 
+fuzz/src/yaml_target.rs:76:         let source_map_result = vb_compile::build_source_map(text);
+fuzz/src/yaml_target.rs:77:         match source_map_result {
+fuzz/src/yaml_target.rs:78:             Ok(source_map) => {
+fuzz/src/yaml_target.rs:79:                 assert!(
+fuzz/src/yaml_target.rs:80:                     source_map.len() <= MAX_FUZZ_PAYLOAD_USIZE,
+fuzz/src/yaml_target.rs:81:                     "source map entries {} exceeds max payload bound",
+fuzz/src/yaml_target.rs:82:                     source_map.len()
+fuzz/src/yaml_target.rs:83:                 );
+fuzz/src/yaml_target.rs:84:             }
+fuzz/src/yaml_target.rs:85:             Err(e) => {
+fuzz/src/yaml_target.rs:86:                 assert_typed_yaml_error(e);
+fuzz/src/yaml_target.rs:87:             }
+fuzz/src/yaml_target.rs:88:         }
+fuzz/src/yaml_target.rs:89:     }
+fuzz/src/yaml_target.rs:90: }
+fuzz/src/yaml_target.rs:91: 
+fuzz/src/yaml_target.rs:92: pub fn fuzz_strict_yaml_profile(data: &[u8]) {
+fuzz/src/yaml_target.rs:93:     let compile_result = vb_compile::compile_workflow(data);
+fuzz/src/yaml_target.rs:94:     if let Ok(ref workflow) = compile_result {
+fuzz/src/yaml_target.rs:95:         let text = String::from_utf8_lossy(data);
+fuzz/src/yaml_target.rs:96:         let unsupported =
+fuzz/src/yaml_target.rs:97:             text.contains("---") || text.contains('&') || text.contains('*') || text.contains('!');
+fuzz/src/yaml_target.rs:98:         assert!(
+fuzz/src/yaml_target.rs:99:             !unsupported,
+fuzz/src/yaml_target.rs:100:             "unsupported YAML features must cause compile error"
+fuzz/src/yaml_target.rs:101:         );
+fuzz/src/yaml_target.rs:102:         assert!(
+fuzz/src/yaml_target.rs:103:             workflow.node_count() >= 1,
+fuzz/src/yaml_target.rs:104:             "compiled workflow must have at least 1 node"
+fuzz/src/yaml_target.rs:105:         );
+fuzz/src/yaml_target.rs:106:     }
+fuzz/src/yaml_target.rs:107: }
+fuzz/src/yaml_target.rs:108: 
+fuzz/src/yaml_target.rs:109: pub fn fuzz_compile_source_ast_marks(data: &[u8]) {
+fuzz/src/yaml_target.rs:110:     use vb_compile::compile_workflow;
+fuzz/src/yaml_target.rs:111: 
+fuzz/src/yaml_target.rs:112:     let result = compile_workflow(data);
+fuzz/src/yaml_target.rs:113: 
+fuzz/src/yaml_target.rs:114:     match result {
+fuzz/src/yaml_target.rs:115:         Ok(_compiled) => {}
+fuzz/src/yaml_target.rs:116:         Err(errors) => {
+fuzz/src/yaml_target.rs:117:             assert!(
+fuzz/src/yaml_target.rs:118:                 !errors.is_empty(),
+fuzz/src/yaml_target.rs:119:                 "CompileErrors must contain at least one error"
+fuzz/src/yaml_target.rs:120:             );
+fuzz/src/yaml_target.rs:121:         }
+fuzz/src/yaml_target.rs:122:     }
+fuzz/src/yaml_target.rs:123: }
+fuzz/src/yaml_target.rs:124: 
+fuzz/src/yaml_target.rs:125: pub fn fuzz_span_bridge(data: &[u8]) {
+fuzz/src/yaml_target.rs:126:     use vb_compile::{SourceSpan, build_semantic_source_map, build_source_map};
+fuzz/src/yaml_target.rs:127: 
+fuzz/src/yaml_target.rs:128:     let mut values = [0usize; 6];
+fuzz/src/yaml_target.rs:129:     for (slot, byte) in values.iter_mut().zip(data.iter().copied()) {
+fuzz/src/yaml_target.rs:130:         *slot = usize::from(byte);
+fuzz/src/yaml_target.rs:131:     }
+fuzz/src/yaml_target.rs:132: 
+fuzz/src/yaml_target.rs:133:     let span = SourceSpan::new(
+fuzz/src/yaml_target.rs:134:         values[0], values[1], values[2], values[3], values[4], values[5],
+fuzz/src/yaml_target.rs:135:     );
+fuzz/src/yaml_target.rs:136:     assert_eq!(span.start_offset, values[0]);
+fuzz/src/yaml_target.rs:137:     assert_eq!(span.end_offset, values[1]);
+fuzz/src/yaml_target.rs:138:     assert_eq!(span.start_line, values[2]);
+fuzz/src/yaml_target.rs:139:     assert_eq!(span.start_col, values[3]);
+fuzz/src/yaml_target.rs:140:     assert_eq!(span.end_line, values[4]);
+fuzz/src/yaml_target.rs:141:     assert_eq!(span.end_col, values[5]);
+fuzz/src/yaml_target.rs:142: 
+fuzz/src/yaml_target.rs:143:     let Ok(text) = std::str::from_utf8(data) else {
+fuzz/src/yaml_target.rs:144:         return;
+fuzz/src/yaml_target.rs:145:     };
+fuzz/src/yaml_target.rs:146: 
+fuzz/src/yaml_target.rs:147:     if let Ok(map) = build_source_map(text) {
+fuzz/src/yaml_target.rs:148:         for (index, mapped_span) in map.iter() {
+fuzz/src/yaml_target.rs:149:             assert_eq!(map.span_for_node(index), Some(mapped_span));
+fuzz/src/yaml_target.rs:150:         }
+fuzz/src/yaml_target.rs:151:     }
+fuzz/src/yaml_target.rs:152: 
+fuzz/src/yaml_target.rs:153:     if let Ok(map) = build_semantic_source_map(text) {
+fuzz/src/yaml_target.rs:154:         let _root = map.span_for_path("$");
+fuzz/src/yaml_target.rs:155:         let _manual = map.span_for_path("$.when.manual");
+fuzz/src/yaml_target.rs:156:         let _step_zero = map.span_for_path("$.steps[0]");
+fuzz/src/yaml_target.rs:157:         // `_root`, `_manual`, and `_step_zero` are deliberately bound to
+fuzz/src/yaml_target.rs:158:         // underscore-prefixed identifiers so the strict
+fuzz/src/yaml_target.rs:159:         // `let_underscore_must_use` lint stays triggered only on
+fuzz/src/yaml_target.rs:160:         // bare `let _ = must_use_call()`. They prove the lookup table
+fuzz/src/yaml_target.rs:161:         // returns a span option without exercising it.
+fuzz/src/yaml_target.rs:162:     }
+fuzz/src/yaml_target.rs:163: }
+fuzz/src/yaml_target.rs:164: 
+fuzz/src/yaml_target.rs:165: #[cfg(test)]
+fuzz/src/yaml_target.rs:166: mod tests {
+fuzz/src/yaml_target.rs:167:     use super::*;
+fuzz/src/yaml_target.rs:168: 
+fuzz/src/yaml_target.rs:169:     #[test]
+fuzz/src/yaml_target.rs:170:     fn large_yaml_exceeds_4096_bound() -> Result<(), Box<dyn std::error::Error>> {
+fuzz/src/yaml_target.rs:171:         // Build valid YAML with >4096 events: a sequence of 5001 scalars
+fuzz/src/yaml_target.rs:172:         // stays within default max_sequence_len=10000 and max_source_bytes=1048576.
+fuzz/src/yaml_target.rs:173:         let item_count = 5001usize;
+fuzz/src/yaml_target.rs:174:         let mut yaml = "items:\n".to_string();

@@ -1,0 +1,35 @@
+{
+  "bead": "vb-6nouf",
+  "red_commit": "7e1e502ae9bbcc7ad280deca747a897280fa0563",
+  "author": "RTX5090 local OMP through mise, high, no cloud fallback",
+  "root_source_changes": "rustfmt and compiler-directed deletion of two unused private re-exports; no new behavior",
+  "sources": [
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/recovered_admission.rs",
+      "sha256": "055fffb445451a0277a0fddd8ab24481471eb9464bd6bfdaf6d271ca99021e72"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle/chunk_001.rs",
+      "sha256": "a05960a3724965480504a73d94364245306e4d1919769afc4ddf6d7ae9dcb87d"
+    },
+    {
+      "path": "crates/vb_runtime/src/recovery.rs",
+      "sha256": "7bbe2a28545b35a4ce3444e588ba1dffe4bc3cb1796d1882148335e881590739"
+    },
+    {
+      "path": "crates/vb_runtime/src/recovery/full.rs",
+      "sha256": "5ceef2b4dec9e19ec605242e4b370bef9e6d0984e88a6a861a5edb65912defdf"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs",
+      "sha256": "1cd50d9650bcc8e4c9e6488e35588540b6a094252bea09491bd40c071a38e854"
+    }
+  ],
+  "actual_gates": {
+    "V9": "1 raw command test: exact pin/policy errors plus validmatchingcheckpoint control; testbyteidenticalRED",
+    "V10": "14 moon tasks fmt/source-length/lint-src/check pass",
+    "V11": "1989 runtime lib pass0fail0ignore",
+    "V12": "140 tests pass0fail0ignore across11 targets, includes17policy/recovery integration and123lifecycle"
+  },
+  "status": "focused GREEN, independent CODE/TEST plus finalcanonical and mainlanding pending; no fullv1 closure"
+}

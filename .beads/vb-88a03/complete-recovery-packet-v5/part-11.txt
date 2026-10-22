@@ -1,0 +1,220 @@
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:49:         name: ActionName::new("vb_c4hzw_legacy_action")?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:50:         input_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:51:         output_slot_count: 1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:52:         max_input_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:53:         max_output_bytes: 64,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:54:         timeout_ms: 1000,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:55:         idempotency: Idempotency::IdempotentExternal,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:56:         side_effect: SideEffect::Writes,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:57:         retry_safety: RetrySafety::KeyRequired,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:58:         required_capabilities: Box::new([Capability::new("velvet.register.write".into(), action)]),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:59:     })
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:60: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:61: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:62: fn action_grants(action: ActionId) -> CapabilitySet {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:63:     CapabilitySet::from_grants(Box::from([Capability::new(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:64:         "velvet.register.write".into(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:65:         action,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:66:     )]))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:67: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:68: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:69: pub(super) fn open_journal(path: &std::path::Path) -> Result<Arc<FjallJournal>, String> {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:70:     Ok(Arc::new(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:71:         FjallJournal::open(path, Some(FjallConfig::default())).map_err(|err| err.to_string())?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:72:     ))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:73: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:74: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:75: pub(super) fn append_events(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:76:     journal: &FjallJournal,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:77:     events: impl AsRef<[JournalEvent]>,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:78: ) -> Result<(), String> {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:79:     for event in events.as_ref() {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:80:         journal
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:81:             .append_strict(event)
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:82:             .map_err(|err| err.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:83:     }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:84:     Ok(())
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:85: }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:86: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:87: #[test]
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:88: fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:89:     let action = ActionId::new(0);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:90:     let run = RunId::new(4_420);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:91:     let allowed_digest = PolicyDigest::from_bytes([0x41u8; 32]);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:92:     let temp = tempfile::tempdir()?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:93: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:94:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:95:     let workflow = legacy_ask_action_workflow(action)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:96:     let contract = external_contract(action)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:97:     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:98: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:99:     let journal = open_journal(temp.path())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:100:     let artifact = catalog.submit_artifact(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:101:         &journal,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:102:         &workflow,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:103:         RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:104:         &[contract],
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:105:         &[pack],
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:106:     )?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:107:     let parts: vb_core::workflow::WorkflowParts = postcard::from_bytes(&artifact.ir)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:108:     assert_eq!(parts.digest, workflow.digest());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:109: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:110:     let legacy_events = [
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:111:         JournalEvent::RunAccepted {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:112:             run,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:113:             seq: vb_storage::EventSeq::new(0),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:114:             workflow: workflow.digest(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:115:         },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:116:         JournalEvent::RunAdmission {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:117:             input_digest: RunInputBinding::LegacyUnbound,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:118:             run,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:119:             seq: vb_storage::EventSeq::new(1),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:120:             artifact_digest: artifact.digest,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:121:             policy_pin: RunPolicyPin::Unverified,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:122:             granted_capabilities: action_grants(action),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:123:             policy: RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:124:         },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:125:         JournalEvent::StepStarted {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:126:             run,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:127:             seq: vb_storage::EventSeq::new(2),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:128:             step: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:129:             attempt: 1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:130:         },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:131:         JournalEvent::AskScheduledEvent {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:132:             run,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:133:             seq: vb_storage::EventSeq::new(3),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:134:             step: StepIdx::ZERO,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:135:             attempt: 1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:136:         },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:137:     ];
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:138:     append_events(&journal, &legacy_events)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:139:     drop(journal);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:140: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:141:     let journal = open_journal(temp.path())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:142:     let shared = StorageRuntimeJournal::shared_strict_with_catalog(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:143:         journal.clone(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:144:         Arc::new(catalog.clone()),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:145:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:146:     let mut recovered = Runtime::new(shard_count(1)?, strict_config(), shared);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:147: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:148:     let recovery = recovered
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:149:         .recover_product(run)
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:150:         .map_err(|err| err.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:151:     match recovery {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:152:         RuntimeRecoveryProduct::Resumable(product) => {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:153:             assert_eq!(product.boundary_kind(), RecoveredRunBoundaryKind::OpenAsk);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:154:         }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:155:         other => {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:156:             return Err(format!("expected open-ask resumable product, got {other:?}").into());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:157:         }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:158:     }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:159:     recovered
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:160:         .recover_and_resume(run)
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:161:         .map_err(|err| err.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:162:     recovered.tick_all().map_err(|err| err.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:163: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:164:     let ask_ticket = recovered
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:165:         .lookup_pending_ask_ticket(run, StepIdx::ZERO)
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:166:         .ok_or("recovered open ask must issue its persisted ticket")?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:167:     recovered
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:168:         .answer_ask(vb_runtime::shard::AskAnswer::with_encoded_len(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:169:             ask_ticket,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:170:             SlotIdx::new(1),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:171:             SlotValue::I64(99),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:172:             vb_core::value::Taint::Clean,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:173:             1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:174:         ))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:175:         .map_err(|err| err.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:176:     recovered.tick_all().map_err(|err| err.to_string())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:177: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:178:     let action_ticket = recovered
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:179:         .lookup_pending_action_ticket(run, u64::from(StepIdx::new(2).get()))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:180:         .ok_or("recovered Do action must issue its ticket")?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:181: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:182:     let grant = catalog.issue_register_grant(&artifact, action_ticket, scope())?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:183: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:184:     recovered.configure_live_policy(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:185:         allowed_digest,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:186:         PolicyRule {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:187:             action,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:188:             code: DecisionCode::Allowed,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:189:         },
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:190:     )?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:191: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:192:     let register_path = temp.path().join("register");
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:193:     let mut adapter = FjallRegister::open(&register_path, 8)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:194: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:195:     let pending_before = recovered.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:196:     let result = recovered.execute_registered_action(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:197:         &mut adapter,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:198:         run,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:199:         u64::from(StepIdx::new(2).get()),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:200:         &grant,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:201:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:202:     let decision = match result {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:203:         Err(RegisteredExecutionError::PolicyDenied(dec)) => *dec,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:204:         other => {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:205:             return Err(format!("expected PolicyDenied, got: {other:?}").into());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:206:         }
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:207:     };
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:208:     assert_eq!(recovered.pending_boundary_snapshot(8), pending_before);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:209: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:210:     assert_eq!(decision.outcome, DecisionCode::Denied);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:211:     assert_eq!(decision.layer, vb_core::policy::PolicyLayer::Admission);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:212:     assert_eq!(decision.admission, admission_pin_unverified());
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:213:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:214:         decision.current_live,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:215:         current_live_configured(allowed_digest.as_bytes())
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:216:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:217:     assert_eq!(decision.ticket.run, run);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:218:     assert_eq!(decision.ticket.step, StepIdx::new(2));
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:219: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:220:     let expected_digest =
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:221:         compute_expected_input_digest(99, vb_core::value::Taint::Clean, &action_ticket)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:222:     assert_eq!(decision.input_digest, expected_digest);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:223: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:224:     let expected_decision = make_expected_decision(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:225:         action_ticket,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:226:         admission_pin_unverified(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:227:         current_live_configured(allowed_digest.as_bytes()),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:228:         expected_digest,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:229:         DecisionCode::Denied,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:230:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:231:     assert_eq!(decision, expected_decision);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:232: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:233:     assert_eq!(adapter.effect_count()?, 0);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:234:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:235:         adapter.value(scope())?,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:236:         None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:237:         "target value must remain unset after admission denial"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:238:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:239: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:240:     let after_ticket = recovered
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:241:         .lookup_pending_action_ticket(run, u64::from(StepIdx::new(2).get()))
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:242:         .ok_or("pending ticket must remain after admission denial")?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:243:     assert_eq!(after_ticket, action_ticket);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:244: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:245:     let snapshot = recovered.pending_boundary_snapshot(8);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:246:     let shards = snapshot.shards();
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:247:     let pending_actions: Vec<_> = shards
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:248:         .iter()
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:249:         .flat_map(|s| s.pending_actions())
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:250:         .cloned()
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:251:         .collect();
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:252:     assert_eq!(
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:253:         pending_actions.len(),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:254:         1,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:255:         "exactly one pending action after ask answer"
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:256:     );
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:257:     let first_pending = pending_actions
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:258:         .first()
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:259:         .ok_or("expected at least one pending action")?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:260:     assert_eq!(first_pending.ticket(), action_ticket);
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:261: 
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:262:     let stored = vb_storage::read_run_events(&journal, run)?;
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:263:     let decisions: Vec<_> = stored
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:264:         .iter()
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:265:         .filter_map(|e| match e {
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:266:             JournalEvent::PolicyDecisionEvent { decision, .. } => Some(decision.clone()),
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:267:             _ => None,
+crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_admission_test.rs:268:         })
