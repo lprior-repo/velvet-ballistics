@@ -14,7 +14,9 @@ Add `policy_pin: RunPolicyPin` field to:
 - Runtime `RunAdmission` struct
 - Storage `JournalEvent::RunAdmission` variant
 
-New record tag: `RunAdmissionPinned = 39` (after input-bound 36, retry 37, policy decision 38 reserved).
+New record tags: `RunAdmissionPinned = 39` (unbound input + pinned policy) and
+`RunAdmissionBoundPinned = 41` (bound input + pinned policy), after input-bound 36,
+retry 37, policy decision 38 reserved.
 
 ## API Changes
 
@@ -38,14 +40,14 @@ impl RunAdmission {
 1. `admit_artifact_run_with_certificate_floor` → passes `artifact.policy_digest` as `RunPolicyPin::Pinned(digest)` for Strict/Journaled; `RunPolicyPin::Unverified` for Relaxed
 2. `RuntimeJournalEvent::RunAdmission` → serializes with policy_pin
 3. `recovery/full/admission.rs::validate_recovered_admission_evidence` → validates `admission.policy_pin == artifact.policy_digest` (or explicitly `Unverified` for legacy)
-4. Wire serialization/deserialization → new tag 39 for policy-pinned records
+4. Wire serialization/deserialization → tags 39/41 for policy-pinned records (unbound/bound)
 
 ## Migration Behavior
 
 - Old records (tags 24, 36) decode with `policy_pin: RunPolicyPin::Unverified`
-- New strict/journaled admission writes tag 39 with actual policy digest
+- New strict/journaled admission writes tag 39 or 41 with actual policy digest (unbound vs bound)
 - Relaxed mode writes tag 24/36 with `Unverified`
-- Legacy decode path unchanged (explicit version rejection)
+- Legacy decode path unchanged (explicit version rejection); RunCheckpointV1 version 2 payloads reject version 1 before decode
 
 ## Acceptance
 
