@@ -202,29 +202,29 @@ fn error_handler_routes_to_handler_on_non_unknown_non_retryable() {
 
 #[test]
 fn compute_idempotency_key_is_deterministic() {
-    let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(2), ActionId::new(3));
-    let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(2), ActionId::new(3));
+    let key1 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(2), ActionId::new(3));
+    let key2 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(2), ActionId::new(3));
     assert_eq!(key1, key2);
 }
 
 #[test]
 fn compute_idempotency_key_differs_for_different_runs() {
-    let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
-    let key2 = compute_idempotency_key(RunId::new(2), SeqNo::new(0), ActionId::new(0));
+    let key1 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0), ActionId::new(0));
+    let key2 = compute_idempotency_key(RunId::new(2), 1, SeqNo::new(0), ActionId::new(0));
     assert_ne!(key1, key2);
 }
 
 #[test]
 fn compute_idempotency_key_is_unique_for_different_seq() {
-    let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
-    let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(1), ActionId::new(0));
+    let key1 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0), ActionId::new(0));
+    let key2 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(1), ActionId::new(0));
     assert_ne!(key1, key2);
 }
 
 #[test]
 fn compute_idempotency_key_is_unique_for_different_action() {
-    let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0));
-    let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(1));
+    let key1 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0), ActionId::new(0));
+    let key2 = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(0), ActionId::new(1));
     assert_ne!(key1, key2);
 }
 
@@ -232,11 +232,13 @@ fn compute_idempotency_key_is_unique_for_different_action() {
 fn compute_idempotency_key_handles_large_values_without_overflow() {
     let key = compute_idempotency_key(
         RunId::new(u64::MAX),
+        1,
         SeqNo::new(u64::MAX),
         ActionId::new(65535),
     );
     let key2 = compute_idempotency_key(
         RunId::new(u64::MAX),
+        1,
         SeqNo::new(u64::MAX),
         ActionId::new(65535),
     );
@@ -640,8 +642,9 @@ fn make_original_ticket() -> ActionTicket {
         step: StepIdx::new(2),
         seq: SeqNo::new(10),
         action: ActionId::new(7),
+        run_attempt: 1,
         attempt: 3,
-        idempotency_key: compute_idempotency_key(RunId::new(1), SeqNo::new(10), ActionId::new(7)),
+        idempotency_key: compute_idempotency_key(RunId::new(1), 1, SeqNo::new(10), ActionId::new(7)),
         capacity: 5,
     }
 }
@@ -774,7 +777,7 @@ fn resume_action_outcome_retryable_failure_propagates_original_ticket_fields() {
                 "attempt must be incremented from original"
             );
             let expected_key =
-                compute_idempotency_key(RunId::new(1), SeqNo::new(11), ActionId::new(7));
+                compute_idempotency_key(RunId::new(1), 1, SeqNo::new(11), ActionId::new(7));
             assert_eq!(
                 retry_ticket.idempotency_key, expected_key,
                 "idempotency_key must be recomputed from new seq"
@@ -856,6 +859,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
         &mut evidence,
         &mut collect_states,
         &vb_core::capability::CapabilitySet::empty(),
+        1,
     );
     assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
 }
@@ -870,11 +874,13 @@ fn bh_idempotency_key_overflow_fallback_is_deterministic() {
     // The fallback must still be deterministic for the same inputs.
     let key1 = compute_idempotency_key(
         RunId::new(u64::MAX),
+        1,
         SeqNo::new(u64::MAX),
         ActionId::new(65535),
     );
     let key2 = compute_idempotency_key(
         RunId::new(u64::MAX),
+        1,
         SeqNo::new(u64::MAX),
         ActionId::new(65535),
     );
@@ -886,9 +892,9 @@ fn bh_idempotency_key_overflow_preserves_run_uniqueness() {
     // Even in overflow, different run IDs must produce different keys
     // (the fallback is run_part, which differs when run IDs differ).
     let key_a =
-        compute_idempotency_key(RunId::new(100), SeqNo::new(u64::MAX), ActionId::new(65535));
+        compute_idempotency_key(RunId::new(100), 1, SeqNo::new(u64::MAX), ActionId::new(65535));
     let key_b =
-        compute_idempotency_key(RunId::new(200), SeqNo::new(u64::MAX), ActionId::new(65535));
+        compute_idempotency_key(RunId::new(200), 1, SeqNo::new(u64::MAX), ActionId::new(65535));
     assert_ne!(
         key_a, key_b,
         "different runs must produce different keys even under overflow"
@@ -903,25 +909,25 @@ fn bh_idempotency_key_all_three_components_contribute() {
     let base_seq = SeqNo::new(10);
     let base_action = ActionId::new(5);
 
-    let base_key = compute_idempotency_key(base_run, base_seq, base_action);
+    let base_key = compute_idempotency_key(base_run, 1, base_seq, base_action);
 
-    let key_diff_run = compute_idempotency_key(RunId::new(43), base_seq, base_action);
+    let key_diff_run = compute_idempotency_key(RunId::new(43), 1, base_seq, base_action);
     assert_ne!(base_key, key_diff_run, "changing run must change key");
 
-    let key_diff_seq = compute_idempotency_key(base_run, SeqNo::new(11), base_action);
+    let key_diff_seq = compute_idempotency_key(base_run, 1, SeqNo::new(11), base_action);
     assert_ne!(base_key, key_diff_seq, "changing seq must change key");
 
-    let key_diff_action = compute_idempotency_key(base_run, base_seq, ActionId::new(6));
+    let key_diff_action = compute_idempotency_key(base_run, 1, base_seq, ActionId::new(6));
     assert_ne!(base_key, key_diff_action, "changing action must change key");
 }
 
 #[test]
 fn bh_idempotency_key_overflow_does_not_produce_zero_for_nonzero_run() {
     // A non-zero run ID must never collapse to zero key even under overflow.
-    let key = compute_idempotency_key(RunId::new(1), SeqNo::new(u64::MAX), ActionId::new(65535));
+    let key = compute_idempotency_key(RunId::new(1), 1, SeqNo::new(u64::MAX), ActionId::new(65535));
     assert_ne!(
         key, 0,
-        "non-zero run must not produce zero key under overflow"
+        "non-zero run must not collapse to zero key"
     );
 }
 
@@ -1052,6 +1058,7 @@ fn bh_drive_budget_exhausted_does_not_emit_step_succeeded_in_evidence() {
         &mut evidence,
         &mut collect_states,
         &vb_core::capability::CapabilitySet::empty(),
+        1,
     );
     assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
 
@@ -1123,6 +1130,7 @@ fn bh_drive_single_nop_emits_started_then_succeeded() {
         &mut evidence,
         &mut collect_states,
         &vb_core::capability::CapabilitySet::empty(),
+        1,
     );
     // The drive loop should have progressed (either Continue after Nop, or Finished after Finish).
     assert!(result.is_ok(), "drive should succeed, got {result:?}");
@@ -1202,6 +1210,7 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         &mut evidence,
         &mut collect_states,
         &vb_core::capability::CapabilitySet::empty(),
+        1,
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(_)) => {}
@@ -1529,8 +1538,8 @@ mod proptests {
             action2 in 0u16..10u16,
         ) {
             prop_assume!(run1 != run2 || seq1 != seq2 || action1 != action2);
-            let key1 = compute_idempotency_key(RunId::new(run1), SeqNo::new(seq1), ActionId::new(action1));
-            let key2 = compute_idempotency_key(RunId::new(run2), SeqNo::new(seq2), ActionId::new(action2));
+            let key1 = compute_idempotency_key(RunId::new(run1), 1, SeqNo::new(seq1), ActionId::new(action1));
+            let key2 = compute_idempotency_key(RunId::new(run2), 1, SeqNo::new(seq2), ActionId::new(action2));
             prop_assert_ne!(key1, key2);
         }
     }
@@ -1795,6 +1804,7 @@ mod blackhat_engine {
             &mut evidence,
             &mut cs,
             &CapabilitySet::empty(),
+            1,
         );
         assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
         // BH-ENG-02: Step 0 was marked Running but StepBudgetExhausted
@@ -2159,6 +2169,7 @@ mod blackhat_engine {
             &mut evidence,
             &mut cs,
             &CapabilitySet::empty(),
+            1,
         );
         match result {
             Ok(RuntimeSignal::AwaitingAction(_)) => {}
@@ -2197,6 +2208,7 @@ mod blackhat_engine {
                 for action in 0u16..20 {
                     let key = compute_idempotency_key(
                         RunId::new(run),
+                        1,
                         SeqNo::new(seq),
                         ActionId::new(action),
                     );
@@ -2554,6 +2566,7 @@ mod blackhat_engine {
                 &mut evidence,
                 &mut cs,
                 &CapabilitySet::empty(),
+                1,
             )
         }));
         assert!(
@@ -2605,6 +2618,7 @@ mod blackhat_engine {
             &mut evidence,
             &mut cs,
             &CapabilitySet::empty(),
+            1,
         );
         assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
         // PC should have advanced past step 0 (the executed step).

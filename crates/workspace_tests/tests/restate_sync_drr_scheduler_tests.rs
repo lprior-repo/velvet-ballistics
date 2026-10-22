@@ -195,12 +195,14 @@ fn mk_ticket(run: u64, seq: u32, action: u16, attempt: u16) -> ActionTicket {
     let run = RunId::new(run);
     let seq = SeqNo::new(u64::from(seq));
     let action = ActionId::new(action);
-    let idempotency_key = compute_action_idempotency_key(run, seq, action);
+    let run_attempt: u16 = 1;
+    let idempotency_key = compute_action_idempotency_key(run, run_attempt, seq, action);
     ActionTicket {
         run,
         step: StepIdx::new(0),
         seq,
         action,
+        run_attempt,
         attempt,
         idempotency_key,
         capacity: 3,
