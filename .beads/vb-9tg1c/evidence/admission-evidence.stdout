@@ -1,0 +1,30 @@
+
+running 25 tests
+test budget_validation_accepts_budget_policy_within_limits ... ok
+test budget_validation_rejects_action_ticket_limit_exceeded ... ok
+test budget_validation_rejects_oversized_workflow ... ok
+test budget_validation_rejects_result_bytes_exceeded ... ok
+test capability_check_rejects_any_action_when_empty_grant_set ... ok
+test runtime_rejects_submission_when_capacity_exceeded ... ok
+test multiple_runs_concurrent_produce_correct_completion_counters ... ok
+test evidence_chain_preserves_event_ordering_across_restarts ... ok
+test evidence_chain_after_execution ... ok
+test evidence_chain_captures_action_timeout_and_failure ... ok
+test taint_propagates_through_expression_eval ... ok
+test taint_secret_propagates_through_finish_signal ... ok
+test capability_check_rejects_unauthorized_action ... ok
+test storage_failure_before_header_prevents_ack ... ok
+test taint_clean_propagates_preserved_through_set_const ... ok
+test submit_with_tainted_input_propagates_taint_through_runtime ... ok
+test submit_artifact_under_strict_policy_requires_matching_digest ... ok
+test submit_artifact_yaml_compiled_then_run_with_inputs_taints ... ok
+test submit_artifact_then_run_succeeds ... ok
+test restart_lookup_finds_persisted_header ... ok
+test run_without_artifact_under_strict_policy_rejects_unverified_workflow ... ok
+test compiled_ir_query_returns_none_for_missing_digest ... ok
+test forged_digest_workflow_rejects_across_relaxed_and_strict ... ok
+test run_without_artifact_under_relaxed_policy ... ok
+test journal_persistence_survives_runtime_drop_and_reopen ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+

@@ -1,0 +1,3 @@
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-9tg1c-local3090-final-format/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.40s
+     Running tests/admission_evidence_integration.rs (target/debug/deps/admission_evidence_integration-2bedc88df6f5b2b6)

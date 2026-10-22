@@ -6,7 +6,6 @@
 
 use std::sync::Arc;
 
-
 use vb_core::action::{
     ActionContract, ActionName, ActionOutputReady, ActionTicket, Idempotency, RetrySafety,
     SideEffect,
@@ -73,8 +72,7 @@ fn produce_workflow() -> Result<CompiledWorkflow, String> {
         input_slots: Box::from([]),
     };
     parts.digest = canonical_workflow_digest(&parts)?;
-    CompiledWorkflow::try_from_parts(parts)
-        .map_err(|e| format!("producer workflow invalid: {e:?}"))
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| format!("producer workflow invalid: {e:?}"))
 }
 
 fn action_contract() -> Result<ActionContract, String> {
@@ -92,7 +90,6 @@ fn action_contract() -> Result<ActionContract, String> {
         required_capabilities: Box::from([]),
     })
 }
-
 
 fn action_output(value: SlotValue) -> Result<ActionOutputReady, String> {
     let encoded =
@@ -142,19 +139,19 @@ pub(crate) fn produce_completed_run_with_abi(
             contracts,
         )
         .map_err(|e| format!("submit failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let ticket = pending_ticket(&runtime, run)?;
-    let journal_events = journal
-        .events_for_run(run)
-        .map_err(|e| e.to_string())?;
+    let journal_events = journal.events_for_run(run).map_err(|e| e.to_string())?;
     let scheduled_event = journal_events
         .iter()
         .find(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. }));
     let abi_digest = match scheduled_event {
-        Some(JournalEvent::ActionScheduledTicket { action_abi_digest, .. }) => {
-            *action_abi_digest
-        }
+        Some(JournalEvent::ActionScheduledTicket {
+            action_abi_digest, ..
+        }) => *action_abi_digest,
         _ => {
             return Err("scheduled ticket event not found in journal".to_string());
         }
@@ -162,7 +159,9 @@ pub(crate) fn produce_completed_run_with_abi(
     runtime
         .complete_action_with_output(ticket, action_output(SlotValue::I64(42))?)
         .map_err(|e| format!("complete_action failed: {e}"))?;
-    runtime.tick_all().map_err(|e| format!("tick failed: {e}"))?;
+    runtime
+        .tick_all()
+        .map_err(|e| format!("tick failed: {e}"))?;
 
     let counters = runtime.counters_snapshot();
     if counters.runs_completed != 1 {

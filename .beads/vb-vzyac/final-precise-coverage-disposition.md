@@ -19,7 +19,7 @@ Replacement tests (compiled and passing):
 | ask_prompt_some_timeout_parity | `digest_ask_prompt_sensitivity.rs::canonical_digest_produces_distinct_digests_when_ask_prompt_differs_simple` | Digest changes when prompt string differs | File a10680166e54d42a62618d3f22eac5501f466cba |
 | ask_prompt_none_timeout_parity | `digest_ask_timeout_sensitivity.rs::canonical_digest_produces_distinct_digests_when_ask_timeout_none_vs_some` | Digest changes when timeout None vs Some | File 94f1ec10a2ac68692d76cbc21c28a24d367a7d5e |
 | ask_empty_prompt_parity | `digest_ask_prompt_sensitivity.rs::canonical_digest_produces_distinct_digests_when_ask_prompt_one_empty_one_nonempty` | Digest changes when one prompt empty vs non-empty | Same file as above |
-| set_finish_parity | `digest_set_finish_regression.rs` (12 tests, not 11) | Set/Finish determinism and sensitivity | File d158ef38e2de67899c418e066f673ab6fb4ab87b |
+| set_finish_parity | `digest_set_finish_regression.rs::canonical_digest_is_deterministic_for_set_finish_source` + 11 source-sensitivity tests | Set/Finish determinism and sensitivity to source changes | File d158ef38e2de67899c418e066f673ab6fb4ab87b |
 
 Additional compiled artifact digest tests: `compiled_digest_payload.rs` (3 tests, file 91320215dfa7809ccd112e520e7fbfb3c0b66fdc).
 
@@ -38,7 +38,7 @@ Removed 2 rows (one each in `compile_source_returns_exact_error_variants_for_con
 
 The `inputs` top-level field is now supported. Positive compilation/execution tests:
 
-- `crates/workspace_tests/tests/cli/finish_input_execution.rs::finish_input_execution` (file e76625447c117fdb2499db1ed5b81f073f2c2e03) — End-to-end public CLI test. Creates workflow with `inputs:\n  count: number`, submits via `velvet-ballistics submit`, runs via `velvet-ballistics run`, and verifies result `42`. This is the definitive positive test that the `inputs` field compiles and executes.
+- `crates/workspace_tests/tests/cli/finish_input_execution.rs::finish_input_execution` (file e76625447c117fdb2499db1ed5b81f073f2c2e03) — End-to-end CLI test. Compiles YAML with `inputs:\n  count: number` to IR, then runs both `run` and `run-compiled` across none/journaled/strict durability with two fixture prefixes (no save, and save with value 42). Supplies input `SlotValue::I64(99)`. Asserts on exit status, submitted/completed/failed counters, and steps completed. Does NOT assert result value 42. Does NOT use `submit` command. Positive proof that inputs field compiles and executes.
 
 Other unsupported declaration cases (result, name, retry, on_error) retained as exact typed error tests.
 
@@ -55,9 +55,9 @@ Deleted helper function `test_digest() -> WorkflowDigest` (not a `#[test]` funct
 
 Exact 3 retained tests with oracles:
 
-1. `mqa01_scenario1_rp018_len_counts_registered_not_sparse_slots` — `mq.length()` returns count of registered slots, not highest slot index. Allocates sparse slots (0, 3, 7), verifies `length()` == 3.
-2. `mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5` — Backpressure triggers at 6 registered slots with threshold 7 (not 5).
-3. `mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error` — `acquire()` with wrong count returns typed `Error::CapabilityCountMismatch`, not panic.
+1. `mqa01_scenario1_rp018_len_counts_registered_not_sparse_slots` — Registers sparse action IDs 1000 then 500; asserts `registry.len()` returns 1 then 2 (registered count), not highest slot index.
+2. `mqa01_scenario2_rp019_backpressure_threshold_7_is_6_not_5` — Queue capacity 7: depth 5 no warning, depth 6 first warning, depth 7 (full) still warns at depth 6.
+3. `mqa01_scenario3_ra018_capability_count_mismatch_returns_typed_error` — Uses `admit_artifact_run_with_certificate_floor`. Under-grant (required 3, granted 2) accepts `CapabilityDenied` OR `CapabilityCountMismatch{required:3,granted:2}`. Over-grant (required 3, granted 4) requires exact `AdmissionError::CapabilityCountMismatch{required_count:3,granted_count:4}`.
 
 Test run: 3 tests passed, 0 failed.
 
@@ -84,7 +84,7 @@ macro_rules! fail_assert {
 ```
 This macro calls `assert!(false, ...)` which panics on failure. Any `return;` after `fail_assert!` is unreachable code, not a skipped test. Verified across all 4 chunks.
 
-No assertions removed; all original test logic preserved with API updates.
+No assertions removed; all original test logic preserved with API updates. Two tests (`restart_lookup`, `journal_persistence`) strengthened from forged-digest fixtures to real YAML compilation via new `compile_set_const_finish` helper. Current chunk hashes: 001 adc2b8264f660d4066ad0dfd4332865e6fbe85a5, 002 3e75eb24e0c11956d18be60f2c155df417960a44, 003 b696a3920d47af61ee85f65f2b3eab2d2bc9e6d9, 004 aa2676e80770d16fcfc4dfa3e6f9c05ef2bdcb9f.
 
 Test run: 25 tests passed (across all 4 chunks), 0 failed.
 
@@ -112,12 +112,12 @@ Exact old → new disposition table:
 | artifact_digest_mismatch_rejected | Replaced | `requested_digest_mismatch_has_exact_error` (exact error payload) |
 | artifact_digest_match_accepted | Replaced | `verified_artifact_admitted_without_fabricated_claims` |
 | unsupported_step_primitive_rejected_at_compile | Retained | Same test name and behavior |
-| relaxed_policy_skips_barrier_validation | Retained | Same test name and behavior |
+| relaxed_policy_skips_barrier_validation | Retained | `relaxed_policy_skips_evidence_validation` (renamed, same behavior) |
 | missing_artifact_rejected_under_strict_policy | Retained | Same test name and behavior |
 | all_proof_flags_true_accepted | Obsolete | Flag truth no longer establishes evidence |
 | validate_gate_count_rejects_invalid_counts | Replaced | `any_claimed_gate_count_without_evidence_is_rejected` (proptest u8::ANY) |
 | validate_gate_count_accepts_fifteen | Obsolete | Gate count 15 no longer special |
-| digest_mismatch_detected_by_admission | Replaced | `matching_digest_does_not_authorize_changed_ir` |
+| digest_mismatch_detected_by_admission | Replaced | `requested_digest_mismatch_has_exact_error` (exact error payload) |
 
 Additional new tests:
 - `all_legacy_claims_true_do_not_establish_evidence` — All 6 flags true + gate count 15 still rejected without compiled artifact

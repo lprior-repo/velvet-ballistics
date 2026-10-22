@@ -11,9 +11,9 @@ use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, admit_artifact_run,
     admit_artifact_run_with_certificate_floor,
 };
-use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
 use vb_storage::admission::accepted_artifact_digest;
 use vb_storage::admission::prepare_compiled_artifact;
+use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
 use velvet_ballistics::lifecycle;
 
 fn compile_fixture() -> Result<vb_core::CompiledWorkflow, String> {
@@ -356,8 +356,7 @@ fn given_completed_action_before_restart_when_replayed_then_no_redispatch_and_ev
 -> Result<(), String> {
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let run = RunId::new(13);
-    let (ticket, abi_digest) =
-        vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
+    let (ticket, abi_digest) = vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
     let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
 
     let before = journal
@@ -376,7 +375,10 @@ fn given_completed_action_before_restart_when_replayed_then_no_redispatch_and_ev
     let scheduled_abi = before
         .iter()
         .find_map(|e| {
-            if let JournalEvent::ActionScheduledTicket { action_abi_digest, .. } = e {
+            if let JournalEvent::ActionScheduledTicket {
+                action_abi_digest, ..
+            } = e
+            {
                 Some(*action_abi_digest)
             } else {
                 None
@@ -386,30 +388,58 @@ fn given_completed_action_before_restart_when_replayed_then_no_redispatch_and_ev
     let completed_abi = before
         .iter()
         .find_map(|e| {
-            if let JournalEvent::ActionCompletedEnvelope { action_abi_digest, .. } = e {
+            if let JournalEvent::ActionCompletedEnvelope {
+                action_abi_digest, ..
+            } = e
+            {
                 Some(*action_abi_digest)
             } else {
                 None
             }
         })
         .expect("completion envelope event must exist");
-    assert_eq!(scheduled_abi, abi_digest, "scheduled ABI must equal expected");
-    assert_eq!(completed_abi, abi_digest, "completed ABI must equal expected");
-    assert_eq!(scheduled_abi, completed_abi, "scheduled and completed ABI must match");
-    assert_ne!(scheduled_abi.as_bytes(), [0u8; 32], "scheduled ABI must be nonzero");
-    assert_ne!(completed_abi.as_bytes(), [0u8; 32], "completed ABI must be nonzero");
     assert_eq!(
-        before.iter().filter(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })).count(),
+        scheduled_abi, abi_digest,
+        "scheduled ABI must equal expected"
+    );
+    assert_eq!(
+        completed_abi, abi_digest,
+        "completed ABI must equal expected"
+    );
+    assert_eq!(
+        scheduled_abi, completed_abi,
+        "scheduled and completed ABI must match"
+    );
+    assert_ne!(
+        scheduled_abi.as_bytes(),
+        [0u8; 32],
+        "scheduled ABI must be nonzero"
+    );
+    assert_ne!(
+        completed_abi.as_bytes(),
+        [0u8; 32],
+        "completed ABI must be nonzero"
+    );
+    assert_eq!(
+        before
+            .iter()
+            .filter(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. }))
+            .count(),
         1,
         "exactly one scheduled ticket event"
     );
     assert_eq!(
-        before.iter().filter(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. })).count(),
+        before
+            .iter()
+            .filter(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. }))
+            .count(),
         1,
         "exactly one completion envelope event"
     );
     assert!(
-        before.iter().any(|e| matches!(e, JournalEvent::RunFinished { .. })),
+        before
+            .iter()
+            .any(|e| matches!(e, JournalEvent::RunFinished { .. })),
         "run must be marked as finished"
     );
 
@@ -456,11 +486,15 @@ fn given_evicted_runtime_key_when_durable_journal_replayed_then_recovery_resolve
     assert!(tracker.is_resolved(ticket1.action, ticket1.step));
     assert_eq!(replayed, before);
     assert!(
-        replayed.iter().any(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })),
+        replayed
+            .iter()
+            .any(|e| matches!(e, JournalEvent::ActionScheduledTicket { .. })),
         "replayed journal contains scheduled ticket"
     );
     assert!(
-        replayed.iter().any(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. })),
+        replayed
+            .iter()
+            .any(|e| matches!(e, JournalEvent::ActionCompletedEnvelope { .. })),
         "replayed journal contains completion envelope"
     );
 
@@ -716,7 +750,11 @@ fn given_no_schedule_event_when_expected_abi_then_replay_journal_rejects_with_ab
 
     match result {
         Err(vb_storage::recovery::RecoveryError::ActionAbiMismatch { action_id }) => {
-            assert_eq!(action_id, ActionId::new(1), "must report the expected action");
+            assert_eq!(
+                action_id,
+                ActionId::new(1),
+                "must report the expected action"
+            );
             Ok(())
         }
         other => Err(format!("expected ActionAbiMismatch, got {other:?}")),
@@ -731,8 +769,7 @@ fn given_real_producer_wrong_expected_abi_when_replayed_then_rejected_with_abi_m
     // ActionAbiMismatch, not accept a mismatched completion.
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let run = RunId::new(2001);
-    let (ticket, abi_digest) =
-        vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
+    let (ticket, abi_digest) = vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
     let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
 
     let before = journal
@@ -770,8 +807,7 @@ fn given_real_producer_zero_expected_abi_when_replayed_then_rejected_with_abi_mi
     // callers from bypassing the schedule guard by passing a null digest.
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let run = RunId::new(2002);
-    let (ticket, abi_digest) =
-        vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
+    let (ticket, abi_digest) = vb_ko29_5_fixture::produce_completed_run_with_abi(dir.path(), run)?;
     let journal = FjallJournal::open(dir.path(), None).map_err(|e| e.to_string())?;
 
     let before = journal

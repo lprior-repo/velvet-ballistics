@@ -40,13 +40,12 @@ pub fn recover_full_journal(
     }
 
     let missing_required_action_schedule = !expected_action_abi_digests.is_empty()
-        && !events
-            .iter()
-            .any(|e| matches!(
+        && !events.iter().any(|e| {
+            matches!(
                 e,
-                JournalEvent::ActionScheduled { .. }
-                    | JournalEvent::ActionScheduledTicket { .. }
-            ));
+                JournalEvent::ActionScheduled { .. } | JournalEvent::ActionScheduledTicket { .. }
+            )
+        });
     if missing_required_action_schedule
         && let Some((action_id, _)) = expected_action_abi_digests.first()
     {
