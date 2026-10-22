@@ -8,6 +8,11 @@ version.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 
+
+[[bench]]
+name = "capability_schema"
+harness = false
+
 [dev-dependencies]
 criterion = { workspace = true }
 proptest = { workspace = true }
