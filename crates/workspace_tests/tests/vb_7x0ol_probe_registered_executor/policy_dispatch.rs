@@ -1,6 +1,7 @@
+use vb_core::ActionTicket;
 use vb_core::policy::{
-    CurrentPolicyIdentity, DecisionCode, DecisionRecord, PinnedAdmissionPolicy, PolicyDigest,
-    PolicyLayer, PolicyRule, encode_taint_canonical,
+    CurrentPolicyIdentity, DecisionCode, PinnedAdmissionPolicy, PolicyDigest, PolicyLayer,
+    PolicyRule, encode_taint_canonical,
 };
 use vb_core::value::Taint;
 use vb_runtime::runtime::RegisteredExecutionError;
@@ -293,7 +294,7 @@ fn allowed_policy_permits_effect_and_records_decision() -> TestResult {
     assert_eq!(adapter.value(scope())?, Some(100));
 
     // Verify decision event persisted with Allowed outcome.
-    let events = vb_storage::public_api::read_run_events(&journal, run)?;
+    let events = vb_storage::read_run_events(&journal, run)?;
     let decision_events: Vec<_> = events
         .iter()
         .filter_map(|e| match e {
