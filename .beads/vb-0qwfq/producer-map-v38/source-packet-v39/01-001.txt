@@ -1,0 +1,100 @@
+crates/vb_storage/src/executor/packed.rs:1: use super::{ExecutorCatalog, ExecutorError};
+crates/vb_storage/src/executor/packed.rs:2: use crate::admission::verification::{self, ExecutorProfile};
+crates/vb_storage/src/executor/packed.rs:3: use crate::{AcceptedArtifact, CompiledIrRecord, FjallJournal};
+crates/vb_storage/src/executor/packed.rs:4: use vb_core::action_pack::{ActionPack, PackedArtifactEvidence};
+crates/vb_storage/src/executor/packed.rs:5: use vb_core::artifact::ArtifactEvidence;
+crates/vb_storage/src/executor/packed.rs:6: use vb_core::{
+crates/vb_storage/src/executor/packed.rs:7:     ActionContract, ActionId, CompiledWorkflow, RuntimePolicy, SideEffect, WorkflowParts,
+crates/vb_storage/src/executor/packed.rs:8: };
+crates/vb_storage/src/executor/packed.rs:9: 
+crates/vb_storage/src/executor/packed.rs:10: const MAX_PACKS: usize = 64;
+crates/vb_storage/src/executor/packed.rs:11: 
+crates/vb_storage/src/executor/packed.rs:12: impl ExecutorCatalog {
+crates/vb_storage/src/executor/packed.rs:13:     /// Cold preparation checks registered executor authority and actual conformance.
+crates/vb_storage/src/executor/packed.rs:14:     pub fn prepare_artifact(
+crates/vb_storage/src/executor/packed.rs:15:         &self,
+crates/vb_storage/src/executor/packed.rs:16:         workflow: &CompiledWorkflow,
+crates/vb_storage/src/executor/packed.rs:17:         policy: RuntimePolicy,
+crates/vb_storage/src/executor/packed.rs:18:         contracts: &[ActionContract],
+crates/vb_storage/src/executor/packed.rs:19:         packs: &[ActionPack],
+crates/vb_storage/src/executor/packed.rs:20:     ) -> Result<AcceptedArtifact, ExecutorError> {
+crates/vb_storage/src/executor/packed.rs:21:         self.check_packs(contracts, packs)?;
+crates/vb_storage/src/executor/packed.rs:22:         Ok(verification::prepare_with_profile(
+crates/vb_storage/src/executor/packed.rs:23:             workflow,
+crates/vb_storage/src/executor/packed.rs:24:             policy,
+crates/vb_storage/src/executor/packed.rs:25:             contracts,
+crates/vb_storage/src/executor/packed.rs:26:             ExecutorProfile::Registered {
+crates/vb_storage/src/executor/packed.rs:27:                 catalog: self,
+crates/vb_storage/src/executor/packed.rs:28:                 packs,
+crates/vb_storage/src/executor/packed.rs:29:             },
+crates/vb_storage/src/executor/packed.rs:30:         )?)
+crates/vb_storage/src/executor/packed.rs:31:     }
+crates/vb_storage/src/executor/packed.rs:32: 
+crates/vb_storage/src/executor/packed.rs:33:     /// Verify hostile serialized pack metadata against this actual registered catalog.
+crates/vb_storage/src/executor/packed.rs:34:     pub fn verify_artifact(
+crates/vb_storage/src/executor/packed.rs:35:         &self,
+crates/vb_storage/src/executor/packed.rs:36:         artifact: &AcceptedArtifact,
+crates/vb_storage/src/executor/packed.rs:37:         policy: RuntimePolicy,
+crates/vb_storage/src/executor/packed.rs:38:     ) -> Result<CompiledWorkflow, ExecutorError> {
+crates/vb_storage/src/executor/packed.rs:39:         let packed = checked_envelope(artifact, policy)?;
+crates/vb_storage/src/executor/packed.rs:40:         let workflow = decode_workflow(artifact)?;
+crates/vb_storage/src/executor/packed.rs:41:         let expected =
+crates/vb_storage/src/executor/packed.rs:42:             self.prepare_artifact(&workflow, policy, &artifact.action_contracts, &packed.packs)?;
+crates/vb_storage/src/executor/packed.rs:43:         verification::verify_expected_bindings(artifact, &expected)?;
+crates/vb_storage/src/executor/packed.rs:44:         Ok(workflow)
+crates/vb_storage/src/executor/packed.rs:45:     }
+crates/vb_storage/src/executor/packed.rs:46: 
+crates/vb_storage/src/executor/packed.rs:47:     /// Persist exact checked metadata and verify its strict durable readback.
+crates/vb_storage/src/executor/packed.rs:48:     pub fn submit_artifact(
+crates/vb_storage/src/executor/packed.rs:49:         &self,
+crates/vb_storage/src/executor/packed.rs:50:         journal: &FjallJournal,
+crates/vb_storage/src/executor/packed.rs:51:         workflow: &CompiledWorkflow,
+crates/vb_storage/src/executor/packed.rs:52:         policy: RuntimePolicy,
+crates/vb_storage/src/executor/packed.rs:53:         contracts: &[ActionContract],
+crates/vb_storage/src/executor/packed.rs:54:         packs: &[ActionPack],
+crates/vb_storage/src/executor/packed.rs:55:     ) -> Result<AcceptedArtifact, ExecutorError> {
+crates/vb_storage/src/executor/packed.rs:56:         let artifact = self.prepare_artifact(workflow, policy, contracts, packs)?;
+crates/vb_storage/src/executor/packed.rs:57:         journal.put_compiled_ir(&CompiledIrRecord {
+crates/vb_storage/src/executor/packed.rs:58:             digest: artifact.digest,
+crates/vb_storage/src/executor/packed.rs:59:             ir: postcard::to_allocvec(&artifact)?,
+crates/vb_storage/src/executor/packed.rs:60:         })?;
+crates/vb_storage/src/executor/packed.rs:61:         journal.persist_strict()?;
+crates/vb_storage/src/executor/packed.rs:62:         let stored = journal
+crates/vb_storage/src/executor/packed.rs:63:             .compiled_ir(artifact.digest)?
+crates/vb_storage/src/executor/packed.rs:64:             .ok_or(ExecutorError::Corrupt)?;
+crates/vb_storage/src/executor/packed.rs:65:         let restored = postcard::from_bytes(&stored.ir)?;
+crates/vb_storage/src/executor/packed.rs:66:         self.verify_artifact(&restored, policy)?;
+crates/vb_storage/src/executor/packed.rs:67:         if artifact != restored {
+crates/vb_storage/src/executor/packed.rs:68:             return Err(ExecutorError::Corrupt);
+crates/vb_storage/src/executor/packed.rs:69:         }
+crates/vb_storage/src/executor/packed.rs:70:         Ok(artifact)
+crates/vb_storage/src/executor/packed.rs:71:     }
+crates/vb_storage/src/executor/packed.rs:72: 
+crates/vb_storage/src/executor/packed.rs:73:     pub(crate) fn check_packs(
+crates/vb_storage/src/executor/packed.rs:74:         &self,
+crates/vb_storage/src/executor/packed.rs:75:         contracts: &[ActionContract],
+crates/vb_storage/src/executor/packed.rs:76:         packs: &[ActionPack],
+crates/vb_storage/src/executor/packed.rs:77:     ) -> Result<(), ExecutorError> {
+crates/vb_storage/src/executor/packed.rs:78:         if packs.is_empty()
+crates/vb_storage/src/executor/packed.rs:79:             || packs.len() > MAX_PACKS
+crates/vb_storage/src/executor/packed.rs:80:             || !packs
+crates/vb_storage/src/executor/packed.rs:81:                 .windows(2)
+crates/vb_storage/src/executor/packed.rs:82:                 .all(|pair| matches!(pair, [a, b] if a.action < b.action))
+crates/vb_storage/src/executor/packed.rs:83:         {
+crates/vb_storage/src/executor/packed.rs:84:             return Err(ExecutorError::PackMismatch);
+crates/vb_storage/src/executor/packed.rs:85:         }
+crates/vb_storage/src/executor/packed.rs:86:         let expected = contracts
+crates/vb_storage/src/executor/packed.rs:87:             .iter()
+crates/vb_storage/src/executor/packed.rs:88:             .filter(|contract| contract.side_effect != SideEffect::None)
+crates/vb_storage/src/executor/packed.rs:89:             .count();
+crates/vb_storage/src/executor/packed.rs:90:         if expected != packs.len() {
+crates/vb_storage/src/executor/packed.rs:91:             return Err(ExecutorError::PackMismatch);
+crates/vb_storage/src/executor/packed.rs:92:         }
+crates/vb_storage/src/executor/packed.rs:93:         packs.iter().try_for_each(|pack| {
+crates/vb_storage/src/executor/packed.rs:94:             let contract = contracts
+crates/vb_storage/src/executor/packed.rs:95:                 .get(usize::from(pack.action.get()))
+crates/vb_storage/src/executor/packed.rs:96:                 .ok_or(ExecutorError::PackMismatch)?;
+crates/vb_storage/src/executor/packed.rs:97:             self.check_pack(contract, pack)
+crates/vb_storage/src/executor/packed.rs:98:         })
+crates/vb_storage/src/executor/packed.rs:99:     }
+crates/vb_storage/src/executor/packed.rs:100: 
