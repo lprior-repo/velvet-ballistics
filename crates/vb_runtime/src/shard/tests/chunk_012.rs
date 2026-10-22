@@ -87,7 +87,7 @@ fn shard_remaining_capacity_after_pop() {
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.remaining_capacity(), 2);
@@ -105,7 +105,7 @@ fn shard_queue_len_decrements_after_tick() {
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     // Cancel for a non-existent run returns typed error
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {

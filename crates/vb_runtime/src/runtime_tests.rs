@@ -535,6 +535,7 @@ mod tests {
         };
         let runtime =
             Runtime::new_for_tests_and_benchmarks_only(shard_count, ShardConfig::default());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let result = runtime.snapshot_run(vb_core::ids::RunId::new(1), 7);
         assert_eq!(
             result,
@@ -562,6 +563,7 @@ mod tests {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let first = runtime.list_events(vb_core::ids::RunId::new(1));
         let second = runtime.list_events(vb_core::ids::RunId::new(1));
         assert_eq!(first, Err(RuntimeError::RunNotFound));
@@ -574,6 +576,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
     }
@@ -608,6 +611,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
     }
@@ -689,6 +693,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -714,6 +719,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -782,6 +788,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -801,6 +808,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -822,6 +830,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1003,6 +1012,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = action_then_finish_workflow() else {
             return;
         };
@@ -1038,6 +1048,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1068,6 +1079,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         // When shutting down only one shard
         // Use shutdown_graceful which enqueues to all shards
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
@@ -1082,6 +1094,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         // When ticking with empty queues
         let result = runtime.tick_all();
         // Then result is true
@@ -1095,6 +1108,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -1129,6 +1143,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let run = vb_core::ids::RunId::new(1);
         let response = runtime.take_inspect_response(run);
         assert_eq!(response, Err(RuntimeError::RunNotFound));
@@ -1157,6 +1172,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1204,6 +1220,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let run = vb_core::ids::RunId::new(1);
         let Some(wf) = ask_waiting_workflow() else {
             return;
@@ -1232,6 +1249,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let run = vb_core::ids::RunId::new(1);
         // Pick a run that actually lives on shard 0 so the migration target
         // (shard 1) differs from the home shard. This guarantees the
@@ -1305,6 +1323,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1336,6 +1355,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1368,6 +1388,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1404,6 +1425,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1446,6 +1468,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let run = vb_core::ids::RunId::new(1);
         let home_index = runtime.shard_index(run);
         if home_index != 0 {
@@ -1487,6 +1510,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let unknown_run = vb_core::ids::RunId::new(7777);
 
         // list_events
@@ -1526,6 +1550,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         // When draining trace
         let events = runtime.drain_trace();
         // Then result is empty
@@ -1539,6 +1564,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1561,6 +1587,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1591,6 +1618,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         // When shutting down gracefully
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // Then tick_all returns false
@@ -1604,6 +1632,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
         // When ticking again
@@ -1626,6 +1655,7 @@ mod tests {
             return;
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         // When filling the queue
         let Some(wf) = suspended_workflow() else {
             return;
@@ -1662,6 +1692,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf1) = finished_workflow() else {
             return;
         };
@@ -1691,6 +1722,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1714,6 +1746,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         // When shutting down
         assert_eq!(runtime.shutdown_graceful().map(|_report| ()), Ok(()));
         // Then tick_all returns false (all shards shut down)
@@ -1734,6 +1767,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         // When inspecting a non-existent run
         let run = vb_core::ids::RunId::new(999);
         assert_eq!(runtime.inspect_run(run, 1), Ok(()));
@@ -1750,6 +1784,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1778,6 +1813,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1797,6 +1833,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1827,6 +1864,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         // When completing an action for a run that was never submitted
         let run = vb_core::ids::RunId::new(999);
         assert_eq!(runtime.complete_action(run, StepIdx::new(0)), Ok(()));
@@ -1876,6 +1914,7 @@ mod tests {
             return;
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1898,6 +1937,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1977,6 +2017,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2000,6 +2041,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -2058,6 +2100,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2082,6 +2125,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2114,6 +2158,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2234,6 +2279,7 @@ mod tests {
             return;
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2261,6 +2307,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2297,6 +2344,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2336,6 +2384,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = wait_then_finish_workflow() else {
             return;
         };
@@ -2465,6 +2514,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf1) = wait_then_finish_workflow() else {
             return;
         };
@@ -2526,6 +2576,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf1) = action_then_finish_workflow() else {
             return;
         };
@@ -2649,6 +2700,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2681,6 +2733,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2700,6 +2753,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -2718,6 +2772,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
 
         assert_eq!(
             runtime.tick_shard(0, ShardDirective::Migrate { target: 0 }),
@@ -2735,6 +2790,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -2777,6 +2833,7 @@ mod tests {
             return;
         };
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -2826,6 +2883,7 @@ mod tests {
         let shard_count = NonZeroUsize::new(1)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let action_workflow = suspended_workflow()
             .ok_or_else(|| String::from("suspended workflow fixture failed"))?;
         let ask_workflow =
@@ -2888,6 +2946,7 @@ mod tests {
         let shard_count = NonZeroUsize::new(1)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let workflow = ask_without_timeout_workflow()
             .ok_or_else(|| String::from("ask without timeout workflow fixture failed"))?;
         let ask_run = vb_core::ids::RunId::new(12);
@@ -2916,6 +2975,7 @@ mod tests {
         let shard_count = NonZeroUsize::new(1)
             .ok_or_else(|| String::from("nonzero shard count fixture failed"))?;
         let mut runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, runtime_config());
+        runtime.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let action_workflow = suspended_workflow()
             .ok_or_else(|| String::from("suspended workflow fixture failed"))?;
         let timed_ask_workflow = ask_waiting_workflow()

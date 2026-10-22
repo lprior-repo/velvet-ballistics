@@ -33,7 +33,7 @@ fn shard_command_equality_resume() {
 fn shard_cancel_nonexistent_does_not_increment_failed() {
     // Given a shard
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     // When cancelling a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
@@ -51,7 +51,7 @@ fn shard_cancel_nonexistent_does_not_increment_failed() {
 fn shard_finished_workflow_sets_completed_counter() {
     // Given a shard with a finished workflow
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -74,7 +74,7 @@ fn shard_finished_workflow_sets_completed_counter() {
 fn shard_finished_workflow_produces_run_finished_trace() {
     // Given a shard with a finished workflow
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -98,7 +98,7 @@ fn shard_finished_workflow_produces_run_finished_trace() {
 fn shard_inspect_response_not_found_for_unknown_run() {
     // Given a shard with no runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     // When inspecting a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
@@ -225,7 +225,7 @@ fn run_state_equality() {
 fn shard_cancel_then_inspect_returns_not_found() {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -268,7 +268,7 @@ fn shard_cancel_then_inspect_returns_not_found() {
 fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() {
     // Given a shard with no runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     // When failing an action for a non-existent run
     let ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(999),

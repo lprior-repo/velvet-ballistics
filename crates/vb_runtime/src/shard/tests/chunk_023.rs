@@ -1,7 +1,7 @@
 #[test]
 fn shard_submit_with_run_id_one_accepted() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -184,7 +184,7 @@ fn shard_tick_counts_zero_initially() {
 #[test]
 fn shard_submit_with_inputs_completes_finished_workflow() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -206,7 +206,7 @@ fn shard_submit_with_inputs_completes_finished_workflow() {
 #[test]
 fn shard_multiple_submits_complete() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };

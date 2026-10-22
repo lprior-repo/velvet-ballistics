@@ -244,6 +244,25 @@ impl Runtime {
         )
     }
 
+
+    /// Configure the current live-effect policy on all shards.
+    pub fn configure_live_policy(
+        &self,
+        policy: crate::policy::CurrentLivePolicy,
+    ) -> crate::RuntimeResult<()> {
+        for shard in &self.shards {
+            shard.configure_live_policy(policy)?;
+        }
+        Ok(())
+    }
+
+    /// Activate the monotonic emergency-deny overlay on all shards.
+    pub fn activate_emergency_deny(&self) -> crate::RuntimeResult<()> {
+        for shard in &self.shards {
+            shard.activate_emergency_deny()?;
+        }
+        Ok(())
+    }
     /// Submits a run using a compiled workflow.
     pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         self.submit_direct_with_grants(run, workflow, CapabilitySet::empty())

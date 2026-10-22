@@ -7,7 +7,7 @@ fn shard_rejects_active_run_capacity_overflow() {
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -47,7 +47,7 @@ fn inspect_command_stores_retrievable_snapshot() {
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -87,7 +87,7 @@ fn enqueue_shutdown_sets_shutting_down_flag() {
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.is_shutting_down(), false);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
@@ -97,14 +97,14 @@ fn enqueue_shutdown_sets_shutting_down_flag() {
 #[test]
 fn tick_returns_true_when_queue_is_empty() {
     let config = ShardConfig::default();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.tick(), Ok(true));
 }
 
 #[test]
 fn cancel_nonexistent_run_returns_run_not_found() {
     let config = ShardConfig::default();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(999),
@@ -124,7 +124,7 @@ fn counters_reflect_submitted_after_submit_tick() {
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -151,7 +151,7 @@ fn inspect_nonexistent_run_returns_not_found() {
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
             run: super::RunId::new(999),

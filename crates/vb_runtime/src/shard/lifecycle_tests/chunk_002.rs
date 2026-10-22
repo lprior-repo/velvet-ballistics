@@ -276,7 +276,7 @@ fn assert_retry_exhaustion_journal(events: &[RuntimeJournalEvent], run: RunId) {
 
 #[test]
 fn submit_finished_workflow_completes_immediately() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = finished_workflow() else {
         return;
     };

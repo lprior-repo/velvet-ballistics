@@ -8,7 +8,7 @@ fn shard_step_budget_one_does_not_recount_completed_steps_on_later_ticks() -> Re
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
     // When submitting a 2-step finished workflow
     assert_eq!(
@@ -31,7 +31,7 @@ fn shard_step_budget_one_does_not_recount_completed_steps_on_later_ticks() -> Re
 #[test]
 fn shard_executed_step_accounting_adds_only_new_delta() {
     // Given a shard with no accounted executed steps for the run
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = super::RunId::new(515);
 
     // When the same cumulative value is observed more than once
@@ -50,7 +50,7 @@ fn shard_executed_step_accounting_adds_only_new_delta() {
 fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() -> Result<(), String> {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf1 = workflow_fixture(suspended_workflow(), "suspended_workflow wf1")?;
     let wf2 = workflow_fixture(suspended_workflow(), "suspended_workflow wf2")?;
     let run = super::RunId::new(42);
@@ -93,7 +93,7 @@ fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() -> R
 fn shard_action_failed_for_unknown_run_returns_run_not_found() {
     // Given a shard with no active runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(999),
         step: vb_core::ids::StepIdx::new(0),
@@ -124,7 +124,7 @@ fn shard_action_failed_for_unknown_run_returns_run_not_found() {
 fn shard_run_id_max_u64_accepted_as_valid_identifier() -> Result<(), String> {
     // Given a shard
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
     let run = super::RunId::new(u64::MAX);
     // When submitting a run with RunId::MAX
@@ -148,7 +148,7 @@ fn shard_run_id_max_u64_accepted_as_valid_identifier() -> Result<(), String> {
 fn shard_ask_answered_for_unknown_run_returns_run_not_found() {
     // Given a shard with no active runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let answer = AskAnswer {
         ticket: AskTicket {
             run: super::RunId::new(999),
@@ -190,7 +190,7 @@ fn shard_snapshot_for_nonexistent_run_returns_not_found() {
 fn shard_cancel_then_resubmit_same_run_id_succeeds() -> Result<(), String> {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf1 = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
     let wf2 = workflow_fixture(finished_workflow(), "finished_workflow")?;
     let run = super::RunId::new(55);
@@ -228,7 +228,7 @@ fn shard_cancel_then_resubmit_same_run_id_succeeds() -> Result<(), String> {
 fn shard_trace_ring_records_submit_and_finish_events_in_order() -> Result<(), String> {
     // Given a shard
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
     let run = super::RunId::new(77);
     // When submitting a run that finishes immediately
@@ -263,7 +263,7 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() -> Result<(), Strin
         max_active_runs: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
     // When submitting a run
     assert_eq!(

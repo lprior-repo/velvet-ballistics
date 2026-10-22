@@ -23,16 +23,20 @@ impl Shard {
         let input = crate::shard::helpers::action_input_slot(&state, ticket.step)?;
         let (mut journal_events, trace_events) =
             self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
-        Self::push_drive_journal_event(
-            &mut journal_events,
-            RuntimeJournalEvent::ActionScheduledTicket {
-                ticket,
-                input,
-                output,
-                action_abi_digest: schedule_action_abi_digest(&state, ticket.action)?,
-            },
-        )?;
-        Ok((journal_events, trace_events, state, ticket, step))
+        // Policy decision is evaluated in apply_awaiting_action before
+        // pending ticket visibility. The ActionScheduledTicket event is
+        // created only after the decision is made (Permit path).
+        let action_abi_digest = schedule_action_abi_digest(&state, ticket.action)?;
+        Ok((
+            journal_events,
+            trace_events,
+            state,
+            ticket,
+            step,
+            input,
+            output,
+            action_abi_digest,
+        ))
     }
 
     fn prepare_awaiting_timer(
@@ -115,27 +119,91 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         if evidence.is_empty() {
+            // Historical replay: reconstruct recorded decision from journal,
+            // do not re-evaluate current policy. The decision identity is
+            // preserved by the journal event, not by re-deriving it.
             self.apply(run, RuntimeEvent::AwaitAction)
                 .map_err(DriveApplyFailure::AfterCommit)?;
             return self
                 .await_action(run, state, ticket)
                 .map_err(DriveApplyFailure::AfterCommit);
         }
-        let (journal_events, trace_events, state, ticket, step) = self
-            .prepare_awaiting_action(run, state, ticket, evidence)
+
+        // Live dispatch: evaluate policy before any pending ticket visibility.
+        let (mut journal_events, trace_events, state, ticket, step, input, output, action_abi_digest) =
+            self
+                .prepare_awaiting_action(run, state, ticket, evidence)
+                .map_err(DriveApplyFailure::BeforeCommit)?;
+
+        // Get input value and taint for the policy digest.
+        // Failures to read input are not fatal — use defaults.
+        let input_value_bytes = match state.frame.read_slot(input) {
+            Ok(value) => postcard::to_allocvec(value).unwrap_or_default(),
+            Err(_) => Vec::new(),
+        };
+        let input_taint = state
+            .frame
+            .read_taint(input)
+            .unwrap_or(vb_core::value::Taint::Clean);
+
+        // Evaluate policy at the outbox boundary.
+        let decision = self
+            .policy_recorder
+            .evaluate_action(&ticket, &input_value_bytes, input_taint)
             .map_err(DriveApplyFailure::BeforeCommit)?;
-        self.append_journal_event_batch(&journal_events)
+
+        // Journal the policy decision before any action schedule event.
+        // This ensures crash consistency: the decision is durable before
+        // the effect is published.
+        let policy_decision_event = RuntimeJournalEvent::PolicyDecision {
+            run,
+            layer: decision.layer,
+            code: decision.code,
+            policy_digest: decision.policy_digest,
+            input_digest: decision.input_digest,
+            emergency_deny_active: decision.emergency_deny_active,
+            compatibility_influence: decision.compatibility_influence,
+        };
+        Self::push_drive_journal_event(&mut journal_events, policy_decision_event)
             .map_err(DriveApplyFailure::BeforeCommit)?;
-        self.push_trace_events(trace_events);
-        self.trace_ring
-            .push(TraceEvent::ActionScheduled { run, step });
-        self.add_executed_step_delta(run, state.frame.executed());
-        self.run_state_insert(run, state)
-            .map_err(DriveApplyFailure::AfterCommit)?;
-        self.pending_action_insert(run, ticket)
-            .map_err(DriveApplyFailure::AfterCommit)?;
-        self.apply(run, RuntimeEvent::AwaitAction)
-            .map_err(DriveApplyFailure::AfterCommit)
+
+        if decision.code == vb_core::policy::DecisionCode::Allowed {
+            // Permit path: append the action schedule event and publish
+            // the pending ticket.
+            Self::push_drive_journal_event(
+                &mut journal_events,
+                RuntimeJournalEvent::ActionScheduledTicket {
+                    ticket,
+                    input,
+                    output,
+                    action_abi_digest,
+                },
+            )
+            .map_err(DriveApplyFailure::BeforeCommit)?;
+
+            self.append_journal_event_batch(&journal_events)
+                .map_err(DriveApplyFailure::BeforeCommit)?;
+            self.push_trace_events(trace_events);
+            self.trace_ring
+                .push(TraceEvent::ActionScheduled { run, step });
+            self.add_executed_step_delta(run, state.frame.executed());
+            self.run_state_insert(run, state)
+                .map_err(DriveApplyFailure::AfterCommit)?;
+            self.pending_action_insert(run, ticket)
+                .map_err(DriveApplyFailure::AfterCommit)?;
+            self.apply(run, RuntimeEvent::AwaitAction)
+                .map_err(DriveApplyFailure::AfterCommit)
+        } else {
+            // Denied or suspended: do not publish a pending ticket.
+            // Transition to a typed failed/suspended state.
+            self.append_journal_event_batch(&journal_events)
+                .map_err(DriveApplyFailure::BeforeCommit)?;
+            self.push_trace_events(trace_events);
+            self.run_state_insert(run, state)
+                .map_err(DriveApplyFailure::AfterCommit)?;
+            self.apply(run, RuntimeEvent::Fail)
+                .map_err(DriveApplyFailure::AfterCommit)
+        }
     }
 
     fn apply_awaiting_timer(

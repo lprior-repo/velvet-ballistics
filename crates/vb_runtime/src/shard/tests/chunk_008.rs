@@ -2,7 +2,7 @@
 fn shard_duplicate_submit_after_cancel_succeeds() {
     // Given a shard with a cancelled run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -39,7 +39,7 @@ fn shard_duplicate_submit_after_cancel_succeeds() {
 fn shard_snapshot_run_for_active_run_returns_found() {
     // Given a shard with an active suspended run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -116,7 +116,7 @@ fn shard_fill_queue_to_capacity_returns_queue_full() {
 fn adversarial_shard_ask_answered_for_unknown_run_returns_run_not_found() {
     // Given a shard with no runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     // When answering an ask for a non-existent run
     let answer = AskAnswer {
         ticket: AskTicket {
@@ -141,7 +141,7 @@ fn adversarial_shard_ask_answered_for_unknown_run_returns_run_not_found() {
 fn shard_submit_two_runs_same_id_second_fails() {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -186,7 +186,7 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -227,7 +227,7 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
 fn shard_multiple_cancels_idempotent_for_same_run() {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -265,7 +265,7 @@ fn shard_multiple_cancels_idempotent_for_same_run() {
 fn shard_submit_after_shutdown_is_rejected_and_never_processed() {
     // Given a shard that has received shutdown
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     let Some(workflow) = suspended_workflow() else {

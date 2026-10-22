@@ -38,7 +38,7 @@
             QUEUE_CAPACITY,
             QUEUE_BATCH_SIZE,
         )?;
-        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let run = kind.run();
         submit_run(&mut shard, run, require_workflow("suspended", suspended_workflow())?);
         let timer = guard_test_timer(PendingTimerKind::Wait);

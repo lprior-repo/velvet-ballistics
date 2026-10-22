@@ -2,7 +2,7 @@
 fn shard_inspect_captures_executed_count() {
     // Given a shard with a finished workflow (executes 2 steps: SetConst + Finish)
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -25,7 +25,7 @@ fn shard_inspect_captures_executed_count() {
 fn shard_tick_processes_commands_in_fifo_order() {
     // Given a shard with two submits enqueued
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf1) = finished_workflow() else {
         return;
     };
@@ -64,7 +64,7 @@ fn shard_tick_processes_commands_in_fifo_order() {
 fn shard_resume_continues_suspended_run() {
     // Given a shard with a suspended run (Do node at step 0)
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -90,7 +90,7 @@ fn shard_resume_continues_suspended_run() {
 fn shard_take_inspect_response_returns_none_initially() {
     // Given a fresh shard
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     // When taking inspect response without any inspect command
     let response = shard.take_inspect_response();
     // Then response is None
@@ -101,7 +101,7 @@ fn shard_take_inspect_response_returns_none_initially() {
 fn shard_take_inspect_response_clears_after_take() {
     // Given a shard with an inspect response available
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };

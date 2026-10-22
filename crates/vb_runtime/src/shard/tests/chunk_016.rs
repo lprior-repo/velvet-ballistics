@@ -5,7 +5,7 @@
 #[test]
 fn shard_submit_trace_event_contains_submitted_run_id() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -35,7 +35,7 @@ fn shard_submit_trace_event_contains_submitted_run_id() {
 #[test]
 fn shard_action_failure_with_wrong_step_returns_invalid_completion() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -69,7 +69,7 @@ fn shard_action_failure_with_wrong_step_returns_invalid_completion() {
 #[test]
 fn shard_legacy_action_completed_with_wrong_step_returns_error() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -104,7 +104,7 @@ fn shard_legacy_action_completed_with_wrong_step_returns_error() {
 #[test]
 fn shard_ask_answer_after_cancel_returns_run_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = ask_then_finish_workflow() else {
         return;
     };
@@ -150,7 +150,7 @@ fn shard_ask_answer_after_cancel_returns_run_not_found() {
 #[test]
 fn shard_action_failure_after_cancel_returns_run_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -187,7 +187,7 @@ fn shard_action_failure_after_cancel_returns_run_not_found() {
 #[test]
 fn shard_resume_after_cancel_returns_run_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -243,7 +243,7 @@ fn shard_resume_after_cancel_returns_run_not_found() {
 #[test]
 fn bh_shd_01_shard_drive_state_uses_empty_contracts() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };

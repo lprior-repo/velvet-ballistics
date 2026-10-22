@@ -1,7 +1,7 @@
 
 #[test]
 fn cancel_clears_pending_timer() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = wait_workflow() else {
         return;
     };
@@ -29,7 +29,7 @@ fn cancel_clears_pending_timer() {
 
 #[test]
 fn inspect_active_run_returns_found() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -71,7 +71,7 @@ fn inspect_active_run_returns_found() {
 
 #[test]
 fn inspect_unknown_run_returns_not_found() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
             run: RunId::new(9999),
@@ -91,7 +91,7 @@ fn inspect_unknown_run_returns_not_found() {
 
 #[test]
 fn submit_produces_run_submitted_trace() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -118,7 +118,7 @@ fn submit_produces_run_submitted_trace() {
 
 #[test]
 fn cancel_produces_run_cancelled_trace() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -153,7 +153,7 @@ fn cancel_produces_run_cancelled_trace() {
 fn cancel_emits_run_cancelled_journal_event() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(112);
     assert_eq!(
@@ -184,7 +184,7 @@ fn cancel_emits_run_cancelled_journal_event() -> Result<(), String> {
 
 #[test]
 fn finish_produces_run_finished_trace() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf = require_workflow("finished", finished_workflow())?;
     let run = RunId::new(113);
     assert_eq!(
@@ -212,7 +212,7 @@ fn finish_produces_run_finished_trace() -> Result<(), String> {
 fn finished_workflow_emits_one_slot_written_for_one_output_write() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf = require_workflow("finished", finished_workflow())?;
     let run = RunId::new(1130);
     submit_run(&mut shard, run, wf);
@@ -237,7 +237,7 @@ fn finished_workflow_emits_one_slot_written_for_one_output_write() -> Result<(),
 
 #[test]
 fn resubmit_after_cancel_succeeds() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -278,7 +278,7 @@ fn resubmit_after_cancel_succeeds() {
 
 #[test]
 fn timer_fire_after_cancel_returns_run_not_found() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = wait_workflow() else {
         return;
     };

@@ -136,7 +136,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         config,
         shared_journal,
         store.clone(),
-    );
+    );; shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
 
     let mut frame = vb_core::frame::RunFrame::new(run_id, vb_core::ids::StepIdx::ZERO, 2, 2)?;
     frame.write_slot(

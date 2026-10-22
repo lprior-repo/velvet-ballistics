@@ -10,7 +10,7 @@
 #[test]
 fn vb1u88_tick_multiple_times_after_shutdown_all_false() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
@@ -21,7 +21,7 @@ fn vb1u88_tick_multiple_times_after_shutdown_all_false() {
 #[test]
 fn vb1u88_drain_for_shutdown_processes_submit_then_shutdown() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -42,7 +42,7 @@ fn vb1u88_drain_for_shutdown_processes_submit_then_shutdown() {
 #[test]
 fn vb1u88_drain_for_shutdown_on_already_shutting_down() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
@@ -51,7 +51,7 @@ fn vb1u88_drain_for_shutdown_on_already_shutting_down() {
 #[test]
 fn vb1u88_drain_for_shutdown_empty_queue_returns_shutdown_in_progress() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.drain_for_shutdown(),
         Err(RuntimeError::ShutdownInProgress)
@@ -65,7 +65,7 @@ fn vb1u88_drain_for_shutdown_empty_queue_returns_shutdown_in_progress() {
 #[test]
 fn vb1u88_cancel_unknown_run_returns_ok() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(9999),
@@ -80,7 +80,7 @@ fn vb1u88_cancel_unknown_run_returns_ok() {
 fn vb1u88_cancel_emits_run_cancelled_journal_event() {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -111,7 +111,7 @@ fn vb1u88_cancel_emits_run_cancelled_journal_event() {
 #[test]
 fn vb1u88_cancel_emits_run_cancelled_trace_event() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -143,7 +143,7 @@ fn vb1u88_cancel_emits_run_cancelled_trace_event() {
 fn vb1u88_cancel_unknown_run_does_not_emit_events() {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let before = journal.snapshot().expect("journal snapshot should succeed");
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
@@ -171,7 +171,7 @@ fn vb1u88_cancel_unknown_run_does_not_emit_events() {
 #[test]
 fn vb1u88_cancel_removes_run_and_releases_frame() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -209,7 +209,7 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {
 #[test]
 fn vb1u88_cancel_removes_pending_timer() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -250,7 +250,7 @@ fn vb1u88_status_running_when_not_shutting_down() {
 #[test]
 fn vb1u88_status_shutting_down_after_shutdown_tick() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     let status = shard.status();
@@ -291,7 +291,7 @@ fn vb1u88_is_shutting_down_false_on_new_shard() {
 #[test]
 fn vb1u88_is_shutting_down_true_after_shutdown() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.is_shutting_down(), true);

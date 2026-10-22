@@ -1,7 +1,7 @@
 #[test]
 fn vb1u88_shutdown_is_permanent_no_unshutdown() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     for _ in 0..10 {
@@ -19,7 +19,7 @@ fn vb1u88_shutdown_is_permanent_no_unshutdown() {
 #[test]
 fn vb1u88_action_completion_unknown_run_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(9999),
         step: vb_core::ids::StepIdx::ZERO,
@@ -46,7 +46,7 @@ fn vb1u88_action_completion_unknown_run_not_found() {
 #[test]
 fn vb1u88_action_failure_unknown_run_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(9999),
         step: vb_core::ids::StepIdx::ZERO,
@@ -74,7 +74,7 @@ fn vb1u88_action_failure_unknown_run_not_found() {
 #[test]
 fn vb1u88_resume_unknown_run_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.enqueue(ShardCommand::Resume {
             run: super::RunId::new(9999)
@@ -87,7 +87,7 @@ fn vb1u88_resume_unknown_run_not_found() {
 #[test]
 fn vb1u88_timer_fire_unknown_run_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.enqueue(invalid_timer_command(super::RunId::new(9999))),
         Ok(())
@@ -98,7 +98,7 @@ fn vb1u88_timer_fire_unknown_run_not_found() {
 #[test]
 fn vb1u88_ask_answer_unknown_run_not_found() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let answer = AskAnswer {
         ticket: AskTicket {
             run: super::RunId::new(9999),
@@ -130,7 +130,7 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
         max_active_runs: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -183,7 +183,7 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() {
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -209,7 +209,7 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() {
 #[test]
 fn vb1u88_run_id_zero_handled_correctly() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -228,7 +228,7 @@ fn vb1u88_run_id_zero_handled_correctly() {
 #[test]
 fn vb1u88_max_run_id_handled_correctly() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -247,7 +247,7 @@ fn vb1u88_max_run_id_handled_correctly() {
 #[test]
 fn vb1u88_multiple_sequential_finished_runs_no_leakage() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };

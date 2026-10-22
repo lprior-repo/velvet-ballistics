@@ -12,7 +12,7 @@ fn guard_test_timer(kind: PendingTimerKind) -> PendingTimer {
 
 #[test]
 fn pending_boundary_maps_reject_never_admitted_run() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(9_001);
     let timer = guard_test_timer(PendingTimerKind::Wait);
     let ticket = make_ticket(run, StepIdx::ZERO, 1);
@@ -31,7 +31,7 @@ fn pending_boundary_maps_reject_never_admitted_run() {
 
 #[test]
 fn runtime_state_insert_rejects_untracked_run() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(9_020);
 
     assert_eq!(
@@ -44,7 +44,7 @@ fn runtime_state_insert_rejects_untracked_run() {
 
 #[test]
 fn terminal_membership_rejects_never_admitted_run() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(9_026);
 
     assert_eq!(
@@ -80,7 +80,7 @@ fn run_state_insert_rejects_untracked_active_owner() -> Result<(), String> {
 
 #[test]
 fn pending_boundary_maps_allow_checked_out_active_run() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_002);
     submit_run(&mut shard, run, workflow);
@@ -100,7 +100,7 @@ fn pending_boundary_maps_allow_checked_out_active_run() -> Result<(), String> {
 
 #[test]
 fn terminal_transition_clears_active_and_pending_boundaries() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_003);
     submit_run(&mut shard, run, workflow);
@@ -123,7 +123,7 @@ fn terminal_transition_clears_active_and_pending_boundaries() -> Result<(), Stri
 
 #[test]
 fn failed_terminal_parity_clears_boundaries_and_runtime_state() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_016);
     submit_run(&mut shard, run, workflow);
@@ -158,7 +158,7 @@ fn failed_terminal_parity_clears_boundaries_and_runtime_state() -> Result<(), St
 
 #[test]
 fn kill_terminal_path_clears_boundaries_and_runtime_state() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_027);
     submit_run(&mut shard, run, workflow);
@@ -184,7 +184,7 @@ fn kill_terminal_path_clears_boundaries_and_runtime_state() -> Result<(), String
 
 #[test]
 fn terminal_membership_clears_runtime_state_immediately() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_017);
     submit_run(&mut shard, run, workflow);
@@ -209,7 +209,7 @@ fn assert_checked_out_terminal_apply_clears_runtime_state(
     event: RuntimeEvent,
     run: RunId,
 ) -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = require_workflow("suspended", suspended_workflow())?;
     submit_run(&mut shard, run, workflow);
     assert_eq!(
@@ -259,7 +259,7 @@ fn checked_out_drive_finished_apply_clears_only_runtime_state() -> Result<(), St
 
 #[test]
 fn checked_out_nonterminal_apply_preserves_runtime_state() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_025);
     submit_run(&mut shard, run, workflow);
@@ -279,7 +279,7 @@ fn checked_out_nonterminal_apply_preserves_runtime_state() -> Result<(), String>
 
 #[test]
 fn failed_runtime_state_insert_is_rejected_without_split_membership() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = require_workflow("suspended", suspended_workflow())?;
     let run = RunId::new(9_018);
     submit_run(&mut shard, run, workflow);
@@ -297,7 +297,7 @@ fn failed_runtime_state_insert_is_rejected_without_split_membership() -> Result<
 
 #[test]
 fn terminal_failed_runtime_state_insert_is_rejected_and_cannot_coexist() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(9_019);
     submit_run(
         &mut shard,
@@ -320,7 +320,7 @@ fn terminal_failed_runtime_state_insert_is_rejected_and_cannot_coexist() -> Resu
 
 #[test]
 fn terminal_retained_run_rejects_new_pending_boundaries() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = require_workflow("finished", finished_workflow())?;
     let run = RunId::new(9_006);
     submit_run(&mut shard, run, workflow);
@@ -343,7 +343,7 @@ fn terminal_retained_run_rejects_new_pending_boundaries() -> Result<(), String> 
 
 #[test]
 fn pending_timer_aggregate_only_tracks_active_owner() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let terminal_run = RunId::new(9_011);
     let active_run = RunId::new(9_012);
 
@@ -376,7 +376,7 @@ fn pending_timer_aggregate_only_tracks_active_owner() -> Result<(), String> {
 
 #[test]
 fn pending_action_aggregate_only_tracks_active_owner() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let terminal_run = RunId::new(9_009);
     let active_run = RunId::new(9_010);
 
@@ -406,7 +406,7 @@ fn pending_action_aggregate_only_tracks_active_owner() -> Result<(), String> {
 
 #[test]
 fn terminal_membership_rejects_live_run_state_owner() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(9_014);
     submit_run(
         &mut shard,
@@ -428,7 +428,7 @@ fn terminal_membership_rejects_live_run_state_owner() -> Result<(), String> {
 
 #[test]
 fn terminal_membership_clears_checked_out_and_pending_boundaries() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(9_015);
     submit_run(
         &mut shard,
@@ -457,7 +457,7 @@ fn terminal_membership_clears_checked_out_and_pending_boundaries() -> Result<(),
 
 #[test]
 fn pending_boundary_snapshot_counts_checked_out_active_owner() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(9_013);
     submit_run(
         &mut shard,
@@ -480,7 +480,7 @@ fn pending_boundary_snapshot_counts_checked_out_active_owner() -> Result<(), Str
 fn terminal_retention_does_not_consume_active_capacity() -> Result<(), String> {
     let mut config = small_config();
     config.max_active_runs = 1;
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let terminal_run = RunId::new(9_004);
     let active_run = RunId::new(9_005);
     let terminal_workflow = require_workflow("finished", finished_workflow())?;
@@ -514,7 +514,7 @@ fn terminal_retention_does_not_consume_active_capacity() -> Result<(), String> {
 fn terminal_retention_evicts_oldest_terminal_identity_at_capacity() -> Result<(), String> {
     let mut config = small_config();
     config.max_active_runs = 1;
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let oldest_terminal = RunId::new(9_007);
     let retained_terminal = RunId::new(9_008);
 

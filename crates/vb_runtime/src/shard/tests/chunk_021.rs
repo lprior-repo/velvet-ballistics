@@ -2,7 +2,7 @@
 #[test]
 fn shard_submit_finish_then_inspect_counters() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = finished_workflow() else {
         return;
     };

@@ -118,7 +118,7 @@ fn encoded_byte_len(value: &SlotValue) -> u32 {
 /// advance the in-memory frame or persist as durable evidence.
 #[test]
 fn test_action_output_oversize_rejected() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf = single_do_workflow()?;
     let run = RunId::new(60_001);
     // `I64(7)` encodes to 2 bytes via postcard (1-byte variant tag +
@@ -199,7 +199,7 @@ fn test_action_output_oversize_rejected() -> Result<(), String> {
 /// its own output, regardless of what the caller declares.
 #[test]
 fn test_action_output_taint_mismatch_rejected() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf = single_do_workflow()?;
     let run = RunId::new(60_002);
     let contract = test_action_contract(1024);
@@ -283,7 +283,7 @@ fn test_action_output_taint_mismatch_rejected() -> Result<(), String> {
 /// oversize and taint-downgrade rejection tests.
 #[test]
 fn test_action_output_within_limits_accepted() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf = do_then_finish_workflow()?;
     let run = RunId::new(60_003);
     let contract = test_action_contract(1024);

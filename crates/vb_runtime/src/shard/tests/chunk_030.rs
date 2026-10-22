@@ -138,7 +138,7 @@ fn shard_status_reports_running_health_for_fresh_shard() {
 #[test]
 fn shard_status_reports_shutting_down_after_shutdown_command() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     let status = shard.status();
@@ -150,7 +150,7 @@ fn shard_status_reports_shutting_down_after_shutdown_command() {
 #[test]
 fn shard_status_active_runs_increments_after_submitting_run() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -172,7 +172,7 @@ fn shard_status_active_runs_increments_after_submitting_run() {
 #[test]
 fn shard_is_shutting_down_returns_false_before_shutdown_command() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.is_shutting_down(), false);
     let Some(workflow) = suspended_workflow() else {
         return;
@@ -192,7 +192,7 @@ fn shard_is_shutting_down_returns_false_before_shutdown_command() {
 #[test]
 fn shard_tick_returns_false_when_shutting_down_and_queue_empty() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
@@ -207,7 +207,7 @@ fn shard_tick_returns_false_when_shutting_down_and_queue_empty() {
 #[test]
 fn shard_drain_for_shutdown_clears_queue_and_shuts_down() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
     assert_eq!(shard.is_shutting_down(), true);
@@ -217,7 +217,7 @@ fn shard_drain_for_shutdown_clears_queue_and_shuts_down() {
 #[test]
 fn shard_drain_pending_and_shutdown_clears_timers_and_shuts_down() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.drain_pending_and_shutdown(), Ok(()));
     assert_eq!(shard.is_shutting_down(), true);
     assert_eq!(shard.pending_timer_count(), 0);
@@ -250,7 +250,7 @@ fn shard_remaining_capacity_decreases_after_each_enqueue() {
 #[test]
 fn shard_can_process_commands_in_fifo_order() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -346,7 +346,7 @@ fn shard_snapshot_run_returns_not_found_for_unknown_run() {
 #[test]
 fn shard_snapshot_run_returns_found_for_active_run() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -422,7 +422,7 @@ fn shard_max_active_runs_rejects_excess_submissions() {
         max_active_runs: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -509,7 +509,7 @@ fn shard_queue_is_empty_and_full_are_mutually_consistent() {
 #[test]
 fn shard_multiple_runs_different_states_preserve_isolation() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -555,7 +555,7 @@ fn shard_multiple_runs_different_states_preserve_isolation() {
 #[test]
 fn shard_sequential_ticks_process_all_queued_commands() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow_a) = suspended_workflow() else {
         return;
     };
@@ -589,7 +589,7 @@ fn shard_sequential_ticks_process_all_queued_commands() {
 #[test]
 fn shard_cancel_command_removes_run_and_frees_resources() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -623,7 +623,7 @@ fn shard_cancel_command_removes_run_and_frees_resources() {
 #[test]
 fn shard_remains_operational_after_tick_returns_error_for_bad_command() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let invalid_ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(9999),
         step: vb_core::ids::StepIdx::ZERO,
@@ -663,7 +663,7 @@ fn shard_remains_operational_after_tick_returns_error_for_bad_command() {
 #[test]
 fn shard_after_cancel_run_can_accept_new_run_with_same_id() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -701,7 +701,7 @@ fn shard_after_cancel_run_can_accept_new_run_with_same_id() {
 #[test]
 fn shard_enqueue_rejects_submit_after_shutdown() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     let Some(workflow) = suspended_workflow() else {
@@ -722,7 +722,7 @@ fn shard_enqueue_rejects_submit_after_shutdown() {
 #[test]
 fn shard_submit_rejects_duplicate_run_id_with_exact_error() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };

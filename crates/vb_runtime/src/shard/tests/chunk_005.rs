@@ -2,7 +2,7 @@
 fn shard_timer_rejects_run_without_pending_timer() {
     // Given a shard with an action-suspended run, not a timed wait/ask
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -26,7 +26,7 @@ fn shard_timer_rejects_run_without_pending_timer() {
 #[test]
 fn shard_wait_suspension_registers_pending_timer() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -53,7 +53,7 @@ fn shard_wait_suspension_registers_pending_timer() {
 #[test]
 fn shard_timer_fired_advances_timed_wait_to_finish() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -83,7 +83,7 @@ fn shard_timer_fired_advances_timed_wait_to_finish() {
 fn shard_timer_returns_error_for_unknown_run() {
     // Given a shard with no runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     // When timer fires for a non-existent run
     assert_eq!(
         shard.enqueue(invalid_timer_command(super::RunId::new(777))),
@@ -97,7 +97,7 @@ fn shard_timer_returns_error_for_unknown_run() {
 fn shard_cancel_removes_run_from_runs_map() {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -140,7 +140,7 @@ fn shard_cancel_removes_run_from_runs_map() {
 fn shard_cancel_records_run_cancelled_trace_event() {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -176,7 +176,7 @@ fn shard_cancel_emits_cancelled_journal_and_preserves_counter_semantics() {
     let config = small_config();
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(config, shared);
+    let mut shard = Shard::new_with_journal(config, shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -219,7 +219,7 @@ fn shard_cancel_emits_cancelled_journal_and_preserves_counter_semantics() {
 fn shard_cancel_increments_failed_counter() {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -248,7 +248,7 @@ fn shard_cancel_increments_failed_counter() {
 fn shard_inspect_captures_current_pc() {
     // Given a shard with an active suspended run at step 0
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };

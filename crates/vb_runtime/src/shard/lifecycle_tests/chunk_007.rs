@@ -1,6 +1,6 @@
 #[test]
 fn ask_timer_fire_fails_run_when_no_answer() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = ask_workflow() else {
         return;
     };
@@ -33,7 +33,7 @@ fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> {
         max_active_runs: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     submit_run(
         &mut shard,
         RunId::new(0),
@@ -63,7 +63,7 @@ fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> {
 
 #[test]
 fn red_ask_answer_secret_redaction() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf = require_workflow("ask", ask_workflow())?;
     let run = RunId::new(2);
     assert_eq!(
@@ -95,7 +95,7 @@ fn red_ask_answer_secret_redaction() -> Result<(), String> {
 
 #[test]
 fn red_ask_answer_payload_size_one_byte_over() -> Result<(), String> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let wf = require_workflow("ask", ask_workflow())?;
     let max_size = wf.resource_contract().max_ipc_payload_bytes;
     let run = RunId::new(12);

@@ -2,7 +2,7 @@
 fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() {
     // Given: a shard with runs suspended on both Wait and Ask timers
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
 
     let Some(wait_workflow) = timed_wait_then_finish_workflow() else {
         return;

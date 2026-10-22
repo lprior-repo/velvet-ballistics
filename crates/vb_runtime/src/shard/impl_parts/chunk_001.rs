@@ -70,6 +70,20 @@ impl Shard {
             };
         Self::new_with_journal_and_artifact_store(config, journal, artifact_store)
     }
+    /// Configure the current live-effect policy through the explicit
+    /// public shard seam. Must be called before dispatches are expected.
+    pub fn configure_live_policy(
+        &self,
+        policy: crate::policy::CurrentLivePolicy,
+    ) -> crate::RuntimeResult<()> {
+        self.policy_recorder.update_live_effect_policy(policy)
+    }
+
+    /// Activate the monotonic emergency-deny overlay.
+    pub fn activate_emergency_deny(&self) -> crate::RuntimeResult<()> {
+        self.policy_recorder.activate_emergency_deny()
+    }
+
 
     /// Enqueues a command. Returns `QueueFull` on overflow.
     /// For submit variants, validates journal health before enqueueing

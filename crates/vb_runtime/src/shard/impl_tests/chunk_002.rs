@@ -58,7 +58,7 @@
 
     #[test]
     fn shard_with_run_id_zero() {
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -76,7 +76,7 @@
 
     #[test]
     fn shard_with_max_run_id() {
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -94,7 +94,7 @@
 
     #[test]
     fn shard_handles_multiple_sequential_finished_runs() {
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         submit_finished_run(&mut shard, RunId::new(0));
         submit_finished_run(&mut shard, RunId::new(1));
         submit_finished_run(&mut shard, RunId::new(2));
@@ -105,7 +105,7 @@
 
     #[test]
     fn take_inspect_response_returns_none_when_none_pending() {
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         assert_eq!(shard.take_inspect_response(), None);
     }
 
@@ -136,7 +136,7 @@
 
     #[test]
     fn status_reports_shutting_down_after_shutdown_tick() {
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.tick(), Ok(false));
 

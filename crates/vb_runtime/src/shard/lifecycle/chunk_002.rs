@@ -11,6 +11,9 @@ type AwaitingActionPlan = (
     RunState,
     ActionTicket,
     StepIdx,
+    SlotIdx,
+    SlotIdx,
+    vb_core::ids::WorkflowDigest,
 );
 type AwaitingTimerPlan = (
     DriveJournalEvents,

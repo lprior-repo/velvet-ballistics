@@ -2,7 +2,7 @@
 fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() {
     // Given a shard where a run finished and returned its frame to the pool
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -49,7 +49,7 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
         max_active_runs: 3,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
     let Some(workflow) = suspended_workflow() else {
         return;
@@ -135,7 +135,7 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
 fn shard_inspect_preserves_latest_response_overwriting_previous() {
     // Given a shard with two active runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf1) = suspended_workflow() else {
         return;
     };
@@ -231,7 +231,7 @@ fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() {
         max_active_runs: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf1) = suspended_workflow() else {
         return;
     };
@@ -286,7 +286,7 @@ fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() {
 fn shard_action_completed_for_wrong_run_returns_run_not_found() {
     // Given a shard with an active suspended run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };

@@ -567,7 +567,7 @@ fn shard_boundary_validates_fabricated_id_before_admission()
             policy: RuntimePolicy::Relaxed,
         },
         journal.clone(),
-    );
+    ); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = do_workflow(0)?;
     let run = RunId::new(100);
     let contract = make_contract(999, "fabricated")?;
@@ -616,7 +616,7 @@ fn shard_boundary_validates_fabricated_id_with_inputs_before_admission()
             policy: RuntimePolicy::Relaxed,
         },
         journal.clone(),
-    );
+    ); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = do_workflow(0)?;
     let run = RunId::new(102);
     let contract = make_contract(777, "fabricated")?;
@@ -667,7 +667,7 @@ fn shard_boundary_accepts_valid_contract_and_executes_do() -> Result<(), Box<dyn
             policy: RuntimePolicy::Relaxed,
         },
         journal.clone(),
-    );
+    ); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = setconst_do_workflow(0)?;
     let run = RunId::new(101);
     let contract = make_contract(0, "valid_action")?;
@@ -786,7 +786,7 @@ fn shard_boundary_accepts_valid_contract_with_seeded_input()
             policy: RuntimePolicy::Relaxed,
         },
         journal.clone(),
-    );
+    ); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let workflow = input_slot_do_workflow(0)?;
     let run = RunId::new(103);
     let inputs: Box<[(SlotIdx, SlotValue)]> = Box::from([(SlotIdx::ZERO, SlotValue::I64(55))]);

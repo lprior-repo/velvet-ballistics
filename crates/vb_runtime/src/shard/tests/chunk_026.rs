@@ -19,7 +19,7 @@ fn vb1u88_queue_full_at_capacity_boundary() {
 #[test]
 fn vb1u88_action_ticket_step_idx_boundary() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -59,7 +59,7 @@ fn vb1u88_action_ticket_step_idx_boundary() {
 #[test]
 fn vb1u88_bdd_clean_shutdown_sequence() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -82,7 +82,7 @@ fn vb1u88_bdd_clean_shutdown_sequence() {
 #[test]
 fn vb1u88_bdd_cancel_non_existent_run_is_idempotent() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let before_failed = shard.counters().snapshot().runs_failed;
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
@@ -99,7 +99,7 @@ fn vb1u88_bdd_cancel_non_existent_run_is_idempotent() {
 #[test]
 fn vb1u88_bdd_multiple_ticks_after_shutdown_idempotent() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
@@ -111,7 +111,7 @@ fn vb1u88_bdd_multiple_ticks_after_shutdown_idempotent() {
 fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -151,7 +151,7 @@ fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() {
 fn test_drain_for_shutdown_removes_all_pending_timers_and_returns_them() {
     // Given: a shard with a run that has a pending Wait timer
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -181,7 +181,7 @@ fn test_drain_for_shutdown_removes_all_pending_timers_and_returns_them() {
 fn test_shutdown_is_processed_successfully_even_when_timer_queue_is_full() {
     // Given: a shard with pending timers and a full command queue (no Shutdown)
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -224,7 +224,7 @@ fn test_shutdown_is_processed_successfully_even_when_timer_queue_is_full() {
 fn test_calling_drain_for_shutdown_repeatedly_is_idempotent() {
     // Given: a shard that has already shut down
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
     assert_eq!(shard.is_shutting_down(), true);
@@ -242,7 +242,7 @@ fn test_calling_drain_for_shutdown_repeatedly_is_idempotent() {
 fn test_drain_for_shutdown_handles_empty_timer_state() {
     // Given: a shard with no pending timers
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.pending_timer_count(), 0);
 
     // When: drain_for_shutdown processes Shutdown
@@ -258,7 +258,7 @@ fn test_drain_for_shutdown_handles_empty_timer_state() {
 fn test_pending_timer_rejects_missing_run_before_shutdown_drain() {
     // Given: a shard without an aggregate-active run for the timer target.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let orphaned_run = super::RunId::new(9003);
     assert_eq!(
         shard.pending_timer_insert(

@@ -2,7 +2,7 @@
 #[test]
 fn shard_frame_pool_metrics_after_submit_and_finish() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
 
     // Initially no pools
     let (free, total) = shard.frame_pool_metrics();
@@ -41,7 +41,7 @@ fn shard_frame_pool_metrics_after_submit_and_finish() {
 #[test]
 fn shard_snapshot_after_error_handler_finish() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = action_with_error_handler_workflow() else {
         return;
     };
@@ -98,7 +98,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
 
     // Submit + tick -> suspended
     let Some(wf1) = suspended_workflow() else {
@@ -150,7 +150,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
 #[test]
 fn shard_pending_timer_fields_are_correct() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -181,7 +181,7 @@ fn shard_pending_timer_fields_are_correct() {
 #[test]
 fn shard_ask_answered_with_i64_value() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = ask_then_finish_workflow() else {
         return;
     };

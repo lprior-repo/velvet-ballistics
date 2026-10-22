@@ -2,7 +2,7 @@
 #[test]
 fn shard_active_run_count_across_lifecycle() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.active_run_count(), 0);
 
     // Submit a suspended run -> count = 1
@@ -74,7 +74,7 @@ fn shard_submit_after_full_cancel_resets_capacity() {
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
 
     // Fill to capacity
     let Some(wf1) = suspended_workflow() else {
@@ -144,7 +144,7 @@ fn shard_submit_after_full_cancel_resets_capacity() {
 #[test]
 fn shard_inspect_active_run_returns_correct_state() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -188,7 +188,7 @@ fn shard_inspect_active_run_returns_correct_state() {
 #[test]
 fn shard_submit_with_inputs_after_cancel() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -236,7 +236,7 @@ fn shard_submit_with_inputs_after_cancel() {
 #[test]
 fn shard_repeated_inspect_same_run() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -288,7 +288,7 @@ fn shard_repeated_inspect_same_run() {
 #[test]
 fn shard_commands_for_pending_but_unprocessed_run() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(workflow) = suspended_workflow() else {
         return;
     };

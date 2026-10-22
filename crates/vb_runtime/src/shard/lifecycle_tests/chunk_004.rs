@@ -1,6 +1,6 @@
 #[test]
 fn future_attempt_completion_rejected_when_current_attempt_exists() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return;
@@ -46,7 +46,7 @@ fn future_attempt_completion_rejected_when_current_attempt_exists() {
 
 #[test]
 fn future_attempt_completion_mismatch_is_action_failed_code() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return;
@@ -90,7 +90,7 @@ fn future_attempt_completion_mismatch_is_action_failed_code() {
 fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return;
@@ -168,7 +168,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
 
 #[test]
 fn scheduling_propagates_zero_retry_policy_error() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = zero_retry_policy_workflow() else {
         assert_eq!(
             None::<()>,
@@ -201,7 +201,7 @@ fn scheduling_propagates_zero_retry_policy_error() {
 
 #[test]
 fn legacy_action_completed_on_suspended_run_succeeds() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -238,7 +238,7 @@ fn legacy_action_completed_on_suspended_run_succeeds() {
 
 #[test]
 fn legacy_action_completed_unknown_run_returns_run_not_found() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompletedLegacy {
             run: RunId::new(9999),
@@ -294,7 +294,7 @@ fn legacy_action_completion_journal_first() {
     }
 
     let shared: SharedRuntimeJournal = std::sync::Arc::new(LegacyStepFailsJournal);
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -474,7 +474,7 @@ fn handle_ask_answer_batch_append_failures_leave_no_partial_rows() -> Result<(),
             events: std::sync::Mutex::new(Vec::new()),
         });
         let shared: SharedRuntimeJournal = journal.clone();
-        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
         submit_run(&mut shard, run, require_workflow("ask", ask_workflow())?);
         let ticket = shard
             .lookup_pending_ask_ticket(run, StepIdx::new(2))
@@ -635,7 +635,7 @@ fn handle_action_completion_journal_first() {
     }
 
     let shared: SharedRuntimeJournal = std::sync::Arc::new(EnvelopeFailsJournal);
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -786,7 +786,7 @@ fn handle_action_failure_journal_first() {
     }
 
     let shared: SharedRuntimeJournal = std::sync::Arc::new(ActionFailedFailsJournal);
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -941,7 +941,7 @@ fn handle_action_failure_append_failure_keeps_retry_state_and_pending_action() -
     let shared: SharedRuntimeJournal = std::sync::Arc::new(ActionFailedFailsOnce {
         failed: std::sync::atomic::AtomicBool::new(false),
     });
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(50_050);
     submit_run(&mut shard, run, retry_workflow()?);
     let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
@@ -1042,7 +1042,7 @@ fn fail_run_action_failure_queue_full_keeps_state_and_allows_retry() -> Result<(
         queue.clone(),
     ));
     let shared: SharedRuntimeJournal = adapter.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(50_060);
     submit_run(
         &mut shard,
@@ -1321,14 +1321,14 @@ fn next_journal_seq(
 
 #[test]
 fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<(), String> {
-    const QUEUE_CAPACITY: usize = 4;
-    const QUEUE_BATCH_SIZE: usize = 4;
+    const QUEUE_CAPACITY: usize = 5;
+    const QUEUE_BATCH_SIZE: usize = 5;
     let (journal, queue, adapter, shared) = queued_journal_fixture(
         "vb-runtime-submit-drive-rollback-",
         QUEUE_CAPACITY,
         QUEUE_BATCH_SIZE,
     )?;
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(50_100);
     let workflow = require_workflow("suspended", suspended_workflow())?;
 
@@ -1440,14 +1440,14 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
     );
     assert_eq!(
         shard.journal_sequences.get(&run).copied(),
-        Some(vb_storage::EventSeq::new(6))
+        Some(vb_storage::EventSeq::new(7))
     );
 
     let resume_flush = adapter
         .flush_batch()
         .map_err(|error| format!("{error:?}"))?;
-    assert_eq!(resume_flush.drained, 4);
-    assert_eq!(resume_flush.written, 4);
+    assert_eq!(resume_flush.drained, 5);
+    assert_eq!(resume_flush.written, 5);
     let durable_after_resume = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
@@ -1487,7 +1487,7 @@ fn retry_now_action_failure_queue_full_preserves_post_failure_state() -> Result<
         QUEUE_CAPACITY,
         QUEUE_BATCH_SIZE,
     )?;
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(50_070);
     submit_run(&mut shard, run, retry_workflow()?);
     let filled_counts = fill_queue_to_one_free_slot(&queue, QUEUE_CAPACITY, 50_071)?;
@@ -1625,7 +1625,7 @@ fn drive_handler_action_failure_queue_full_preserves_post_failure_state() -> Res
         QUEUE_CAPACITY,
         QUEUE_BATCH_SIZE,
     )?;
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(50_080);
     submit_run(
         &mut shard,
@@ -1758,7 +1758,7 @@ fn finish_run_append_failure_reports_rollback_failure() -> Result<(), String> {
     let shared: SharedRuntimeJournal = std::sync::Arc::new(RejectRunFinishedJournal);
     let mut config = small_config();
     config.max_active_runs = 1;
-    let mut shard = Shard::new_with_journal(config, shared);
+    let mut shard = Shard::new_with_journal(config, shared); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let run = RunId::new(50_090);
     let workflow = require_workflow("finished", finished_workflow())?;
     let state = crate::shard::helpers::make_run_state(workflow, run)
@@ -1800,7 +1800,7 @@ fn finish_run_append_failure_reports_rollback_failure() -> Result<(), String> {
 
 #[test]
 fn handle_action_completion_returns_run_not_found_when_run_missing() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(7),
@@ -1819,7 +1819,7 @@ fn handle_action_completion_returns_run_not_found_when_run_missing() {
 
 #[test]
 fn handle_action_completion_returns_run_not_found_when_run_cancelled() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -1850,7 +1850,7 @@ fn handle_action_completion_returns_run_not_found_when_run_cancelled() {
 
 #[test]
 fn handle_action_completion_returns_run_not_found_when_run_finished() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -1890,7 +1890,7 @@ fn handle_action_completion_returns_run_not_found_when_run_finished() {
 
 #[test]
 fn handle_action_failure_returns_run_not_found_when_run_missing() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: make_ticket(RunId::new(430), StepIdx::ZERO, 1),
@@ -1903,7 +1903,7 @@ fn handle_action_failure_returns_run_not_found_when_run_missing() {
 
 #[test]
 fn handle_action_failure_returns_stale_attempt_when_attempt_mismatch() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = suspended_workflow() else {
         return;
     };

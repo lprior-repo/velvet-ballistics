@@ -199,13 +199,13 @@ fn queue_full_at_capacity_boundary() {
 
 #[test]
 fn tick_on_empty_queue_returns_true() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.tick(), Ok(true));
 }
 
 #[test]
 fn tick_processes_shutdown_returns_false() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.is_shutting_down(), true);
@@ -213,7 +213,7 @@ fn tick_processes_shutdown_returns_false() {
 
 #[test]
 fn tick_after_shutdown_always_returns_false() {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config()); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
@@ -232,7 +232,7 @@ fn drain_for_shutdown_processes_pending_commands() {
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -259,7 +259,7 @@ fn drain_for_shutdown_on_empty_queue_hits_capacity_limit() {
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config); shard.configure_live_policy(crate::policy::test_permit_all_policy()).unwrap();
     assert_eq!(
         shard.drain_for_shutdown(),
         Err(RuntimeError::ShutdownInProgress)
