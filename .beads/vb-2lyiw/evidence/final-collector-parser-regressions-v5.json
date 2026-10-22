@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/test-collector-synthetic.py"
+  ],
+  "exit_code": 1,
+  "seconds": 0.461,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-2lyiw/evidence/final-collector-parser-regressions-v5"
+}

@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-local5090-collector",
+  "argv": [
+    "perf",
+    "stat",
+    "-e",
+    "instructions:u",
+    "-x",
+    ";",
+    "-o",
+    "/tmp/vb-smoke/perf-true.csv",
+    "/usr/bin/true"
+  ],
+  "exit_code": 0,
+  "seconds": 0.032,
+  "timeout_seconds": 60,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-j3e3s/evidence/local5090-tool-smoke-perf-true",
+  "coordinator_message": "ROOT researched actual heaptrack source: https://raw.githubusercontent.com/KDE/heaptrack/master/src/analyze/accumulatedtracedata.cpp lines285-328,369-380,423-443. v3 interpreted stream: a SIZE TRACE pushes allocation-info, numeric hex; + INDEX is ZERO-based allocation-info lookup and increments allocations. Therefore sum actual size for every + gives exact totalallocatedbytes, separatepeak. Actual local zstd -dc /tmp/vb-smoke/alloc-ht.zst has v 10500 3; a 12000 4;+ 0;a 12d687 8;+ 1;- 1;- 0: 2allocations, exact73728+1234567=1308295bytes. Confirm this on known allocation smoke and reject unknownformat/invalidindexes/truncatedrecords. Use officialrunner zstd decompression rawcapture if desired; no inventedbytes0. Preserve actual .zst externalcache plus SHA manifest, rawtextsummary/codecounterderivation retained. Bench IDs actual group/metric;metadata... parse benchmark.json full_id exact metric component name before semicolon, not substring. Read latest sourcefreshness file from DeepSeek authorWS if useful; oldcollectorbaseoldpolicy rejects evidence-only commits but rootmerges repaired policy before Stage2. No need rerunproductmeasurements now. END actual working collector under65k onceproductionparsertests pass.\n"
+}

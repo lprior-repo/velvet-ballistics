@@ -1,0 +1,45 @@
+profile: ai-fast
+gates:
+- kind: fmt
+  gate_name: fmt
+  command: "synthetic fixture-backed gate: fmt"
+  exit_code: 0
+  log: .evidence/vb-itest-fast/fmt.log
+  status:
+    status: Pass
+- kind: check
+  gate_name: check
+  command: "synthetic fixture-backed gate: check"
+  exit_code: 0
+  log: .evidence/vb-itest-fast/check.log
+  status:
+    status: Pass
+- kind: clippy
+  gate_name: clippy
+  command: "synthetic fixture-backed gate: clippy"
+  exit_code: 0
+  log: .evidence/vb-itest-fast/clippy.log
+  status:
+    status: Pass
+- kind: nextest
+  gate_name: nextest
+  command: "synthetic fixture-backed gate: nextest"
+  exit_code: 0
+  log: .evidence/vb-itest-fast/nextest.log
+  status:
+    status: Pass
+- kind: forbidden-scan
+  gate_name: forbidden-scan
+  command: "synthetic fixture-backed gate: forbidden-scan"
+  exit_code: 0
+  log: .evidence/vb-itest-fast/forbidden-scan.log
+  status:
+    status: Pass
+- kind: hotpath-scan
+  gate_name: hotpath-scan
+  command: "synthetic fixture-backed gate: hotpath-scan"
+  exit_code: 0
+  log: .evidence/vb-itest-fast/hotpath-scan.log
+  status:
+    status: Pass
+exit_code: 0

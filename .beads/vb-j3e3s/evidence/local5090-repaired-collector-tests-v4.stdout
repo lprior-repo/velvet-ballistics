@@ -1,0 +1,71 @@
+PASS: parse_criterion_sample_real
+PASS: parse_criterion_sample too few
+PASS: parse_criterion_sample_too_few
+PASS: parse_criterion_sample unequal
+PASS: parse_criterion_sample_unequal
+PASS: parse_criterion_sample nan
+PASS: parse_criterion_sample_nonfinite
+PASS: parse_criterion_estimates_real
+PASS: parse_criterion_estimates missing
+PASS: parse_criterion_estimates_missing
+PASS: percentile_linear
+PASS: parse_perf_csv_real
+PASS: parse_perf_csv cycles-only
+PASS: parse_perf_csv_missing
+PASS: parse_perf_csv zero
+PASS: parse_perf_csv_zero
+PASS: parse_perf_csv not counted
+PASS: parse_perf_csv_not_counted
+PASS: parse_heaptrack_text_real
+PASS: parse_heaptrack_text missing count
+PASS: parse_heaptrack_text_missing
+PASS: parse_byte_quantity
+PASS: parse_byte_quantity bad
+PASS: parse_byte_quantity_bad
+PASS: parse_heaptrack_trace_real
+PASS: parse_heaptrack_trace_two_allocs
+PASS: heaptrack_trace unknown major
+PASS: parse_heaptrack_trace_unknown_major
+PASS: heaptrack_trace bad index
+PASS: parse_heaptrack_trace_bad_index
+PASS: heaptrack_trace truncated
+PASS: parse_heaptrack_trace_truncated
+PASS: heaptrack_trace zero allocations
+PASS: parse_heaptrack_trace_zero_alloc
+PASS: forbidden_markers_clean
+PASS: forbidden marker reject
+PASS: forbidden_markers_reject
+PASS: metric_matches
+PASS: parse_budget_real
+PASS: parse_rust_toolchain_real
+PASS: parse_criterion_version_real
+PASS: build_record_complete
+PASS: build_record_baseline_equals_result
+PASS: check_clean_ok
+PASS: check_clean dirty source
+PASS: check_clean_dirty_source
+PASS: check_clean untracked source
+PASS: check_clean_untracked_source
+PASS: check_clean_allowed_evidence
+PASS: check_commit mismatch
+PASS: check_commit_mismatch
+PASS: check_commit bad sha
+PASS: check_commit_bad_sha
+PASS: heaptrack_trace_hex_index_a
+PASS: heaptrack_trace_hex_index_f
+PASS: heaptrack_trace_hex_index_10
+PASS: heaptrack_trace missing trace field
+PASS: heaptrack_trace_missing_trace_field
+PASS: heaptrack_trace malformed + event
+PASS: heaptrack_trace_malformed_plus_event
+PASS: heaptrack_trace malformed index
+PASS: heaptrack_trace_malformed_index
+PASS: heaptrack_trace header required
+PASS: heaptrack_trace_header_required
+PASS: heaptrack_trace_total_vs_peak
+PASS: heaptrack_trace_total_exceeds_peak
+PASS: criterion_only_scans_new_directory
+PASS: find_binary_requires_target_name
+PASS: check_clean_nul_delimited
+
+69 passed, 0 failed
