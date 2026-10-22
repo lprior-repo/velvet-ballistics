@@ -1,0 +1,16 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-local3090-measurement-review",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/test-collector-synthetic.py"
+  ],
+  "exit_code": 0,
+  "seconds": 0.115,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-3iflr/evidence/independent-collector-regressions-v1",
+  "coordinator_message": "Root finalMoon freshness correctly found cargo run --manifest-path xtask generates untracked xtask/Cargo.lock because xtask excluded workspace. Root is preserving and TRACKING the generatedlock as VCS dependency input, no gate exclusion. Actualmeasurements will be rerun v3 at a new fullcommit includingtrackedxtasklock. Continue bounded v2methodology/collector review; before finalreport read latestactual v3records from /home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-final-measurements/evidence/benchmark-evidence.jsonl and manifest .beads/vb-j3e3s/evidence/actual-collection-v3 whenready. Need 2minutes for v3 rootcollection. No sourcechanges; onlyfreeze lock and remeasure. Do not require ignored generatedlock absence in youroldreviewworkspace forcollector75test, freshworkspace hasnoneunlessyoubuild. Root ownsVCS."
+}
