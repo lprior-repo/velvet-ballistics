@@ -135,7 +135,7 @@ fn make_expected_decision(
         taint: Taint::Clean,
         outcome,
         layer,
-        emergency_influence: InfluenceState::NotEvaluated,
+        emergency_influence: InfluenceState::Inactive,
         compat_influence: InfluenceState::NotEvaluated,
     }
 }
