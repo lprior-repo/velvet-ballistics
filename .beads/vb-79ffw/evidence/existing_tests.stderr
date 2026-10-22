@@ -1,0 +1,29 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-final-local3090-authority-review/crates/vb_runtime)
+warning: unused variable: `tick_before`
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:264:9
+    |
+264 |     let tick_before = runtime.tick_all();
+    |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_before`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `tick_after_fail`
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:314:9
+    |
+314 |     let tick_after_fail = runtime.tick_all();
+    |         ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_tick_after_fail`
+
+warning: variable does not need to be mutable
+   --> crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs:353:9
+    |
+353 |     let mut runtime = recover_and_schedule(&path, run, checkpoint, next_seq)?;
+    |         ----^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `vb_runtime` (test "durable_retry_run_attempt_authority") generated 3 warnings (run `cargo fix --test "durable_retry_run_attempt_authority" -p vb_runtime` to apply 3 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.30s
+     Running tests/durable_retry_run_attempt_authority.rs (target/debug/deps/durable_retry_run_attempt_authority-b180fa8f9d632497)
+     Running tests/vb_r4fm9_event_generation.rs (target/debug/deps/vb_r4fm9_event_generation-fd3c4699e60d16bc)

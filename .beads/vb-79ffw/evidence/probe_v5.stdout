@@ -1,0 +1,20 @@
+
+running 6 tests
+test idempotency_key_differs_across_run_attempts ... ok
+test ticket_key_valid_after_serialization ... ok
+test future_run_attempt_ticket_rejected ... ok
+test zero_run_attempt_ticket_rejected ... ok
+test cold_recovery_preserves_run_attempt ... ok
+test stale_completion_rejected_after_two_retries ... FAILED
+
+failures:
+
+---- stale_completion_rejected_after_two_retries stdout ----
+Error: "tick failed: invalid action completion"
+
+
+failures:
+    stale_completion_rejected_after_two_retries
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
