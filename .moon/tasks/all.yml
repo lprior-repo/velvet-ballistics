@@ -786,8 +786,6 @@ tasks:
       echo "Running Criterion benchmarks for vb-current baseline..."
       timeout 300 rustup run nightly-2026-04-28 cargo bench --all-features \
         -p vb_core --bench aggregate_resource_budget \
-        -p vb_validate --bench capability_schema \
-        -p workspace_tests --bench velvet_ballistics \
         -- --save-baseline vb-current
     toolchains:
       - rust
