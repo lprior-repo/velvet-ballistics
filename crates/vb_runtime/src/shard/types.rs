@@ -58,6 +58,7 @@ impl PendingTimer {
 /// Bounded command processed by a shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
+#[allow(clippy::large_enum_variant)]
 pub enum ShardCommand {
     /// Submit a new run for execution.
     Submit {
@@ -199,7 +200,7 @@ pub enum ShardCommand {
     /// replay and validated full recovery context. The typed
     /// `RecoverRunCommand` carries artifact verification, journal sequencing,
     /// collect pagination, and boundary classification in a single value.
-    Recover { command: Box<RecoverRunCommand> },
+    Recover { command: RecoverRunCommand },
 }
 
 /// Typed recovery command carrying full recovery context from journal replay.
@@ -258,6 +259,37 @@ impl RecoverRunCommand {
     ) -> Self {
         self.retry_checkpoint = Some(checkpoint);
         self
+    }
+
+    /// Builds a recovery command that restores a full retry checkpoint instead of the
+    /// legacy resumable frame seed. The checkpoint's own frame, value store, collect
+    /// states, and admission are authoritative; the independently loaded accepted
+    /// artifact is still validated by `handle_recover` before any mutation.
+    pub fn for_retry(
+        checkpoint: crate::run_checkpoint::RunCheckpointV1,
+        next_seq: EventSeq,
+    ) -> RuntimeResult<Self> {
+        let frame = RunFrame::from_checkpoint_v1(checkpoint.frame.clone()).map_err(|error| {
+            crate::RuntimeError::Recovery {
+                error: format!("retry checkpoint frame restore failed: {error:?}"),
+            }
+        })?;
+        let collect_states =
+            CollectStates::from_checkpoint_v1(checkpoint.collect_states.clone()).map_err(
+                |error| crate::RuntimeError::Recovery {
+                    error: format!("retry checkpoint collect restore failed: {error:?}"),
+                },
+            )?;
+        Ok(Self {
+            run: checkpoint.run_id,
+            frame,
+            artifact_digest: checkpoint.artifact_digest,
+            workflow_digest: checkpoint.workflow_digest,
+            next_seq,
+            collect_states,
+            retry_checkpoint: Some(checkpoint),
+            boundary: crate::recovery::RecoveredRunBoundary::none(),
+        })
     }
 }
 

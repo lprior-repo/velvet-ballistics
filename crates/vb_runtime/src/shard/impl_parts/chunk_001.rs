@@ -747,7 +747,7 @@ impl Shard {
                 self.handle_inspect(run, correlation);
             }
             ShardCommand::Recover { command } => {
-                self.handle_recover(*command)?;
+                self.handle_recover(command)?;
             }
             ShardCommand::Shutdown => {
                 self.shutting_down = true;

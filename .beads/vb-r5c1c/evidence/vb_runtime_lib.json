@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-r5c1c-deepseek-retry",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "vb_runtime",
+    "--lib"
+  ],
+  "exit_code": 0,
+  "seconds": 5.426,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  }
+}

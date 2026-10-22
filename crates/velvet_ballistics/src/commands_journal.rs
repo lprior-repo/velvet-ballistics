@@ -327,8 +327,13 @@ pub(crate) struct RetryAnalysis {
 ///
 /// Returns structured data; the caller is responsible for formatting.
 pub(crate) fn analyze_retry(events: &[JournalEvent]) -> RetryAnalysis {
+    // `RetryCheckpoint` is retry-authority evidence, not an execution-attempt
+    // transition. It is excluded from attempt selection so a trailing checkpoint
+    // (captured at the failure boundary) does not masquerade as an executed next
+    // attempt.
     let latest_attempt = events
         .iter()
+        .filter(|event| !matches!(event, JournalEvent::RetryCheckpoint { .. }))
         .filter_map(JournalEvent::attempt)
         .max()
         .unwrap_or(1);
@@ -355,9 +360,15 @@ pub(crate) fn analyze_retry(events: &[JournalEvent]) -> RetryAnalysis {
 
     let (last_successful_step, pending_step) = state;
 
-    let is_failed = events.last().is_some_and(|event| {
-        matches!(event, JournalEvent::RunFailedEvent { attempt, .. } if *attempt == latest_attempt)
-    });
+    // The run is retryable when the last execution evidence for the latest attempt
+    // is its durable `RunFailedEvent`, allowing a trailing retry checkpoint.
+    let is_failed = events
+        .iter()
+        .rev()
+        .find(|event| !matches!(event, JournalEvent::RetryCheckpoint { .. }))
+        .is_some_and(|event| {
+            matches!(event, JournalEvent::RunFailedEvent { attempt, .. } if *attempt == latest_attempt)
+        });
 
     if !is_failed {
         return RetryAnalysis {

@@ -1,0 +1,2 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/durable_retry_cli.rs (target/debug/deps/durable_retry_cli-8e6b942fd1bb4996)

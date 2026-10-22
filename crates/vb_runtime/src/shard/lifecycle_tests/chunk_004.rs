@@ -1195,13 +1195,13 @@ fn fail_run_action_failure_queue_full_keeps_state_and_allows_retry() -> Result<(
     let retry_counts = queue
         .pending_profile_counts()
         .map_err(|error| error.to_string())?;
-    assert_eq!(retry_counts.journaled, 2);
+    assert_eq!(retry_counts.journaled, 3);
     assert_eq!(retry_counts.strict, 0);
     let retry_flush = adapter
         .flush_batch()
         .map_err(|error| format!("{error:?}"))?;
-    assert_eq!(retry_flush.drained, 2);
-    assert_eq!(retry_flush.written, 2);
+    assert_eq!(retry_flush.drained, 3);
+    assert_eq!(retry_flush.written, 3);
     let durable_after_retry = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?;
@@ -1216,6 +1216,13 @@ fn fail_run_action_failure_queue_full_keeps_state_and_allows_retry() -> Result<(
         durable_after_retry
             .iter()
             .filter(|event| matches!(event, vb_storage::JournalEvent::RunFailedEvent { .. }))
+            .count(),
+        1
+    );
+    assert_eq!(
+        durable_after_retry
+            .iter()
+            .filter(|event| matches!(event, vb_storage::JournalEvent::RetryCheckpoint { .. }))
             .count(),
         1
     );

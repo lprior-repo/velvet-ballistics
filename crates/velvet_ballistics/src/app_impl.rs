@@ -42,7 +42,7 @@ pub(crate) mod prelude {
         map_runtime_inputs, runtime_config_for_durability, runtime_journal_for_mode,
     };
     pub(crate) use crate::run_compiled_runtime::{
-        open_storage_runtime_journal, run_compiled_workflow,
+        open_storage_runtime_journal, report_runtime_error, run_compiled_workflow,
     };
     pub(crate) use crate::step_helpers::{
         compile_bytes_json, decode_step_inputs, execute_step_isolated,
