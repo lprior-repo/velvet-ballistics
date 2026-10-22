@@ -2,6 +2,7 @@
 mod action_index;
 mod append_event;
 mod commit;
+mod emergency_deny;
 mod inputs;
 mod putters;
 mod types;
