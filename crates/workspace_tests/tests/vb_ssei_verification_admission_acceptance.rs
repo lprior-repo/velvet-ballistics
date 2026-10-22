@@ -6,9 +6,9 @@ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_runtime::admission::{
-    AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, admit_artifact_run,
+    admit_artifact_run, AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError,
 };
-use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
+use vb_storage::admission::{prepare_compiled_artifact, AcceptedArtifact};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -163,26 +163,16 @@ fn test_strict_verify_emits_certificate_when_workflow_is_safe() -> TestResult {
         digest,
         grants.clone(),
     );
-    if let Ok(admission) = &observed {
-        println!(
-            "granted == grants: {}",
-            admission.granted_capabilities() == &grants
-        );
-        println!(
-            "  idempotency_attested (production bug: empty): {:?}",
-            admission.idempotency_attested()
-        );
-        // NOTE: prepare_compiled_artifact does not populate idempotency_attested.
-    } else {
-        println!("Observed: {observed:?}");
-    }
 
     // Then: the admission certificate carries granted capability evidence.
-    // NOTE: idempotency_attested is not populated by prepare_compiled_artifact (production bug).
+    // IdempotencyClassification is RuntimeValidated (static declaration check), not
+    // OperatorAttested; prepare_compiled_artifact intentionally does not infer
+    // OPERATOR ATTESTATIONS from action declarations.
     assert!(matches!(
         observed,
         Ok(admission)
             if admission.granted_capabilities() == &grants
+                && admission.idempotency_attested().is_empty()
                 && admission.policy() == RuntimePolicy::Strict
     ));
     Ok(())
