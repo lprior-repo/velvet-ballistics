@@ -1,0 +1,180 @@
+1: commit 0f71f398c (origin/bead/vb-3y9q5, bead/vb-3y9q5)
+2: Author:     Lewis <priorlewis43@gmail.com>
+3: AuthorDate: Tue Jun 30 05:36:45 2026 -0500
+4: Commit:     Lewis <priorlewis43@gmail.com>
+5: CommitDate: Tue Jun 30 06:18:25 2026 -0500
+6: 
+7:     vb-3y9q5: black-hat review - APPROVED
+8: 
+9: diff --git a/crates/vb_runtime/src/frame_pool.rs b/crates/vb_runtime/src/frame_pool.rs
+10: index 0ea2be68c..9723f6017 100644
+11: --- a/crates/vb_runtime/src/frame_pool.rs
+12: +++ b/crates/vb_runtime/src/frame_pool.rs
+13: @@ -24,45 +24,61 @@ pub struct FramePool {
+14:  
+15:  impl FramePool {
+16:      /// Creates a new frame pool with the given dimensions and capacity.
+17: +    /// All frames are pre-allocated at construction so `take` never falls back
+18: +    /// to fresh allocation on the runtime hot path.
+19:      pub fn new(step_count: u16, slot_count: u16, capacity: usize) -> CoreResult<Self> {
+20:          if capacity == 0 || capacity > MAX_POOL_CAPACITY {
+21:              return Err(vb_core::errors::CoreError::ResourceLimitExceeded {
+22:                  resource: "frame_pool_capacity",
+23:              });
+24:          }
+25: +        let mut frames = Vec::with_capacity(capacity);
+26: +        for _ in 0..capacity {
+27: +            match RunFrame::new(RunId::ZERO, StepIdx::ZERO, step_count, slot_count) {
+28: +                Ok(frame) => frames.push(frame),
+29: +                Err(_) => {
+30: +                    return Err(vb_core::errors::CoreError::InvalidCompiledWorkflow {
+31: +                        reason: "step_count_zero",
+32: +                    });
+33: +                }
+34: +            }
+35: +        }
+36:          Ok(Self {
+37: -            frames: Vec::new(),
+38: +            frames,
+39:              step_count,
+40:              slot_count,
+41:              capacity,
+42:          })
+43:      }
+44:  
+45: -    /// Takes a frame from the pool or allocates a new one if the pool is empty.
+46: -    /// Returns an error if the pool is empty and allocation is denied.
+47: +    /// Takes a frame from the pre-allocated pool.
+48: +    /// Returns an error if the pool is exhausted (all `capacity` frames are in use).
+49: +    /// This replaces the previous behavior of falling back to fresh allocation
+50: +    /// on the runtime hot path, which violated determinism and budget guarantees.
+51:      pub fn take(&mut self, run_id: RunId, first_step: StepIdx) -> CoreResult<RunFrame> {
+52: -        if self.frames.is_empty() {
+53: -            RunFrame::new(run_id, first_step, self.step_count, self.slot_count)
+54: -        } else {
+55: -            let mut frame = self
+56: -                .frames
+57: -                .pop()
+58: -                .ok_or(vb_core::errors::CoreError::AllocationFailed)?;
+59: -            frame.reinitialize(run_id, first_step, self.step_count, self.slot_count)?;
+60: -            Ok(frame)
+61: -        }
+62: +        let mut frame = self
+63: +            .frames
+64: +            .pop()
+65: +            .ok_or(vb_core::errors::CoreError::AllocationFailed)?;
+66: +        frame.reinitialize(run_id, first_step, self.step_count, self.slot_count)?;
+67: +        Ok(frame)
+68:      }
+69:  
+70: -    /// Returns a frame to the pool for reuse. Drops the frame if the pool is
+71: -    /// at capacity.
+72: +    /// Returns a frame to the pool for reuse. Drops the frame if dimensions
+73: +    /// don't match or if the pool is unexpectedly at capacity.
+74: +    /// Since the pool is pre-allocated at `capacity` frames, this is normally
+75: +    /// a no-op push (the pool holds exactly `capacity` frames).
+76:      pub fn release(&mut self, frame: RunFrame) {
+77: -        if frame.step_count() == self.step_count
+78: -            && frame.slot_count() == self.slot_count
+79: -            && self.frames.len() < self.capacity
+80: -        {
+81: -            self.frames.push(frame);
+82: +        if frame.step_count() != self.step_count || frame.slot_count() != self.slot_count {
+83: +            // Mismatched dimensions: silently drop.
+84: +            return;
+85: +        }
+86: +        if self.frames.len() >= self.capacity {
+87: +            // Pool is at capacity: silently drop (should not happen in practice
+88: +            // since pre-allocation guarantees pool size matches capacity).
+89: +            return;
+90:          }
+91: -        // Frame is dropped when the pool is full.
+92: +        self.frames.push(frame);
+93:      }
+94:  
+95:      /// Number of frames currently available in the pool.
+96: diff --git a/crates/vb_runtime/src/frame_pool/tests.rs b/crates/vb_runtime/src/frame_pool/tests.rs
+97: index beea9d408..48bdea81c 100644
+98: --- a/crates/vb_runtime/src/frame_pool/tests.rs
+99: +++ b/crates/vb_runtime/src/frame_pool/tests.rs
+100: @@ -41,7 +41,7 @@ fn pool_rejects_excessive_capacity() {
+101:  }
+102:  
+103:  #[test]
+104: -fn take_allocates_when_empty() {
+105: +fn take_returns_preallocated_frame() {
+106:      let mut pool = new_pool(2, 1, 4);
+107:      let frame = pool.take(RunId::new(1), StepIdx::new(0));
+108:      assert_eq!(frame.map(|f| f.run_id()), Ok(RunId::new(1)));
+109: @@ -57,7 +57,7 @@ fn release_and_reuse_frame() {
+110:          Err(_) => return,
+111:      };
+112:      pool.release(frame);
+113: -    assert_eq!(pool.available(), 1);
+114: +    assert_eq!(pool.available(), 4);
+115:  
+116:      let reused = pool.take(RunId::new(2), StepIdx::new(0));
+117:      assert_eq!(reused.map(|f| f.run_id()), Ok(RunId::new(2)));
+118: @@ -68,45 +68,85 @@ fn release_drops_when_at_capacity() {
+119:      let mut pool = new_pool(2, 1, 1);
+120:      let frame1 = pool.take(RunId::new(1), StepIdx::new(0));
+121:      assert_eq!(frame1.as_ref().map(|f| f.run_id()), Ok(RunId::new(1)));
+122: +    // Pool has capacity 1, so second take fails (no fresh alloc)
+123:      let frame2 = pool.take(RunId::new(2), StepIdx::new(0));
+124: -    assert_eq!(frame2.as_ref().map(|f| f.run_id()), Ok(RunId::new(2)));
+125: +    assert!(matches!(
+126: +        frame2,
+127: +        Err(vb_core::errors::CoreError::AllocationFailed)
+128: +    ));
+129:      let frame1 = match frame1 {
+130:          Ok(f) => f,
+131:          Err(_) => return,
+132:      };
+133: -    let frame2 = match frame2 {
+134: -        Ok(f) => f,
+135: -        Err(_) => return,
+136: -    };
+137:      pool.release(frame1);
+138: -    pool.release(frame2);
+139:      assert_eq!(pool.available(), 1);
+140:  }
+141:  
+142:  #[test]
+143: -fn is_empty_returns_true_for_new_pool() {
+144: +fn is_empty_returns_false_for_new_pool() {
+145:      let pool = new_pool(2, 1, 4);
+146: -    assert_eq!(pool.is_empty(), true);
+147: +    assert_eq!(pool.is_empty(), false, "pool is pre-allocated with capacity frames");
+148: +    assert_eq!(pool.available(), 4);
+149:  }
+150:  
+151:  #[test]
+152: -fn is_empty_returns_false_after_release() {
+153: +fn is_empty_returns_true_after_taking_all() {
+154:      let mut pool = new_pool(2, 1, 4);
+155: -    assert_eq!(pool.is_empty(), true);
+156: -    let frame = pool.take(RunId::new(1), StepIdx::new(0));
+157: -    assert_eq!(pool.is_empty(), true);
+158: -    let frame = match frame {
+159: -        Ok(f) => f,
+160: -        Err(_) => return,
+161: -    };
+162: -    pool.release(frame);
+163:      assert_eq!(pool.is_empty(), false);
+164: +    for i in 1u64..=4 {
+165: +        let frame = match pool.take(RunId::new(i), StepIdx::new(0)) {
+166: +            Ok(f) => f,
+167: +            Err(_) => return,
+168: +        };
+169: +        drop(frame);
+170: +    }
+171: +    assert_eq!(pool.is_empty(), true);
+172:  }
+173:  
+174:  #[test]
+175:  fn capacity_returns_configured_value() {
+176:      let pool = new_pool(10, 5, 42);
+177:      assert_eq!(pool.capacity(), 42);
+178: +    assert_eq!(pool.available(), 42, "pool is pre-allocated");
+179: +}
+180: +

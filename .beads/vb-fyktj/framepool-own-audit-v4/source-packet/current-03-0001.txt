@@ -1,0 +1,181 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/shard/tests/chunk_003.rs
+1: fn timed_ask_without_answer_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+2:     let set_prompt = CompiledNode {
+3:         id: vb_core::ids::StepIdx::ZERO,
+4:         output: Some(SlotIdx::ZERO),
+5:         next: Some(vb_core::ids::StepIdx::new(1)),
+6:         on_error: None,
+7:         error_slot: None,
+8:         kind: CompiledNodeKind::SetConst {
+9:             value: ConstIdx::new(0),
+10:         },
+11:     };
+12:     let set_timeout = CompiledNode {
+13:         id: vb_core::ids::StepIdx::new(1),
+14:         output: Some(SlotIdx::new(1)),
+15:         next: Some(vb_core::ids::StepIdx::new(2)),
+16:         on_error: None,
+17:         error_slot: None,
+18:         kind: CompiledNodeKind::SetConst {
+19:             value: ConstIdx::new(1),
+20:         },
+21:     };
+22:     let ask = CompiledNode {
+23:         id: vb_core::ids::StepIdx::new(2),
+24:         output: None,
+25:         next: Some(vb_core::ids::StepIdx::new(3)),
+26:         on_error: None,
+27:         error_slot: None,
+28:         kind: CompiledNodeKind::Ask {
+29:             prompt: SlotIdx::ZERO,
+30:             timeout_slot: Some(SlotIdx::new(1)),
+31:         },
+32:     };
+33:     let resume = CompiledNode {
+34:         id: vb_core::ids::StepIdx::new(3),
+35:         output: None,
+36:         next: Some(vb_core::ids::StepIdx::new(4)),
+37:         on_error: None,
+38:         error_slot: None,
+39:         kind: CompiledNodeKind::AskResume {
+40:             answer: SlotIdx::new(2),
+41:         },
+42:     };
+43:     let finish = CompiledNode {
+44:         id: vb_core::ids::StepIdx::new(4),
+45:         output: None,
+46:         next: None,
+47:         on_error: None,
+48:         error_slot: None,
+49:         kind: CompiledNodeKind::Finish {
+50:             result: SlotIdx::new(2),
+51:         },
+52:     };
+53:     let parts = WorkflowParts {
+54:         semantic_source_identity: None,
+55:         name: Box::from("timed_ask_without_answer"),
+56:         digest: WorkflowDigest::from_bytes([5; 32]),
+57:         nodes: Box::from([set_prompt, set_timeout, ask, resume, finish]),
+58:         expressions: Box::from([]),
+59:         accessors: Box::from([]),
+60:         constants: Box::from([
+61:             vb_core::value::ConstValue::Symbol(vb_core::ids::SymbolId::new(1)),
+62:             vb_core::value::ConstValue::I64(10),
+63:         ]),
+64:         slot_count: 3,
+65:         symbols_count: 2,
+66:         entry: vb_core::ids::StepIdx::ZERO,
+67:         step_names: Box::from([]),
+68:         resource_contract: ResourceContract::DEFAULT,
+69:         input_slots: Box::from([]),
+70:     };
+71:     vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+72: }
+73: 
+74: fn small_config() -> ShardConfig {
+75:     ShardConfig {
+76:         command_queue_capacity: 16,
+77:         trace_capacity: 16,
+78:         step_budget_per_tick: 4,
+79:         max_active_runs: 4,
+80:         policy: vb_core::policy::RuntimePolicy::Relaxed,
+81:     }
+82: }
+83: 
+84: fn workflow_fixture(
+85:     workflow: Option<vb_core::workflow::CompiledWorkflow>,
+86:     name: &'static str,
+87: ) -> Result<vb_core::workflow::CompiledWorkflow, String> {
+88:     workflow.ok_or_else(|| {
+89:         let mut message = name.to_owned();
+90:         message.push_str(" fixture must build");
+91:         message
+92:     })
+93: }
+94: 
+95: #[test]
+96: fn finished_run_releases_frame_to_dimension_pool() -> Result<(), String> {
+97:     let config = small_config();
+98:     let mut shard = Shard::new(config);
+99:     let workflow = workflow_fixture(finished_workflow(), "finished_workflow")?;
+100: 
+101:     assert_eq!(
+102:         shard.enqueue(ShardCommand::Submit {
+103:             run: super::RunId::new(1),
+104:             workflow: workflow,
+105:             caps: vb_core::capability::CapabilitySet::empty()
+106:         }),
+107:         Ok(())
+108:     );
+109:     assert_eq!(shard.tick(), Ok(true));
+110: 
+111:     let available = shard.frame_pools.get(&(2, 1)).map(FramePool::available);
+112:     // Pool pre-allocated to capacity (4); finished run's frame was released back
+113:     assert_eq!(available, Some(4));
+114:     Ok(())
+115: }
+116: 
+117: #[test]
+118: fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {
+119:     let config = small_config();
+120:     let mut shard = Shard::new(config);
+121:     let workflow = workflow_fixture(suspended_workflow(), "suspended_workflow")?;
+122:     let run = super::RunId::new(11);
+123: 
+124:     assert_eq!(
+125:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+126:             run: run,
+127:             workflow: workflow,
+128:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+129:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+130:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+131:         }),
+132:         Ok(())
+133:     );
+134:     assert_eq!(shard.tick(), Ok(true));
+135:     assert_eq!(
+136:         shard.frame_pools.get(&(1, 1)).map(FramePool::available),
+137:         // Pool pre-allocated to capacity (4); one frame in use, three available
+138:         Some(3)
+139:     );
+140: 
+141:     assert_eq!(
+142:         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+143:         Ok(())
+144:     );
+145:     assert_eq!(shard.tick(), Ok(true));
+146:     assert_eq!(
+147:         shard.frame_pools.get(&(1, 1)).map(FramePool::available),
+148:         // After cancel, frame returned; 4 available
+149:         Some(4)
+150:     );
+151:     Ok(())
+152: }
+153: 
+154: #[test]
+155: fn cancel_cleans_pending_timer() -> Result<(), String> {
+156:     let config = small_config();
+157:     let mut shard = Shard::new(config);
+158:     let workflow = workflow_fixture(timed_wait_then_finish_workflow(), "timed_wait_then_finish")?;
+159:     let run = super::RunId::new(12);
+160: 
+161:     assert_eq!(
+162:         shard.enqueue(ShardCommand::SubmitWithContracts {
+163:             run: run,
+164:             workflow: workflow,
+165:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+166:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+167:         }),
+168:         Ok(())
+169:     );
+170:     assert_eq!(shard.tick(), Ok(true));
+171:     assert_eq!(shard.pending_timer_count(), 1);
+172:     assert_eq!(
+173:         shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+174:         Ok(())
+175:     );
+176:     assert_eq!(shard.tick(), Ok(true));
+177: 
+178:     assert_eq!(shard.pending_timer_count(), 0);
+179:     Ok(())
+180: }

@@ -1,0 +1,55 @@
+[
+  {
+    "file": "crates/vb_runtime/src/frame_pool.rs",
+    "historical_vs_current_equal": true,
+    "historical_hunks": 1,
+    "exact_added_lines_present": 37,
+    "total_nonempty_added_lines": 37,
+    "added_lines_not_exact_current": []
+  },
+  {
+    "file": "crates/vb_runtime/src/frame_pool/tests.rs",
+    "historical_vs_current_equal": false,
+    "historical_hunks": 16,
+    "exact_added_lines_present": 121,
+    "total_nonempty_added_lines": 125,
+    "added_lines_not_exact_current": [
+      "    assert_eq!(pool.is_empty(), false, \"pool is pre-allocated with capacity frames\");",
+      "    assert_eq!(pool.available(), 8, \"all 8 frames pre-allocated at construction\");",
+      "    let _f1 = pool.take(RunId::new(1), StepIdx::new(0)).expect(\"first take\");",
+      "    let _f2 = pool.take(RunId::new(2), StepIdx::new(0)).expect(\"second take\");"
+    ]
+  },
+  {
+    "file": "crates/vb_runtime/src/shard/tests/chunk_003.rs",
+    "historical_vs_current_equal": false,
+    "historical_hunks": 3,
+    "exact_added_lines_present": 6,
+    "total_nonempty_added_lines": 6,
+    "added_lines_not_exact_current": []
+  },
+  {
+    "file": "crates/vb_runtime/src/shard/tests/chunk_010.rs",
+    "historical_vs_current_equal": false,
+    "historical_hunks": 1,
+    "exact_added_lines_present": 3,
+    "total_nonempty_added_lines": 3,
+    "added_lines_not_exact_current": []
+  },
+  {
+    "file": "crates/vb_runtime/src/shard/tests/chunk_017.rs",
+    "historical_vs_current_equal": false,
+    "historical_hunks": 1,
+    "exact_added_lines_present": 8,
+    "total_nonempty_added_lines": 8,
+    "added_lines_not_exact_current": []
+  },
+  {
+    "file": "crates/vb_runtime/src/shard/tests/chunk_024.rs",
+    "historical_vs_current_equal": false,
+    "historical_hunks": 1,
+    "exact_added_lines_present": 4,
+    "total_nonempty_added_lines": 4,
+    "added_lines_not_exact_current": []
+  }
+]

@@ -1,0 +1,180 @@
+361: @@ -488,23 +537,21 @@ fn frame_pool_release_never_panics_or_overflows_capacity() {
+362:  }
+363:  
+364:  #[test]
+365: -fn frame_pool_zero_step_count_rejects_frame_creation() {
+366: -    // Given a pool with zero step count
+367: -    let mut pool = new_pool(0, 1, 4);
+368: -    // When taking a frame
+369: -    let result = pool.take(RunId::new(1), StepIdx::new(0));
+370: -    // Then RunFrame::new rejects step_count=0 as invalid
+371: +fn frame_pool_zero_step_count_rejects_construction() {
+372: +    // Given a pool with zero step count, construction itself fails because
+373: +    // RunFrame::new rejects step_count=0 (pre-allocation fails)
+374: +    let result = FramePool::new(0, 1, 4);
+375: +    // Then FramePool::new returns the error directly
+376:      match result {
+377:          Err(vb_core::errors::CoreError::InvalidCompiledWorkflow { reason }) => {
+378:              assert_eq!(reason, "step_count_zero");
+379:          }
+380: -        other => {
+381: -            assert_eq!(
+382: -                other,
+383: -                Err(vb_core::errors::CoreError::InvalidCompiledWorkflow {
+384: -                    reason: "step_count_zero"
+385: -                })
+386: -            );
+387: +        Err(other) => {
+388: +            let msg = format!("unexpected error: {other:?}");
+389: +            panic!("{msg}");
+390: +        }
+391: +        Ok(_) => {
+392: +            panic!("expected error for step_count=0");
+393:          }
+394:      }
+395:  }
+396: @@ -572,13 +619,14 @@ fn frame_pool_take_release_take_preserves_pool_consistency_under_rapid_cycle() {
+397:  
+398:  #[test]
+399:  fn frame_pool_release_after_release_at_capacity_drops_all_extras() {
+400: -    // Given a pool with capacity 2 and 5 frames taken
+401: +    // Given a pool with capacity 2 — pre-allocated means only 2 frames exist
+402:      let mut pool = new_pool(2, 1, 2);
+403: -    let frames: Vec<RunFrame> = (1..=5u64)
+404: +    // When taking all 2 (the only pre-allocated ones)
+405: +    let frames: Vec<RunFrame> = (1..=2u64)
+406:          .filter_map(|i| pool.take(RunId::new(i), StepIdx::new(0)).ok())
+407:          .collect();
+408: -    assert_eq!(frames.len(), 5);
+409: -    // When releasing all 5 frames
+410: +    assert_eq!(frames.len(), 2);
+411: +    // When releasing all 2 frames
+412:      for frame in frames {
+413:          pool.release(frame);
+414:      }
+415: @@ -608,7 +656,7 @@ fn frame_pool_large_capacity_at_boundary_succeeds() {
+416:          Err(_) => return,
+417:      };
+418:      assert_eq!(pool.capacity(), 4096);
+419: -    assert_eq!(pool.available(), 0);
+420: +    assert_eq!(pool.available(), 4096, "all frames pre-allocated");
+421:  }
+422:  
+423:  #[test]
+424: @@ -633,24 +681,27 @@ fn frame_pool_reused_frame_step_count_matches_pool_config() {
+425:  
+426:  #[test]
+427:  fn frame_pool_concurrent_dimension_pools_do_not_interfere() {
+428: -    // Given two pools with different dimensions
+429: +    // Given two pools with different dimensions, both pre-allocated
+430:      let mut pool_a = new_pool(2, 1, 4);
+431:      let mut pool_b = new_pool(4, 2, 4);
+432: +    assert_eq!(pool_a.available(), 4);
+433: +    assert_eq!(pool_b.available(), 4);
+434:      // When releasing a frame from pool_b into pool_a
+435:      let frame_b = match pool_b.take(RunId::new(1), StepIdx::new(0)) {
+436:          Ok(f) => f,
+437:          Err(_) => return,
+438:      };
+439:      pool_a.release(frame_b);
+440: -    // Then pool_a is still empty (dimension mismatch silently dropped)
+441: -    assert_eq!(pool_a.available(), 0);
+442: -    // And pool_b can still release its own frame type
+443: +    // Then pool_a is unchanged (dimension mismatch silently dropped)
+444: +    assert_eq!(pool_a.available(), 4);
+445: +    assert_eq!(pool_b.available(), 3);
+446: +    // And pool_a can still release its own frame type
+447:      let frame_a = match pool_a.take(RunId::new(2), StepIdx::new(0)) {
+448:          Ok(f) => f,
+449:          Err(_) => return,
+450:      };
+451:      pool_a.release(frame_a);
+452: -    assert_eq!(pool_a.available(), 1);
+453: +    assert_eq!(pool_a.available(), 4);
+454:  }
+455:  
+456:  // =====================================================================
+457: @@ -658,20 +709,18 @@ fn frame_pool_concurrent_dimension_pools_do_not_interfere() {
+458:  // =====================================================================
+459:  
+460:  #[test]
+461: -fn frame_pool_take_always_produces_usable_frame_even_when_exhausted() {
+462: -    // Given a pool with capacity 1
+463: +fn frame_pool_take_returns_error_when_exhausted() {
+464: +    // Given a pool with capacity 1 (pre-allocated, so only 1 frame exists)
+465:      let mut pool = new_pool(4, 2, 1);
+466: -    // When taking many frames without releasing
+467: -    for i in 1u64..=20 {
+468: -        let frame = pool.take(RunId::new(i), StepIdx::new(0));
+469: -        match frame {
+470: -            Ok(f) => assert_eq!(f.run_id(), RunId::new(i)),
+471: -            Err(e) => {
+472: -                let msg = format!("frame {i} allocation failed: {e}");
+473: -                panic!("{msg}");
+474: -            }
+475: -        }
+476: -    }
+477: +    // When taking the one frame
+478: +    let frame = pool.take(RunId::new(1), StepIdx::new(0));
+479: +    assert!(frame.is_ok());
+480: +    // Then taking a second frame returns AllocationFailed (no fresh alloc fallback)
+481: +    let second = pool.take(RunId::new(2), StepIdx::new(0));
+482: +    assert!(matches!(
+483: +        second,
+484: +        Err(vb_core::errors::CoreError::AllocationFailed)
+485: +    ));
+486:  }
+487:  
+488:  #[test]
+489: diff --git a/crates/vb_runtime/src/shard/tests/chunk_003.rs b/crates/vb_runtime/src/shard/tests/chunk_003.rs
+490: index d6cba3fb9..8a8fe64bc 100644
+491: --- a/crates/vb_runtime/src/shard/tests/chunk_003.rs
+492: +++ b/crates/vb_runtime/src/shard/tests/chunk_003.rs
+493: @@ -107,7 +107,8 @@ fn finished_run_releases_frame_to_dimension_pool() -> Result<(), String> {
+494:      assert_eq!(shard.tick(), Ok(true));
+495:  
+496:      let available = shard.frame_pools.get(&(2, 1)).map(FramePool::available);
+497: -    assert_eq!(available, Some(1));
+498: +    // Pool pre-allocated to capacity (4); finished run's frame was released back
+499: +    assert_eq!(available, Some(4));
+500:      Ok(())
+501:  }
+502:  
+503: @@ -129,7 +130,8 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {
+504:      assert_eq!(shard.tick(), Ok(true));
+505:      assert_eq!(
+506:          shard.frame_pools.get(&(1, 1)).map(FramePool::available),
+507: -        Some(0)
+508: +        // Pool pre-allocated to capacity (4); one frame in use, three available
+509: +        Some(3)
+510:      );
+511:  
+512:      assert_eq!(
+513: @@ -139,7 +141,8 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), String> {
+514:      assert_eq!(shard.tick(), Ok(true));
+515:      assert_eq!(
+516:          shard.frame_pools.get(&(1, 1)).map(FramePool::available),
+517: -        Some(1)
+518: +        // After cancel, frame returned; 4 available
+519: +        Some(4)
+520:      );
+521:      Ok(())
+522:  }
+523: diff --git a/crates/vb_runtime/src/shard/tests/chunk_010.rs b/crates/vb_runtime/src/shard/tests/chunk_010.rs
+524: index 778110074..b1d6bbabd 100644
+525: --- a/crates/vb_runtime/src/shard/tests/chunk_010.rs
+526: +++ b/crates/vb_runtime/src/shard/tests/chunk_010.rs
+527: @@ -30,11 +30,12 @@ fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() {
+528:          Ok(())
+529:      );
+530:      assert_eq!(shard.tick(), Ok(true));
+531: -    // Then the second run also completes and pool has 1 available frame
+532: +    // Then the second run also completes
+533:      assert_eq!(shard.counters().snapshot().runs_completed, 2);
+534: +    // Both runs are finished; pool has all pre-allocated frames available
+535:      assert_eq!(
+536:          shard.frame_pools.get(&(2, 1)).map(FramePool::available),
+537: -        Some(1)
+538: +        Some(4)
+539:      );
+540:  }

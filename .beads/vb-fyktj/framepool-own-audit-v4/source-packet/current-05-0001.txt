@@ -1,0 +1,181 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/shard/tests/chunk_017.rs
+1: // BH-SHD-02: take_run_state removes run from map before drive.
+2: // If an error occurs between take and apply_drive_result, the run is lost.
+3: // Severity: Low. Current code structure is safe but fragile.
+4: #[test]
+5: fn bh_shd_02_run_removed_from_map_during_drive() {
+6:     let config = small_config();
+7:     let mut shard = Shard::new(config);
+8:     let Some(workflow) = suspended_workflow() else {
+9:         return;
+10:     };
+11:     let run = super::RunId::new(802);
+12:     assert_eq!(
+13:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+14:             run: run,
+15:             workflow: workflow,
+16:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+17:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+18:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+19:         }),
+20:         Ok(())
+21:     );
+22:     assert_eq!(shard.tick(), Ok(true));
+23:     assert_eq!(shard.active_run_count(), 1);
+24:     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
+25:     assert_eq!(shard.tick(), Ok(true));
+26:     // Run was removed and re-inserted by keep_run (Do node suspends again).
+27:     assert_eq!(shard.active_run_count(), 1);
+28: }
+29: 
+30: // BH-SHD-03: Verify exactly one ActionFailed trace event for non-retryable.
+31: #[test]
+32: fn bh_shd_03_action_failure_trace_events_count() {
+33:     let config = small_config();
+34:     let mut shard = Shard::new(config);
+35:     let Some(workflow) = suspended_workflow() else {
+36:         return;
+37:     };
+38:     let run = super::RunId::new(803);
+39:     assert_eq!(
+40:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+41:             run: run,
+42:             workflow: workflow,
+43:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+44:             action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+45:             inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+46:         }),
+47:         Ok(())
+48:     );
+49:     assert_eq!(shard.tick(), Ok(true));
+50:     let drained_before_failure = shard.trace_ring_mut().drain();
+51:     assert_ne!(drained_before_failure.len(), 0);
+52:     let ticket = action_ticket(run, vb_core::ids::StepIdx::ZERO);
+53:     let failure = timeout_failure();
+54:     assert_eq!(
+55:         shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
+56:         Ok(())
+57:     );
+58:     assert_eq!(shard.tick(), Ok(true));
+59:     let events = shard.trace_ring_mut().drain();
+60:     let action_failed_count = events.iter().filter(|e| {
+61:         matches!(e, TraceEvent::ActionFailed { run: r, step: vb_core::ids::StepIdx::ZERO, code: _ } if *r == run)
+62:     }).count();
+63:     assert_eq!(
+64:         action_failed_count, 1,
+65:         "BH-SHD-03: expected exactly 1 ActionFailed trace event, got {action_failed_count}"
+66:     );
+67: }
+68: 
+69: // BH-SHD-04: find_error_handler_for_failure linear scan on large workflows.
+70: // Severity: Low. Performance concern only.
+71: #[test]
+72: fn bh_shd_04_find_error_handler_linear_scan_fallback() {
+73:     let handler_idx = 20u16;
+74:     let first_node = CompiledNode {
+75:         id: vb_core::ids::StepIdx::ZERO,
+76:         output: None,
+77:         next: None,
+78:         on_error: None,
+79:         error_slot: None,
+80:         kind: CompiledNodeKind::ErrorHandler {
+81:             body: vb_core::ids::StepIdx::new(1),
+82:             handler: vb_core::ids::StepIdx::new(handler_idx),
+83:             error_slot: None,
+84:         },
+85:     };
+86:     let middle_nodes = (1u16..handler_idx).map(|i| CompiledNode {
+87:         id: vb_core::ids::StepIdx::new(i),
+88:         output: None,
+89:         next: Some(vb_core::ids::StepIdx::new(i + 1)),
+90:         on_error: None,
+91:         error_slot: None,
+92:         kind: CompiledNodeKind::Nop,
+93:     });
+94:     let last_node = CompiledNode {
+95:         id: vb_core::ids::StepIdx::new(handler_idx),
+96:         output: Some(SlotIdx::new(0)),
+97:         next: None,
+98:         on_error: None,
+99:         error_slot: None,
+100:         kind: CompiledNodeKind::SetConst {
+101:             value: ConstIdx::new(0),
+102:         },
+103:     };
+104:     let nodes = std::iter::once(first_node)
+105:         .chain(middle_nodes)
+106:         .chain(std::iter::once(last_node))
+107:         .collect::<Vec<_>>();
+108:     let parts = WorkflowParts {
+109:         semantic_source_identity: None,
+110:         name: Box::from("bh_large_wf"),
+111:         digest: WorkflowDigest::from_bytes([0xEE; 32]),
+112:         nodes: nodes.into_boxed_slice(),
+113:         expressions: Box::from([]),
+114:         accessors: Box::from([]),
+115:         constants: Box::from([vb_core::value::ConstValue::Bool(false)]),
+116:         slot_count: 1,
+117:         symbols_count: 0,
+118:         entry: vb_core::ids::StepIdx::ZERO,
+119:         step_names: Box::from([]),
+120:         resource_contract: ResourceContract::DEFAULT,
+121:         input_slots: Box::from([]),
+122:     };
+123:     let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
+124:         Ok(w) => w,
+125:         Err(_) => return,
+126:     };
+127:     let result = super::helpers::find_error_handler_for_failure(
+128:         // The body step (step 1) is protected by the ErrorHandler at step 0.
+129:         // Steps 2..N-1 are NOT protected since they are not the body.
+130:         &workflow,
+131:         vb_core::ids::StepIdx::new(1),
+132:     );
+133:     match result {
+134:         Some((handler, _error_slot)) => {
+135:             assert_eq!(
+136:                 handler,
+137:                 vb_core::ids::StepIdx::new(handler_idx),
+138:                 "BH-SHD-04: linear scan should find handler at end of workflow"
+139:             );
+140:         }
+141:         None => {
+142:             panic!("BH-SHD-04: expected to find error handler via linear scan");
+143:         }
+144:     }
+145: }
+146: 
+147: // BH-SHD-05: drain_for_shutdown processes all queued commands.
+148: #[test]
+149: fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() {
+150:     let config = ShardConfig {
+151:         command_queue_capacity: 8,
+152:         trace_capacity: 8,
+153:         step_budget_per_tick: 4,
+154:         max_active_runs: 8,
+155:         policy: vb_core::policy::RuntimePolicy::Relaxed,
+156:     };
+157:     let mut shard = Shard::new(config);
+158:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+159:     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+160:     let result = shard.drain_for_shutdown();
+161:     assert_eq!(result, Ok(()));
+162:     assert!(shard.is_shutting_down());
+163: }
+164: 
+165: // BH-SHD-06: SubmitWithInputs allows arbitrary slot writes before validation.
+166: // Severity: Medium. Within-range writes of unexpected types could cause issues.
+167: #[test]
+168: fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
+169:     let config = small_config();
+170:     let mut shard = Shard::new(config);
+171:     let Some(workflow) = suspended_workflow() else {
+172:         return;
+173:     };
+174:     let run = super::RunId::new(806);
+175:     assert_eq!(
+176:         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+177:             run,
+178:             workflow,
+179:             inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(true))]),
+180:             caps: test_fixtures::contract_capability_for(ActionId::new(0)),

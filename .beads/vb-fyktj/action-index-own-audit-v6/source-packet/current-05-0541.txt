@@ -1,0 +1,108 @@
+ACTUALCURRENT crates/vb_storage/src/index_maintenance_tests.rs
+541:             .enqueue_journaled(JournalEvent::ActionScheduled {
+542:                 run,
+543:                 seq: EventSeq::new(0),
+544:                 step,
+545:                 action,
+546:                 attempt: 1,
+547:             })
+548:             .expect("enqueue schedule must succeed");
+549:         queue
+550:             .enqueue_journaled(JournalEvent::ActionCompletedEvent {
+551:                 run,
+552:                 seq: EventSeq::new(1),
+553:                 step,
+554:                 action,
+555:                 attempt: 1,
+556:             })
+557:             .expect("enqueue complete must succeed");
+558: 
+559:         // Drain the queue into the journal — the event AND its index
+560:         // mutation must be visible after the drain.
+561:         let report = queue.drain_all(&journal).expect("drain_all must succeed");
+562:         assert_eq!(report.written, 2, "queue must report 2 events flushed");
+563: 
+564:         assert!(
+565:             !has_index_entry(&journal, action, run, step),
+566:             "queued + drained lifecycle pair must leave the index empty",
+567:         );
+568:         assert_eq!(
+569:             count_action_index_entries(&journal),
+570:             0,
+571:             "queued lifecycle pair must not leave stale pending entries",
+572:         );
+573:     }
+574: 
+575:     #[test]
+576:     fn queued_flush_batch_action_scheduled_alone_creates_index_entry() {
+577:         let (_temp, journal, queue) = temp_journal_with_queue();
+578:         let run = RunId::new(13);
+579:         let step = StepIdx::new(16);
+580:         let action = ActionId::new(47);
+581: 
+582:         queue
+583:             .enqueue_journaled(JournalEvent::ActionScheduled {
+584:                 run,
+585:                 seq: EventSeq::new(0),
+586:                 step,
+587:                 action,
+588:                 attempt: 1,
+589:             })
+590:             .expect("enqueue schedule must succeed");
+591:         queue.drain_all(&journal).expect("drain_all must succeed");
+592: 
+593:         assert!(
+594:             has_index_entry(&journal, action, run, step),
+595:             "queued ActionScheduled must add the index marker after drain",
+596:         );
+597:     }
+598: 
+599:     // -----------------------------------------------------------------
+600:     // Idempotency: duplicate events at same seq are rejected.
+601:     // -----------------------------------------------------------------
+602: 
+603:     #[test]
+604:     fn duplicate_action_scheduled_does_not_duplicate_index_entry() {
+605:         let (_temp, journal) = temp_journal();
+606:         let run = RunId::new(14);
+607:         let step = StepIdx::new(17);
+608:         let action = ActionId::new(53);
+609: 
+610:         // Successful first schedule: marker present.
+611:         journal
+612:             .append_journaled(&JournalEvent::ActionScheduled {
+613:                 run,
+614:                 seq: EventSeq::new(0),
+615:                 step,
+616:                 action,
+617:                 attempt: 1,
+618:             })
+619:             .expect("first schedule must succeed");
+620:         assert!(has_index_entry(&journal, action, run, step));
+621: 
+622:         // Duplicate at the journal-event layer is rejected, so the
+623:         // index is not asked to update twice. Direct path surfaces
+624:         // JournalError::DuplicateEvent.
+625:         let duplicate_result = journal.append_journaled(&JournalEvent::ActionScheduled {
+626:             run,
+627:             seq: EventSeq::new(0),
+628:             step,
+629:             action,
+630:             attempt: 1,
+631:         });
+632:         assert!(
+633:             matches!(duplicate_result, Err(JournalError::DuplicateEvent { .. })),
+634:             "duplicate ActionScheduled at same seq must be rejected, got {:?}",
+635:             duplicate_result,
+636:         );
+637:         assert!(
+638:             has_index_entry(&journal, action, run, step),
+639:             "rejected duplicate must not disturb existing marker",
+640:         );
+641:         assert_eq!(
+642:             count_action_index_entries(&journal),
+643:             1,
+644:             "index must contain exactly one entry (Fjall last-write-wins)",
+645:         );
+646:     }
+647: }

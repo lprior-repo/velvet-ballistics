@@ -1,0 +1,181 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/frame_pool/tests.rs
+541:         let frame = match pool.take(RunId::new(i), StepIdx::new(0)) {
+542:             Ok(f) => f,
+543:             Err(_) => return,
+544:         };
+545:         pool.release(frame);
+546:     }
+547:     // Then the pool stays at its capacity limit
+548:     assert_eq!(pool.available(), 1);
+549: }
+550: 
+551: #[test]
+552: fn frame_pool_zero_step_count_rejects_construction() {
+553:     // Given a pool with zero step count, construction itself fails because
+554:     // RunFrame::new rejects step_count=0 (pre-allocation fails)
+555:     let result = FramePool::new(0, 1, 4);
+556:     // Then FramePool::new returns the error directly
+557:     match result {
+558:         Err(vb_core::errors::CoreError::InvalidCompiledWorkflow { reason }) => {
+559:             assert_eq!(reason, "step_count_zero");
+560:         }
+561:         Err(other) => {
+562:             let msg = format!("unexpected error: {other:?}");
+563:             panic!("{msg}");
+564:         }
+565:         Ok(_) => {
+566:             panic!("expected error for step_count=0");
+567:         }
+568:     }
+569: }
+570: 
+571: #[test]
+572: fn frame_pool_reused_frame_has_clean_taint_state() {
+573:     // Given a pool with a frame that had tainted slots
+574:     let mut pool = new_pool(4, 2, 4);
+575:     let mut frame = match pool.take(RunId::new(1), StepIdx::new(0)) {
+576:         Ok(f) => f,
+577:         Err(_) => return,
+578:     };
+579:     assert_eq!(
+580:         frame.write_slot(SlotIdx::ZERO, vb_core::SlotValue::I64(42)),
+581:         Ok(())
+582:     );
+583:     assert_eq!(
+584:         frame.write_taint(SlotIdx::ZERO, vb_core::Taint::Secret),
+585:         Ok(())
+586:     );
+587:     pool.release(frame);
+588:     // When reusing the frame
+589:     let reused = match pool.take(RunId::new(2), StepIdx::new(0)) {
+590:         Ok(f) => f,
+591:         Err(_) => return,
+592:     };
+593:     // Then the slot is uninitialized (taint cannot be read without a value)
+594:     assert_eq!(
+595:         reused.read_taint(SlotIdx::ZERO),
+596:         Err(vb_core::CoreError::SlotUninitialized {
+597:             slot: SlotIdx::ZERO
+598:         })
+599:     );
+600: }
+601: 
+602: // =======================================================================
+603: // Adversarial BDD tests - frame_pool attack vectors
+604: // =======================================================================
+605: 
+606: #[test]
+607: fn frame_pool_take_release_take_preserves_pool_consistency_under_rapid_cycle() {
+608:     // Given a pool with capacity 1
+609:     let mut pool = new_pool(2, 1, 1);
+610:     // When rapidly cycling take/release 10 times
+611:     for i in 1u64..=10 {
+612:         let frame = match pool.take(RunId::new(i), StepIdx::new(0)) {
+613:             Ok(f) => f,
+614:             Err(_) => return,
+615:         };
+616:         pool.release(frame);
+617:     }
+618:     // Then the pool stays at capacity 1 and the last run_id is correct
+619:     assert_eq!(pool.available(), 1);
+620:     let reused = pool.take(RunId::new(99), StepIdx::new(0));
+621:     match reused {
+622:         Ok(f) => {
+623:             assert_eq!(f.run_id(), RunId::new(99));
+624:             assert_eq!(f.pc(), StepIdx::new(0));
+625:         }
+626:         Err(_) => {
+627:             assert!(false);
+628:         }
+629:     }
+630: }
+631: 
+632: #[test]
+633: fn frame_pool_release_after_release_at_capacity_drops_all_extras() {
+634:     // Given a pool with capacity 2 — pre-allocated means only 2 frames exist
+635:     let mut pool = new_pool(2, 1, 2);
+636:     // When taking all 2 (the only pre-allocated ones)
+637:     let frames: Vec<RunFrame> = (1..=2u64)
+638:         .filter_map(|i| pool.take(RunId::new(i), StepIdx::new(0)).ok())
+639:         .collect();
+640:     assert_eq!(frames.len(), 2);
+641:     // When releasing all 2 frames
+642:     for frame in frames {
+643:         pool.release(frame);
+644:     }
+645:     // Then the pool has exactly 2 (its capacity)
+646:     assert_eq!(pool.available(), 2);
+647:     assert_eq!(pool.capacity(), 2);
+648: }
+649: 
+650: #[test]
+651: fn frame_pool_zero_slot_count_allocates_successfully() {
+652:     // Given a pool with 0 slots
+653:     let mut pool = new_pool(2, 0, 4);
+654:     // When taking a frame
+655:     let result = pool.take(RunId::new(1), StepIdx::new(0));
+656:     // Then it succeeds with correct run_id
+657:     assert_eq!(result.as_ref().map(|f| f.run_id()), Ok(RunId::new(1)));
+658: }
+659: 
+660: #[test]
+661: fn frame_pool_large_capacity_at_boundary_succeeds() {
+662:     // Given capacity at exactly MAX_POOL_CAPACITY (4096)
+663:     let result = FramePool::new(2, 1, 4096);
+664:     // Then it succeeds
+665:     assert_eq!(result.as_ref().map(|_| ()), Ok(()));
+666:     let pool = match result {
+667:         Ok(p) => p,
+668:         Err(_) => return,
+669:     };
+670:     assert_eq!(pool.capacity(), 4096);
+671:     assert_eq!(pool.available(), 4096, "all frames pre-allocated");
+672: }
+673: 
+674: #[test]
+675: fn frame_pool_reused_frame_step_count_matches_pool_config() {
+676:     // Given a pool with step_count=8
+677:     let mut pool = new_pool(8, 2, 4);
+678:     let frame = match pool.take(RunId::new(1), StepIdx::new(0)) {
+679:         Ok(f) => f,
+680:         Err(_) => return,
+681:     };
+682:     assert_eq!(frame.step_count(), 8);
+683:     pool.release(frame);
+684:     // When taking again
+685:     let reused = match pool.take(RunId::new(2), StepIdx::new(0)) {
+686:         Ok(f) => f,
+687:         Err(_) => return,
+688:     };
+689:     // Then the reused frame still has step_count=8
+690:     assert_eq!(reused.step_count(), 8);
+691:     assert_eq!(reused.slot_count(), 2);
+692: }
+693: 
+694: #[test]
+695: fn frame_pool_concurrent_dimension_pools_do_not_interfere() {
+696:     // Given two pools with different dimensions, both pre-allocated
+697:     let mut pool_a = new_pool(2, 1, 4);
+698:     let mut pool_b = new_pool(4, 2, 4);
+699:     assert_eq!(pool_a.available(), 4);
+700:     assert_eq!(pool_b.available(), 4);
+701:     // When releasing a frame from pool_b into pool_a
+702:     let frame_b = match pool_b.take(RunId::new(1), StepIdx::new(0)) {
+703:         Ok(f) => f,
+704:         Err(_) => return,
+705:     };
+706:     pool_a.release(frame_b);
+707:     // Then pool_a is unchanged (dimension mismatch silently dropped)
+708:     assert_eq!(pool_a.available(), 4);
+709:     assert_eq!(pool_b.available(), 3);
+710:     // And pool_a can still release its own frame type
+711:     let frame_a = match pool_a.take(RunId::new(2), StepIdx::new(0)) {
+712:         Ok(f) => f,
+713:         Err(_) => return,
+714:     };
+715:     pool_a.release(frame_a);
+716:     assert_eq!(pool_a.available(), 4);
+717: }
+718: 
+719: // =====================================================================
+720: // BLACKHAT security review: frame_pool additional adversarial tests

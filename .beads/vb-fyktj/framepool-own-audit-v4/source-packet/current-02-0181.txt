@@ -1,0 +1,181 @@
+ACTUAL CURRENT SOURCE crates/vb_runtime/src/frame_pool/tests.rs
+181:     assert_eq!(result.as_ref().map(|f| f.run_id()), Ok(RunId::new(1)));
+182: }
+183: 
+184: #[test]
+185: fn frame_pool_release_returns_frame_to_pool() {
+186:     // Given a pool with one frame taken then released
+187:     let mut pool = new_pool(2, 1, 4);
+188:     let frame = pool.take(RunId::new(1), StepIdx::new(0));
+189:     assert_eq!(frame.as_ref().map(|f| f.run_id()), Ok(RunId::new(1)));
+190:     let frame = match frame {
+191:         Ok(f) => f,
+192:         Err(_) => return,
+193:     };
+194:     // When releasing the frame back
+195:     pool.release(frame);
+196:     assert_eq!(pool.available(), 4);
+197:     // Then it can be re-acquired
+198:     let reused = pool.take(RunId::new(2), StepIdx::new(0));
+199:     assert_eq!(reused.is_ok(), true);
+200: }
+201: 
+202: #[test]
+203: fn frame_pool_is_empty_when_all_acquired() {
+204:     // Given a pool with capacity 1
+205:     let mut pool = new_pool(2, 1, 1);
+206:     // When taking the only frame
+207:     let frame = pool.take(RunId::new(1), StepIdx::new(0));
+208:     // Then the pool is empty
+209:     assert_eq!(pool.is_empty(), true);
+210:     // Clean up: release frame so pool is no longer empty
+211:     let frame = match frame {
+212:         Ok(f) => f,
+213:         Err(_) => return,
+214:     };
+215:     pool.release(frame);
+216:     assert_eq!(pool.is_empty(), false);
+217: }
+218: 
+219: #[test]
+220: fn frame_pool_is_not_empty_after_release() {
+221:     // Given a pool with a released frame
+222:     let mut pool = new_pool(2, 1, 4);
+223:     let frame = match pool.take(RunId::new(1), StepIdx::new(0)) {
+224:         Ok(f) => f,
+225:         Err(_) => return,
+226:     };
+227:     pool.release(frame);
+228:     // When checking is_empty
+229:     // Then it is not empty
+230:     assert_eq!(pool.is_empty(), false);
+231:     assert_eq!(pool.available(), 4);
+232: }
+233: 
+234: #[test]
+235: fn frame_pool_release_then_acquire_yields_recycled_frame() {
+236:     // Given a pool where a frame has been released
+237:     let mut pool = new_pool(2, 1, 4);
+238:     let frame = match pool.take(RunId::new(1), StepIdx::new(0)) {
+239:         Ok(f) => f,
+240:         Err(_) => return,
+241:     };
+242:     pool.release(frame);
+243:     // When acquiring again
+244:     let recycled = pool.take(RunId::new(2), StepIdx::new(0));
+245:     // Then the recycled frame is reinitialized for the new run
+246:     match recycled {
+247:         Ok(f) => {
+248:             assert_eq!(f.run_id(), RunId::new(2));
+249:         }
+250:         Err(_) => {
+251:             // Should not happen
+252:             assert!(false);
+253:         }
+254:     }
+255: }
+256: 
+257: #[test]
+258: fn frame_pool_rejects_exactly_max_plus_one_capacity() {
+259:     // Given capacity = MAX_POOL_CAPACITY + 1
+260:     let result = FramePool::new(2, 1, MAX_POOL_CAPACITY + 1);
+261:     // Then it returns an error
+262:     assert_eq!(
+263:         result.as_ref().map(|_| ()),
+264:         Err(&vb_core::errors::CoreError::ResourceLimitExceeded {
+265:             resource: "frame_pool_capacity",
+266:         })
+267:     );
+268: }
+269: 
+270: #[test]
+271: fn frame_pool_accepts_max_capacity() {
+272:     // Given capacity = MAX_POOL_CAPACITY
+273:     let result = FramePool::new(2, 1, MAX_POOL_CAPACITY);
+274:     // Then it succeeds
+275:     assert_eq!(result.as_ref().map(|_| ()), Ok(()));
+276: }
+277: 
+278: #[test]
+279: fn frame_pool_multiple_release_and_take_cycle() {
+280:     // Given a pool with capacity 4
+281:     let mut pool = new_pool(2, 1, 4);
+282:     let f1 = match pool.take(RunId::new(1), StepIdx::new(0)) {
+283:         Ok(f) => f,
+284:         Err(_) => return,
+285:     };
+286:     let f2 = match pool.take(RunId::new(2), StepIdx::new(0)) {
+287:         Ok(f) => f,
+288:         Err(_) => return,
+289:     };
+290:     // When releasing both and taking one back
+291:     pool.release(f1);
+292:     pool.release(f2);
+293:     assert_eq!(pool.available(), 4);
+294:     let recycled = pool.take(RunId::new(3), StepIdx::new(0));
+295:     // Then the recycled frame is available
+296:     assert_eq!(recycled.is_ok(), true);
+297:     assert_eq!(pool.available(), 3);
+298: }
+299: 
+300: #[test]
+301: fn frame_pool_new_with_different_step_counts() {
+302:     // Given pools with different step counts
+303:     let mut pool_1 = new_pool(1, 1, 4);
+304:     let mut pool_10 = new_pool(10, 1, 4);
+305:     let mut pool_100 = new_pool(100, 1, 4);
+306:     // When creating frames
+307:     let r1 = pool_1.take(RunId::new(1), StepIdx::new(0));
+308:     let r10 = pool_10.take(RunId::new(2), StepIdx::new(0));
+309:     let r100 = pool_100.take(RunId::new(3), StepIdx::new(0));
+310:     // Then all succeed
+311:     assert_eq!(r1.is_ok(), true);
+312:     assert_eq!(r10.is_ok(), true);
+313:     assert_eq!(r100.is_ok(), true);
+314: }
+315: 
+316: #[test]
+317: fn frame_pool_new_with_different_slot_counts() {
+318:     // Given pools with different slot counts
+319:     let mut pool_1 = new_pool(2, 1, 4);
+320:     let mut pool_8 = new_pool(2, 8, 4);
+321:     // When creating frames
+322:     let r1 = pool_1.take(RunId::new(1), StepIdx::new(0));
+323:     let r8 = pool_8.take(RunId::new(2), StepIdx::new(0));
+324:     // Then all succeed
+325:     assert_eq!(r1.is_ok(), true);
+326:     assert_eq!(r8.is_ok(), true);
+327: }
+328: 
+329: #[test]
+330: fn frame_pool_take_returns_preallocated_frame_when_no_recycled() {
+331:     // Given a fresh pool (all frames pre-allocated)
+332:     let mut pool = new_pool(2, 1, 4);
+333:     assert_eq!(pool.available(), 4);
+334:     // When taking a frame
+335:     let frame = pool.take(RunId::new(42), StepIdx::new(0));
+336:     // Then a pre-allocated frame is returned with the correct run_id
+337:     match frame {
+338:         Ok(f) => {
+339:             assert_eq!(f.run_id(), RunId::new(42));
+340:         }
+341:         Err(_) => {
+342:             assert!(false);
+343:         }
+344:     }
+345: }
+346: 
+347: #[test]
+348: fn frame_pool_take_with_nonzero_first_step() {
+349:     // Given a pool
+350:     let mut pool = new_pool(4, 1, 4);
+351:     // When taking a frame with first_step = 2
+352:     let frame = pool.take(RunId::new(1), StepIdx::new(2));
+353:     // Then the frame has pc = 2
+354:     match frame {
+355:         Ok(f) => {
+356:             assert_eq!(f.pc(), StepIdx::new(2));
+357:         }
+358:         Err(_) => {
+359:             assert!(false);
+360:         }

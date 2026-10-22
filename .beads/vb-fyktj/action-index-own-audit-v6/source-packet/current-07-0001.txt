@@ -1,0 +1,115 @@
+ACTUALCURRENT crates/vb_storage/src/journal/internal.rs
+1: #[cfg(test)]
+2: use crate::codec::decode_journal_event;
+3: use crate::{
+4:     codec::{EnforceKindParity, decode_record, encode_record},
+5:     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
+6:     error::JournalError,
+7:     events::JournalEvent,
+8:     journal::FjallJournal,
+9:     keys::run_event_key,
+10:     types::RecordEnvelope,
+11: };
+12: use serde::de::DeserializeOwned;
+13: 
+14: impl FjallJournal {
+15:     #[allow(clippy::unused_self)]
+16:     pub(crate) fn decode_optional_with<T, F>(
+17:         &self,
+18:         keyspace: &fjall::Keyspace,
+19:         key: &[u8],
+20:         magic: u32,
+21:         max_bytes: u32,
+22:         validate: F,
+23:     ) -> Result<Option<T>, JournalError>
+24:     where
+25:         T: DeserializeOwned + EnforceKindParity,
+26:         F: FnOnce(&RecordEnvelope, &T) -> Result<(), JournalError>,
+27:     {
+28:         let Some(value) = keyspace.get(key)? else {
+29:             return Ok(None);
+30:         };
+31:         let (envelope, record) = decode_record(value.as_ref(), magic, max_bytes)?;
+32:         validate(&envelope, &record)?;
+33:         Ok(Some(record))
+34:     }
+35: 
+36:     /// Appends one event to the LSM memtable without forcing a durability barrier.
+37:     ///
+38:     /// The event is committed to the WAL-backed LSM memtable and is visible
+39:     /// to subsequent readers (replay / `events_for_run`) immediately on
+40:     /// return.  "Unfsynced" is precise: the write survives process-level
+41:     /// recovery (crash + restart reads back the memtable) but has not been
+42:     /// force-flushed to stable storage.  Callers that require strict
+43:     /// durability must invoke `persist_strict` after staging.
+44:     ///
+45:     /// The runtime journal path uses this entry point for direct appends.
+46:     /// To keep recovery scans consistent with the durable event log,
+47:     /// derived index mutations are staged into the SAME
+48:     /// `fjall::OwnedWriteBatch` as the event write and committed
+49:     /// atomically. A process crash between the event insert and an index
+50:     /// mutation is impossible because they share one batch.
+51:     pub(crate) fn append_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
+52:         let _guard = self
+53:             .write_lock
+54:             .lock()
+55:             .map_err(|_| JournalError::WriteLockPoisoned)?;
+56:         let key = run_event_key(event.run_id(), event.seq())?;
+57:         if !event.is_valid() {
+58:             return Err(JournalError::InvalidEvent);
+59:         }
+60:         if self.events.contains_key(key)? {
+61:             return Err(JournalError::DuplicateEvent {
+62:                 run: event.run_id(),
+63:                 seq: event.seq(),
+64:             });
+65:         }
+66:         let value = encode_record(
+67:             MAGIC_JOURNAL_EVENT,
+68:             event.record_kind(),
+69:             event.seq().get(),
+70:             event,
+71:             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+72:         )?;
+73:         // Stage event + recovery indexes on one batch so each derived
+74:         // index mutation succeeds or fails with the event write.
+75:         let mut batch = self.database.batch();
+76:         self.stage_recovery_index_ops(&mut batch, event)?;
+77:         batch.insert(&self.events, key, value);
+78:         batch.commit()?;
+79:         Ok(())
+80:     }
+81: 
+82:     /// Appends a queued event idempotently without forcing an fsync.
+83:     ///
+84:     /// The event is committed to the LSM memtable and is visible to
+85:     /// subsequent readers (replay / `events_for_run`) immediately on
+86:     /// return.  "Unfsynced" is the precise term: the write is durable
+87:     /// against process-level recovery (crash + restart reads back the
+88:     /// memtable) but has not been force-flushed to stable storage.
+89:     /// Callers that require strict durability must invoke
+90:     /// `persist_strict` after staging.
+91:     #[cfg(test)]
+92:     pub(crate) fn append_queued_unfsynced(&self, event: &JournalEvent) -> Result<(), JournalError> {
+93:         match self.append_unfsynced(event) {
+94:             Ok(()) => Ok(()),
+95:             Err(JournalError::DuplicateEvent { run, seq }) => {
+96:                 let key = run_event_key(run, seq)?;
+97:                 let Some(value) = self.events.get(key)? else {
+98:                     return Err(JournalError::DuplicateEvent { run, seq });
+99:                 };
+100:                 let (_, existing) = decode_journal_event(
+101:                     value.as_ref(),
+102:                     MAGIC_JOURNAL_EVENT,
+103:                     MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+104:                 )?;
+105:                 if existing == *event {
+106:                     Ok(())
+107:                 } else {
+108:                     Err(JournalError::DuplicateEvent { run, seq })
+109:                 }
+110:             }
+111:             Err(e) => Err(e),
+112:         }
+113:     }
+114: }
