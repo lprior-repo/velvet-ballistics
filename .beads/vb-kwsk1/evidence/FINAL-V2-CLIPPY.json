@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-kwsk1-local3090-final-test-review",
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "vb_core",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 0,
+  "seconds": 5.992,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-kwsk1/evidence/FINAL-V2-CLIPPY"
+}
