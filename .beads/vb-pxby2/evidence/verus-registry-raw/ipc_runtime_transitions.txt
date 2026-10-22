@@ -1,0 +1,46 @@
+[verus] verus --crate-type=lib verification/verus/ipc_runtime_transitions.rs
+warning: verifier mode attribute has no effect because item is already marked external
+   --> verification/verus/ipc_runtime_transitions.rs:348:1
+    |
+348 | / pub exec fn mirror_runtime_event_is_terminal(event: MirrorRuntimeEvent) -> bool {
+349 | |     matches!(
+350 | |         event,
+351 | |         MirrorRuntimeEvent::Fail
+...   |
+355 | | }
+    | |_^
+
+warning: verifier mode attribute has no effect because item is already marked external
+   --> verification/verus/ipc_runtime_transitions.rs:362:1
+    |
+362 | / pub exec fn mirror_runtime_event_is_resumable(event: MirrorRuntimeEvent) -> bool {
+363 | |     matches!(
+364 | |         event,
+365 | |         MirrorRuntimeEvent::AwaitAction
+...   |
+369 | | }
+    | |_^
+
+warning: verifier mode attribute has no effect because item is already marked external
+   --> verification/verus/ipc_runtime_transitions.rs:376:1
+    |
+376 | / pub exec fn mirror_runtime_state_is_resumable(state: MirrorRuntimeState) -> bool {
+377 | |     matches!(state, MirrorRuntimeState::Resumable)
+378 | | }
+    | |_^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/ipc_runtime_transitions_production.rs:242:10
+    |
+242 | #[derive(Clone)]
+    |          ^^^^^
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> verification/verus/production_inner/ipc_runtime_transitions_production.rs:302:10
+    |
+302 | #[derive(Clone)]
+    |          ^^^^^
+
+verification results:: 58 verified, 0 errors
+warning: 5 warnings emitted
+

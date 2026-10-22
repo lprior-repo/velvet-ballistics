@@ -1,0 +1,63 @@
+[verus] verus --crate-type=lib verification/verus/collect_lowering.rs
+warning: verus-related attribute has no effect because item is already marked external
+  --> verification/verus/production_inner/lower_canonical_collect_production.rs:72:5
+   |
+72 | /     pub const fn new(value: u16) -> Self {
+73 | |         Self(value)
+74 | |     }
+   | |_____^
+
+warning: verus-related attribute has no effect because item is already marked external
+  --> verification/verus/production_inner/lower_canonical_collect_production.rs:78:5
+   |
+78 | /     pub const fn get(self) -> u16 {
+79 | |         self.0
+80 | |     }
+   | |_____^
+
+warning: verus-related attribute has no effect because item is already marked external
+  --> verification/verus/production_inner/lower_canonical_collect_production.rs:84:5
+   |
+84 | /     pub const fn as_usize(self) -> usize {
+85 | |         self.0 as usize
+86 | |     }
+   | |_____^
+
+warning: verus-related attribute has no effect because item is already marked external
+  --> verification/verus/production_inner/lower_canonical_collect_production.rs:90:5
+   |
+90 | /     pub const fn checked_add(self, n: u16) -> Option<Self> {
+91 | |         match self.0.checked_add(n) {
+92 | |             Some(v) => Some(Self(v)),
+93 | |             None => None,
+94 | |         }
+95 | |     }
+   | |_____^
+
+warning: verus-related attribute has no effect because item is already marked external
+   --> verification/verus/production_inner/lower_canonical_collect_production.rs:106:5
+    |
+106 | /     pub const fn new(value: u16) -> Self {
+107 | |         Self(value)
+108 | |     }
+    | |_____^
+
+warning: verus-related attribute has no effect because item is already marked external
+   --> verification/verus/production_inner/lower_canonical_collect_production.rs:112:5
+    |
+112 | /     pub const fn get(self) -> u16 {
+113 | |         self.0
+114 | |     }
+    | |_____^
+
+warning: verus-related attribute has no effect because item is already marked external
+   --> verification/verus/production_inner/lower_canonical_collect_production.rs:118:5
+    |
+118 | /     pub const fn as_usize(self) -> usize {
+119 | |         self.0 as usize
+120 | |     }
+    | |_____^
+
+verification results:: 22 verified, 0 errors
+warning: 7 warnings emitted
+
