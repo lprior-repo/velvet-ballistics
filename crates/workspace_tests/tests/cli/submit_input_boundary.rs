@@ -220,6 +220,7 @@ fn test_submit_controls() -> Result<(), Box<dyn std::error::Error>> {
                             run: header.run,
                             seq: EventSeq::new(1),
                             artifact_digest: retained.artifact_digest(),
+                            policy_pin: vb_storage::RunPolicyPin::Pinned(artifact.policy_digest),
                             granted_capabilities: vb_core::CapabilitySet::empty(),
                             policy: if *mode == "strict" {
                                 vb_core::RuntimePolicy::Strict

@@ -175,6 +175,7 @@ fn run_admission_event(run: RunId, seq: u64, artifact_digest: WorkflowDigest) ->
         run,
         seq: EventSeq::new(seq),
         artifact_digest,
+        policy_pin: vb_storage::RunPolicyPin::Unverified,
         granted_capabilities: CapabilitySet::empty(),
         policy: RuntimePolicy::Strict,
     }

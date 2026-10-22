@@ -740,6 +740,7 @@ fn replay_timeline_includes_digest_or_record_kind_per_event() {
             run,
             seq: make_event_seq(1),
             artifact_digest: dummy_digest(),
+            policy_pin: vb_storage::RunPolicyPin::Unverified,
             granted_capabilities: vb_core::CapabilitySet::empty(),
             policy: vb_core::RuntimePolicy::Strict,
         },

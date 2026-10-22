@@ -52,6 +52,7 @@ fn run_admission(run: RunId, seq: u64, artifact: WorkflowDigest) -> JournalEvent
         run,
         seq: EventSeq::new(seq),
         artifact_digest: artifact,
+        policy_pin: vb_storage::RunPolicyPin::Unverified,
         granted_capabilities: CapabilitySet::empty(),
         policy: RuntimePolicy::Relaxed,
     }

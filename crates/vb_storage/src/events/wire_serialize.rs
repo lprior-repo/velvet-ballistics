@@ -2,6 +2,8 @@
 
 #[path = "wire_serialize_action.rs"]
 mod action;
+#[path = "wire_serialize_admission.rs"]
+mod admission;
 #[path = "wire_serialize_policy.rs"]
 mod policy;
 #[path = "wire_serialize_run.rs"]

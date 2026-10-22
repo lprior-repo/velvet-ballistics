@@ -377,6 +377,7 @@ fn trace_one_run_admission_maps_correct_fields() {
         run: make_run_id(2),
         seq: make_event_seq(3),
         artifact_digest: dummy_digest(),
+        policy_pin: vb_storage::RunPolicyPin::Unverified,
         granted_capabilities: vb_core::CapabilitySet::empty(),
         policy: vb_core::RuntimePolicy::Strict,
     };

@@ -526,6 +526,7 @@ fn journal_events(run: RunId) -> [JournalEvent; 4] {
             run,
             seq: EventSeq::new(1),
             artifact_digest: workflow,
+            policy_pin: vb_storage::RunPolicyPin::Unverified,
             granted_capabilities: vb_core::CapabilitySet::empty(),
             policy: RuntimePolicy::Strict,
         },

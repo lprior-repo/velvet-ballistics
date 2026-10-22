@@ -1,0 +1,63 @@
+[ WARN 2026-10-22 11:59:18.891] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:59:18.893] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:59:20.125] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:59:20.938] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:59:26.722] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:59:32.476] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:59:32.567] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 11:59:55.878] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+               velvet-ballistics:check | error[E0063]: missing field `policy_pin` in initializer of `JournalEvent`
+               velvet-ballistics:check |   --> crates/workspace_tests/tests/vb_s25h2_recover_entry_points.rs:50:5
+               velvet-ballistics:check |    |
+               velvet-ballistics:check | 50 |     JournalEvent::RunAdmission {
+               velvet-ballistics:check |    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `policy_pin`
+
+               velvet-ballistics:check | For more information about this error, try `rustc --explain E0063`.
+               velvet-ballistics:check | error: could not compile `velvet-ballistics-workspace-tests` (test "vb_s25h2_recover_entry_points") due to 1 previous error
+[ WARN 2026-10-22 12:00:04.537] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 12:00:04.555] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+       velvet-ballistics:source-length | FAIL crates/vb_storage/src/events/wire_serialize_run.rs [category=production] has 330 physical lines (hard limit 300); add a row to .config/source-length-exceptions.txt or split
+       velvet-ballistics:source-length | source-length gate summary:
+       velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+       velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+       velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+       velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+       velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+       velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+       velvet-ballistics:source-length |   test_in_src        scanned=313   warn=48   over_limit=0    limit=1500 warn_at=1200
+       velvet-ballistics:source-length |   test_top_level     scanned=390   warn=6    over_limit=0    limit=3000 warn_at=2400
+       velvet-ballistics:source-length |   production         scanned=951   warn=196  over_limit=1    limit=300 warn_at=240
+       velvet-ballistics:source-length |   ledger rows used:    383
+            velvet-ballistics:lint-src | error[E0027]: pattern does not mention field `policy_pin`
+            velvet-ballistics:lint-src |   --> crates/velvet_ballistics/src/replay/event_to_json.rs:15:9
+            velvet-ballistics:lint-src |    |
+            velvet-ballistics:lint-src | 15 | /         vb_storage::JournalEvent::RunAdmission {
+            velvet-ballistics:lint-src | 16 | |             input_digest,
+            velvet-ballistics:lint-src | 17 | |             seq,
+            velvet-ballistics:lint-src | 18 | |             run,
+            velvet-ballistics:lint-src | ...  |
+            velvet-ballistics:lint-src | 21 | |             policy,
+            velvet-ballistics:lint-src | 22 | |         } => {
+            velvet-ballistics:lint-src |    | |_________^ missing field `policy_pin`
+            velvet-ballistics:lint-src |    |
+            velvet-ballistics:lint-src | help: include the missing field in the pattern
+            velvet-ballistics:lint-src |    |
+            velvet-ballistics:lint-src | 21 -             policy,
+            velvet-ballistics:lint-src | 22 -         } => {
+            velvet-ballistics:lint-src | 21 +             policy, policy_pin } => {
+            velvet-ballistics:lint-src |    |
+            velvet-ballistics:lint-src | help: if you don't care about this missing field, you can explicitly ignore it
+            velvet-ballistics:lint-src |    |
+            velvet-ballistics:lint-src | 21 -             policy,
+            velvet-ballistics:lint-src | 22 -         } => {
+            velvet-ballistics:lint-src | 21 +             policy, policy_pin: _ } => {
+            velvet-ballistics:lint-src |    |
+            velvet-ballistics:lint-src | help: or always ignore missing fields here
+            velvet-ballistics:lint-src |    |
+            velvet-ballistics:lint-src | 21 -             policy,
+            velvet-ballistics:lint-src | 22 -         } => {
+            velvet-ballistics:lint-src | 21 +             policy, .. } => {
+            velvet-ballistics:lint-src |    |
+
+            velvet-ballistics:lint-src | For more information about this error, try `rustc --explain E0027`.
+            velvet-ballistics:lint-src | error: could not compile `velvet-ballistics` (bin "velvet-ballistics") due to 1 previous error

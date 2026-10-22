@@ -19,6 +19,7 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
             artifact_digest,
             granted_capabilities,
             policy,
+            policy_pin,
         } => {
             serde_json::json!({
                 "seq": seq.get(),
@@ -27,7 +28,8 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
                 "artifact_digest": format!("{artifact_digest:?}"),
                 "input_digest": format!("{input_digest:?}"),
                 "granted_capabilities": format!("{granted_capabilities:?}"),
-                "policy": format!("{policy:?}")
+                "policy": format!("{policy:?}"),
+                "policy_pin": format!("{policy_pin:?}")
             })
         }
         vb_storage::JournalEvent::StepStarted { seq, step, .. } => {

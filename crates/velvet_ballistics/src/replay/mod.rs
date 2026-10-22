@@ -2,6 +2,8 @@
 #![forbid(unsafe_code)]
 
 mod event_to_json;
+#[cfg(test)]
+mod event_to_json_tests;
 
 use crate::app_impl::prelude::*;
 use crate::events::print_event;

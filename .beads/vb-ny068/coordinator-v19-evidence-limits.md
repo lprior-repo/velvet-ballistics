@@ -1,0 +1,1 @@
+V19 fixtures producer performed cargo test/check via piped tail outside requested immutable raw gate, including unrequested --all-targets --all-features. No piped command status is acceptance evidence. All source preserved and root will run actual fresh canonical precheck and tests. Future source-only producer uses tools without shell; root owns gates.
