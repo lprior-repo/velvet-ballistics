@@ -7,14 +7,14 @@ use std::sync::{Arc, Mutex};
 use vb_core::action::ActionTicket;
 use vb_core::ids::{ActionId, RunId, SlotIdx};
 use vb_core::policy::{
-    CurrentPolicyIdentity, DecisionCode, DecisionRecord, InfluenceState, PolicyDigest,
-    PolicyLayer, PinnedAdmissionPolicy,
+    CurrentPolicyIdentity, DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy,
+    PolicyDigest, PolicyLayer,
 };
 use vb_core::value::{SlotValue, Taint};
 
+use crate::RuntimeError;
 use crate::error::RuntimeResult;
 use crate::journal::{RuntimeJournal, RuntimeJournalEvent};
-use crate::RuntimeError;
 
 use super::super::super::types::{Shard, ShardCommand};
 use super::{require_workflow, small_config, suspended_workflow};
@@ -51,6 +51,22 @@ impl RecordingJournal {
 
 impl RuntimeJournal for RecordingJournal {
     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        _start_seq: vb_storage::EventSeq,
+    ) -> RuntimeResult<()> {
+        // RecordingJournal is a test fixture that only observes the strict
+        // policy decision port; it does not claim real durability semantics
+        // or record lifecycle event payloads. The shard's lifecycle paths
+        // (submit, tick, policy decision) exercise this fake via
+        // append_sequenced_batch; for test purposes every event is accepted.
+        for event in events {
+            self.append(event.clone())?;
+        }
         Ok(())
     }
 
@@ -132,7 +148,11 @@ fn successful_strict_policy_port() -> Result<(), Box<dyn std::error::Error>> {
     shard.append_policy_decision_strict(test_decision_record(ticket))?;
 
     let seq_after = shard.journal_sequence_for(run);
-    assert_eq!(seq_after.get(), 6, "internal sequence must advance from 5 to 6");
+    assert_eq!(
+        seq_after.get(),
+        6,
+        "internal sequence must advance from 5 to 6"
+    );
 
     let expected = test_decision_record(ticket);
     let calls = journal.strict_calls()?;
@@ -162,12 +182,13 @@ fn typed_strict_policy_port_failure() -> Result<(), Box<dyn std::error::Error>> 
     })?;
 
     let result = shard.append_policy_decision_strict(test_decision_record(ticket));
-    let err = result.err().ok_or("expected shard to propagate journal error")?;
+    let err = result
+        .err()
+        .ok_or("expected shard to propagate journal error")?;
     match err {
         RuntimeError::UnsupportedOperation { operation } => {
             assert_eq!(
-                operation,
-                "test_policy_port_failure",
+                operation, "test_policy_port_failure",
                 "exact error message must propagate"
             );
         }
@@ -175,7 +196,10 @@ fn typed_strict_policy_port_failure() -> Result<(), Box<dyn std::error::Error>> 
     }
 
     let seq_after = shard.journal_sequence_for(run);
-    assert_eq!(seq_after, seq_before, "sequence must remain unchanged on error");
+    assert_eq!(
+        seq_after, seq_before,
+        "sequence must remain unchanged on error"
+    );
 
     let calls = journal.strict_calls()?;
     assert_eq!(calls.len(), 1, "exactly one journal call must be attempted");
@@ -198,7 +222,9 @@ fn overflow_at_u64_max() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(seq_max.get(), u64::MAX, "sequence must be at u64::MAX");
 
     let result = shard.append_policy_decision_strict(test_decision_record(ticket));
-    let err = result.err().ok_or("expected shard to detect sequence overflow")?;
+    let err = result
+        .err()
+        .ok_or("expected shard to detect sequence overflow")?;
     match err {
         RuntimeError::StorageJournalAppend { source } => {
             assert!(
@@ -236,14 +262,20 @@ fn wrong_ticket_rejected() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let result = shard.append_policy_decision_strict(test_decision_record(wrong_ticket));
-    let err = result.err().ok_or("expected shard to reject wrong ticket")?;
+    let err = result
+        .err()
+        .ok_or("expected shard to reject wrong ticket")?;
     match err {
         RuntimeError::InvalidActionCompletion => {}
         _ => return Err("wrong typed wrong-ticket error".into()),
     }
 
     let calls = journal.strict_calls()?;
-    assert_eq!(calls.len(), 0, "journal must not be called for wrong ticket");
+    assert_eq!(
+        calls.len(),
+        0,
+        "journal must not be called for wrong ticket"
+    );
 
     let seq_after = shard.journal_sequence_for(run);
     assert_eq!(seq_after, seq_before, "sequence must remain unchanged");
