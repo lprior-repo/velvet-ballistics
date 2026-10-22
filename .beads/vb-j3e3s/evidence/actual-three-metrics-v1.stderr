@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-final-measurements/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 872, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-final-measurements/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 809, in main
+    crit = criterion_run(binary, metric, root, crit_home,
+                         str(scratch / "gate" / f"{metric}-criterion-{time.time_ns()}"))
+  File "/home/lewis/src/isoloated/velvet-ballistics-vb-j3e3s-final-measurements/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 546, in criterion_run
+    raise CollectorError(f"no criterion benchmark.json for {metric} under {home}/new")
+CollectorError: no criterion benchmark.json for bench_engine_step_once_save_const_single_transition under /home/lewis/.cache/velvet-integration-preserved-20261022/actual-benchmark-collection-v1/scratch/criterion-home/criterion-bench_engine_step_once_save_const_single_transition/new
