@@ -561,21 +561,6 @@ fn assert_cannot_resume(
     }
 }
 
-fn assert_tick_cannot_resume(
-    result: Result<bool, RuntimeError>,
-    expected_reason: &'static str,
-) -> Result<(), String> {
-    match result {
-        Err(RuntimeError::RecoveryCannotResume { reason }) if reason == expected_reason => Ok(()),
-        Err(other) => Err(format!(
-            "expected RecoveryCannotResume({expected_reason}), got {other:?}"
-        )),
-        Ok(value) => Err(format!(
-            "expected RecoveryCannotResume({expected_reason}), got Ok({value})"
-        )),
-    }
-}
-
 fn assert_product_cannot_resume(
     product: RuntimeRecoveryProduct,
     expected_reason: &'static str,

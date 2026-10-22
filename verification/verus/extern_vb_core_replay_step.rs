@@ -36,7 +36,7 @@
 // BINDING LEDGER (mirrors production_inner/vb_core_replay_step_production.rs)
 // ============================================================================
 //   - `SpecReplayAction` (7-variant enum)              <- crates/vb_core/src/replay/step.rs:50-57
-//   - `CompiledNodeKind` (18-variant enum)            <- crates/vb_core/src/workflow/mod.rs:585
+//   - `CompiledNodeKind` (34-variant enum)            <- crates/vb_core/src/workflow/mod.rs:682
 //   - `SpecSuspensionKind` (4-variant enum)           <- crates/vb_core/src/replay/step.rs:18-27
 //   - `SpecOpStackDelta` (5-variant enum)             <- projection of crates/vb_core/src/replay/ops.rs:13-44
 //   - `replay_step_with_collect`                      <- crates/vb_core/src/replay/step.rs:128-192

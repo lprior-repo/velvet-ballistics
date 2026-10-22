@@ -52,37 +52,37 @@
 // BINDING LEDGER
 // ============================================================================
 //   - `CompiledWorkflow::try_from_parts` exec signature
-//     <- crates/vb_core/src/workflow/mod.rs:33-51
+//     <- crates/vb_core/src/workflow/mod.rs:37-62
 //   - `validate_parts` structural validation
-//     <- crates/vb_core/src/workflow/mod.rs:753-777
+//     <- crates/vb_core/src/workflow/mod.rs:850-875
 //   - `validate_budget` budget policy validation
-//     <- crates/vb_core/src/workflow/mod.rs:779-785
+//     <- crates/vb_core/src/workflow/mod.rs:908-915
 //   - `validate_resource_contract`
-//     <- crates/vb_core/src/workflow/mod.rs:834-839
+//     <- crates/vb_core/src/workflow/mod.rs:963-971
 //   - `validate_entry`
-//     <- crates/vb_core/src/workflow/mod.rs:945-947
+//     <- crates/vb_core/src/workflow/mod.rs:1074-1077
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
-//     <- crates/vb_core/src/workflow/mod.rs:949-1090
+//     <- crates/vb_core/src/workflow/mod.rs:1078-1220
 //   - `validate_step`, `validate_slot`, `validate_const`, `validate_expr`,
 //     `validate_accessor`, `validate_symbol`
-//     <- crates/vb_core/src/workflow/mod.rs:1255-1399
+//     <- crates/vb_core/src/workflow/mod.rs:1384-1531
 //   - `validate_reachability`, `validate_forward_edges`,
 //     `validate_no_nested_together`
-//     <- crates/vb_core/src/workflow/mod.rs:768-775, 1403-1472, 1579-1602
+//     <- crates/vb_core/src/workflow/mod.rs:1532-1604
 //   - `WorkflowError` discriminant set
-//     <- crates/vb_core/src/workflow/mod.rs:319-452
+//     <- crates/vb_core/src/workflow/mod.rs:394-549
 //   - `WorkflowParts` field set
-//     <- crates/vb_core/src/workflow/mod.rs:273-297
+//     <- crates/vb_core/src/workflow/mod.rs:337-370
 //   - `ResourceContract` field set
-//     <- crates/vb_core/src/workflow/mod.rs:189-228
+//     <- crates/vb_core/src/workflow/mod.rs:217-254
 //   - `CompiledNode` / `CompiledNodeKind` discriminant set
-//     <- crates/vb_core/src/workflow/mod.rs:561-751
+//     <- crates/vb_core/src/workflow/mod.rs:660-848
 //   - `ExprProgram` / `ExprOp` discriminant set
-//     <- crates/vb_core/src/workflow/mod.rs:454-545
+//     <- crates/vb_core/src/workflow/mod.rs:553-642
 //   - `AccessorProgram` / `PathSegment`
-//     <- crates/vb_core/src/workflow/mod.rs:299-316
+//     <- crates/vb_core/src/workflow/mod.rs:374-389
 //   - `ExprBranch` / `SlotBranch`
-//     <- crates/vb_core/src/workflow/mod.rs:254-270
+//     <- crates/vb_core/src/workflow/mod.rs:282-296
 //
 // All numeric mirrors use `u32` to avoid `u16`-vs-`int` lossy casts that
 // would break Verus's `int`-based spec layer.

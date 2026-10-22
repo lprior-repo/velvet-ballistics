@@ -1,28 +1,11 @@
 //! Public behavior tests for bead vb-ko29.5 idempotency permutations.
 
 use tempfile::TempDir;
-use vb_core::action::{ActionTicket, Idempotency};
+use vb_core::action::Idempotency;
 use vb_core::errors::CoreError;
-use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::policy::RuntimePolicy;
-use vb_runtime::admission::{AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError};
-use vb_storage::{
-    ActionReplayTracker, EventSeq, FjallJournal, JournalError, JournalEvent, replay_journal,
-};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent};
 use velvet_ballistics::lifecycle;
-
-struct FixedArtifactStore {
-    artifact: vb_storage::AcceptedArtifact,
-}
-
-impl AcceptedArtifactStore for FixedArtifactStore {
-    fn load_accepted_artifact(
-        &self,
-        _artifact_digest: WorkflowDigest,
-    ) -> Result<vb_storage::AcceptedArtifact, ArtifactEnvelopeError> {
-        Ok(self.artifact.clone())
-    }
-}
 
 fn temp_journal() -> Result<(TempDir, FjallJournal), String> {
     let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
@@ -32,26 +15,6 @@ fn temp_journal() -> Result<(TempDir, FjallJournal), String> {
 
 fn digest(byte: u8) -> WorkflowDigest {
     WorkflowDigest::from_bytes([byte; 32])
-}
-
-fn ticket(run: u64, step: u16, key: u128) -> ActionTicket {
-    ActionTicket {
-        run: RunId::new(run),
-        step: StepIdx::new(step),
-        seq: SeqNo::new(0),
-        action: ActionId::new(7),
-        run_attempt: 1,
-        attempt: 1,
-        idempotency_key: key,
-        capacity: 3,
-    }
-}
-
-fn valid_artifact(_artifact_digest: WorkflowDigest) -> vb_storage::AcceptedArtifact {
-    let source = b"version: velvet-ballistics/v1\nname: idempotency_fixture\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";
-    let workflow = vb_compile::compile_workflow(source).expect("compile fixture workflow");
-    vb_storage::admission::prepare_compiled_artifact(&workflow, RuntimePolicy::Strict, &[])
-        .expect("prepare fixture artifact")
 }
 
 fn append_run_accepted(
@@ -384,20 +347,6 @@ fn given_retry_required_policy_when_same_key_dispatched_twice_then_second_dispat
         true
     );
     Ok(())
-}
-
-fn count_scheduled(events: &[JournalEvent]) -> usize {
-    events
-        .iter()
-        .filter(|event| matches!(event, JournalEvent::ActionScheduled { .. }))
-        .count()
-}
-
-fn count_completed(events: &[JournalEvent]) -> usize {
-    events
-        .iter()
-        .filter(|event| matches!(event, JournalEvent::ActionCompletedEvent { .. }))
-        .count()
 }
 
 fn count_retried(events: &[JournalEvent]) -> usize {

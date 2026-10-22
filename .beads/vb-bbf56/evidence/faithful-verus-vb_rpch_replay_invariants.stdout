@@ -1,0 +1,49 @@
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_rpch_replay_invariants.rs:242:5
+    |
+242 | /     forall|i: int| 0 <= i < events.len() ==>
+243 | |         (events[i].attempt() matches Some(attempt) && attempt < max_attempt)
+244 | |         ==> events[i].is_state_affecting() == false
+    | |___________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_rpch_replay_invariants.rs:244:13
+    |
+244 |         ==> events[i].is_state_affecting() == false
+    |             ^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_rpch_replay_invariants.rs:259:9
+    |
+259 | /         forall|i: int| 0 <= i < events.len() ==>
+260 | |             (events[i].attempt() matches Some(attempt) && attempt >= max_attempt)
+261 | |             ==> events[i].is_state_affecting() == true
+    | |______________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_rpch_replay_invariants.rs:261:17
+    |
+261 |             ==> events[i].is_state_affecting() == true
+    |                 ^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> verification/verus/vb_rpch_replay_invariants.rs:259:9
+    |
+259 | /         forall|i: int| 0 <= i < events.len() ==>
+260 | |             (events[i].attempt() matches Some(attempt) && attempt >= max_attempt)
+261 | |             ==> events[i].is_state_affecting() == true
+    | |______________________________________________________^
+
+verification results:: 18 verified, 0 errors
