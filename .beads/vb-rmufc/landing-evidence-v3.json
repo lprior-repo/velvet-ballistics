@@ -1,0 +1,25 @@
+{
+  "frozen_source": "e3b7e718433be453dfd50747daeef31a4831ee13",
+  "base_main": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "reviewed_source_hashes": {
+    "crates/vb_ipc/src/frame_types.rs": "d8231b69c173cb6a125f4be3828758c9ada61d424b0f771bd81eda45df50f784",
+    "crates/workspace_tests/src/test_util/fixture.rs": "48eaa54a9eb89a042d4d82f98b156b65122e0ae393d42ebc847db759291c7357",
+    "crates/workspace_tests/src/test_util/seed.rs": "1c6ff536f38c4bcedde112edecfb41f3d46486ed266bbb390fd660bc6db51434"
+  },
+  "canonical": {
+    "prefix": "ROOT_PRESERVED_SLICES_V8_CANONICAL_DEFAULT_RETRY",
+    "exit_code": 0,
+    "seconds": 545.43,
+    "moon_tasks_passed": 17,
+    "tests_passed": 14456,
+    "failed": 0,
+    "unrun": 0,
+    "existing_skips": 27,
+    "nextest_threads_override": null,
+    "actual_scratch_filesystem": "Btrfs target/tmp"
+  },
+  "failed_attempts_retained": true,
+  "fresh_metrics": "Actual criterion/perf stat/heaptrack three claims; baseline=result; no speedup claimed.",
+  "metadata_packaging_note": "Initial v2 packaging asserted report status passed; actual Moon report aggregate status is completed and all17 individual tasks passed. v3 preserves full report and metrics.",
+  "scope": "Three exact own-commit borrow expression changes only. Full v1 and exhaustive other branch acceptance remain open."
+}

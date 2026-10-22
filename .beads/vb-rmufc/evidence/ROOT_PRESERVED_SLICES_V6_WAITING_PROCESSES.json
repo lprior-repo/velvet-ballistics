@@ -1,0 +1,146 @@
+[
+  {
+    "pid": "3567313",
+    "command": "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1/target/debug/deps/proptest_vb_vzcuf_PS_004-b7799eeae1dbfb88 --exact ps004_empty_commit_after_rej --nocapture ",
+    "threads": [
+      {
+        "tid": "3567313",
+        "name": "proptest_vb_vzc",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567314",
+        "name": "ps004_empty_com",
+        "wchan": "write_all_supers"
+      },
+      {
+        "tid": "3567589",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567590",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567591",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567592",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      }
+    ]
+  },
+  {
+    "pid": "3567381",
+    "command": "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1/target/debug/deps/proptest_vb_vzcuf_PS_004-b7799eeae1dbfb88 --exact ps004_len_mono --nocapture ",
+    "threads": [
+      {
+        "tid": "3567381",
+        "name": "proptest_vb_vzc",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567382",
+        "name": "ps004_len_mono",
+        "wchan": "wait_log_commit"
+      },
+      {
+        "tid": "3567646",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567647",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567648",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567649",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      }
+    ]
+  },
+  {
+    "pid": "3567487",
+    "command": "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1/target/debug/deps/proptest_vb_vzcuf_PS_004-b7799eeae1dbfb88 --exact ps004_no_persist --nocapture ",
+    "threads": [
+      {
+        "tid": "3567487",
+        "name": "proptest_vb_vzc",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567488",
+        "name": "ps004_no_persis",
+        "wchan": "wait_log_commit"
+      },
+      {
+        "tid": "3567621",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567622",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567623",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567624",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      }
+    ]
+  },
+  {
+    "pid": "3567521",
+    "command": "/home/lewis/src/isoloated/vb-rmufc-preserved-slices-v1/target/debug/deps/proptest_vb_vzcuf_PS_004-b7799eeae1dbfb88 --exact ps004_rejection_preserves --nocapture ",
+    "threads": [
+      {
+        "tid": "3567521",
+        "name": "proptest_vb_vzc",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567522",
+        "name": "ps004_rejection",
+        "wchan": "wait_log_commit"
+      },
+      {
+        "tid": "3567584",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567585",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567586",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "tid": "3567587",
+        "name": "fjall:worker",
+        "wchan": "futex_do_wait"
+      }
+    ]
+  }
+]

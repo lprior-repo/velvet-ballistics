@@ -1,0 +1,71 @@
+[ WARN 2026-10-22 16:32:54.842] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:32:54.933] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:32:56.602] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:33:00.361] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:33:00.423] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:33:01.177] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:33:06.958] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:33:07.321] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID 344f668d-c6a5-4ada-828f-ba48bdd3f3d2 with nextest profile: default
+                       velvet-ballistics:test |     Starting 14456 tests across 294 binaries (27 tests skipped)
+[ WARN 16:33:22.565] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:33:35.195] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:33:36.343] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 16:33:52.608] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+              velvet-ballistics:source-length | source-length gate summary:
+              velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+              velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+              velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+              velvet-ballistics:source-length |   test_in_src        scanned=314   warn=48   over_limit=0    limit=1500 warn_at=1200
+              velvet-ballistics:source-length |   test_top_level     scanned=391   warn=6    over_limit=0    limit=3000 warn_at=2400
+              velvet-ballistics:source-length |   production         scanned=952   warn=196  over_limit=0    limit=300 warn_at=240
+              velvet-ballistics:source-length |   ledger rows used:    383
+                       velvet-ballistics:test |   Cancelling due to signal: 4 tests still running
+                       velvet-ballistics:test |      SIGTERM [  16.200s] ( 9389/14456) vb_storage::proptest_vb_vzcuf_PS_004 ps004_rejection_preserves
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [  18.235s] ( 9390/14456) vb_storage::proptest_vb_vzcuf_PS_004 ps004_no_persist
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [  22.065s] ( 9391/14456) vb_storage::proptest_vb_vzcuf_PS_004 ps004_empty_commit_after_rej
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [  20.922s] ( 9392/14456) vb_storage::proptest_vb_vzcuf_PS_004 ps004_len_mono
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 599.148s] 9392/14456 tests run: 9388 passed (7 slow), 4 failed, 27 skipped
+                       velvet-ballistics:test |      SIGTERM [  16.200s] ( 9389/14456) vb_storage::proptest_vb_vzcuf_PS_004 ps004_rejection_preserves
+                       velvet-ballistics:test |      SIGTERM [  18.235s] ( 9390/14456) vb_storage::proptest_vb_vzcuf_PS_004 ps004_no_persist
+                       velvet-ballistics:test |      SIGTERM [  22.065s] ( 9391/14456) vb_storage::proptest_vb_vzcuf_PS_004 ps004_empty_commit_after_rej
+                       velvet-ballistics:test |      SIGTERM [  20.922s] ( 9392/14456) vb_storage::proptest_vb_vzcuf_PS_004 ps004_len_mono
+                       velvet-ballistics:test | warning: 5064/14456 tests were not run due to signal
+                       velvet-ballistics:test | error: test run failed
