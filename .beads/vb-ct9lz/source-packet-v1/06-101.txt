@@ -1,0 +1,100 @@
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:101: }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:102: 
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:103: #[test]
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:104: fn duplicate_and_reopen_return_one_actual_effect_and_capacity_never_evicts() -> TestResult {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:105:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:106:     let contract = external_contract()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:107:     let workflow = action_workflow()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:108:     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:109:     let artifact =
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:110:         catalog.prepare_artifact(&workflow, RuntimePolicy::Strict, &[contract], &[pack])?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:111:     let grant = catalog.issue_register_grant(&artifact, ticket(1), scope())?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:112:     let dir = tempfile::tempdir()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:113:     let first = {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:114:         let mut adapter = FjallRegister::open(dir.path(), 2)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:115:         let receipt = adapter.execute(&grant, ticket(1), 42)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:116:         assert_eq!(adapter.execute(&grant, ticket(1), 42)?, receipt);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:117:         assert!(matches!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:118:             adapter.execute(&grant, ticket(1), 43),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:119:             Err(ExecutorError::ReceiptConflict)
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:120:         ));
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:121:         assert_eq!(adapter.effect_count()?, 1);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:122:         receipt
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:123:     };
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:124:     let mut adapter = FjallRegister::open(dir.path(), 2)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:125:     assert_eq!(adapter.reconcile(&grant, ticket(1), 42)?, first);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:126:     assert_eq!(adapter.effect_count()?, 1);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:127:     assert_eq!(adapter.value(scope())?, Some(42));
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:128:     let second = catalog.issue_register_grant(&artifact, ticket(2), scope())?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:129:     assert!(matches!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:130:         adapter.reconcile(&second, ticket(2), 43),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:131:         Err(ExecutorError::ReceiptMissing)
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:132:     ));
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:133:     adapter.execute(&second, ticket(2), 43)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:134:     let third = catalog.issue_register_grant(&artifact, ticket(3), scope())?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:135:     assert!(matches!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:136:         adapter.execute(&third, ticket(3), 44),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:137:         Err(ExecutorError::Capacity)
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:138:     ));
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:139:     assert_eq!(adapter.reconcile(&grant, ticket(1), 42)?, first);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:140:     assert_eq!(adapter.effect_count()?, 2);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:141:     assert_eq!(adapter.value(scope())?, Some(43));
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:142:     Ok(())
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:143: }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:144: 
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:145: #[test]
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:146: fn recovery_axis_defaults_blocked_and_unsupported_classes_reject() -> TestResult {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:147:     assert_eq!(RecoveryClass::default(), RecoveryClass::Blocked);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:148:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:149:     let contract = external_contract()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:150:     for recovery in [
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:151:         RecoveryClass::NoRecoveryNeeded,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:152:         RecoveryClass::RetrySameKey,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:153:         RecoveryClass::Compensate,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:154:         RecoveryClass::ManualGate,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:155:     ] {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:156:         assert!(matches!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:157:             catalog.register_pack(&contract, scope(), recovery),
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:158:             Err(ExecutorError::PackMismatch)
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:159:         ));
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:160:     }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:161:     let blocked = catalog.register_pack(&contract, scope(), RecoveryClass::default())?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:162:     assert_eq!(blocked.recovery, RecoveryClass::Blocked);
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:163:     assert_eq!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:164:         blocked.idempotency,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:165:         vb_core::action_pack::IdempotencyClass::KeyEnforcedByExecutor
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:166:     );
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:167:     Ok(())
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:168: }
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:169: 
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:170: #[test]
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:171: fn stored_pack_reopens_with_fresh_executed_catalog_and_exact_classification() -> TestResult {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:172:     let catalog = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:173:     let contract = external_contract()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:174:     let workflow = action_workflow()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:175:     let pack = catalog.register_pack(&contract, scope(), RecoveryClass::ReconcileReceipt)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:176:     let dir = tempfile::tempdir()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:177:     let digest = {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:178:         let journal = vb_storage::FjallJournal::open(dir.path(), None)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:179:         catalog
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:180:             .submit_artifact(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:181:                 &journal,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:182:                 &workflow,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:183:                 RuntimePolicy::Strict,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:184:                 &[contract],
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:185:                 &[pack.clone()],
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:186:             )?
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:187:             .digest
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:188:     };
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:189:     let reopened = vb_storage::FjallJournal::open(dir.path(), None)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:190:     let record = reopened.compiled_ir(digest)?.ok_or("artifact absent")?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:191:     let restored = postcard::from_bytes(&record.ir)?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:192:     let fresh = ExecutorCatalog::run_registered_conformance()?;
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:193:     assert_eq!(
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:194:         fresh.verify_artifact(&restored, RuntimePolicy::Strict)?,
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:195:         workflow
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:196:     );
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:197:     let vb_core::artifact::ArtifactEvidence::Packed(packed) = restored.verification.evidence else {
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:198:         return Err("missing packs".into());
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:199:     };
+crates/workspace_tests/tests/vb_7r7jv_executor_conformance.rs:200:     assert_eq!(packed.packs.as_ref(), &[pack]);

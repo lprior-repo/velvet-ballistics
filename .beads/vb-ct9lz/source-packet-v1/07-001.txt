@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:1: //! Behavioral tests for default artifact submission sequence counter.
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:2: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:3: use crate::FjallJournal;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:4: use crate::admission::*;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:5: use vb_core::RuntimePolicy;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:6: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:7: use super::{minimal_workflow, temp_journal};
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:8: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:9: fn assert_readback_verified(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:10:     journal: &FjallJournal,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:11:     artifact: &AcceptedArtifact,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:12:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:13: ) -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:14:     let record = journal
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:15:         .compiled_ir(artifact.digest)
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:16:         .map_err(|e| format!("compiled_ir read: {e}"))?
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:17:         .ok_or_else(|| "compiled_ir read returned None")?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:18: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:19:     let computed =
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:20:         accepted_artifact_digest(artifact).map_err(|e| format!("accepted_artifact_digest: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:21:     assert_eq!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:22:         computed, artifact.digest,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:23:         "readback digest must match artifact digest"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:24:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:25: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:26:     assert_eq!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:27:         artifact.verification.digest, artifact.digest,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:28:         "verification proof digest must match artifact digest"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:29:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:30: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:31:     let compiled = verify_accepted_artifact_for_policy(artifact, policy)
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:32:         .map_err(|e| format!("verify_accepted_artifact_for_policy: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:33:     assert!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:34:         compiled.node_count() > 0,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:35:         "compiled workflow must have nodes"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:36:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:37: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:38:     let stamped: AcceptedArtifact =
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:39:         postcard::from_bytes(&record.ir).map_err(|e| format!("postcard decode: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:40:     assert_eq!(stamped, *artifact, "stamped artifact should roundtrip");
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:41: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:42:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:43: }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:44: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:45: fn assert_first_seq(accepted: &AcceptedArtifact) {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:46:     assert_eq!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:47:         accepted.accepted_at_seq.get(),
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:48:         1,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:49:         "first submission should be seq 1"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:50:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:51: }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:52: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:53: fn assert_second_seq(accepted: &AcceptedArtifact) {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:54:     assert_eq!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:55:         accepted.accepted_at_seq.get(),
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:56:         2,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:57:         "second submission should be seq 2"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:58:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:59: }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:60: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:61: fn assert_nonzero_digest(accepted: &AcceptedArtifact) {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:62:     assert_ne!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:63:         accepted.digest.as_bytes(),
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:64:         [0u8; 32],
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:65:         "digest must be non-zero"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:66:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:67:     assert_ne!(
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:68:         accepted.source_digest.as_bytes(),
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:69:         [0u8; 32],
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:70:         "source_digest must be non-zero"
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:71:     );
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:72: }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:73: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:74: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:75: fn first_submission_is_seq_1_for_all_policies() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:76:     let policies = [
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:77:         RuntimePolicy::Relaxed,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:78:         RuntimePolicy::Journaled,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:79:         RuntimePolicy::Strict,
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:80:     ];
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:81: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:82:     for policy in policies {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:83:         let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:84:         let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:85:         let accepted = submit_artifact(&tj.journal, &workflow, policy)
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:86:             .map_err(|e| format!("submit_artifact policy={policy:?}: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:87: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:88:         assert_first_seq(&accepted);
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:89:         assert_nonzero_digest(&accepted);
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:90:         assert_readback_verified(&tj.journal, &accepted, policy)?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:91:     }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:92: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:93:     Ok(())
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:94: }
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:95: 
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:96: #[test]
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:97: fn repeated_submissions_get_distinct_digests_and_both_readback() -> Result<(), String> {
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:98:     let tj = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:99:     let journal = &tj.journal;
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:100:     let workflow = minimal_workflow().map_err(|e| format!("minimal_workflow: {e}"))?;
