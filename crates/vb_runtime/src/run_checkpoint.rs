@@ -245,10 +245,10 @@ fn validate_admission(
 
 /// Decodes a durable checkpoint payload with version-aware validation.
 ///
-/// Peeks at the first two bytes to determine the checkpoint format version
-/// before decoding the full payload. Rejects historical version 1 checkpoints
-/// that lack the policy_pin field, which cannot be safely decoded as the
-/// current RunCheckpointV1 layout.
+/// Reads the VARINT-encoded version field first to determine the checkpoint
+/// format version before decoding the full payload. Rejects historical version
+/// 1 checkpoints that lack the policy_pin field, which cannot be safely decoded
+/// as the current RunCheckpointV1 layout.
 pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunCheckpointV1Error> {
     if payload.is_empty() {
         return Err(RunCheckpointV1Error::UnsupportedVersion);

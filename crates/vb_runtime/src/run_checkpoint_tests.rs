@@ -141,13 +141,12 @@ fn restore_rejects_a_checkpoint_for_a_different_workflow() -> Result<(), String>
 }
 
 #[test]
-fn versioned_decoder_rejects_historical_version_1_payload() -> Result<(), String> {
-    // Construct a minimal payload with version 1 bytes (little-endian u16).
-    // The rest is garbage; the version check must reject before attempting
-    // to decode the RunAdmission layout that lacks policy_pin.
-    let mut payload = [0u8; 4];
-    payload[0] = 1;
-    payload[1] = 0;
+fn versioned_decoder_rejects_version_1_header_before_layout_decode() -> Result<(), String> {
+    // Construct a payload with VARINT-encoded version 1 followed by garbage bytes.
+    // The version-aware decoder must reject the legacy version header before
+    // attempting to decode the checkpoint layout. This is an explicit version
+    // boundary test, not a historical checkpoint migration or compatibility test.
+    let payload = [1, 0, 0, 0];
     let result = decode_checkpoint_payload(&payload);
     match result {
         Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
@@ -161,9 +160,9 @@ fn versioned_decoder_rejects_historical_version_1_payload() -> Result<(), String
 
 #[test]
 fn versioned_decoder_rejects_unrecognized_future_version() -> Result<(), String> {
-    let mut payload = [0u8; 4];
-    payload[0] = 99;
-    payload[1] = 0;
+    // Construct a payload with VARINT-encoded version 99 (unrecognized future).
+    // The decoder must reject any version other than the currently supported 2.
+    let payload = [99, 0, 0, 0];
     let result = decode_checkpoint_payload(&payload);
     match result {
         Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
@@ -176,14 +175,50 @@ fn versioned_decoder_rejects_unrecognized_future_version() -> Result<(), String>
 }
 
 #[test]
-fn versioned_decoder_rejects_truncated_payload() -> Result<(), String> {
-    let payload = [0u8; 1];
-    let result = decode_checkpoint_payload(&payload);
+fn versioned_decoder_rejects_truncated_valid_checkpoint() -> Result<(), String> {
+    // Construct a real valid version 2 checkpoint, serialize it, then truncate
+    // the valid bytes to test decoding of incomplete payload.
+    let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
+    let run_id = RunId::new(200);
+    let state =
+        failed_state(workflow, run_id).ok_or_else(|| "failed state setup failed".to_string())?;
+    let checkpoint = RunCheckpointV1::capture(
+        run_id,
+        WorkflowDigest::from_bytes([7; 32]),
+        NonZeroU16::new(2).ok_or_else(|| "invalid attempt".to_string())?,
+        StepIdx::ZERO,
+        9,
+        &state,
+    )
+    .map_err(|error| format!("capture failed: {error}"))?;
+
+    // Verify this is a version 2 checkpoint before serializing.
+    assert_eq!(checkpoint.version, 2);
+
+    // Serialize the valid checkpoint.
+    let bytes = postcard::to_allocvec(&checkpoint)
+        .map_err(|error| format!("checkpoint encode failed: {error}"))?;
+
+    // Verify the full valid payload decodes successfully.
+    let full_decode = decode_checkpoint_payload(&bytes)
+        .map_err(|error| format!("full decode should succeed: {error}"))?;
+    assert_eq!(full_decode, checkpoint);
+
+    // Now truncate the valid bytes by removing the last byte.
+    let truncated = bytes.clone();
+    let truncated_len = bytes.len()
+        .checked_sub(1)
+        .ok_or_else(|| "bytes length underflow".to_string())?;
+    let mut truncated_bytes = truncated;
+    truncated_bytes.truncate(truncated_len);
+
+    // The truncated payload should fail to decode.
+    let result = decode_checkpoint_payload(&truncated_bytes);
     match result {
-        Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
-        Err(other) => Err(format!("expected version decode failure, got {other}")),
+        Err(RunCheckpointV1Error::DecodeError) => Ok(()),
+        Err(other) => Err(format!("expected DecodeError for truncated payload, got {other}")),
         Ok(cp) => Err(format!(
-            "expected failure, got checkpoint with version {}",
+            "expected failure for truncated payload, got checkpoint with version {}",
             cp.version
         )),
     }
@@ -191,16 +226,49 @@ fn versioned_decoder_rejects_truncated_payload() -> Result<(), String> {
 
 #[test]
 fn versioned_decoder_rejects_malformed_payload() -> Result<(), String> {
-    // Version 2 header but garbage body that cannot decode as RunCheckpointV1.
-    let mut payload = [0u8; 64];
-    payload[0] = 2;
-    payload[1] = 0;
+    // Version 2 header (VARINT 2) but garbage body that cannot decode as RunCheckpointV1.
+    let payload = [
+        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ];
     let result = decode_checkpoint_payload(&payload);
     match result {
         Err(RunCheckpointV1Error::DecodeError) => Ok(()),
         Err(other) => Err(format!("expected DecodeError, got {other}")),
         Ok(cp) => Err(format!(
             "expected decode failure, got checkpoint with version {}",
+            cp.version
+        )),
+    }
+}
+
+#[test]
+fn versioned_decoder_rejects_empty_payload() -> Result<(), String> {
+    let result = decode_checkpoint_payload(&[]);
+    match result {
+        Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
+        Err(other) => Err(format!("expected UnsupportedVersion for empty payload, got {other}")),
+        Ok(cp) => Err(format!(
+            "expected failure for empty payload, got checkpoint with version {}",
+            cp.version
+        )),
+    }
+}
+
+#[test]
+fn versioned_decoder_rejects_truncated_varint_version() -> Result<(), String> {
+    // A payload where the VARINT version field itself is truncated.
+    // VARINT values >= 128 require multiple bytes; byte 255 (high bit set)
+    // signals a continuation byte that never arrives.
+    let payload = [255u8];
+    let result = decode_checkpoint_payload(&payload);
+    match result {
+        Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
+        Err(other) => Err(format!(
+            "expected UnsupportedVersion for truncated varint, got {other}"
+        )),
+        Ok(cp) => Err(format!(
+            "expected failure for truncated varint, got checkpoint with version {}",
             cp.version
         )),
     }
