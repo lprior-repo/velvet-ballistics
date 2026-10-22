@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-txqll-local5090-probe-review",
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "vb_79ffw_ticket_authority_probe",
+    "--",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "seconds": 16.948,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-txqll/evidence/independent-probe"
+}
