@@ -3,6 +3,7 @@ use crate::{RuntimeError, RuntimeResult};
 use vb_core::action::ActionOutputReady;
 use vb_core::policy::{PinnedAdmissionPolicy, PolicyDigest};
 use vb_core::ActionTicket;
+use vb_core::Taint;
 use vb_storage::executor::RegisterReceipt;
 
 pub(crate) struct RegisteredActionContext {
