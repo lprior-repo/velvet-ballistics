@@ -1350,3 +1350,29 @@ velvet-ballistics:hot-cold-forbidden-apis | ScanSummary|hot_crates=vb_core,vb_ru
 ▮▮▮▮ velvet-ballistics:nightly-feature-gate (f80e4642)
 ▮▮▮▮ velvet-ballistics:nightly-feature-gate (5s 261ms, f80e4642)
 ▮▮▮▮ velvet-ballistics:check (7536a7ef)
+velvet-ballistics:ignored-fallible-results | FixturePass: clean production-like fixture exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-001 bare fallible call exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-002 let underscore exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 ok err lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 embedded ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-003 split ok lossy exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-004 swallowed Err exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-005 drop fallible exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: DISCARD-006 undocumented allow marker exit=2
+velvet-ballistics:ignored-fallible-results | FixturePass: path-bound justified exception exit=0
+velvet-ballistics:ignored-fallible-results | FixturePass: overbroad exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | FixturePass: malformed exception rejected exit=3
+velvet-ballistics:ignored-fallible-results | ScanDomain: crates/*/src xtask/src
+velvet-ballistics:ignored-fallible-results | NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+velvet-ballistics:ignored-fallible-results | NoViolationFound
+▮▮▮▮ velvet-ballistics:ignored-fallible-results (27s 144ms, a4186131)
+▮▮▮▮ velvet-ballistics:banned-token-gates (no op, 24d5bb7c)
+▮▮▮▮ velvet-ballistics:lint-src (9521ba45)
+▮▮▮▮ velvet-ballistics:check (22s 433ms, 7536a7ef)
+▮▮▮▮ velvet-ballistics:source-length (b2c3e4db)
+▮▮▮▮ velvet-ballistics:lint-src (6s 907ms, 9521ba45)
+▮▮▮▮ velvet-ballistics:source-length (4s 586ms, b2c3e4db)
+
+Tasks: 14 completed
+ Time: 37s 218ms
+

@@ -1,0 +1,20 @@
+{
+  "bench_engine_step_once_save_const_single_transition": {
+    "path": "/home/lewis/src/isoloated/vb-policy-integration-v18/.beads/vb-ny068/evidence/actual-collection-v19/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst",
+    "sha256": "a6ef8b4993e006952d36cc64f752ab742ca98a214fa2447aec799c79d1a5b2fc",
+    "allocation_count": 609544,
+    "bytes_allocated": 116789337
+  },
+  "ipc_frame_decode": {
+    "path": "/home/lewis/src/isoloated/vb-policy-integration-v18/.beads/vb-ny068/evidence/actual-collection-v19/scratch/heaptrack/ht-ipc_frame_decode.zst",
+    "sha256": "6d21b38612edd476ed6bde8a8161f98c279a301c2a56580bb4dfa8af59ca92e3",
+    "allocation_count": 14132695,
+    "bytes_allocated": 407801697
+  },
+  "engine_run_until_blocked_budget_10_small_workflow": {
+    "path": "/home/lewis/src/isoloated/vb-policy-integration-v18/.beads/vb-ny068/evidence/actual-collection-v19/scratch/heaptrack/ht-engine_run_until_blocked_budget_10_small_workflow.zst",
+    "sha256": "7653b64e23ef70b9b9244cfe4f5c1435ac7b14ecc011c39ca34d9e0d21d4093a",
+    "allocation_count": 625418,
+    "bytes_allocated": 117656026
+  }
+}
