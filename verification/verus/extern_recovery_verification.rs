@@ -80,9 +80,9 @@
 //   - `RecoveryFrameSeed`                 <- crates/vb_storage/src/recovery/types.rs:925-946
 //   - `RecoveryCannotResumeState`         <- crates/vb_storage/src/recovery/types.rs:1063-1098
 //   - `RecoveredStepState`                <- crates/vb_storage/src/recovery/types.rs:776-790
-//   - `RecoveredStepEntry`                <- crates/vb_storage/src/recovery/types.rs:792-799
-//   - `RecoveredSlotEntry`                <- crates/vb_storage/src/recovery/types.rs:801-810
-//   - `RecoveredPendingAction`            <- crates/vb_storage/src/recovery/types.rs:812-819
+//   - `RecoveredStepEntry`                <- crates/vb_storage/src/recovery/types.rs:806-811
+//   - `RecoveredSlotEntry`                <- crates/vb_storage/src/recovery/types.rs:815-822
+//   - `RecoveredPendingAction`            <- crates/vb_storage/src/recovery/types.rs:826-831
 //   - `RecoveryTerminalState`             <- crates/vb_storage/src/recovery/types.rs:547-562
 //   - `RecoveryRuntimeSummary`            <- crates/vb_storage/src/recovery/types.rs:564-589
 //   - `RecoveryHydration` (enum)          <- crates/vb_storage/src/recovery/types.rs:604-645
@@ -152,7 +152,7 @@
 //        steps_apply_ok, slots_apply_ok, pc_in_bounds,
 //        unsupported_passes_through_reject).)
 //   - `SummaryRecoveryBoundary::hydrate_run_frame`
-//        <- crates/vb_runtime/src/recovery.rs:194-209
+//        <- crates/vb_runtime/src/recovery.rs:220-222
 //        (production body: returns Err(UnsupportedFullRecoveryHydration).
 //        Pure projection: never succeeds.)
 //

@@ -29,8 +29,8 @@
 //      `recovery_observed_dimension_is_positive` from
 //      `crates/vb_storage/src/recovery/replay/summary/dimensions.rs:8-34`.
 //
-//   3. The `JournalEvent` enum (24 variants) from
-//      `crates/vb_storage/src/events/event.rs:37-344`.
+//   3. The `JournalEvent` enum (26 variants) from
+//      `crates/vb_storage/src/events/event.rs:37-361`.
 //
 //   4. The `RecoveryFrameSeed` struct from
 //      `crates/vb_storage/src/recovery/types.rs:935-954`.
@@ -70,8 +70,8 @@
 //     `recovery_seed_dimensions_positive`,
 //     `recovery_observed_dimension_is_positive`
 //                                       <- crates/vb_storage/src/recovery/replay/summary/dimensions.rs:8-34
-//   - `JournalEvent` enum (24 variants) <- crates/vb_storage/src/events/event.rs:37-344
-//   - `JournalEvent::attempt()` body    <- crates/vb_storage/src/events.rs:165-193
+//   - `JournalEvent` enum (26 variants) <- crates/vb_storage/src/events/event.rs:37-361
+//   - `JournalEvent::attempt()` body    <- crates/vb_storage/src/events.rs:175-204
 //   - `RecoveryFrameSeed` struct        <- crates/vb_storage/src/recovery/types.rs:935-954
 // This file MUST be regenerated whenever production attempt.rs,
 // summary/derive.rs, events.rs, or recovery/types.rs changes. The
@@ -165,6 +165,14 @@ pub struct ActionTicket {
 }
 
 pub struct WorkflowDigest(pub [u8; 32]);
+
+/// Production `RunInputBinding` at `crates/vb_storage/src/inputs/digest.rs:6`.
+/// Mirrors the two production variants: historical unbound receipts and
+/// BLAKE3-digest-bound receipts.
+pub enum RunInputBinding {
+    LegacyUnbound,
+    Digest(WorkflowDigest),
+}
 
 pub enum CapabilitySet {
     Empty,
@@ -293,8 +301,8 @@ pub struct RecoveredPendingAction {
 // VERBATIM PRODUCTION: JournalEvent enum + attempt() method
 // ============================================================================
 //
-// Source: crates/vb_storage/src/events/event.rs:37-344
-// Source: crates/vb_storage/src/events.rs:165-193
+// Source: crates/vb_storage/src/events/event.rs:37-361
+// Source: crates/vb_storage/src/events.rs:175-204
 // Drift policy: any change to the variant set, field names, or the
 // `attempt()` method body MUST be mirrored here.
 //
@@ -308,7 +316,7 @@ pub struct RecoveredPendingAction {
 
 /// Compact binary journal event. JSONL is a projection, not this durable format.
 ///
-/// Production equivalent: `crates/vb_storage/src/events/event.rs:37-344`.
+/// Production equivalent: `crates/vb_storage/src/events/event.rs:37-361`.
 
 #[non_exhaustive]
 pub enum JournalEvent {
@@ -321,8 +329,17 @@ pub enum JournalEvent {
         run: RunId,
         seq: EventSeq,
         artifact_digest: WorkflowDigest,
+        input_digest: RunInputBinding,
         granted_capabilities: CapabilitySet,
         policy: RuntimePolicy,
+    },
+    RetryCheckpoint {
+        run: RunId,
+        seq: EventSeq,
+        attempt: u16,
+        step: StepIdx,
+        payload_digest: [u8; 32],
+        payload: Vec<u8>,
     },
     StepStarted {
         run: RunId,
@@ -476,7 +493,7 @@ pub enum JournalEvent {
 impl JournalEvent {
     /// Returns the attempt number for this event.
     ///
-    /// Verbatim from `crates/vb_storage/src/events.rs:460-487`.
+    /// Verbatim from `crates/vb_storage/src/events.rs:175-204`.
     #[must_use]
     #[verifier::external]
     pub const fn attempt(&self) -> Option<u16> {
@@ -496,6 +513,7 @@ impl JournalEvent {
             | Self::RunKilled { attempt, .. }
             | Self::RunFinished { attempt, .. }
             | Self::RunFailedEvent { attempt, .. }
+            | Self::RetryCheckpoint { attempt, .. }
             | Self::AskTimedOutEvent { attempt, .. } => Some(*attempt),
             Self::ActionScheduledTicket { ticket, .. }
             | Self::ActionCompletedEnvelope { ticket, .. }

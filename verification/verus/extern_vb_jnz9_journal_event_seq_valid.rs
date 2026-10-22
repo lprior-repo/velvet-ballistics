@@ -89,20 +89,20 @@
 // it):
 //
 //   - `MirrorJournalEvent::run_id`
-//                  <- crates/vb_storage/src/events.rs:332-363
+//                  <- crates/vb_storage/src/events.rs:24-53
 //   - `MirrorJournalEvent::seq`
-//                  <- crates/vb_storage/src/events.rs:366-397
+//                  <- crates/vb_storage/src/events.rs:60-89
 //   - `MirrorJournalEvent::is_valid`
-//                  <- crates/vb_storage/src/events.rs:514-550
+//                  <- crates/vb_storage/src/events.rs:216-254
 //                      (THE PRIMARY BINDING TARGET — production rejects
 //                      events whose run_id is 0, seq is u64::MAX, or
 //                      whose attempt/ticket.attempt is 0)
 //
 // Pure spec fns (production decision lattice, mirrored line-by-line):
 //
-//   - `is_valid_run_id_zero`     <- events.rs:515-518
-//   - `is_valid_seq_overflow`    <- events.rs:519-522
-//   - `is_valid_attempt_nonzero` <- events.rs:523-549
+//   - `is_valid_run_id_zero`     <- events.rs:218
+//   - `is_valid_seq_overflow`    <- events.rs:222
+//   - `is_valid_attempt_nonzero` <- events.rs:226-252
 //
 // ============================================================================
 // TRUST BOUNDARY

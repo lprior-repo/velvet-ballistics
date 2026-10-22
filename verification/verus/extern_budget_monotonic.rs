@@ -29,11 +29,11 @@
 //   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget.rs:11-59
 //   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget.rs:64-70
 //   - `BudgetTraversalError`       <- crates/vb_core/src/budget.rs:170-191
-//   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:321-...
-//   - `ResourceContract`           <- crates/vb_core/src/workflow/mod.rs:191-228
+//   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:394-...
+//   - `ResourceContract`           <- crates/vb_core/src/workflow/mod.rs:217-254
 //   - `CompiledNode`, `CompiledNodeKind`
-//                                   <- crates/vb_core/src/workflow/mod.rs:563-...,
-//                                      :585-...
+//                                   <- crates/vb_core/src/workflow/mod.rs:660-...,
+//                                      :682-...
 //
 // ============================================================================
 // TRUST BOUNDARY

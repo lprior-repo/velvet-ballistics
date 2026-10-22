@@ -65,9 +65,9 @@
 //                                     (`pub(crate) fn validate_kind_family
 //                                       (magic: u32, kind: u16)
 //                                       -> Result<(), JournalError>`)
-//   - `next_seq`                   <- crates/vb_storage/src/codec/mod.rs:153
+//   - `next_seq`                   <- crates/vb_storage/src/codec/mod.rs:176
 //                                     (`pub(crate) fn next_seq`)
-//   - `validate_replayed_event`    <- crates/vb_storage/src/codec/mod.rs:160
+//   - `validate_replayed_event`    <- crates/vb_storage/src/codec/mod.rs:183
 //                                     (`pub(crate) fn validate_replayed_event`)
 //   - `validate_replay_sequence`   <- crates/vb_storage/src/journal/replay.rs:182-194
 //

@@ -5,12 +5,12 @@
 // ============================================================================
 //
 // This file is a VERBATIM copy of the production `WorkflowError` enum
-// declaration from `crates/vb_core/src/workflow/mod.rs:321-452` with
+// declaration from `crates/vb_core/src/workflow/mod.rs:394-549` with
 // three minimal substitutions required to compile under
 // `verus --crate-type=lib` without proc-macro crate registration:
 //
 //   1. The `#[derive(Debug, Clone, Error, PartialEq, Eq)]` derive on
-//      `WorkflowError` (production workflow/mod.rs:319) and the
+//      `WorkflowError` (production workflow/mod.rs:393) and the
 //      per-variant `#[error("...")]` attribute strings
 //      (production workflow/mod.rs:323, 326, 332, 338, 344, 350, 358,
 //      361, 367, 373, 376, 382, 388, 394, 398, 404, 410, 416, 422,
@@ -34,7 +34,7 @@
 //      CompileError` at crates/vb_compile/src/mod_compile_errors/kind.rs
 //      :54 (`CompileError::Workflow(workflow_error)`) resolves identically.
 //
-// The 20-variant discriminant set is preserved EXACTLY:
+// The 23-variant discriminant set is preserved EXACTLY:
 //   1. EmptyNodes
 //   2. EntryOutOfBounds { entry: StepIdx }
 //   3. StepOutOfBounds { step: StepIdx }
@@ -55,9 +55,12 @@
 //   18. AccessorPathTooDeep { depth: usize, max: usize }
 //   19. JumpCycle { step: StepIdx, target: StepIdx }
 //   20. NestedTogether { outer: StepIdx, inner: StepIdx }
+//   21. InputSlotOutOfBounds { slot: SlotIdx, kind: InputSlotKind }
+//   22. DuplicateInputSlot { slot: SlotIdx, kind: InputSlotKind }
+//   23. NonCanonicalInputSlotOrder { prev_slot: SlotIdx, curr_slot: SlotIdx }
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_core/src/workflow/mod.rs:321-452` whenever production
+// `crates/vb_core/src/workflow/mod.rs:394-549` whenever production
 // adds, removes, or renames a `WorkflowError` variant. The mirror is
 // annotated at the top of every section with the originating
 // production line range so regeneration is mechanical. Drift between
@@ -124,10 +127,10 @@ pub struct SymbolId(pub u32);
 // Production `CoreError` is declared at `crates/vb_core/src/errors.rs:167`
 // with `#[derive(Debug, Error, Clone, PartialEq, Eq)]` and a 24-variant
 // discriminant set. The `WorkflowError::Expression(#[from] CoreError)`
-// variant at workflow/mod.rs:359 can carry any CoreError variant.
+// variant at workflow/mod.rs:438 can carry any CoreError variant.
 // For the purposes of this binding, the `Expression` discriminant is
 // opaque: the spec only reasons about whether the variant is `Expression`
-// (vs the other 19), not about the inner `CoreError` payload. The stub
+// (vs the other 22), not about the inner `CoreError` payload. The stub
 // below declares a placeholder variant sufficient for the structural
 // binding. Spec proofs do not destructure the inner CoreError.
 
@@ -140,10 +143,33 @@ pub enum CoreError {
 }
 
 // ---------------------------------------------------------------------------
+// Local stub for the production `InputSlotKind` enum
+// ---------------------------------------------------------------------------
+//
+// Production `InputSlotKind` is declared at
+// `crates/vb_core/src/workflow/mod.rs:301-320` (9-variant enum, used by
+// the three input-slot `WorkflowError` variants added to the
+// discriminant set). The mirror preserves the variant names verbatim.
+
+/// Production `InputSlotKind` at `crates/vb_core/src/workflow/mod.rs:301-320`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputSlotKind {
+    Null,
+    Bool,
+    I64,
+    F64,
+    Symbol,
+    List,
+    Object,
+    Blob,
+    Any,
+}
+
+// ---------------------------------------------------------------------------
 // Verbatim copy of the production `WorkflowError` enum declaration
 // ---------------------------------------------------------------------------
 //
-// Production source: `crates/vb_core/src/workflow/mod.rs:321-452`.
+// Production source: `crates/vb_core/src/workflow/mod.rs:394-549`.
 //
 // Substitutions (documented at the top of this file):
 //   - `#[derive(Debug, Clone, Error, PartialEq, Eq)]` removed.
@@ -154,14 +180,14 @@ pub enum CoreError {
 //     auto-derive which is not used by this binding).
 
 /// Production `WorkflowError` enum at
-/// `crates/vb_core/src/workflow/mod.rs:321-452`. The 20-variant
+/// `crates/vb_core/src/workflow/mod.rs:394-549`. The 23-variant
 /// discriminant set is preserved EXACTLY (see the file header for
 /// the variant list and production line ranges).
 ///
 /// Standard Rust trait derives (`Debug`, `Clone`, `PartialEq`, `Eq`)
 /// are kept here so the production mirror remains a faithful clone
 /// of production behavior at the trait level. The `thiserror::Error`
-/// derive (production workflow/mod.rs:319) and the per-variant
+/// derive (production workflow/mod.rs:393) and the per-variant
 /// `#[error("...")]` attributes (production workflow/mod.rs:323, 326,
 /// 332, 338, 344, 350, 358, 361, 367, 373, 376, 382, 388, 394, 398,
 /// 404, 410, 416, 422, 430-432, 445) are the ONLY attributes removed
@@ -270,5 +296,26 @@ pub enum WorkflowError {
         outer: StepIdx,
         /// The inner `TogetherStart` step reachable from the outer branch.
         inner: StepIdx,
+    },
+    /// Production: workflow/mod.rs:523-533.
+    InputSlotOutOfBounds {
+        /// The out-of-bounds input slot.
+        slot: SlotIdx,
+        /// The kind classification of the offending slot.
+        kind: InputSlotKind,
+    },
+    /// Production: workflow/mod.rs:535-541.
+    DuplicateInputSlot {
+        /// The duplicated slot index.
+        slot: SlotIdx,
+        /// The kind classification of the duplicate.
+        kind: InputSlotKind,
+    },
+    /// Production: workflow/mod.rs:543-548.
+    NonCanonicalInputSlotOrder {
+        /// The preceding slot index.
+        prev_slot: SlotIdx,
+        /// The out-of-order slot index.
+        curr_slot: SlotIdx,
     },
 }
