@@ -1,0 +1,34 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h7rex-tests-v11",
+  "argv": [
+    "/usr/bin/env",
+    "CRITERION_HOME=/home/lewis/src/isoloated/vb-h7rex-tests-v11/.beads/vb-h7rex/evidence/actual-collection-v16/scratch/criterion-home/perf-engine_run_until_blocked_budget_10_small_workflow",
+    "LC_ALL=C",
+    "perf",
+    "stat",
+    "-x",
+    ";",
+    "-e",
+    "instructions",
+    "-o",
+    "/home/lewis/src/isoloated/vb-h7rex-tests-v11/.beads/vb-h7rex/evidence/actual-collection-v16/scratch/perf/engine_run_until_blocked_budget_10_small_workflow.csv",
+    "--",
+    "/home/lewis/src/isoloated/vb-h7rex-tests-v11/target/release/deps/velvet_ballistics-e7f40a8c1c6cf313",
+    "engine_run_until_blocked_budget_10_small_workflow",
+    "--bench",
+    "--sample-size",
+    "10",
+    "--warm-up-time",
+    "1",
+    "--measurement-time",
+    "1"
+  ],
+  "exit_code": 0,
+  "seconds": 2.576,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/vb-h7rex-tests-v11/.beads/vb-h7rex/evidence/actual-collection-v16/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-perf-1792687809070336896"
+}

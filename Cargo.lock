@@ -1991,7 +1991,6 @@ dependencies = [
  "proptest",
  "rtrb",
  "serde",
- "serde_json",
  "tempfile",
  "thiserror",
  "vb_core",

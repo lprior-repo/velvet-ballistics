@@ -340,7 +340,6 @@ fn versioned_decoder_preserves_pinned_admission_through_roundtrip() -> Result<()
     .map_err(|error| format!("capture failed: {error}"))?;
 
     // Verify the checkpoint captured the pinned admission.
-    assert!(checkpoint.admission.is_some());
     let captured_pin = checkpoint.admission.as_ref().map(|a| a.policy_pin());
     assert_eq!(captured_pin, Some(RunPolicyPin::Pinned(policy_digest)));
 
@@ -351,7 +350,6 @@ fn versioned_decoder_preserves_pinned_admission_through_roundtrip() -> Result<()
         .map_err(|error| format!("version-aware decode failed: {error}"))?;
 
     // Verify the policy pin is preserved after the roundtrip.
-    assert!(decoded.admission.is_some());
     let restored_pin = decoded.admission.as_ref().map(|a| a.policy_pin());
     assert_eq!(
         restored_pin,

@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-h7rex-tests-v11",
+  "argv": [
+    "heaptrack_print",
+    "/home/lewis/src/isoloated/vb-h7rex-tests-v11/.beads/vb-h7rex/evidence/actual-collection-v16/scratch/heaptrack/ht-ipc_frame_decode.zst"
+  ],
+  "exit_code": 0,
+  "seconds": 1.149,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/src/isoloated/vb-h7rex-tests-v11/.beads/vb-h7rex/evidence/actual-collection-v16/scratch/gate/ipc_frame_decode-heaptrack-1792687796488090880-print"
+}

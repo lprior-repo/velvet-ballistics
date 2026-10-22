@@ -403,10 +403,10 @@ impl Shard {
         // loaded artifact's durable policy_digest before any restore mutation.
         // This catches admission_policy_pin_mismatch that the separate full
         // recovery flow validates via validate_recovered_admission_evidence.
-        if let Some(checkpoint) = &retry_checkpoint {
-            if let Some(admission) = &checkpoint.admission {
-                crate::recovery::validate_recovered_policy_pin(admission, &artifact)?;
-            }
+        if let Some(checkpoint) = &retry_checkpoint
+            && let Some(admission) = &checkpoint.admission
+        {
+            crate::recovery::validate_recovered_policy_pin(admission, &artifact)?;
         }
 
         // Step 5: Seed journal sequence from recovered next_seq

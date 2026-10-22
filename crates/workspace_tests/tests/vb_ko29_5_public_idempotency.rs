@@ -739,6 +739,7 @@ fn given_no_schedule_event_when_expected_abi_then_replay_journal_rejects_with_ab
         seq: EventSeq::new(0),
         artifact_digest: digest(0x11),
         input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+        policy_pin: vb_storage::RunPolicyPin::Unverified,
         granted_capabilities: vb_core::CapabilitySet::empty(),
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
