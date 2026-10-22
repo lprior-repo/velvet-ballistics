@@ -1,0 +1,20 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-ga13x-local5090-kani",
+  "argv": [
+    "cargo",
+    "kani",
+    "-p",
+    "vb_core",
+    "--harness",
+    "verify_replay_deterministic_for_same_input"
+  ],
+  "exit_code": 124,
+  "seconds": 840.1,
+  "timeout_seconds": 840,
+  "timed_out": true,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-ga13x/evidence/kani-replay-deterministic",
+  "coordinator_message": "Root found THREE concurrent Kani jobs: legitimate logged ticket runner1252903, duplicate bare same-ticket cargo-kani1264580, legitimate logged replay runner1265493. Root stopped only duplicate unlogged ticket cargo/CBMC. Do not launch duplicate Kani while an actual runner gate is pending; no broad fleet. Let the two bounded logged runs finish or timeout honestly, then record actual JSON. Never claim compilation as proof closure. If named proof times out, preserve actual124 and hand off; do not weaken harness, change bounds or rerun blind. Source edits remain two fixtures only; pre-existing fixed-shape make_minimal_plan must not be falsely declared general proof coverage. Keep symbolic attempt from kani::any. Do not add exceptions. No sleeps over30s or infinite polling; root monitors the pending gates too. Root owns VCS and final publication."
+}
