@@ -17,7 +17,7 @@ fn eight_concurrent_submissions_get_unique_sequences_1_through_8() -> Result<(),
     let workflow = minimal_workflow()?;
 
     let journal_ref = &journal;
-    let artifacts = std::thread::scope(|scope| {
+    let artifacts = std::thread::scope(|scope| -> Result<Vec<AcceptedArtifact>, String> {
         let mut handles = Vec::with_capacity(8);
         for _ in 0..8 {
             let wf = workflow.clone();
