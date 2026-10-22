@@ -62,14 +62,11 @@ fn current_live_policy_configured_has_digest() {
         },
     };
     assert_eq!(live.digest(), Some(digest));
-    assert_eq!(live.rule().unwrap().action, ActionId::new(0));
+    assert!(matches!(live.rule(), Some(rule) if rule.action == ActionId::new(0)));
     let identity = live.identity();
-    match identity {
-        CurrentPolicyIdentity::Configured { digest: id_digest } => {
-            assert_eq!(id_digest, digest);
-        }
-        CurrentPolicyIdentity::Unconfigured => panic!("should be configured"),
-    }
+    assert!(
+        matches!(identity, CurrentPolicyIdentity::Configured { digest: id_digest } if id_digest == digest)
+    );
 }
 
 #[test]
@@ -105,10 +102,7 @@ fn decision_record_preserves_all_fields() {
 #[test]
 fn pinned_admission_unverified_is_not_digest() {
     let unverified = PinnedAdmissionPolicy::Unverified;
-    match unverified {
-        PinnedAdmissionPolicy::Artifact(_) => panic!("should be unverified"),
-        PinnedAdmissionPolicy::Unverified => {}
-    }
+    assert!(matches!(unverified, PinnedAdmissionPolicy::Unverified));
 }
 
 #[test]

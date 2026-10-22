@@ -48,12 +48,10 @@ fn per_run_artifact_pin_remains_exact() -> RuntimeResult<()> {
         Taint::Clean,
     )?;
 
-    match record_a.admission {
-        PinnedAdmissionPolicy::Artifact(d) => {
-            assert_eq!(d.as_bytes(), digest_a.as_bytes());
-        }
-        PinnedAdmissionPolicy::Unverified => panic!("admission should be Artifact"),
-    }
+    assert_eq!(
+        record_a.admission,
+        PinnedAdmissionPolicy::Artifact(digest_a)
+    );
     Ok(())
 }
 

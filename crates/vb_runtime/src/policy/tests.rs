@@ -17,10 +17,10 @@ fn test_ticket(action: u16) -> ActionTicket {
 }
 
 fn test_digest() -> PolicyDigest {
-    let mut bytes = [0u8; 32];
-    bytes[0] = 0xAB;
-    bytes[31] = 0xCD;
-    PolicyDigest::from_bytes(bytes)
+    PolicyDigest::from_bytes([
+        0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0xCD,
+    ])
 }
 
 #[test]
