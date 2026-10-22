@@ -1,0 +1,13 @@
+{
+  "review": "v3",
+  "actual_candidate": "62a2f47c2f2874d39dcb61466698e3f737e7d316",
+  "main": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "verified": [
+    "Threeactualdeltas, bothdoccommands65536 and assertion4096->100000",
+    "event_collect.rs callsrecord_node onEVERYeventbeforepush",
+    "yaml lib publicparse validatesbeforecollect",
+    "build_source_map validatesbeforecollect; mapentries subsetofevents"
+  ],
+  "accepted_for_followup": "vb-h2qc2 claimed actualregression+boundedfix inuniqueisolate; notlanded/acceptedbythisstaticreview",
+  "v1_v2_reports": "Rejected inaccurate reviews remainpreserved. V3 usesactualplaintextdiff andsource ratherthantruncatedminifiedJSON."
+}

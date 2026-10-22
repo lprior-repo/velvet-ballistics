@@ -1,0 +1,40 @@
+{
+  "bead": "vb-fyktj",
+  "version": 3,
+  "candidate": "62a2f47c2",
+  "base": "dba19b95",
+  "reviewed_at": "2026-10-22",
+  "deltas": [
+    {
+      "file": "fuzz/fuzz_targets/yaml_events.rs",
+      "type": "documentation",
+      "description": "Added recommended fuzz command doc comment with -max_len=65536 -runs=100000",
+      "behavioral": false
+    },
+    {
+      "file": "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs",
+      "type": "documentation",
+      "description": "Added recommended fuzz command doc comment with -max_len=65536 -runs=100000",
+      "behavioral": false
+    },
+    {
+      "file": "fuzz/src/yaml_target.rs",
+      "type": "constant",
+      "field": "MAX_FUZZ_PAYLOAD_USIZE",
+      "old_value": 4096,
+      "new_value": 100000,
+      "description": "Aligned fuzz payload bound with production YamlLimits::max_nodes",
+      "behavioral": true
+    }
+  ],
+  "soundness": {
+    "bound_correct": true,
+    "production_limit": 100000,
+    "production_limit_source": "crates/vb_yaml/src/yaml_limits.rs:33 (YamlLimits::default().max_nodes)",
+    "enforcement_chain": "parse_yaml_events calls validate_yaml_profile which calls collect_and_validate_events which enforces max_nodes via record_node for every event. If events exceed 100000, validation returns NodeLimitExceeded and parse_yaml_events returns Err. When parse_yaml_events returns Ok(events), events.len() is guaranteed <= 100000.",
+    "old_bound_issue": "4096 was too small; valid YAML with up to 100000 events would pass production validation but fail fuzz assertion (false positive).",
+    "source_map_bound": "build_source_map validates first then collects. Source map entries are a subset of events (only MappingStart/SequenceStart/Scalar produce entries). source_map.len() <= events.len() <= 100000."
+  },
+  "disposition": "approved",
+  "notes": "The bound change is behavioral, not documentation-only. It corrects the fuzz target to match production enforcement. The doc comments are useful for users."
+}
