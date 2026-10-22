@@ -1,0 +1,70 @@
+{
+  "assembled_head_before_final_evidence": "37fde0fc252490deb5561362977e33f0e2dc7531",
+  "measured_commit": "534aa40434b2704ad63666130557937087796259",
+  "final_static_benchmark_gate": {
+    "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing",
+    "argv": [
+      "env",
+      "TEST_INTEGRITY_BASE=da633fe0bbde9e414173d5f7aabe314a37f8752d",
+      "moon",
+      "ci",
+      ":fmt",
+      ":source-length",
+      ":lint-src",
+      ":benchmark-regression-policy",
+      "--downstream",
+      "none",
+      "--force",
+      "--concurrency",
+      "2"
+    ],
+    "exit_code": 0,
+    "seconds": 31.139,
+    "timeout_seconds": 1200,
+    "timed_out": false,
+    "env_overrides": {
+      "CARGO_BUILD_JOBS": "2"
+    },
+    "log_prefix": ".beads/vb-2lyiw/evidence/final-assembled-static-benchmark-v6"
+  },
+  "benchmark_policy_tests": {
+    "log": ".beads/vb-2lyiw/evidence/final-pinned-xtask-benchmark-tests-v4.json",
+    "exit_code": 0,
+    "tests_passed": 40,
+    "breakdown": "6 evidence-gate +29 benchmark-policy/freshness unit +5public CLI"
+  },
+  "runtime_tests": {
+    "log": ".beads/vb-2lyiw/evidence/final-assembled-canonical-runtime-v2.json",
+    "tests_passed": 14358,
+    "preexisting_skipped": 27,
+    "whole_command_exit_code": 1,
+    "explanation": "Runtime/check/docs/nightly/features/bench-build passed; command failed on two test style violations later repaired in xtask only, fresh40tests and finalstatic v6 passed. Not an unrestricted CI pass."
+  },
+  "sanitizers": {
+    "asan_smoke": ".beads/vb-2lyiw/evidence/replay-integrated-canonical-scope-v1.json",
+    "tsan_instrumented_build_and_corpus": ".beads/vb-2lyiw/evidence/replay-integrated-nightly-lanes-v1.json",
+    "tsan_runtime_execution_claimed": false
+  },
+  "proof_scope": {
+    "open_existing_debt": [
+      "vb-heuiz",
+      "vb-73gp3",
+      "vb-z9jmf"
+    ],
+    "scope_review_bead": "vb-47u9o",
+    "whole_proof_closure_claimed": false,
+    "registry_verus": "36 registry commands passed; binding gate0strong/72weak/0vacuum; not all-production proof closure"
+  },
+  "followups": [
+    "vb-8li6d",
+    "vb-x6o83"
+  ],
+  "preservation": {
+    "source_checkpoints": 13,
+    "disposition_refs": 44,
+    "historical_ancestor_refs_audited": 80,
+    "stashes_retained": 29,
+    "runtime_databases_or_bytecode_added": false
+  },
+  "main_published": false
+}
