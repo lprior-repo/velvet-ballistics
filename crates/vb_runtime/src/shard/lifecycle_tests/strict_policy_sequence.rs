@@ -12,10 +12,11 @@ use vb_core::policy::{
 };
 use vb_core::value::{SlotValue, Taint};
 
+use crate::error::RuntimeResult;
 use crate::journal::{RuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal};
 use crate::RuntimeError;
 
-use super::super::types::{Shard, ShardCommand};
+use super::super::super::types::{Shard, ShardCommand};
 use super::{require_workflow, small_config, suspended_workflow};
 
 // Test-local recording journal that captures strict policy decision calls.
@@ -31,14 +32,19 @@ impl RecordingJournal {
     }
 
     fn strict_calls(&self) -> Vec<(DecisionRecord, vb_storage::EventSeq)> {
-        self.strict_calls.lock().expect("lock must succeed").clone()
+        let calls = self
+            .strict_calls
+            .lock()
+            .map_err(|e| RuntimeError::from(vb_storage::JournalError::JournalPoisoned { source: Box::new(e) }))?;
+        Ok(calls.clone())
     }
 
     fn set_strict_error(&self, err: RuntimeError) {
-        self.strict_error
+        let mut slot = self
+            .strict_error
             .lock()
-            .expect("lock must succeed")
-            .replace(err);
+            .map_err(|e| RuntimeError::from(vb_storage::JournalError::JournalPoisoned { source: Box::new(e) }))?;
+        *slot = Some(err);
     }
 }
 
@@ -47,10 +53,8 @@ impl RuntimeJournal for RecordingJournal {
         Ok(())
     }
 
-    fn append_sequenced(&self, event: RuntimeJournalEvent, seq: vb_storage::EventSeq) -> RuntimeResult<()> {
+    fn append_sequenced(&self, event: RuntimeJournalEvent, _seq: vb_storage::EventSeq) -> RuntimeResult<()> {
         self.append(event)
-            .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
-            .map(|_| ())
     }
 
     fn append_policy_decision_strict(
@@ -58,22 +62,21 @@ impl RuntimeJournal for RecordingJournal {
         decision: vb_core::policy::DecisionRecord,
         seq: vb_storage::EventSeq,
     ) -> RuntimeResult<()> {
-        if let Some(err) = self
+        let mut err_slot = self
             .strict_error
             .lock()
-            .expect("lock must succeed")
-            .clone()
-        {
-            self.strict_calls
-                .lock()
-                .expect("lock must succeed")
-                .push((decision, seq));
+            .map_err(|e| RuntimeError::from(vb_storage::JournalError::JournalPoisoned { source: Box::new(e) }))?;
+        let pending_err = err_slot.take();
+
+        let mut calls = self
+            .strict_calls
+            .lock()
+            .map_err(|e| RuntimeError::from(vb_storage::JournalError::JournalPoisoned { source: Box::new(e) }))?;
+        calls.push((decision, seq));
+
+        if let Some(err) = pending_err {
             return Err(err);
         }
-        self.strict_calls
-            .lock()
-            .expect("lock must succeed")
-            .push((decision, seq));
         Ok(())
     }
 
@@ -91,8 +94,8 @@ fn test_decision_record(ticket: ActionTicket) -> DecisionRecord {
         taint: Taint::Clean,
         outcome: DecisionCode::Allowed,
         layer: PolicyLayer::Live,
-        emergency_influence: InfluenceState::NoOverride,
-        compat_influence: InfluenceState::NoOverride,
+        emergency_influence: InfluenceState::NotEvaluated,
+        compat_influence: InfluenceState::NotEvaluated,
     }
 }
 
@@ -100,7 +103,7 @@ fn test_decision_record(ticket: ActionTicket) -> DecisionRecord {
 // advances internal sequence, leaves pending ticket unchanged.
 #[test]
 fn successful_strict_policy_port() -> Result<(), Box<dyn std::error::Error>> {
-    let journal = Arc::new(RecordingJournal::default());
+    let journal = RecordingJournal::shared();
     let shard = Shard::new_with_journal(small_config(), journal.clone());
     let run = RunId::new(90001);
     let workflow = require_workflow("suspended", suspended_workflow())?;
@@ -120,29 +123,31 @@ fn successful_strict_policy_port() -> Result<(), Box<dyn std::error::Error>> {
         .pending_action_get(run)
         .ok_or("pending action ticket must exist")?;
 
+    // Seed sequence at 5 for exact seq verification.
+    shard.seed_journal_sequence(run, vb_storage::EventSeq::new(5))?;
     let seq_before = shard.journal_sequence_for(run);
+    assert_eq!(seq_before.get(), 5, "sequence must be seeded at 5");
 
     let result = shard.append_policy_decision_strict(test_decision_record(ticket));
     result?;
 
-    // Verify shard advanced internal sequence.
+    // Verify shard advanced internal sequence from 5 to 6.
     let seq_after = shard.journal_sequence_for(run);
     assert_eq!(
         seq_after.get(),
-        seq_before.get() + 1,
-        "internal sequence must advance after successful port"
+        6,
+        "internal sequence must advance from 5 to 6"
     );
 
-    // Verify journal received exact seq value.
-    let calls = journal.strict_calls();
+    // Verify journal received exactly one call with seq 5.
+    let calls = journal.strict_calls()?;
     assert_eq!(calls.len(), 1, "journal must record exactly one strict call");
-    let (decision, recorded_seq) = &calls[0];
     assert_eq!(
-        *recorded_seq, seq_before,
-        "journal must receive current shard sequence"
+        calls[0].1, seq_before,
+        "journal must receive current shard sequence (5)"
     );
     assert_eq!(
-        decision.ticket, ticket,
+        calls[0].0.ticket, ticket,
         "journal must receive exact ticket"
     );
 
@@ -159,7 +164,7 @@ fn successful_strict_policy_port() -> Result<(), Box<dyn std::error::Error>> {
 // shard propagates error and leaves sequence/pending unchanged.
 #[test]
 fn typed_strict_policy_port_failure() -> Result<(), Box<dyn std::error::Error>> {
-    let journal = Arc::new(RecordingJournal::default());
+    let journal = RecordingJournal::shared();
     let shard = Shard::new_with_journal(small_config(), journal.clone());
     let run = RunId::new(90002);
     let workflow = require_workflow("suspended", suspended_workflow())?;
@@ -217,7 +222,7 @@ fn typed_strict_policy_port_failure() -> Result<(), Box<dyn std::error::Error>> 
 // call. No journal call, sequence unchanged.
 #[test]
 fn overflow_at_u64_max() -> Result<(), Box<dyn std::error::Error>> {
-    let journal = Arc::new(RecordingJournal::default());
+    let journal = RecordingJournal::shared();
     let shard = Shard::new_with_journal(small_config(), journal.clone());
     let run = RunId::new(90003);
     let workflow = require_workflow("suspended", suspended_workflow())?;
@@ -260,7 +265,7 @@ fn overflow_at_u64_max() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Verify no journal call occurred (overflow rejected before port).
-    let calls = journal.strict_calls();
+    let calls = journal.strict_calls()?;
     assert_eq!(
         calls.len(), 0,
         "journal must not be called when sequence overflows"
@@ -280,7 +285,7 @@ fn overflow_at_u64_max() -> Result<(), Box<dyn std::error::Error>> {
 // action that is not the current pending ticket.
 #[test]
 fn wrong_ticket_rejected() -> Result<(), Box<dyn std::error::Error>> {
-    let journal = Arc::new(RecordingJournal::default());
+    let journal = RecordingJournal::shared();
     let shard = Shard::new_with_journal(small_config(), journal.clone());
     let run = RunId::new(90004);
     let workflow = require_workflow("suspended", suspended_workflow())?;
@@ -316,7 +321,7 @@ fn wrong_ticket_rejected() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Verify no journal call occurred.
-    let calls = journal.strict_calls();
+    let calls = journal.strict_calls()?;
     assert_eq!(
         calls.len(), 0,
         "journal must not be called for wrong ticket"
