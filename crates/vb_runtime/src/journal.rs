@@ -12,3 +12,8 @@ mod tests {
     include!("journal/tests/chunk_003.rs");
     include!("journal/tests/chunk_004.rs");
 }
+
+#[cfg(test)]
+mod strict_policy_port_tests {
+    include!("journal/tests/strict_policy_port.rs");
+}
