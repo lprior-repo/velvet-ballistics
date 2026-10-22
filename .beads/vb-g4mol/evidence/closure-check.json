@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/lewis/src/isoloated/velvet-ballistics-vb-g4mol-local3090-evidence",
+  "argv": [
+    "python3",
+    "scripts/check-vb-jpq7-closure-evidence.py",
+    "--parent",
+    "vb-jpq7",
+    "--bd-workdir",
+    "/home/lewis/src/velvet-ballistics"
+  ],
+  "exit_code": 0,
+  "seconds": 0.144,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": ".beads/vb-g4mol/evidence/closure-check"
+}

@@ -1,0 +1,21 @@
+
+running 5 tests
+test legacy_golden_provenance_and_limitations ... ok
+test legacy_golden_fixtures_have_valid_envelopes ... ok
+test legacy_small_canonical_rejected_by_current_decoder ... ok
+test legacy_high_values_rejected_by_current_decoder ... ok
+test legacy_max_attempt_capacity_rejected_by_current_decoder ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test idempotency_key_differs_across_run_attempts ... ok
+test ticket_key_valid_after_serialization ... ok
+test future_run_attempt_ticket_rejected ... ok
+test zero_run_attempt_ticket_rejected ... ok
+test cold_recovery_preserves_run_attempt ... ok
+test stale_completion_rejected_after_two_retries ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

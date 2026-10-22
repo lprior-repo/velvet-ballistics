@@ -1,0 +1,53 @@
+    Checking libfuzzer-sys v0.4.13
+    Checking velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/crates/workspace_tests)
+    Checking velvet-ballistics-fuzz v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-wlnl4-final-landing/fuzz)
+error: unused import: `AdmissionError`
+ --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:8:52
+  |
+8 | use vb_runtime::admission::{AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError};
+  |                                                    ^^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused imports: `ActionReplayTracker` and `replay_journal`
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:10:5
+   |
+10 |     ActionReplayTracker, EventSeq, FjallJournal, JournalError, JournalEvent, replay_journal,
+   |     ^^^^^^^^^^^^^^^^^^^                                                      ^^^^^^^^^^^^^^
+
+error: struct `FixedArtifactStore` is never constructed
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:14:8
+   |
+14 | struct FixedArtifactStore {
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D dead-code` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: function `ticket` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:37:4
+   |
+37 | fn ticket(run: u64, step: u16, key: u128) -> ActionTicket {
+   |    ^^^^^^
+
+error: function `valid_artifact` is never used
+  --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:50:4
+   |
+50 | fn valid_artifact(_artifact_digest: WorkflowDigest) -> vb_storage::AcceptedArtifact {
+   |    ^^^^^^^^^^^^^^
+
+error: function `count_scheduled` is never used
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:389:4
+    |
+389 | fn count_scheduled(events: &[JournalEvent]) -> usize {
+    |    ^^^^^^^^^^^^^^^
+
+error: function `count_completed` is never used
+   --> crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:396:4
+    |
+396 | fn count_completed(events: &[JournalEvent]) -> usize {
+    |    ^^^^^^^^^^^^^^^
+
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_ko29_5_public_idempotency") due to 7 previous errors
+warning: build failed, waiting for other jobs to finish...
