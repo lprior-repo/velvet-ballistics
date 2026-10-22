@@ -1,0 +1,25 @@
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling zerocopy v0.8.48
+   Compiling cc v1.2.62
+   Compiling byteorder v1.5.0
+   Compiling log v0.4.29
+   Compiling sfa v1.0.0
+   Compiling chrono v0.4.44
+   Compiling bytes v1.11.1
+   Compiling hash32 v0.2.1
+   Compiling blake3 v1.8.5
+   Compiling lsm-tree v3.1.4
+   Compiling ppv-lite86 v0.2.21
+   Compiling heapless v0.7.17
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_core)
+   Compiling postcard v1.1.3
+   Compiling fjall v3.1.4
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.4
+   Compiling proptest v1.11.0
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.55s
+     Running tests/policy_pin_legacy_layout.rs (/home/lewis/src/isoloated/vb-policy-integration-v18/target/debug/deps/policy_pin_legacy_layout-96a56b86a7031c0c)

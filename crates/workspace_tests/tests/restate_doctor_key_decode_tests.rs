@@ -477,10 +477,11 @@ fn readonly_journal_is_debug() {
 }
 
 #[test]
-fn readonly_journal_declared_keyspaces_returns_ten() {
+fn readonly_journal_declared_keyspaces_returns_eleven() {
     // Static method — proves the type is accessible.
+    // Actual count is 11 after emergency_deny keyspace was added (vb-h7rex).
     let spaces = ReadOnlyJournal::declared_keyspaces();
-    assert_eq!(spaces.len(), 10);
+    assert_eq!(spaces.len(), 11);
     // Verify all keyspace names are non-empty (cold path — no JSON/YAML).
     for &name in &spaces {
         assert!(!name.is_empty(), "keyspace name must not be empty");

@@ -1,0 +1,21 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_core)
+   Compiling logos-codegen v0.15.1
+   Compiling logos-derive v0.15.1
+   Compiling regex-automata v0.4.14
+   Compiling logos v0.15.1
+   Compiling alloca v0.4.0
+   Compiling regex v1.12.3
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_storage)
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_yaml)
+   Compiling mio v1.2.0
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_compile)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_runtime)
+   Compiling criterion v0.8.2
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/vb_ipc)
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/xtask)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-policy-legacy-v20/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.97s
+     Running tests/restate_doctor_key_decode_tests.rs (/home/lewis/src/isoloated/vb-policy-integration-v18/target/debug/deps/restate_doctor_key_decode_tests-dbe564a9f7b69842)
