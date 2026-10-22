@@ -16,12 +16,13 @@ fn eight_concurrent_submissions_get_unique_sequences_1_through_8() -> Result<(),
     let journal = temp_journal().map_err(|e| format!("temp_journal: {e}"))?;
     let workflow = minimal_workflow()?;
 
+    let journal_ref = &journal;
     let artifacts = std::thread::scope(|scope| {
         let mut handles = Vec::with_capacity(8);
         for _ in 0..8 {
             let wf = workflow.clone();
             let handle = scope.spawn(move || {
-                submit_artifact(&journal, &wf, RuntimePolicy::Relaxed)
+                submit_artifact(journal_ref, &wf, RuntimePolicy::Relaxed)
                     .map_err(|e| format!("submit_artifact failed: {e}"))
             });
             handles.push(handle);
@@ -34,8 +35,8 @@ fn eight_concurrent_submissions_get_unique_sequences_1_through_8() -> Result<(),
                 .map_err(|e| format!("thread join failed: {e:?}"))??;
             results.push(artifact);
         }
-        results
-    });
+        Ok(results)
+    })?;
 
     if artifacts.len() != 8 {
         return Err(format!("expected 8 artifacts, got {}", artifacts.len()));

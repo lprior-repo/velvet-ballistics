@@ -1,0 +1,23 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-qz2yn-failure-tests-local3090-v10",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "cargo",
+    "check",
+    "-p",
+    "vb_storage",
+    "--tests",
+    "--all-features",
+    "--locked"
+  ],
+  "exit_code": 101,
+  "seconds": 2.623,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_ARTIFACT_COUNTER_3090_V12_TEST_CHECK"
+}
