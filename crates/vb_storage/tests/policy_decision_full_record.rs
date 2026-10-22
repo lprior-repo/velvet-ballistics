@@ -16,6 +16,7 @@ use vb_storage::events::JournalEvent;
 use vb_storage::journal::FjallJournal;
 use vb_storage::records::RecordKind;
 use vb_storage::types::EventSeq;
+use vb_storage::JournalError;
 
 #[test]
 fn policy_decision_event_round_trip() -> Result<(), Box<dyn std::error::Error>> {
@@ -244,7 +245,15 @@ fn malformed_payload_rejected() -> Result<(), Box<dyn std::error::Error>> {
         MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     );
-    assert!(result.is_err(), "malformed payload should be rejected");
+    match result {
+        Err(JournalError::PostcardDecodeFailed(postcard::Error::SerdeDeCustom)) => {}
+        other => {
+            return Err(format!(
+                "malformed payload should yield PostcardDecodeFailed(SerdeDeCustom); got {other:?}"
+            )
+            .into());
+        }
+    }
 
     Ok(())
 }
@@ -278,7 +287,14 @@ fn truncated_payload_rejected() -> Result<(), Box<dyn std::error::Error>> {
         MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     );
-    assert!(result.is_err(), "truncated payload should be rejected");
+    match result {
+        Err(JournalError::UnexpectedEof) => {}
+        other => {
+            return Err(
+                format!("truncated payload should yield UnexpectedEof; got {other:?}").into(),
+            );
+        }
+    }
 
     Ok(())
 }
@@ -306,10 +322,18 @@ fn envelope_kind_mismatch_rejected() -> Result<(), Box<dyn std::error::Error>> {
         MAGIC_JOURNAL_EVENT,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     );
-    assert!(
-        result.is_err(),
-        "envelope/payload kind mismatch should be rejected"
-    );
+    match result {
+        Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind: 10,
+            payload_kind: 38,
+        }) => {}
+        other => {
+            return Err(format!(
+                "envelope/payload kind mismatch should yield RecordKindPayloadMismatch {{ envelope_kind: 10, payload_kind: 38 }}; got {other:?}"
+            )
+            .into());
+        }
+    }
 
     Ok(())
 }
@@ -332,11 +356,15 @@ fn run_envelope_mismatch_protected() -> Result<(), Box<dyn std::error::Error>> {
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     );
 
-    // The serializer must detect the run mismatch and reject it
-    assert!(
-        encode_result.is_err(),
-        "run envelope mismatch should be rejected at encode; got Ok"
-    );
+    match encode_result {
+        Err(JournalError::Encode(postcard::Error::SerdeSerCustom)) => {}
+        other => {
+            return Err(format!(
+                "run envelope mismatch should yield JournalError::Encode(SerdeSerCustom); got {other:?}"
+            )
+            .into());
+        }
+    }
 
     Ok(())
 }
@@ -356,17 +384,15 @@ fn policy_decode_rejects_mismatched_run() -> Result<(), Box<dyn std::error::Erro
     valid_wire.extend(postcard::to_allocvec(&valid_tuple)?);
 
     let decoded = postcard::from_bytes::<JournalEvent>(&valid_wire)?;
-    match decoded {
-        JournalEvent::PolicyDecisionEvent { run, seq, decision: d } => {
-            assert_eq!(run.get(), 100);
-            assert_eq!(seq.get(), 0);
-            assert_eq!(d.outcome, DecisionCode::Denied);
-            assert_eq!(d.layer, PolicyLayer::Emergency);
-        }
-        other => {
-            return Err(format!("wrong variant decoded: {other:?}").into());
-        }
-    }
+    let expected = JournalEvent::PolicyDecisionEvent {
+        run: RunId::new(100),
+        seq: EventSeq::new(0),
+        decision: decision.clone(),
+    };
+    assert_eq!(
+        decoded, expected,
+        "full decoded event must equal expected full record"
+    );
 
     // Negative control: same layout, mismatched outer run must be rejected
     let mismatch_tuple = (RunId::new(999), EventSeq::new(0), decision.clone());
@@ -375,8 +401,14 @@ fn policy_decode_rejects_mismatched_run() -> Result<(), Box<dyn std::error::Erro
     mismatch_wire.extend(postcard::to_allocvec(&mismatch_tuple)?);
 
     let result = postcard::from_bytes::<JournalEvent>(&mismatch_wire);
-    if result.is_ok() {
-        return Err("decode should have rejected mismatched outer run".into());
+    match result {
+        Err(postcard::Error::SerdeDeCustom) => {}
+        other => {
+            return Err(format!(
+                "decode should have rejected mismatched outer run with SerdeDeCustom; got {other:?}"
+            )
+            .into());
+        }
     }
 
     Ok(())
