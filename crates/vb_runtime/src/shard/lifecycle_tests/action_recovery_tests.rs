@@ -206,6 +206,20 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         "recovered admission must grant exactly the artifact's required capabilities"
     );
 
+    // vb-peb9u: Raw 7-argument recovery produces Unverified admission (no policy pin).
+    // Now prove that when a genuine failed-state checkpoint IS supplied via the
+    // public .with_retry_checkpoint() builder, and the checkpoint carries a
+    // different policy pin than the artifact, the shard rejects it with the
+    // exact admission_policy_pin_mismatch error. This exercises the real
+    // checkpoint capture, frame hydration, and policy pin validation path.
+    let original_state_clone = state.clone();
+    assert_raw_checkpoint_wrong_pin_rejected(
+        &mut shard,
+        original_state_clone,
+        &journal,
+        artifact_digest,
+    )?;
+
     // Verify the Do action was scheduled with the correct ticket fields
     let ticket = shard
         .pending_action_get(run_id)
@@ -326,6 +340,98 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     assert_eq!(
         run_finished_count_after_dup, 1,
         "duplicate completion must not add second RunFinished"
+    );
+
+    Ok(())
+}
+
+fn assert_raw_checkpoint_wrong_pin_rejected(
+    shard: &mut crate::shard::Shard,
+    original: crate::shard::types::RunState,
+    journal: &VolatileRuntimeJournal,
+    artifact_digest: vb_core::ids::WorkflowDigest,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let run_id = original.frame.run_id();
+
+    // Record the complete original state before any probe.
+    let original_pending = shard.pending_boundary_snapshot(0, 8);
+    let original_journal = journal.snapshot()?;
+
+    // Clone the recovered state to build a failed fixture. The original frame
+    // is Running, so we must genuinely transition it to Failed via the real
+    // frame API — not pretend a non-failed frame can be checkpointed.
+    let mut failed = original.clone();
+    failed.frame.mark_failed(vb_core::ids::StepIdx::ZERO)?;
+
+    // Forge a policy pin that differs from the artifact's actual policy digest.
+    // The original recovered admission has pin [43u8;32] (artifact identity);
+    // use [44u8;32] to guarantee mismatch.
+    let wrong_pin = vb_core::ids::WorkflowDigest::from_bytes([44u8; 32]);
+    let forged_admission = failed
+        .admission
+        .as_ref()
+        .ok_or("failed fixture must carry an admission record")?
+        .clone()
+        .with_policy_pin(vb_storage::RunPolicyPin::Pinned(wrong_pin));
+    failed.admission = Some(forged_admission);
+
+    // Capture a genuinely valid checkpoint from the failed state. This exercises
+    // the real RunCheckpointV1::capture path with its admission validation.
+    let checkpoint = crate::run_checkpoint::RunCheckpointV1::capture(
+        run_id,
+        artifact_digest,
+        core::num::NonZeroU16::new(2).ok_or("invalid checkpoint attempt number")?,
+        vb_core::ids::StepIdx::ZERO,
+        1,
+        &failed,
+    )?;
+
+    // Hydrate a valid retry frame from the checkpoint for the recovery command.
+    let retry_frame = vb_core::frame::RunFrame::from_checkpoint_v1(checkpoint.frame.clone())
+        .map_err(|error| format!("retry frame fixture failed: {error:?}"))?;
+
+    // Build the public recovery command with the retry checkpoint attached via
+    // the exact .with_retry_checkpoint() builder path that production uses.
+    let command = RecoverRunCommand::new(
+        run_id,
+        retry_frame,
+        artifact_digest,
+        original.workflow.digest(),
+        vb_storage::types::EventSeq::new(2),
+        crate::primitives::collect::CollectStates::new(),
+        crate::recovery::RecoveredRunBoundary::none(),
+    )
+    .with_retry_checkpoint(checkpoint);
+
+    // The shard must reject this because the checkpoint's policy pin (forged to
+    // [44u8;32]) does not match the artifact's actual policy digest (derived
+    // from [43u8;32]).
+    let result = shard.handle_recover(command);
+    assert_eq!(
+        result,
+        Err(crate::RuntimeError::RecoveryCannotResume {
+            reason: "admission_policy_pin_mismatch".to_string()
+        }),
+        "shard must reject retry checkpoint with mismatched policy pin"
+    );
+
+    // The failed probe must leave the shard's state, pending boundaries, and
+    // journal exactly unchanged. Only the cloned failed fixture mutated; the
+    // real shard's recovered run is untouched.
+    assert_eq!(
+        shard.run_state_get(run_id),
+        Some(&original),
+        "shard run state must be unchanged after rejected checkpoint probe"
+    );
+    assert_eq!(
+        shard.pending_boundary_snapshot(0, 8),
+        original_pending,
+        "pending boundaries must be unchanged after rejected checkpoint probe"
+    );
+    assert_eq!(
+        journal.snapshot()?,
+        original_journal,
+        "journal must be unchanged after rejected checkpoint probe"
     );
 
     Ok(())
