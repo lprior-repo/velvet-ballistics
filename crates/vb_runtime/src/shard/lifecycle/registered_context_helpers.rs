@@ -7,15 +7,14 @@
 use crate::shard::types::RunState;
 use crate::{RuntimeError, RuntimeResult};
 use vb_core::action::{ActionOutputReady, ActionTicket};
-use vb_core::workflow::{CompiledNodeKind, SlotValue};
-use vb_core::{Taint};
+use vb_core::workflow::CompiledNodeKind;
+use vb_core::{SlotValue, Taint};
 
-/// Read the I64 input value for a registered action and validate the
-/// action node, input taint, and slot type.
-pub(super) fn resolve_action_input(
+/// Validate the action node, matching action ID, and Clean input taint.
+pub(super) fn validate_action_input(
     state: &RunState,
     ticket: ActionTicket,
-) -> RuntimeResult<(i64, Taint)> {
+) -> RuntimeResult<CompiledNodeKind> {
     let node = state
         .workflow
         .node(ticket.step)
@@ -30,14 +29,34 @@ pub(super) fn resolve_action_input(
     if action != ticket.action || input_taint != Taint::Clean {
         return Err(RuntimeError::InvalidActionCompletion);
     }
+    Ok(node.kind)
+}
+
+/// Read an I64 slot value by index, erroring on type mismatch or read failure.
+pub(super) fn read_slot_i64(
+    state: &RunState,
+    slot: vb_core::CompiledInputSlot,
+) -> RuntimeResult<i64> {
     let SlotValue::I64(value) = state
         .frame
-        .read_slot(input)
+        .read_slot(slot)
         .map_err(|_| RuntimeError::InvalidActionCompletion)?
     else {
         return Err(RuntimeError::InvalidActionCompletion);
     };
-    Ok((*value, input_taint))
+    Ok(*value)
+}
+
+/// Read the I64 input value for a registered action and validate the
+/// action node, input taint, and slot type.
+pub(super) fn resolve_action_input(
+    state: &RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<(i64, Taint)> {
+    let CompiledNodeKind::Do { input, .. } =
+        validate_action_input(state, ticket)?;
+    let value = read_slot_i64(state, input)?;
+    Ok((value, Taint::Clean))
 }
 
 /// Encode an I64 value to canonical postcard bytes for the evaluation context.
