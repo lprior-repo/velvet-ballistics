@@ -1,0 +1,72 @@
+{
+  "main": "dba19b95918aca7c23e91b8814afa2a9118449f8",
+  "sources": [
+    {
+      "source": "reviewed-base",
+      "sha": "e36e4c385b6b5c47810f82e5eef62ffe20fd215f",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "artifact-fixtures",
+      "sha": "729778e06599b1d1bc1f3f6655a47e375c928903",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "admission-serializer",
+      "sha": "6d6ce25c0836169bbca322edc048b30ffda0acef",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "semantic-source-schema3",
+      "sha": "376979e05670c4771700f61b73f50fec23b02149",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "IPC-helpers",
+      "sha": "521559b3b58c315022346c5287ba933661393bf2",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "shutdown",
+      "sha": "6a5a4d4e9861e6dc989362b496de1b6d47b4b939",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "yaml-event-grammar",
+      "sha": "c849f7bdc173f6d59a01f3ecebc6ef54fce07174",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "codex/vb-mdi3w-retained-input-recovery-wip-stop",
+      "sha": "45693ea51b5376f3299f06e719dbd59609047e89",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "codex/vb-clp3q-artifact-fixtures-wip-stop",
+      "sha": "6fc6e0ed1a96dd4be2821054e6e579d6178d757e",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "codex/vb-r5c1c-checkpoint-wip-stop",
+      "sha": "de13504f655d7b5e2f7276e59b961eb4b80eae34",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "codex/vb-qzxto-ask-ticket-wip-stop",
+      "sha": "afb002df44934e12d78e0fb7a7aee7953cdad9f6",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "codex/vb-7r7jv-wip-stop",
+      "sha": "da2da5e2eb723b2b8a2cf724a7e5fdb2a9156901",
+      "ancestor_of_current_main": true
+    },
+    {
+      "source": "codex/vb-idxsn-source-length-wip-20261021",
+      "sha": "eba9e5fe8ae22fccfd003706907c9fbb7f2e1dd8",
+      "ancestor_of_current_main": true
+    }
+  ],
+  "all_ancestors": true,
+  "scope": "The 13 sources in the prior preservation manifest are included by ancestry. This is not a new exhaustive audit of every currently existing ref, nor acceptance of rejected drafts or unfinished v1 lanes."
+}
