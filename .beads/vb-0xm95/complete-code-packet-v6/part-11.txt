@@ -1,0 +1,220 @@
+-                .map_err(|_| RuntimeError::InvalidActionCompletion)?
+-                != Taint::Clean
+-        {
+-            return Err(RuntimeError::InvalidActionCompletion);
+-        }
+-        let SlotValue::I64(value) = state
+-            .frame
+-            .read_slot(input)
+-            .map_err(|_| RuntimeError::InvalidActionCompletion)?
+-        else {
+-            return Err(RuntimeError::InvalidActionCompletion);
+-        };
+-        let output_slot = node.output.ok_or(RuntimeError::InvalidActionCompletion)?;
+-        let encoded = postcard::to_allocvec(&SlotValue::I64(*value))
+-            .map_err(|_| RuntimeError::EncodeFailed)?;
+-        let encoded_len = u32::try_from(encoded.len()).map_err(|_| RuntimeError::EncodeFailed)?;
+-        let output = ActionOutputReady {
+-            output_slot,
+-            value: SlotValue::I64(*value),
+-            taint: Taint::Clean,
+-            encoded_len,
+-        };
+-        super::preflight_action_completion(state, ticket, output)?;
+-        Ok(RegisteredActionContext {
+-            artifact,
+-            output,
+-            value: *value,
+-            mode: state.registered_execution,
+-        })
++        let artifact =
++            load_admitted_artifact(self.artifact_store.as_ref(), admission.artifact_digest())?;
++        let admission_pin = convert_policy_pin(&admission.policy_pin());
++        build_registered_action_context(state, ticket, artifact, admission_pin)
+     }
+ 
+     pub(crate) fn reject_unregistered_completion(&self, ticket: ActionTicket) -> RuntimeResult<()> {
+         if self.artifact_store.executor_catalog().is_none() {
+             return Ok(());
+         }
+         let Some(state) = self.run_state_get(ticket.run) else {
+             return Ok(());
+         };
+         let Some(admission) = &state.admission else {
+             return Ok(());
+         };
+         let artifact = self
+             .artifact_store
+             .load_accepted_artifact(admission.artifact_digest())
+             .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+         if let vb_core::artifact::ArtifactEvidence::Packed(packed) = artifact.verification.evidence
+             && packed.packs.iter().any(|pack| pack.action == ticket.action)
+         {
+             return Err(RuntimeError::InvalidActionCompletion);
+         }
+         Ok(())
+     }
+ 
+     pub(crate) fn handle_registered_action_completion(
+         &mut self,
+         ticket: ActionTicket,
+         receipt: RegisterReceipt,
+         output: ActionOutputReady,
+     ) -> RuntimeResult<()> {
+         let context = self.registered_action_context(ticket)?;
+         let catalog = self
+             .artifact_store
+             .executor_catalog()
+             .ok_or(RuntimeError::InvalidActionCompletion)?;
+FILE crates/vb_runtime/src/shard/lifecycle/registered_completion_context.rs SHA256 df1252d315e83deda54295771f2983842b0aa0944c0375a57591414f16e2a1cf
+diff --git a/crates/vb_runtime/src/shard/lifecycle/registered_completion_context.rs b/crates/vb_runtime/src/shard/lifecycle/registered_completion_context.rs
+new file mode 100644
+index 000000000..1bff6fddb
+--- /dev/null
++++ b/crates/vb_runtime/src/shard/lifecycle/registered_completion_context.rs
+@@ -0,0 +1,59 @@
++//! Focused helpers for registered action completion context construction.
++//!
++//! Extracted from `Shard::registered_action_context` to keep the caller
++//! under 25 logical lines while preserving exact artifact loading,
++//! policy pin conversion, and context assembly semantics.
++
++use crate::admission::AcceptedArtifactStore;
++use crate::shard::types::RunState;
++use crate::{RuntimeError, RuntimeResult};
++use vb_core::action::ActionTicket;
++use vb_core::policy::{PinnedAdmissionPolicy, PolicyDigest};
++use vb_storage::AcceptedArtifact;
++
++/// Load the accepted artifact for a registered action admission,
++/// mapping storage errors to the action completion error type.
++pub(super) fn load_admitted_artifact(
++    store: &dyn AcceptedArtifactStore,
++    digest: vb_core::WorkflowDigest,
++) -> RuntimeResult<AcceptedArtifact> {
++    store
++        .load_accepted_artifact(digest)
++        .map_err(|_| RuntimeError::InvalidActionCompletion)
++}
++
++/// Convert a RunPolicyPin to the policy admission policy enum.
++/// Pinned digests are converted to actual artifact digests;
++/// Unverified is preserved without fabrication.
++pub(super) fn convert_policy_pin(pin: &vb_storage::RunPolicyPin) -> PinnedAdmissionPolicy {
++    match pin {
++        vb_storage::RunPolicyPin::Pinned(digest) => {
++            PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes(digest.as_bytes()))
++        }
++        vb_storage::RunPolicyPin::Unverified => PinnedAdmissionPolicy::Unverified,
++    }
++}
++
++/// Construct the full registered action context from resolved components.
++pub(super) fn build_registered_action_context(
++    state: &RunState,
++    ticket: ActionTicket,
++    artifact: AcceptedArtifact,
++    policy_pin: PinnedAdmissionPolicy,
++) -> RuntimeResult<super::registered_completion::RegisteredActionContext> {
++    let (value, input_taint) =
++        super::registered_context_helpers::resolve_action_input(state, ticket)?;
++    let encoded = super::registered_context_helpers::encode_action_input(value)?;
++    let output =
++        super::registered_context_helpers::build_action_output(state, ticket, value, &encoded)?;
++    super::preflight_action_completion(state, ticket, output)?;
++    Ok(super::registered_completion::RegisteredActionContext {
++        artifact,
++        output,
++        value,
++        mode: state.registered_execution,
++        admission_pin: policy_pin,
++        encoded_bytes: encoded,
++        input_taint,
++    })
++}
+FILE crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs SHA256 c9cdaa00debd2c96c37a6e1ed98fba8cd03beb22bfb1d402fd1d68fe239070af
+diff --git a/crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs b/crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs
+new file mode 100644
+index 000000000..78fc7fd21
+--- /dev/null
++++ b/crates/vb_runtime/src/shard/lifecycle/registered_context_helpers.rs
+@@ -0,0 +1,82 @@
++//! Focused helpers for building a registered action evaluation context.
++//!
++//! Extracted from `Shard::registered_action_context` to keep the caller
++//! under 25 logical lines while preserving exact ownership guard, artifact
++//! load, input validation, encoding, and output build semantics.
++
++use crate::shard::types::RunState;
++use crate::{RuntimeError, RuntimeResult};
++use vb_core::CompiledNodeKind;
++use vb_core::action::{ActionOutputReady, ActionTicket};
++use vb_core::{SlotIdx, SlotValue, Taint};
++
++/// Validate the action node, matching action ID, and Clean input taint.
++pub(super) fn validate_action_input(
++    state: &RunState,
++    ticket: ActionTicket,
++) -> RuntimeResult<SlotIdx> {
++    let node = state
++        .workflow
++        .node(ticket.step)
++        .ok_or(RuntimeError::InvalidActionCompletion)?;
++    let CompiledNodeKind::Do { action, input } = node.kind else {
++        return Err(RuntimeError::InvalidActionCompletion);
++    };
++    let input_taint = state
++        .frame
++        .read_taint(input)
++        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
++    if action != ticket.action || input_taint != Taint::Clean {
++        return Err(RuntimeError::InvalidActionCompletion);
++    }
++    Ok(input)
++}
++
++/// Read an I64 slot value by index, erroring on type mismatch or read failure.
++pub(super) fn read_slot_i64(state: &RunState, slot: SlotIdx) -> RuntimeResult<i64> {
++    let SlotValue::I64(value) = state
++        .frame
++        .read_slot(slot)
++        .map_err(|_| RuntimeError::InvalidActionCompletion)?
++    else {
++        return Err(RuntimeError::InvalidActionCompletion);
++    };
++    Ok(*value)
++}
++
++/// Read the I64 input value for a registered action and validate the
++/// action node, input taint, and slot type.
++pub(super) fn resolve_action_input(
++    state: &RunState,
++    ticket: ActionTicket,
++) -> RuntimeResult<(i64, Taint)> {
++    let input = validate_action_input(state, ticket)?;
++    let value = read_slot_i64(state, input)?;
++    Ok((value, Taint::Clean))
++}
++
++/// Encode an I64 value to canonical postcard bytes for the evaluation context.
++pub(super) fn encode_action_input(value: i64) -> RuntimeResult<Vec<u8>> {
++    postcard::to_allocvec(&SlotValue::I64(value)).map_err(|_| RuntimeError::EncodeFailed)
++}
++
++/// Build the action output descriptor from the value and encoded bytes.
++pub(super) fn build_action_output(
++    state: &RunState,
++    ticket: ActionTicket,
++    value: i64,
++    encoded: &[u8],
++) -> RuntimeResult<ActionOutputReady> {
++    let node = state
++        .workflow
++        .node(ticket.step)
++        .ok_or(RuntimeError::InvalidActionCompletion)?;
++    let output_slot = node.output.ok_or(RuntimeError::InvalidActionCompletion)?;
++    let encoded_len = u32::try_from(encoded.len()).map_err(|_| RuntimeError::EncodeFailed)?;
++    Ok(ActionOutputReady {
++        output_slot,
++        value: SlotValue::I64(value),
++        taint: Taint::Clean,

@@ -1,0 +1,299 @@
+1: #![forbid(unsafe_code)]
+2: 
+3: use vb_core::frame::RunFrame;
+4: use vb_core::ids::{RunId, StepIdx, WorkflowDigest};
+5: use vb_storage::EventSeq;
+6: use vb_storage::recovery::{RecoveryCannotResumeState, RecoveryRuntimeSummary};
+7: 
+8: use super::RecoveredPendingActionTicket;
+9: 
+10: /// Public recovery product emitted by the durable runtime recovery boundary.
+11: #[derive(Debug, Clone, PartialEq, Eq)]
+12: #[non_exhaustive]
+13: pub enum RuntimeRecoveryProduct {
+14:     /// Durable evidence is summary-only and cannot be turned into live state.
+15:     SummaryOnly(SummaryRecoveryProduct),
+16:     /// Durable evidence was parsed but cannot safely resume.
+17:     CannotResume(NonResumableRecoveryProduct),
+18:     /// Durable evidence is sufficient to rebuild a live run in the shard.
+19:     Resumable(Box<ResumableRecoveryProduct>),
+20: }
+21: 
+22: impl RuntimeRecoveryProduct {
+23:     #[must_use]
+24:     pub(crate) const fn cannot_resume(
+25:         summary: RecoveryRuntimeSummary,
+26:         state: RecoveryCannotResumeState,
+27:     ) -> Self {
+28:         Self::CannotResume(NonResumableRecoveryProduct {
+29:             summary,
+30:             state,
+31:             reason: None,
+32:         })
+33:     }
+34: 
+35:     /// Terminal-lifecycle rejection: the frame seed is otherwise resumable, but the
+36:     /// run's latest terminal evidence (`RunFailed`/`RunFinished`/`RunCancelled`/`RunKilled`)
+37:     /// belongs to its current attempt, so automatic recovery must not re-drive it.
+38:     #[must_use]
+39:     pub(crate) const fn cannot_resume_terminal(summary: RecoveryRuntimeSummary) -> Self {
+40:         Self::CannotResume(NonResumableRecoveryProduct {
+41:             summary,
+42:             state: RecoveryCannotResumeState::RESUMABLE,
+43:             reason: Some("terminal_state"),
+44:         })
+45:     }
+46: 
+47:     #[must_use]
+48:     pub(crate) fn resumable(product: ResumableRecoveryProduct) -> Self {
+49:         Self::Resumable(Box::new(product))
+50:     }
+51: 
+52:     #[must_use]
+53:     pub const fn summary(&self) -> RecoveryRuntimeSummary {
+54:         match self {
+55:             Self::SummaryOnly(product) => product.summary(),
+56:             Self::CannotResume(product) => product.summary(),
+57:             Self::Resumable(product) => product.summary(),
+58:         }
+59:     }
+60: 
+61:     #[must_use]
+62:     pub const fn is_resumable(&self) -> bool {
+63:         matches!(self, Self::Resumable(_))
+64:     }
+65: 
+66:     #[must_use]
+67:     pub const fn cannot_resume_reason(&self) -> Option<&'static str> {
+68:         match self {
+69:             Self::CannotResume(product) => Some(product.reason()),
+70:             Self::SummaryOnly(_) | Self::Resumable(_) => None,
+71:         }
+72:     }
+73: }
+74: 
+75: /// Summary-only product with private construction.
+76: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+77: pub struct SummaryRecoveryProduct {
+78:     summary: RecoveryRuntimeSummary,
+79: }
+80: 
+81: impl SummaryRecoveryProduct {
+82:     #[must_use]
+83:     pub const fn summary(&self) -> RecoveryRuntimeSummary {
+84:         self.summary
+85:     }
+86: }
+87: 
+88: /// Cannot-resume product with an explicit typed reason witness.
+89: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+90: pub struct NonResumableRecoveryProduct {
+91:     summary: RecoveryRuntimeSummary,
+92:     state: RecoveryCannotResumeState,
+93:     /// Explicit reason token. `None` derives the reason from `state`; `Some` overrides
+94:     /// (used for terminal-lifecycle rejections where the frame seed is otherwise
+95:     /// resumable but the run has reached a terminal state).
+96:     reason: Option<&'static str>,
+97: }
+98: 
+99: impl NonResumableRecoveryProduct {
+100:     #[must_use]
+101:     pub const fn summary(&self) -> RecoveryRuntimeSummary {
+102:         self.summary
+103:     }
+104: 
+105:     #[must_use]
+106:     pub const fn state(&self) -> RecoveryCannotResumeState {
+107:         self.state
+108:     }
+109: 
+110:     #[must_use]
+111:     pub const fn reason(&self) -> &'static str {
+112:         match self.reason {
+113:             Some(reason) => reason,
+114:             None => self.state.unsupported_reason(),
+115:         }
+116:     }
+117: }
+118: 
+119: /// Kind tag for a recovered external boundary.
+120: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+121: #[non_exhaustive]
+122: pub enum RecoveredRunBoundaryKind {
+123:     /// No suspended external boundary remains.
+124:     None,
+125:     /// A durable action ticket was recovered.
+126:     PendingAction,
+127:     /// An ask with no timeout was recovered from the frame state.
+128:     OpenAsk,
+129: }
+130: 
+131: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+132: enum RecoveredRunBoundaryInner {
+133:     None,
+134:     PendingAction(RecoveredPendingActionTicket),
+135:     OpenAsk(RecoveredOpenAsk),
+136: }
+137: 
+138: /// Typed recovered external-boundary authority.
+139: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+140: pub struct RecoveredRunBoundary {
+141:     inner: RecoveredRunBoundaryInner,
+142: }
+143: 
+144: impl RecoveredRunBoundary {
+145:     #[must_use]
+146:     pub(crate) const fn none() -> Self {
+147:         Self {
+148:             inner: RecoveredRunBoundaryInner::None,
+149:         }
+150:     }
+151: 
+152:     #[must_use]
+153:     pub(crate) const fn from_pending_action(ticket: RecoveredPendingActionTicket) -> Self {
+154:         Self {
+155:             inner: RecoveredRunBoundaryInner::PendingAction(ticket),
+156:         }
+157:     }
+158: 
+159:     #[must_use]
+160:     pub(crate) const fn from_open_ask(ask: RecoveredOpenAsk) -> Self {
+161:         Self {
+162:             inner: RecoveredRunBoundaryInner::OpenAsk(ask),
+163:         }
+164:     }
+165: 
+166:     #[must_use]
+167:     pub const fn kind(self) -> RecoveredRunBoundaryKind {
+168:         match self.inner {
+169:             RecoveredRunBoundaryInner::None => RecoveredRunBoundaryKind::None,
+170:             RecoveredRunBoundaryInner::PendingAction(_) => RecoveredRunBoundaryKind::PendingAction,
+171:             RecoveredRunBoundaryInner::OpenAsk(_) => RecoveredRunBoundaryKind::OpenAsk,
+172:         }
+173:     }
+174: 
+175:     #[must_use]
+176:     pub(crate) const fn pending_action_ticket(self) -> Option<RecoveredPendingActionTicket> {
+177:         match self.inner {
+178:             RecoveredRunBoundaryInner::PendingAction(ticket) => Some(ticket),
+179:             RecoveredRunBoundaryInner::None | RecoveredRunBoundaryInner::OpenAsk(_) => None,
+180:         }
+181:     }
+182: 
+183:     #[must_use]
+184:     pub const fn open_ask(self) -> Option<RecoveredOpenAsk> {
+185:         match self.inner {
+186:             RecoveredRunBoundaryInner::OpenAsk(ask) => Some(ask),
+187:             RecoveredRunBoundaryInner::None | RecoveredRunBoundaryInner::PendingAction(_) => None,
+188:         }
+189:     }
+190: 
+191:     #[must_use]
+192:     pub(crate) fn is_open_ask_step(self, step: StepIdx) -> bool {
+193:         match self.inner {
+194:             RecoveredRunBoundaryInner::OpenAsk(ask) => ask.step == step,
+195:             RecoveredRunBoundaryInner::None | RecoveredRunBoundaryInner::PendingAction(_) => false,
+196:         }
+197:     }
+198: }
+199: 
+200: /// Durable proof that a suspended ask had no timer authority to recover.
+201: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+202: pub struct RecoveredOpenAsk {
+203:     step: StepIdx,
+204:     boundary_seq: vb_storage::EventSeq,
+205: }
+206: 
+207: impl RecoveredOpenAsk {
+208:     #[must_use]
+209:     pub(crate) const fn new(step: StepIdx, boundary_seq: vb_storage::EventSeq) -> Self {
+210:         Self { step, boundary_seq }
+211:     }
+212: 
+213:     #[must_use]
+214:     pub const fn step(self) -> StepIdx {
+215:         self.step
+216:     }
+217: 
+218:     #[must_use]
+219:     pub(crate) const fn boundary_seq(self) -> vb_storage::EventSeq {
+220:         self.boundary_seq
+221:     }
+222: }
+223: 
+224: /// Resumable product with private construction and private live-frame fields.
+225: #[derive(Debug, Clone, PartialEq, Eq)]
+226: pub struct ResumableRecoveryProduct {
+227:     run: RunId,
+228:     summary: RecoveryRuntimeSummary,
+229:     frame: RunFrame,
+230:     artifact_digest: WorkflowDigest,
+231:     workflow_digest: WorkflowDigest,
+232:     next_seq: EventSeq,
+233:     collect_states: crate::primitives::collect::CollectStates,
+234:     boundary: RecoveredRunBoundary,
+235:     /// Original historical admission validated against the durable artifact;
+236:     /// must be restored verbatim rather than rebuilt from current policy.
+237:     admission: crate::admission::RunAdmission,
+238: }
+239: 
+240: impl ResumableRecoveryProduct {
+241:     #[must_use]
+242:     pub(crate) fn new(parts: ResumableRecoveryParts) -> Self {
+243:         Self {
+244:             run: parts.run,
+245:             summary: parts.summary,
+246:             frame: parts.frame,
+247:             artifact_digest: parts.artifact_digest,
+248:             workflow_digest: parts.workflow_digest,
+249:             next_seq: parts.next_seq,
+250:             collect_states: parts.collect_states,
+251:             boundary: parts.boundary,
+252:             admission: parts.admission,
+253:         }
+254:     }
+255: 
+256:     #[must_use]
+257:     pub const fn run_id(&self) -> RunId {
+258:         self.run
+259:     }
+260: 
+261:     #[must_use]
+262:     pub const fn summary(&self) -> RecoveryRuntimeSummary {
+263:         self.summary
+264:     }
+265: 
+266:     #[must_use]
+267:     pub const fn boundary_kind(&self) -> RecoveredRunBoundaryKind {
+268:         self.boundary.kind()
+269:     }
+270: 
+271:     #[must_use]
+272:     pub(crate) fn into_recover_command(self) -> crate::shard::types::RecoverRunCommand {
+273:         crate::shard::types::RecoverRunCommand::new(
+274:             self.run,
+275:             self.frame,
+276:             self.artifact_digest,
+277:             self.workflow_digest,
+278:             self.next_seq,
+279:             self.collect_states,
+280:             self.boundary,
+281:         )
+282:         .with_validated_admission(self.admission)
+283:     }
+284: }
+285: 
+286: /// Constructor arguments for a resumable recovery product.
+287: pub(crate) struct ResumableRecoveryParts {
+288:     pub(crate) run: RunId,
+289:     pub(crate) summary: RecoveryRuntimeSummary,
+290:     pub(crate) frame: RunFrame,
+291:     pub(crate) artifact_digest: WorkflowDigest,
+292:     pub(crate) workflow_digest: WorkflowDigest,
+293:     pub(crate) next_seq: EventSeq,
+294:     pub(crate) collect_states: crate::primitives::collect::CollectStates,
+295:     pub(crate) boundary: RecoveredRunBoundary,
+296:     /// Original historical admission validated against the durable artifact;
+297:     /// must be restored verbatim rather than rebuilt from current policy.
+298:     pub(crate) admission: crate::admission::RunAdmission,
+299: }

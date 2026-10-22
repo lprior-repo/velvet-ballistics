@@ -1,0 +1,220 @@
+         config: ShardConfig,
+     ) -> Self {
+         Self::new(
+             shard_count,
+             config,
+             crate::journal::VolatileRuntimeJournal::shared(),
+         )
+     }
+ 
++    /// Configures the live policy with a verified artifact and rule.
++    ///
++    /// Updates actor-owned runtime state; does not persist to durable storage.
++    pub fn configure_live_policy(
++        &mut self,
++        digest: vb_core::policy::PolicyDigest,
++        rule: vb_core::policy::PolicyRule,
++    ) -> RuntimeResult<()> {
++        self.configure_live_policy_helper(digest, rule);
++        Ok(())
++    }
++
++    /// Activates the emergency deny overlay with strict durability.
++    ///
++    /// Persists the emergency marker, verifies the returned state is Active,
++    /// then mirrors into owned live policy state. Fails on corruption or
++    /// unsupported marker versions.
++    pub fn activate_emergency_deny(&mut self) -> RuntimeResult<()> {
++        self.activate_emergency_deny_helper()
++    }
++
+     /// Submits a run using a compiled workflow.
+     pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
+         self.submit_direct_with_grants(run, workflow, CapabilitySet::empty())
+     }
+ 
+     /// Submits a run using a compiled workflow and explicit caller grants.
+     pub fn submit_direct_with_grants(
+         &self,
+         run: RunId,
+         workflow: CompiledWorkflow,
+         caps: CapabilitySet,
+     ) -> RuntimeResult<()> {
+         let shard = self.shard_for(run)?;
+         shard.validate_submit_admission(run, &workflow, caps.clone())?;
+         shard.enqueue(ShardCommand::Submit {
+             run,
+             workflow,
+             caps,
+         })
+     }
+ 
+     /// Submits a run with explicit caller grants and validated action contracts.
+     pub fn submit_direct_with_grants_and_contracts(
+         &self,
+         run: RunId,
+         workflow: CompiledWorkflow,
+         caps: CapabilitySet,
+         action_contracts: Box<[ActionContract]>,
+     ) -> RuntimeResult<()> {
+         let shard = self.shard_for(run)?;
+         shard.validate_submit_admission_with_contracts(
+             run,
+             &workflow,
+             caps.clone(),
+             &action_contracts,
+@@ -874,70 +897,71 @@ impl Runtime {
+         // evidence only until an explicit `retry` drives `recover_retry` (a separate path).
+         if crate::recovery::run_is_currently_terminal(&context.prefix.events) {
+             return Ok(
+                 crate::recovery::RuntimeRecoveryProduct::cannot_resume_terminal(
+                     context.seed.summary(),
+                 ),
+             );
+         }
+         Self::resumable_product_from_recovered_context(context, retained_inputs)
+     }
+ 
+     fn resumable_product_from_recovered_context(
+         context: RecoveredSeedProductContext,
+         retained_inputs: Option<vb_storage::RunInputsRecord>,
+     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
+         let initial_inputs = retained_inputs
+             .as_ref()
+             .map(|record| record.inputs().to_vec());
+         let frame = crate::recovery::hydrate_frame_for_full_recovery_with_inputs(
+             context.seed.seed(),
+             context.boundary,
+             initial_inputs,
+         )?;
+         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
+         Ok(crate::recovery::RuntimeRecoveryProduct::resumable(
+             crate::recovery::ResumableRecoveryProduct::new(
+                 crate::recovery::ResumableRecoveryParts {
+                     run: context.run,
+                     summary: context.seed.summary(),
+                     frame,
+                     artifact_digest: context.prefix.admission.artifact_digest(),
+                     workflow_digest: context.prefix.workflow_digest,
+                     next_seq: context.prefix.next_seq,
+                     collect_states,
+                     boundary: context.boundary,
++                    admission: context.prefix.admission.clone(),
+                 },
+             ),
+         ))
+     }
+ 
+     fn hydrate_recovered_collect_states(
+         events: &[vb_storage::JournalEvent],
+     ) -> RuntimeResult<crate::primitives::collect::CollectStates> {
+         crate::primitives::collect::hydrate_collect_states_from_recovered_journal(events).map_err(
+             |_| RuntimeError::RecoveryCannotResume {
+                 reason: String::from("collect_states_missing"),
+             },
+         )
+     }
+ 
+     fn enqueue_recovered_product(
+         &self,
+         product: crate::recovery::ResumableRecoveryProduct,
+     ) -> RuntimeResult<()> {
+         let run = product.run_id();
+         let command = product.into_recover_command();
+         let shard = self.shard_for(run)?;
+         shard.enqueue(ShardCommand::Recover {
+             command: Box::new(command),
+         })
+     }
+ 
+     fn load_recovery_artifact_and_workflow(
+         &self,
+         journal: std::sync::Arc<vb_storage::FjallJournal>,
+         artifact_digest: WorkflowDigest,
+     ) -> RuntimeResult<RecoveryArtifactWorkflow> {
+         use crate::admission::AcceptedArtifactStore;
+ 
+         let store = crate::admission::StorageArtifactStore::with_catalog(
+@@ -1471,45 +1495,47 @@ impl Runtime {
+             .iter()
+             .enumerate()
+             .find(|(idx, shard)| {
+                 *idx != home_index
+                     && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+             })
+             .map(|(_, shard)| shard)
+             .ok_or(RuntimeError::RunNotFound)
+     }
+ 
+     /// Mutable variant of `shard_for_run` for `take_inspect_response`.
+     fn shard_for_run_mut(&mut self, run: RunId) -> Result<&mut Shard, RuntimeError> {
+         // Mirror the home-fast-path + scan-fallback logic on immutable borrow,
+         // then re-index after borrow ends to get the mutable shard.
+         let home_index = self.shard_index(run);
+         let owner_index = {
+             if let Some(shard) = self.shards.get(home_index)
+                 && (shard.run_state_contains(run) || shard.terminal_runs_contains(run))
+             {
+                 home_index
+             } else {
+                 self.shards
+                     .iter()
+                     .position(|shard| {
+                         shard.run_state_contains(run) || shard.terminal_runs_contains(run)
+                     })
+                     .ok_or(RuntimeError::RunNotFound)?
+             }
+         };
+         self.shards
+             .get_mut(owner_index)
+             .ok_or(RuntimeError::RunNotFound)
+     }
+ }
+ 
++#[path = "runtime/live_policy_dispatch.rs"]
++mod live_policy_dispatch;
+ #[path = "runtime/registered_executor.rs"]
+ mod registered_executor;
+ #[cfg(test)]
+ #[path = "runtime_tests.rs"]
+ mod tests;
+ pub use registered_executor::RegisteredExecutionError;
+ 
+ #[cfg(test)]
+ #[path = "runtime/shutdown_tests.rs"]
+ mod shutdown_tests;
+FILE crates/vb_runtime/src/runtime/live_policy_dispatch.rs SHA256 4aab043f11828426ac4ae8a11fd2c48b556faf27ee53d65dcc0c991afd79ae6d
+diff --git a/crates/vb_runtime/src/runtime/live_policy_dispatch.rs b/crates/vb_runtime/src/runtime/live_policy_dispatch.rs
+new file mode 100644
+index 000000000..062484669
+--- /dev/null
++++ b/crates/vb_runtime/src/runtime/live_policy_dispatch.rs
+@@ -0,0 +1,114 @@
++use super::Runtime;
++use super::registered_executor::RegisteredExecutionError;
++use crate::{RuntimeError, RuntimeResult};
++use vb_core::ActionTicket;
++use vb_core::Taint;
++use vb_core::policy::{DecisionCode, DecisionRecord, PinnedAdmissionPolicy, PolicyLayer};
++use vb_storage::journal::EmergencyDenyState;
++
++/// Context for evaluating and persisting admission decisions.
++pub(super) struct AdmissionEvalContext {
++    pub ticket: ActionTicket,
++    pub admission_pin: PinnedAdmissionPolicy,
++    pub encoded_bytes: Vec<u8>,
++    pub input_taint: Taint,
++}
++
++/// Dispatch-layer policy decision helper.
++///
++/// LivePolicy.evaluate returns Allowed/Denied/Suspended at the Live layer
++/// but does not reject Unverified admission. This helper forces Denied at
++/// the Admission layer for Unverified while preserving emergency overlay
++/// priority and true live evaluation outcomes.
++impl Runtime {
++    fn dispatch_policy_decision(&self, decision: DecisionRecord) -> RuntimeResult<DecisionRecord> {
++        // Emergency overlay is highest priority: always honor its decision.
++        if decision.layer == PolicyLayer::Emergency {
++            return Ok(decision);
++        }

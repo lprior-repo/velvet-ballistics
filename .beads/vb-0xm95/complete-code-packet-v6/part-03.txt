@@ -1,0 +1,220 @@
++        seq: EventSeq,
++    ) -> RuntimeResult<()> {
++        let storage_event = JournalEvent::PolicyDecisionEvent {
++            run: decision.ticket.run,
++            seq,
++            decision,
++        };
++        self.journal
++            .append_strict(&storage_event)
++            .map_err(RuntimeError::from)
++    }
++
+     fn append_sequenced_batch(
+         &self,
+         events: &[RuntimeJournalEvent],
+         start_seq: EventSeq,
+     ) -> RuntimeResult<()> {
+         Self::append_runtime_event_batch(self.journal.as_ref(), self.profile, events, start_seq)
+     }
+ 
+     fn probe(&self) -> RuntimeResult<()> {
+         self.journal.probe_health().map_err(RuntimeError::from)
+     }
+ 
+     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
+         Some(self.journal.clone())
+     }
+ }
+ 
+ /// Runtime journal adapter that stages lifecycle events through `JournalWriterQueue`.
+ pub struct QueuedStorageRuntimeJournal {
+     journal: Arc<FjallJournal>,
+     queue: Arc<JournalWriterQueue>,
+     profile: DurabilityProfile,
+ }
+ 
+ impl QueuedStorageRuntimeJournal {
+     /// Creates a queued adapter that enqueues journaled requests.
+     #[must_use]
+     pub fn journaled(journal: Arc<FjallJournal>, queue: Arc<JournalWriterQueue>) -> Self {
+         Self {
+             journal,
+             queue,
+             profile: DurabilityProfile::Journaled,
+         }
+     }
+ 
+FILE crates/vb_runtime/src/journal/chunk_003.rs SHA256 2525fb7460ce649a4fcd825ee52fbaffa712882438f021e63dac0791fdefb599
+diff --git a/crates/vb_runtime/src/journal/chunk_003.rs b/crates/vb_runtime/src/journal/chunk_003.rs
+index 5162e7505..f07152542 100644
+--- a/crates/vb_runtime/src/journal/chunk_003.rs
++++ b/crates/vb_runtime/src/journal/chunk_003.rs
+@@ -34,36 +34,57 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
+         }
+         self.queue
+             .enqueue_journaled_batch(storage_events)
+             .map_err(RuntimeError::from)
+     }
+ 
+     fn probe(&self) -> RuntimeResult<()> {
+         if self.profile == DurabilityProfile::Strict {
+             return Err(RuntimeError::UnsupportedAsyncStrictAck);
+         }
+         self.journal.probe_health().map_err(RuntimeError::from)?;
+         self.queue
+             .probe_accepting_writes()
+             .map_err(RuntimeError::from)
+     }
+ 
+     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
+         // Retire each queue batch only after its own SyncAll succeeds. A
+         // failed barrier keeps that batch in RAM for an idempotent retry.
+         let report = self.queue.shutdown_durable(&self.journal)?;
+         // Also covers writes previously flushed through the profile-driven API.
+         self.journal.persist_strict()?;
+         Ok(report)
+     }
+ 
+     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
+         Some(self.journal.clone())
+     }
+     fn convert_to_storage_event(
+         &self,
+         event: RuntimeJournalEvent,
+         seq: EventSeq,
+     ) -> RuntimeResult<vb_storage::JournalEvent> {
+         StorageRuntimeJournal::storage_event(event, seq)
+     }
++
++    fn append_policy_decision_strict(
++        &self,
++        decision: vb_core::policy::DecisionRecord,
++        seq: EventSeq,
++    ) -> RuntimeResult<()> {
++        self.queue
++            .probe_accepting_writes()
++            .map_err(RuntimeError::from)?;
++        self.queue
++            .drain_all(self.journal.as_ref())
++            .map_err(RuntimeError::from)?;
++        let storage_event = JournalEvent::PolicyDecisionEvent {
++            run: decision.ticket.run,
++            seq,
++            decision,
++        };
++        self.journal
++            .append_strict(&storage_event)
++            .map_err(RuntimeError::from)
++    }
+ }
+FILE crates/vb_runtime/src/recovery.rs SHA256 7bbe2a28545b35a4ce3444e588ba1dffe4bc3cb1796d1882148335e881590739
+diff --git a/crates/vb_runtime/src/recovery.rs b/crates/vb_runtime/src/recovery.rs
+index 7ca3f63f4..539ec60c2 100644
+--- a/crates/vb_runtime/src/recovery.rs
++++ b/crates/vb_runtime/src/recovery.rs
+@@ -1,59 +1,59 @@
+ #![forbid(unsafe_code)]
+ //! Runtime recovery boundary over storage summary hydration.
+ 
+ mod frame;
+ mod full;
+ mod input_binding;
+ mod product;
+ 
+ use vb_core::frame::RunFrame;
+ use vb_storage::recovery::{
+     RecoveryCannotResumeState, RecoveryFrameSeed, RecoveryFrameSeedProduct, RecoveryHydration,
+     RecoveryRuntimeSummary, UnsupportedRecoveryState,
+ };
+ 
+ pub use full::{
+     NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind,
+     ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
+ };
+ pub(crate) use full::{
+     RecoveredAdmissionContext, RecoveredAdmissionEvidence, ResumableRecoveryParts,
+     action_abi_digests_from_contracts, action_contract_abi_digest, classify_full_recovery_resume,
+     hydrate_frame_for_full_recovery_with_inputs, pending_action_ticket_from_events,
+     recovered_run_boundary_from_seed, run_is_currently_terminal,
+-    validate_recovered_admission_evidence, validate_recovered_policy_pin,
++    validate_recovered_admission_evidence,
+ };
+ 
+ pub use input_binding::{
+     admission_is_new_bound, validate_input_record_artifact, validate_input_record_binding,
+     validate_input_record_workflow,
+ };
+ 
+ use crate::{RuntimeError, RuntimeResult};
+ use product::DurableFrameRecoveryProduct;
+ 
+ /// Hydrates the latest run admission metadata from durable storage events.
+ #[must_use]
+ pub fn hydrate_run_admission_from_events(
+     events: &[vb_storage::JournalEvent],
+ ) -> Option<crate::admission::RunAdmission> {
+     vb_storage::recovery::replay::summary::recover_run_admission_from_events(events).map(
+         |admission| {
+             crate::admission::RunAdmission::new(
+                 admission.artifact_digest,
+                 admission.run_id,
+                 admission.granted_capabilities,
+                 admission.policy,
+             )
+             .with_policy_pin(admission.policy_pin)
+         },
+     )
+ }
+ 
+ /// Runtime-facing recovery entrypoint.
+ pub trait RuntimeRecoveryBoundary {
+     /// Returns summary data that can be safely recovered from durable events.
+     fn summary(&self) -> RecoveryRuntimeSummary;
+ 
+     /// Reports whether durable recovery evidence is sufficient to resume.
+     fn resume_status(&self) -> RecoveryResumeStatus;
+FILE crates/vb_runtime/src/recovery/full.rs SHA256 5ceef2b4dec9e19ec605242e4b370bef9e6d0984e88a6a861a5edb65912defdf
+diff --git a/crates/vb_runtime/src/recovery/full.rs b/crates/vb_runtime/src/recovery/full.rs
+index 7adf11a59..2131b61d3 100644
+--- a/crates/vb_runtime/src/recovery/full.rs
++++ b/crates/vb_runtime/src/recovery/full.rs
+@@ -1,55 +1,54 @@
+ #![forbid(unsafe_code)]
+ 
+ mod admission;
+ mod full_ask_schedule;
+ mod pending;
+ mod product;
+ 
+ use full_ask_schedule::pending_ask_schedule_for_step;
+ 
+ use vb_core::action::ActionTicket;
+ use vb_core::frame::RunFrame;
+ use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
+ use vb_core::value::SlotValue;
+ use vb_core::{CompiledNodeKind, CompiledWorkflow};
+ use vb_storage::recovery::{RecoveredStepState, RecoveryFrameSeed};
+ 
+ pub(crate) use admission::{
+     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
+     action_contract_abi_digest, validate_recovered_admission_evidence,
+-    validate_recovered_policy_pin,
+ };
+ pub(crate) use pending::pending_action_ticket_from_events;
+ pub(crate) use product::ResumableRecoveryParts;
+ pub use product::{
+     NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind,
+     ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
+ };
+ 
+ use crate::{RuntimeError, RuntimeResult};
+ 
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub(crate) struct RecoveredPendingActionTicket {
+     event_seq: vb_storage::EventSeq,
+     ticket: ActionTicket,
+     input: SlotIdx,
+     output: SlotIdx,
+     action_abi_digest: WorkflowDigest,
+ }

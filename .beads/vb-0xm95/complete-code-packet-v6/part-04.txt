@@ -1,0 +1,220 @@
+ 
+ impl RecoveredPendingActionTicket {
+     #[must_use]
+     pub(crate) const fn new(
+         event_seq: vb_storage::EventSeq,
+         ticket: ActionTicket,
+         input: SlotIdx,
+         output: SlotIdx,
+         action_abi_digest: WorkflowDigest,
+     ) -> Self {
+         Self {
+             event_seq,
+             ticket,
+             input,
+             output,
+             action_abi_digest,
+         }
+FILE crates/vb_runtime/src/recovery/full/product.rs SHA256 dedef606c0f5a4a5e3c1eb21e6a846b6b0ecb6b759d680c0fdfb2d4231c2e9d6
+diff --git a/crates/vb_runtime/src/recovery/full/product.rs b/crates/vb_runtime/src/recovery/full/product.rs
+index a0952f7de..285bacf0b 100644
+--- a/crates/vb_runtime/src/recovery/full/product.rs
++++ b/crates/vb_runtime/src/recovery/full/product.rs
+@@ -200,93 +200,100 @@ impl RecoveredRunBoundary {
+ /// Durable proof that a suspended ask had no timer authority to recover.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct RecoveredOpenAsk {
+     step: StepIdx,
+     boundary_seq: vb_storage::EventSeq,
+ }
+ 
+ impl RecoveredOpenAsk {
+     #[must_use]
+     pub(crate) const fn new(step: StepIdx, boundary_seq: vb_storage::EventSeq) -> Self {
+         Self { step, boundary_seq }
+     }
+ 
+     #[must_use]
+     pub const fn step(self) -> StepIdx {
+         self.step
+     }
+ 
+     #[must_use]
+     pub(crate) const fn boundary_seq(self) -> vb_storage::EventSeq {
+         self.boundary_seq
+     }
+ }
+ 
+ /// Resumable product with private construction and private live-frame fields.
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct ResumableRecoveryProduct {
+     run: RunId,
+     summary: RecoveryRuntimeSummary,
+     frame: RunFrame,
+     artifact_digest: WorkflowDigest,
+     workflow_digest: WorkflowDigest,
+     next_seq: EventSeq,
+     collect_states: crate::primitives::collect::CollectStates,
+     boundary: RecoveredRunBoundary,
++    /// Original historical admission validated against the durable artifact;
++    /// must be restored verbatim rather than rebuilt from current policy.
++    admission: crate::admission::RunAdmission,
+ }
+ 
+ impl ResumableRecoveryProduct {
+     #[must_use]
+     pub(crate) fn new(parts: ResumableRecoveryParts) -> Self {
+         Self {
+             run: parts.run,
+             summary: parts.summary,
+             frame: parts.frame,
+             artifact_digest: parts.artifact_digest,
+             workflow_digest: parts.workflow_digest,
+             next_seq: parts.next_seq,
+             collect_states: parts.collect_states,
+             boundary: parts.boundary,
++            admission: parts.admission,
+         }
+     }
+ 
+     #[must_use]
+     pub const fn run_id(&self) -> RunId {
+         self.run
+     }
+ 
+     #[must_use]
+     pub const fn summary(&self) -> RecoveryRuntimeSummary {
+         self.summary
+     }
+ 
+     #[must_use]
+     pub const fn boundary_kind(&self) -> RecoveredRunBoundaryKind {
+         self.boundary.kind()
+     }
+ 
+     #[must_use]
+     pub(crate) fn into_recover_command(self) -> crate::shard::types::RecoverRunCommand {
+-        crate::shard::types::RecoverRunCommand {
+-            run: self.run,
+-            frame: self.frame,
+-            artifact_digest: self.artifact_digest,
+-            workflow_digest: self.workflow_digest,
+-            next_seq: self.next_seq,
+-            collect_states: self.collect_states,
+-            retry_checkpoint: None,
+-            boundary: self.boundary,
+-        }
++        crate::shard::types::RecoverRunCommand::new(
++            self.run,
++            self.frame,
++            self.artifact_digest,
++            self.workflow_digest,
++            self.next_seq,
++            self.collect_states,
++            self.boundary,
++        )
++        .with_validated_admission(self.admission)
+     }
+ }
+ 
+ /// Constructor arguments for a resumable recovery product.
+ pub(crate) struct ResumableRecoveryParts {
+     pub(crate) run: RunId,
+     pub(crate) summary: RecoveryRuntimeSummary,
+     pub(crate) frame: RunFrame,
+     pub(crate) artifact_digest: WorkflowDigest,
+     pub(crate) workflow_digest: WorkflowDigest,
+     pub(crate) next_seq: EventSeq,
+     pub(crate) collect_states: crate::primitives::collect::CollectStates,
+     pub(crate) boundary: RecoveredRunBoundary,
++    /// Original historical admission validated against the durable artifact;
++    /// must be restored verbatim rather than rebuilt from current policy.
++    pub(crate) admission: crate::admission::RunAdmission,
+ }
+FILE crates/vb_runtime/src/runtime.rs SHA256 b292409cb5ef3cd9672271f60abbf57c46ab99ebc1528fe2dfb2217e4dd8e74b
+diff --git a/crates/vb_runtime/src/runtime.rs b/crates/vb_runtime/src/runtime.rs
+index 3969e7aa4..0dd8373c8 100644
+--- a/crates/vb_runtime/src/runtime.rs
++++ b/crates/vb_runtime/src/runtime.rs
+@@ -159,123 +159,146 @@ struct RuntimePendingBoundaryTotals {
+     pending_ask_count: usize,
+     truncated: bool,
+ }
+ 
+ impl RuntimePendingBoundaryTotals {
+     fn add_shard(&mut self, shard: &ShardPendingBoundarySnapshot) {
+         self.command_queue_depth = self
+             .command_queue_depth
+             .saturating_add(shard.command_queue_depth());
+         self.active_run_count = self
+             .active_run_count
+             .saturating_add(shard.active_run_count());
+         self.pending_timer_count = self
+             .pending_timer_count
+             .saturating_add(shard.pending_timer_count());
+         self.pending_action_count = self
+             .pending_action_count
+             .saturating_add(shard.pending_action_count());
+         self.pending_ask_count = self
+             .pending_ask_count
+             .saturating_add(shard.pending_ask_count());
+         self.truncated |= shard.truncated();
+     }
+ }
+ 
+ fn shard_id_from_index(index: usize) -> u32 {
+     u32::try_from(index).map_or(u32::MAX, core::convert::identity)
+ }
+ 
+ /// Multi-shard runtime.
+ pub struct Runtime {
+     shards: Vec<Shard>,
+     shard_count: usize,
+     journal: SharedRuntimeJournal,
+     policy: vb_core::policy::RuntimePolicy,
++    live_policy: crate::policy::LivePolicy,
+ }
+ 
+ impl Runtime {
+     /// Creates a new runtime with the given number of shards, per-shard configuration, and
+     /// explicit [`SharedRuntimeJournal`].
+     ///
+     /// The journal argument is **required**: this constructor will not silently pick a
+     /// non-durable default. Master §18 requires Fjall-backed persistence for recovery,
+     /// so production callers must wire a [`crate::journal::StorageRuntimeJournal`] (strict
+     /// barrier) or [`crate::journal::QueuedStorageRuntimeJournal`] (group-committed).
+     /// Tests and benchmarks that do not need durability should pass
+     /// [`crate::journal::VolatileRuntimeJournal::shared`] or
+     /// [`crate::journal::NoopRuntimeJournal::shared_for_tests_and_benchmarks`] so the
+     /// call site documents the non-durable intent.
+     #[must_use]
+     pub fn new(
+         shard_count: NonZeroUsize,
+         config: ShardConfig,
+         journal: SharedRuntimeJournal,
+     ) -> Self {
+         let count = shard_count.get();
+         let mut shards = Vec::with_capacity(count);
+         let mut index = 0usize;
+         while index < count {
+             shards.push(Shard::new_with_journal(config, journal.clone()));
+             index = index.saturating_add(1);
+         }
+         Self {
+             shards,
+             shard_count: count,
+             journal,
+             policy: config.policy,
++            live_policy: crate::policy::LivePolicy::new(),
+         }
+     }
+ 
+     /// Creates a new runtime whose journal events survive only until process exit.
+     ///
+     /// This is the **test/benchmark-only** non-durable path. It is intentionally named
+     /// long and explicit so every call site self-documents the trade-off. Production
+     /// callers must use [`Runtime::new`] with a storage-backed
+     /// [`SharedRuntimeJournal`].
+     #[must_use]
+     pub fn new_for_tests_and_benchmarks_only(
+         shard_count: NonZeroUsize,

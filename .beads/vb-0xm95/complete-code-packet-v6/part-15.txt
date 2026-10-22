@@ -1,0 +1,220 @@
+crates/vb_runtime/src/run_checkpoint.rs:43:     pub collect_states: CollectStatesCheckpointV1,
+crates/vb_runtime/src/run_checkpoint.rs:44:     /// Validated action contracts bound to the accepted artifact.
+crates/vb_runtime/src/run_checkpoint.rs:45:     pub action_contracts: Box<[ActionContract]>,
+crates/vb_runtime/src/run_checkpoint.rs:46: }
+crates/vb_runtime/src/run_checkpoint.rs:47: 
+crates/vb_runtime/src/run_checkpoint.rs:48: /// Errors proving a checkpoint cannot authorize restoration.
+crates/vb_runtime/src/run_checkpoint.rs:49: #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+crates/vb_runtime/src/run_checkpoint.rs:50: pub enum RunCheckpointV1Error {
+crates/vb_runtime/src/run_checkpoint.rs:51:     /// The checkpoint version is not supported.
+crates/vb_runtime/src/run_checkpoint.rs:52:     #[error("unsupported runtime checkpoint version")]
+crates/vb_runtime/src/run_checkpoint.rs:53:     UnsupportedVersion,
+crates/vb_runtime/src/run_checkpoint.rs:54:     /// Frame run identity differs from the checkpoint identity.
+crates/vb_runtime/src/run_checkpoint.rs:55:     #[error("checkpoint frame belongs to a different run")]
+crates/vb_runtime/src/run_checkpoint.rs:56:     RunIdentityMismatch,
+crates/vb_runtime/src/run_checkpoint.rs:57:     /// Admission run identity differs from the checkpoint identity.
+crates/vb_runtime/src/run_checkpoint.rs:58:     #[error("checkpoint admission belongs to a different run")]
+crates/vb_runtime/src/run_checkpoint.rs:59:     AdmissionRunMismatch,
+crates/vb_runtime/src/run_checkpoint.rs:60:     /// Retry checkpoint lacks admission authority.
+crates/vb_runtime/src/run_checkpoint.rs:61:     #[error("retry checkpoint has no accepted admission authority")]
+crates/vb_runtime/src/run_checkpoint.rs:62:     MissingAdmissionAuthority,
+crates/vb_runtime/src/run_checkpoint.rs:63:     /// Admission artifact identity differs from the checkpoint identity.
+crates/vb_runtime/src/run_checkpoint.rs:64:     #[error("checkpoint admission has a different artifact digest")]
+crates/vb_runtime/src/run_checkpoint.rs:65:     ArtifactIdentityMismatch,
+crates/vb_runtime/src/run_checkpoint.rs:66:     /// Compiled workflow identity differs from checkpoint metadata.
+crates/vb_runtime/src/run_checkpoint.rs:67:     #[error("checkpoint workflow digest mismatch")]
+crates/vb_runtime/src/run_checkpoint.rs:68:     WorkflowIdentityMismatch,
+crates/vb_runtime/src/run_checkpoint.rs:69:     /// Frame dimensions do not match the accepted workflow.
+crates/vb_runtime/src/run_checkpoint.rs:70:     #[error("checkpoint frame dimensions differ from the workflow")]
+crates/vb_runtime/src/run_checkpoint.rs:71:     FrameDimensionsMismatch,
+crates/vb_runtime/src/run_checkpoint.rs:72:     /// Retry step is outside the workflow or not failed in the captured frame.
+crates/vb_runtime/src/run_checkpoint.rs:73:     #[error("checkpoint retry step is not the failed step")]
+crates/vb_runtime/src/run_checkpoint.rs:74:     RetryStepMismatch,
+crates/vb_runtime/src/run_checkpoint.rs:75:     /// Action attempt counters do not cover every frame step.
+crates/vb_runtime/src/run_checkpoint.rs:76:     #[error("checkpoint action attempt count differs from frame step count")]
+crates/vb_runtime/src/run_checkpoint.rs:77:     ActionAttemptCountMismatch,
+crates/vb_runtime/src/run_checkpoint.rs:78:     /// Checkpoint action contracts differ from the independently loaded artifact registry.
+crates/vb_runtime/src/run_checkpoint.rs:79:     #[error("checkpoint action contracts differ from accepted artifact")]
+crates/vb_runtime/src/run_checkpoint.rs:80:     ActionContractsMismatch,
+crates/vb_runtime/src/run_checkpoint.rs:81:     /// The per-step action attempt counter cannot be advanced.
+crates/vb_runtime/src/run_checkpoint.rs:82:     #[error("checkpoint action attempt counter overflow")]
+crates/vb_runtime/src/run_checkpoint.rs:83:     ActionAttemptOverflow,
+crates/vb_runtime/src/run_checkpoint.rs:84:     /// A nested state DTO failed validation.
+crates/vb_runtime/src/run_checkpoint.rs:85:     #[error("nested checkpoint validation failed")]
+crates/vb_runtime/src/run_checkpoint.rs:86:     InvalidNestedState,
+crates/vb_runtime/src/run_checkpoint.rs:87:     /// The checkpoint payload could not be decoded from durable bytes.
+crates/vb_runtime/src/run_checkpoint.rs:88:     #[error("checkpoint payload decode failed")]
+crates/vb_runtime/src/run_checkpoint.rs:89:     DecodeError,
+crates/vb_runtime/src/run_checkpoint.rs:90: }
+crates/vb_runtime/src/run_checkpoint.rs:91: 
+crates/vb_runtime/src/run_checkpoint.rs:92: impl RunCheckpointV1 {
+crates/vb_runtime/src/run_checkpoint.rs:93:     /// Captures every mutable run-state component after validating retry authority.
+crates/vb_runtime/src/run_checkpoint.rs:94:     pub fn capture(
+crates/vb_runtime/src/run_checkpoint.rs:95:         run_id: RunId,
+crates/vb_runtime/src/run_checkpoint.rs:96:         artifact_digest: WorkflowDigest,
+crates/vb_runtime/src/run_checkpoint.rs:97:         run_attempt: NonZeroU16,
+crates/vb_runtime/src/run_checkpoint.rs:98:         retry_step: StepIdx,
+crates/vb_runtime/src/run_checkpoint.rs:99:         prior_seq: u64,
+crates/vb_runtime/src/run_checkpoint.rs:100:         state: &RunState,
+crates/vb_runtime/src/run_checkpoint.rs:101:     ) -> Result<Self, RunCheckpointV1Error> {
+crates/vb_runtime/src/run_checkpoint.rs:102:         if state.frame.checkpoint_v1().run_id != run_id {
+crates/vb_runtime/src/run_checkpoint.rs:103:             return Err(RunCheckpointV1Error::RunIdentityMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:104:         }
+crates/vb_runtime/src/run_checkpoint.rs:105:         if let Some(admission) = &state.admission {
+crates/vb_runtime/src/run_checkpoint.rs:106:             validate_admission(admission, run_id, artifact_digest)?;
+crates/vb_runtime/src/run_checkpoint.rs:107:         } else {
+crates/vb_runtime/src/run_checkpoint.rs:108:             return Err(RunCheckpointV1Error::MissingAdmissionAuthority);
+crates/vb_runtime/src/run_checkpoint.rs:109:         }
+crates/vb_runtime/src/run_checkpoint.rs:110:         let mut frame = state.frame.checkpoint_v1();
+crates/vb_runtime/src/run_checkpoint.rs:111:         let retry_index = usize::from(retry_step.get());
+crates/vb_runtime/src/run_checkpoint.rs:112:         if frame.states.get(retry_index) != Some(&CheckpointStepState::Failed) {
+crates/vb_runtime/src/run_checkpoint.rs:113:             return Err(RunCheckpointV1Error::RetryStepMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:114:         }
+crates/vb_runtime/src/run_checkpoint.rs:115:         // Per-action attempt counters are captured verbatim: the CLI retry advances
+crates/vb_runtime/src/run_checkpoint.rs:116:         // the run attempt (checked), not the per-step action attempt. Advancing the
+crates/vb_runtime/src/run_checkpoint.rs:117:         // action attempt here would drive the re-executed ticket past the action's
+crates/vb_runtime/src/run_checkpoint.rs:118:         // max-attempts capacity, so the failed step's action re-executes as its first
+crates/vb_runtime/src/run_checkpoint.rs:119:         // action attempt in the new run attempt.
+crates/vb_runtime/src/run_checkpoint.rs:120:         let action_attempts = state.action_attempts.clone();
+crates/vb_runtime/src/run_checkpoint.rs:121:         if action_attempts.get(retry_index).is_none() {
+crates/vb_runtime/src/run_checkpoint.rs:122:             return Err(RunCheckpointV1Error::ActionAttemptCountMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:123:         }
+crates/vb_runtime/src/run_checkpoint.rs:124:         // Checkpoints are retry-ready state: keep the audited failed event in the journal,
+crates/vb_runtime/src/run_checkpoint.rs:125:         // while resetting only the selected step and PC in the new checkpoint.
+crates/vb_runtime/src/run_checkpoint.rs:126:         let retry_state = frame
+crates/vb_runtime/src/run_checkpoint.rs:127:             .states
+crates/vb_runtime/src/run_checkpoint.rs:128:             .get_mut(retry_index)
+crates/vb_runtime/src/run_checkpoint.rs:129:             .ok_or(RunCheckpointV1Error::RetryStepMismatch)?;
+crates/vb_runtime/src/run_checkpoint.rs:130:         *retry_state = CheckpointStepState::Pending;
+crates/vb_runtime/src/run_checkpoint.rs:131:         frame.pc = retry_step;
+crates/vb_runtime/src/run_checkpoint.rs:132:         let checkpoint = Self {
+crates/vb_runtime/src/run_checkpoint.rs:133:             version: 2,
+crates/vb_runtime/src/run_checkpoint.rs:134:             run_id,
+crates/vb_runtime/src/run_checkpoint.rs:135:             artifact_digest,
+crates/vb_runtime/src/run_checkpoint.rs:136:             workflow_digest: state.workflow.digest(),
+crates/vb_runtime/src/run_checkpoint.rs:137:             run_attempt,
+crates/vb_runtime/src/run_checkpoint.rs:138:             retry_step,
+crates/vb_runtime/src/run_checkpoint.rs:139:             prior_seq,
+crates/vb_runtime/src/run_checkpoint.rs:140:             frame,
+crates/vb_runtime/src/run_checkpoint.rs:141:             value_store: state.store.checkpoint_v1(),
+crates/vb_runtime/src/run_checkpoint.rs:142:             action_attempts,
+crates/vb_runtime/src/run_checkpoint.rs:143:             admission: state.admission.clone(),
+crates/vb_runtime/src/run_checkpoint.rs:144:             collect_states: state.collect_states.checkpoint_v1(),
+crates/vb_runtime/src/run_checkpoint.rs:145:             action_contracts: state.action_contracts.clone(),
+crates/vb_runtime/src/run_checkpoint.rs:146:         };
+crates/vb_runtime/src/run_checkpoint.rs:147:         checkpoint.validate_against(&state.workflow, artifact_digest, &state.action_contracts)?;
+crates/vb_runtime/src/run_checkpoint.rs:148:         Ok(checkpoint)
+crates/vb_runtime/src/run_checkpoint.rs:149:     }
+crates/vb_runtime/src/run_checkpoint.rs:150: 
+crates/vb_runtime/src/run_checkpoint.rs:151:     /// Validates all identities and nested state against the accepted compiled workflow.
+crates/vb_runtime/src/run_checkpoint.rs:152:     pub fn validate_against(
+crates/vb_runtime/src/run_checkpoint.rs:153:         &self,
+crates/vb_runtime/src/run_checkpoint.rs:154:         workflow: &CompiledWorkflow,
+crates/vb_runtime/src/run_checkpoint.rs:155:         artifact_digest: WorkflowDigest,
+crates/vb_runtime/src/run_checkpoint.rs:156:         accepted_action_contracts: &[ActionContract],
+crates/vb_runtime/src/run_checkpoint.rs:157:     ) -> Result<(), RunCheckpointV1Error> {
+crates/vb_runtime/src/run_checkpoint.rs:158:         if self.version != 2 {
+crates/vb_runtime/src/run_checkpoint.rs:159:             return Err(RunCheckpointV1Error::UnsupportedVersion);
+crates/vb_runtime/src/run_checkpoint.rs:160:         }
+crates/vb_runtime/src/run_checkpoint.rs:161:         if self.workflow_digest != workflow.digest() {
+crates/vb_runtime/src/run_checkpoint.rs:162:             return Err(RunCheckpointV1Error::WorkflowIdentityMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:163:         }
+crates/vb_runtime/src/run_checkpoint.rs:164:         if self.artifact_digest != artifact_digest {
+crates/vb_runtime/src/run_checkpoint.rs:165:             return Err(RunCheckpointV1Error::ArtifactIdentityMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:166:         }
+crates/vb_runtime/src/run_checkpoint.rs:167:         if self.frame.run_id != self.run_id {
+crates/vb_runtime/src/run_checkpoint.rs:168:             return Err(RunCheckpointV1Error::RunIdentityMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:169:         }
+crates/vb_runtime/src/run_checkpoint.rs:170:         let step_count = u16::try_from(self.frame.states.len())
+crates/vb_runtime/src/run_checkpoint.rs:171:             .map_err(|_| RunCheckpointV1Error::FrameDimensionsMismatch)?;
+crates/vb_runtime/src/run_checkpoint.rs:172:         let slot_count = u16::try_from(self.frame.slots.len())
+crates/vb_runtime/src/run_checkpoint.rs:173:             .map_err(|_| RunCheckpointV1Error::FrameDimensionsMismatch)?;
+crates/vb_runtime/src/run_checkpoint.rs:174:         if step_count != workflow.node_count() || slot_count != workflow.slot_count() {
+crates/vb_runtime/src/run_checkpoint.rs:175:             return Err(RunCheckpointV1Error::FrameDimensionsMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:176:         }
+crates/vb_runtime/src/run_checkpoint.rs:177:         let retry_index = usize::from(self.retry_step.get());
+crates/vb_runtime/src/run_checkpoint.rs:178:         if self.frame.states.get(retry_index) != Some(&CheckpointStepState::Pending)
+crates/vb_runtime/src/run_checkpoint.rs:179:             || self.frame.pc != self.retry_step
+crates/vb_runtime/src/run_checkpoint.rs:180:         {
+crates/vb_runtime/src/run_checkpoint.rs:181:             return Err(RunCheckpointV1Error::RetryStepMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:182:         }
+crates/vb_runtime/src/run_checkpoint.rs:183:         if self.action_attempts.len() != self.frame.states.len() {
+crates/vb_runtime/src/run_checkpoint.rs:184:             return Err(RunCheckpointV1Error::ActionAttemptCountMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:185:         }
+crates/vb_runtime/src/run_checkpoint.rs:186:         if let Some(admission) = &self.admission {
+crates/vb_runtime/src/run_checkpoint.rs:187:             validate_admission(admission, self.run_id, self.artifact_digest)?;
+crates/vb_runtime/src/run_checkpoint.rs:188:         } else {
+crates/vb_runtime/src/run_checkpoint.rs:189:             return Err(RunCheckpointV1Error::MissingAdmissionAuthority);
+crates/vb_runtime/src/run_checkpoint.rs:190:         }
+crates/vb_runtime/src/run_checkpoint.rs:191:         if self.action_contracts.as_ref() != accepted_action_contracts {
+crates/vb_runtime/src/run_checkpoint.rs:192:             return Err(RunCheckpointV1Error::ActionContractsMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:193:         }
+crates/vb_runtime/src/run_checkpoint.rs:194:         RunFrame::from_checkpoint_v1(self.frame.clone())
+crates/vb_runtime/src/run_checkpoint.rs:195:             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+crates/vb_runtime/src/run_checkpoint.rs:196:         ValueStore::from_checkpoint_v1(self.value_store.clone())
+crates/vb_runtime/src/run_checkpoint.rs:197:             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+crates/vb_runtime/src/run_checkpoint.rs:198:         CollectStates::from_checkpoint_v1(self.collect_states.clone())
+crates/vb_runtime/src/run_checkpoint.rs:199:             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+crates/vb_runtime/src/run_checkpoint.rs:200:         Ok(())
+crates/vb_runtime/src/run_checkpoint.rs:201:     }
+crates/vb_runtime/src/run_checkpoint.rs:202: 
+crates/vb_runtime/src/run_checkpoint.rs:203:     /// Restores a validated checkpoint using the independently loaded accepted workflow.
+crates/vb_runtime/src/run_checkpoint.rs:204:     pub fn restore(
+crates/vb_runtime/src/run_checkpoint.rs:205:         self,
+crates/vb_runtime/src/run_checkpoint.rs:206:         workflow: CompiledWorkflow,
+crates/vb_runtime/src/run_checkpoint.rs:207:         artifact_digest: WorkflowDigest,
+crates/vb_runtime/src/run_checkpoint.rs:208:         accepted_action_contracts: &[ActionContract],
+crates/vb_runtime/src/run_checkpoint.rs:209:     ) -> Result<(RunState, NonZeroU16, StepIdx, u64), RunCheckpointV1Error> {
+crates/vb_runtime/src/run_checkpoint.rs:210:         self.validate_against(&workflow, artifact_digest, accepted_action_contracts)?;
+crates/vb_runtime/src/run_checkpoint.rs:211:         let frame = RunFrame::from_checkpoint_v1(self.frame)
+crates/vb_runtime/src/run_checkpoint.rs:212:             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+crates/vb_runtime/src/run_checkpoint.rs:213:         let store = ValueStore::from_checkpoint_v1(self.value_store)
+crates/vb_runtime/src/run_checkpoint.rs:214:             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+crates/vb_runtime/src/run_checkpoint.rs:215:         let collect_states = CollectStates::from_checkpoint_v1(self.collect_states)
+crates/vb_runtime/src/run_checkpoint.rs:216:             .map_err(|_| RunCheckpointV1Error::InvalidNestedState)?;
+crates/vb_runtime/src/run_checkpoint.rs:217:         let state = RunState {
+crates/vb_runtime/src/run_checkpoint.rs:218:             registered_execution: crate::shard::types::RegisteredExecutionMode::ReconcileOnly,
+crates/vb_runtime/src/run_checkpoint.rs:219:             frame,
+crates/vb_runtime/src/run_checkpoint.rs:220:             run_attempt: self.run_attempt,
+crates/vb_runtime/src/run_checkpoint.rs:221:             workflow,
+crates/vb_runtime/src/run_checkpoint.rs:222:             store,
+crates/vb_runtime/src/run_checkpoint.rs:223:             action_attempts: self.action_attempts,
+crates/vb_runtime/src/run_checkpoint.rs:224:             admission: self.admission,
+crates/vb_runtime/src/run_checkpoint.rs:225:             collect_states,
+crates/vb_runtime/src/run_checkpoint.rs:226:             action_contracts: self.action_contracts,
+crates/vb_runtime/src/run_checkpoint.rs:227:         };
+crates/vb_runtime/src/run_checkpoint.rs:228:         Ok((state, self.run_attempt, self.retry_step, self.prior_seq))
+crates/vb_runtime/src/run_checkpoint.rs:229:     }
+crates/vb_runtime/src/run_checkpoint.rs:230: }
+crates/vb_runtime/src/run_checkpoint.rs:231: 
+crates/vb_runtime/src/run_checkpoint.rs:232: fn validate_admission(
+crates/vb_runtime/src/run_checkpoint.rs:233:     admission: &RunAdmission,
+crates/vb_runtime/src/run_checkpoint.rs:234:     run_id: RunId,
+crates/vb_runtime/src/run_checkpoint.rs:235:     artifact_digest: WorkflowDigest,
+crates/vb_runtime/src/run_checkpoint.rs:236: ) -> Result<(), RunCheckpointV1Error> {
+crates/vb_runtime/src/run_checkpoint.rs:237:     if admission.run_id() != run_id {
+crates/vb_runtime/src/run_checkpoint.rs:238:         return Err(RunCheckpointV1Error::AdmissionRunMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:239:     }
+crates/vb_runtime/src/run_checkpoint.rs:240:     if admission.artifact_digest() != artifact_digest {
+crates/vb_runtime/src/run_checkpoint.rs:241:         return Err(RunCheckpointV1Error::ArtifactIdentityMismatch);
+crates/vb_runtime/src/run_checkpoint.rs:242:     }
+crates/vb_runtime/src/run_checkpoint.rs:243:     Ok(())
+crates/vb_runtime/src/run_checkpoint.rs:244: }
+crates/vb_runtime/src/run_checkpoint.rs:245: 
+crates/vb_runtime/src/run_checkpoint.rs:246: /// Decodes a durable checkpoint payload with version-aware validation.
+crates/vb_runtime/src/run_checkpoint.rs:247: ///
+crates/vb_runtime/src/run_checkpoint.rs:248: /// Reads the VARINT-encoded version field first to determine the checkpoint
+crates/vb_runtime/src/run_checkpoint.rs:249: /// format version before decoding the full payload. Rejects historical version
+crates/vb_runtime/src/run_checkpoint.rs:250: /// 1 checkpoints that lack the policy_pin field, which cannot be safely decoded
+crates/vb_runtime/src/run_checkpoint.rs:251: /// as the current RunCheckpointV1 layout.
+crates/vb_runtime/src/run_checkpoint.rs:252: pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunCheckpointV1Error> {
+crates/vb_runtime/src/run_checkpoint.rs:253:     if payload.is_empty() {
+crates/vb_runtime/src/run_checkpoint.rs:254:         return Err(RunCheckpointV1Error::UnsupportedVersion);
+crates/vb_runtime/src/run_checkpoint.rs:255:     }
+crates/vb_runtime/src/run_checkpoint.rs:256:     // Use postcard's streaming decoder to read the version field.
+crates/vb_runtime/src/run_checkpoint.rs:257:     // Postcard uses variable-length integer encoding, so we cannot
+crates/vb_runtime/src/run_checkpoint.rs:258:     // simply read the first two bytes as a u16.
+crates/vb_runtime/src/run_checkpoint.rs:259:     let mut decoder = postcard::Deserializer::from_bytes(payload);
+crates/vb_runtime/src/run_checkpoint.rs:260:     let version: u16 = serde::Deserialize::deserialize(&mut decoder)
+crates/vb_runtime/src/run_checkpoint.rs:261:         .map_err(|_| RunCheckpointV1Error::UnsupportedVersion)?;
+crates/vb_runtime/src/run_checkpoint.rs:262:     match version {
