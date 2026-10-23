@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
-//! Expression-based Set value lowering.
+//! Expression-based Set value lowering with static type checking.
 
 use super::canonical_references::StepReferenceResolver;
+use super::canonical_types::infer_canonical_expr_type;
 use crate::expression::parse_expression;
 use crate::expression_bytecode::compile_expr_to_bytecode_with_resolver;
 use crate::mod_compile_errors::CompileErrors;
@@ -9,14 +10,18 @@ use crate::mod_compile_lowering::SlotCompiler;
 use crate::mod_compile_lowering::part_05::lower_set;
 use std::collections::HashMap;
 use vb_core::{CompiledNode, CompiledNodeKind, ConstValue, SlotIdx, StepIdx};
+use vb_expr::expr_typecheck::ExprType;
 
-/// Lowers a Set primitive with expression value support.
+/// Lowers a Set primitive with expression value support and static type checking.
 ///
 /// Supports:
 /// - I64 constants (existing shape preserved for backward compatibility)
 /// - Bool, Null, F64 literals
 /// - Typed scalar expressions
 /// - References to prior step outputs by name or step ID
+///
+/// Type errors for statically known types (e.g., `true + 2`) are rejected.
+/// Dynamic action outputs remain Unknown (no false precision or rejection).
 pub(super) fn lower_canonical_set_expression(
     id: StepIdx,
     slot: SlotIdx,
@@ -24,15 +29,27 @@ pub(super) fn lower_canonical_set_expression(
     next: Option<StepIdx>,
     outputs: &HashMap<String, SlotIdx>,
     step_outputs: &HashMap<String, SlotIdx>,
+    prior_types: &HashMap<String, ExprType>,
     builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
+) -> Result<ExprType, CompileErrors> {
     // Try I64 constant first (preserves existing SetConst shape)
     if let Ok(constant) = value.parse::<i64>() {
-        return lower_set_constant(id, slot, constant, next, builder);
+        lower_set_constant(id, slot, constant, next, builder)?;
+        return Ok(ExprType::I64);
     }
 
-    // Compile as expression program
-    compile_and_emit_set(id, slot, value, next, outputs, step_outputs, builder)
+    // Compile as expression program with type checking
+    let inferred = compile_and_emit_set(
+        id,
+        slot,
+        value,
+        next,
+        outputs,
+        step_outputs,
+        prior_types,
+        builder,
+    )?;
+    Ok(inferred)
 }
 
 fn lower_set_constant(
@@ -56,9 +73,17 @@ fn compile_and_emit_set(
     next: Option<StepIdx>,
     outputs: &HashMap<String, SlotIdx>,
     step_outputs: &HashMap<String, SlotIdx>,
+    prior_types: &HashMap<String, ExprType>,
     builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
+) -> Result<ExprType, CompileErrors> {
     let parsed = parse_expression(value).map_err(|e| CompileErrors(vec![e]))?;
+
+    // Static type check using shared vb_expr type checker.
+    // Rejects known static errors (e.g., bool + number) while allowing
+    // dynamic action outputs (Unknown) to pass through.
+    let inferred =
+        infer_canonical_expr_type(&parsed, prior_types)
+            .map_err(|e| CompileErrors(vec![e]))?;
 
     let mut resolver = StepReferenceResolver::new(outputs.clone(), step_outputs.clone());
     let program =
@@ -78,5 +103,5 @@ fn compile_and_emit_set(
         kind: CompiledNodeKind::EvalExpr { expr: expr_idx },
     });
 
-    Ok(())
+    Ok(inferred)
 }

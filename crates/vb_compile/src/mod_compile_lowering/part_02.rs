@@ -2,12 +2,16 @@ use super::*;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use std::collections::HashMap;
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
+use vb_expr::expr_typecheck::ExprType;
 
 pub(crate) use super::part_14::lower_canonical_choose;
 
 #[path = "canonical_references.rs"]
 mod canonical_references;
 pub(super) use canonical_references::resolve_slot_reference;
+
+#[path = "canonical_types.rs"]
+mod canonical_types;
 
 #[path = "canonical_scalar.rs"]
 mod canonical_scalar;
@@ -27,6 +31,7 @@ pub(super) fn lower_canonical_step(
     outputs: &mut HashMap<String, SlotIdx>,
     step_outputs: &mut HashMap<String, SlotIdx>,
     step_names: &mut Vec<Box<str>>,
+    prior_types: &mut HashMap<String, ExprType>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let result = match &step.primitive {
@@ -37,10 +42,20 @@ pub(super) fn lower_canonical_step(
                     name: Box::from(output.as_str()),
                 }]));
             }
-            lower_canonical_set_expression(id, slot, value, next, outputs, step_outputs, builder)?;
+            let inferred = lower_canonical_set_expression(
+                id,
+                slot,
+                value,
+                next,
+                outputs,
+                step_outputs,
+                prior_types,
+                builder,
+            )?;
             outputs.insert(output.to_owned(), slot);
             step_outputs.insert(step.id.to_string(), slot);
             builder.record_slot(slot);
+            prior_types.insert(output.to_owned(), inferred);
             Ok(())
         }
         crate::StepPrimitive::Do { action, input } => {
@@ -57,6 +72,7 @@ pub(super) fn lower_canonical_step(
             )?;
             if let Some(slot) = output_slot {
                 step_outputs.insert(step.id.to_string(), slot);
+                // Do action outputs are dynamic; no static type inference
             }
             Ok(())
         }
