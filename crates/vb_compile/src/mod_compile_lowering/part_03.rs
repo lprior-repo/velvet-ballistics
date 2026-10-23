@@ -25,9 +25,16 @@ pub(super) fn lower_canonical_parallel(
     next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let accumulator = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    let result = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    let slots = TogetherSlots { accumulator, result };
+    let accumulator = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let result = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let slots = TogetherSlots {
+        accumulator,
+        result,
+    };
     let join_offset = together_join_offset(branches).map_err(|e| CompileErrors(vec![e]))?;
     let join = checked_step_offset(id, join_offset, "parallel", "join")
         .map_err(|e| CompileErrors(vec![e]))?;
@@ -127,10 +134,17 @@ pub(super) fn emit_together_branches(
                 limit: usize::from(u16::MAX),
             }])
         })?;
-        let width = u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
-            .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: branch_index }]))?;
+        let width =
+            u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
+                .map_err(|_| {
+                    CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                        value: branch_index,
+                    }])
+                })?;
         let following_offset = cursor.checked_add(width).ok_or_else(|| {
-            CompileErrors(vec![CompileError::StepIndexOutOfRange { value: branch_index }])
+            CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                value: branch_index,
+            }])
         })?;
         let following = checked_step_offset(base, following_offset, "parallel", "next")
             .map_err(|e| CompileErrors(vec![e]))?;
@@ -213,9 +227,22 @@ pub(super) fn lower_canonical_collect(
     let page = checked_step_offset(id, 2, "collect", "page").map_err(|e| CompileErrors(vec![e]))?;
     // Offset 3: id + 3 (done), proved = id + 3 (L3 consecutive IDs)
     let done = checked_step_offset(id, 3, "collect", "done").map_err(|e| CompileErrors(vec![e]))?;
+    let pages = collect.pages.unwrap_or(1);
+    let items = collect.items.unwrap_or(1);
+    let total_items = pages.checked_mul(items).ok_or_else(|| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "collect",
+            expected: "pages * items must fit u32",
+        }])
+    })?;
     builder.record_slot(source);
-    let collector_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    let body_result = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let collector_slot = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let body_result = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
         output: Some(collector_slot),
@@ -224,7 +251,7 @@ pub(super) fn lower_canonical_collect(
         on_error: None,
         kind: CompiledNodeKind::CollectStart {
             source,
-            limit: collect.pages.unwrap_or(1),
+            limit: total_items,
             page_size: collect.items.unwrap_or(1),
             body: body_step,
             done,
@@ -257,9 +284,7 @@ pub(super) fn lower_canonical_collect(
         next: collect.next,
         error_slot: None,
         on_error: None,
-        kind: CompiledNodeKind::CollectFinish {
-            collector_slot,
-        },
+        kind: CompiledNodeKind::CollectFinish { collector_slot },
     });
     Ok(())
 }

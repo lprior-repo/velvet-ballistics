@@ -1,0 +1,17 @@
+
+running 6 tests
+test ask_with_timeout_resumes ... ok
+test ask_without_timeout_resumes ... ok
+test choose_false_branch_executes ... ok
+test choose_true_branch_executes ... ok
+test collect_empty_list ... FAILED
+test collect_three_items ... FAILED
+
+failures:
+
+failures:
+    collect_empty_list
+    collect_three_items
+
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

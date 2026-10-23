@@ -494,13 +494,9 @@ fn finish_collect_start_page(
     current_page: ListId,
     time_limit_ms: Option<u64>,
     body: StepIdx,
-    done: StepIdx,
+    _done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let cursor = checked_add_usize(0, plan.page_len, "collect cursor overflow")?;
-    if cursor >= plan.item_count {
-        states.remove(run.run_id(), plan.collector);
-        return jump_to(run, done);
-    }
     upsert_started_collect(run, states, plan, current_page, cursor, time_limit_ms)?;
     jump_to(run, body)
 }
