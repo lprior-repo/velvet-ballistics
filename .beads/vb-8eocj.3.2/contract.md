@@ -25,3 +25,9 @@ a distinct vulnerability where the body clobbers the counter during execution.
 **Scope:** Two tests only:
 1. Baseline unmutated source control — should PASS (finish 42, body count 3)
 2. Red malformed-case — should FAIL (RED) with actual observations
+
+**Version History:**
+
+- v1: Initial draft
+- v2: Attempted RTX 3090 execution; timeout exit code 124; unauthorized .cargo/config.toml changes introduced (jobs=1); missing CollectStates import caused broad nextest compile failure (missing `vb_runtime::primitives::collect::CollectStates`); no pre-fix constructor/runtime outcome established; pushed as `6b998b3b33c2bed6ae9fd755ba8723cee41e8850`
+- v3 (current): Config restored to clean baseline `913cf25b`; test rewritten with correct imports (`vb_runtime::primitives::collect::CollectStates`), no expect/panic/unchecked indexing, proper body-node lookup via `iter_mut().find()` matching RepeatStart body StepIdx, actual RuntimeSignal/slot value collection from real journal events, typed constructor error reporting, explicit malformed-IR negative coverage. Draft only — tests written but NOT compiled or executed per root instructions; no production fix applied.

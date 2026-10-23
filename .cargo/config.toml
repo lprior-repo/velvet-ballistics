@@ -1,5 +1,18 @@
+# Layer 1 of the 3-layer cache: sccache wraps rustc and caches compiler
+# artifacts in-memory. Hits are shared across every Rust project on this box.
+# Sized for 32-core / 126 GB host; 12 GB headroom plus 16 parallel rustc
+# jobs gives cache hits on the same crate for both feature and non-feature
+# builds. Layer 2 (bazel-remote AC+CAS) and Layer 3 (Cargo `target/`) are
+# configured elsewhere; sccache only governs rustc invocations.
 [build]
-jobs = 8
+rustc-wrapper = "/home/lewis/.local/share/mise/installs/sccache/0.16.0/sccache-v0.16.0-x86_64-unknown-linux-musl/sccache"
+jobs = 16
+
+[env]
+SCCACHE_DIR = "/home/lewis/.cache/sccache"
+SCCACHE_CACHE_SIZE = "12G"
+SCCACHE_MAX_FRAME_LENGTH = "104857600"
+SCCACHE_BASEDIR = "/home/lewis/src/velvet-ballistics"
 
 [alias]
 ci = "clippy --workspace --lib --bins --examples --all-features -- -D warnings"
