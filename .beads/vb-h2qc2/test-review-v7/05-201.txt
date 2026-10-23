@@ -1,0 +1,101 @@
+ACTUAL SOURCE fuzz/Cargo.toml
+201: path = "stdin_smoke/verifier_gates.rs"
+202: test = false
+203: doc = false
+204: bench = false
+205: 
+206: [[bin]]
+207: name = "aggregate_artifact_budget"
+208: path = "stdin_smoke/aggregate_artifact_budget.rs"
+209: test = false
+210: doc = false
+211: bench = false
+212: 
+213: [[bin]]
+214: name = "aggregate_workflow_budget"
+215: path = "stdin_smoke/aggregate_workflow_budget.rs"
+216: test = false
+217: doc = false
+218: bench = false
+219: 
+220: [[bin]]
+221: name = "boundary_evidence_reference"
+222: path = "stdin_smoke/boundary_evidence_reference.rs"
+223: test = false
+224: doc = false
+225: bench = false
+226: 
+227: [[bin]]
+228: name = "boundary_inventory_parser"
+229: path = "stdin_smoke/boundary_inventory_parser.rs"
+230: test = false
+231: doc = false
+232: bench = false
+233: 
+234: [[bin]]
+235: name = "boundary_metadata"
+236: path = "stdin_smoke/boundary_metadata.rs"
+237: test = false
+238: doc = false
+239: bench = false
+240: 
+241: [[bin]]
+242: name = "recover_runtime_frame_seed_contract"
+243: path = "stdin_smoke/recover_runtime_frame_seed_contract.rs"
+244: test = false
+245: doc = false
+246: bench = false
+247: 
+248: [[bin]]
+249: name = "structured_status_render_hostile"
+250: path = "stdin_smoke/structured_status_render_hostile.rs"
+251: test = false
+252: doc = false
+253: bench = false
+254: 
+255: [[bin]]
+256: name = "xtask_parse_argv_hostile"
+257: path = "stdin_smoke/xtask_parse_argv_hostile.rs"
+258: test = false
+259: doc = false
+260: bench = false
+261: 
+262: [[bin]]
+263: name = "xtask_parse_options_hostile"
+264: path = "stdin_smoke/xtask_parse_options_hostile.rs"
+265: test = false
+266: doc = false
+267: bench = false
+268: 
+269: # === fuzz_targets/ (active libFuzzer harnesses with mutation + corpus) ===
+270: # These are the real fuzz targets. Each uses `#![no_main]` and
+271: # `libfuzzer_sys::fuzz_target!`. CI MUST distinguish these from the
+272: # stdin_smoke wrappers above; only these count as fuzz coverage evidence.
+273: 
+274: [[bin]]
+275: name = "lex_expr"
+276: path = "fuzz_targets/lex_expr.rs"
+277: test = false
+278: doc = false
+279: bench = false
+280: 
+281: [[bin]]
+282: name = "check_doc_taint_consistency_accepts_arbitrary_markdown"
+283: path = "fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs"
+284: test = false
+285: doc = false
+286: bench = false
+287: 
+288: [[bin]]
+289: name = "compile_source_ast_marks"
+290: path = "fuzz_targets/compile_source_ast_marks.rs"
+291: test = false
+292: doc = false
+293: bench = false
+294: 
+295: # === fuzz_targets/ (restored and wired) ===
+296: 
+297: [[bin]]
+298: name = "canonical_digest_ask"
+299: path = "fuzz_targets/canonical_digest_ask.rs"
+300: test = false

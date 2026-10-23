@@ -1,0 +1,101 @@
+ACTUAL SOURCE fuzz/Cargo.toml
+601: test = false
+602: doc = false
+603: bench = false
+604: 
+605: [[bin]]
+606: name = "fuzz_storage_codec_digest"
+607: path = "fuzz_targets/fuzz_storage_codec_digest.rs"
+608: test = false
+609: doc = false
+610: bench = false
+611: 
+612: [[bin]]
+613: name = "vb_vzcuf_PS_001"
+614: path = "fuzz_targets/vb_vzcuf_PS_001.rs"
+615: test = false
+616: doc = false
+617: bench = false
+618: 
+619: [[bin]]
+620: name = "vb_vzcuf_PS_002"
+621: path = "fuzz_targets/vb_vzcuf_PS_002.rs"
+622: test = false
+623: doc = false
+624: bench = false
+625: 
+626: [[bin]]
+627: name = "vb_vzcuf_PS_003"
+628: path = "fuzz_targets/vb_vzcuf_PS_003.rs"
+629: test = false
+630: doc = false
+631: bench = false
+632: 
+633: [[bin]]
+634: name = "vb_vzcuf_PS_004"
+635: path = "fuzz_targets/vb_vzcuf_PS_004.rs"
+636: test = false
+637: doc = false
+638: bench = false
+639: 
+640: [[bin]]
+641: name = "vb_vzcuf_PS_005"
+642: path = "fuzz_targets/vb_vzcuf_PS_005.rs"
+643: test = false
+644: doc = false
+645: bench = false
+646: 
+647: [[bin]]
+648: name = "vb_vzcuf_PS_006"
+649: path = "fuzz_targets/vb_vzcuf_PS_006.rs"
+650: test = false
+651: doc = false
+652: bench = false
+653: 
+654: [[bin]]
+655: name = "vb_vzcuf_PS_007"
+656: path = "fuzz_targets/vb_vzcuf_PS_007.rs"
+657: test = false
+658: doc = false
+659: bench = false
+660: 
+661: [[bin]]
+662: name = "vb_vzcuf_PS_008"
+663: path = "fuzz_targets/vb_vzcuf_PS_008.rs"
+664: test = false
+665: doc = false
+666: bench = false
+667: 
+668: [[bin]]
+669: name = "vb_vzcuf_PS_009"
+670: path = "fuzz_targets/vb_vzcuf_PS_009.rs"
+671: test = false
+672: doc = false
+673: bench = false
+674: 
+675: [[bin]]
+676: name = "wait_digest_exhaustive_collision"
+677: path = "fuzz_targets/wait_digest_exhaustive_collision.rs"
+678: test = false
+679: doc = false
+680: bench = false
+681: 
+682: [[bin]]
+683: name = "wait_digest_sensitivity"
+684: path = "fuzz_targets/wait_digest_sensitivity.rs"
+685: test = false
+686: doc = false
+687: bench = false
+688: 
+689: [[bin]]
+690: name = "wait_sentinel_collision"
+691: path = "fuzz_targets/wait_sentinel_collision.rs"
+692: test = false
+693: doc = false
+694: bench = false
+695: 
+696: [[bin]]
+697: name = "yaml_events"
+698: path = "fuzz_targets/yaml_events.rs"
+699: test = false
+700: doc = false

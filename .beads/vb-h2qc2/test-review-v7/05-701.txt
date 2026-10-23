@@ -1,0 +1,27 @@
+ACTUAL SOURCE fuzz/Cargo.toml
+701: bench = false
+702: 
+703: # The two `capability_*_schema` bins below were deleted in commit 437a51f20
+704: # (vb-4b0mk) when their .rs sources were moved from `src/bin/` to
+705: # `stdin_smoke/`, but the test in
+706: # `crates/workspace_tests/tests/vb_qi37_6_state8_setup.rs`
+707: # (`state8_fuzz_schema_setup_registers_required_capability_bins`) still
+708: # requires both names to be registered under `autobins = false`. Re-registered
+709: # here with the post-move paths so the static-source assertion holds. This
+710: # adds zero dependencies, so `fuzz/Cargo.lock` is unchanged.
+711: 
+712: [[bin]]
+713: name = "capability_contract_schema"
+714: path = "stdin_smoke/capability_contract_schema.rs"
+715: test = false
+716: doc = false
+717: bench = false
+718: 
+719: [[bin]]
+720: name = "capability_name_schema"
+721: path = "stdin_smoke/capability_name_schema.rs"
+722: test = false
+723: doc = false
+724: bench = false
+725: 
+726: # === src/bin/ orphans (declared 2026-05-24 Phase 0) ===

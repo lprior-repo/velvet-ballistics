@@ -1,0 +1,101 @@
+ACTUAL SOURCE fuzz/Cargo.toml
+101: [[bin]]
+102: name = "expr_bytecode"
+103: path = "stdin_smoke/expr_bytecode.rs"
+104: test = false
+105: doc = false
+106: bench = false
+107: 
+108: [[bin]]
+109: name = "expr_eval"
+110: path = "stdin_smoke/expr_eval.rs"
+111: test = false
+112: doc = false
+113: bench = false
+114: 
+115: [[bin]]
+116: name = "external_input_adapter_fuzz"
+117: path = "stdin_smoke/external_input_adapter_fuzz.rs"
+118: test = false
+119: doc = false
+120: bench = false
+121: 
+122: [[bin]]
+123: name = "extract_terminal"
+124: path = "stdin_smoke/extract_terminal.rs"
+125: test = false
+126: doc = false
+127: bench = false
+128: 
+129: [[bin]]
+130: name = "ipc_decode"
+131: path = "stdin_smoke/ipc_decode.rs"
+132: test = false
+133: doc = false
+134: bench = false
+135: 
+136: [[bin]]
+137: name = "ipc_frame_fuzz_boundary"
+138: path = "stdin_smoke/ipc_frame_fuzz_boundary.rs"
+139: test = false
+140: doc = false
+141: bench = false
+142: 
+143: [[bin]]
+144: name = "recovery_decode"
+145: path = "stdin_smoke/recovery_decode.rs"
+146: test = false
+147: doc = false
+148: bench = false
+149: 
+150: [[bin]]
+151: name = "replay_events"
+152: path = "stdin_smoke/replay_events.rs"
+153: test = false
+154: doc = false
+155: bench = false
+156: 
+157: [[bin]]
+158: name = "resource_budget"
+159: path = "stdin_smoke/resource_budget.rs"
+160: test = false
+161: doc = false
+162: bench = false
+163: 
+164: [[bin]]
+165: name = "slot_value_roundtrip"
+166: path = "stdin_smoke/slot_value_roundtrip.rs"
+167: test = false
+168: doc = false
+169: bench = false
+170: 
+171: [[bin]]
+172: name = "step_budget_new"
+173: path = "stdin_smoke/step_budget_new.rs"
+174: test = false
+175: doc = false
+176: bench = false
+177: 
+178: [[bin]]
+179: name = "storage_envelope_fuzz_boundary"
+180: path = "stdin_smoke/storage_envelope_fuzz_boundary.rs"
+181: test = false
+182: doc = false
+183: bench = false
+184: 
+185: [[bin]]
+186: name = "strict_yaml_profile"
+187: path = "stdin_smoke/strict_yaml_profile.rs"
+188: test = false
+189: doc = false
+190: bench = false
+191: 
+192: [[bin]]
+193: name = "taint_propagation"
+194: path = "stdin_smoke/taint_propagation.rs"
+195: test = false
+196: doc = false
+197: bench = false
+198: 
+199: [[bin]]
+200: name = "verifier_gates"

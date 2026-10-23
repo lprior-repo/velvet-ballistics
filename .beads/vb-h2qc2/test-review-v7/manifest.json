@@ -1,0 +1,23 @@
+{
+  "candidate": "4df9e4f196e3047a280cb2d1755488afd1bfd60b",
+  "source_packets": [
+    ".beads/vb-h2qc2/test-review-v7/01-001.txt",
+    ".beads/vb-h2qc2/test-review-v7/02-001.txt",
+    ".beads/vb-h2qc2/test-review-v7/02-101.txt",
+    ".beads/vb-h2qc2/test-review-v7/02-201.txt",
+    ".beads/vb-h2qc2/test-review-v7/03-001.txt",
+    ".beads/vb-h2qc2/test-review-v7/03-101.txt",
+    ".beads/vb-h2qc2/test-review-v7/03-201.txt",
+    ".beads/vb-h2qc2/test-review-v7/04-001.txt",
+    ".beads/vb-h2qc2/test-review-v7/05-001.txt",
+    ".beads/vb-h2qc2/test-review-v7/05-101.txt",
+    ".beads/vb-h2qc2/test-review-v7/05-201.txt",
+    ".beads/vb-h2qc2/test-review-v7/05-301.txt",
+    ".beads/vb-h2qc2/test-review-v7/05-401.txt",
+    ".beads/vb-h2qc2/test-review-v7/05-501.txt",
+    ".beads/vb-h2qc2/test-review-v7/05-601.txt",
+    ".beads/vb-h2qc2/test-review-v7/05-701.txt"
+  ],
+  "scope": "one old-bound false-positive regression alreadyretained inmain; independent TESTreviewfinishingstale bead; no sourceedits",
+  "fresh_execution": "currentcanonical allworkspace including fuzzmember V82inprogress inintegrator; exactscoped rerunaftercanonical pending"
+}

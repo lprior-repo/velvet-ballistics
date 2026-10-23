@@ -1,0 +1,101 @@
+ACTUAL SOURCE fuzz/Cargo.toml
+1: [package]
+2: name = "velvet-ballistics-fuzz"
+3: version = "0.1.0"
+4: edition = "2024"
+5: license = "MIT OR Apache-2.0"
+6: publish = false
+7: autobins = false
+8: 
+9: [package.metadata]
+10: # NOTE: cargo-fuzz requires `cargo-fuzz = true` here for manifest detection.
+11: # The `[package.metadata.cargo-fuzz]` subtable is the documented place for
+12: # libfuzzer options, but Cargo's TOML parser rejects both `[package.metadata]`
+13: # with a `cargo-fuzz` key AND `[package.metadata.cargo-fuzz]` as a subtable.
+14: # Minimization config (sancov_timeout, libfuzzer_options) is applied via
+15: # the `fuzz-smoke` Moon task and `scripts/fuzz-minimization.sh` instead.
+16: cargo-fuzz = true
+17: 
+18: [features]
+19: fuzz = []
+20: test-util = []
+21: 
+22: [lints.rust]
+23: unsafe_code = "forbid"
+24: unused_must_use = "deny"
+25: 
+26: [lints.clippy]
+27: unwrap_used = "deny"
+28: expect_used = "deny"
+29: panic = "deny"
+30: 
+31: [dependencies]
+32: libfuzzer-sys = "0.4"
+33: postcard = { version = "1", features = ["alloc"] }
+34: serde = { version = "1", features = ["derive"] }
+35: blake3 = "1"
+36: bytes = { version = "1", features = ["serde"] }
+37: tempfile = "3"
+38: vb_core = { path = "../crates/vb_core" }
+39: vb_storage = { path = "../crates/vb_storage" }
+40: vb_runtime = { path = "../crates/vb_runtime" }
+41: vb_validate = { path = "../crates/vb_validate" }
+42: vb_compile = { path = "../crates/vb_compile", features = ["test-util"] }
+43: vb_ipc = { path = "../crates/vb_ipc" }
+44: 
+45: xtask = { path = "../xtask" }
+46: crc32c = "0.6"
+47: 
+48: [dev-dependencies]
+49: proptest = "1"
+50: 
+51: [lib]
+52: name = "fuzz_lib"
+53: path = "src/lib.rs"
+54: 
+55: [package.metadata.cargo-machete]
+56: ignored = ["bytes"]
+57: 
+58: # === Fuzz profile (Phase 0) ===
+59: [[bin]]
+60: name = "accessor_traversal"
+61: path = "stdin_smoke/accessor_traversal.rs"
+62: test = false
+63: doc = false
+64: bench = false
+65: 
+66: [[bin]]
+67: name = "action_tracker"
+68: path = "stdin_smoke/action_tracker.rs"
+69: test = false
+70: doc = false
+71: bench = false
+72: 
+73: [[bin]]
+74: name = "admission_flow"
+75: path = "stdin_smoke/admission_flow.rs"
+76: test = false
+77: doc = false
+78: bench = false
+79: 
+80: [[bin]]
+81: name = "admission_fuzz"
+82: path = "stdin_smoke/admission_fuzz.rs"
+83: test = false
+84: doc = false
+85: bench = false
+86: 
+87: [[bin]]
+88: name = "binary_payload_fuzz_boundary"
+89: path = "stdin_smoke/binary_payload_fuzz_boundary.rs"
+90: test = false
+91: doc = false
+92: bench = false
+93: 
+94: [[bin]]
+95: name = "budget_compute"
+96: path = "stdin_smoke/budget_compute.rs"
+97: test = false
+98: doc = false
+99: bench = false
+100: 

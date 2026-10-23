@@ -1,0 +1,101 @@
+ACTUAL SOURCE fuzz/Cargo.toml
+501: name = "span_bridge_fuzz"
+502: path = "fuzz_targets/span_bridge_fuzz.rs"
+503: test = false
+504: doc = false
+505: bench = false
+506: 
+507: [[bin]]
+508: name = "tooling_flux_check_selector"
+509: path = "fuzz_targets/tooling_flux_check_selector.rs"
+510: test = false
+511: doc = false
+512: bench = false
+513: 
+514: [[bin]]
+515: name = "tooling_guard_zero_parser"
+516: path = "fuzz_targets/tooling_guard_zero_parser.rs"
+517: test = false
+518: doc = false
+519: bench = false
+520: 
+521: [[bin]]
+522: name = "tooling_kani_list_args"
+523: path = "fuzz_targets/tooling_kani_list_args.rs"
+524: test = false
+525: doc = false
+526: bench = false
+527: 
+528: [[bin]]
+529: name = "tooling_loom_list_xtask"
+530: path = "fuzz_targets/tooling_loom_list_xtask.rs"
+531: test = false
+532: doc = false
+533: bench = false
+534: 
+535: [[bin]]
+536: name = "vb_f04l_yaml_compiler_compile"
+537: path = "fuzz_targets/vb_f04l_yaml_compiler_compile.rs"
+538: test = false
+539: doc = false
+540: bench = false
+541: 
+542: [[bin]]
+543: name = "vb_rpch_hydrate_events_fuzz"
+544: path = "fuzz_targets/vb_rpch_hydrate_events_fuzz.rs"
+545: test = false
+546: doc = false
+547: bench = false
+548: 
+549: [[bin]]
+550: name = "vb_rpch_hydrate_snapshot_tail_fuzz"
+551: path = "fuzz_targets/vb_rpch_hydrate_snapshot_tail_fuzz.rs"
+552: test = false
+553: doc = false
+554: bench = false
+555: 
+556: [[bin]]
+557: name = "vb_rpch_replay_events_fuzz"
+558: path = "fuzz_targets/vb_rpch_replay_events_fuzz.rs"
+559: test = false
+560: doc = false
+561: bench = false
+562: 
+563: [[bin]]
+564: name = "vb_rpch_seed_dimensions_fuzz"
+565: path = "fuzz_targets/vb_rpch_seed_dimensions_fuzz.rs"
+566: test = false
+567: doc = false
+568: bench = false
+569: 
+570: [[bin]]
+571: name = "fuzz_storage_codec_roundtrip"
+572: path = "fuzz_targets/fuzz_storage_codec_roundtrip.rs"
+573: test = false
+574: doc = false
+575: bench = false
+576: 
+577: [[bin]]
+578: name = "fuzz_storage_codec_header"
+579: path = "fuzz_targets/fuzz_storage_codec_header.rs"
+580: test = false
+581: doc = false
+582: bench = false
+583: 
+584: [[bin]]
+585: name = "fuzz_storage_codec_payload_corruption"
+586: path = "fuzz_targets/fuzz_storage_codec_payload_corruption.rs"
+587: test = false
+588: doc = false
+589: bench = false
+590: 
+591: [[bin]]
+592: name = "fuzz_storage_codec_kind_family"
+593: path = "fuzz_targets/fuzz_storage_codec_kind_family.rs"
+594: test = false
+595: doc = false
+596: bench = false
+597: 
+598: [[bin]]
+599: name = "fuzz_storage_codec_schema_version"
+600: path = "fuzz_targets/fuzz_storage_codec_schema_version.rs"
