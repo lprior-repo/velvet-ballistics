@@ -1,0 +1,37 @@
+101:     for policy in [
+102:         RuntimePolicy::Relaxed,
+103:         RuntimePolicy::Journaled,
+104:         RuntimePolicy::Strict,
+105:     ] {
+106:         let directory = tempfile::tempdir()?;
+107:         let journal = FjallJournal::open(directory.path(), None)?;
+108:         journal.commit_run_submission(&submission(policy, 19)?, policy)?;
+109:         let before = journal.run_inputs(RunId::new(7))?;
+110:         let events_before = journal.events_for_run(RunId::new(7))?;
+111:         assert!(matches!(
+112:             journal.commit_run_submission(&submission(policy, 99)?, policy),
+113:             Err(JournalError::RunAlreadyExists)
+114:         ));
+115:         assert_eq!(journal.run_inputs(RunId::new(7))?, before);
+116:         assert_eq!(journal.events_for_run(RunId::new(7))?, events_before);
+117:     }
+118:     Ok(())
+119: }
+120: 
+121: #[test]
+122: fn journaled_artifact_cannot_be_committed_as_strict_or_relaxed() -> TestResult {
+123:     let directory = tempfile::tempdir()?;
+124:     let journal = FjallJournal::open(directory.path(), None)?;
+125:     let submission = submission(RuntimePolicy::Journaled, 1)?;
+126:     assert!(matches!(
+127:         journal.commit_run_submission(&submission, RuntimePolicy::Strict),
+128:         Err(JournalError::ArtifactMalformed)
+129:     ));
+130:     assert_empty(&journal)?;
+131:     assert!(matches!(
+132:         journal.commit_run_submission(&submission, RuntimePolicy::Relaxed),
+133:         Err(JournalError::ArtifactMalformed)
+134:     ));
+135:     assert_empty(&journal)?;
+136:     Ok(())
+137: }

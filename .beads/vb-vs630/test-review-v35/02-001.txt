@@ -1,0 +1,100 @@
+1: //! Test support for CLI run submission issuance tests.
+2: //! Provides fixture construction, submission builders, and counter inspection.
+3: 
+4: use super::RunInputsRecord;
+5: use crate::{
+6:     FjallJournal, JournalError, RunHeaderRecord, RunSubmission, WorkflowSourceRecord, admission,
+7: };
+8: use tempfile;
+9: use vb_core::{RunId, RuntimePolicy, SlotIdx, SlotValue, WorkflowDigest, WorkflowId};
+10: 
+11: pub(super) type TestResult = Result<(), Box<dyn std::error::Error>>;
+12: 
+13: /// Build a test CLI submission for an explicit run with a specific policy and input value.
+14: /// Retains the artifact, workflow, and source for post-commit verification.
+15: pub(super) fn make_submission_for_run(
+16:     policy: RuntimePolicy,
+17:     value: i64,
+18:     run: RunId,
+19: ) -> Result<RunSubmission, Box<dyn std::error::Error>> {
+20:     let workflow = super::tests::workflow()?;
+21:     let artifact = admission::prepare_compiled_artifact(&workflow, policy, &[])?;
+22:     let source = b"cli source fixture".to_vec();
+23:     let source_digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
+24:     let inputs = RunInputsRecord::new(
+25:         run,
+26:         artifact.digest,
+27:         source_digest,
+28:         &workflow,
+29:         Box::from([(SlotIdx::new(0), SlotValue::I64(value))]),
+30:     )?;
+31:     Ok(RunSubmission::new(
+32:         WorkflowSourceRecord {
+33:             digest: source_digest,
+34:             source,
+35:         },
+36:         artifact,
+37:         inputs,
+38:         RunHeaderRecord {
+39:             run,
+40:             workflow_id: WorkflowId::new(0),
+41:             compiled_digest: workflow.digest(),
+42:             status: 0,
+43:             accepted_at_ms: 1000,
+44:         },
+45:     )?)
+46: }
+47: 
+48: /// Build a test CLI submission with a specific policy and input value.
+49: /// Retains the artifact, workflow, and source for post-commit verification.
+50: pub(super) fn make_submission(
+51:     policy: RuntimePolicy,
+52:     value: i64,
+53: ) -> Result<RunSubmission, Box<dyn std::error::Error>> {
+54:     make_submission_for_run(policy, value, RunId::new(100))
+55: }
+56: 
+57: /// Build a test CLI submission for run 200.
+58: pub(super) fn make_submission_run200(
+59:     policy: RuntimePolicy,
+60:     value: i64,
+61: ) -> Result<RunSubmission, Box<dyn std::error::Error>> {
+62:     make_submission_for_run(policy, value, RunId::new(200))
+63: }
+64: 
+65: /// Read the raw artifact acceptance counter from the journal.
+66: pub(super) fn read_counter(journal: &FjallJournal) -> Result<Option<u64>, JournalError> {
+67:     match journal.artifact_acceptance.get(b"last_issued")? {
+68:         Some(value) => {
+69:             if value.len() != 8 {
+70:                 return Err(JournalError::MalformedKeyspaceRow {
+71:                     prefix: 0,
+72:                     expected_len: 8,
+73:                     actual_len: value.len(),
+74:                 });
+75:             }
+76:             let bytes: [u8; 8] =
+77:                 value
+78:                     .as_ref()
+79:                     .try_into()
+80:                     .map_err(|_| JournalError::MalformedKeyspaceRow {
+81:                         prefix: 0,
+82:                         expected_len: 8,
+83:                         actual_len: value.len(),
+84:                     })?;
+85:             Ok(Some(u64::from_be_bytes(bytes)))
+86:         }
+87:         None => Ok(None),
+88:     }
+89: }
+90: 
+91: /// Write a raw counter value to the journal for fault injection.
+92: pub(super) fn write_counter(journal: &FjallJournal, value: u64) -> Result<(), JournalError> {
+93:     let bytes = value.to_be_bytes();
+94:     journal.artifact_acceptance.insert(b"last_issued", &bytes)?;
+95:     Ok(())
+96: }
+97: 
+98: /// Write a malformed counter row with arbitrary bytes.
+99: pub(super) fn write_malformed_counter(
+100:     journal: &FjallJournal,

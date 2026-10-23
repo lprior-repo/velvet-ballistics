@@ -1,0 +1,47 @@
+101:     bytes: &[u8],
+102: ) -> Result<(), JournalError> {
+103:     journal.artifact_acceptance.insert(b"last_issued", bytes)?;
+104:     Ok(())
+105: }
+106: 
+107: /// Open a fresh temporary journal for testing.
+108: pub(super) fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), JournalError> {
+109:     let dir = tempfile::tempdir()?;
+110:     let journal = FjallJournal::open(dir.path(), None)?;
+111:     Ok((dir, journal))
+112: }
+113: 
+114: /// Verify the stamped artifact sequence number and digest consistency.
+115: pub(super) fn verify_cli_submission_artifact_seq(
+116:     journal: &FjallJournal,
+117:     run: RunId,
+118:     expected_seq: u64,
+119: ) -> TestResult {
+120:     let inputs = journal.run_inputs(run)?.ok_or("run inputs not found")?;
+121:     let record = journal
+122:         .compiled_ir(inputs.artifact_digest())?
+123:         .ok_or("compiled IR record not found")?;
+124:     let decoded: crate::AcceptedArtifact = postcard::from_bytes(&record.ir)?;
+125:     assert_eq!(decoded.accepted_at_seq.get(), expected_seq);
+126:     assert_eq!(decoded.digest, inputs.artifact_digest());
+127:     assert_eq!(decoded.verification.digest, inputs.artifact_digest());
+128:     Ok(())
+129: }
+130: 
+131: /// Verify that all journal keyspaces are empty (clean state).
+132: pub(super) fn verify_empty_journal(journal: &FjallJournal) -> Result<(), JournalError> {
+133:     assert!(
+134:         journal.workflow_source.is_empty()?,
+135:         "workflow_source not empty"
+136:     );
+137:     assert!(journal.compiled_ir.is_empty()?, "compiled_ir not empty");
+138:     assert!(journal.run_header.is_empty()?, "run_header not empty");
+139:     assert!(journal.run_inputs.is_empty()?, "run_inputs not empty");
+140:     assert!(journal.events.is_empty()?, "events not empty");
+141:     assert!(journal.index_status.is_empty()?, "index_status not empty");
+142:     assert!(
+143:         journal.index_workflow.is_empty()?,
+144:         "index_workflow not empty"
+145:     );
+146:     Ok(())
+147: }

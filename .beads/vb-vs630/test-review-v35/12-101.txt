@@ -1,0 +1,100 @@
+101:     for mode in ["none", "journaled", "strict"] {
+102:         let dir = tempdir()?;
+103:         let wf = write_file(&dir, "wf.yaml", NUMBER_PORT_YAML.as_bytes())?;
+104:         let inp = write_file(&dir, "in.bin", &encoded)?;
+105:         let db = db_path(&dir);
+106:         let out = subprocess(&wf, &inp, &db, mode)?;
+107:         assert_eq!(out.status.code(), Some(2));
+108:         assert_eq!(out.stdout, b"");
+109:         let expected = format!(
+110:             "INPUT_MAPPING_FAILED: slot {:?} value kind mismatch, expected I64\n",
+111:             slot.slot
+112:         );
+113:         assert_eq!(out.stderr, expected.as_bytes());
+114:         assert!(!Path::new(&db).try_exists()?);
+115:     }
+116:     Ok(())
+117: }
+118: 
+119: #[test]
+120: fn test_submit_controls() -> Result<(), Box<dyn std::error::Error>> {
+121:     use vb_compile::compile_workflow;
+122:     use vb_storage::{EventSeq, FjallJournal};
+123: 
+124:     let modes = ["none", "journaled", "strict"];
+125:     let cases = [
+126:         (NO_PORTS_YAML, vec![]),
+127:         (
+128:             NO_PORTS_YAML,
+129:             postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?,
+130:         ),
+131:         (
+132:             NUMBER_PORT_YAML,
+133:             postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(42)]))?,
+134:         ),
+135:     ];
+136: 
+137:     for mode in &modes {
+138:         for (yaml, input) in &cases {
+139:             let dir = tempdir()?;
+140:             let wf_path = write_file(&dir, "wf.yaml", yaml.as_bytes())?;
+141:             let inp_path = write_file(&dir, "inp.bin", input)?;
+142:             let db = db_path(&dir);
+143: 
+144:             let out = subprocess(&wf_path, &inp_path, &db, mode)?;
+145:             assert_eq!(out.status.code(), Some(0));
+146:             assert!(out.stderr.is_empty());
+147: 
+148:             let compiled = compile_workflow(yaml.as_bytes())?;
+149:             let journal = FjallJournal::open(&db, None)?;
+150:             let headers = journal.run_headers()?;
+151:             assert_eq!(headers.len(), 1);
+152:             let header = headers.first().ok_or("missing header")?;
+153:             assert_eq!(header.compiled_digest, compiled.digest());
+154:             assert_eq!(header.status, 0);
+155: 
+156:             let digest_hex = compiled
+157:                 .digest()
+158:                 .as_bytes()
+159:                 .iter()
+160:                 .map(|b| format!("{b:02x}"))
+161:                 .collect::<String>();
+162:             let expected = format!(
+163:                 "submitted run {}\n  digest:     {}\n  steps:      {}\n  durability: {}\n  status:     submitted\n",
+164:                 header.run.get(),
+165:                 digest_hex,
+166:                 compiled.node_count(),
+167:                 mode
+168:             );
+169:             assert_eq!(String::from_utf8_lossy(&out.stdout), expected);
+170: 
+171:             let retained = journal
+172:                 .run_inputs(header.run)?
+173:                 .ok_or("missing retained inputs")?;
+174:             assert_eq!(retained.workflow_digest(), compiled.digest());
+175:             let expected_values: Box<[SlotValue]> = if input.is_empty() {
+176:                 Box::new([])
+177:             } else {
+178:                 postcard::from_bytes(input)?
+179:             };
+180:             let expected_slots = compiled
+181:                 .input_slots()
+182:                 .iter()
+183:                 .zip(expected_values.iter())
+184:                 .map(|(slot, value)| (slot.slot, *value))
+185:                 .collect::<Vec<_>>();
+186:             assert_eq!(retained.inputs(), expected_slots);
+187:             let record = journal
+188:                 .compiled_ir(retained.artifact_digest())?
+189:                 .ok_or("missing artifact")?;
+190:             let artifact: vb_storage::AcceptedArtifact = postcard::from_bytes(&record.ir)?;
+191:             assert_eq!(artifact.digest, retained.artifact_digest());
+192:             assert_eq!(artifact.source_digest, compiled.digest());
+193:             assert_eq!(
+194:                 retained.source_digest(),
+195:                 vb_core::WorkflowDigest::from_bytes(blake3::hash(yaml.as_bytes()).into())
+196:             );
+197:             assert_eq!(
+198:                 journal
+199:                     .workflow_source(retained.source_digest())?
+200:                     .ok_or("missing source")?

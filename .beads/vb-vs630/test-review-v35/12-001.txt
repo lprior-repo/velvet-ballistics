@@ -1,0 +1,100 @@
+1: use std::fs;
+2: use std::io::Write;
+3: use std::path::Path;
+4: use std::process::Command;
+5: use tempfile::tempdir;
+6: use vb_core::SlotValue;
+7: 
+8: const NO_PORTS_YAML: &str = "version: velvet-ballistics/v1\nname: submit_boundary\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+9: 
+10: const NUMBER_PORT_YAML: &str = "version: velvet-ballistics/v1\nname: submit_number\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+11: 
+12: fn subprocess(wf: &str, inp: &str, db: &str, mode: &str) -> std::io::Result<std::process::Output> {
+13:     Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+14:         .args([
+15:             "submit",
+16:             wf,
+17:             "--input-bin",
+18:             inp,
+19:             "--db",
+20:             db,
+21:             "--durability",
+22:             mode,
+23:         ])
+24:         .output()
+25: }
+26: 
+27: fn write_file(dir: &tempfile::TempDir, name: &str, data: &[u8]) -> std::io::Result<String> {
+28:     let path = dir.path().join(name);
+29:     let mut f = fs::File::create(&path)?;
+30:     f.write_all(data)?;
+31:     Ok(path.to_string_lossy().to_string())
+32: }
+33: 
+34: fn db_path(dir: &tempfile::TempDir) -> String {
+35:     dir.path().join("db").to_string_lossy().to_string()
+36: }
+37: 
+38: #[test]
+39: fn malformed_decode_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+40:     for mode in ["none", "journaled", "strict"] {
+41:         let dir = tempdir()?;
+42:         let wf = write_file(&dir, "wf.yaml", NO_PORTS_YAML.as_bytes())?;
+43:         let inp = write_file(&dir, "in.bin", &[255])?;
+44:         let db = db_path(&dir);
+45:         let out = subprocess(&wf, &inp, &db, mode)?;
+46:         assert_eq!(out.status.code(), Some(2));
+47:         assert_eq!(out.stdout, b"");
+48:         assert_eq!(
+49:             out.stderr,
+50:             b"INPUT_MAPPING_FAILED: input-bin decode failed\n"
+51:         );
+52:         assert!(!Path::new(&db).try_exists()?);
+53:     }
+54:     Ok(())
+55: }
+56: 
+57: #[test]
+58: fn encoded_empty_plus_garbage_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+59:     for mode in ["none", "journaled", "strict"] {
+60:         let dir = tempdir()?;
+61:         let wf = write_file(&dir, "wf.yaml", NO_PORTS_YAML.as_bytes())?;
+62:         let inp = write_file(&dir, "in.bin", &[0, 255])?;
+63:         let db = db_path(&dir);
+64:         let out = subprocess(&wf, &inp, &db, mode)?;
+65:         assert_eq!(out.status.code(), Some(2));
+66:         assert_eq!(out.stdout, b"");
+67:         assert_eq!(
+68:             out.stderr,
+69:             b"INPUT_MAPPING_FAILED: input-bin decode failed\n"
+70:         );
+71:         assert!(!Path::new(&db).try_exists()?);
+72:     }
+73:     Ok(())
+74: }
+75: 
+76: #[test]
+77: fn excess_slots_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+78:     let encoded = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(7)]))?;
+79:     for mode in ["none", "journaled", "strict"] {
+80:         let dir = tempdir()?;
+81:         let wf = write_file(&dir, "wf.yaml", NO_PORTS_YAML.as_bytes())?;
+82:         let inp = write_file(&dir, "in.bin", &encoded)?;
+83:         let db = db_path(&dir);
+84:         let out = subprocess(&wf, &inp, &db, mode)?;
+85:         assert_eq!(out.status.code(), Some(2));
+86:         assert_eq!(out.stdout, b"");
+87:         assert_eq!(
+88:             out.stderr,
+89:             b"INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count\n"
+90:         );
+91:         assert!(!Path::new(&db).try_exists()?);
+92:     }
+93:     Ok(())
+94: }
+95: 
+96: #[test]
+97: fn bool_kind_mismatch_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+98:     let compiled = vb_compile::compile_workflow(NUMBER_PORT_YAML.as_bytes())?;
+99:     let slot = compiled.input_slots().first().ok_or("no input slot")?;
+100:     let encoded = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::Bool(true)]))?;

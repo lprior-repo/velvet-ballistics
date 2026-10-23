@@ -1,0 +1,48 @@
+101:                         .find(|event| {
+102:                             matches!(event, vb_storage::JournalEvent::RunAdmission { .. })
+103:                         })
+104:                         .ok_or("missing admission")?;
+105:                     retained.validate_admission(admission)?;
+106:                 }
+107:                 assert_eq!(
+108:                     execute_retained(&journal, run)?,
+109:                     vb_core::engine::EngineSignal::Finished(SlotValue::I64(value), Taint::Clean)
+110:                 );
+111:             }
+112:         }
+113:     }
+114:     Ok(())
+115: }
+116: 
+117: #[test]
+118: fn dangling_arena_input_is_rejected_before_creating_database() -> TestResult {
+119:     let yaml = INPUT_FINISH.replace("count: number", "count: list<number>");
+120:     for mode in ["none", "journaled", "strict"] {
+121:         let directory = tempfile::tempdir()?;
+122:         let workflow = directory.path().join("workflow.yaml");
+123:         let input = directory.path().join("input.bin");
+124:         let db = directory.path().join("journal");
+125:         fs::write(&workflow, &yaml)?;
+126:         fs::write(
+127:             &input,
+128:             postcard::to_allocvec(&vec![SlotValue::List(vb_core::ListId::new(0))])?,
+129:         )?;
+130:         let result = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+131:             .arg("submit")
+132:             .arg(workflow)
+133:             .arg("--input-bin")
+134:             .arg(input)
+135:             .arg("--db")
+136:             .arg(&db)
+137:             .args(["--durability", mode])
+138:             .output()?;
+139:         assert_eq!(result.status.code(), Some(2));
+140:         assert!(result.stdout.is_empty());
+141:         assert_eq!(
+142:             String::from_utf8_lossy(&result.stderr),
+143:             "runtime input schema mismatch\n"
+144:         );
+145:         assert!(!db.try_exists()?);
+146:     }
+147:     Ok(())
+148: }

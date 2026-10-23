@@ -1,0 +1,100 @@
+1: //! Behavioral tests for CLI run submission artifact issuance.
+2: //! Verifies counter increment, accepted_at_seq stamping, digest rebinding,
+3: //! policy durability, event sequencing, and mixed submission ordering.
+4: 
+5: use super::compute_input_digest;
+6: use super::issuance_test_support::*;
+7: use crate::admission;
+8: use vb_core::{RuntimePolicy, SlotIdx, SlotValue};
+9: 
+10: /// All three CLI policies stamp accepted_at_seq=1 and advance the counter.
+11: #[test]
+12: fn cli_strict_submits_artifact_sequence_one() -> TestResult {
+13:     let (_dir, journal) = open_test_journal()?;
+14:     let submission = make_submission(RuntimePolicy::Strict, 42)?;
+15:     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
+16:     assert_eq!(read_counter(&journal)?, Some(1));
+17:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(100), 1)?;
+18:     Ok(())
+19: }
+20: 
+21: #[test]
+22: fn cli_journaled_submits_artifact_sequence_one() -> TestResult {
+23:     let (_dir, journal) = open_test_journal()?;
+24:     let submission = make_submission(RuntimePolicy::Journaled, 42)?;
+25:     journal.commit_run_submission(&submission, RuntimePolicy::Journaled)?;
+26:     assert_eq!(read_counter(&journal)?, Some(1));
+27:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(100), 1)?;
+28:     Ok(())
+29: }
+30: 
+31: #[test]
+32: fn cli_relaxed_submits_artifact_sequence_one() -> TestResult {
+33:     let (_dir, journal) = open_test_journal()?;
+34:     let submission = make_submission(RuntimePolicy::Relaxed, 42)?;
+35:     journal.commit_run_submission(&submission, RuntimePolicy::Relaxed)?;
+36:     assert_eq!(read_counter(&journal)?, Some(1));
+37:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(100), 1)?;
+38:     Ok(())
+39: }
+40: 
+41: /// Stamped artifact digest matches retained inputs and RunAdmission event.
+42: #[test]
+43: fn cli_stamped_digest_matches_retained_and_admission_event() -> TestResult {
+44:     let (_dir, journal) = open_test_journal()?;
+45:     let submission = make_submission(RuntimePolicy::Journaled, 73)?;
+46:     journal.commit_run_submission(&submission, RuntimePolicy::Journaled)?;
+47: 
+48:     let inputs = journal
+49:         .run_inputs(vb_core::RunId::new(100))?
+50:         .ok_or("run inputs not found")?;
+51:     let events = journal.events_for_run(vb_core::RunId::new(100))?;
+52:     assert_eq!(events.len(), 2);
+53: 
+54:     let admission_event = events
+55:         .iter()
+56:         .find(|e| matches!(e, crate::JournalEvent::RunAdmission { .. }));
+57:     let run_accepted = events
+58:         .iter()
+59:         .find(|e| matches!(e, crate::JournalEvent::RunAccepted { .. }));
+60:     assert!(run_accepted.is_some(), "expected RunAccepted event");
+61:     assert!(admission_event.is_some(), "expected RunAdmission event");
+62: 
+63:     if let Some(crate::JournalEvent::RunAdmission {
+64:         artifact_digest, ..
+65:     }) = admission_event
+66:     {
+67:         assert_eq!(*artifact_digest, inputs.artifact_digest());
+68:     }
+69:     Ok(())
+70: }
+71: 
+72: /// Input digest, typed values, source, workflow, and header remain unchanged.
+73: #[test]
+74: fn cli_submission_preserves_input_identity() -> TestResult {
+75:     let (_dir, journal) = open_test_journal()?;
+76:     let submission = make_submission(RuntimePolicy::Journaled, 88)?;
+77:     journal.commit_run_submission(&submission, RuntimePolicy::Journaled)?;
+78: 
+79:     let inputs = journal
+80:         .run_inputs(vb_core::RunId::new(100))?
+81:         .ok_or("run inputs not found")?;
+82: 
+83:     // Compute expected input digest independently
+84:     let expected_input_digest = compute_input_digest(&[(SlotIdx::new(0), SlotValue::I64(88))])?;
+85:     assert_eq!(inputs.input_digest(), expected_input_digest);
+86:     assert_eq!(inputs.inputs(), &[(SlotIdx::new(0), SlotValue::I64(88))]);
+87: 
+88:     // Workflow digest comes from the workflow itself
+89:     let expected_workflow_digest = super::tests::workflow()?.digest();
+90:     assert_eq!(inputs.workflow_digest(), expected_workflow_digest);
+91: 
+92:     // Source digest is computed from the fixture source bytes
+93:     let expected_source_digest =
+94:         vb_core::WorkflowDigest::from_bytes(blake3::hash(b"cli source fixture").into());
+95:     assert_eq!(inputs.source_digest(), expected_source_digest);
+96: 
+97:     let source = journal
+98:         .workflow_source(expected_source_digest)?
+99:         .ok_or("source not found")?;
+100:     assert_eq!(source.source, b"cli source fixture");

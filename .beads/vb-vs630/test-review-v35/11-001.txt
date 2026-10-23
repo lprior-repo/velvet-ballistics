@@ -1,0 +1,100 @@
+1: use std::{fs, path::Path, process::Command};
+2: use vb_core::{RunId, SlotValue, Taint};
+3: use vb_storage::{AcceptedArtifact, FjallJournal};
+4: 
+5: const INPUT_FINISH: &str = "version: velvet-ballistics/v1\nname: retained_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: done\n    finish:\n      result: $input.count\n";
+6: 
+7: type TestResult = Result<(), Box<dyn std::error::Error>>;
+8: 
+9: fn submit(
+10:     yaml: &Path,
+11:     input: &Path,
+12:     db: &Path,
+13:     mode: &str,
+14: ) -> Result<RunId, Box<dyn std::error::Error>> {
+15:     let result = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+16:         .arg("submit")
+17:         .arg(yaml)
+18:         .arg("--input-bin")
+19:         .arg(input)
+20:         .arg("--db")
+21:         .arg(db)
+22:         .args(["--durability", mode, "--emit", "yaml"])
+23:         .output()?;
+24:     assert_eq!(
+25:         result.status.code(),
+26:         Some(0),
+27:         "{}",
+28:         String::from_utf8_lossy(&result.stderr)
+29:     );
+30:     assert!(result.stderr.is_empty());
+31:     let receipt: serde_json::Value = serde_saphyr::from_str(&String::from_utf8(result.stdout)?)?;
+32:     assert_eq!(
+33:         receipt.get("status").and_then(serde_json::Value::as_str),
+34:         Some("submitted")
+35:     );
+36:     Ok(RunId::new(
+37:         receipt
+38:             .get("run_id")
+39:             .and_then(serde_json::Value::as_u64)
+40:             .ok_or("missing run")?,
+41:     ))
+42: }
+43: 
+44: fn execute_retained(
+45:     journal: &FjallJournal,
+46:     run: RunId,
+47: ) -> Result<vb_core::engine::EngineSignal, Box<dyn std::error::Error>> {
+48:     let retained = journal.run_inputs(run)?.ok_or("missing retained inputs")?;
+49:     let artifact_record = journal
+50:         .compiled_ir(retained.artifact_digest())?
+51:         .ok_or("missing artifact")?;
+52:     let artifact: AcceptedArtifact = postcard::from_bytes(&artifact_record.ir)?;
+53:     assert_eq!(
+54:         vb_storage::admission::accepted_artifact_digest(&artifact)?,
+55:         retained.artifact_digest()
+56:     );
+57:     let compiled = vb_storage::admission::verify_accepted_artifact(&artifact)?;
+58:     retained.validate_workflow(&compiled)?;
+59:     let mut frame = vb_core::engine::new_run_frame(run, &compiled)?;
+60:     vb_runtime::shard::helpers::seed_input_slots(&mut frame, retained.inputs(), &compiled)?;
+61:     Ok(vb_core::engine::run_until_blocked(
+62:         &compiled,
+63:         &mut frame,
+64:         vb_core::engine::StepBudget::MAX,
+65:         &mut vb_core::value_store::ValueStore::new(),
+66:     )?)
+67: }
+68: 
+69: #[test]
+70: fn submitted_values_survive_process_exit_and_reopen_and_drive_numeric_ir() -> TestResult {
+71:     for mode in ["none", "journaled", "strict"] {
+72:         for value in [i64::MIN, -7, 0, 41, i64::MAX] {
+73:             let directory = tempfile::tempdir()?;
+74:             let yaml = directory.path().join("workflow.yaml");
+75:             let input = directory.path().join("input.bin");
+76:             let db = directory.path().join("journal");
+77:             fs::write(&yaml, INPUT_FINISH)?;
+78:             fs::write(&input, postcard::to_allocvec(&vec![SlotValue::I64(value)])?)?;
+79:             let run = submit(&yaml, &input, &db, mode)?;
+80:             fs::remove_file(&yaml)?;
+81:             fs::remove_file(&input)?;
+82:             for _reopen in 0..2 {
+83:                 let journal = FjallJournal::open(&db, None)?;
+84:                 let retained = journal
+85:                     .run_inputs(run)?
+86:                     .ok_or("missing inputs after reopen")?;
+87:                 assert_eq!(
+88:                     retained
+89:                         .inputs()
+90:                         .iter()
+91:                         .map(|(_, value)| *value)
+92:                         .collect::<Vec<_>>(),
+93:                     [SlotValue::I64(value)]
+94:                 );
+95:                 let events = journal.events_for_run(run)?;
+96:                 if mode == "none" {
+97:                     assert!(events.is_empty());
+98:                 } else {
+99:                     let admission = events
+100:                         .iter()
