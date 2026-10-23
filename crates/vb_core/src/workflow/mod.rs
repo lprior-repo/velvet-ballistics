@@ -1836,7 +1836,7 @@ fn validate_loop_done_only(done: StepIdx, ci: usize, cid: StepIdx) -> Result<(),
 /// RepeatCheck.next must target the owning RepeatStart's body step, and the
 /// check must match the owner's attempt slot and done target.
 mod repeat_check_validate {
-    use super::{CompiledNode, CompiledNodeKind, StepIdx, SlotIdx, WorkflowParts, WorkflowError};
+    use super::{CompiledNode, CompiledNodeKind, StepIdx, WorkflowParts, WorkflowError};
 
     /// Finds the nearest active enclosing structured start.
     /// Active means the structured start's done/join target extends beyond check_index.
@@ -1860,7 +1860,7 @@ mod repeat_check_validate {
         None
     }
 
-    pub fn validate(
+    pub(super) fn validate(
         parts: &WorkflowParts,
         check_index: usize,
         check: &CompiledNode,
