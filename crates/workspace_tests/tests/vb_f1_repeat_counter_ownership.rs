@@ -791,36 +791,67 @@ fn malformed_ir_loop_rearm_region_crossing_edge()
         }
     }
 
-    let modified = CompiledWorkflow::try_from_parts(parts)
-        .map_err(|e| format!("region probe constructor: {e:?}"))?;
-
-    let mut frame = new_run_frame(RunId::new(1), &modified)?;
-    let mut store = ValueStore::new();
-    let mut evidence = EvidenceCollector::new();
-    let mut collect_states = CollectStates::new();
-    let mut budget = StepBudget::new(128);
-
-    let result = drive_deterministic_full(
-        &modified,
-        &mut frame,
-        &mut budget,
-        &mut store,
-        &[],
-        RetryPolicy::NEVER,
-        &mut evidence,
-        &mut collect_states,
-        &CapabilitySet::empty(),
-        1,
-    );
-
+    let result = CompiledWorkflow::try_from_parts(parts);
     assert!(
         matches!(
             &result,
-            Err(vb_runtime::engine::RuntimeEngineError::Core(
-                vb_core::engine::EngineError::InvalidCompiledWorkflow { reason }
-            )) if *reason == "loop rearm region crossing edge"
+            Err(vb_core::WorkflowError::BackwardEdge { from, to })
+                if *from == trailing && *to == check
         ),
-        "expected region guard, got {result:?}"
+        "expected BackwardEdge from trailing to check, got {result:?}"
+    );
+
+    Ok(())
+}
+
+/// Forward Jump targeting original next: constructor Ok.
+#[test]
+fn test_jump_forward_target_ok() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let workflow = compile_with_trailing_set()?;
+    let trailing = find_trailing_set_77(&workflow).ok_or("trailing set not found")?;
+
+    let mut parts = workflow.to_parts();
+    let writer_node = parts
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == trailing)
+        .ok_or("missing writer node")?;
+    let target = writer_node.next.ok_or("missing forward target")?;
+    writer_node.kind = CompiledNodeKind::Jump { target };
+    writer_node.output = None;
+
+    let result = CompiledWorkflow::try_from_parts(parts);
+    assert!(
+        result.is_ok(),
+        "expected Ok for forward Jump, got {result:?}"
+    );
+
+    Ok(())
+}
+
+/// Self Jump: exact BackwardEdge from trailing to trailing.
+#[test]
+fn test_jump_self_backward_edge() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let workflow = compile_with_trailing_set()?;
+    let trailing = find_trailing_set_77(&workflow).ok_or("trailing set not found")?;
+
+    let mut parts = workflow.to_parts();
+    let writer_node = parts
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == trailing)
+        .ok_or("missing writer node")?;
+    writer_node.kind = CompiledNodeKind::Jump { target: trailing };
+    writer_node.output = None;
+
+    let result = CompiledWorkflow::try_from_parts(parts);
+    assert!(
+        matches!(
+            &result,
+            Err(vb_core::WorkflowError::BackwardEdge { from, to })
+                if *from == trailing && *to == trailing
+        ),
+        "expected BackwardEdge from trailing to trailing, got {result:?}"
     );
 
     Ok(())
