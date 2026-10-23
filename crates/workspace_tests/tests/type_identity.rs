@@ -33,13 +33,13 @@ fn yaml_direct_literal() -> String {
 
 fn yaml_numeric_producer(value: &str) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: num_prod\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"10\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: "result"\n"
+        "version: velvet-ballistics/v1\nname: num_prod\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"10\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: result\n"
     )
 }
 
 fn yaml_numeric_qualified(value: &str) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: num_qual\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"10\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: "result"\n"
+        "version: velvet-ballistics/v1\nname: num_qual\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"10\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: result\n"
     )
 }
 
