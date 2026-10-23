@@ -1241,8 +1241,8 @@ fn collect_start_page_size_at_limit_boundary() {
         None,
     );
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    // When page_size equals available items and reaches limit, PC advances
-    assert_eq!(run.pc(), StepIdx::new(2));
+    // collect_start routes to body for non-empty list, retaining state.
+    assert_eq!(run.pc(), StepIdx::new(1));
 }
 
 #[test]
@@ -1882,22 +1882,32 @@ fn collect_start_uses_source_as_collector_when_output_is_none_for_non_empty() ->
         signal == vb_core::EngineSignal::Continue,
         "expected Continue",
     )?;
-    // All items fit in first page (page_size=2, items=2), so collect completes immediately
+    // collect_start routes to body for non-empty list, retaining state.
+    ensure(
+        run.pc() == body,
+        format!("expected pc={body:?}, got {:?}", run.pc()),
+    )?;
+    // Before collect_next, the source slot should hold the first page (a list of 2 items)
+    assert_slot_list_items(
+        &run,
+        &store,
+        source,
+        &[SlotValue::I64(1), SlotValue::I64(2)],
+    );
+    // collect_next exhausts remaining items and routes to done.
+    let next_result = collect_next(&mut run, &mut store, &mut states, source, body, done);
+    ensure(
+        next_result == Ok(vb_core::EngineSignal::Continue),
+        "collect_next should succeed",
+    )?;
     ensure(
         run.pc() == done,
         format!("expected pc={done:?}, got {:?}", run.pc()),
     )?;
-    // The source slot should now hold the first page (a list of 2 items)
-    match *run.read_slot(source).map_err(|e| format!("{e:?}"))? {
-        SlotValue::List(id) => {
-            let items = store.list(id).map_err(|e| format!("{e:?}"))?;
-            ensure(
-                items.len() == 2,
-                format!("expected 2 items in page, got {}", items.len()),
-            )
-        }
-        other => return Err(format!("expected List, got {other:?}")),
-    }
+    // After collect_next, the source slot should be empty.
+    assert_slot_list_items(&run, &store, source, &[]);
+    assert_eq!(states.capture_state(run.run_id(), source), None);
+    Ok(())
 }
 
 #[test]
@@ -2682,14 +2692,14 @@ fn collect_next_cursor_at_item_count_goes_to_done() -> Result<(), String> {
     )
     .map_err(|e| format!("{e:?}"))?;
 
-    // collect_start already completed (cursor >= item_count), state is removed.
-    // Calling collect_next after completion returns an error because state is missing.
-    assert_eq!(
-        collect_next(&mut run, &mut store, &mut states, collector, body, done),
-        Err(EngineError::InvalidCompiledWorkflow {
-            reason: "collect pagination state missing",
-        })
-    );
+    // collect_start routes to body for non-empty list, retaining state.
+    assert_eq!(run.pc(), body);
+    // collect_next sees cursor at item_count and routes to done.
+    let next_result = collect_next(&mut run, &mut store, &mut states, collector, body, done);
+    assert_eq!(next_result, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), done);
+    assert_eq!(states.capture_state(run.run_id(), collector), None);
+    assert_slot_list_items(&run, &store, collector, &[]);
     Ok(())
 }
 
@@ -2793,9 +2803,22 @@ fn collect_repeated_start_next_cycles() -> Result<(), String> {
     )
     .map_err(|e| format!("start 1: {e:?}"))?;
 
-    // collect_start completed immediately (3 items, page_size=3), state removed.
-    // PC should already be at done; no need to call collect_next.
-    ensure(run.pc() == done, "first cycle should reach done")?;
+    // collect_start routes to body for non-empty list, retaining state.
+    ensure(run.pc() == body, "first cycle should start at body")?;
+    // collect_next exhausts remaining items and routes to done.
+    let next_result = collect_next(&mut run, &mut store, &mut states, collector, body, done);
+    ensure(
+        next_result == Ok(vb_core::EngineSignal::Continue),
+        "first cycle collect_next should succeed",
+    )?;
+    ensure(
+        run.pc() == done,
+        "first cycle should reach done after collect_next",
+    )?;
+    ensure(
+        states.capture_state(run.run_id(), collector).is_none(),
+        "state should be removed after exhaustion",
+    )?;
 
     list_in_slot(
         &mut run,
@@ -3080,14 +3103,14 @@ fn collect_next_writes_empty_page_and_removes_state_after_last_item() -> Result<
     .map_err(|e| format!("collect_start: {e:?}"))?;
     let _first_page = slot_list_id(&run, collector)?;
 
-    // collect_start already completed (cursor >= item_count), so state is removed.
-    // Calling collect_next after completion returns an error because state is missing.
-    assert_eq!(
-        collect_next(&mut run, &mut store, &mut states, collector, body, done),
-        Err(EngineError::InvalidCompiledWorkflow {
-            reason: "collect pagination state missing",
-        })
-    );
+    // collect_start routes to body for non-empty list, retaining state.
+    assert_eq!(run.pc(), body);
+    // collect_next sees cursor at item_count and routes to done.
+    let next_result = collect_next(&mut run, &mut store, &mut states, collector, body, done);
+    assert_eq!(next_result, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), done);
+    assert_eq!(states.capture_state(run.run_id(), collector), None);
+    assert_slot_list_items(&run, &store, collector, &[]);
     Ok(())
 }
 
@@ -3174,17 +3197,36 @@ fn qi37_start_collect_with_items(
 
 #[test]
 fn collect_start_exact_page_limit_finishes_without_active_pagination_state() -> Result<(), String> {
-    let (run, store, states, _source, collector, _body, done) =
+    let (mut run, mut store, mut states, _source, collector, _body, done) =
         qi37_start_collect_with_items(vec![SlotValue::I64(10), SlotValue::I64(20)], 2)?;
 
-    assert_eq!(run.pc(), done);
+    // collect_start routes to body for non-empty list, retaining state.
+    assert_eq!(run.pc(), StepIdx::new(1));
     assert_slot_list_items(
         &run,
         &store,
         collector,
         &[SlotValue::I64(10), SlotValue::I64(20)],
     );
+    // State is retained until collect_next exhausts.
+    let retained = states
+        .capture_state(run.run_id(), collector)
+        .ok_or("missing retained state")?;
+    assert_eq!(retained.cursor, 2);
+    assert_eq!(retained.item_count, 2);
+    // collect_next sees cursor at item_count and routes to done.
+    let next_result = collect_next(
+        &mut run,
+        &mut store,
+        &mut states,
+        collector,
+        StepIdx::new(1),
+        done,
+    );
+    assert_eq!(next_result, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), done);
     assert_eq!(states.capture_state(run.run_id(), collector), None);
+    assert_slot_list_items(&run, &store, collector, &[]);
     Ok(())
 }
 

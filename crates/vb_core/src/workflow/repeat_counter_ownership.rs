@@ -16,19 +16,19 @@ fn identify_counter_owners(
 ) -> Result<Vec<(SlotIdx, StepIdx)>, WorkflowError> {
     let mut owners = Vec::new();
     for node in parts.nodes.iter() {
-        if let CompiledNodeKind::RepeatStart { .. } = node.kind {
-            if let Some(slot) = node.output {
-                for (existing_slot, existing_owner) in &owners {
-                    if *existing_slot == slot {
-                        return Err(WorkflowError::RepeatCounterForeignWrite {
-                            owner: *existing_owner,
-                            writer: node.id,
-                            slot,
-                        });
-                    }
+        if let CompiledNodeKind::RepeatStart { .. } = node.kind
+            && let Some(slot) = node.output
+        {
+            for (existing_slot, existing_owner) in &owners {
+                if *existing_slot == slot {
+                    return Err(WorkflowError::RepeatCounterForeignWrite {
+                        owner: *existing_owner,
+                        writer: node.id,
+                        slot,
+                    });
                 }
-                owners.push((slot, node.id));
             }
+            owners.push((slot, node.id));
         }
     }
     Ok(owners)
