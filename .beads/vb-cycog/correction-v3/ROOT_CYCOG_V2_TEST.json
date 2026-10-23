@@ -1,0 +1,31 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-cycog-impl-local3090-v1",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "cargo",
+    "nextest",
+    "run",
+    "-p",
+    "velvet-ballistics",
+    "--all-features",
+    "--locked",
+    "--test",
+    "cli_submit_retained_inputs",
+    "--test",
+    "cli_submit_input_boundary",
+    "--test",
+    "cli_finish_input_execution",
+    "--test",
+    "cli_verify_budget_profiles"
+  ],
+  "exit_code": 0,
+  "seconds": 20.349,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_CYCOG_V2_TEST"
+}
