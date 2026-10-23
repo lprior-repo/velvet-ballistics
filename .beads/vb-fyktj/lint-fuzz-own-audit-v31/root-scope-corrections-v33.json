@@ -1,0 +1,26 @@
+{
+  "status": "three OWN deltas source-present or superseded; inherited branch closure NOT established",
+  "base": "07b363ed319863cddacb58653bca9433ff2c76f6",
+  "logical_behavior_rows": 9,
+  "physical_diff_hunks": 8,
+  "corrections": [
+    "Raw report No inherited_unresolved statement is WRONG; inherited_unresolved remains TRUE for all three families, matching raw JSON.",
+    "Raw9 hunks are9 logical behavior rows (3lint+3YAML+3corpusdict), not9 physical diff hunks; actual oldpatches3+3+2=8.",
+    "Dictionary argv is superseded by array/-dict= syntax; do not claim identical actual behavior to old split -dict path syntax. Intended dictionary support preserved.",
+    "Eight dictionary filename list in raw report is not used as authoritative matching coverage; current93 target/5matching context remains earlier evidence, no new fuzz run in this audit.",
+    "Fuzz MAX100000 source-presence and CLIhint65536 source-presence do not establish all compiler bounds agree; no full fuzz or proof closure."
+  ],
+  "no_source_changes": true,
+  "source_sha256": {
+    "crates/vb_ipc/src/frame_types.rs": "d8231b69c173cb6a125f4be3828758c9ada61d424b0f771bd81eda45df50f784",
+    "crates/workspace_tests/src/test_util/fixture.rs": "48eaa54a9eb89a042d4d82f98b156b65122e0ae393d42ebc847db759291c7357",
+    "crates/workspace_tests/src/test_util/seed.rs": "1c6ff536f38c4bcedde112edecfb41f3d46486ed266bbb390fd660bc6db51434"
+  },
+  "no_claim": [
+    "entire branch integrated",
+    "full v1",
+    "fresh fuzz execution",
+    "benchmark",
+    "formal proof"
+  ]
+}

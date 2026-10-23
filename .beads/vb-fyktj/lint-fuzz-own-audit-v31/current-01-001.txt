@@ -1,0 +1,100 @@
+.moon/tasks/all.yml:1: ORIGINAL LINE 511:   mutants-smoke:
+.moon/tasks/all.yml:2: ORIGINAL LINE 512:     script: |
+.moon/tasks/all.yml:3: ORIGINAL LINE 513:       set -euo pipefail
+.moon/tasks/all.yml:4: ORIGINAL LINE 514:       mkdir -p target/moon-locks
+.moon/tasks/all.yml:5: ORIGINAL LINE 515:       mkdir -p target/tmp
+.moon/tasks/all.yml:6: ORIGINAL LINE 516:       # Smoke policy: prove cargo-mutants integration on a bounded, deterministic
+.moon/tasks/all.yml:7: ORIGINAL LINE 517:       # vb_core slice without mutating the source tree in place. Full mutation-score
+.moon/tasks/all.yml:8: ORIGINAL LINE 518:       # debt is tracked separately.
+.moon/tasks/all.yml:9: ORIGINAL LINE 519:       flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= timeout 10m rustup run nightly-2026-04-28 cargo mutants \
+.moon/tasks/all.yml:10: ORIGINAL LINE 520:         --package vb_core \
+.moon/tasks/all.yml:11: ORIGINAL LINE 521:         --file crates/vb_core/src/diagnostic.rs \
+.moon/tasks/all.yml:12: ORIGINAL LINE 522:         --re 'is_supported_code -> bool with false' \
+.moon/tasks/all.yml:13: ORIGINAL LINE 523:         --baseline skip \
+.moon/tasks/all.yml:14: ORIGINAL LINE 524:         --jobs 1 \
+.moon/tasks/all.yml:15: ORIGINAL LINE 525:         --gitignore true \
+.moon/tasks/all.yml:16: ORIGINAL LINE 526:         --no-shuffle \
+.moon/tasks/all.yml:17: ORIGINAL LINE 527:         --no-times \
+.moon/tasks/all.yml:18: ORIGINAL LINE 528:         --timeout 60 \
+.moon/tasks/all.yml:19: ORIGINAL LINE 529:         --minimum-test-timeout 2 \
+.moon/tasks/all.yml:20: ORIGINAL LINE 530:         --output target/mutants-smoke \
+.moon/tasks/all.yml:21: ORIGINAL LINE 531:         -- --lib diagnostic::
+.moon/tasks/all.yml:22: ORIGINAL LINE 532:     deps:
+.moon/tasks/all.yml:23: ORIGINAL LINE 533:       - 'check'
+.moon/tasks/all.yml:24: ORIGINAL LINE 534:     inputs:
+.moon/tasks/all.yml:25: ORIGINAL LINE 535:       - 'Cargo.toml'
+.moon/tasks/all.yml:26: ORIGINAL LINE 536:       - 'Cargo.lock'
+.moon/tasks/all.yml:27: ORIGINAL LINE 537:       - 'rust-toolchain.toml'
+.moon/tasks/all.yml:28: ORIGINAL LINE 538:       - 'crates/vb_core/Cargo.toml'
+.moon/tasks/all.yml:29: ORIGINAL LINE 539:       - 'crates/vb_core/src/diagnostic.rs'
+.moon/tasks/all.yml:30: ORIGINAL LINE 540:       - '.moon/tasks/all.yml'
+.moon/tasks/all.yml:31: ORIGINAL LINE 541:     options:
+.moon/tasks/all.yml:32: ORIGINAL LINE 542:       cache: false
+.moon/tasks/all.yml:33: ORIGINAL LINE 543:       runInCI: true
+.moon/tasks/all.yml:34: ORIGINAL LINE 544: 
+.moon/tasks/all.yml:35: ORIGINAL LINE 545:   fuzz-smoke:
+.moon/tasks/all.yml:36: ORIGINAL LINE 546:     script: |
+.moon/tasks/all.yml:37: ORIGINAL LINE 547:       set -euo pipefail
+.moon/tasks/all.yml:38: ORIGINAL LINE 548:       export PATH="/cache/cargo-shared/bin:${PATH}"
+.moon/tasks/all.yml:39: ORIGINAL LINE 549:       mkdir -p target/moon-locks
+.moon/tasks/all.yml:40: ORIGINAL LINE 550:       mkdir -p target/fuzz-smoke
+.moon/tasks/all.yml:41: ORIGINAL LINE 551:       if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu --target-dir "$PWD/target/fuzz-asan/build" >target/fuzz-smoke/build.log 2>target/fuzz-smoke/build.err; then
+.moon/tasks/all.yml:42: ORIGINAL LINE 552:         cat target/fuzz-smoke/build.log
+.moon/tasks/all.yml:43: ORIGINAL LINE 553:         cat target/fuzz-smoke/build.err
+.moon/tasks/all.yml:44: ORIGINAL LINE 554:         exit 1
+.moon/tasks/all.yml:45: ORIGINAL LINE 555:       fi
+.moon/tasks/all.yml:46: ORIGINAL LINE 556:       mapfile -t fuzz_targets < <(cargo fuzz list)
+.moon/tasks/all.yml:47: ORIGINAL LINE 557:       if [ "${#fuzz_targets[@]}" -eq 0 ]; then
+.moon/tasks/all.yml:48: ORIGINAL LINE 558:         echo "cargo fuzz list returned no targets" >&2
+.moon/tasks/all.yml:49: ORIGINAL LINE 559:         exit 1
+.moon/tasks/all.yml:50: ORIGINAL LINE 560:       fi
+.moon/tasks/all.yml:51: ORIGINAL LINE 561:       bin_dir="target/fuzz-asan/build/x86_64-unknown-linux-gnu/release"
+.moon/tasks/all.yml:52: ORIGINAL LINE 562:       for fuzz_target in "${fuzz_targets[@]}"; do
+.moon/tasks/all.yml:53: ORIGINAL LINE 563:         bin="${bin_dir}/${fuzz_target}"
+.moon/tasks/all.yml:54: ORIGINAL LINE 564:         {
+.moon/tasks/all.yml:55: ORIGINAL LINE 565:           echo "=== compile evidence: ${fuzz_target} ==="
+.moon/tasks/all.yml:56: ORIGINAL LINE 566:           if [ -x "${bin}" ]; then
+.moon/tasks/all.yml:57: ORIGINAL LINE 567:             ls -la "${bin}"
+.moon/tasks/all.yml:58: ORIGINAL LINE 568:             echo "OK: binary present"
+.moon/tasks/all.yml:59: ORIGINAL LINE 569:           else
+.moon/tasks/all.yml:60: ORIGINAL LINE 570:             echo "MISSING: ${bin}"
+.moon/tasks/all.yml:61: ORIGINAL LINE 571:             exit 1
+.moon/tasks/all.yml:62: ORIGINAL LINE 572:           fi
+.moon/tasks/all.yml:63: ORIGINAL LINE 573:         } >"target/fuzz-smoke/${fuzz_target}.compile.log" 2>&1
+.moon/tasks/all.yml:64: ORIGINAL LINE 574:         corpus="target/fuzz-smoke/corpus/${fuzz_target}"
+.moon/tasks/all.yml:65: ORIGINAL LINE 575:         artifacts="target/fuzz-smoke/artifacts/${fuzz_target}"
+.moon/tasks/all.yml:66: ORIGINAL LINE 576:         rm -rf "${corpus}" "${artifacts}"
+.moon/tasks/all.yml:67: ORIGINAL LINE 577:         mkdir -p "${corpus}" "${artifacts}"
+.moon/tasks/all.yml:68: ORIGINAL LINE 578:         if [ -d "fuzz/corpus/${fuzz_target}" ]; then
+.moon/tasks/all.yml:69: ORIGINAL LINE 579:           cp -R "fuzz/corpus/${fuzz_target}/." "${corpus}/"
+.moon/tasks/all.yml:70: ORIGINAL LINE 580:         fi
+.moon/tasks/all.yml:71: ORIGINAL LINE 581:         fuzz_args=(-artifact_prefix="${PWD}/${artifacts}/" -max_total_time=1)
+.moon/tasks/all.yml:72: ORIGINAL LINE 582:         dict_file="fuzz/fuzz_targets/${fuzz_target}.dict"
+.moon/tasks/all.yml:73: ORIGINAL LINE 583:         if [ -f "${dict_file}" ]; then
+.moon/tasks/all.yml:74: ORIGINAL LINE 584:           fuzz_args+=(-dict="${PWD}/${dict_file}")
+.moon/tasks/all.yml:75: ORIGINAL LINE 585:           echo "DICTIONARY: ${dict_file}"
+.moon/tasks/all.yml:76: ORIGINAL LINE 586:         fi
+.moon/tasks/all.yml:77: ORIGINAL LINE 587:         flock --shared target/moon-locks/source-mutation.lock timeout 30s "${bin}" "${fuzz_args[@]}" "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
+.moon/tasks/all.yml:78: ORIGINAL LINE 588:       done
+.moon/tasks/all.yml:79: ORIGINAL LINE 589:     toolchains:
+.moon/tasks/all.yml:80: ORIGINAL LINE 590:       - rust
+.moon/tasks/all.yml:81: ORIGINAL LINE 591:     inputs:
+.moon/tasks/all.yml:82: ORIGINAL LINE 592:       - 'Cargo.toml'
+.moon/tasks/all.yml:83: ORIGINAL LINE 593:       - 'Cargo.lock'
+.moon/tasks/all.yml:84: ORIGINAL LINE 594:       - 'rust-toolchain.toml'
+.moon/tasks/all.yml:85: ORIGINAL LINE 595:       - 'fuzz/Cargo.toml'
+.moon/tasks/all.yml:86: ORIGINAL LINE 596:       - 'fuzz/Cargo.lock'
+.moon/tasks/all.yml:87: ORIGINAL LINE 597:       - 'fuzz/fuzz_targets.rs'
+.moon/tasks/all.yml:88: ORIGINAL LINE 598:       - 'fuzz/fuzz_targets/**/*'
+.moon/tasks/all.yml:89: ORIGINAL LINE 599:       - 'fuzz/corpus/**/*'
+.moon/tasks/all.yml:90: ORIGINAL LINE 600:       - 'fuzz/src/**/*'
+.moon/tasks/all.yml:91: ORIGINAL LINE 601:       - 'crates/vb_core/**/*'
+.moon/tasks/all.yml:92: ORIGINAL LINE 602:       - 'crates/vb_compile/**/*'
+.moon/tasks/all.yml:93: ORIGINAL LINE 603:       - 'crates/vb_ipc/**/*'
+.moon/tasks/all.yml:94: ORIGINAL LINE 604:       - 'crates/vb_storage/**/*'
+.moon/tasks/all.yml:95: ORIGINAL LINE 605:     options:
+.moon/tasks/all.yml:96: ORIGINAL LINE 606:       runInCI: true
+.moon/tasks/all.yml:97: ORIGINAL LINE 607:     outputs:
+.moon/tasks/all.yml:98: ORIGINAL LINE 608:       - 'target/fuzz-smoke/**'
+.moon/tasks/all.yml:99: ORIGINAL LINE 609: 
+.moon/tasks/all.yml:100: ORIGINAL LINE 610:   fuzz-tsan:

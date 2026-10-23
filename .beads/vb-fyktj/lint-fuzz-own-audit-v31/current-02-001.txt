@@ -1,0 +1,100 @@
+crates/vb_ipc/src/frame_types.rs:1: #![forbid(unsafe_code)]
+crates/vb_ipc/src/frame_types.rs:2: //! IPC frame types.
+crates/vb_ipc/src/frame_types.rs:3: 
+crates/vb_ipc/src/frame_types.rs:4: use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+crates/vb_ipc/src/frame_types.rs:5: use bytes::Bytes;
+crates/vb_ipc/src/frame_types.rs:6: use std::io::Cursor;
+crates/vb_ipc/src/frame_types.rs:7: 
+crates/vb_ipc/src/frame_types.rs:8: use crate::bounded::{BoundedPayload, MaxPayloadBytes};
+crates/vb_ipc/src/frame_types.rs:9: use crate::commands::IpcCommand;
+crates/vb_ipc/src/frame_types.rs:10: use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
+crates/vb_ipc/src/frame_types.rs:11: use crate::error::IpcError;
+crates/vb_ipc/src/frame_types.rs:12: 
+crates/vb_ipc/src/frame_types.rs:13: /// Fixed binary IPC frame header.
+crates/vb_ipc/src/frame_types.rs:14: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+crates/vb_ipc/src/frame_types.rs:15: pub struct IpcFrameHeader {
+crates/vb_ipc/src/frame_types.rs:16:     /// IPC command kind.
+crates/vb_ipc/src/frame_types.rs:17:     pub command: IpcCommand,
+crates/vb_ipc/src/frame_types.rs:18:     /// Command-specific flags.
+crates/vb_ipc/src/frame_types.rs:19:     pub flags: u16,
+crates/vb_ipc/src/frame_types.rs:20:     /// Correlates requests and replies.
+crates/vb_ipc/src/frame_types.rs:21:     pub correlation: u64,
+crates/vb_ipc/src/frame_types.rs:22:     /// Postcard payload byte length.
+crates/vb_ipc/src/frame_types.rs:23:     pub payload_len: u32,
+crates/vb_ipc/src/frame_types.rs:24: }
+crates/vb_ipc/src/frame_types.rs:25: 
+crates/vb_ipc/src/frame_types.rs:26: impl IpcFrameHeader {
+crates/vb_ipc/src/frame_types.rs:27:     /// Creates an IPC frame header.
+crates/vb_ipc/src/frame_types.rs:28:     #[must_use]
+crates/vb_ipc/src/frame_types.rs:29:     pub const fn new(command: IpcCommand, flags: u16, correlation: u64, payload_len: u32) -> Self {
+crates/vb_ipc/src/frame_types.rs:30:         Self {
+crates/vb_ipc/src/frame_types.rs:31:             command,
+crates/vb_ipc/src/frame_types.rs:32:             flags,
+crates/vb_ipc/src/frame_types.rs:33:             correlation,
+crates/vb_ipc/src/frame_types.rs:34:             payload_len,
+crates/vb_ipc/src/frame_types.rs:35:         }
+crates/vb_ipc/src/frame_types.rs:36:     }
+crates/vb_ipc/src/frame_types.rs:37: 
+crates/vb_ipc/src/frame_types.rs:38:     /// Encodes the header using the §21 little-endian wire layout.
+crates/vb_ipc/src/frame_types.rs:39:     pub fn encode(self) -> Result<[u8; IPC_HEADER_LEN], IpcError> {
+crates/vb_ipc/src/frame_types.rs:40:         let mut bytes = [0u8; IPC_HEADER_LEN];
+crates/vb_ipc/src/frame_types.rs:41:         let mut cursor = std::io::Cursor::new(bytes.as_mut_slice());
+crates/vb_ipc/src/frame_types.rs:42:         cursor
+crates/vb_ipc/src/frame_types.rs:43:             .write_u32::<LittleEndian>(IPC_MAGIC)
+crates/vb_ipc/src/frame_types.rs:44:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:45:         cursor
+crates/vb_ipc/src/frame_types.rs:46:             .write_u16::<LittleEndian>(IPC_VERSION)
+crates/vb_ipc/src/frame_types.rs:47:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:48:         cursor
+crates/vb_ipc/src/frame_types.rs:49:             .write_u16::<LittleEndian>(self.command.as_u16())
+crates/vb_ipc/src/frame_types.rs:50:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:51:         cursor
+crates/vb_ipc/src/frame_types.rs:52:             .write_u16::<LittleEndian>(self.flags)
+crates/vb_ipc/src/frame_types.rs:53:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:54:         cursor
+crates/vb_ipc/src/frame_types.rs:55:             .write_u16::<LittleEndian>(0_u16)
+crates/vb_ipc/src/frame_types.rs:56:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:57:         cursor
+crates/vb_ipc/src/frame_types.rs:58:             .write_u64::<LittleEndian>(self.correlation)
+crates/vb_ipc/src/frame_types.rs:59:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:60:         cursor
+crates/vb_ipc/src/frame_types.rs:61:             .write_u32::<LittleEndian>(self.payload_len)
+crates/vb_ipc/src/frame_types.rs:62:             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:63:         Ok(bytes)
+crates/vb_ipc/src/frame_types.rs:64:     }
+crates/vb_ipc/src/frame_types.rs:65: 
+crates/vb_ipc/src/frame_types.rs:66:     /// Decodes and validates a fixed IPC header before payload allocation.
+crates/vb_ipc/src/frame_types.rs:67:     pub fn decode(
+crates/vb_ipc/src/frame_types.rs:68:         bytes: &[u8; IPC_HEADER_LEN],
+crates/vb_ipc/src/frame_types.rs:69:         max_payload: MaxPayloadBytes,
+crates/vb_ipc/src/frame_types.rs:70:     ) -> Result<Self, IpcError> {
+crates/vb_ipc/src/frame_types.rs:71:         let mut cursor = Cursor::new(bytes.as_slice());
+crates/vb_ipc/src/frame_types.rs:72:         let magic = cursor
+crates/vb_ipc/src/frame_types.rs:73:             .read_u32::<LittleEndian>()
+crates/vb_ipc/src/frame_types.rs:74:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:75:         if magic != IPC_MAGIC {
+crates/vb_ipc/src/frame_types.rs:76:             return Err(IpcError::InvalidMagic { actual: magic });
+crates/vb_ipc/src/frame_types.rs:77:         }
+crates/vb_ipc/src/frame_types.rs:78: 
+crates/vb_ipc/src/frame_types.rs:79:         let version = cursor
+crates/vb_ipc/src/frame_types.rs:80:             .read_u16::<LittleEndian>()
+crates/vb_ipc/src/frame_types.rs:81:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:82:         if version != IPC_VERSION {
+crates/vb_ipc/src/frame_types.rs:83:             return Err(IpcError::UnsupportedVersion { actual: version });
+crates/vb_ipc/src/frame_types.rs:84:         }
+crates/vb_ipc/src/frame_types.rs:85: 
+crates/vb_ipc/src/frame_types.rs:86:         let command = IpcCommand::from_u16(
+crates/vb_ipc/src/frame_types.rs:87:             cursor
+crates/vb_ipc/src/frame_types.rs:88:                 .read_u16::<LittleEndian>()
+crates/vb_ipc/src/frame_types.rs:89:                 .map_err(|_| IpcError::HeaderDecodeFailed)?,
+crates/vb_ipc/src/frame_types.rs:90:         )?;
+crates/vb_ipc/src/frame_types.rs:91:         let flags = cursor
+crates/vb_ipc/src/frame_types.rs:92:             .read_u16::<LittleEndian>()
+crates/vb_ipc/src/frame_types.rs:93:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:94:         let reserved = cursor
+crates/vb_ipc/src/frame_types.rs:95:             .read_u16::<LittleEndian>()
+crates/vb_ipc/src/frame_types.rs:96:             .map_err(|_| IpcError::HeaderDecodeFailed)?;
+crates/vb_ipc/src/frame_types.rs:97:         if reserved != 0 {
+crates/vb_ipc/src/frame_types.rs:98:             return Err(IpcError::ReservedNonZero { actual: reserved });
+crates/vb_ipc/src/frame_types.rs:99:         }
+crates/vb_ipc/src/frame_types.rs:100:         let correlation = cursor

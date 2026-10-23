@@ -1,0 +1,100 @@
+.moon/tasks/all.yml:101: ORIGINAL LINE 611:     script: |
+.moon/tasks/all.yml:102: ORIGINAL LINE 612:       set -euo pipefail
+.moon/tasks/all.yml:103: ORIGINAL LINE 613:       export PATH="/cache/cargo-shared/bin:${PATH}"
+.moon/tasks/all.yml:104: ORIGINAL LINE 614:       mkdir -p target/moon-locks target/fuzz-tsan
+.moon/tasks/all.yml:105: ORIGINAL LINE 615:       if ! flock --shared target/moon-locks/source-mutation.lock \
+.moon/tasks/all.yml:106: ORIGINAL LINE 616:         rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu \
+.moon/tasks/all.yml:107: ORIGINAL LINE 617:           --sanitizer thread \
+.moon/tasks/all.yml:108: ORIGINAL LINE 618:           --target-dir "$PWD/target/fuzz-tsan/build" \
+.moon/tasks/all.yml:109: ORIGINAL LINE 619:           --build-std \
+.moon/tasks/all.yml:110: ORIGINAL LINE 620:         >target/fuzz-tsan/build.log 2>target/fuzz-tsan/build.err; then
+.moon/tasks/all.yml:111: ORIGINAL LINE 621:         cat target/fuzz-tsan/build.log
+.moon/tasks/all.yml:112: ORIGINAL LINE 622:         cat target/fuzz-tsan/build.err
+.moon/tasks/all.yml:113: ORIGINAL LINE 623:         exit 1
+.moon/tasks/all.yml:114: ORIGINAL LINE 624:       fi
+.moon/tasks/all.yml:115: ORIGINAL LINE 625:       mapfile -t fuzz_targets < <(cargo fuzz list)
+.moon/tasks/all.yml:116: ORIGINAL LINE 626:       if [ "${#fuzz_targets[@]}" -eq 0 ]; then
+.moon/tasks/all.yml:117: ORIGINAL LINE 627:         echo "cargo fuzz list returned no targets" >&2
+.moon/tasks/all.yml:118: ORIGINAL LINE 628:         exit 1
+.moon/tasks/all.yml:119: ORIGINAL LINE 629:       fi
+.moon/tasks/all.yml:120: ORIGINAL LINE 630:       for tgt in "${fuzz_targets[@]}"; do
+.moon/tasks/all.yml:121: ORIGINAL LINE 631:         bin="target/fuzz-tsan/build/x86_64-unknown-linux-gnu/release/${tgt}"
+.moon/tasks/all.yml:122: ORIGINAL LINE 632:         if [ -x "$bin" ]; then
+.moon/tasks/all.yml:123: ORIGINAL LINE 633:           echo "TSAN-OK: $tgt"
+.moon/tasks/all.yml:124: ORIGINAL LINE 634:         else
+.moon/tasks/all.yml:125: ORIGINAL LINE 635:           echo "TSAN-MISSING: $tgt"
+.moon/tasks/all.yml:126: ORIGINAL LINE 636:           exit 1
+.moon/tasks/all.yml:127: ORIGINAL LINE 637:         fi
+.moon/tasks/all.yml:128: ORIGINAL LINE 638:       done
+.moon/tasks/all.yml:129: ORIGINAL LINE 639:     options:
+.moon/tasks/all.yml:130: ORIGINAL LINE 640:       cache: false
+.moon/tasks/all.yml:131: ORIGINAL LINE 641:       runInCI: true
+.moon/tasks/all.yml:132: ORIGINAL LINE 642:     inputs:
+.moon/tasks/all.yml:133: ORIGINAL LINE 643:       - 'Cargo.toml'
+.moon/tasks/all.yml:134: ORIGINAL LINE 644:       - 'Cargo.lock'
+.moon/tasks/all.yml:135: ORIGINAL LINE 645:       - 'rust-toolchain.toml'
+.moon/tasks/all.yml:136: ORIGINAL LINE 646:       - 'fuzz/Cargo.toml'
+.moon/tasks/all.yml:137: ORIGINAL LINE 647:       - 'fuzz/Cargo.lock'
+.moon/tasks/all.yml:138: ORIGINAL LINE 648:       - 'fuzz/src/**/*'
+.moon/tasks/all.yml:139: ORIGINAL LINE 649:       - 'fuzz/fuzz_targets/**/*'
+.moon/tasks/all.yml:140: ORIGINAL LINE 650:       - 'crates/**/*'
+.moon/tasks/all.yml:141: ORIGINAL LINE 651:       - '.moon/tasks/all.yml'
+.moon/tasks/all.yml:142: ORIGINAL LINE 652: 
+.moon/tasks/all.yml:143: ORIGINAL LINE 653:   fuzz-regress:
+.moon/tasks/all.yml:144: ORIGINAL LINE 654:     script: |
+.moon/tasks/all.yml:145: ORIGINAL LINE 655:       set -euo pipefail
+.moon/tasks/all.yml:146: ORIGINAL LINE 656:       export PATH="/cache/cargo-shared/bin:${PATH}"
+.moon/tasks/all.yml:147: ORIGINAL LINE 657:       mkdir -p target/moon-locks target/fuzz-regress
+.moon/tasks/all.yml:148: ORIGINAL LINE 658:       if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz build --target x86_64-unknown-linux-gnu --target-dir "$PWD/target/fuzz-asan/build" >target/fuzz-regress/build.log 2>target/fuzz-regress/build.err; then
+.moon/tasks/all.yml:149: ORIGINAL LINE 659:         cat target/fuzz-regress/build.log
+.moon/tasks/all.yml:150: ORIGINAL LINE 660:         cat target/fuzz-regress/build.err
+.moon/tasks/all.yml:151: ORIGINAL LINE 661:         exit 1
+.moon/tasks/all.yml:152: ORIGINAL LINE 662:       fi
+.moon/tasks/all.yml:153: ORIGINAL LINE 663:       rc=0
+.moon/tasks/all.yml:154: ORIGINAL LINE 664:       while IFS= read -r artifact; do
+.moon/tasks/all.yml:155: ORIGINAL LINE 665:         tgt=$(basename "$(dirname "$artifact")")
+.moon/tasks/all.yml:156: ORIGINAL LINE 666:         bin="target/fuzz-asan/build/x86_64-unknown-linux-gnu/release/${tgt}"
+.moon/tasks/all.yml:157: ORIGINAL LINE 667:         if [ ! -x "$bin" ]; then
+.moon/tasks/all.yml:158: ORIGINAL LINE 668:           echo "MISSING: $tgt (binary required for $artifact)"
+.moon/tasks/all.yml:159: ORIGINAL LINE 669:           rc=1
+.moon/tasks/all.yml:160: ORIGINAL LINE 670:           continue
+.moon/tasks/all.yml:161: ORIGINAL LINE 671:         fi
+.moon/tasks/all.yml:162: ORIGINAL LINE 672:         echo "REPLAY: $artifact via $tgt"
+.moon/tasks/all.yml:163: ORIGINAL LINE 673:         if timeout 5s "$bin" "$artifact" >"target/fuzz-regress/${tgt}.log" 2>&1; then
+.moon/tasks/all.yml:164: ORIGINAL LINE 674:           echo "PASS: $artifact"
+.moon/tasks/all.yml:165: ORIGINAL LINE 675:         else
+.moon/tasks/all.yml:166: ORIGINAL LINE 676:           echo "REGRESSION: $artifact"
+.moon/tasks/all.yml:167: ORIGINAL LINE 677:           cat "target/fuzz-regress/${tgt}.log"
+.moon/tasks/all.yml:168: ORIGINAL LINE 678:           rc=1
+.moon/tasks/all.yml:169: ORIGINAL LINE 679:         fi
+.moon/tasks/all.yml:170: ORIGINAL LINE 680:       done < <(find fuzz/artifacts -type f \( -name 'crash-*' -o -name 'oom-*' -o -name 'leak-*' -o -name 'timeout-*' \) 2>/dev/null || true)
+.moon/tasks/all.yml:171: ORIGINAL LINE 681:       exit "$rc"
+.moon/tasks/all.yml:172: ORIGINAL LINE 682:     options:
+.moon/tasks/all.yml:173: ORIGINAL LINE 683:       cache: false
+.moon/tasks/all.yml:174: ORIGINAL LINE 684:       runInCI: true
+.moon/tasks/all.yml:175: ORIGINAL LINE 685:     inputs:
+.moon/tasks/all.yml:176: ORIGINAL LINE 686:       - 'Cargo.toml'
+.moon/tasks/all.yml:177: ORIGINAL LINE 687:       - 'Cargo.lock'
+.moon/tasks/all.yml:178: ORIGINAL LINE 688:       - 'rust-toolchain.toml'
+.moon/tasks/all.yml:179: ORIGINAL LINE 689:       - 'fuzz/artifacts/**/*'
+.moon/tasks/all.yml:180: ORIGINAL LINE 690:       - 'fuzz/Cargo.toml'
+.moon/tasks/all.yml:181: ORIGINAL LINE 691:       - 'fuzz/Cargo.lock'
+.moon/tasks/all.yml:182: ORIGINAL LINE 692:       - 'fuzz/src/**/*'
+.moon/tasks/all.yml:183: ORIGINAL LINE 693:       - 'fuzz/fuzz_targets/**/*'
+.moon/tasks/all.yml:184: ORIGINAL LINE 694:       - 'crates/**/*'
+.moon/tasks/all.yml:185: ORIGINAL LINE 695:       - '.moon/tasks/all.yml'
+.moon/tasks/all.yml:186: ORIGINAL LINE 696: 
+.moon/tasks/all.yml:187: ORIGINAL LINE 697:   fuzz-proptest:
+.moon/tasks/all.yml:188: ORIGINAL LINE 698:     script: |
+.moon/tasks/all.yml:189: ORIGINAL LINE 699:       set -euo pipefail
+.moon/tasks/all.yml:190: ORIGINAL LINE 700:       export PATH="/cache/cargo-shared/bin:${PATH}"
+.moon/tasks/all.yml:191: ORIGINAL LINE 701:       mkdir -p target/moon-locks
+.moon/tasks/all.yml:192: ORIGINAL LINE 702:       flock --shared target/moon-locks/source-mutation.lock \
+.moon/tasks/all.yml:193: ORIGINAL LINE 703:         rustup run nightly-2026-04-28 cargo test --manifest-path fuzz/Cargo.toml --all-features \
+.moon/tasks/all.yml:194: ORIGINAL LINE 704:           --test proptest_digest_coherence \
+.moon/tasks/all.yml:195: ORIGINAL LINE 705:           --test proptest_ipc_error_exhaustiveness \
+.moon/tasks/all.yml:196: ORIGINAL LINE 706:           --test proptest_journal_error_exhaustiveness \
+.moon/tasks/all.yml:197: ORIGINAL LINE 707:           --test proptest_roundtrip_determinism
+.moon/tasks/all.yml:198: ORIGINAL LINE 708:     options:
+.moon/tasks/all.yml:199: ORIGINAL LINE 709:       cache: false
+.moon/tasks/all.yml:200: ORIGINAL LINE 710:       runInCI: true
