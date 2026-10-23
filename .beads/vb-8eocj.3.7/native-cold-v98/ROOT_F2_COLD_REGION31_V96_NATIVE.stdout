@@ -1,0 +1,36 @@
+
+running 31 tests
+test closure::arbitrary_nonterminal_forward_escape_is_not_an_exit ... ok
+test closure::auxiliary_kind_successors_cannot_enter_a_region ... ok
+test closure::both_choose_forms_and_fallback_cannot_enter_body_or_latch ... ok
+test closure::crossing_region_intervals_are_not_wholly_nested ... ok
+test closure::internal_auxiliary_backedges_are_not_nested_owned_latches ... ok
+test closure::jump_and_async_next_cannot_enter_an_owned_region ... ok
+test closure::only_declared_start_body_edge_is_permitted_ingress ... ok
+test closure::owning_done_and_actual_finish_are_permitted_exits ... ok
+test closure::shared_body_is_not_independent_nested_ownership ... ok
+test pairing::ambiguous_matching_starts_reject ... ok
+test pairing::jump_backward_guard_keeps_its_earlier_error ... ok
+test pairing::mismatched_body_done_and_reduce_accumulator_reject ... ok
+test pairing::missing_wrong_family_and_wrong_state_owners_reject ... ok
+test pairing::numeric_bounds_keep_their_earlier_error ... ok
+test pairing::self_control_is_not_a_forward_only_control ... ok
+test pairing::two_enabled_latches_cannot_share_one_owner ... ok
+test pairing::workflow_entry_inside_body_or_latch_preserves_unreachable_precedence ... ok
+test positive::asynchronous_body_continuations_are_checked_without_blanket_rejection ... ok
+test positive::cache_is_derived_without_changing_serialized_parts ... ok
+test positive::collect_legacy_source_slot_fallback_is_a_real_owner ... ok
+test positive::forward_only_controls_remain_uncached ... ok
+test positive::four_families_cache_exact_owner_and_exclusive_endpoints ... ok
+test positive::internal_forward_choose_and_jump_bypass_are_closed ... ok
+test positive::sequential_regions_have_separate_cache_entries ... ok
+test positive::together_topology_inside_region_is_not_activation_permission ... ok
+test positive::wholly_nested_regions_cache_independently_validated_backedges ... ok
+test recovery::crossing_error_exit_stays_a_geometric_error ... ok
+test recovery::direct_error_exits_to_done_or_finish_are_supported ... ok
+test recovery::direct_error_to_internal_finish_does_not_recover_into_body ... ok
+test recovery::internal_recovered_error_routes_are_typed_unsupported ... ok
+test recovery::unrelated_error_and_suspend_topology_is_not_blanket_rejected ... ok
+
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

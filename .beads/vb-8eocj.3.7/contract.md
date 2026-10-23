@@ -88,3 +88,10 @@ This revision supersedes earlier nearest-owner-only and preserve-failed/skipped 
 Rearm occurs only after the unique enabled owning latch successfully takes its validated `control -> body` backedge. Exhaustion, done, error and suspension paths never rearm. Only completed step states in inclusive `[body, control]` may change; owner and done are excluded. Slots, taints, counters, iterators, pending actions and wait resources are never cleared or rewritten by this helper.
 
 Existing primitive body/latch resets must be routed through this helper so no candidate body/latch state mutation occurs before both-pass preflight. Primitive slot and PC writes are separate preceding effects, with no rollback claim. Cold permitted exits are exactly the owning declared done or an actual terminal `Finish` target; no open-ended terminal category. Nested regions may structurally validate but remain unsupported for activation until cleanup/state semantics are established. Exactly one enabled owning latch is required; multiple-latch semantics need a separate contract.
+
+
+## Cold candidate integration, V96
+
+The cold ownership/cache implementation is now integrated as a candidate at the exact source pin in `native-cold-v98/README.md`. The hot helper remains unimplemented at this receipt. The original PROPOSED header describes unaccepted overall delivery, not absence of this cold candidate. Constructor/cache tests31 and source-length pass; existing compatibility fixture failures remain open and preserved. Region errors run after numeric/reference/reachability/forward validation and before budget/input-slot validation; no universal multiply-invalid error precedence claim is made.
+
+Only the owning Start kind body edge permits outside ingress; outer next/on_error to the same endpoints do not qualify. Edge provenance is retained. Internal nonterminal on_error recovery or ErrorHandler within an enabled region returns LoopRegionUnsupported; direct error exits to the exact owning done or actual Finish are permitted. These restrictions do not waive eventual full F1 recovery support. Nested topology validation does not authorize nested hot activation.
