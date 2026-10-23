@@ -8,7 +8,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::StepIdx;
 
 mod sealed {
-    pub trait Sealed {}
+    pub(crate) trait Sealed {}
 }
 
 pub(crate) trait BodyEntryPolicy: sealed::Sealed {
