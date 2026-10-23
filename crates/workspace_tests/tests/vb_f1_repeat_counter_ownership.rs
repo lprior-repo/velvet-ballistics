@@ -756,7 +756,16 @@ fn malformed_ir_loop_rearm_region_crossing_edge()
 
     let (_owner, body, _counter, _private_body_output) =
         find_repeat_slots(&workflow).ok_or("repeat slots not found")?;
-    let (check, done) = find_check_and_done(&workflow).ok_or("check/done not found")?;
+    let (check, _final_finish) = find_check_and_done(&workflow).ok_or("check/done not found")?;
+    let done = workflow
+        .to_parts()
+        .nodes
+        .iter()
+        .find_map(|node| match &node.kind {
+            CompiledNodeKind::RepeatCheck { done, .. } if node.id == check => Some(*done),
+            _ => None,
+        })
+        .ok_or("missing loop exit")?;
     let trailing = find_trailing_set_77(&workflow).ok_or("trailing set not found")?;
 
     let mut parts = workflow.to_parts();
