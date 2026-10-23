@@ -4,7 +4,7 @@
 //! (repeat, collect, for_each, reduce) are correctly lowered to final IR.
 
 use vb_compile::{CompileError, CompileErrors, compile_workflow};
-use vb_core::{CompiledNodeKind, CompiledWorkflow, StepIdx};
+use vb_core::CompiledWorkflow;
 
 const HEADER: &str =
     "version: velvet-ballistics/v1\nname: nested_do_lowering\nwhen:\n  manual: {}\nsteps:\n";
@@ -360,7 +360,7 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
         &parts.nodes,
         0,
         vb_core::CompiledNodeKind::TogetherStart {
-            branches: vec![vb_core::StepIdx::new(1), vb_core::StepIdx::new(3)],
+            branches: vec![vb_core::StepIdx::new(1), vb_core::StepIdx::new(3)].into_boxed_slice(),
             join: vb_core::StepIdx::new(5),
         },
         Some(vb_core::SlotIdx::new(2)),
