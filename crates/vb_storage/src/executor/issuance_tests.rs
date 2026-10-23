@@ -1,251 +1,140 @@
-//! Issuance tests for executor catalog packed admission.
-//! Verifies seq issuance, counter persistence, mixed policies, close/reopen,
-//! pure prepare, and packed vs legacy behavior.
+//! Isolated issuance tests using support PackedFixture.
+//! No production modifications; all behavior verified through actual fixtures.
 
-use super::issuance_test_support::*;
-use crate::executor::ExecutorCatalog;
-use crate::{AcceptedArtifact, FjallJournal, admission};
+use super::issuance_test_support::{
+    PackedFixture, TestResult, minimal_workflow, open_test_journal, read_counter,
+    verify_artifact_readback,
+};
+use crate::admission;
 use vb_core::RuntimePolicy;
 
-fn contract_slice(contract: &ActionContract) -> &[ActionContract] {
-    std::slice::from_ref(contract)
-}
-
-fn pack_slice(pack: &ActionPack) -> &[ActionPack] {
-    std::slice::from_ref(pack)
-}
-
-/// Pure prepare_artifact returns seq 0 and does not mutate the counter or store.
+// Case 1: Pure prepare across policies produces empty sequence.
 #[test]
-fn pure_prepare_returns_seq_zero_counter_absent() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    let artifact = catalog.prepare_artifact(
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-
-    assert_eq!(artifact.accepted_at_seq.get(), 0);
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, None);
-    let stored = tj.journal.compiled_ir(artifact.digest)?;
-    assert_eq!(stored, None);
+fn prepare_produces_no_sequence() -> TestResult {
+    for policy in [
+        &RuntimePolicy::Strict,
+        &RuntimePolicy::Journaled,
+        &RuntimePolicy::Relaxed,
+    ] {
+        let fixture = PackedFixture::new()?;
+        let (_dir, journal) = open_test_journal()?;
+        assert_eq!(read_counter(&journal)?, None);
+        assert!(journal.list_artifacts()?.is_empty());
+        let artifact = fixture.prepare(*policy)?;
+        assert_eq!(artifact.accepted_at_seq.get(), 0);
+        let restored = fixture.catalog.verify_artifact(&artifact, *policy)?;
+        assert_eq!(&restored, &fixture.workflow);
+        assert_eq!(read_counter(&journal)?, None);
+        assert!(journal.list_artifacts()?.is_empty());
+    }
     Ok(())
 }
 
-/// Submitting a packed artifact with Relaxed policy succeeds and returns seq 1.
+// Case 2a: Strict policy submit returns sequence 1.
 #[test]
-fn packed_relaxed_submission_persists_and_verifies() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    let artifact = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-
+fn strict_submit_sequence_one() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
+    let artifact = fixture.submit(&journal, RuntimePolicy::Strict)?;
     assert_eq!(artifact.accepted_at_seq.get(), 1);
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, Some(1));
-    verify_artifact_readback(&tj.journal, artifact.digest, &artifact)?;
-    Ok(())
+    assert_eq!(read_counter(&journal)?, Some(1));
+    fixture.check(&journal, &artifact, RuntimePolicy::Strict)
 }
 
-/// Submitting a packed artifact with Journaled policy succeeds and returns seq 1.
+// Case 2b: Journaled policy submit returns sequence 1.
 #[test]
-fn packed_journaled_submission_persists_and_verifies() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    let artifact = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Journaled,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-
+fn journaled_submit_sequence_one() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
+    let artifact = fixture.submit(&journal, RuntimePolicy::Journaled)?;
     assert_eq!(artifact.accepted_at_seq.get(), 1);
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, Some(1));
-    verify_artifact_readback(&tj.journal, artifact.digest, &artifact)?;
-    Ok(())
+    assert_eq!(read_counter(&journal)?, Some(1));
+    fixture.check(&journal, &artifact, RuntimePolicy::Journaled)
 }
 
-/// Submitting a packed artifact with Strict policy succeeds and returns seq 1.
+// Case 2c: Relaxed policy submit returns sequence 1.
 #[test]
-fn packed_strict_submission_persists_and_verifies() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    let artifact = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-
+fn relaxed_submit_sequence_one() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
+    let artifact = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
     assert_eq!(artifact.accepted_at_seq.get(), 1);
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, Some(1));
-    verify_artifact_readback(&tj.journal, artifact.digest, &artifact)?;
+    assert_eq!(read_counter(&journal)?, Some(1));
+    fixture.check(&journal, &artifact, RuntimePolicy::Relaxed)
+}
+
+// Case 3: Same journal, three policies increment sequence.
+#[test]
+fn sequential_submissions_increment() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
+    let strict = fixture.submit(&journal, RuntimePolicy::Strict)?;
+    assert_eq!(strict.accepted_at_seq.get(), 1);
+    let journaled = fixture.submit(&journal, RuntimePolicy::Journaled)?;
+    assert_eq!(journaled.accepted_at_seq.get(), 2);
+    let relaxed = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+    assert_eq!(relaxed.accepted_at_seq.get(), 3);
+    assert_ne!(strict.digest, journaled.digest);
+    assert_ne!(journaled.digest, relaxed.digest);
+    assert_ne!(strict.digest, relaxed.digest);
+    fixture.check(&journal, &strict, RuntimePolicy::Strict)?;
+    fixture.check(&journal, &journaled, RuntimePolicy::Journaled)?;
+    fixture.check(&journal, &relaxed, RuntimePolicy::Relaxed)?;
+    assert_eq!(read_counter(&journal)?, Some(3));
     Ok(())
 }
 
-/// Multiple artifacts with mixed policies get unique seqs and digests.
+// Case 4: Mixed default and catalog workflow submissions.
 #[test]
-fn mixed_policy_submissions_get_unique_seqs_and_digests() -> Result<(), Box<dyn std::error::Error>>
-{
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    let art1 = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    assert_eq!(art1.accepted_at_seq.get(), 1);
-    verify_artifact_readback(&tj.journal, art1.digest, &art1)?;
-
-    let art2 = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Journaled,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    assert_eq!(art2.accepted_at_seq.get(), 2);
-    verify_artifact_readback(&tj.journal, art2.digest, &art2)?;
-
-    let art3 = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    assert_eq!(art3.accepted_at_seq.get(), 3);
-    verify_artifact_readback(&tj.journal, art3.digest, &art3)?;
-
-    assert_ne!(art1.digest, art2.digest);
-    assert_ne!(art2.digest, art3.digest);
-    assert_ne!(art1.digest, art3.digest);
-
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, Some(3));
+fn mixed_default_and_catalog_submissions() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let default_workflow = minimal_workflow()?;
+    let (_dir, journal) = open_test_journal()?;
+    let default_artifact =
+        admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+    assert_eq!(default_artifact.accepted_at_seq.get(), 1);
+    let catalog_artifact = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+    assert_eq!(catalog_artifact.accepted_at_seq.get(), 2);
+    let default_artifact2 =
+        admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+    assert_eq!(default_artifact2.accepted_at_seq.get(), 3);
+    verify_artifact_readback(&journal, default_artifact.digest, &default_artifact)?;
+    verify_artifact_readback(&journal, default_artifact2.digest, &default_artifact2)?;
+    fixture.check(&journal, &catalog_artifact, RuntimePolicy::Relaxed)?;
+    assert_eq!(
+        crate::admission::verify_accepted_artifact(&default_artifact)?,
+        default_workflow
+    );
+    assert_eq!(
+        crate::admission::verify_accepted_artifact(&default_artifact2)?,
+        default_workflow
+    );
+    assert_ne!(default_artifact.digest, catalog_artifact.digest);
+    assert_ne!(catalog_artifact.digest, default_artifact2.digest);
+    assert_ne!(default_artifact.digest, default_artifact2.digest);
+    assert_eq!(read_counter(&journal)?, Some(3));
     Ok(())
 }
 
-/// Counter persists across journal close and reopen.
+// Case 5: Journal reopened on same path preserves state.
 #[test]
-fn counter_persists_across_close_and_reopen() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj1 = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    let art1 = catalog.submit_artifact(
-        &tj1.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    assert_eq!(art1.accepted_at_seq.get(), 1);
-    let path = tj1.path().to_path_buf();
-    drop(tj1);
-
-    let journal2 = FjallJournal::open(&path, None)?;
-    let art2 = catalog.submit_artifact(
-        &journal2,
-        &workflow,
-        RuntimePolicy::Journaled,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    assert_eq!(art2.accepted_at_seq.get(), 2);
-    let art3 = catalog.submit_artifact(
-        &journal2,
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    assert_eq!(art3.accepted_at_seq.get(), 3);
-    drop(journal2);
-
-    let journal3 = FjallJournal::open(&path, None)?;
-    verify_artifact_readback(&journal3, art1.digest, &art1)?;
-    verify_artifact_readback(&journal3, art2.digest, &art2)?;
-    verify_artifact_readback(&journal3, art3.digest, &art3)?;
-    let counter = read_counter(&journal3)?;
-    assert_eq!(counter, Some(3));
-    drop(journal3);
-    Ok(())
-}
-
-/// Legacy and packed submissions share the same counter.
-#[test]
-fn legacy_and_packed_submissions_share_counter() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    let legacy = admission::submit_artifact_with_contracts(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-    )?;
-    assert_eq!(legacy.accepted_at_seq.get(), 1);
-
-    let packed = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    assert_eq!(packed.accepted_at_seq.get(), 2);
-
-    verify_artifact_readback(&tj.journal, legacy.digest, &legacy)?;
-    verify_artifact_readback(&tj.journal, packed.digest, &packed)?;
-
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, Some(2));
+fn journal_reopen_preserves_sequence() -> TestResult {
+    use crate::FjallJournal;
+    let fixture = PackedFixture::new()?;
+    let (dir, journal) = open_test_journal()?;
+    let artifact = fixture.submit(&journal, RuntimePolicy::Strict)?;
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
+    fixture.check(&journal, &artifact, RuntimePolicy::Strict)?;
+    assert_eq!(read_counter(&journal)?, Some(1));
+    drop(journal);
+    let journal2 = FjallJournal::open(dir.path(), None)?;
+    fixture.check(&journal2, &artifact, RuntimePolicy::Strict)?;
+    assert_eq!(read_counter(&journal2)?, Some(1));
+    let artifact2 = fixture.submit(&journal2, RuntimePolicy::Strict)?;
+    assert_eq!(artifact2.accepted_at_seq.get(), 2);
+    fixture.check(&journal2, &artifact2, RuntimePolicy::Strict)?;
+    fixture.check(&journal2, &artifact, RuntimePolicy::Strict)?;
+    assert_ne!(artifact2.digest, artifact.digest);
+    assert_eq!(read_counter(&journal2)?, Some(2));
     Ok(())
 }

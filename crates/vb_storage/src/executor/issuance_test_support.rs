@@ -14,17 +14,17 @@ use vb_core::{
 
 type BoxError = Box<dyn std::error::Error>;
 
-pub type TestResult = Result<(), BoxError>;
+pub(super) type TestResult = Result<(), BoxError>;
 
 /// Open a fresh test journal in a temporary directory.
-pub fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), BoxError> {
+pub(super) fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), BoxError> {
     let dir = tempfile::tempdir()?;
     let journal = FjallJournal::open(dir.path(), None)?;
     Ok((dir, journal))
 }
 
 /// Build a minimal compiled workflow with no actions.
-pub fn minimal_workflow() -> Result<CompiledWorkflow, BoxError> {
+pub(super) fn minimal_workflow() -> Result<CompiledWorkflow, BoxError> {
     let mut parts = parts_from("test_minimal");
     parts.constants = Box::new([ConstValue::I64(42)]);
     parts.slot_count = 1;
@@ -33,7 +33,7 @@ pub fn minimal_workflow() -> Result<CompiledWorkflow, BoxError> {
 }
 
 /// Build a compiled workflow containing one action invocation.
-pub fn action_workflow() -> Result<CompiledWorkflow, BoxError> {
+pub(super) fn action_workflow() -> Result<CompiledWorkflow, BoxError> {
     let mut parts = parts_from("test_action");
     parts.nodes = Box::new([set_node(), action_node(), finish_node(2, 1)]);
     parts.constants = Box::new([ConstValue::I64(42)]);
@@ -109,7 +109,7 @@ fn canonicalize_parts(parts: &mut WorkflowParts) -> Result<(), BoxError> {
 }
 
 /// Build an action contract for a register action with REQUIRED capability.
-pub fn action_contract() -> Result<ActionContract, BoxError> {
+pub(super) fn action_contract() -> Result<ActionContract, BoxError> {
     let contract = ActionContract {
         id: vb_core::ActionId::new(0),
         name: ActionName::new("test_register")?,
@@ -130,7 +130,7 @@ pub fn action_contract() -> Result<ActionContract, BoxError> {
 }
 
 /// Build a capability scope spec for register write.
-pub fn register_scope() -> CapabilityScopeSpec {
+pub(super) fn register_scope() -> CapabilityScopeSpec {
     CapabilityScopeSpec {
         namespace: 15,
         key: 29,
@@ -138,7 +138,7 @@ pub fn register_scope() -> CapabilityScopeSpec {
 }
 
 /// Read the raw artifact acceptance counter from the journal.
-pub fn read_counter(journal: &FjallJournal) -> Result<Option<u64>, BoxError> {
+pub(super) fn read_counter(journal: &FjallJournal) -> Result<Option<u64>, BoxError> {
     let Some(raw) = journal.artifact_acceptance.get(b"last_issued")? else {
         return Ok(None);
     };
@@ -147,7 +147,7 @@ pub fn read_counter(journal: &FjallJournal) -> Result<Option<u64>, BoxError> {
 }
 
 /// Write a raw counter value to the journal for fault injection.
-pub fn write_counter(journal: &FjallJournal, value: u64) -> Result<(), BoxError> {
+pub(super) fn write_counter(journal: &FjallJournal, value: u64) -> Result<(), BoxError> {
     journal
         .artifact_acceptance
         .insert(b"last_issued", &value.to_be_bytes())?;
@@ -155,7 +155,7 @@ pub fn write_counter(journal: &FjallJournal, value: u64) -> Result<(), BoxError>
 }
 
 /// Verify that a persisted artifact can be read back and matches expectations.
-pub fn verify_artifact_readback(
+pub(super) fn verify_artifact_readback(
     journal: &FjallJournal,
     digest: WorkflowDigest,
     expected: &AcceptedArtifact,
@@ -180,16 +180,16 @@ pub fn verify_artifact_readback(
 }
 
 /// Complete packed-verification fixture for test modules.
-pub struct PackedFixture {
-    pub catalog: super::ExecutorCatalog,
-    pub workflow: CompiledWorkflow,
-    pub contract: ActionContract,
-    pub pack: ActionPack,
+pub(super) struct PackedFixture {
+    pub(super) catalog: super::ExecutorCatalog,
+    pub(super) workflow: CompiledWorkflow,
+    pub(super) contract: ActionContract,
+    pub(super) pack: ActionPack,
 }
 
 impl PackedFixture {
     /// Construct a fixture with actual conformance results.
-    pub fn new() -> Result<Self, BoxError> {
+    pub(super) fn new() -> Result<Self, BoxError> {
         let catalog = super::ExecutorCatalog::run_registered_conformance()?;
         let contract = action_contract()?;
         let pack =
@@ -204,7 +204,10 @@ impl PackedFixture {
     }
 
     /// Prepare an artifact from this fixture's workflow and pack.
-    pub fn prepare(&self, policy: RuntimePolicy) -> Result<AcceptedArtifact, super::ExecutorError> {
+    pub(super) fn prepare(
+        &self,
+        policy: RuntimePolicy,
+    ) -> Result<AcceptedArtifact, super::ExecutorError> {
         self.catalog.prepare_artifact(
             &self.workflow,
             policy,
@@ -214,7 +217,7 @@ impl PackedFixture {
     }
 
     /// Submit this fixture's artifact to the journal.
-    pub fn submit(
+    pub(super) fn submit(
         &self,
         journal: &FjallJournal,
         policy: RuntimePolicy,
@@ -229,7 +232,7 @@ impl PackedFixture {
     }
 
     /// Check a submitted artifact against the catalog.
-    pub fn check(
+    pub(super) fn check(
         &self,
         journal: &FjallJournal,
         artifact: &AcceptedArtifact,
@@ -239,8 +242,13 @@ impl PackedFixture {
         if &restored != &self.workflow {
             return Err("verified workflow differs from original".into());
         }
-        if artifact.admission_policy != policy {
-            return Err("artifact admission policy differs from expected".into());
+        match &artifact.verification.evidence {
+            vb_core::artifact::ArtifactEvidence::Packed(packed) => {
+                if packed.base.admission_policy != policy {
+                    return Err("artifact admission policy differs from expected".into());
+                }
+            }
+            other => return Err(format!("unexpected evidence: {other:?}").into()),
         }
         verify_artifact_readback(journal, artifact.digest, artifact)
     }

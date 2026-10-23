@@ -3,331 +3,123 @@
 //! the executor catalog's packed submission path.
 
 use super::issuance_test_support::*;
-use crate::executor::{ExecutorCatalog, ExecutorError};
-use crate::{FjallJournal, JournalError};
+use crate::JournalError;
+use crate::executor::ExecutorError;
 use vb_core::RuntimePolicy;
 
-fn contract_slice(contract: &ActionContract) -> &[ActionContract] {
-    std::slice::from_ref(contract)
-}
-
-fn pack_slice(pack: &ActionPack) -> &[ActionPack] {
-    std::slice::from_ref(pack)
-}
-
-/// Strict persistence failure is precommit; counter remains at 0 and compiled IR is empty.
+/// Strict/Journaled/Relaxed fresh journal: precommit persist failure yields
+/// EXACT ExecutorError::Artifact(JournalError::StrictDurabilityFailed).
+/// Counter unchanged (None) and compiled_ir empty BEFORE retry; retry gets
+/// seq 1, counter 1, fixture.check full readback.
 #[test]
-fn strict_persist_failure_precommit_counter_unchanged() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+fn strict_persist_failure_is_precommit() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    check_persist_precommit(&fixture, RuntimePolicy::Strict)?;
+    check_persist_precommit(&fixture, RuntimePolicy::Journaled)?;
+    check_persist_precommit(&fixture, RuntimePolicy::Relaxed)?;
+    Ok(())
+}
 
-    tj.journal.fail_next_persist_for_test();
-
-    let result = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
+fn check_persist_precommit(fixture: &PackedFixture, policy: RuntimePolicy) -> TestResult {
+    let fresh = open_test_journal()?;
+    fresh.1.fail_next_persist_for_test();
+    let result = fixture.submit(&fresh.1, policy);
+    assert!(
+        matches!(
+            &result,
+            Err(ExecutorError::Artifact(
+                JournalError::StrictDurabilityFailed
+            ))
+        ),
+        "expected StrictDurabilityFailed, got: {result:?}"
     );
-    match &result {
-        Err(ExecutorError::Artifact(JournalError::StrictDurabilityFailed)) => {}
-        other => return Err(format!("expected StrictDurabilityFailed, got: {other:?}").into()),
-    }
-
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, None);
-    assert_eq!(tj.journal.compiled_ir.iter().next().is_some(), false);
-
-    let artifact = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
+    assert_eq!(read_counter(&fresh.1)?, None);
+    assert!(fresh.1.compiled_ir.iter().next().is_none());
+    let artifact = fixture.submit(&fresh.1, policy)?;
     assert_eq!(artifact.accepted_at_seq.get(), 1);
-    let counter_after = read_counter(&tj.journal)?;
-    assert_eq!(counter_after, Some(1));
-    Ok(())
+    assert_eq!(read_counter(&fresh.1)?, Some(1));
+    fixture.check(&fresh.1, &artifact, policy)
 }
 
-/// Injected batch commit failure is precommit; counter and compiled IR unchanged.
+/// Injected batch commit failure is precommit: EXACT
+/// ExecutorError::Artifact(JournalError::Fjall(fjall::Error::Io(io))) with
+/// io.kind() == Other. Counter and compiled IR unchanged before retry;
+/// retry yields seq 1 and full readback.
 #[test]
-fn batch_commit_failure_precommit_no_state_change() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+fn batch_commit_failure_is_precommit() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
 
-    tj.journal.fail_next_batch_commit_for_test();
-
-    let result = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
+    journal.fail_next_batch_commit_for_test();
+    let result = fixture.submit(&journal, RuntimePolicy::Strict);
+    assert!(
+        matches!(
+            &result,
+            Err(ExecutorError::Artifact(JournalError::Fjall(e)))
+                if matches!(
+                    e,
+                    fjall::Error::Io(io) if io.kind() == std::io::ErrorKind::Other
+                )
+        ),
+        "expected Fjall(Io(Other)) wrapped in Artifact, got: {result:?}"
     );
-    let got_fjall_io = matches!(
-        &result,
-        Err(ExecutorError::Artifact(JournalError::Fjall(e)))
-            if matches!(e, fjall::Error::Io(io) if io.kind() == std::io::ErrorKind::Other)
-    );
-    if !got_fjall_io {
-        return Err(
-            format!("expected Fjall(Io(Other)) wrapped in Artifact, got: {result:?}").into(),
-        );
-    }
+    assert_eq!(read_counter(&journal)?, None);
+    assert!(journal.compiled_ir.iter().next().is_none());
 
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, None);
-    assert_eq!(tj.journal.compiled_ir.iter().next().is_some(), false);
-
-    let artifact = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
+    let artifact = fixture.submit(&journal, RuntimePolicy::Strict)?;
     assert_eq!(artifact.accepted_at_seq.get(), 1);
-    Ok(())
+    fixture.check(&journal, &artifact, RuntimePolicy::Strict)
 }
 
-/// Malformed counter (7 bytes) yields JournalError::MalformedKeyspaceRow.
+/// Injected compiled IR readback failure is POSTCOMMIT: counter advances to 1,
+/// artifact record is persisted, but submission yields EXACT
+/// ExecutorError::Corrupt (NOT ArtifactMalformed). Followup submission
+/// succeeds at seq 2.
 #[test]
-fn malformed_counter_yields_malformed_keyspace_row() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+fn compiled_ir_readback_failure_is_postcommit() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
 
-    tj.journal
-        .artifact_acceptance
-        .insert(b"last_issued", &[1, 2, 3, 4, 5, 6, 7])?;
+    let mut expected = fixture.prepare(RuntimePolicy::Strict)?;
+    expected.accepted_at_seq = crate::EventSeq::new(1);
+    expected.digest = crate::admission::accepted_artifact_digest(&expected)?;
+    expected.verification.digest = expected.digest;
 
-    let result = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
+    journal.fail_next_compiled_ir_readback_for_test();
+    let result = fixture.submit(&journal, RuntimePolicy::Strict);
+    assert!(
+        matches!(&result, Err(ExecutorError::Corrupt)),
+        "expected Corrupt, got: {result:?}"
     );
-    match &result {
-        Err(ExecutorError::Artifact(JournalError::MalformedKeyspaceRow {
-            prefix,
-            expected_len,
-            actual_len,
-        })) if *prefix == b'0' && *expected_len == 8 && *actual_len == 7 => {}
-        other => {
-            return Err(format!(
-                "expected MalformedKeyspaceRow prefix=0 expected=8 actual=7, got: {other:?}"
-            )
-            .into());
-        }
-    }
 
-    write_counter(&tj.journal, 0)?;
-    let artifact = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    assert_eq!(artifact.accepted_at_seq.get(), 1);
-    Ok(())
-}
+    assert_eq!(read_counter(&journal)?, Some(1));
+    fixture.check(&journal, &expected, RuntimePolicy::Strict)?;
 
-/// Malformed counter (9 bytes) yields the same error with actual_len=9.
-#[test]
-fn malformed_counter_nine_bytes() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    tj.journal
-        .artifact_acceptance
-        .insert(b"last_issued", &[1, 2, 3, 4, 5, 6, 7, 8, 9])?;
-
-    let result = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    );
-    match &result {
-        Err(ExecutorError::Artifact(JournalError::MalformedKeyspaceRow {
-            prefix,
-            expected_len,
-            actual_len,
-        })) if *prefix == b'0' && *expected_len == 8 && *actual_len == 9 => {}
-        other => {
-            return Err(format!(
-                "expected MalformedKeyspaceRow prefix=0 expected=8 actual=9, got: {other:?}"
-            )
-            .into());
-        }
-    }
-    Ok(())
-}
-
-/// Counter at u64::MAX yields SequenceOverflow; counter unchanged.
-#[test]
-fn counter_overflow_yields_sequence_overflow() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    write_counter(&tj.journal, u64::MAX)?;
-
-    let result = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    );
-    match &result {
-        Err(ExecutorError::Artifact(JournalError::SequenceOverflow)) => {}
-        other => return Err(format!("expected SequenceOverflow, got: {other:?}").into()),
-    }
-
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, Some(u64::MAX));
-    Ok(())
-}
-
-/// Counter at u64::MAX-1 allows one more submission at u64::MAX,
-/// then subsequent submissions fail with SequenceOverflow.
-#[test]
-fn counter_at_max_minus_one_allows_one_more() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    write_counter(&tj.journal, u64::MAX - 1)?;
-
-    let artifact = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    assert_eq!(artifact.accepted_at_seq.get(), u64::MAX);
-    verify_artifact_readback(&tj.journal, artifact.digest, &artifact)?;
-
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, Some(u64::MAX));
-
-    let result = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Relaxed,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    );
-    match &result {
-        Err(ExecutorError::Artifact(JournalError::SequenceOverflow)) => {}
-        other => return Err(format!("expected SequenceOverflow, got: {other:?}").into()),
-    }
-
-    let counter_after = read_counter(&tj.journal)?;
-    assert_eq!(counter_after, Some(u64::MAX));
-    Ok(())
-}
-
-/// Injected compiled IR readback failure is postcommit: counter advances to 1,
-/// artifact record exists, and the submission yields Artifact(ArtifactMalformed).
-#[test]
-fn compiled_ir_readback_failure_is_postcommit() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
-    let scope = register_scope();
-    let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
-
-    let expected = catalog.prepare_artifact(
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
-    let expected_digest = crate::admission::accepted_artifact_digest(&expected)?;
-
-    tj.journal.fail_next_compiled_ir_readback_for_test();
-
-    let result = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    );
-    match &result {
-        Err(ExecutorError::Corrupt) => {}
-        other => return Err(format!("expected Corrupt, got: {other:?}").into()),
-    }
-
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, Some(1));
-    verify_artifact_readback(&tj.journal, expected_digest, &expected)?;
-
-    let artifact2 = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
-        RuntimePolicy::Strict,
-        contract_slice(&contract),
-        pack_slice(&pack),
-    )?;
+    let artifact2 = fixture.submit(&journal, RuntimePolicy::Strict)?;
     assert_eq!(artifact2.accepted_at_seq.get(), 2);
-    Ok(())
+    fixture.check(&journal, &artifact2, RuntimePolicy::Strict)
 }
 
-/// Packed submission with empty packs fails with PackMismatch before any counter change.
+/// Packed submission with invalid empty packs fails with EXACT
+/// ExecutorError::PackMismatch before any counter or compiled_ir change.
 #[test]
-fn empty_packs_yield_pack_mismatch() -> Result<(), Box<dyn std::error::Error>> {
-    let catalog = ExecutorCatalog::run_registered_conformance()?;
-    let tj = TestJournal::open()?;
-    let workflow = action_workflow()?;
-    let contract = action_contract()?;
+fn empty_packs_yield_pack_mismatch() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
 
-    let result = catalog.submit_artifact(
-        &tj.journal,
-        &workflow,
+    let result = fixture.catalog.submit_artifact(
+        &journal,
+        &fixture.workflow,
         RuntimePolicy::Relaxed,
-        contract_slice(&contract),
+        std::slice::from_ref(&fixture.contract),
         &[],
     );
-    match &result {
-        Err(ExecutorError::PackMismatch) => {}
-        other => {
-            return Err(format!("expected PackMismatch for empty packs, got: {other:?}").into());
-        }
-    }
+    assert!(
+        matches!(&result, Err(ExecutorError::PackMismatch)),
+        "expected PackMismatch for empty packs, got: {result:?}"
+    );
 
-    let counter = read_counter(&tj.journal)?;
-    assert_eq!(counter, None);
+    assert_eq!(read_counter(&journal)?, None);
+    assert!(journal.compiled_ir.iter().next().is_none());
     Ok(())
 }

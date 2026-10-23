@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "cargo",
+    "nextest",
+    "run",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "--all-features",
+    "--locked"
+  ],
+  "exit_code": 101,
+  "seconds": 1.628,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_REGISTERED_ISSUANCE_V21_STORAGE_TEST"
+}
