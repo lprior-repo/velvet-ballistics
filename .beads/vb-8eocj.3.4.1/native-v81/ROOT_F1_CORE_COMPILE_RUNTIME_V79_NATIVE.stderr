@@ -1,0 +1,21 @@
+   Compiling regex-automata v0.4.14
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_core)
+   Compiling logos-codegen v0.15.1
+   Compiling proptest v1.11.0
+   Compiling logos-derive v0.15.1
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_validate)
+   Compiling matchers v0.2.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling logos v0.15.1
+   Compiling regex v1.12.3
+   Compiling criterion v0.8.2
+   Compiling loom v0.7.2
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_expr)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_storage)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_yaml)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 18.96s
+     Running unittests src/lib.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_compile-c56d068f5e26a741)
+     Running unittests src/lib.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_core-f933c0d2eae05424)
+     Running unittests src/lib.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_runtime-ada333a650903fcb)

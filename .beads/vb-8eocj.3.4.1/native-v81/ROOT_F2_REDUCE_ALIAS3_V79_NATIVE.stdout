@@ -1,0 +1,8 @@
+
+running 3 tests
+test engine::drive::tests::cat_reduce_equal_target::tests::reduce_next_body_equals_done_rejected ... ok
+test engine::drive::tests::cat_reduce_equal_target::tests::reduce_start_body_equals_done_rejected ... ok
+test engine::drive::tests::cat_reduce_equal_target::tests::reduce_start_distinct_targets_emits_all_evidence ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1989 filtered out; finished in 0.00s
+

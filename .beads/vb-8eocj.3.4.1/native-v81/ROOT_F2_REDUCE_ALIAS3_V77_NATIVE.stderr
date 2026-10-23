@@ -1,0 +1,38 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_core)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_runtime)
+error[E0433]: cannot find `common` in `super`
+  --> crates/vb_runtime/src/engine/drive/tests/cat_reduce_equal_target.rs:34:33
+   |
+34 |             vec![reduce, super::common::nop(1, 2), finish],
+   |                                 ^^^^^^ could not find `common` in `super`
+   |
+help: consider importing this module
+   |
+16 +     use crate::engine::drive::tests::common;
+   |
+help: if you import `common`, refer to it directly
+   |
+34 -             vec![reduce, super::common::nop(1, 2), finish],
+34 +             vec![reduce, common::nop(1, 2), finish],
+   |
+
+error[E0433]: cannot find `common` in `super`
+   --> crates/vb_runtime/src/engine/drive/tests/cat_reduce_equal_target.rs:174:33
+    |
+174 |             vec![reduce, super::common::nop(1, 2), fin(2, 1)],
+    |                                 ^^^^^^ could not find `common` in `super`
+    |
+help: consider importing this module
+    |
+ 16 +     use crate::engine::drive::tests::common;
+    |
+help: if you import `common`, refer to it directly
+    |
+174 -             vec![reduce, super::common::nop(1, 2), fin(2, 1)],
+174 +             vec![reduce, common::nop(1, 2), fin(2, 1)],
+    |
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `vb_runtime` (lib test) due to 2 previous errors

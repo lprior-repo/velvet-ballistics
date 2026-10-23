@@ -144,7 +144,7 @@ mod tests {
 
         match iter.next() {
             Some((s, v, t)) if *s == SlotIdx::new(2) && *t == Taint::Clean => match v {
-                SlotValue::List(_) => {}
+                SlotValue::List(id) if *id == iter_id => {}
                 _ => return Err(format!("iter not List: {v:?}")),
             },
             other => return Err(format!("iter wrong: {other:?}")),
