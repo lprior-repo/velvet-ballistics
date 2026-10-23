@@ -5,4 +5,4 @@
 use vb_core::{ids, limits};
 
 #[path = "../../vb_core/src/workflow/source_metadata.rs"]
-mod source_metadata;
+pub mod source_metadata;
