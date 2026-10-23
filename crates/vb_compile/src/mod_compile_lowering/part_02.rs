@@ -14,6 +14,18 @@ use vb_core::{
     WorkflowError, WorkflowParts,
 };
 
+#[path = "canonical_references.rs"]
+mod canonical_references;
+use canonical_references::resolve_slot_reference;
+
+#[path = "canonical_scalar.rs"]
+mod canonical_scalar;
+use canonical_scalar::lower_canonical_set_expression;
+
+#[path = "canonical_do.rs"]
+mod canonical_do;
+use canonical_do::lower_canonical_do;
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn lower_canonical_step(
     step: &crate::StepAst,
@@ -28,7 +40,27 @@ pub(super) fn lower_canonical_step(
     match &step.primitive {
         crate::StepPrimitive::Set { output, value } => {
             let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
-            lower_canonical_set(id, slot, output, value, next, outputs, builder)
+            lower_canonical_set_expression(
+                id, slot, output, value, next, outputs, builder,
+            )
+        }
+        crate::StepPrimitive::Do { action, input } => {
+            let output_slot = lower_canonical_do(
+                id,
+                index,
+                action,
+                input,
+                Some(step.id.as_str()),
+                next,
+                outputs,
+                builder,
+            )?;
+            if let Some(slot) = output_slot {
+                // Register the Do output under the step ID for later reference
+                if !outputs.contains_key(step.id.as_str()) {
+                    outputs.insert(step.id.to_string(), slot);
+                }
+            }
         }
         crate::StepPrimitive::Finish { result } => {
             lower_canonical_finish(index, last, id, result, outputs, builder)
@@ -129,12 +161,39 @@ pub(super) fn lower_canonical_set(
     }
     outputs.insert(output.to_owned(), slot);
     builder.record_slot(slot);
-    // set.value must be an integer string - use parse_i64_field for proper StepFieldShape error
-    let constant = parse_i64_field(value, usize::from(id.get()), "set.value")?;
-    let value_idx = builder
-        .push_constant(ConstValue::I64(constant))
-        .map_err(|e| CompileErrors(vec![e]))?;
-    builder.push_node(lower_set(id, slot, value_idx, next));
+    
+    // Try to parse as I64 constant first (preserves SetConst shape)
+    if let Ok(constant) = value.parse::<i64>() {
+        let value_idx = builder.push_constant(ConstValue::I64(constant))
+            .map_err(|e| CompileErrors(vec![e]))?;
+        builder.push_node(lower_set(id, slot, value_idx, next));
+    } else {
+        // Compile as expression
+        let parsed = parse_expression(value).map_err(|e| {
+            CompileErrors(vec![CompileError::ExpressionUnexpectedToken {
+                expression: Box::<str>::from(value),
+                index: 0,
+                expected: "valid set value expression",
+            }])
+        })?;
+        
+        let mut resolver = canonical_references::StepReferenceResolver::new(outputs.clone());
+        let program = crate::expression_bytecode::compile_expr_to_bytecode_with_resolver(
+            &parsed,
+            &mut builder.constants,
+            &mut resolver,
+        ).map_err(|e| CompileErrors(vec![e]))?;
+        
+        let expr_idx = builder.push_expression(program)?;
+        builder.push_node(CompiledNode {
+            id,
+            output: Some(slot),
+            next,
+            error_slot: None,
+            on_error: None,
+            kind: CompiledNodeKind::EvalExpr { expr: expr_idx },
+        });
+    }
     Ok(())
 }
 
