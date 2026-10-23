@@ -9,20 +9,20 @@ use crate::vb_f1_scalar_do_support::{assert_finished_with_value, F1SourceRun};
 
 fn yaml_bool_producer_consumer(value: &str) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: bool_prod\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: producer\n      value: \"true\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: bool_prod\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"true\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: 0\n"
     )
 }
 
 
 fn yaml_steps_prefix_consumer(value: &str) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: steps_prefix\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: producer\n      value: \"true\"\n  - id: s2\n    set:\n      output: result\n      value: \"{value}\"\n  - id: s3\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: steps_prefix\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"true\"\n  - id: s2\n    set:\n      output: result\n      value: \"{value}\"\n  - id: s3\n    finish:\n      result: 0\n"
     )
 }
 
 fn yaml_transitive_copy(value: &str) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: trans_copy\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: producer\n      value: \"true\"\n  - id: copier\n    set:\n      output: copied\n      value: \"{value}\"\n  - id: s3\n    set:\n      output: result\n      value: \"$copied + 2\"\n  - id: s4\n    finish:\n      result: 0\n"
+        "version: velvet-ballistics/v1\nname: trans_copy\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"true\"\n  - id: copier\n    set:\n      output: copied\n      value: \"{value}\"\n  - id: s3\n    set:\n      output: result\n      value: \"$copied + 2\"\n  - id: s4\n    finish:\n      result: 0\n"
     )
 }
 
@@ -33,13 +33,13 @@ fn yaml_direct_literal() -> String {
 
 fn yaml_numeric_producer(value: &str) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: num_prod\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: producer\n      value: \"10\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: 1\n"
+        "version: velvet-ballistics/v1\nname: num_prod\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"10\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: "result"\n"
     )
 }
 
 fn yaml_numeric_qualified(value: &str) -> String {
     format!(
-        "version: velvet-ballistics/v1\nname: num_qual\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: producer\n      value: \"10\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: 1\n"
+        "version: velvet-ballistics/v1\nname: num_qual\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"10\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: finish\n    finish:\n      result: "result"\n"
     )
 }
 
