@@ -1,0 +1,5 @@
+# vb-q6jkh Rust contract
+
+ForEachNext body and done must be distinct in accepted CompiledWorkflow IR. A successful productive continuation and exhaustion must remain distinguishable at the evidence boundary. Reject equal targets after ordinary reference/slot numeric bounds with typed WorkflowError::ForEachBranchTargetAlias { step, target }, analogous to existing ReduceBranchTargetAlias. Apply to ForEachNext only; ForEachStart has different emission semantics and no new restriction is justified here.
+
+Compatibility tightening is intentional for previously accepted equal-target forward IR. Valid distinct forward and cached backward controls remain accepted; public primitive/dispatcher signatures and legacy reset behavior remain unchanged. Native literal-event counterexample must be preserved before repair. Then constructor alias rejection, numeric-error precedence, distinct-forward actual-driver event equality and unchanged four-family/nested oracles must pass. Independent CODE and TEST review required; no general F1 or main closure from this bead alone.
