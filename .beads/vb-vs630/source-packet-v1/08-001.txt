@@ -1,0 +1,100 @@
+crates/vb_storage/src/events/wire_serialize_admission.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/events/wire_serialize_admission.rs:2: 
+crates/vb_storage/src/events/wire_serialize_admission.rs:3: use super::super::super::JournalEvent;
+crates/vb_storage/src/events/wire_serialize_admission.rs:4: use super::super::tags::{
+crates/vb_storage/src/events/wire_serialize_admission.rs:5:     TAG_RUN_ADMISSION, TAG_RUN_ADMISSION_BOUND, TAG_RUN_ADMISSION_BOUND_PINNED,
+crates/vb_storage/src/events/wire_serialize_admission.rs:6:     TAG_RUN_ADMISSION_PINNED,
+crates/vb_storage/src/events/wire_serialize_admission.rs:7: };
+crates/vb_storage/src/events/wire_serialize_admission.rs:8: use super::{serialize_record_kind_variant, serialize_routing_error};
+crates/vb_storage/src/events/wire_serialize_admission.rs:9: use serde::Serializer;
+crates/vb_storage/src/events/wire_serialize_admission.rs:10: 
+crates/vb_storage/src/events/wire_serialize_admission.rs:11: type AdmissionFields<'a> = (
+crates/vb_storage/src/events/wire_serialize_admission.rs:12:     &'a vb_core::RunId,
+crates/vb_storage/src/events/wire_serialize_admission.rs:13:     &'a crate::EventSeq,
+crates/vb_storage/src/events/wire_serialize_admission.rs:14:     &'a vb_core::WorkflowDigest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:15:     &'a vb_core::CapabilitySet,
+crates/vb_storage/src/events/wire_serialize_admission.rs:16:     &'a vb_core::RuntimePolicy,
+crates/vb_storage/src/events/wire_serialize_admission.rs:17: );
+crates/vb_storage/src/events/wire_serialize_admission.rs:18: 
+crates/vb_storage/src/events/wire_serialize_admission.rs:19: pub(super) fn serialize_admission<S>(event: &JournalEvent, serializer: S) -> Result<S::Ok, S::Error>
+crates/vb_storage/src/events/wire_serialize_admission.rs:20: where
+crates/vb_storage/src/events/wire_serialize_admission.rs:21:     S: Serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:22: {
+crates/vb_storage/src/events/wire_serialize_admission.rs:23:     match event {
+crates/vb_storage/src/events/wire_serialize_admission.rs:24:         JournalEvent::RunAdmission {
+crates/vb_storage/src/events/wire_serialize_admission.rs:25:             run,
+crates/vb_storage/src/events/wire_serialize_admission.rs:26:             seq,
+crates/vb_storage/src/events/wire_serialize_admission.rs:27:             artifact_digest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:28:             input_digest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:29:             policy_pin,
+crates/vb_storage/src/events/wire_serialize_admission.rs:30:             granted_capabilities: caps,
+crates/vb_storage/src/events/wire_serialize_admission.rs:31:             policy,
+crates/vb_storage/src/events/wire_serialize_admission.rs:32:         } => serialize_admission_payload(
+crates/vb_storage/src/events/wire_serialize_admission.rs:33:             serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:34:             (run, seq, artifact_digest, caps, policy),
+crates/vb_storage/src/events/wire_serialize_admission.rs:35:             input_digest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:36:             policy_pin,
+crates/vb_storage/src/events/wire_serialize_admission.rs:37:         ),
+crates/vb_storage/src/events/wire_serialize_admission.rs:38:         _ => serialize_routing_error::<S>(),
+crates/vb_storage/src/events/wire_serialize_admission.rs:39:     }
+crates/vb_storage/src/events/wire_serialize_admission.rs:40: }
+crates/vb_storage/src/events/wire_serialize_admission.rs:41: 
+crates/vb_storage/src/events/wire_serialize_admission.rs:42: fn serialize_admission_payload<S>(
+crates/vb_storage/src/events/wire_serialize_admission.rs:43:     serializer: S,
+crates/vb_storage/src/events/wire_serialize_admission.rs:44:     fields: AdmissionFields<'_>,
+crates/vb_storage/src/events/wire_serialize_admission.rs:45:     binding: &crate::RunInputBinding,
+crates/vb_storage/src/events/wire_serialize_admission.rs:46:     pin: &crate::RunPolicyPin,
+crates/vb_storage/src/events/wire_serialize_admission.rs:47: ) -> Result<S::Ok, S::Error>
+crates/vb_storage/src/events/wire_serialize_admission.rs:48: where
+crates/vb_storage/src/events/wire_serialize_admission.rs:49:     S: Serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:50: {
+crates/vb_storage/src/events/wire_serialize_admission.rs:51:     match (binding, pin) {
+crates/vb_storage/src/events/wire_serialize_admission.rs:52:         (crate::RunInputBinding::LegacyUnbound, crate::RunPolicyPin::Unverified) => {
+crates/vb_storage/src/events/wire_serialize_admission.rs:53:             serialize_record_kind_variant(serializer, TAG_RUN_ADMISSION, "RunAdmission", &fields)
+crates/vb_storage/src/events/wire_serialize_admission.rs:54:         }
+crates/vb_storage/src/events/wire_serialize_admission.rs:55:         (crate::RunInputBinding::Digest(digest), crate::RunPolicyPin::Unverified) => {
+crates/vb_storage/src/events/wire_serialize_admission.rs:56:             serialize_bound_admission_payload(serializer, fields, digest)
+crates/vb_storage/src/events/wire_serialize_admission.rs:57:         }
+crates/vb_storage/src/events/wire_serialize_admission.rs:58:         (_, crate::RunPolicyPin::Pinned(policy_digest)) => {
+crates/vb_storage/src/events/wire_serialize_admission.rs:59:             serialize_pinned_admission_payload(serializer, fields, binding, policy_digest)
+crates/vb_storage/src/events/wire_serialize_admission.rs:60:         }
+crates/vb_storage/src/events/wire_serialize_admission.rs:61:     }
+crates/vb_storage/src/events/wire_serialize_admission.rs:62: }
+crates/vb_storage/src/events/wire_serialize_admission.rs:63: 
+crates/vb_storage/src/events/wire_serialize_admission.rs:64: fn serialize_pinned_admission_payload<S>(
+crates/vb_storage/src/events/wire_serialize_admission.rs:65:     serializer: S,
+crates/vb_storage/src/events/wire_serialize_admission.rs:66:     fields: AdmissionFields<'_>,
+crates/vb_storage/src/events/wire_serialize_admission.rs:67:     binding: &crate::RunInputBinding,
+crates/vb_storage/src/events/wire_serialize_admission.rs:68:     policy_digest: &vb_core::WorkflowDigest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:69: ) -> Result<S::Ok, S::Error>
+crates/vb_storage/src/events/wire_serialize_admission.rs:70: where
+crates/vb_storage/src/events/wire_serialize_admission.rs:71:     S: Serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:72: {
+crates/vb_storage/src/events/wire_serialize_admission.rs:73:     match binding {
+crates/vb_storage/src/events/wire_serialize_admission.rs:74:         crate::RunInputBinding::LegacyUnbound => {
+crates/vb_storage/src/events/wire_serialize_admission.rs:75:             serialize_pinned_unbound_admission(serializer, fields, policy_digest)
+crates/vb_storage/src/events/wire_serialize_admission.rs:76:         }
+crates/vb_storage/src/events/wire_serialize_admission.rs:77:         crate::RunInputBinding::Digest(input_digest) => {
+crates/vb_storage/src/events/wire_serialize_admission.rs:78:             serialize_pinned_bound_admission(serializer, fields, input_digest, policy_digest)
+crates/vb_storage/src/events/wire_serialize_admission.rs:79:         }
+crates/vb_storage/src/events/wire_serialize_admission.rs:80:     }
+crates/vb_storage/src/events/wire_serialize_admission.rs:81: }
+crates/vb_storage/src/events/wire_serialize_admission.rs:82: 
+crates/vb_storage/src/events/wire_serialize_admission.rs:83: fn serialize_pinned_unbound_admission<S>(
+crates/vb_storage/src/events/wire_serialize_admission.rs:84:     serializer: S,
+crates/vb_storage/src/events/wire_serialize_admission.rs:85:     fields: AdmissionFields<'_>,
+crates/vb_storage/src/events/wire_serialize_admission.rs:86:     policy_digest: &vb_core::WorkflowDigest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:87: ) -> Result<S::Ok, S::Error>
+crates/vb_storage/src/events/wire_serialize_admission.rs:88: where
+crates/vb_storage/src/events/wire_serialize_admission.rs:89:     S: Serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:90: {
+crates/vb_storage/src/events/wire_serialize_admission.rs:91:     let (run, seq, artifact, caps, policy) = fields;
+crates/vb_storage/src/events/wire_serialize_admission.rs:92:     let payload = (run, seq, artifact, policy_digest, caps, policy);
+crates/vb_storage/src/events/wire_serialize_admission.rs:93:     serialize_record_kind_variant(
+crates/vb_storage/src/events/wire_serialize_admission.rs:94:         serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:95:         TAG_RUN_ADMISSION_PINNED,
+crates/vb_storage/src/events/wire_serialize_admission.rs:96:         "RunAdmission",
+crates/vb_storage/src/events/wire_serialize_admission.rs:97:         &payload,
+crates/vb_storage/src/events/wire_serialize_admission.rs:98:     )
+crates/vb_storage/src/events/wire_serialize_admission.rs:99: }
+crates/vb_storage/src/events/wire_serialize_admission.rs:100: 
