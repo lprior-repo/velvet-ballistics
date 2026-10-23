@@ -1,0 +1,38 @@
+        if run == 0 {
+            match keys::run_header_key(RunId::new(0)) {
+                Err(JournalError::InvalidRunId { run: found }) => prop_assert_eq!(found, RunId::new(0)),
+                other => prop_assert!(false, "unexpected {other:?}"),
+            }
+            match keys::run_event_key(RunId::new(0), EventSeq::new(seq)) {
+                Err(JournalError::InvalidRunId { run: found }) => prop_assert_eq!(found, RunId::new(0)),
+                other => prop_assert!(false, "unexpected {other:?}"),
+            }
+            match keys::index_workflow_key(WorkflowId::new(workflow), RunId::new(0)) {
+                Err(JournalError::InvalidRunId { run: found }) => prop_assert_eq!(found, RunId::new(0)),
+                other => prop_assert!(false, "unexpected {other:?}"),
+            }
+            match keys::index_action_key(ActionId::new(action), RunId::new(0), StepIdx::new(step)) {
+                Err(JournalError::InvalidRunId { run: found }) => prop_assert_eq!(found, RunId::new(0)),
+                other => prop_assert!(false, "unexpected {other:?}"),
+            }
+        } else {
+            let header = keys::run_header_key(RunId::new(run))?;
+            prop_assert_eq!(header[0], vb_storage::constants::PREFIX_RUN_HEADER);
+            prop_assert_eq!(&header[1..9], &run.to_be_bytes());
+
+            let event = keys::run_event_key(RunId::new(run), EventSeq::new(seq))?;
+            prop_assert_eq!(event[0], vb_storage::constants::PREFIX_RUN_EVENT);
+            prop_assert_eq!(&event[1..9], &run.to_be_bytes());
+            prop_assert_eq!(&event[9..17], &seq.to_be_bytes());
+
+            let workflow_key = keys::index_workflow_key(WorkflowId::new(workflow), RunId::new(run))?;
+            prop_assert_eq!(workflow_key[0], vb_storage::constants::PREFIX_INDEX_WORKFLOW);
+            prop_assert_eq!(&workflow_key[1..5], &workflow.to_be_bytes());
+            prop_assert_eq!(&workflow_key[5..13], &run.to_be_bytes());
+
+            let action_key = keys::index_action_key(ActionId::new(action), RunId::new(run), StepIdx::new(step))?;
+            prop_assert_eq!(action_key[0], vb_storage::constants::PREFIX_INDEX_ACTION);
+            prop_assert_eq!(&action_key[1..3], &action.to_be_bytes());
+            prop_assert_eq!(&action_key[3..11], &run.to_be_bytes());
+            prop_assert_eq!(&action_key[11..13], &step.to_be_bytes());
+        }

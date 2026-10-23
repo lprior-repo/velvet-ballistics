@@ -1,0 +1,17 @@
+
+running 12 tests
+test extra::arbitrary_input_value_survives ... ok
+test extra::test_duplicate_input_names ... ok
+test extra::test_input_expression_save_preserves_value_and_secret ... ok
+test extra::test_longform_schema ... ok
+test extra::test_no_finish_compile_fallback ... ok
+test test_compile_base ... ok
+test test_named_internal_finish ... ok
+test test_numeric_slot_finish ... ok
+test test_roundtrip ... ok
+test test_save_before_finish ... ok
+test test_two_inputs ... ok
+test test_unknown_ref ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

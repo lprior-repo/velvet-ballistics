@@ -1,0 +1,3 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.41s
+     Running tests/vb_8mdp_7_collect_lowering_props.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_8mdp_7_collect_lowering_props-73d6962f14166034)

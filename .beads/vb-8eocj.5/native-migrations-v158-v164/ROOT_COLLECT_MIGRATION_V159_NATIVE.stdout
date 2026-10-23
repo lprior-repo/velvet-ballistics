@@ -1,0 +1,22 @@
+
+running 17 tests
+test canonical_collect_product_overflow_is_exact ... ok
+test canonical_collect_total_limit_and_distinct_roles ... ok
+test collect_defaults_limit_and_page_size_to_one ... ok
+test collect_four_consecutive_ids_after_preamble ... ok
+test collect_four_nodes_consecutive_ids ... ok
+test collect_start_fields_match_input_and_offsets_correct ... ok
+test collect_with_moderate_preamble_has_correct_offsets ... ok
+test lower_collect_accepts_u32_max_values ... ok
+test lower_collect_accepts_zero_limit_and_page_size ... ok
+test lower_collect_collectfinish_has_correct_slot_reference ... ok
+test lower_collect_collectpage_has_correct_slot_reference ... ok
+test lower_collect_collectstart_has_correct_fields ... ok
+test lower_collect_emits_three_nodes ... ok
+test lower_collect_node_ids_are_id_body_done ... ok
+test lower_collect_preserves_source_in_builder ... ok
+test step_idx_checked_add_three_at_boundary ... ok
+test step_idx_max_is_u16_max_minus_three_for_offset_three ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+

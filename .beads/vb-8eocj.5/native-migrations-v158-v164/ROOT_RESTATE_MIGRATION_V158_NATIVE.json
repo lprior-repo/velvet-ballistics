@@ -1,0 +1,25 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090",
+  "argv": [
+    "env",
+    "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target",
+    "RUSTC_WRAPPER=",
+    "RUSTFLAGS=-Dwarnings",
+    "cargo",
+    "test",
+    "-p",
+    "velvet-ballistics-workspace-tests",
+    "--test",
+    "restate_typed_partitioned_id_tests",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit_code": 0,
+  "seconds": 0.401,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_RESTATE_MIGRATION_V158_NATIVE"
+}

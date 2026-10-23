@@ -1,0 +1,40 @@
+use proptest::prelude::*;
+use proptest::test_runner::TestCaseError;
+
+#[proptest]
+fn collect_start_fields_match_input_and_offsets_correct(
+    source_digit in source_digit_str(),
+    pages in any::<Option<u32>>(),
+    items in any::<Option<u32>>(),
+) {
+    let yaml = collect_yaml(&source_digit, pages, items, "42");
+    if let Ok(wf) = compile_workflow(yaml.as_bytes()) {
+        let source: u16 = source_digit.parse::<u16>().map_err(|e| TestCaseError::fail(format!("{e}")))?;
+        let limit = pages.unwrap_or(1).checked_mul(items.unwrap_or(1)).ok_or_else(|| TestCaseError::fail("overflow compiled"))?;
+        assert_canonical_collect_roles(&wf, source, limit, items.unwrap_or(1)).map_err(TestCaseError::fail)?;
+    }
+}
+
+#[test]
+fn canonical_collect_total_limit_and_distinct_roles() -> Result<(), String> {
+    let yaml = collect_yaml("0", Some(3), Some(5), "42");
+    let wf = compile_workflow(yaml.as_bytes()).map_err(|e| format!("{e}"))?;
+    assert_canonical_collect_roles(&wf, 0, 15, 5)?;
+    Ok(())
+}
+
+#[test]
+fn canonical_collect_product_overflow_is_exact() -> Result<(), String> {
+    let yaml = collect_yaml("0", Some(u32::MAX), Some(2), "42");
+    match compile_workflow(yaml.as_bytes()) {
+        Err(errors) => {
+            assert_eq!(errors, vb_compile::CompileErrors(vec![vb_compile::CompileError::StepFieldShape {
+                step: 0,
+                field: "collect",
+                expected: "pages * items must fit u32".to_string(),
+            }]));
+        }
+        Ok(_) => return Err("overflow compiled".into()),
+    }
+    Ok(())
+}

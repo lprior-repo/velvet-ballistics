@@ -1,0 +1,13 @@
+[
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile/src/mod_compile_lowering/canonical_repeat.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile/src/mod_compile_lowering/canonical_repeat_tests.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile/src/mod_compile_lowering/canonical_types.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile/src/mod_compile_lowering/part_02.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile/src/mod_compile_lowering/part_04.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile/src/mod_compile_lowering/source_slot_reservation_tests.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests/tests/vb_f1_canonical_scalar_do/negative.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests/tests/vb_f1_canonical_scalar_do/positive.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests/tests/vb_f1_canonical_scalar_do/type_identity.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests/tests/vb_f1_scalar_do_support/mod.rs",
+  "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs"
+]

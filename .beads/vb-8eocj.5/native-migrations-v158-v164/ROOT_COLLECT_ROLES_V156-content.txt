@@ -1,0 +1,127 @@
+fn assert_canonical_collect_roles(
+    wf: &vb_core::CompiledWorkflow,
+    source: u16,
+    expected_limit: u32,
+    expected_page_size: u32,
+) -> Result<(), String> {
+    use vb_core::CompiledNodeKind;
+    use vb_core::ids::{SlotIdx, StepIdx};
+
+    if wf.node_count() != 5 {
+        return Err(format!("expected 5 nodes, got {}", wf.node_count()));
+    }
+
+    let start = wf.node(StepIdx::new(0)).ok_or("missing node 0")?;
+    if start.id != StepIdx::new(0) {
+        return Err(format!("node 0 has wrong id: {:?}", start.id));
+    }
+    let collector = match &start.kind {
+        CompiledNodeKind::CollectStart {
+            source: src,
+            limit,
+            page_size,
+            body,
+            done,
+        } => {
+            if src.get() != source {
+                return Err(format!("CollectStart source mismatch: {} vs {}", src.get(), source));
+            }
+            if *limit != expected_limit {
+                return Err(format!("CollectStart limit mismatch: {} vs {}", *limit, expected_limit));
+            }
+            if *page_size != expected_page_size {
+                return Err(format!("CollectStart page_size mismatch: {} vs {}", *page_size, expected_page_size));
+            }
+            if *body != StepIdx::new(1) {
+                return Err(format!("CollectStart body mismatch: {:?} vs 1", *body));
+            }
+            if *done != StepIdx::new(3) {
+                return Err(format!("CollectStart done mismatch: {:?} vs 3", *done));
+            }
+            start.output.ok_or("CollectStart has no output slot")?
+        }
+        other => return Err(format!("node 0 wrong kind: {:?}", other)),
+    };
+
+    let body = wf.node(StepIdx::new(1)).ok_or("missing node 1")?;
+    if body.id != StepIdx::new(1) {
+        return Err(format!("node 1 has wrong id: {:?}", body.id));
+    }
+    match &body.kind {
+        CompiledNodeKind::SetConst { .. } => {}
+        other => return Err(format!("node 1 wrong kind: {:?}", other)),
+    }
+    let body_result = body.output.ok_or("SetConst has no output slot")?;
+    if body.next != Some(StepIdx::new(2)) {
+        return Err(format!("node 1 next mismatch: {:?}", body.next));
+    }
+    if SlotIdx::new(source).get() == collector.get() {
+        return Err("source and collector slots are not distinct".to_string());
+    }
+    if SlotIdx::new(source).get() == body_result.get() {
+        return Err("source and body_result slots are not distinct".to_string());
+    }
+    if collector.get() == body_result.get() {
+        return Err("collector and body_result slots are not distinct".to_string());
+    }
+
+    let next = wf.node(StepIdx::new(2)).ok_or("missing node 2")?;
+    if next.id != StepIdx::new(2) {
+        return Err(format!("node 2 has wrong id: {:?}", next.id));
+    }
+    match &next.kind {
+        CompiledNodeKind::CollectNext {
+            collector_slot,
+            body: b,
+            done,
+        } => {
+            if *collector_slot != collector {
+                return Err(format!("CollectNext collector mismatch: {:?} vs {:?}", *collector_slot, collector));
+            }
+            if *b != StepIdx::new(1) {
+                return Err(format!("CollectNext body mismatch: {:?} vs 1", *b));
+            }
+            if *done != StepIdx::new(3) {
+                return Err(format!("CollectNext done mismatch: {:?} vs 3", *done));
+            }
+        }
+        other => return Err(format!("node 2 wrong kind: {:?}", other)),
+    }
+
+    let finish = wf.node(StepIdx::new(3)).ok_or("missing node 3")?;
+    if finish.id != StepIdx::new(3) {
+        return Err(format!("node 3 has wrong id: {:?}", finish.id));
+    }
+    match &finish.kind {
+        CompiledNodeKind::CollectFinish { collector_slot } => {
+            if *collector_slot != collector {
+                return Err(format!("CollectFinish collector mismatch: {:?} vs {:?}", *collector_slot, collector));
+            }
+        }
+        other => return Err(format!("node 3 wrong kind: {:?}", other)),
+    }
+    if finish.output != Some(body_result) {
+        return Err(format!("node 3 output mismatch: {:?} vs {:?}", finish.output, body_result));
+    }
+    if finish.next != Some(StepIdx::new(4)) {
+        return Err(format!("node 3 next mismatch: {:?}", finish.next));
+    }
+
+    let term = wf.node(StepIdx::new(4)).ok_or("missing node 4")?;
+    if term.id != StepIdx::new(4) {
+        return Err(format!("node 4 has wrong id: {:?}", term.id));
+    }
+    match &term.kind {
+        CompiledNodeKind::Finish { result } => {
+            if *result != SlotIdx::new(0) {
+                return Err(format!("Finish result mismatch: {:?} vs 0", *result));
+            }
+        }
+        other => return Err(format!("node 4 wrong kind: {:?}", other)),
+    }
+    if term.next != None {
+        return Err(format!("node 4 next should be None, got {:?}", term.next));
+    }
+
+    Ok(())
+}
