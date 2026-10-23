@@ -1,0 +1,32 @@
+{
+  "source": "747a8830613ca9f3a7a3fe513a32b5b45562d71a",
+  "baseline": "d0645504a432552301d43094859e1261318a1bef",
+  "cli_build_exit": 0,
+  "moon_ci_exit": -9,
+  "moon_ci_seconds": 5171.51,
+  "moon_ci_timed_out": false,
+  "verdict": "NO_VERDICT_OOM_KILL",
+  "cause": "systemd-oomd killed scope run-p631130-i38377219; user journal records 144 processes, 33G memory peak",
+  "nextest_summary_lines": [
+    "                    velvet-ballistics:test |     Starting 14728 tests across 309 binaries (27 tests skipped)",
+    "                    velvet-ballistics:test |      Summary [ 485.105s] 14728 tests run: 14728 passed (21 slow), 27 skipped"
+  ],
+  "map_scope": "1860 files selected by pinned wrapper; tracked repository diff additionally inspected",
+  "source_map_sha256": "a2ae67c6aeddbb0c7f667f4fcddd5e9ba46bfc3d59c2893b2f5c7644907921e2",
+  "source_maps_equal": true,
+  "generated_diff": ".evidence/verus/trust-scan.txt line ordering only (identical line multiset); retained patch; generated JJ child43d76c9d",
+  "stale_moon_ci_report_excluded": true,
+  "binary_sha256_unchanged": "d00ddb0d065d14be8c77029c89bcee8d6e76e9697e15183fdd07ffd70612e6dc",
+  "pending": "baseline Kani interrupted; subsequent tasks not accepted; full canonical gate and main landing still pending",
+  "limits": [
+    "TSAN instrumented binary build is not runtime race freedom",
+    "ASAN check/build not exhaustive memory safety",
+    "Miri/coverage smoke select one test each",
+    "mutants smoke only one UNVIABLE mutant; no kill-score evidence",
+    "benchmark build not speed evidence",
+    "fuzz campaigns bounded",
+    "test-integrity reported base HEAD",
+    "cached/no-op tasks retained as such",
+    "registered Verus/Repeat Kani results do not establish full F1 proof closure"
+  ]
+}

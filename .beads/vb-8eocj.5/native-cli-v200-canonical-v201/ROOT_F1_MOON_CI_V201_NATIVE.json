@@ -1,0 +1,38 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090",
+  "argv": [
+    "systemd-run",
+    "--user",
+    "--scope",
+    "--quiet",
+    "-p",
+    "MemoryHigh=32G",
+    "-p",
+    "MemoryMax=40G",
+    "-p",
+    "MemorySwapMax=0",
+    "env",
+    "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target",
+    "RUSTC_WRAPPER=",
+    "CARGO_BUILD_JOBS=2",
+    "RUST_TEST_THREADS=1",
+    "NEXTEST_TEST_THREADS=8",
+    "CARGO_BIN_EXE_velvet-ballistics=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/velvet-ballistics",
+    "moon",
+    "ci",
+    "--base",
+    "d0645504a432552301d43094859e1261318a1bef",
+    "--head",
+    "747a8830613ca9f3a7a3fe513a32b5b45562d71a",
+    "--concurrency",
+    "1"
+  ],
+  "exit_code": -9,
+  "seconds": 5171.51,
+  "timeout_seconds": 21600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_F1_MOON_CI_V201_NATIVE"
+}

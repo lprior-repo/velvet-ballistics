@@ -1,0 +1,87 @@
+[
+  {
+    "path": "README.md",
+    "bytes": 766,
+    "sha256": "9bf5f554d7a6e96beb17162eb0601fce1fcea9db1de907c14aafa1ed35ed3f36"
+  },
+  {
+    "path": "ROOT_CLI_BINARY_V201.after.json",
+    "bytes": 298,
+    "sha256": "63d422e2ef74a96461cac273bf334c34900a2f36be16bb8e75c9a4fda39457cd"
+  },
+  {
+    "path": "ROOT_CLI_BINARY_V201.before.json",
+    "bytes": 352,
+    "sha256": "6e5ab63966a35653426a3e7ad3a236b2fe284a688bc96ffa68a51a05dc85e5d6"
+  },
+  {
+    "path": "ROOT_CLI_BUILD_V200_NATIVE.json",
+    "bytes": 627,
+    "sha256": "3bfa80d012ee702dfd5d6558ccae88ee3d65b6075168a5710571856d2fd8af27"
+  },
+  {
+    "path": "ROOT_CLI_BUILD_V200_NATIVE.source-after.json",
+    "bytes": 236123,
+    "sha256": "b127ea7d57b7cba5276c800ea8228780e785a2359a8be5696cd9957d0e480c73"
+  },
+  {
+    "path": "ROOT_CLI_BUILD_V200_NATIVE.source-before.json",
+    "bytes": 236123,
+    "sha256": "bf5ea71409e0a031629f31288c887c3441819142a0e8d4f1a01cd73bc53c13a0"
+  },
+  {
+    "path": "ROOT_CLI_BUILD_V200_NATIVE.stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ROOT_CLI_BUILD_V200_NATIVE.stdout",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ROOT_F1_MOON_CI_V201_NATIVE.json",
+    "bytes": 1018,
+    "sha256": "218cd82b6865eaeba777993c92b73493dd38d885cdffeddb4b810bd98074af2f"
+  },
+  {
+    "path": "ROOT_F1_MOON_CI_V201_NATIVE.source-after.json",
+    "bytes": 236123,
+    "sha256": "f83c21b47c95b7654444074abcc1b4f3f8feaa777d0f6f47c914c88b863b47be"
+  },
+  {
+    "path": "ROOT_F1_MOON_CI_V201_NATIVE.source-before.json",
+    "bytes": 236123,
+    "sha256": "79d7a869e58e71bfd36fbc84c901ac7c1efb3f113ba6d3beedf31d845bbe1655"
+  },
+  {
+    "path": "ROOT_F1_MOON_CI_V201_NATIVE.stderr",
+    "bytes": 99339,
+    "sha256": "cf9b078b8ca81a5907b1da2522e4a43541a97edaeb0d2b27297c7477df8b9d43"
+  },
+  {
+    "path": "ROOT_F1_MOON_CI_V201_NATIVE.stdout",
+    "bytes": 4545228,
+    "sha256": "b564bf760cd8f9444e84e6a16e9ba4343c29d9c1fd9169e709862b68a2dc9151"
+  },
+  {
+    "path": "ROOT_F1_V201_CAPTURE.json",
+    "bytes": 5200,
+    "sha256": "82bb28efa48fca8ea6efc62e966c05d2e2265bef4625efbfd456a8da7b4db704"
+  },
+  {
+    "path": "ROOT_F1_V201_GENERATED_TRUST_SCAN.patch",
+    "bytes": 177342,
+    "sha256": "1eb2bbe323f18088b03bc4f5bb21e600f07029a2d0d10a707dfa671ba12ed7d1"
+  },
+  {
+    "path": "receipt.json",
+    "bytes": 1775,
+    "sha256": "df1b9c628b4cee323a238496849a00f26faf73307654abae655d07e2fcfe85d5"
+  },
+  {
+    "path": "systemd-oom-kill.txt",
+    "bytes": 376,
+    "sha256": "9bbcc9d5cac397a5d7b1ffe3221474abb4a957af9482ef909df36f6fcf370b6d"
+  }
+]

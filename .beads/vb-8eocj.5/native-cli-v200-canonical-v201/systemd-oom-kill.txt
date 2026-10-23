@@ -1,0 +1,3 @@
+Oct 23 13:28:24 omarchy systemd[1506]: run-p631130-i38377219.scope: systemd-oomd killed 144 process(es) in this unit.
+Oct 23 13:28:26 omarchy systemd[1506]: run-p631130-i38377219.scope: Failed with result 'oom-kill'.
+Oct 23 13:28:26 omarchy systemd[1506]: run-p631130-i38377219.scope: Consumed 1h 58min 31.366s CPU time over 1h 26min 12.812s wall clock time, 33G memory peak.
