@@ -1,0 +1,96 @@
+ACTUAL SOURCE crates/vb_runtime/src/admission/parts/chunk_003_stores.rs
+101:     fn load_accepted_artifact(
+102:         &self,
+103:         artifact_digest: WorkflowDigest,
+104:     ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+105:         Err(ArtifactEnvelopeError::ArtifactNotFound {
+106:             digest: artifact_digest,
+107:         })
+108:     }
+109: }
+110: 
+111: /// Artifact store backed by FjallJournal.
+112: pub struct StorageArtifactStore {
+113:     journal: Arc<vb_storage::FjallJournal>,
+114:     catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>,
+115: }
+116: 
+117: impl StorageArtifactStore {
+118:     /// Attach checked executor authority explicitly; legacy constructors remain fail-closed.
+119:     pub fn with_catalog(journal: Arc<vb_storage::FjallJournal>, catalog: Option<Arc<vb_storage::executor::ExecutorCatalog>>) -> Self {
+120:         Self { journal, catalog }
+121:     }
+122: 
+123:     /// Creates a new storage-backed artifact store.
+124:     #[must_use]
+125:     pub fn new(journal: Arc<vb_storage::FjallJournal>) -> Self {
+126:         Self { journal, catalog: None }
+127:     }
+128: 
+129:     /// Creates a new shared storage-backed artifact store (legacy artifact-only view).
+130:     #[must_use]
+131:     pub fn shared_artifact(journal: Arc<vb_storage::FjallJournal>) -> SharedArtifactStore {
+132:         Arc::new(Self::new(journal))
+133:     }
+134: 
+135:     /// Creates a new shared storage-backed accepted artifact store.
+136:     #[must_use]
+137:     pub fn shared(journal: Arc<vb_storage::FjallJournal>) -> SharedAcceptedArtifactStore {
+138:         Arc::new(Self::new(journal))
+139:     }
+140: }
+141: 
+142: impl ArtifactStore for StorageArtifactStore {
+143:     fn compiled_ir_exists(&self, digest: WorkflowDigest) -> bool {
+144:         matches!(self.journal.compiled_ir(digest), Ok(Some(_)))
+145:             || matches!(
+146:                 self.journal.compiled_ir_for_source_digest(digest),
+147:                 Ok(Some(_))
+148:             )
+149:     }
+150: }
+151: 
+152: impl AcceptedArtifactStore for StorageArtifactStore {
+153:     fn executor_catalog(&self) -> Option<&vb_storage::executor::ExecutorCatalog> { self.catalog.as_deref() }
+154: 
+155:     fn load_accepted_artifact(
+156:         &self,
+157:         artifact_digest: WorkflowDigest,
+158:     ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+159:         // Load the compiled IR record from the journal. Accepted artifacts are
+160:         // stored by artifact digest, while runtime submissions commonly carry
+161:         // the workflow/source digest. Preserve the content-addressed key and
+162:         // fall back to a bounded source-digest lookup for that runtime path.
+163:         let record = match self.journal.compiled_ir(artifact_digest) {
+164:             Ok(Some(record)) => record,
+165:             Ok(None) => self
+166:                 .journal
+167:                 .compiled_ir_for_source_digest(artifact_digest)
+168:                 .map_err(|_jb_err| ArtifactEnvelopeError::ArtifactNotFound {
+169:                     digest: artifact_digest,
+170:                 })?
+171:                 .ok_or(ArtifactEnvelopeError::ArtifactNotFound {
+172:                     digest: artifact_digest,
+173:                 })?,
+174:             Err(_) => {
+175:                 return Err(ArtifactEnvelopeError::ArtifactNotFound {
+176:                     digest: artifact_digest,
+177:                 });
+178:             }
+179:         };
+180: 
+181:         // Decode the postcard payload as AcceptedArtifact.
+182:         let artifact: vb_storage::admission::AcceptedArtifact = postcard::from_bytes(&record.ir)
+183:             .map_err(|_decode_err| ArtifactEnvelopeError::PostcardDecodeFailed)?;
+184: 
+185:         if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
+186:             return Err(ArtifactEnvelopeError::ArtifactDigestMismatch {
+187:                 requested: artifact_digest,
+188:                 found: artifact.digest,
+189:             });
+190:         }
+191:         validate_accepted_artifact_envelope(self, &artifact)?;
+192: 
+193:         Ok(artifact)
+194:     }
+195: }

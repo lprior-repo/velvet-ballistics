@@ -1,0 +1,53 @@
+ACTUAL SOURCE crates/vb_storage/src/executor/packed.rs
+101:     pub(super) fn pack_for<'a>(
+102:         &self,
+103:         artifact: &'a AcceptedArtifact,
+104:         action: ActionId,
+105:     ) -> Result<&'a ActionPack, ExecutorError> {
+106:         let ArtifactEvidence::Packed(packed) = &artifact.verification.evidence else {
+107:             return Err(ExecutorError::CatalogRequired);
+108:         };
+109:         let index = packed
+110:             .packs
+111:             .binary_search_by_key(&action, |pack| pack.action)
+112:             .map_err(|_| ExecutorError::PackMismatch)?;
+113:         packed.packs.get(index).ok_or(ExecutorError::PackMismatch)
+114:     }
+115: }
+116: 
+117: fn checked_envelope(
+118:     artifact: &AcceptedArtifact,
+119:     policy: RuntimePolicy,
+120: ) -> Result<&PackedArtifactEvidence, ExecutorError> {
+121:     let ArtifactEvidence::Packed(packed) = &artifact.verification.evidence else {
+122:         return Err(ExecutorError::CatalogRequired);
+123:     };
+124:     if packed.base.schema_version != verification::EVIDENCE_VERSION {
+125:         return Err(crate::JournalError::UnsupportedSchemaVersion {
+126:             version: packed.base.schema_version,
+127:         }
+128:         .into());
+129:     }
+130:     if packed.base.admission_policy != policy
+131:         || packed.packs.len() > MAX_PACKS
+132:         || artifact.digest != artifact.verification.digest
+133:         || crate::admission::accepted_artifact_digest(artifact)? != artifact.digest
+134:     {
+135:         return Err(ExecutorError::PackMismatch);
+136:     }
+137:     Ok(packed)
+138: }
+139: 
+140: fn decode_workflow(artifact: &AcceptedArtifact) -> Result<CompiledWorkflow, ExecutorError> {
+141:     let len = u32::try_from(artifact.ir.len()).map_err(|_| ExecutorError::Capacity)?;
+142:     if len > crate::constants::MAX_COMPILED_IR_BYTES {
+143:         return Err(ExecutorError::Capacity);
+144:     }
+145:     let (parts, rest): (WorkflowParts, _) = postcard::take_from_bytes(&artifact.ir)?;
+146:     if !rest.is_empty() {
+147:         return Err(ExecutorError::Corrupt);
+148:     }
+149:     CompiledWorkflow::try_from_parts(parts).map_err(|source| {
+150:         ExecutorError::Artifact(crate::JournalError::WorkflowReconstruction(source))
+151:     })
+152: }

@@ -1,0 +1,11 @@
+ACTUAL SOURCE crates/vb_storage/src/executor/issuance_tests.rs
+201:         "Relaxed policy should have no events"
+202:     );
+203: 
+204:     // Verify seq 4 default artifact intact
+205:     verify_artifact_readback(&journal, default2.digest, &default2)?;
+206: 
+207:     // Final counter
+208:     assert_eq!(read_counter(&journal)?, Some(4));
+209:     Ok(())
+210: }
