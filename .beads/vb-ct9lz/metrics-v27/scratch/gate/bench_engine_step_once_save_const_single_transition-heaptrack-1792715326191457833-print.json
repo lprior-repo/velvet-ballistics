@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4",
+  "argv": [
+    "heaptrack_print",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst"
+  ],
+  "exit_code": 0,
+  "seconds": 0.143,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792715326191457833-print"
+}

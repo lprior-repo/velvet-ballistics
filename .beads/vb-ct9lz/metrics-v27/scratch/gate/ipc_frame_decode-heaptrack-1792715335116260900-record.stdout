@@ -1,0 +1,10 @@
+heaptrack output will be written to "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/heaptrack/ht-ipc_frame_decode.zst"
+starting application, this might take some time...
+storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
+                        time:   [374.15 ns 375.58 ns 378.00 ns]
+Found 2 outliers among 10 measurements (20.00%)
+  2 (20.00%) high mild
+
+Heaptrack finished! Now run the following to investigate the data:
+
+  heaptrack --analyze "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/heaptrack/ht-ipc_frame_decode.zst"
