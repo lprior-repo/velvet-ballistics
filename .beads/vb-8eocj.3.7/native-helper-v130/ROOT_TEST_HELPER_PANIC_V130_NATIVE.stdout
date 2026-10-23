@@ -1,0 +1,8 @@
+CWD: /home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090
+CommitSHA: f36bd05497814330c22d55f94ae8d6dab0d65b7e
+Toolchain: rustc 1.97.0-nightly (52b6e2c20 2026-04-27)
+Command: bash scripts/check-panic-surface.sh
+ScanDomain: crates/*/src
+NonProductionPathExcluded: tests benches examples fuzz target .beads fixtures build.rs path-scoped tests.rs *_tests.rs kani harnesses loom models
+NoViolationFound
+ExitCode: 0

@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 06b99f4f52e9355e2ae4b2e4ef8ec9010ea441d1b14aa965d994f4bdfc385f1c # shrinks to run = 0, seq = 0, workflow = 0, action = 0, step = 0, kind = 28
+cc bd091b1fa99d5b1f393cf18f116beb25e579b1ff476852f24a1fb16c7988aa4f # shrinks to run = 0, seq = 0, workflow = 0, action = 0, step = 0, kind = 0
