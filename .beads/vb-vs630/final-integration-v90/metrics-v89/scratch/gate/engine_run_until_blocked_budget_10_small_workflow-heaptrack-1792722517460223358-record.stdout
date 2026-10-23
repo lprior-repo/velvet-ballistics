@@ -1,0 +1,10 @@
+heaptrack output will be written to "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89/scratch/heaptrack/ht-engine_run_until_blocked_budget_10_small_workflow.zst"
+starting application, this might take some time...
+runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura...
+                        time:   [17.091 ns 17.140 ns 17.174 ns]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+
+Heaptrack finished! Now run the following to investigate the data:
+
+  heaptrack --analyze "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89/scratch/heaptrack/ht-engine_run_until_blocked_budget_10_small_workflow.zst"

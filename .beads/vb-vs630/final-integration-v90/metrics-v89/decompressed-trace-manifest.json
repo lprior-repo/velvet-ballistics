@@ -1,0 +1,27 @@
+{
+  "retained_files": 250,
+  "omitted_redundant_decompressed_streams": [
+    {
+      "path": "scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792722492299995014-zstd.stdout",
+      "bytes": 17654142,
+      "sha256": "08a64f5af26f2e1c8e3aa8b4a724f7b12152ec98f15a97ccb01381e351a22c3d",
+      "original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792722492299995014-zstd.stdout",
+      "regenerate": "zstd -dc corresponding scratch/heaptrack/*.zst"
+    },
+    {
+      "path": "scratch/gate/ipc_frame_decode-heaptrack-1792722501883106805-zstd.stdout",
+      "bytes": 203082115,
+      "sha256": "9dea36240dc34b416451b37bb259ca3eb5498e8cab8df84404e5573cc23b0fd1",
+      "original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89/scratch/gate/ipc_frame_decode-heaptrack-1792722501883106805-zstd.stdout",
+      "regenerate": "zstd -dc corresponding scratch/heaptrack/*.zst"
+    },
+    {
+      "path": "scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792722517460223358-zstd.stdout",
+      "bytes": 20400464,
+      "sha256": "289ceced82c65f2162d0ec5323efcb3be01a21a8f14c196df2bdc832b6ab39e6",
+      "original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792722517460223358-zstd.stdout",
+      "regenerate": "zstd -dc corresponding scratch/heaptrack/*.zst"
+    }
+  ],
+  "compressed_originals": "scratch/heaptrack/*.zst are retained completely; original decompressed logs remain in cache"
+}

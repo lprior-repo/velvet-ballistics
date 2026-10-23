@@ -1,0 +1,10 @@
+heaptrack output will be written to "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst"
+starting application, this might take some time...
+runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...
+                        time:   [17.317 ns 17.354 ns 17.374 ns]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low mild
+
+Heaptrack finished! Now run the following to investigate the data:
+
+  heaptrack --analyze "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89/scratch/heaptrack/ht-bench_engine_step_once_save_const_single_transition.zst"

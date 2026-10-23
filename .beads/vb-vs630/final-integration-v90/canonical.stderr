@@ -1,0 +1,177 @@
+[ WARN 2026-10-22 21:35:45.064] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:35:45.069] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:35:50.881] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:35:50.950] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:35:51.331] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:35:57.110] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:36:00.712] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:36:07.342] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:36:11.952] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:36:51.678] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:36:57.682] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID d88a76a4-5e56-4de9-a771-9843b8495921 with nextest profile: default
+                       velvet-ballistics:test |     Starting 14538 tests across 299 binaries (27 tests skipped)
+[ WARN 21:37:07.554] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+              velvet-ballistics:source-length | source-length gate summary:
+              velvet-ballistics:source-length |   generated          scanned=1     excluded (no limit)
+              velvet-ballistics:source-length |   perf               scanned=0     excluded (no limit)
+              velvet-ballistics:source-length |   kani               scanned=88    warn=3    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verus              scanned=220   warn=45   over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   flux               scanned=30    warn=0    over_limit=0    limit=800 warn_at=640
+              velvet-ballistics:source-length |   verification       scanned=11    warn=2    over_limit=0    limit=600 warn_at=480
+              velvet-ballistics:source-length |   test_in_src        scanned=327   warn=48   over_limit=0    limit=1500 warn_at=1200
+              velvet-ballistics:source-length |   test_top_level     scanned=415   warn=6    over_limit=0    limit=3000 warn_at=2400
+              velvet-ballistics:source-length |   production         scanned=964   warn=198  over_limit=0    limit=300 warn_at=240
+              velvet-ballistics:source-length |   ledger rows used:    383
+                       velvet-ballistics:test |   Cancelling due to signal: 16 tests still running
+                       velvet-ballistics:test |      SIGTERM [   0.314s] (12167/14538) velvet-ballistics-workspace-tests::proptest_equality runtime_error_transitivity_axiom
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   1.595s] (12168/14538) velvet-ballistics-workspace-tests::proptest_equality code_category_hash_anti_symmetry
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   0.324s] (12169/14538) velvet-ballistics-workspace-tests::proptest_equality runtime_error_reflexivity_axiom
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   1.595s] (12170/14538) velvet-ballistics-workspace-tests::proptest_equality code_category_reflexivity_axiom
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   1.436s] (12171/14538) velvet-ballistics-workspace-tests::proptest_equality code_category_symmetry_axiom
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   0.315s] (12172/14538) velvet-ballistics-workspace-tests::proptest_equality runtime_error_symmetry_axiom
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   1.830s] (12173/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_run_accepted_writes_status_and_workflow_indexes
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   2.049s] (12174/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_action_scheduled_writes_event_and_index_atomically
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   1.841s] (12175/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_duplicate_idempotency_key
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   6.593s] (12176/14538) velvet-ballistics-workspace-tests test_util::temp_keyspace::tests::temp_keyspace_uniqueness
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   2.326s] (12177/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_aborted_gate_blocks_subsequent_staging
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   1.865s] (12178/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_batch_len_monotonic_and_is_empty_invariant
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   1.865s] (12179/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_batch_commit_all_or_nothing_across_keyspaces
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 284.824s] (12180/14538) vb_storage::proptest_vb_vzcuf_PS_009 ps009_dup_rejected
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps009_dup_rejected has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [   1.839s] (12181/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_recovery_finds_pending_action_by_index
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test |      SIGTERM [ 386.228s] (12182/14538) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+                       velvet-ballistics:test |   stdout ───
+
+                       velvet-ballistics:test |     running 1 test
+                       velvet-ballistics:test |     test ps008_persisted has been running for over 60 seconds
+                       velvet-ballistics:test |   stderr ───
+                       velvet-ballistics:test |     proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+                       velvet-ballistics:test |     (test aborted with signal 15: SIGTERM)
+
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [ 546.482s] 12182/14538 tests run: 12166 passed (16 slow), 16 failed, 27 skipped
+                       velvet-ballistics:test |      SIGTERM [   0.314s] (12167/14538) velvet-ballistics-workspace-tests::proptest_equality runtime_error_transitivity_axiom
+                       velvet-ballistics:test |      SIGTERM [   1.595s] (12168/14538) velvet-ballistics-workspace-tests::proptest_equality code_category_hash_anti_symmetry
+                       velvet-ballistics:test |      SIGTERM [   0.324s] (12169/14538) velvet-ballistics-workspace-tests::proptest_equality runtime_error_reflexivity_axiom
+                       velvet-ballistics:test |      SIGTERM [   1.595s] (12170/14538) velvet-ballistics-workspace-tests::proptest_equality code_category_reflexivity_axiom
+                       velvet-ballistics:test |      SIGTERM [   1.436s] (12171/14538) velvet-ballistics-workspace-tests::proptest_equality code_category_symmetry_axiom
+                       velvet-ballistics:test |      SIGTERM [   0.315s] (12172/14538) velvet-ballistics-workspace-tests::proptest_equality runtime_error_symmetry_axiom
+                       velvet-ballistics:test |      SIGTERM [   1.830s] (12173/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_run_accepted_writes_status_and_workflow_indexes
+                       velvet-ballistics:test |      SIGTERM [   2.049s] (12174/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_action_scheduled_writes_event_and_index_atomically
+                       velvet-ballistics:test |      SIGTERM [   1.841s] (12175/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_duplicate_idempotency_key
+                       velvet-ballistics:test |      SIGTERM [   6.593s] (12176/14538) velvet-ballistics-workspace-tests test_util::temp_keyspace::tests::temp_keyspace_uniqueness
+                       velvet-ballistics:test |      SIGTERM [   2.326s] (12177/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_aborted_gate_blocks_subsequent_staging
+                       velvet-ballistics:test |      SIGTERM [   1.865s] (12178/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_batch_len_monotonic_and_is_empty_invariant
+                       velvet-ballistics:test |      SIGTERM [   1.865s] (12179/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_batch_commit_all_or_nothing_across_keyspaces
+                       velvet-ballistics:test |      SIGTERM [ 284.824s] (12180/14538) vb_storage::proptest_vb_vzcuf_PS_009 ps009_dup_rejected
+                       velvet-ballistics:test |      SIGTERM [   1.839s] (12181/14538) velvet-ballistics-workspace-tests::journal_side_index_contracts test_recovery_finds_pending_action_by_index
+                       velvet-ballistics:test |      SIGTERM [ 386.228s] (12182/14538) vb_storage::proptest_vb_vzcuf_PS_008 ps008_persisted
+                       velvet-ballistics:test | warning: 2356/14538 tests were not run due to signal
+                       velvet-ballistics:test | error: test run failed

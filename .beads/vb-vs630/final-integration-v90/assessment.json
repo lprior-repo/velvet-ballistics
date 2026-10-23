@@ -1,0 +1,84 @@
+{
+  "status": "REJECTED_CANONICAL_TIMEOUT",
+  "source": "efd5653d534c594e0aa22a950b527a0ff7c4ed58",
+  "source_files_checked": 1850,
+  "source_changed": [],
+  "tasks": [
+    {
+      "label": "RunTask(velvet-ballistics:fmt)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:hot-cold-forbidden-apis)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:unsafe-audit)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:test-integrity)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:nightly-feature-gate)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:agent-cli-contract)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:beads-server-mode)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:workspace-assertions)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:panic-surface)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:check)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:ignored-fallible-results)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:bench-build)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:banned-token-gates)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:lint-src)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:benchmark-regression-policy)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:source-length)",
+      "status": "passed"
+    },
+    {
+      "label": "RunTask(velvet-ballistics:test)",
+      "status": "failed"
+    }
+  ],
+  "test_scheduling_threads": 16,
+  "test_timeout_seconds": 600,
+  "cases_total": 14538,
+  "cases_started": 12182,
+  "cases_not_run_due_signal": 2356,
+  "existing_skips": 27,
+  "main_acceptance": false,
+  "meaning": "16 thread scheduling was slower; timeout and unexecuted cases are not PASS. All raw retained. Full test repair/rerun remains vb-vs630 obligation."
+}

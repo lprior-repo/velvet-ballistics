@@ -1,0 +1,6 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/crates/workspace_tests)
+    Finished `bench` profile [optimized + debuginfo] target(s) in 29.43s

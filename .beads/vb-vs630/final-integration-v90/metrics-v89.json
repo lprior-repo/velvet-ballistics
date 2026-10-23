@@ -1,0 +1,21 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12",
+  "argv": [
+    "python3",
+    ".beads/vb-j3e3s/collect_benchmark_evidence.py",
+    "--root",
+    "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12",
+    "--commit",
+    "efd5653d534c594e0aa22a950b527a0ff7c4ed58",
+    "--output-dir",
+    "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89"
+  ],
+  "exit_code": 0,
+  "seconds": 64.05,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_CLI_ISSUANCE_V89_METRICS"
+}

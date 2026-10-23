@@ -1,0 +1,8 @@
+heaptrack output will be written to "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89/scratch/heaptrack/ht-ipc_frame_decode.zst"
+starting application, this might take some time...
+storage_ipc/ipc_frame_decode;profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p...
+                        time:   [398.88 ns 401.39 ns 403.27 ns]
+
+Heaptrack finished! Now run the following to investigate the data:
+
+  heaptrack --analyze "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v89/scratch/heaptrack/ht-ipc_frame_decode.zst"
