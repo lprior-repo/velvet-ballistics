@@ -1,0 +1,14 @@
+{
+  "crates/vb_compile/src/mod_compile_lowering/canonical_do.rs": "d528f75c32880ef1296e87efbe88a75b16ab0766bbce905988beb7ca124fdac9",
+  "crates/vb_compile/src/mod_compile_lowering/canonical_references.rs": "52dfa829761072540e33e08c2eb9dd817e4f28c61bbee6e3578e777c1641ccaf",
+  "crates/vb_compile/src/mod_compile_lowering/canonical_scalar.rs": "af698967564fdb51df48ce472ea7276a17b55abcb7afd9870acbba3c1b454504",
+  "crates/vb_compile/src/mod_compile_lowering/canonical_types.rs": "5d305d3cd2cc9aadf6c1e1624a1e68d9f0f14c7402cdb589b8d528f85940c607",
+  "crates/vb_compile/src/mod_compile_lowering/finish_inputs.rs": "1d6e8d636b1b49daec8e2332d8a1b07acf57b44234905b1b683c0db62643ee22",
+  "crates/vb_compile/src/mod_compile_lowering/part_01.rs": "a9c6366e2941a11997163c4dfb0a9433ac49a3e4566350289579d68345e1653e",
+  "crates/vb_compile/src/mod_compile_lowering/part_02.rs": "25236750234664899ba4f97ed1c279dbe1646267001f999386139d03e5e917ff",
+  "crates/workspace_tests/tests/vb_f1_canonical_scalar_do.rs": "3fc3752240037b3f239b852a3a006ff5e8b1bc12c6f03224bec8a940e327edf4",
+  "crates/workspace_tests/tests/vb_f1_scalar_do_support/mod.rs": "1c188fda24ef4ab5b12dc96550a25beb3e64becd0bc37d6aa1b14f74adc2cdc7",
+  "crates/workspace_tests/tests/vb_f1_scalar_do_support/do_action/mod.rs": "b16086bfc4f1de85c51269062febb52656bad15518f25f2d69287e0149b8ad44",
+  "crates/workspace_tests/tests/vb_f1_scalar_do_support/negative/mod.rs": "0ba04abcb0e1d0119af5b630fb07f98f348aec50bbc65b7966561623959d9a01",
+  "crates/workspace_tests/tests/vb_f1_scalar_do_support/positive/mod.rs": "cb73c348290c7a5d1add4d19c82d09b2e0aeed1737862d39ba3570a551e48ad9"
+}

@@ -1,0 +1,15 @@
+{
+  "status": "bounded_source20_native_PASS_NOT_F1_ACCEPTANCE",
+  "source_candidate": "d5a3504f68621ff4a21f3408f1740a227b255e59",
+  "test_candidate": "8109ccb6c7807308d3da48d8ccb8883b47ba9dc8",
+  "strict_warnings": true,
+  "passed": 20,
+  "failed": 0,
+  "ignored": 0,
+  "filtered": 0,
+  "hand_built_replacement_IR": false,
+  "main_merge": false,
+  "parent_F1": "OPEN",
+  "remaining_qualified_reference_static_type_gap": true,
+  "independent_CODE_and_TEST_acceptance_for_current_source": "pending"
+}

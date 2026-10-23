@@ -12,6 +12,7 @@ use vb_core::{
     ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
     StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
+use vb_expr::expr_typecheck::ExprType;
 
 #[path = "finish_inputs.rs"]
 mod finish_inputs;
@@ -35,6 +36,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
     let mut step_outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut step_names =
         canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
+    let mut prior_types: HashMap<String, ExprType> = HashMap::new();
     let mut inputs_allocated = false;
     for (index, step) in steps.iter().enumerate() {
         let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
@@ -60,6 +62,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
             &mut outputs,
             &mut step_outputs,
             &mut step_names,
+            &mut prior_types,
             &mut builder,
         )?;
     }
