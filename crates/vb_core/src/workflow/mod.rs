@@ -469,6 +469,15 @@ pub enum WorkflowError {
         /// Target step of the backward edge.
         to: StepIdx,
     },
+
+    /// Reduce branch body and done targets are the same step.
+    #[error("reduce node {step:?} aliases body and done at {target:?}")]
+    ReduceBranchTargetAlias {
+        /// The reduce node with the alias.
+        step: StepIdx,
+        /// The shared target step.
+        target: StepIdx,
+    },
     /// An inner loop exceeds its outer loop span.
     #[error("inner loop at {inner:?} exceeds outer loop done at {outer_done:?}")]
     ImproperLoopNesting {
@@ -1090,7 +1099,23 @@ fn validate_entry(entry: StepIdx, node_count: usize) -> Result<(), WorkflowError
 
 fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_node_common(node, parts)?;
-    validate_node_kind(&node.kind, parts)
+    validate_node_kind(&node.kind, parts)?;
+    validate_reduce_branch_targets(node)
+}
+
+fn validate_reduce_branch_targets(node: &CompiledNode) -> Result<(), WorkflowError> {
+    match &node.kind {
+        CompiledNodeKind::ReduceStart { body, done, .. }
+        | CompiledNodeKind::ReduceNext { body, done, .. }
+            if body == done =>
+        {
+            Err(WorkflowError::ReduceBranchTargetAlias {
+                step: node.id,
+                target: *body,
+            })
+        }
+        _ => Ok(()),
+    }
 }
 
 fn validate_node_common(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {

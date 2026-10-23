@@ -16,7 +16,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reduce_start_body_equals_done_emits_all_evidence() -> Result<(), String> {
+    fn reduce_start_distinct_targets_emits_all_evidence() -> Result<(), String> {
         let reduce = cn(
             0,
             Some(2),
@@ -26,13 +26,17 @@ mod tests {
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),
                 body: StepIdx::new(1),
-                done: StepIdx::new(1),
+                done: StepIdx::new(2),
             },
         );
-        let finish = fin(1, 1);
-        let wf = mkwfc(vec![reduce, finish], 3, vec![ConstValue::I64(42)])?;
+        let finish = fin(2, 1);
+        let wf = mkwfc(
+            vec![reduce, super::common::nop(1, 2), finish],
+            3,
+            vec![ConstValue::I64(42)],
+        )?;
 
-        let mut run = mkr(2, 3)?;
+        let mut run = mkr(3, 3)?;
         let mut store = ValueStore::new();
         let items = Box::from([SlotValue::I64(7)]);
         let list_id = store.insert_list(items).map_err(|e| format!("{e}"))?;
@@ -151,5 +155,66 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    fn assert_reduce_alias(kind: CompiledNodeKind) -> Result<(), String> {
+        let reduce = cn(
+            0,
+            Some(2),
+            None,
+            CompiledNodeKind::ReduceStart {
+                input: SlotIdx::new(0),
+                accumulator: SlotIdx::new(1),
+                initial: ConstIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+        );
+        let baseline = mkwfc(
+            vec![reduce, super::common::nop(1, 2), fin(2, 1)],
+            3,
+            vec![ConstValue::I64(42)],
+        )
+        .map_err(|e| format!("{e}"))?;
+
+        let mut parts = baseline.to_parts();
+        let node = parts
+            .nodes
+            .iter_mut()
+            .find(|n| n.id == StepIdx::new(0))
+            .ok_or("node 0 not found")?;
+        node.kind = kind;
+
+        let result = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
+        match result {
+            Err(vb_core::WorkflowError::ReduceBranchTargetAlias { step, target })
+                if step == StepIdx::new(0) && target == StepIdx::new(1) =>
+            {
+                Ok(())
+            }
+            Err(e) => Err(format!("expected ReduceBranchTargetAlias, got {e}")),
+            Ok(_) => Err("expected error, got Ok".into()),
+        }
+    }
+
+    #[test]
+    fn reduce_start_body_equals_done_rejected() -> Result<(), String> {
+        assert_reduce_alias(CompiledNodeKind::ReduceStart {
+            input: SlotIdx::new(0),
+            accumulator: SlotIdx::new(1),
+            initial: ConstIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(1),
+        })
+    }
+
+    #[test]
+    fn reduce_next_body_equals_done_rejected() -> Result<(), String> {
+        assert_reduce_alias(CompiledNodeKind::ReduceNext {
+            iterator_slot: SlotIdx::new(0),
+            accumulator: SlotIdx::new(1),
+            body: StepIdx::new(1),
+            done: StepIdx::new(1),
+        })
     }
 }
