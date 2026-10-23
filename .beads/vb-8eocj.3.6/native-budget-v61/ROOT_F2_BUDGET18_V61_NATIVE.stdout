@@ -1,0 +1,23 @@
+
+running 18 tests
+test backward_scope_exit_keeps_typed_rejection ... ok
+test deeper_revisit_preserves_nesting_without_double_counting_timers ... ok
+test excessive_loop_steps_preserve_typed_overflow ... ok
+test fanout_policy_limit_is_not_relaxed ... ok
+test genuine_nested_together_above_policy_boundary_is_rejected ... ok
+test genuine_nested_together_at_policy_boundary_is_accepted ... ok
+test genuinely_nested_loop_constructor_preserves_depth_policy ... ok
+test joining_first_sibling_does_not_erase_later_nested_scope ... ok
+test loop_continuation_headers_do_not_add_nesting ... ok
+test loops_nested_inside_together_remain_two_scopes ... ok
+test nested_owners_with_shared_exit_restore_outermost_parent ... ok
+test sequential_loop_and_together_scopes_reset_in_both_orders ... ok
+test shared_body_with_different_owner_exits_is_order_independent ... ok
+test ten_sequential_together_groups_do_not_accumulate_depth ... ok
+test ten_sibling_branches_have_one_scope_and_ten_way_fanout ... ok
+test together_nested_inside_loops_remains_two_scopes ... ok
+test unreachable_owners_do_not_affect_structural_depth ... ok
+test unrepresentable_fanout_preserves_typed_overflow ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
