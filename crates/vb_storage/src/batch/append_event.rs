@@ -45,13 +45,6 @@ impl<'j> JournalWriteBatch<'j> {
             return Err(JournalError::InvalidEvent);
         }
         // Same-batch duplicate guard (vb-1rqz7.18 / vb-byk3q / SA-003).
-        //
-        // `journal.events.contains_key` only inspects the durable
-        // memtable; it cannot see entries staged into the current
-        // `OwnedWriteBatch` but not yet committed. Without this
-        // HashSet-based guard, two `append_event` calls with the same
-        // `(run, seq)` would both pass the durable check and Fjall
-        // would silently overwrite the first value at commit time.
         if self.staged_event_keys.contains(&key) {
             return Err(JournalError::DuplicateStagedKey {
                 run: event.run_id(),
@@ -77,36 +70,32 @@ impl<'j> JournalWriteBatch<'j> {
         )?;
 
         // Byte admission check: guard 6 per C6 contract.
-        //
-        // Uses checked_add to avoid overflow; overflow is rejected
-        // with the same JournalBatchBytesExceeded error as a budget
-        // overrun.  The encoded_len conversion is try_from on
-        // principle, though the bounded payload guarantees it always
-        // fits in u64 on all practical targets.
+        // Checks combined event + metadata bytes against the limit.
         if let Some(limit) = self.byte_limit {
             let encoded_len =
                 u64::try_from(value.len()).map_err(|_| JournalError::SequenceOverflow)?;
-            let attempted = match self.staged_bytes.checked_add(encoded_len) {
-                Some(total) => total,
-                None => {
-                    return Err(JournalError::JournalBatchBytesExceeded {
-                        attempted: u64::MAX,
-                        limit,
-                    });
-                }
-            };
+            // Enforce combined event+metadata budget per accepted contract
+            let attempted = self
+                .staged_bytes
+                .checked_add(self.staged_metadata_bytes)
+                .and_then(|combined| combined.checked_add(encoded_len))
+                .ok_or(JournalError::JournalBatchBytesExceeded {
+                    attempted: u64::MAX,
+                    limit,
+                })?;
             if attempted > limit {
                 return Err(JournalError::JournalBatchBytesExceeded { attempted, limit });
             }
-            self.staged_bytes = attempted;
+            // staged_bytes tracks only event bytes, not metadata
+            self.staged_bytes = self
+                .staged_bytes
+                .checked_add(encoded_len)
+                .ok_or(JournalError::SequenceOverflow)?;
         }
 
         self.journal
             .stage_recovery_index_ops(&mut self.inner, event)?;
         self.inner.insert(&self.journal.events, key, value);
-        // Record the key as staged so a subsequent append_event with
-        // the same `(run, seq)` is rejected by the same-batch
-        // duplicate guard above before the durable lookup.
         self.staged_event_keys.insert(key);
         Ok(())
     }

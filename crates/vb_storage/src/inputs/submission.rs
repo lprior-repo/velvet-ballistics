@@ -71,16 +71,6 @@ impl RunSubmission {
         Ok(())
     }
 
-    fn commit(&self, journal: &FjallJournal, policy: RuntimePolicy) -> Result<(), JournalError> {
-        let mut batch = journal.batch();
-        self.stage(&mut batch)?;
-        self.stage_acceptance(&mut batch, policy)?;
-        match policy {
-            RuntimePolicy::Strict => batch.strict().commit(),
-            _ => batch.commit(),
-        }
-    }
-
     fn stage(&self, batch: &mut crate::JournalWriteBatch<'_>) -> Result<(), JournalError> {
         batch.put_workflow_source(&self.source)?;
         let ir =
@@ -130,6 +120,58 @@ impl RunSubmission {
             policy,
         }
     }
+
+    fn commit(
+        self,
+        batch: crate::JournalWriteBatch<'_>,
+        seq: crate::journal::artifact_acceptance::IssuedArtifactSequence,
+        policy: RuntimePolicy,
+    ) -> Result<(), JournalError> {
+        let mut batch = batch;
+        batch.put_artifact_sequence(seq)?;
+        self.stage(&mut batch)?;
+        self.stage_acceptance(&mut batch, policy)?;
+        match policy {
+            RuntimePolicy::Strict => batch.strict().commit(),
+            _ => batch.commit(),
+        }
+    }
+}
+
+fn check_duplicate_run(journal: &FjallJournal, run: vb_core::RunId) -> Result<(), JournalError> {
+    if journal.run_header(run)?.is_some()
+        || journal.run_inputs(run)?.is_some()
+        || !journal.events_for_run(run)?.is_empty()
+    {
+        return Err(JournalError::RunAlreadyExists);
+    }
+    Ok(())
+}
+
+fn prepare_stamped_submission(
+    journal: &FjallJournal,
+    submission: &RunSubmission,
+) -> Result<
+    (
+        crate::journal::artifact_acceptance::IssuedArtifactSequence,
+        RunSubmission,
+    ),
+    JournalError,
+> {
+    let (seq, stamped) = crate::journal::artifact_acceptance::prepare_artifact_with_sequence(
+        journal,
+        submission.artifact.clone(),
+    )?;
+    let mut inputs_with_stamped = submission.inputs.clone();
+    inputs_with_stamped.artifact_digest = stamped.digest;
+    let scratch = RunSubmission {
+        source: submission.source.clone(),
+        artifact: stamped,
+        inputs: inputs_with_stamped,
+        header: submission.header.clone(),
+    };
+    scratch.validate_binding()?;
+    Ok((seq, scratch))
 }
 
 impl FjallJournal {
@@ -145,12 +187,9 @@ impl FjallJournal {
             .write_lock
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
-        if self.run_header(submission.header.run)?.is_some()
-            || self.run_inputs(submission.header.run)?.is_some()
-            || !self.events_for_run(submission.header.run)?.is_empty()
-        {
-            return Err(JournalError::RunAlreadyExists);
-        }
-        submission.commit(self, policy)
+        check_duplicate_run(self, submission.header.run)?;
+        let (seq, scratch) = prepare_stamped_submission(self, submission)?;
+        let batch = self.batch();
+        scratch.commit(batch, seq, policy)
     }
 }

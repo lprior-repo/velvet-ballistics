@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 mod action_index;
 mod append_event;
+mod artifact_sequence;
 mod commit;
 mod emergency_deny;
 mod inputs;

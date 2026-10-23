@@ -52,7 +52,7 @@ impl IssuedArtifactSequence {
 /// The literal key for the last-issued counter in the artifact_acceptance
 /// keyspace. The dedicated keyspace already isolates this key; no prefix
 /// is needed.
-const LAST_ISSUED_KEY: &[u8] = b"last_issued";
+pub(crate) const LAST_ISSUED_KEY: &[u8] = b"last_issued";
 
 /// Reads the last issued artifact sequence from the metadata keyspace.
 ///
@@ -103,6 +103,23 @@ fn prepare_artifact(
     stamped.accepted_at_seq = seq.to_event_seq();
     bind_artifact_digest(&mut stamped)?;
     Ok((next, stamped))
+}
+
+/// Crate-private lock-free prepare helper.
+///
+/// Reads the counter, increments it, stamps the artifact with the issued
+/// sequence, and returns both the typed issued sequence token and the
+/// stamped artifact. No locking; the caller must hold the write lock
+/// and be prepared to stage the counter write in the same batch as the
+/// run admission records.
+pub(crate) fn prepare_artifact_with_sequence(
+    journal: &FjallJournal,
+    artifact: AcceptedArtifact,
+) -> Result<(IssuedArtifactSequence, AcceptedArtifact), JournalError> {
+    let last = read_counter(journal)?;
+    let (next, stamped) = prepare_artifact(last, artifact)?;
+    let seq = IssuedArtifactSequence::new(next)?;
+    Ok((seq, stamped))
 }
 
 /// Encode the stamped artifact into a compiled IR record and envelope.
@@ -178,10 +195,9 @@ fn issue_artifact(
         .lock()
         .map_err(|_| JournalError::WriteLockPoisoned)?;
 
-    let last = read_counter(journal)?;
-    let (next, stamped) = prepare_artifact(last, artifact)?;
+    let (seq, stamped) = prepare_artifact_with_sequence(journal, artifact)?;
     let (_record, encoded) = encode_record(&stamped)?;
-    let batch = build_batch(journal, next, &stamped, &encoded)?;
+    let batch = build_batch(journal, seq.0.get(), &stamped, &encoded)?;
     commit_batch(journal, batch, policy)?;
 
     Ok(stamped)
