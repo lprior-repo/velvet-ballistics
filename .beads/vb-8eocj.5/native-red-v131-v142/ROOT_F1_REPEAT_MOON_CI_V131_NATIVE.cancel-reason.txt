@@ -1,0 +1,1 @@
+Coordinator deliberately stopped its own frozen run after actual nextest failure: empty Repeat diagnostic oracle expected old exactly-one-Set text. 571 passed,1 failed,14154 not run,27 skipped. Preserve full canonical RED and run unchanged whole suite no-fail-fast before repair. No timeout/pass credit.

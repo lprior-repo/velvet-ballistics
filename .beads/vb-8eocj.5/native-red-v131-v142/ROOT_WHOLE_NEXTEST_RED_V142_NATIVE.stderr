@@ -1,0 +1,2478 @@
+────────────
+ Nextest run ID 35bb0f03-1a88-4226-8b40-5dd7ed91ef80 with nextest profile: default
+    Starting 14726 tests across 309 binaries (27 tests skipped)
+        FAIL [   0.002s] (  568/14726) vb_compile::digest_repeat_unit test_repeat_empty_body_rejected_with_step_field_shape
+  stdout ───
+
+    running 1 test
+    test test_repeat_empty_body_rejected_with_step_field_shape ... FAILED
+
+    failures:
+
+    failures:
+        test_repeat_empty_body_rejected_with_step_field_shape
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'test_repeat_empty_body_rejected_with_step_field_shape' (364783) panicked at crates/vb_compile/tests/digest_repeat_unit.rs:334:14:
+    assertion `left == right` failed
+      left: (0, "steps", "at least one set or do step")
+     right: (0, "steps", "exactly one set step")
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (  575/14726) vb_compile::digest_repeat_unit test_repeat_multi_step_body_rejected
+  stdout ───
+
+    running 1 test
+    test test_repeat_multi_step_body_rejected ... FAILED
+
+    failures:
+
+    failures:
+        test_repeat_multi_step_body_rejected
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'test_repeat_multi_step_body_rejected' (364796) panicked at crates/vb_compile/tests/digest_repeat_unit.rs:234:10:
+    multi-step repeat body must be rejected by lowering validation: "expected compile error, got workflow with 7 nodes"
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.004s] (  635/14726) vb_compile::integration_choose_body compile_workflow_choose_body_set_success
+  stdout ───
+
+    running 1 test
+    test compile_workflow_choose_body_set_success ... FAILED
+
+    failures:
+
+    failures:
+        compile_workflow_choose_body_set_success
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_workflow_choose_body_set_success' (364918) panicked at crates/vb_compile/tests/integration_choose_body.rs:59:38:
+    must compile valid choose with Set body: CompileErrors([TypeMismatch { field: "choose.branches[].when", expected: "boolean", found: "non-boolean expression" }])
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.004s] (  636/14726) vb_compile::integration_choose_body compile_workflow_choose_body_do_success
+  stdout ───
+
+    running 1 test
+    test compile_workflow_choose_body_do_success ... FAILED
+
+    failures:
+
+    failures:
+        compile_workflow_choose_body_do_success
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_workflow_choose_body_do_success' (364917) panicked at crates/vb_compile/tests/integration_choose_body.rs:125:38:
+    must compile valid choose with Do body: CompileErrors([TypeMismatch { field: "choose.branches[].when", expected: "boolean", found: "non-boolean expression" }])
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.005s] (  637/14726) vb_compile::proptest_choose_emission emission_count_matches_body_steps
+  stdout ───
+
+    running 1 test
+    test emission_count_matches_body_steps ... FAILED
+
+    failures:
+
+    failures:
+        emission_count_matches_body_steps
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'emission_count_matches_body_steps' (364922) panicked at crates/vb_compile/tests/proptest/proptest_choose_emission.rs:41:1:
+    Test failed: compile_workflow failed: Some(CompileErrors([TypeMismatch { field: "choose.branches[].when", expected: "boolean", found: "non-boolean expression" }])) at crates/vb_compile/tests/proptest/proptest_choose_emission.rs:46.
+    minimal failing input: body_counts = [
+        0,
+    ]
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.006s] (  638/14726) vb_compile::proptest_choose_fallthrough body_nodes_have_next_pointer
+  stdout ───
+
+    running 1 test
+    test body_nodes_have_next_pointer ... FAILED
+
+    failures:
+
+    failures:
+        body_nodes_have_next_pointer
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'body_nodes_have_next_pointer' (364925) panicked at crates/vb_compile/tests/proptest/proptest_choose_fallthrough.rs:42:1:
+    Test failed: compile_workflow failed: Some(CompileErrors([TypeMismatch { field: "choose.branches[].when", expected: "boolean", found: "non-boolean expression" }])) at crates/vb_compile/tests/proptest/proptest_choose_fallthrough.rs:47.
+    minimal failing input: body_counts = [
+        1,
+    ]
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.006s] (  639/14726) vb_compile::proptest_choose_otherwise otherwise_present_compiles
+  stdout ───
+
+    running 1 test
+    test otherwise_present_compiles ... FAILED
+
+    failures:
+
+    failures:
+        otherwise_present_compiles
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'otherwise_present_compiles' (364928) panicked at crates/vb_compile/tests/proptest/proptest_choose_otherwise.rs:43:1:
+    Test failed: choose with otherwise must compile: Some(CompileErrors([TypeMismatch { field: "choose.branches[].when", expected: "boolean", found: "non-boolean expression" }])) at crates/vb_compile/tests/proptest/proptest_choose_otherwise.rs:48.
+    minimal failing input: body_counts = [
+        0,
+    ]
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.005s] (  640/14726) vb_compile::proptest_choose_otherwise otherwise_target_exists
+  stdout ───
+
+    running 1 test
+    test otherwise_target_exists ... FAILED
+
+    failures:
+
+    failures:
+        otherwise_target_exists
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'otherwise_target_exists' (364930) panicked at crates/vb_compile/tests/proptest/proptest_choose_otherwise.rs:43:1:
+    Test failed: compile_workflow failed: Some(CompileErrors([TypeMismatch { field: "choose.branches[].when", expected: "boolean", found: "non-boolean expression" }])) at crates/vb_compile/tests/proptest/proptest_choose_otherwise.rs:55.
+    minimal failing input: body_counts = [
+        0,
+    ]
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.007s] (  641/14726) vb_compile::proptest_choose_width choose_width_always_at_least_one
+  stdout ───
+
+    running 1 test
+    test choose_width_always_at_least_one ... FAILED
+
+    failures:
+
+    failures:
+        choose_width_always_at_least_one
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'choose_width_always_at_least_one' (364932) panicked at crates/vb_compile/tests/proptest/proptest_choose_width.rs:47:1:
+    Test failed: compile_workflow failed: Some(CompileErrors([TypeMismatch { field: "choose.branches[].when", expected: "boolean", found: "non-boolean expression" }])) at crates/vb_compile/tests/proptest/proptest_choose_width.rs:69.
+    minimal failing input: body_counts = [
+        0,
+    ]
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.006s] (  642/14726) vb_compile::proptest_choose_width choose_width_matches_node_count
+  stdout ───
+
+    running 1 test
+    test choose_width_matches_node_count ... FAILED
+
+    failures:
+
+    failures:
+        choose_width_matches_node_count
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'choose_width_matches_node_count' (364934) panicked at crates/vb_compile/tests/proptest/proptest_choose_width.rs:47:1:
+    Test failed: compile_workflow must succeed: Some(CompileErrors([TypeMismatch { field: "choose.branches[].when", expected: "boolean", found: "non-boolean expression" }])) at crates/vb_compile/tests/proptest/proptest_choose_width.rs:52.
+    minimal failing input: body_counts = [
+        0,
+    ]
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (  679/14726) vb_compile::v1_primitive_lowering compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid
+  stdout ───
+
+    running 1 test
+    test compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid ... FAILED
+
+    failures:
+
+    failures:
+        compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid' (365121) panicked at crates/vb_compile/tests/v1_primitive_lowering.rs:159:9:
+    assertion `left == right` failed: primitive for_each compile_source slot_count
+      left: 4
+     right: 2
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (  680/14726) vb_compile::v1_primitive_lowering compile_source_returns_exact_error_variants_for_contract_taxonomy
+  stdout ───
+
+    running 1 test
+    test compile_source_returns_exact_error_variants_for_contract_taxonomy ... FAILED
+
+    failures:
+
+    failures:
+        compile_source_returns_exact_error_variants_for_contract_taxonomy
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "case set_value_shape returned wrong error ExpressionUnknownIdentifier { expression: \"not-an-integer\", index: 4, identifier: \"an\" }"
+
+        FAIL [   0.002s] (  685/14726) vb_compile::v1_primitive_lowering compile_workflow_choose_two_branches_with_otherwise
+  stdout ───
+
+    running 1 test
+    test compile_workflow_choose_two_branches_with_otherwise ... FAILED
+
+    failures:
+
+    failures:
+        compile_workflow_choose_two_branches_with_otherwise
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "TYPE_MISMATCH: type mismatch in choose.branches[].when: expected boolean, found non-boolean expression"
+
+        FAIL [   0.002s] (  687/14726) vb_compile::v1_primitive_lowering compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid
+  stdout ───
+
+    running 1 test
+    test compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid ... FAILED
+
+    failures:
+
+    failures:
+        compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid' (365137) panicked at crates/vb_compile/tests/v1_primitive_lowering.rs:133:9:
+    assertion `left == right` failed: primitive for_each slot_count must exactly cover primitive references
+      left: 4
+     right: 2
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (  688/14726) vb_compile::v1_primitive_lowering compile_workflow_rejects_empty_body_in_scoped_primitives
+  stdout ───
+
+    running 1 test
+    test compile_workflow_rejects_empty_body_in_scoped_primitives ... FAILED
+
+    failures:
+
+    failures:
+        compile_workflow_rejects_empty_body_in_scoped_primitives
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_workflow_rejects_empty_body_in_scoped_primitives' (365139) panicked at crates/vb_compile/tests/v1_primitive_lowering.rs:2227:17:
+    assertion `left == right` failed: case repeat with empty body
+      left: (0, "steps", "at least one set or do step")
+     right: (0, "steps", "exactly one set step")
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (  690/14726) vb_compile::v1_primitive_lowering compile_workflow_rejects_multi_step_body_in_scoped_primitives
+  stdout ───
+
+    running 1 test
+    test compile_workflow_rejects_multi_step_body_in_scoped_primitives ... FAILED
+
+    failures:
+
+    failures:
+        compile_workflow_rejects_multi_step_body_in_scoped_primitives
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "expected compile error, got workflow with 6 nodes"
+
+        FAIL [   0.004s] (  706/14726) vb_compile::v1_primitive_lowering proptest_scoped_primitives_never_return_unsupported_step_primitive
+  stdout ───
+
+    running 1 test
+    test proptest_scoped_primitives_never_return_unsupported_step_primitive ... FAILED
+
+    failures:
+
+    failures:
+        proptest_scoped_primitives_never_return_unsupported_step_primitive
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'proptest_scoped_primitives_never_return_unsupported_step_primitive' (365173) panicked at crates/vb_compile/tests/v1_primitive_lowering.rs:985:1:
+    Test failed: assertion failed: `(left == right)` 
+      left: `["CollectStart", "SetConst", "CollectNext", "CollectFinish", "Finish"]`,
+     right: `["CollectStart", "SetConst", "CollectPage", "CollectFinish", "Finish"]` at crates/vb_compile/tests/v1_primitive_lowering.rs:1003.
+    minimal failing input: case = PrimitiveCase {
+        name: "collect",
+        yaml_steps: "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      pages: 3\n      items: 5\n      steps:\n        - id: remember_page\n          set:\n            output: page_seen\n            value: \"7\"\n  - id: done\n    finish:\n      result: 0\n",
+        expected_kinds: [
+            "CollectStart",
+            "SetConst",
+            "CollectPage",
+            "CollectFinish",
+            "Finish",
+        ],
+        expected_slot_count: 2,
+    }
+    successes: 2
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (  712/14726) vb_compile::v1_primitive_lowering public_compile_apis_return_exact_error_variants_for_contract_taxonomy
+  stdout ───
+
+    running 1 test
+    test public_compile_apis_return_exact_error_variants_for_contract_taxonomy ... FAILED
+
+    failures:
+
+    failures:
+        public_compile_apis_return_exact_error_variants_for_contract_taxonomy
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "case set_value_shape returned wrong error ExpressionUnknownIdentifier { expression: \"not-an-integer\", index: 4, identifier: \"an\" }"
+
+        FAIL [   0.002s] (  713/14726) vb_compile::v1_primitive_lowering public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_variants
+  stdout ───
+
+    running 1 test
+    test public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_variants ... FAILED
+
+    failures:
+
+    failures:
+        public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_variants
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "expected StepIndexOutOfRange from repeat overflow, got Ok([CompiledNode { id: StepIdx(65535), output: Some(SlotIdx(0)), next: None, on_error: None, error_slot: None, kind: RepeatStart { max_attempts: 1, body: StepIdx(65535), done: StepIdx(65535) } }, CompiledNode { id: StepIdx(65535), output: None, next: None, on_error: None, error_slot: None, kind: RepeatAttempt { attempt_slot: SlotIdx(0), body: StepIdx(65535), done: StepIdx(65535) } }, CompiledNode { id: StepIdx(65535), output: Some(SlotIdx(1)), next: None, on_error: None, error_slot: None, kind: RepeatFinish { result: SlotIdx(0) } }])"
+
+        FAIL [   0.002s] (  726/14726) vb_compile::v1_primitive_lowering yaml_compiler_compile_emits_supported_ir_when_each_scoped_primitive_is_valid
+  stdout ───
+
+    running 1 test
+    test yaml_compiler_compile_emits_supported_ir_when_each_scoped_primitive_is_valid ... FAILED
+
+    failures:
+
+    failures:
+        yaml_compiler_compile_emits_supported_ir_when_each_scoped_primitive_is_valid
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'yaml_compiler_compile_emits_supported_ir_when_each_scoped_primitive_is_valid' (365212) panicked at crates/vb_compile/tests/v1_primitive_lowering.rs:186:9:
+    assertion `left == right` failed: primitive for_each YamlCompiler::compile slot_count
+      left: 4
+     right: 2
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.005s] (  729/14726) vb_compile::vb_8mdp_7_collect_lowering_props collect_four_consecutive_ids_after_preamble
+  stdout ───
+
+    running 1 test
+    test collect_four_consecutive_ids_after_preamble ... FAILED
+
+    failures:
+
+    failures:
+        collect_four_consecutive_ids_after_preamble
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'collect_four_consecutive_ids_after_preamble' (365218) panicked at crates/vb_compile/tests/vb_8mdp_7_collect_lowering_props.rs:136:1:
+    Test failed: node at base+2 must be CollectPage at crates/vb_compile/tests/vb_8mdp_7_collect_lowering_props.rs:234.
+    minimal failing input: source = "0", pages = None, items = None
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (  730/14726) vb_compile::vb_8mdp_7_collect_lowering_props collect_start_fields_match_input_and_offsets_correct
+  stdout ───
+
+    running 1 test
+    test collect_start_fields_match_input_and_offsets_correct ... FAILED
+
+    failures:
+
+    failures:
+        collect_start_fields_match_input_and_offsets_correct
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'collect_start_fields_match_input_and_offsets_correct' (365221) panicked at crates/vb_compile/tests/vb_8mdp_7_collect_lowering_props.rs:254:1:
+    Test failed: expected CollectPage, got CollectNext { collector_slot: SlotIdx(1), body: StepIdx(1), done: StepIdx(3) } at crates/vb_compile/tests/vb_8mdp_7_collect_lowering_props.rs:317.
+    minimal failing input: source_digit = "0", pages = None, items = None
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.006s] (  731/14726) vb_compile::vb_8mdp_7_collect_lowering_props collect_four_nodes_consecutive_ids
+  stdout ───
+
+    running 1 test
+    test collect_four_nodes_consecutive_ids ... FAILED
+
+    failures:
+
+    failures:
+        collect_four_nodes_consecutive_ids
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+
+    thread 'collect_four_nodes_consecutive_ids' (365219) panicked at crates/vb_compile/tests/vb_8mdp_7_collect_lowering_props.rs:136:1:
+    Test failed: node[2] must be CollectPage, got CollectNext { collector_slot: SlotIdx(1), body: StepIdx(1), done: StepIdx(3) } at crates/vb_compile/tests/vb_8mdp_7_collect_lowering_props.rs:178.
+    minimal failing input: params = CollectParams {
+        source: "0",
+        pages: None,
+        items: None,
+        set_value: "0",
+    }
+    successes: 0
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.007s] (  739/14726) vb_compile::vb_8mdp_7_collect_lowering_props collect_with_moderate_preamble_has_correct_offsets
+  stdout ───
+
+    running 1 test
+    test collect_with_moderate_preamble_has_correct_offsets ... FAILED
+
+    failures:
+
+    failures:
+        collect_with_moderate_preamble_has_correct_offsets
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.01s
+
+  stderr ───
+
+    thread 'collect_with_moderate_preamble_has_correct_offsets' (365224) panicked at crates/vb_compile/tests/vb_8mdp_7_collect_lowering_props.rs:458:5:
+    assertion failed: matches!(&page.kind, CompiledNodeKind::CollectPage { .. })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.003s] (  748/14726) vb_compile::vb_a001_for_each_topology vb_a001_for_each_slot_count_is_two
+  stdout ───
+
+    running 1 test
+    test vb_a001_for_each_slot_count_is_two ... FAILED
+
+    failures:
+
+    failures:
+        vb_a001_for_each_slot_count_is_two
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'vb_a001_for_each_slot_count_is_two' (365256) panicked at crates/vb_compile/tests/vb_a001_for_each_topology.rs:340:5:
+    assertion `left == right` failed: for_each must allocate exactly 2 slots (input + item)
+      left: 4
+     right: 2
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (  752/14726) vb_compile::vb_a001_for_each_topology vb_a001_lower_steps_to_ir_accepts_connected_foreach
+  stdout ───
+
+    running 1 test
+    test vb_a001_lower_steps_to_ir_accepts_connected_foreach ... FAILED
+
+    failures:
+
+    failures:
+        vb_a001_lower_steps_to_ir_accepts_connected_foreach
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'vb_a001_lower_steps_to_ir_accepts_connected_foreach' (365265) panicked at crates/vb_compile/tests/vb_a001_for_each_topology.rs:237:5:
+    for_each with body→ForEachNext chain must pass validation, got: Err(CompileErrors([Workflow(LoopRegionUnpaired { control: StepIdx(2) })]))
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (  773/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_collect_body_lowers_to_final_ir
+  stdout ───
+
+    running 1 test
+    test nested_do_in_collect_body_lowers_to_final_ir ... FAILED
+
+    failures:
+
+    failures:
+        nested_do_in_collect_body_lowers_to_final_ir
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "expected CollectPage at node 2, got CollectNext { collector_slot: SlotIdx(2), body: StepIdx(1), done: StepIdx(3) }"
+
+        FAIL [   0.002s] (  774/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_for_each_body_lowers_to_final_ir
+  stdout ───
+
+    running 1 test
+    test nested_do_in_for_each_body_lowers_to_final_ir ... FAILED
+
+    failures:
+
+    failures:
+        nested_do_in_for_each_body_lowers_to_final_ir
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'nested_do_in_for_each_body_lowers_to_final_ir' (365311) panicked at crates/vb_compile/tests/vb_xi2f_nested_do_lowering.rs:189:13:
+    assertion `left == right` failed: ForEachStart item_slot
+      left: 3
+     right: 1
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (  775/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_reduce_body_lowers_to_final_ir
+  stdout ───
+
+    running 1 test
+    test nested_do_in_reduce_body_lowers_to_final_ir ... FAILED
+
+    failures:
+
+    failures:
+        nested_do_in_reduce_body_lowers_to_final_ir
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'nested_do_in_reduce_body_lowers_to_final_ir' (365313) panicked at crates/vb_compile/tests/vb_xi2f_nested_do_lowering.rs:239:5:
+    assertion `left == right` failed: reduce with do body should produce 5 nodes
+      left: 6
+     right: 5
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (  776/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_repeat_body_lowers_to_final_ir
+  stdout ───
+
+    running 1 test
+    test nested_do_in_repeat_body_lowers_to_final_ir ... FAILED
+
+    failures:
+
+    failures:
+        nested_do_in_repeat_body_lowers_to_final_ir
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "expected RepeatAttempt at node 2, got RepeatCheck { attempt_slot: SlotIdx(1), done: StepIdx(3) }"
+
+        FAIL [   0.002s] (  777/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_together_branch_lowers_to_final_ir
+  stdout ───
+
+    running 1 test
+    test nested_do_in_together_branch_lowers_to_final_ir ... FAILED
+
+    failures:
+
+    failures:
+        nested_do_in_together_branch_lowers_to_final_ir
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'nested_do_in_together_branch_lowers_to_final_ir' (365317) panicked at crates/vb_compile/tests/vb_xi2f_nested_do_lowering.rs:421:13:
+    assertion `left == right` failed: TogetherJoin accumulator
+      left: 2
+     right: 0
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (11935/14726) velvet-ballistics-workspace-tests::finish_input_binding extra::test_unsupported_nonfinish_consumer
+  stdout ───
+
+    running 1 test
+    test extra::test_unsupported_nonfinish_consumer ... FAILED
+
+    failures:
+
+    failures:
+        extra::test_unsupported_nonfinish_consumer
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: "expected StepFieldShape"
+
+        FAIL [   0.002s] (11943/14726) velvet-ballistics-workspace-tests::finish_input_binding test_unknown_ref
+  stdout ───
+
+    running 1 test
+    test test_unknown_ref ... FAILED
+
+    failures:
+
+    failures:
+        test_unknown_ref
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'test_unknown_ref' (413324) panicked at crates/workspace_tests/tests/finish_input_binding.rs:101:13:
+    assertion `left == right` failed
+      left: CompileErrors([UnknownReferenceName { kind: "declaration", reference: "$input.missing", name: "$input.missing" }])
+     right: CompileErrors([UnknownOutputName { name: "$input.missing" }])
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (12793/14726) velvet-ballistics-workspace-tests::restate_typed_partitioned_id_tests generated_typed_partitioned_ids_preserve_bytes
+  stdout ───
+
+    running 1 test
+    test generated_typed_partitioned_ids_preserve_bytes ... FAILED
+
+    failures:
+
+    failures:
+        generated_typed_partitioned_ids_preserve_bytes
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+  stderr ───
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+    proptest: FileFailurePersistence::SourceParallel set, but failed to find lib.rs or main.rs
+    proptest: Saving this and future failures in /home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests/tests/restate_typed_partitioned_id_tests.proptest-regressions
+    proptest: If this test was run on a CI system, you may wish to add the following line to your copy of the file.
+    cc bd091b1fa99d5b1f393cf18f116beb25e579b1ff476852f24a1fb16c7988aa4f
+
+    thread 'generated_typed_partitioned_ids_preserve_bytes' (417840) panicked at crates/workspace_tests/tests/restate_typed_partitioned_id_tests.rs:22:1:
+    Test failed: invalid run identifier: RunId(0).
+    minimal failing input: run = 0, seq = 0, workflow = 0, action = 0, step = 0, kind = 0
+    successes: 8
+    local rejects: 0
+    global rejects: 0
+
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13787/14726) velvet-ballistics-workspace-tests::vb_qi37_2_4_integration_budget_errors integration_nested_loops_returns_nesting_depth_exceeded
+  stdout ───
+
+    running 1 test
+    test integration_nested_loops_returns_nesting_depth_exceeded ... FAILED
+
+    failures:
+
+    failures:
+        integration_nested_loops_returns_nesting_depth_exceeded
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'integration_nested_loops_returns_nesting_depth_exceeded' (427481) panicked at crates/workspace_tests/tests/vb_qi37_2_4_integration_budget_errors.rs:1136:13:
+    NestingDepthExceeded expected but validation passed. Depth tracking may not work through ForEachJoin chains.
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13793/14726) velvet-ballistics-workspace-tests::vb_qi37_2_4_integration_budget_errors integration_policy_rejects_at_nesting_depth_boundary
+  stdout ───
+
+    running 1 test
+    test integration_policy_rejects_at_nesting_depth_boundary ... FAILED
+
+    failures:
+
+    failures:
+        integration_policy_rejects_at_nesting_depth_boundary
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'integration_policy_rejects_at_nesting_depth_boundary' (427493) panicked at crates/workspace_tests/tests/vb_qi37_2_4_integration_budget_errors.rs:1667:18:
+    Expected NestingDepthExceeded, got Ok(())
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13795/14726) velvet-ballistics-workspace-tests::vb_qi37_2_4_integration_budget_errors integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit
+  stdout ───
+
+    running 1 test
+    test integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit ... FAILED
+
+    failures:
+
+    failures:
+        integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit' (427497) panicked at crates/workspace_tests/tests/vb_qi37_2_4_integration_budget_errors.rs:543:13:
+    NestingDepthExceeded expected but validation passed. Depth tracking may not work through ForEachJoin chains.
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13802/14726) velvet-ballistics-workspace-tests::vb_qi37_2_4_integration_budget_errors integration_policy_validates_nesting_depth
+  stdout ───
+
+    running 1 test
+    test integration_policy_validates_nesting_depth ... FAILED
+
+    failures:
+
+    failures:
+        integration_policy_validates_nesting_depth
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'integration_policy_validates_nesting_depth' (427518) panicked at crates/workspace_tests/tests/vb_qi37_2_4_integration_budget_errors.rs:2155:18:
+    Expected NestingDepthExceeded, got Ok(())
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13911/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior action_command::cli_action_inspect_invalid_id_fails
+  stdout ───
+
+    running 1 test
+    test action_command::cli_action_inspect_invalid_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        action_command::cli_action_inspect_invalid_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'action_command::cli_action_inspect_invalid_id_fails' (427996) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13912/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior action_command::cli_action_inspect_without_id_fails
+  stdout ───
+
+    running 1 test
+    test action_command::cli_action_inspect_without_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        action_command::cli_action_inspect_without_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'action_command::cli_action_inspect_without_id_fails' (427999) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13913/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior action_command::cli_action_list_succeeds
+  stdout ───
+
+    running 1 test
+    test action_command::cli_action_list_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        action_command::cli_action_list_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'action_command::cli_action_list_succeeds' (428000) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13914/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior action_command::cli_action_unknown_subcommand_fails
+  stdout ───
+
+    running 1 test
+    test action_command::cli_action_unknown_subcommand_fails ... FAILED
+
+    failures:
+
+    failures:
+        action_command::cli_action_unknown_subcommand_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'action_command::cli_action_unknown_subcommand_fails' (428003) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13915/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior agent_context_command::cli_agent_context_with_deliver_succeeds
+  stdout ───
+
+    running 1 test
+    test agent_context_command::cli_agent_context_with_deliver_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        agent_context_command::cli_agent_context_with_deliver_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'agent_context_command::cli_agent_context_with_deliver_succeeds' (428004) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13916/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior agent_context_command::cli_agent_context_without_args_succeeds
+  stdout ───
+
+    running 1 test
+    test agent_context_command::cli_agent_context_without_args_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        agent_context_command::cli_agent_context_without_args_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'agent_context_command::cli_agent_context_without_args_succeeds' (428014) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13917/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ai_context_command::cli_ai_context_with_all_args_passes_parsing
+  stdout ───
+
+    running 1 test
+    test ai_context_command::cli_ai_context_with_all_args_passes_parsing ... FAILED
+
+    failures:
+
+    failures:
+        ai_context_command::cli_ai_context_with_all_args_passes_parsing
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'ai_context_command::cli_ai_context_with_all_args_passes_parsing' (428016) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13918/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ai_context_command::cli_ai_context_without_db_fails
+  stdout ───
+
+    running 1 test
+    test ai_context_command::cli_ai_context_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        ai_context_command::cli_ai_context_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'ai_context_command::cli_ai_context_without_db_fails' (428018) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13919/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ai_context_command::cli_ai_context_without_run_id_fails
+  stdout ───
+
+    running 1 test
+    test ai_context_command::cli_ai_context_without_run_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        ai_context_command::cli_ai_context_without_run_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'ai_context_command::cli_ai_context_without_run_id_fails' (428020) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13920/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior answer_command::cli_answer_invalid_step_fails
+  stdout ───
+
+    running 1 test
+    test answer_command::cli_answer_invalid_step_fails ... FAILED
+
+    failures:
+
+    failures:
+        answer_command::cli_answer_invalid_step_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'answer_command::cli_answer_invalid_step_fails' (428022) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13921/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior answer_command::cli_answer_without_args_fails
+  stdout ───
+
+    running 1 test
+    test answer_command::cli_answer_without_args_fails ... FAILED
+
+    failures:
+
+    failures:
+        answer_command::cli_answer_without_args_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'answer_command::cli_answer_without_args_fails' (428024) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.001s] (13922/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_help_command_succeeds
+  stdout ───
+
+    running 1 test
+    test cli_help_command_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        cli_help_command_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'cli_help_command_succeeds' (428026) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13923/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_help_h_flag_succeeds
+  stdout ───
+
+    running 1 test
+    test cli_help_h_flag_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        cli_help_h_flag_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'cli_help_h_flag_succeeds' (428028) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13924/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_help_short_flag_succeeds
+  stdout ───
+
+    running 1 test
+    test cli_help_short_flag_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        cli_help_short_flag_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'cli_help_short_flag_succeeds' (428029) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13925/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_unknown_command_returns_nonzero
+  stdout ───
+
+    running 1 test
+    test cli_unknown_command_returns_nonzero ... FAILED
+
+    failures:
+
+    failures:
+        cli_unknown_command_returns_nonzero
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'cli_unknown_command_returns_nonzero' (428032) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13926/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_no_command_shows_help
+  stdout ───
+
+    running 1 test
+    test cli_no_command_shows_help ... FAILED
+
+    failures:
+
+    failures:
+        cli_no_command_shows_help
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'cli_no_command_shows_help' (428033) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.001s] (13927/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_version_command_succeeds
+  stdout ───
+
+    running 1 test
+    test cli_version_command_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        cli_version_command_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'cli_version_command_succeeds' (428036) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13928/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_version_short_flag_succeeds
+  stdout ───
+
+    running 1 test
+    test cli_version_short_flag_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        cli_version_short_flag_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'cli_version_short_flag_succeeds' (428037) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.001s] (13929/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_version_v_flag_succeeds
+  stdout ───
+
+    running 1 test
+    test cli_version_v_flag_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        cli_version_v_flag_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'cli_version_v_flag_succeeds' (428040) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13930/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior compile_command::cli_compile_missing_emit_fails
+  stdout ───
+
+    running 1 test
+    test compile_command::cli_compile_missing_emit_fails ... FAILED
+
+    failures:
+
+    failures:
+        compile_command::cli_compile_missing_emit_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_command::cli_compile_missing_emit_fails' (428042) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13931/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior compile_command::cli_compile_missing_out_fails
+  stdout ───
+
+    running 1 test
+    test compile_command::cli_compile_missing_out_fails ... FAILED
+
+    failures:
+
+    failures:
+        compile_command::cli_compile_missing_out_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_command::cli_compile_missing_out_fails' (428044) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13932/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior compile_command::cli_compile_unknown_emit_fails
+  stdout ───
+
+    running 1 test
+    test compile_command::cli_compile_unknown_emit_fails ... FAILED
+
+    failures:
+
+    failures:
+        compile_command::cli_compile_unknown_emit_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_command::cli_compile_unknown_emit_fails' (428045) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13933/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior compile_command::cli_compile_without_args_fails
+  stdout ───
+
+    running 1 test
+    test compile_command::cli_compile_without_args_fails ... FAILED
+
+    failures:
+
+    failures:
+        compile_command::cli_compile_without_args_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_command::cli_compile_without_args_fails' (428048) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13934/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior diff_command::cli_diff_without_both_run_ids_fails
+  stdout ───
+
+    running 1 test
+    test diff_command::cli_diff_without_both_run_ids_fails ... FAILED
+
+    failures:
+
+    failures:
+        diff_command::cli_diff_without_both_run_ids_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'diff_command::cli_diff_without_both_run_ids_fails' (428049) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13935/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior doctor_command::cli_doctor_with_db_runs
+  stdout ───
+
+    running 1 test
+    test doctor_command::cli_doctor_with_db_runs ... FAILED
+
+    failures:
+
+    failures:
+        doctor_command::cli_doctor_with_db_runs
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'doctor_command::cli_doctor_with_db_runs' (428052) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13936/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior diff_command::cli_diff_without_db_fails
+  stdout ───
+
+    running 1 test
+    test diff_command::cli_diff_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        diff_command::cli_diff_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'diff_command::cli_diff_without_db_fails' (428053) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13937/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts
+  stdout ───
+
+    running 1 test
+    test doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts ... FAILED
+
+    failures:
+
+    failures:
+        doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+    Error: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+        FAIL [   0.002s] (13938/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior doctor_command::cli_doctor_without_db_runs
+  stdout ───
+
+    running 1 test
+    test doctor_command::cli_doctor_without_db_runs ... FAILED
+
+    failures:
+
+    failures:
+        doctor_command::cli_doctor_without_db_runs
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'doctor_command::cli_doctor_without_db_runs' (428057) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13939/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior incident_command::cli_incident_without_db_fails
+  stdout ───
+
+    running 1 test
+    test incident_command::cli_incident_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        incident_command::cli_incident_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'incident_command::cli_incident_without_db_fails' (428061) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13940/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior incident_command::cli_incident_without_run_id_fails
+  stdout ───
+
+    running 1 test
+    test incident_command::cli_incident_without_run_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        incident_command::cli_incident_without_run_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'incident_command::cli_incident_without_run_id_fails' (428062) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13941/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_events_without_run_id_fails
+  stdout ───
+
+    running 1 test
+    test inspect_events_replay::cli_events_without_run_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        inspect_events_replay::cli_events_without_run_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'inspect_events_replay::cli_events_without_run_id_fails' (428065) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13942/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_events_without_db_fails
+  stdout ───
+
+    running 1 test
+    test inspect_events_replay::cli_events_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        inspect_events_replay::cli_events_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'inspect_events_replay::cli_events_without_db_fails' (428066) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13943/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_inspect_without_db_fails
+  stdout ───
+
+    running 1 test
+    test inspect_events_replay::cli_inspect_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        inspect_events_replay::cli_inspect_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'inspect_events_replay::cli_inspect_without_db_fails' (428069) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13944/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_inspect_without_run_id_fails
+  stdout ───
+
+    running 1 test
+    test inspect_events_replay::cli_inspect_without_run_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        inspect_events_replay::cli_inspect_without_run_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'inspect_events_replay::cli_inspect_without_run_id_fails' (428070) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13945/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_replay_without_db_fails
+  stdout ───
+
+    running 1 test
+    test inspect_events_replay::cli_replay_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        inspect_events_replay::cli_replay_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'inspect_events_replay::cli_replay_without_db_fails' (428073) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13946/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_replay_without_run_id_fails
+  stdout ───
+
+    running 1 test
+    test inspect_events_replay::cli_replay_without_run_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        inspect_events_replay::cli_replay_without_run_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'inspect_events_replay::cli_replay_without_run_id_fails' (428074) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13947/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ipc_serve_command::cli_ipc_serve_without_db_fails
+  stdout ───
+
+    running 1 test
+    test ipc_serve_command::cli_ipc_serve_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        ipc_serve_command::cli_ipc_serve_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'ipc_serve_command::cli_ipc_serve_without_db_fails' (428077) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13948/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ipc_serve_command::cli_ipc_serve_without_socket_fails
+  stdout ───
+
+    running 1 test
+    test ipc_serve_command::cli_ipc_serve_without_socket_fails ... FAILED
+
+    failures:
+
+    failures:
+        ipc_serve_command::cli_ipc_serve_without_socket_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'ipc_serve_command::cli_ipc_serve_without_socket_fails' (428078) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13949/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_cancel_reason_too_long_fails
+  stdout ───
+
+    running 1 test
+    test lifecycle_commands::cli_cancel_reason_too_long_fails ... FAILED
+
+    failures:
+
+    failures:
+        lifecycle_commands::cli_cancel_reason_too_long_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'lifecycle_commands::cli_cancel_reason_too_long_fails' (428081) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13950/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_cancel_without_db_fails
+  stdout ───
+
+    running 1 test
+    test lifecycle_commands::cli_cancel_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        lifecycle_commands::cli_cancel_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'lifecycle_commands::cli_cancel_without_db_fails' (428082) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13951/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_cancel_without_run_id_fails
+  stdout ───
+
+    running 1 test
+    test lifecycle_commands::cli_cancel_without_run_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        lifecycle_commands::cli_cancel_without_run_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'lifecycle_commands::cli_cancel_without_run_id_fails' (428085) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13952/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_resume_without_db_fails
+  stdout ───
+
+    running 1 test
+    test lifecycle_commands::cli_resume_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        lifecycle_commands::cli_resume_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'lifecycle_commands::cli_resume_without_db_fails' (428086) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13953/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_resume_without_run_id_fails
+  stdout ───
+
+    running 1 test
+    test lifecycle_commands::cli_resume_without_run_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        lifecycle_commands::cli_resume_without_run_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'lifecycle_commands::cli_resume_without_run_id_fails' (428089) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13954/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_retry_without_db_fails
+  stdout ───
+
+    running 1 test
+    test lifecycle_commands::cli_retry_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        lifecycle_commands::cli_retry_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'lifecycle_commands::cli_retry_without_db_fails' (428090) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13955/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_retry_without_run_id_fails
+  stdout ───
+
+    running 1 test
+    test lifecycle_commands::cli_retry_without_run_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        lifecycle_commands::cli_retry_without_run_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'lifecycle_commands::cli_retry_without_run_id_fails' (428093) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13956/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior output_format::cli_run_accepts_json_flag
+  stdout ───
+
+    running 1 test
+    test output_format::cli_run_accepts_json_flag ... FAILED
+
+    failures:
+
+    failures:
+        output_format::cli_run_accepts_json_flag
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'output_format::cli_run_accepts_json_flag' (428094) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13957/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior output_format::cli_validate_accepts_emit_yaml
+  stdout ───
+
+    running 1 test
+    test output_format::cli_validate_accepts_emit_yaml ... FAILED
+
+    failures:
+
+    failures:
+        output_format::cli_validate_accepts_emit_yaml
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'output_format::cli_validate_accepts_emit_yaml' (428097) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13958/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_durability_journaled_requires_db
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_durability_journaled_requires_db ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_durability_journaled_requires_db
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_durability_journaled_requires_db' (428098) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13959/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_durability_journaled_with_db_passes_arg_parsing
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_durability_journaled_with_db_passes_arg_parsing ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_durability_journaled_with_db_passes_arg_parsing
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_durability_journaled_with_db_passes_arg_parsing' (428101) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13960/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_durability_none_without_db_succeeds
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_durability_none_without_db_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_durability_none_without_db_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_durability_none_without_db_succeeds' (428103) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13961/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_durability_strict_requires_db
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_durability_strict_requires_db ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_durability_strict_requires_db
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_durability_strict_requires_db' (428105) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13962/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_invalid_durability_mode_fails
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_invalid_durability_mode_fails ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_invalid_durability_mode_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_invalid_durability_mode_fails' (428107) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13963/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_missing_durability_fails
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_missing_durability_fails ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_missing_durability_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_missing_durability_fails' (428109) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13964/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_missing_input_bin_fails
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_missing_input_bin_fails ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_missing_input_bin_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_missing_input_bin_fails' (428111) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13965/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_step_requires_step_input
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_step_requires_step_input ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_step_requires_step_input
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_step_requires_step_input' (428113) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13966/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_with_step_flags_passes_arg_parsing
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_with_step_flags_passes_arg_parsing ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_with_step_flags_passes_arg_parsing
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_with_step_flags_passes_arg_parsing' (428115) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13967/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_without_args_fails
+  stdout ───
+
+    running 1 test
+    test run_command::cli_run_without_args_fails ... FAILED
+
+    failures:
+
+    failures:
+        run_command::cli_run_without_args_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'run_command::cli_run_without_args_fails' (428117) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13968/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior status_command::cli_status_active_runs_out_of_range_fails
+  stdout ───
+
+    running 1 test
+    test status_command::cli_status_active_runs_out_of_range_fails ... FAILED
+
+    failures:
+
+    failures:
+        status_command::cli_status_active_runs_out_of_range_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'status_command::cli_status_active_runs_out_of_range_fails' (428118) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13969/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior status_command::cli_status_non_numeric_arg_fails
+  stdout ───
+
+    running 1 test
+    test status_command::cli_status_non_numeric_arg_fails ... FAILED
+
+    failures:
+
+    failures:
+        status_command::cli_status_non_numeric_arg_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'status_command::cli_status_non_numeric_arg_fails' (428121) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13970/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior status_command::cli_status_queue_depth_out_of_range_fails
+  stdout ───
+
+    running 1 test
+    test status_command::cli_status_queue_depth_out_of_range_fails ... FAILED
+
+    failures:
+
+    failures:
+        status_command::cli_status_queue_depth_out_of_range_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'status_command::cli_status_queue_depth_out_of_range_fails' (428123) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13971/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior status_command::cli_status_without_args_succeeds
+  stdout ───
+
+    running 1 test
+    test status_command::cli_status_without_args_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        status_command::cli_status_without_args_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'status_command::cli_status_without_args_succeeds' (428125) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13972/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior subcommand_help::cli_run_with_help_flag_shows_help
+  stdout ───
+
+    running 1 test
+    test subcommand_help::cli_run_with_help_flag_shows_help ... FAILED
+
+    failures:
+
+    failures:
+        subcommand_help::cli_run_with_help_flag_shows_help
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'subcommand_help::cli_run_with_help_flag_shows_help' (428127) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13973/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior subcommand_help::cli_validate_with_h_flag_shows_help
+  stdout ───
+
+    running 1 test
+    test subcommand_help::cli_validate_with_h_flag_shows_help ... FAILED
+
+    failures:
+
+    failures:
+        subcommand_help::cli_validate_with_h_flag_shows_help
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'subcommand_help::cli_validate_with_h_flag_shows_help' (428129) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13974/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior submit_command::cli_submit_with_all_args_passes_parsing
+  stdout ───
+
+    running 1 test
+    test submit_command::cli_submit_with_all_args_passes_parsing ... FAILED
+
+    failures:
+
+    failures:
+        submit_command::cli_submit_with_all_args_passes_parsing
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'submit_command::cli_submit_with_all_args_passes_parsing' (428131) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13975/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior submit_command::cli_submit_without_db_fails
+  stdout ───
+
+    running 1 test
+    test submit_command::cli_submit_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        submit_command::cli_submit_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'submit_command::cli_submit_without_db_fails' (428133) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13976/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior system_status_command::cli_system_status_succeeds
+  stdout ───
+
+    running 1 test
+    test system_status_command::cli_system_status_succeeds ... FAILED
+
+    failures:
+
+    failures:
+        system_status_command::cli_system_status_succeeds
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'system_status_command::cli_system_status_succeeds' (428135) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13977/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior system_status_command::cli_system_status_unknown_profile_fails
+  stdout ───
+
+    running 1 test
+    test system_status_command::cli_system_status_unknown_profile_fails ... FAILED
+
+    failures:
+
+    failures:
+        system_status_command::cli_system_status_unknown_profile_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'system_status_command::cli_system_status_unknown_profile_fails' (428137) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13978/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior system_status_command::cli_system_status_unprobed_server_mode_fails
+  stdout ───
+
+    running 1 test
+    test system_status_command::cli_system_status_unprobed_server_mode_fails ... FAILED
+
+    failures:
+
+    failures:
+        system_status_command::cli_system_status_unprobed_server_mode_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'system_status_command::cli_system_status_unprobed_server_mode_fails' (428139) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13979/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior system_status_command::cli_system_without_subcommand_fails
+  stdout ───
+
+    running 1 test
+    test system_status_command::cli_system_without_subcommand_fails ... FAILED
+
+    failures:
+
+    failures:
+        system_status_command::cli_system_without_subcommand_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'system_status_command::cli_system_without_subcommand_fails' (428141) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13980/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior trace_command::cli_trace_unknown_filter_fails
+  stdout ───
+
+    running 1 test
+    test trace_command::cli_trace_unknown_filter_fails ... FAILED
+
+    failures:
+
+    failures:
+        trace_command::cli_trace_unknown_filter_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'trace_command::cli_trace_unknown_filter_fails' (428143) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13981/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior trace_command::cli_trace_without_db_fails
+  stdout ───
+
+    running 1 test
+    test trace_command::cli_trace_without_db_fails ... FAILED
+
+    failures:
+
+    failures:
+        trace_command::cli_trace_without_db_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'trace_command::cli_trace_without_db_fails' (428145) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13982/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior trace_command::cli_trace_without_run_id_fails
+  stdout ───
+
+    running 1 test
+    test trace_command::cli_trace_without_run_id_fails ... FAILED
+
+    failures:
+
+    failures:
+        trace_command::cli_trace_without_run_id_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'trace_command::cli_trace_without_run_id_fails' (428147) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13983/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior validate_command::cli_validate_nonexistent_file_fails
+  stdout ───
+
+    running 1 test
+    test validate_command::cli_validate_nonexistent_file_fails ... FAILED
+
+    failures:
+
+    failures:
+        validate_command::cli_validate_nonexistent_file_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'validate_command::cli_validate_nonexistent_file_fails' (428149) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13984/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior validate_command::cli_validate_without_workflow_fails
+  stdout ───
+
+    running 1 test
+    test validate_command::cli_validate_without_workflow_fails ... FAILED
+
+    failures:
+
+    failures:
+        validate_command::cli_validate_without_workflow_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'validate_command::cli_validate_without_workflow_fails' (428151) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13985/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior verify_command::cli_verify_unknown_profile_fails
+  stdout ───
+
+    running 1 test
+    test verify_command::cli_verify_unknown_profile_fails ... FAILED
+
+    failures:
+
+    failures:
+        verify_command::cli_verify_unknown_profile_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'verify_command::cli_verify_unknown_profile_fails' (428153) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13986/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior verify_command::cli_verify_without_workflow_fails
+  stdout ───
+
+    running 1 test
+    test verify_command::cli_verify_without_workflow_fails ... FAILED
+
+    failures:
+
+    failures:
+        verify_command::cli_verify_without_workflow_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'verify_command::cli_verify_without_workflow_fails' (428155) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13987/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior workflow_commands::cli_bench_run_without_workflow_fails
+  stdout ───
+
+    running 1 test
+    test workflow_commands::cli_bench_run_without_workflow_fails ... FAILED
+
+    failures:
+
+    failures:
+        workflow_commands::cli_bench_run_without_workflow_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'workflow_commands::cli_bench_run_without_workflow_fails' (428157) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13988/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior workflow_commands::cli_explain_without_workflow_fails
+  stdout ───
+
+    running 1 test
+    test workflow_commands::cli_explain_without_workflow_fails ... FAILED
+
+    failures:
+
+    failures:
+        workflow_commands::cli_explain_without_workflow_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'workflow_commands::cli_explain_without_workflow_fails' (428159) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13989/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior workflow_commands::cli_graph_without_workflow_fails
+  stdout ───
+
+    running 1 test
+    test workflow_commands::cli_graph_without_workflow_fails ... FAILED
+
+    failures:
+
+    failures:
+        workflow_commands::cli_graph_without_workflow_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'workflow_commands::cli_graph_without_workflow_fails' (428161) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (13990/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior workflow_commands::cli_simulate_without_workflow_fails
+  stdout ───
+
+    running 1 test
+    test workflow_commands::cli_simulate_without_workflow_fails ... FAILED
+
+    failures:
+
+    failures:
+        workflow_commands::cli_simulate_without_workflow_fails
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 79 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'workflow_commands::cli_simulate_without_workflow_fails' (428163) panicked at crates/workspace_tests/tests/vb_test_cli_run_lifecycle_behavior.rs:49:10:
+    failed to execute velvet-ballistics: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        FAIL [   0.002s] (14056/14726) velvet-ballistics-workspace-tests::vb_test_compile_parse_validate_behavior compile_workflow_accepts_canonical_choose_with_body_steps
+  stdout ───
+
+    running 1 test
+    test compile_workflow_accepts_canonical_choose_with_body_steps ... FAILED
+
+    failures:
+
+    failures:
+        compile_workflow_accepts_canonical_choose_with_body_steps
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 47 filtered out; finished in 0.00s
+
+  stderr ───
+
+    thread 'compile_workflow_accepts_canonical_choose_with_body_steps' (428513) panicked at crates/workspace_tests/tests/vb_test_compile_parse_validate_behavior.rs:773:5:
+    canonical choose with body steps should compile: Err(CompileErrors([TypeMismatch { field: "choose.branches[].when", expected: "boolean", found: "non-boolean expression" }]))
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+────────────
+     Summary [ 293.195s] 14726 tests run: 14607 passed (18 slow), 119 failed, 27 skipped
+        FAIL [   0.002s] (  568/14726) vb_compile::digest_repeat_unit test_repeat_empty_body_rejected_with_step_field_shape
+        FAIL [   0.003s] (  575/14726) vb_compile::digest_repeat_unit test_repeat_multi_step_body_rejected
+        FAIL [   0.004s] (  635/14726) vb_compile::integration_choose_body compile_workflow_choose_body_set_success
+        FAIL [   0.004s] (  636/14726) vb_compile::integration_choose_body compile_workflow_choose_body_do_success
+        FAIL [   0.005s] (  637/14726) vb_compile::proptest_choose_emission emission_count_matches_body_steps
+        FAIL [   0.006s] (  638/14726) vb_compile::proptest_choose_fallthrough body_nodes_have_next_pointer
+        FAIL [   0.006s] (  639/14726) vb_compile::proptest_choose_otherwise otherwise_present_compiles
+        FAIL [   0.005s] (  640/14726) vb_compile::proptest_choose_otherwise otherwise_target_exists
+        FAIL [   0.007s] (  641/14726) vb_compile::proptest_choose_width choose_width_always_at_least_one
+        FAIL [   0.006s] (  642/14726) vb_compile::proptest_choose_width choose_width_matches_node_count
+        FAIL [   0.003s] (  679/14726) vb_compile::v1_primitive_lowering compile_source_emits_supported_ir_when_each_scoped_primitive_is_valid
+        FAIL [   0.003s] (  680/14726) vb_compile::v1_primitive_lowering compile_source_returns_exact_error_variants_for_contract_taxonomy
+        FAIL [   0.002s] (  685/14726) vb_compile::v1_primitive_lowering compile_workflow_choose_two_branches_with_otherwise
+        FAIL [   0.002s] (  687/14726) vb_compile::v1_primitive_lowering compile_workflow_emits_supported_ir_when_each_scoped_primitive_is_valid
+        FAIL [   0.003s] (  688/14726) vb_compile::v1_primitive_lowering compile_workflow_rejects_empty_body_in_scoped_primitives
+        FAIL [   0.002s] (  690/14726) vb_compile::v1_primitive_lowering compile_workflow_rejects_multi_step_body_in_scoped_primitives
+        FAIL [   0.004s] (  706/14726) vb_compile::v1_primitive_lowering proptest_scoped_primitives_never_return_unsupported_step_primitive
+        FAIL [   0.003s] (  712/14726) vb_compile::v1_primitive_lowering public_compile_apis_return_exact_error_variants_for_contract_taxonomy
+        FAIL [   0.002s] (  713/14726) vb_compile::v1_primitive_lowering public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_variants
+        FAIL [   0.002s] (  726/14726) vb_compile::v1_primitive_lowering yaml_compiler_compile_emits_supported_ir_when_each_scoped_primitive_is_valid
+        FAIL [   0.005s] (  729/14726) vb_compile::vb_8mdp_7_collect_lowering_props collect_four_consecutive_ids_after_preamble
+        FAIL [   0.003s] (  730/14726) vb_compile::vb_8mdp_7_collect_lowering_props collect_start_fields_match_input_and_offsets_correct
+        FAIL [   0.006s] (  731/14726) vb_compile::vb_8mdp_7_collect_lowering_props collect_four_nodes_consecutive_ids
+        FAIL [   0.007s] (  739/14726) vb_compile::vb_8mdp_7_collect_lowering_props collect_with_moderate_preamble_has_correct_offsets
+        FAIL [   0.003s] (  748/14726) vb_compile::vb_a001_for_each_topology vb_a001_for_each_slot_count_is_two
+        FAIL [   0.002s] (  752/14726) vb_compile::vb_a001_for_each_topology vb_a001_lower_steps_to_ir_accepts_connected_foreach
+        FAIL [   0.002s] (  773/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_collect_body_lowers_to_final_ir
+        FAIL [   0.002s] (  774/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_for_each_body_lowers_to_final_ir
+        FAIL [   0.002s] (  775/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_reduce_body_lowers_to_final_ir
+        FAIL [   0.002s] (  776/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_repeat_body_lowers_to_final_ir
+        FAIL [   0.002s] (  777/14726) vb_compile::vb_xi2f_nested_do_lowering nested_do_in_together_branch_lowers_to_final_ir
+        FAIL [   0.002s] (11935/14726) velvet-ballistics-workspace-tests::finish_input_binding extra::test_unsupported_nonfinish_consumer
+        FAIL [   0.002s] (11943/14726) velvet-ballistics-workspace-tests::finish_input_binding test_unknown_ref
+        FAIL [   0.002s] (12793/14726) velvet-ballistics-workspace-tests::restate_typed_partitioned_id_tests generated_typed_partitioned_ids_preserve_bytes
+        FAIL [   0.002s] (13787/14726) velvet-ballistics-workspace-tests::vb_qi37_2_4_integration_budget_errors integration_nested_loops_returns_nesting_depth_exceeded
+        FAIL [   0.002s] (13793/14726) velvet-ballistics-workspace-tests::vb_qi37_2_4_integration_budget_errors integration_policy_rejects_at_nesting_depth_boundary
+        FAIL [   0.002s] (13795/14726) velvet-ballistics-workspace-tests::vb_qi37_2_4_integration_budget_errors integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit
+        FAIL [   0.002s] (13802/14726) velvet-ballistics-workspace-tests::vb_qi37_2_4_integration_budget_errors integration_policy_validates_nesting_depth
+        FAIL [   0.002s] (13911/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior action_command::cli_action_inspect_invalid_id_fails
+        FAIL [   0.002s] (13912/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior action_command::cli_action_inspect_without_id_fails
+        FAIL [   0.002s] (13913/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior action_command::cli_action_list_succeeds
+        FAIL [   0.002s] (13914/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior action_command::cli_action_unknown_subcommand_fails
+        FAIL [   0.002s] (13915/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior agent_context_command::cli_agent_context_with_deliver_succeeds
+        FAIL [   0.002s] (13916/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior agent_context_command::cli_agent_context_without_args_succeeds
+        FAIL [   0.002s] (13917/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ai_context_command::cli_ai_context_with_all_args_passes_parsing
+        FAIL [   0.002s] (13918/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ai_context_command::cli_ai_context_without_db_fails
+        FAIL [   0.002s] (13919/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ai_context_command::cli_ai_context_without_run_id_fails
+        FAIL [   0.002s] (13920/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior answer_command::cli_answer_invalid_step_fails
+        FAIL [   0.002s] (13921/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior answer_command::cli_answer_without_args_fails
+        FAIL [   0.001s] (13922/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_help_command_succeeds
+        FAIL [   0.002s] (13923/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_help_h_flag_succeeds
+        FAIL [   0.002s] (13924/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_help_short_flag_succeeds
+        FAIL [   0.002s] (13925/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_unknown_command_returns_nonzero
+        FAIL [   0.002s] (13926/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_no_command_shows_help
+        FAIL [   0.001s] (13927/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_version_command_succeeds
+        FAIL [   0.002s] (13928/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_version_short_flag_succeeds
+        FAIL [   0.001s] (13929/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior cli_version_v_flag_succeeds
+        FAIL [   0.002s] (13930/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior compile_command::cli_compile_missing_emit_fails
+        FAIL [   0.002s] (13931/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior compile_command::cli_compile_missing_out_fails
+        FAIL [   0.002s] (13932/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior compile_command::cli_compile_unknown_emit_fails
+        FAIL [   0.002s] (13933/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior compile_command::cli_compile_without_args_fails
+        FAIL [   0.002s] (13934/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior diff_command::cli_diff_without_both_run_ids_fails
+        FAIL [   0.002s] (13935/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior doctor_command::cli_doctor_with_db_runs
+        FAIL [   0.002s] (13936/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior diff_command::cli_diff_without_db_fails
+        FAIL [   0.002s] (13937/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior doctor_command::cli_doctor_with_relative_db_no_source_tree_artifacts
+        FAIL [   0.002s] (13938/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior doctor_command::cli_doctor_without_db_runs
+        FAIL [   0.002s] (13939/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior incident_command::cli_incident_without_db_fails
+        FAIL [   0.002s] (13940/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior incident_command::cli_incident_without_run_id_fails
+        FAIL [   0.002s] (13941/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_events_without_run_id_fails
+        FAIL [   0.002s] (13942/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_events_without_db_fails
+        FAIL [   0.002s] (13943/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_inspect_without_db_fails
+        FAIL [   0.002s] (13944/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_inspect_without_run_id_fails
+        FAIL [   0.002s] (13945/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_replay_without_db_fails
+        FAIL [   0.002s] (13946/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior inspect_events_replay::cli_replay_without_run_id_fails
+        FAIL [   0.002s] (13947/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ipc_serve_command::cli_ipc_serve_without_db_fails
+        FAIL [   0.002s] (13948/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior ipc_serve_command::cli_ipc_serve_without_socket_fails
+        FAIL [   0.002s] (13949/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_cancel_reason_too_long_fails
+        FAIL [   0.002s] (13950/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_cancel_without_db_fails
+        FAIL [   0.002s] (13951/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_cancel_without_run_id_fails
+        FAIL [   0.002s] (13952/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_resume_without_db_fails
+        FAIL [   0.002s] (13953/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_resume_without_run_id_fails
+        FAIL [   0.002s] (13954/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_retry_without_db_fails
+        FAIL [   0.002s] (13955/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior lifecycle_commands::cli_retry_without_run_id_fails
+        FAIL [   0.002s] (13956/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior output_format::cli_run_accepts_json_flag
+        FAIL [   0.002s] (13957/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior output_format::cli_validate_accepts_emit_yaml
+        FAIL [   0.002s] (13958/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_durability_journaled_requires_db
+        FAIL [   0.002s] (13959/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_durability_journaled_with_db_passes_arg_parsing
+        FAIL [   0.002s] (13960/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_durability_none_without_db_succeeds
+        FAIL [   0.002s] (13961/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_durability_strict_requires_db
+        FAIL [   0.002s] (13962/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_invalid_durability_mode_fails
+        FAIL [   0.002s] (13963/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_missing_durability_fails
+        FAIL [   0.002s] (13964/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_missing_input_bin_fails
+        FAIL [   0.002s] (13965/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_step_requires_step_input
+        FAIL [   0.002s] (13966/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_with_step_flags_passes_arg_parsing
+        FAIL [   0.002s] (13967/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior run_command::cli_run_without_args_fails
+        FAIL [   0.002s] (13968/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior status_command::cli_status_active_runs_out_of_range_fails
+        FAIL [   0.002s] (13969/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior status_command::cli_status_non_numeric_arg_fails
+        FAIL [   0.002s] (13970/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior status_command::cli_status_queue_depth_out_of_range_fails
+        FAIL [   0.002s] (13971/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior status_command::cli_status_without_args_succeeds
+        FAIL [   0.002s] (13972/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior subcommand_help::cli_run_with_help_flag_shows_help
+        FAIL [   0.002s] (13973/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior subcommand_help::cli_validate_with_h_flag_shows_help
+        FAIL [   0.002s] (13974/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior submit_command::cli_submit_with_all_args_passes_parsing
+        FAIL [   0.002s] (13975/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior submit_command::cli_submit_without_db_fails
+        FAIL [   0.002s] (13976/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior system_status_command::cli_system_status_succeeds
+        FAIL [   0.002s] (13977/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior system_status_command::cli_system_status_unknown_profile_fails
+        FAIL [   0.002s] (13978/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior system_status_command::cli_system_status_unprobed_server_mode_fails
+        FAIL [   0.002s] (13979/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior system_status_command::cli_system_without_subcommand_fails
+        FAIL [   0.002s] (13980/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior trace_command::cli_trace_unknown_filter_fails
+        FAIL [   0.002s] (13981/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior trace_command::cli_trace_without_db_fails
+        FAIL [   0.002s] (13982/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior trace_command::cli_trace_without_run_id_fails
+        FAIL [   0.002s] (13983/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior validate_command::cli_validate_nonexistent_file_fails
+        FAIL [   0.002s] (13984/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior validate_command::cli_validate_without_workflow_fails
+        FAIL [   0.002s] (13985/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior verify_command::cli_verify_unknown_profile_fails
+        FAIL [   0.002s] (13986/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior verify_command::cli_verify_without_workflow_fails
+        FAIL [   0.002s] (13987/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior workflow_commands::cli_bench_run_without_workflow_fails
+        FAIL [   0.002s] (13988/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior workflow_commands::cli_explain_without_workflow_fails
+        FAIL [   0.002s] (13989/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior workflow_commands::cli_graph_without_workflow_fails
+        FAIL [   0.002s] (13990/14726) velvet-ballistics-workspace-tests::vb_test_cli_run_lifecycle_behavior workflow_commands::cli_simulate_without_workflow_fails
+        FAIL [   0.002s] (14056/14726) velvet-ballistics-workspace-tests::vb_test_compile_parse_validate_behavior compile_workflow_accepts_canonical_choose_with_body_steps
+error: test run failed
