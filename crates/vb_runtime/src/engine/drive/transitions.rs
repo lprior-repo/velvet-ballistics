@@ -37,6 +37,7 @@ pub(super) fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
+    super::loop_rearm::validate_activation(plan, node)?;
     evidence
         .push_step_started(pc)
         .map_err(RuntimeEngineError::Core)?;

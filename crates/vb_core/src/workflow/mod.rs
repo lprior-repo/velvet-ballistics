@@ -31,6 +31,7 @@ pub struct CompiledWorkflow {
     step_names: Box<[Box<str>]>,
     input_slots: Box<[CompiledInputSlot]>,
     loop_regions: Box<[Option<CompiledLoopRegion>]>,
+    nested_activation_entries: Box<[bool]>,
 }
 
 impl CompiledWorkflow {
@@ -38,6 +39,7 @@ impl CompiledWorkflow {
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
         let loop_regions = loop_regions::validate(&parts)?;
+        let nested_activation_entries = loop_regions::nested_activation_map(&parts, &loop_regions)?;
         validate_budget(&parts)?;
         validate_input_slots(&parts)?;
         Ok(Self {
@@ -55,6 +57,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_regions,
+            nested_activation_entries,
         })
     }
 
@@ -79,6 +82,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_regions: Vec::new().into_boxed_slice(),
+            nested_activation_entries: Box::new([]),
         }
     }
 
@@ -101,6 +105,7 @@ impl CompiledWorkflow {
             step_names: parts.step_names,
             input_slots: parts.input_slots,
             loop_regions: Vec::new().into_boxed_slice(),
+            nested_activation_entries: Box::new([]),
         }
     }
 
@@ -201,6 +206,16 @@ impl CompiledWorkflow {
         self.loop_regions
             .get(control.as_usize())
             .and_then(Option::as_ref)
+    }
+
+    /// Returns whether a step is a nested activation entry point.
+    ///
+    /// Returns `None` for out-of-range indices or when the cache was not
+    /// populated (unchecked constructors). `true` marks an unsupported nested Start or a step in its
+    /// validated inclusive body/control interval.
+    #[must_use]
+    pub fn nested_activation_blocked(&self, step: StepIdx) -> Option<bool> {
+        self.nested_activation_entries.get(step.as_usize()).copied()
     }
 
     /// Converts back to the serializable parts representation for artifact emission.

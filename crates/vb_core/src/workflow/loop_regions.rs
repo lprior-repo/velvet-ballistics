@@ -49,6 +49,7 @@ impl CompiledLoopRegion {
 }
 
 mod edges;
+mod nested_entries;
 mod pairing;
 mod shapes;
 
@@ -68,6 +69,17 @@ pub(super) fn validate(
         edges::validate_region_edges(parts, region, &regions, &mut targets)?;
     }
     Ok(regions.into_boxed_slice())
+}
+
+/// Derives the nested activation entry map from validated loop regions.
+///
+/// Returns a per-step boolean array where `true` blocks nested Starts and their validated
+/// inclusive body/control intervals. The array length matches the node count.
+pub(super) fn nested_activation_map(
+    parts: &WorkflowParts,
+    regions: &[Option<CompiledLoopRegion>],
+) -> Result<Box<[bool]>, WorkflowError> {
+    nested_entries::derive(parts, regions)
 }
 
 fn empty_regions(count: usize) -> Result<Vec<Option<CompiledLoopRegion>>, WorkflowError> {
