@@ -1,0 +1,61 @@
+{
+  "observed_at": "2026-10-23T07:41:30.584996+00:00",
+  "workers": [
+    {
+      "lane": "counter-impl",
+      "gpu": "5090",
+      "launcher_alive": true,
+      "events_bytes": 4078,
+      "exit": null
+    },
+    {
+      "lane": "counter-tests",
+      "gpu": "3090",
+      "launcher_alive": true,
+      "events_bytes": 2377,
+      "exit": null
+    },
+    {
+      "lane": "counter-audit",
+      "gpu": "5090",
+      "launcher_alive": true,
+      "events_bytes": 6811,
+      "exit": null
+    },
+    {
+      "lane": "reduce-hot",
+      "gpu": "3090",
+      "launcher_alive": true,
+      "events_bytes": 592,
+      "exit": null
+    },
+    {
+      "lane": "names-tests",
+      "gpu": "5090",
+      "launcher_alive": true,
+      "events_bytes": 9282,
+      "exit": null
+    },
+    {
+      "lane": "reduce-tests",
+      "gpu": "3090",
+      "launcher_alive": true,
+      "events_bytes": 426,
+      "exit": null
+    },
+    {
+      "lane": "lexical-contract",
+      "gpu": "5090",
+      "launcher_alive": true,
+      "events_bytes": 8528,
+      "exit": null
+    },
+    {
+      "lane": "types-review",
+      "gpu": "3090",
+      "launcher_alive": true,
+      "events_bytes": 971,
+      "exit": null
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "codex",
+    "exec",
+    "--ephemeral",
+    "--json",
+    "--model",
+    "qwen3.8-27b-uncensored-5090",
+    "-c",
+    "model_provider=\"local_qwen_5090\"",
+    "-c",
+    "model_reasoning_effort=\"high\"",
+    "-c",
+    "web_search=\"disabled\"",
+    "-c",
+    "approval_policy=\"never\"",
+    "--sandbox",
+    "workspace-write",
+    "--cd",
+    "/home/lewis/src/isoloated/vb-8eocj-source-map-local5090-v1",
+    "-"
+  ],
+  "workspace": "/home/lewis/src/isoloated/vb-8eocj-source-map-local5090-v1",
+  "provider": "local_qwen_5090",
+  "base_url": "http://127.0.0.1:11002/v1",
+  "cloud_fallback": false,
+  "reasoning": "high",
+  "web_search": "disabled per local worker only; root search unchanged"
+}

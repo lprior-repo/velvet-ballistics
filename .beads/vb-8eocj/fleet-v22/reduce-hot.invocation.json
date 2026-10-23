@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "codex",
+    "exec",
+    "--ephemeral",
+    "--json",
+    "--model",
+    "qwen3.8-27b-uncensored-3090",
+    "-c",
+    "model_provider=\"local_qwen_3090\"",
+    "-c",
+    "model_reasoning_effort=\"high\"",
+    "-c",
+    "web_search=\"disabled\"",
+    "-c",
+    "approval_policy=\"never\"",
+    "--sandbox",
+    "workspace-write",
+    "--cd",
+    "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-reduce-hot-3090",
+    "-"
+  ],
+  "workspace": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-reduce-hot-3090",
+  "provider": "local_qwen_3090",
+  "base_url": "http://127.0.0.1:11003/v1",
+  "cloud_fallback": false,
+  "reasoning": "high",
+  "web_search": "disabled per local worker only; root search unchanged"
+}

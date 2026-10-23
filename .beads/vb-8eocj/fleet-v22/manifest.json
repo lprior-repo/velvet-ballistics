@@ -1,0 +1,74 @@
+[
+  {
+    "gpu": "5090",
+    "workspace": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-impl-5090",
+    "bead": "vb-8eocj.3.3",
+    "lane": "counter-impl",
+    "pid": 3443367,
+    "prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-counter-impl",
+    "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-counter-impl.prompt"
+  },
+  {
+    "gpu": "3090",
+    "workspace": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090",
+    "bead": "vb-8eocj.3.3",
+    "lane": "counter-tests",
+    "pid": 3443368,
+    "prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-counter-tests",
+    "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-counter-tests.prompt"
+  },
+  {
+    "gpu": "5090",
+    "workspace": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-review-5090",
+    "bead": "vb-8eocj.3.3",
+    "lane": "counter-audit",
+    "pid": 3443369,
+    "prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-counter-audit",
+    "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-counter-audit.prompt"
+  },
+  {
+    "gpu": "3090",
+    "workspace": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-reduce-hot-3090",
+    "bead": "vb-8eocj.3.4",
+    "lane": "reduce-hot",
+    "pid": 3443370,
+    "prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-reduce-hot",
+    "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-reduce-hot.prompt"
+  },
+  {
+    "gpu": "5090",
+    "workspace": "/home/lewis/src/isoloated/vb-f1-contract-local3090-v1",
+    "bead": "vb-8eocj.2.2",
+    "lane": "names-tests",
+    "pid": 3443371,
+    "prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-names-tests",
+    "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-names-tests.prompt"
+  },
+  {
+    "gpu": "3090",
+    "workspace": "/home/lewis/src/isoloated/vb-8eocj-reduce-probes-local3090-v1",
+    "bead": "vb-8eocj.3",
+    "lane": "reduce-tests",
+    "pid": 3443372,
+    "prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-reduce-tests",
+    "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-reduce-tests.prompt"
+  },
+  {
+    "gpu": "5090",
+    "workspace": "/home/lewis/src/isoloated/vb-8eocj-source-map-local5090-v1",
+    "bead": "vb-8eocj.4",
+    "lane": "lexical-contract",
+    "pid": 3443373,
+    "prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-lexical-contract",
+    "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-lexical-contract.prompt"
+  },
+  {
+    "gpu": "3090",
+    "workspace": "/home/lewis/src/isoloated/vb-8eocj2-types-code-review-local5090-v19",
+    "bead": "vb-8eocj.2",
+    "lane": "types-review",
+    "pid": 3443374,
+    "prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-types-review",
+    "prompt": "/home/lewis/.cache/velvet-integration-preserved-20261022/fleet-v22-types-review.prompt"
+  }
+]
