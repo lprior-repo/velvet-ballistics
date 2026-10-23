@@ -1,0 +1,186 @@
+diff --git a/crates/vb_compile/src/kani_lower_repeat.rs b/crates/vb_compile/src/kani_lower_repeat.rs
+index c8e694980..f4780cf51 100644
+--- a/crates/vb_compile/src/kani_lower_repeat.rs
++++ b/crates/vb_compile/src/kani_lower_repeat.rs
+@@ -99,7 +99,99 @@ fn lower_repeat_allocates_fresh_slots_for_symbolic_prefix() {
+     let body = StepIdx::new(kani::any::<u16>());
+     let done = StepIdx::new(kani::any::<u16>());
+     let id = StepIdx::new(kani::any::<u16>());
++    cover_repeat_inputs(prefix, max_attempts, body, done, id);
++    let mut builder = SlotCompiler::new();
++    kani::assert(
++        builder.reserve_slots(prefix).is_ok(),
++        "reserve_slots must succeed for any u16 prefix",
++    );
++    let result = lower_repeat(id, max_attempts, body, done, &mut builder);
++    let step_info = (id, max_attempts, body, done);
++    if prefix <= 65533 {
++        verify_success_path(result, prefix, step_info, &builder);
++    } else {
++        verify_failure_path(result, &builder);
++    }
++    std::mem::forget(builder);
++}
++
++fn verify_success_slot_count(prefix: u16, builder: &SlotCompiler) {
++    let expected_count = prefix.checked_add(2);
++    match expected_count {
++        Some(count) => match builder.slot_count() {
++            Ok(actual_count) => kani::assert(
++                actual_count == count,
++                "slot count must equal prefix + 2 on success",
++            ),
++            Err(_) => kani::assert(
++                false,
++                "slot_count must succeed after successful lower_repeat",
++            ),
++        },
++        None => kani::assert(false, "prefix <= 65533 guarantees prefix+2 fits in u16"),
++    }
++}
++
++fn verify_success_nodes(
++    nodes: Vec<CompiledNode>,
++    prefix: u16,
++    step_info: (StepIdx, u16, StepIdx, StepIdx),
++) {
++    let (id, max_attempts, body, done) = step_info;
++    let attempt_slot = SlotIdx::new(prefix);
++    let expected_finish_output = SlotIdx::new(match prefix.checked_add(1) {
++        Some(value) => value,
++        None => {
++            kani::assert(false, "successful allocation prefix has a result slot");
++            0
++        }
++    });
++    match nodes.as_slice() {
++        [start, attempt, finish] => {
++            assert_start_node(start, id, max_attempts, body, done, attempt_slot);
++            assert_attempt_node(attempt, body, attempt_slot, done);
++            assert_finish_node(finish, done, attempt_slot, expected_finish_output);
++        }
++        _ => kani::assert(false, "lower_repeat must emit exactly three nodes"),
++    }
++    std::mem::forget(nodes);
++}
++
++fn verify_success_path(
++    result: Result<Vec<CompiledNode>, CompileError>,
++    prefix: u16,
++    step_info: (StepIdx, u16, StepIdx, StepIdx),
++    builder: &SlotCompiler,
++) {
++    match result {
++        Ok(nodes) => {
++            verify_success_slot_count(prefix, builder);
++            verify_success_nodes(nodes, prefix, step_info);
++        }
++        Err(_) => kani::assert(false, "lower_repeat should succeed for prefix <= 65533"),
++    }
++}
++
++fn verify_failure_path(result: Result<Vec<CompiledNode>, CompileError>, builder: &SlotCompiler) {
++    match result {
++        Ok(nodes) => {
++            std::mem::forget(nodes);
++            kani::assert(false, "lower_repeat should fail for prefix > 65533");
++        }
++        Err(CompileError::SlotIndexOutOfRange { value }) => {
++            kani::assert(value == 65535, "overflow error must report value 65535");
++        }
++        Err(_) => kani::assert(false, "expected SlotIndexOutOfRange error"),
++    }
++    match builder.slot_count() {
++        Ok(actual_count) => {
++            kani::assert(actual_count == 65535, "slot count must be 65535 on failure")
++        }
++        Err(_) => kani::assert(false, "slot_count must succeed after failed lower_repeat"),
++    }
++}
+ 
++fn cover_repeat_inputs(prefix: u16, max_attempts: u16, body: StepIdx, done: StepIdx, id: StepIdx) {
+     kani::cover!(prefix == 0, "prefix domain includes zero");
+     kani::cover!(
+         prefix == 65533,
+@@ -124,81 +216,4 @@ fn lower_repeat_allocates_fresh_slots_for_symbolic_prefix() {
+     kani::cover!(body == id, "body may alias id");
+     kani::cover!(done == body, "done may alias body");
+     kani::cover!(done == id, "done may alias id");
+-
+-    let mut builder = SlotCompiler::new();
+-    let reserve_result = builder.reserve_slots(prefix);
+-    kani::assert(
+-        reserve_result.is_ok(),
+-        "reserve_slots must succeed for any u16 prefix",
+-    );
+-
+-    let result = lower_repeat(id, max_attempts, body, done, &mut builder);
+-
+-    let should_succeed = prefix <= 65533;
+-
+-    if should_succeed {
+-        match result {
+-            Ok(nodes) => {
+-                let expected_count = prefix.checked_add(2);
+-                match expected_count {
+-                    Some(count) => {
+-                        let actual_count_result = builder.slot_count();
+-                        match actual_count_result {
+-                            Ok(actual_count) => {
+-                                kani::assert(
+-                                    actual_count == count,
+-                                    "slot count must equal prefix + 2 on success",
+-                                );
+-                            }
+-                            Err(_) => kani::assert(
+-                                false,
+-                                "slot_count must succeed after successful lower_repeat",
+-                            ),
+-                        }
+-                    }
+-                    None => kani::assert(false, "prefix <= 65533 guarantees prefix+2 fits in u16"),
+-                }
+-
+-                let attempt_slot = SlotIdx::new(prefix);
+-                let expected_finish_output = SlotIdx::new(match prefix.checked_add(1) {
+-                    Some(value) => value,
+-                    None => {
+-                        kani::assert(false, "successful allocation prefix has a result slot");
+-                        0
+-                    }
+-                });
+-
+-                match nodes.as_slice() {
+-                    [start, attempt, finish] => {
+-                        assert_start_node(start, id, max_attempts, body, done, attempt_slot);
+-                        assert_attempt_node(attempt, body, attempt_slot, done);
+-                        assert_finish_node(finish, done, attempt_slot, expected_finish_output);
+-                    }
+-                    _ => kani::assert(false, "lower_repeat must emit exactly three nodes"),
+-                }
+-                std::mem::forget(nodes);
+-            }
+-            Err(_) => kani::assert(false, "lower_repeat should succeed for prefix <= 65533"),
+-        }
+-    } else {
+-        match result {
+-            Ok(nodes) => {
+-                std::mem::forget(nodes);
+-                kani::assert(false, "lower_repeat should fail for prefix > 65533");
+-            }
+-            Err(CompileError::SlotIndexOutOfRange { value }) => {
+-                kani::assert(value == 65535, "overflow error must report value 65535");
+-            }
+-            Err(_) => kani::assert(false, "expected SlotIndexOutOfRange error"),
+-        }
+-        let actual_count_result = builder.slot_count();
+-        match actual_count_result {
+-            Ok(actual_count) => {
+-                kani::assert(actual_count == 65535, "slot count must be 65535 on failure");
+-            }
+-            Err(_) => kani::assert(false, "slot_count must succeed after failed lower_repeat"),
+-        }
+-    }
+-
+-    std::mem::forget(builder);
+ }

@@ -1,0 +1,1 @@
+{"finish_reason": "stop", "seconds": 61.56192970275879, "usage": {"completion_tokens": 3775, "prompt_tokens": 8220, "total_tokens": 11995, "prompt_tokens_details": {"cached_tokens": 29}}, "content_bytes": 2282}
