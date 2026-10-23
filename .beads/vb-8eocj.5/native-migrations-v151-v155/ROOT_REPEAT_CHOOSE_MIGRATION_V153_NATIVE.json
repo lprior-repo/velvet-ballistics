@@ -1,0 +1,35 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090",
+  "argv": [
+    "env",
+    "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target",
+    "RUSTC_WRAPPER=",
+    "RUSTFLAGS=-Dwarnings",
+    "cargo",
+    "test",
+    "-p",
+    "vb_compile",
+    "--test",
+    "digest_repeat_unit",
+    "--test",
+    "integration_choose_body",
+    "--test",
+    "proptest_choose_emission",
+    "--test",
+    "proptest_choose_fallthrough",
+    "--test",
+    "proptest_choose_otherwise",
+    "--test",
+    "proptest_choose_width",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit_code": 0,
+  "seconds": 2.153,
+  "timeout_seconds": 240,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_REPEAT_CHOOSE_MIGRATION_V153_NATIVE"
+}

@@ -1,0 +1,16 @@
+
+running 11 tests
+test vb_a001_all_compile_apis_agree_on_foreach_topology ... ok
+test vb_a001_body_setconst_next_points_to_foreachnext ... ok
+test vb_a001_finish_is_last_with_no_next ... ok
+test vb_a001_for_each_node_count_is_four ... ok
+test vb_a001_for_each_node_kind_sequence ... ok
+test vb_a001_for_each_slots_have_distinct_roles ... ok
+test vb_a001_foreach_nodes_at_expected_positions ... ok
+test vb_a001_foreachnext_targets_in_bounds ... ok
+test vb_a001_foreachstart_fields_valid ... ok
+test vb_a001_lower_steps_to_ir_accepts_connected_foreach ... ok
+test vb_a001_lower_steps_to_ir_rejects_disconnected_body ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

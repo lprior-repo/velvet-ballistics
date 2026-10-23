@@ -1,0 +1,23 @@
+--- a/src/mod_compile_lowering/part_15/canonical_repeat_tests.rs
++++ b/src/mod_compile_lowering/part_15/canonical_repeat_tests.rs
+@@ -3,7 +3,7 @@
+ /// PO-008 / B-007: Repeat with empty body (body: []) is rejected at
+-/// lowering with StepFieldShape because `emit_single_body_set` requires
+-/// at least one Set step.
++/// lowering with StepFieldShape because the repeat body must contain
++/// at least one Set or Do step.
+ #[test]
+ fn test_repeat_empty_body_rejected_with_step_field_shape() {
+     let steps_empty = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps: []\n  - id: done\n    finish:\n      result: 0\n";
+@@ -17,7 +17,7 @@
+         CompileError::StepFieldShape {
+             step,
+             field,
+             expected,
+         } => assert_eq!(
+             (*step, *field, *expected),
+-            (0, "steps", "exactly one set step")
++            (0, "steps", "at least one set or do step")
+         ),
+         other => panic!("expected StepFieldShape for empty repeat body, got {other:?}"),
+     }

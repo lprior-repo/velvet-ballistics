@@ -1,0 +1,63 @@
+**Rationale:** All five failing test files use `when: "0"` (or indexed variants) as choose branch conditions, which the compiler interprets as slot index 0. The setup step in each fixture creates slot 0 with an integer value (`"1"` or `"0"`), but `canonical_choose_conditions.rs` now requires boolean-typed slots for numeric-slot conditions. The minimal fix is to change the setup `Set` value from an integer string to a YAML boolean literal (`true`), making slot 0 boolean-typed while preserving all branch targets, body steps, and assertions.
+
+```diff
+diff --git a/crates/vb_compile/tests/integration_choose_body.rs b/crates/vb_compile/tests/integration_choose_body.rs
+index 0000000..1111111 100644
+--- a/crates/vb_compile/tests/integration_choose_body.rs
++++ b/crates/vb_compile/tests/integration_choose_body.rs
+@@ -24,7 +24,7 @@ fn make_choose_yaml(body_yaml: &str) -> Vec<u8> {
+ steps:
+   - id: setup
+     set:
+-      output: result
+-      value: "1"
++      output: result
++      value: true
+   - id: pick
+     choose:
+       branches:
+diff --git a/crates/vb_compile/tests/proptest/proptest_choose_emission.rs b/crates/vb_compile/tests/proptest/proptest_choose_emission.rs
+index 0000000..2222222 100644
+--- a/crates/vb_compile/tests/proptest/proptest_choose_emission.rs
++++ b/crates/vb_compile/tests/proptest/proptest_choose_emission.rs
+@@ -18,7 +18,7 @@ fn choose_yaml(branch_body_counts: &[u8]) -> String {
+     String::from("version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n");
+     yaml.push_str("  - id: setup\n    set:\n      output: result\n");
+-    yaml.push_str("      value: \"1\"\n");
++    yaml.push_str("      value: true\n");
+     yaml.push_str("  - id: pick\n    choose:\n      branches:\n");
+     for (i, &count) in branch_body_counts.iter().enumerate() {
+diff --git a/crates/vb_compile/tests/proptest/proptest_choose_fallthrough.rs b/crates/vb_compile/tests/proptest/proptest_choose_fallthrough.rs
+index 0000000..3333333 100644
+--- a/crates/vb_compile/tests/proptest/proptest_choose_fallthrough.rs
++++ b/crates/vb_compile/tests/proptest/proptest_choose_fallthrough.rs
+@@ -18,7 +18,7 @@ fn make_choose_yaml(branch_body_counts: &[u8]) -> String {
+     String::from("version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n");
+     yaml.push_str("  - id: setup\n    set:\n      output: result\n");
+-    yaml.push_str("      value: \"0\"\n");
++    yaml.push_str("      value: true\n");
+     yaml.push_str("  - id: pick\n    choose:\n      branches:\n");
+     for (i, &count) in branch_body_counts.iter().enumerate() {
+diff --git a/crates/vb_compile/tests/proptest/proptest_choose_otherwise.rs b/crates/vb_compile/tests/proptest/proptest_choose_otherwise.rs
+index 0000000..4444444 100644
+--- a/crates/vb_compile/tests/proptest/proptest_choose_otherwise.rs
++++ b/crates/vb_compile/tests/proptest/proptest_choose_otherwise.rs
+@@ -18,7 +18,7 @@ fn make_choose_yaml(branch_body_counts: &[u8], has_otherwise: bool) -> String {
+     String::from("version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n");
+     yaml.push_str("  - id: setup\n    set:\n      output: result\n");
+-    yaml.push_str("      value: \"0\"\n");
++    yaml.push_str("      value: true\n");
+     yaml.push_str("  - id: pick\n    choose:\n      branches:\n");
+     for (i, &count) in branch_body_counts.iter().enumerate() {
+diff --git a/crates/vb_compile/tests/proptest/proptest_choose_width.rs b/crates/vb_compile/tests/proptest/proptest_choose_width.rs
+index 0000000..5555555 100644
+--- a/crates/vb_compile/tests/proptest/proptest_choose_width.rs
++++ b/crates/vb_compile/tests/proptest/proptest_choose_width.rs
+@@ -18,7 +18,7 @@ fn choose_workflow_yaml(branch_body_counts: &[u8]) -> String {
+     String::from("version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n");
+     yaml.push_str("  - id: setup\n    set:\n      output: result\n");
+-    yaml.push_str("      value: \"0\"\n");
++    yaml.push_str("      value: true\n");
+     yaml.push_str("  - id: pick\n    choose:\n      branches:\n");
+     for (i, &count) in branch_body_counts.iter().enumerate() {
+```

@@ -1,0 +1,43 @@
+#[test]
+fn vb_a001_for_each_slots_have_distinct_roles() -> Result<(), Box<dyn std::error::Error>> {
+    let workflow = compile_yaml(FOREACH_YAML)?;
+    assert_eq!(workflow.to_parts().slot_count, 4);
+
+    let start = workflow.node(StepIdx::new(0)).ok_or("missing start")?;
+    let body = workflow.node(StepIdx::new(1)).ok_or("missing body")?;
+    let next = workflow.node(StepIdx::new(2)).ok_or("missing next")?;
+
+    let (actual_input, actual_item_slot) = match &start.kind {
+        CompiledNodeKind::ForEachStart { input, item_slot, .. } => (*input, *item_slot),
+        _ => return Err("expected ForEachStart".into()),
+    };
+    assert_eq!(actual_input, SlotIdx::new(0));
+    assert_eq!(actual_item_slot, SlotIdx::new(2));
+
+    let start_output = start.output.ok_or("missing start output")?;
+    assert_eq!(start_output, SlotIdx::new(1));
+
+    let body_output = body.output.ok_or("missing body output")?;
+    assert_eq!(body_output, SlotIdx::new(3));
+
+    let actual_iterator_slot = match &next.kind {
+        CompiledNodeKind::ForEachNext { iterator_slot, .. } => *iterator_slot,
+        _ => return Err("expected ForEachNext".into()),
+    };
+    assert_eq!(actual_iterator_slot, SlotIdx::new(1));
+
+    let next_output = next.output.ok_or("missing next output")?;
+    assert_eq!(next_output, SlotIdx::new(2));
+
+    assert_eq!(next_output, actual_item_slot);
+    assert_eq!(actual_iterator_slot, start_output);
+
+    let mut slots = std::collections::BTreeSet::new();
+    slots.insert(actual_input);
+    slots.insert(start_output);
+    slots.insert(actual_item_slot);
+    slots.insert(body_output);
+    assert_eq!(slots.len(), 4);
+
+    Ok(())
+}

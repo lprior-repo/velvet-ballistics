@@ -1,0 +1,3 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.37s
+     Running tests/vb_a001_for_each_topology.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_a001_for_each_topology-91dae143efbba4eb)

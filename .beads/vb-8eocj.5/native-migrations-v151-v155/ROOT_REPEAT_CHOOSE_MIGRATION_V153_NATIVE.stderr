@@ -1,0 +1,8 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.94s
+     Running tests/digest_repeat_unit.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/digest_repeat_unit-c4d9490bed0d8be6)
+     Running tests/integration_choose_body.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/integration_choose_body-100d9e08412e8154)
+     Running tests/proptest/proptest_choose_emission.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/proptest_choose_emission-3f6cbfedeeb143cd)
+     Running tests/proptest/proptest_choose_fallthrough.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/proptest_choose_fallthrough-88a8e7bff4751af4)
+     Running tests/proptest/proptest_choose_otherwise.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/proptest_choose_otherwise-6afc48df753b45d8)
+     Running tests/proptest/proptest_choose_width.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/proptest_choose_width-66680385a1daf6fb)

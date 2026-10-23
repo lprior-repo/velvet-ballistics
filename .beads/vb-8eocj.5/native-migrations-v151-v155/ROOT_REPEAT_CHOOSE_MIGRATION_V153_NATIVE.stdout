@@ -1,0 +1,52 @@
+
+running 13 tests
+test test_repeat_body_changes_digest ... ok
+test test_repeat_body_changes_digest_compile_source ... ok
+test test_repeat_different_set_output_changes_digest ... ok
+test test_repeat_empty_body_rejected_with_step_field_shape ... ok
+test test_repeat_max_attempts_changes_digest ... ok
+test test_repeat_max_attempts_changes_digest_compile_source ... ok
+test test_repeat_max_attempts_max_differs_from_one ... ok
+test test_repeat_max_attempts_two_differs_from_max ... ok
+test test_repeat_max_attempts_two_differs_from_one ... ok
+test test_repeat_multi_step_body_compiles_and_changes_digest ... ok
+test test_repeat_same_config_same_digest ... ok
+test test_repeat_same_config_same_digest_compile_source ... ok
+test test_repeat_same_config_same_digest_cross_path ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 2 tests
+test compile_workflow_choose_body_do_success ... ok
+test compile_workflow_choose_body_set_success ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test emission_count_matches_body_steps ... ok
+test first_node_after_setup_is_choose_slot ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+
+
+running 1 test
+test body_nodes_have_next_pointer ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+
+running 2 tests
+test otherwise_present_compiles ... ok
+test otherwise_target_exists ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+
+running 2 tests
+test choose_width_always_at_least_one ... ok
+test choose_width_matches_node_count ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+

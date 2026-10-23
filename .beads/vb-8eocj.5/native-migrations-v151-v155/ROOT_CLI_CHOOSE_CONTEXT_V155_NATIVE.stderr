@@ -1,0 +1,4 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running tests/vb_test_cli_run_lifecycle_behavior.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_test_cli_run_lifecycle_behavior-e77e644e90670f34)
+     Running tests/vb_test_compile_parse_validate_behavior.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_test_compile_parse_validate_behavior-43e812b0ea8e80c8)
