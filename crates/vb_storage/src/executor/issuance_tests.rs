@@ -138,3 +138,73 @@ fn journal_reopen_preserves_sequence() -> TestResult {
     assert_eq!(read_counter(&journal2)?, Some(2));
     Ok(())
 }
+
+// Case 6: Same-journal four-way sequence (default, catalog, CLI, default).
+#[test]
+fn same_journal_four_way_sequence() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let default_workflow = minimal_workflow()?;
+    let (_dir, journal) = open_test_journal()?;
+
+    // Submission 1: default admission submit_artifact -> seq 1
+    let default1 =
+        crate::admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+    assert_eq!(default1.accepted_at_seq.get(), 1);
+
+    // Submission 2: real registered catalog fixture.submit -> seq 2
+    let catalog1 = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+    assert_eq!(catalog1.accepted_at_seq.get(), 2);
+
+    // Submission 3: actual CLI RunSubmission + journal.commit_run_submission -> seq 3
+    let cli_submission = super::issuance_test_support::make_cli_submission(
+        RuntimePolicy::Relaxed,
+        vb_core::RunId::new(77),
+    )?;
+    journal.commit_run_submission(&cli_submission, RuntimePolicy::Relaxed)?;
+
+    // Submission 4: default again -> seq 4
+    let default2 =
+        crate::admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+    assert_eq!(default2.accepted_at_seq.get(), 4);
+
+    // Verify seq 1 artifact readback intact
+    verify_artifact_readback(&journal, default1.digest, &default1)?;
+
+    // Verify seq 2 catalog artifact intact
+    fixture.check(&journal, &catalog1, RuntimePolicy::Relaxed)?;
+
+    // Verify seq 3 CLI submission: decode artifact and check binding
+    let run77_inputs = journal
+        .run_inputs(vb_core::RunId::new(77))?
+        .ok_or("run 77 inputs missing")?;
+    let run77_record = journal
+        .compiled_ir(run77_inputs.artifact_digest())?
+        .ok_or("run 77 compiled missing")?;
+    let run77_decoded: crate::AcceptedArtifact = postcard::from_bytes(&run77_record.ir)?;
+    assert_eq!(run77_decoded.accepted_at_seq.get(), 3);
+    assert_eq!(run77_decoded.digest, run77_inputs.artifact_digest());
+    assert_eq!(
+        run77_decoded.verification.digest,
+        run77_inputs.artifact_digest()
+    );
+    // policy_digest is computed from the workflow, not the inputs
+    let expected_policy_digest = crate::admission::compute_policy_digest(&default_workflow)?;
+    assert_eq!(
+        run77_decoded.policy_digest, expected_policy_digest,
+        "run 77: policy_digest must match compute_policy_digest of workflow"
+    );
+
+    // Relaxed policy: no events for seq 3
+    let run77_events = journal.events_for_run(vb_core::RunId::new(77))?;
+    assert!(
+        run77_events.is_empty(),
+        "Relaxed policy should have no events"
+    );
+
+    // Verify seq 4 default artifact intact
+    verify_artifact_readback(&journal, default2.digest, &default2)?;
+
+    // Final counter
+    assert_eq!(read_counter(&journal)?, Some(4));
+    Ok(())
+}

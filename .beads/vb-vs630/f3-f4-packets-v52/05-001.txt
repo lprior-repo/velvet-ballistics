@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/executor/issuance_test_support.rs
+1: //! Test support for executor issuance tests.
+2: //! Provides fixture construction, catalog, journal, and artifact helpers.
+3: 
+4: use crate::FjallJournal;
+5: use crate::{AcceptedArtifact, admission};
+6: use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+7: use vb_core::action_pack::{ActionPack, CapabilityScopeSpec, RecoveryClass};
+8: use vb_core::value::ConstValue;
+9: use vb_core::workflow::{ResourceContract, WorkflowParts};
+10: use vb_core::{
+11:     Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx,
+12:     StepIdx, WorkflowDigest,
+13: };
+14: 
+15: type BoxError = Box<dyn std::error::Error>;
+16: 
+17: pub(super) type TestResult = Result<(), BoxError>;
+18: 
+19: /// Open a fresh test journal in a temporary directory.
+20: pub(super) fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), BoxError> {
+21:     let dir = tempfile::tempdir()?;
+22:     let journal = FjallJournal::open(dir.path(), None)?;
+23:     Ok((dir, journal))
+24: }
+25: 
+26: /// Build a minimal compiled workflow with no actions.
+27: pub(super) fn minimal_workflow() -> Result<CompiledWorkflow, BoxError> {
+28:     let mut parts = parts_from("test_minimal");
+29:     parts.constants = Box::new([ConstValue::I64(42)]);
+30:     parts.slot_count = 1;
+31:     canonicalize_parts(&mut parts)?;
+32:     Ok(CompiledWorkflow::try_from_parts(parts)?)
+33: }
+34: 
+35: /// Build a compiled workflow containing one action invocation.
+36: pub(super) fn action_workflow() -> Result<CompiledWorkflow, BoxError> {
+37:     let mut parts = parts_from("test_action");
+38:     parts.nodes = Box::new([set_node(), action_node(), finish_node(2, 1)]);
+39:     parts.constants = Box::new([ConstValue::I64(42)]);
+40:     parts.slot_count = 2;
+41:     canonicalize_parts(&mut parts)?;
+42:     Ok(CompiledWorkflow::try_from_parts(parts)?)
+43: }
+44: 
+45: fn set_node() -> CompiledNode {
+46:     CompiledNode {
+47:         id: StepIdx::new(0),
+48:         output: Some(SlotIdx::new(0)),
+49:         next: Some(StepIdx::new(1)),
+50:         on_error: None,
+51:         error_slot: None,
+52:         kind: CompiledNodeKind::SetConst {
+53:             value: ConstIdx::new(0),
+54:         },
+55:     }
+56: }
+57: 
+58: fn action_node() -> CompiledNode {
+59:     CompiledNode {
+60:         id: StepIdx::new(1),
+61:         output: Some(SlotIdx::new(1)),
+62:         next: Some(StepIdx::new(2)),
+63:         on_error: None,
+64:         error_slot: None,
+65:         kind: CompiledNodeKind::Do {
+66:             action: vb_core::ActionId::new(0),
+67:             input: SlotIdx::new(0),
+68:         },
+69:     }
+70: }
+71: 
+72: fn finish_node(id: u16, result: u16) -> CompiledNode {
+73:     CompiledNode {
+74:         id: StepIdx::new(id),
+75:         output: None,
+76:         next: None,
+77:         on_error: None,
+78:         error_slot: None,
+79:         kind: CompiledNodeKind::Finish {
+80:             result: SlotIdx::new(result),
+81:         },
+82:     }
+83: }
+84: 
+85: fn parts_from(name: &'static str) -> WorkflowParts {
+86:     WorkflowParts {
+87:         semantic_source_identity: None,
+88:         name: Box::<str>::from(name),
+89:         input_slots: Box::new([]),
+90:         digest: WorkflowDigest::from_bytes([0u8; 32]),
+91:         nodes: Box::new([set_node(), finish_node(1, 0)]),
+92:         expressions: Box::new([]),
+93:         accessors: Box::new([]),
+94:         constants: Box::new([]),
+95:         slot_count: 0,
+96:         symbols_count: 0,
+97:         entry: StepIdx::new(0),
+98:         resource_contract: ResourceContract::DEFAULT,
+99:         step_names: Box::new([]),
+100:     }

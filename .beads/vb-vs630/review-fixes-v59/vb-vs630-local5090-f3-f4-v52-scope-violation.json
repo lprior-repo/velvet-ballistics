@@ -1,0 +1,6 @@
+{
+  "reason": "worker mutation outside explicitly assigned source paths",
+  "path": "crates/vb_storage/src/executor/issuance_test_support.rs",
+  "workspace": "/home/lewis/src/isoloated/vb-vs630-impl-local5090-v6",
+  "tool": "edit"
+}

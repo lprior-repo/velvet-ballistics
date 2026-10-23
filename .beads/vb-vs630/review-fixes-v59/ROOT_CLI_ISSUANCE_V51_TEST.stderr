@@ -1,0 +1,13 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-vs630-impl-local5090-v6/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.33s
+────────────
+ Nextest run ID a820e003-1111-4ca9-8323-2fac4d10d7c3 with nextest profile: default
+    Starting 1678 tests across 1 binary
+────────────
+     Summary [   1.503s] 1678 tests run: 1678 passed, 0 skipped

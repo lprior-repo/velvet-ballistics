@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/keys.rs
+301:         PREFIX_RUN_EVENT => Ok(KeyPrefix::RunEvent),
+302:         PREFIX_RUN_SNAPSHOT => Ok(KeyPrefix::RunSnapshot),
+303:         PREFIX_BLOB => Ok(KeyPrefix::Blob),
+304:         PREFIX_INDEX_STATUS => Ok(KeyPrefix::IndexStatus),
+305:         PREFIX_INDEX_WORKFLOW => Ok(KeyPrefix::IndexWorkflow),
+306:         PREFIX_INDEX_ACTION => Ok(KeyPrefix::IndexAction),
+307:         unknown => Err(KeyDecodeError::UnknownPrefix { prefix: unknown }),
+308:     }
+309: }
+310: 
+311: fn key_length_mismatch(prefix: KeyPrefix, actual: usize) -> KeyDecodeError {
+312:     KeyDecodeError::KeyLengthMismatch {
+313:         prefix: prefix.to_u8(),
+314:         expected: prefix.expected_key_len(),
+315:         actual,
+316:     }
+317: }
+318: 
+319: fn key_array<const N: usize>(
+320:     bytes: &[u8],
+321:     prefix: KeyPrefix,
+322:     range: Range<usize>,
+323: ) -> Result<[u8; N], KeyDecodeError> {
+324:     let slice = bytes
+325:         .get(range)
+326:         .ok_or_else(|| key_length_mismatch(prefix, bytes.len()))?;
+327:     <[u8; N]>::try_from(slice).map_err(|_| key_length_mismatch(prefix, bytes.len()))
+328: }
+329: 
+330: fn key_byte(bytes: &[u8], prefix: KeyPrefix, index: usize) -> Result<u8, KeyDecodeError> {
+331:     bytes
+332:         .get(index)
+333:         .copied()
+334:         .ok_or_else(|| key_length_mismatch(prefix, bytes.len()))
+335: }
+336: 
+337: /// Decodes a raw byte slice into a typed `StorageKey`.
+338: ///
+339: /// 1. Classifies the prefix byte via `try_key_prefix`.
+340: /// 2. Validates the key length matches the expected byte count for that prefix.
+341: /// 3. Decodes numeric fields from big-endian bytes.
+342: /// 4. Validates domain rules (RunId must be non-zero; EventSeq must not be MAX).
+343: ///
+344: /// # Errors
+345: ///
+346: /// Returns a `KeyDecodeError` variant for empty input, unknown prefix,
+347: /// length mismatch, invalid RunId (zero), or reserved seq sentinel (MAX).
+348: ///
+349: /// # Examples
+350: ///
+351: /// ```
+352: /// use vb_storage::keys::decode_storage_key;
+353: /// use vb_storage::StorageKey;
+354: /// use vb_core::RunId;
+355: ///
+356: /// let bytes = [0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2A];
+357: /// let expected = StorageKey::RunHeader { run: RunId::new(42) };
+358: /// assert!(decode_storage_key(&bytes).is_ok_and(|k| k == expected));
+359: /// ```
+360: pub fn decode_storage_key(bytes: &[u8]) -> Result<StorageKey, KeyDecodeError> {
+361:     let prefix = try_key_prefix(bytes)?;
+362:     let expected_len = prefix.expected_key_len();
+363:     if bytes.len() != expected_len {
+364:         return Err(KeyDecodeError::KeyLengthMismatch {
+365:             prefix: prefix.to_u8(),
+366:             expected: expected_len,
+367:             actual: bytes.len(),
+368:         });
+369:     }
+370: 
+371:     match prefix {
+372:         KeyPrefix::WorkflowSource | KeyPrefix::CompiledIr | KeyPrefix::Blob => {
+373:             let digest = key_array::<{ crate::constants::DIGEST_BYTES }>(
+374:                 bytes,
+375:                 prefix,
+376:                 1..DIGEST_KEY_BYTES,
+377:             )?;
+378:             match prefix {
+379:                 KeyPrefix::WorkflowSource => Ok(StorageKey::WorkflowSource { digest }),
+380:                 KeyPrefix::CompiledIr => Ok(StorageKey::CompiledIr { digest }),
+381:                 _ => Ok(StorageKey::Blob { digest }),
+382:             }
+383:         }
+384:         KeyPrefix::RunHeader => {
+385:             let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 1..9)?);
+386:             if run_val == 0 {
+387:                 return Err(KeyDecodeError::InvalidRunId);
+388:             }
+389:             Ok(StorageKey::RunHeader {
+390:                 run: RunId::new(run_val),
+391:             })
+392:         }
+393:         KeyPrefix::RunEvent | KeyPrefix::RunSnapshot => {
+394:             let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 1..9)?);
+395:             if run_val == 0 {
+396:                 return Err(KeyDecodeError::InvalidRunId);
+397:             }
+398:             let seq_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 9..17)?);
+399:             if seq_val == u64::MAX {
+400:                 return Err(KeyDecodeError::ReservedSeqSentinel);

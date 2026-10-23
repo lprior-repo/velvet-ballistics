@@ -179,6 +179,36 @@ pub(super) fn verify_artifact_readback(
     Ok(())
 }
 
+/// Build a CLI RunSubmission for a minimal workflow with RunId77.
+pub(super) fn make_cli_submission(
+    policy: RuntimePolicy,
+    run: vb_core::RunId,
+) -> Result<crate::RunSubmission, BoxError> {
+    let workflow = minimal_workflow()?;
+    let artifact = admission::prepare_compiled_artifact(&workflow, policy, &[])
+        .map_err(|e| format!("prepare_compiled_artifact failed: {e}"))?;
+    let source_bytes = b"cli minimal workflow source".to_vec();
+    let source_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());
+    let inputs =
+        crate::RunInputsRecord::new(run, artifact.digest, source_digest, &workflow, Box::new([]))?;
+    let header = crate::RunHeaderRecord {
+        run,
+        workflow_id: vb_core::WorkflowId::new(0),
+        compiled_digest: workflow.digest(),
+        status: 0,
+        accepted_at_ms: 1000,
+    };
+    Ok(crate::RunSubmission::new(
+        crate::WorkflowSourceRecord {
+            digest: source_digest,
+            source: source_bytes,
+        },
+        artifact,
+        inputs,
+        header,
+    )?)
+}
+
 /// Complete packed-verification fixture for test modules.
 pub(super) struct PackedFixture {
     pub(super) catalog: super::ExecutorCatalog,

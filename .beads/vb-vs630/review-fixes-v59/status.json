@@ -1,0 +1,34 @@
+{
+  "status": "WIP_INDEPENDENT_TEST_REVIEW_PENDING",
+  "gate": "V57 all1679 pass0skips1.521s",
+  "source_sha256": {
+    "crates/vb_storage/src/inputs/issuance_boundary_tests.rs": "0d8b4a9c8c1009d0a94a3dd3b26b79bcfaa574c4f03f57d764af4c157b7ff8f6",
+    "crates/vb_storage/src/inputs/issuance_failure_tests.rs": "5b564acbd601390b28fa6655b6c18195d1ae051a06e4304cee1c30677bc80c07",
+    "crates/vb_storage/src/inputs/issuance_test_support.rs": "030e3581989de0ac708b8ac8cb34b40e857512d1c43d5434b7b4bdec8400b675",
+    "crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs": "e74b969c3db8cca3e0317988bf90224add94a1553e3408949949ccb69c755a88",
+    "crates/vb_storage/src/inputs/mod.rs": "82de261549a8bc2f611cfc8fb3e5e395c134bb2301fac5970faf2e10a9dbed4b",
+    "crates/vb_storage/src/executor/issuance_tests.rs": "62335eaa235ee80a619b494d66e2f47d3bb9101129a8db0afb5bdaa4c3c3d61e",
+    "crates/vb_storage/src/executor/issuance_test_support.rs": "30a5a121e152da565f07c47d5c3ea08b8ef0540daf05d3d85701022152fcbbdc"
+  },
+  "production_6_files_unchanged_from": "ebe0984326b7fd17603c977dbb9ee680b43522f4",
+  "fixes": [
+    "F1 duplicate all8keyspaces raw equality",
+    "F2 close drop reopen all8raw equality before next submission; first records retained after next",
+    "F3 exact each run typed values/digests/source/header/index markers/artifact/events; scheduling order unconstrained sorted1..4",
+    "F4 actual same journal default1 catalog2 CLI3 default4"
+  ],
+  "failed_attempts": [
+    "V48 compilation17 errors",
+    "v52 outscope executor helper edit stopped preserved; v54 reassigned explicitly",
+    "V55 compilation38 identical RunId Display errors",
+    "v56 all38 Debug formatter changes complete; worker stopped continuing needless attempts"
+  ],
+  "cycog_correction": "previous dormant test inventory WRONG;4targets already owned by binary crate,11original testsPASS; no Cargo rename accepted",
+  "not_claimed": [
+    "independent final TEST approval",
+    "combined batch12 integration",
+    "canonical CI",
+    "formal proof",
+    "all branches integrated"
+  ]
+}

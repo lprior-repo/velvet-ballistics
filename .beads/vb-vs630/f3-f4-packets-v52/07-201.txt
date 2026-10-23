@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/keys.rs
+201:         } => {
+202:             out.extend_from_slice(&index_status_key(*state, *timestamp, *run)?);
+203:         }
+204:         StorageKey::IndexWorkflow { workflow, run } => {
+205:             out.extend_from_slice(&index_workflow_key(*workflow, *run)?);
+206:         }
+207:         StorageKey::IndexAction { action, run, step } => {
+208:             out.extend_from_slice(&index_action_key(*action, *run, *step)?);
+209:         }
+210:     }
+211:     Ok(())
+212: }
+213: 
+214: /// Encodes any supported storage key using the existing typed key encoders.
+215: ///
+216: /// Thin wrapper around [`encode_key_into`] that returns an owned `Vec<u8>`.
+217: /// Use [`encode_key_into`] directly in hot scan paths to reuse a single
+218: /// scratch buffer across iterations.
+219: pub fn encode_key(key: StorageKey) -> Result<Vec<u8>, JournalError> {
+220:     let mut buf = Vec::with_capacity(32);
+221:     encode_key_into(&key, &mut buf)?;
+222:     Ok(buf)
+223: }
+224: 
+225: /// Storage key prefix classification for filter-by-kind operations.
+226: ///
+227: /// Each variant corresponds to one of the nine known key prefixes.
+228: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+229: #[non_exhaustive]
+230: pub enum KeyPrefix {
+231:     /// Workflow source by digest (`0x01`).
+232:     WorkflowSource,
+233:     /// Compiled IR by digest (`0x02`).
+234:     CompiledIr,
+235:     /// Run header (`0x10`).
+236:     RunHeader,
+237:     /// Run event journal (`0x11`).
+238:     RunEvent,
+239:     /// Run snapshot (`0x12`).
+240:     RunSnapshot,
+241:     /// Large blob by digest (`0x20`).
+242:     Blob,
+243:     /// Status index (`0x30`).
+244:     IndexStatus,
+245:     /// Workflow index (`0x31`).
+246:     IndexWorkflow,
+247:     /// Action index (`0x32`).
+248:     IndexAction,
+249: }
+250: 
+251: impl KeyPrefix {
+252:     /// Returns the raw prefix byte for this variant.
+253:     #[must_use]
+254:     pub const fn to_u8(self) -> u8 {
+255:         match self {
+256:             Self::WorkflowSource => PREFIX_WORKFLOW_SOURCE,
+257:             Self::CompiledIr => PREFIX_COMPILED_IR,
+258:             Self::RunHeader => PREFIX_RUN_HEADER,
+259:             Self::RunEvent => PREFIX_RUN_EVENT,
+260:             Self::RunSnapshot => PREFIX_RUN_SNAPSHOT,
+261:             Self::Blob => PREFIX_BLOB,
+262:             Self::IndexStatus => PREFIX_INDEX_STATUS,
+263:             Self::IndexWorkflow => PREFIX_INDEX_WORKFLOW,
+264:             Self::IndexAction => PREFIX_INDEX_ACTION,
+265:         }
+266:     }
+267: 
+268:     /// Returns the expected total key length (in bytes) for this prefix variant.
+269:     #[must_use]
+270:     pub const fn expected_key_len(self) -> usize {
+271:         match self {
+272:             Self::WorkflowSource | Self::CompiledIr | Self::Blob => DIGEST_KEY_BYTES,
+273:             Self::RunHeader => RUN_ONLY_KEY_BYTES,
+274:             Self::RunEvent | Self::RunSnapshot => JOURNAL_KEY_BYTES,
+275:             Self::IndexStatus => INDEX_STATUS_KEY_BYTES,
+276:             Self::IndexWorkflow | Self::IndexAction => INDEX_WORKFLOW_KEY_BYTES,
+277:         }
+278:     }
+279: }
+280: 
+281: /// Classifies the first byte of a storage key into a `KeyPrefix`.
+282: ///
+283: /// Returns `Err(KeyDecodeError::EmptyKey)` for an empty slice and
+284: /// `Err(KeyDecodeError::UnknownPrefix)` for an unrecognised prefix byte.
+285: ///
+286: /// # Examples
+287: ///
+288: /// ```
+289: /// use vb_storage::keys::{try_key_prefix, KeyPrefix};
+290: ///
+291: /// assert!(matches!(try_key_prefix(&[0x01]), Ok(KeyPrefix::WorkflowSource)));
+292: /// assert!(try_key_prefix(&[]).is_err());
+293: /// assert!(try_key_prefix(&[0xFF]).is_err());
+294: /// ```
+295: pub fn try_key_prefix(bytes: &[u8]) -> Result<KeyPrefix, KeyDecodeError> {
+296:     let &prefix = bytes.first().ok_or(KeyDecodeError::EmptyKey)?;
+297:     match prefix {
+298:         PREFIX_WORKFLOW_SOURCE => Ok(KeyPrefix::WorkflowSource),
+299:         PREFIX_COMPILED_IR => Ok(KeyPrefix::CompiledIr),
+300:         PREFIX_RUN_HEADER => Ok(KeyPrefix::RunHeader),

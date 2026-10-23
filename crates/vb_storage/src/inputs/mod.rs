@@ -146,6 +146,8 @@ mod issuance_boundary_tests;
 #[cfg(test)]
 mod issuance_failure_tests;
 #[cfg(test)]
+mod issuance_snapshot_test_support;
+#[cfg(test)]
 mod issuance_test_support;
 #[cfg(test)]
 mod issuance_tests;

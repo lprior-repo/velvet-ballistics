@@ -1,0 +1,48 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/tests.rs
+201:             .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+202:         proptest::prop_assert_eq!(decoded.inputs(), &[(SlotIdx::new(0), SlotValue::I64(value))]);
+203:         proptest::prop_assert_eq!(decoded, retained);
+204:     }
+205: }
+206: 
+207: #[test]
+208: fn journal_input_read_rejects_wrong_run_and_legacy_absence_is_explicit() -> TestResult {
+209:     let directory = tempfile::tempdir()?;
+210:     let journal = FjallJournal::open(directory.path(), None)?;
+211:     assert_eq!(journal.run_inputs(RunId::new(7))?, None);
+212:     let retained = record(
+213:         &workflow()?,
+214:         Box::from([(SlotIdx::new(0), SlotValue::I64(8))]),
+215:     )?;
+216:     let bytes = crate::encode_record(
+217:         MAGIC_INDEX_RECORD,
+218:         RecordKind::RunInputs,
+219:         7,
+220:         &retained,
+221:         MAX_RUN_INPUT_BYTES,
+222:     )?;
+223:     journal
+224:         .run_inputs
+225:         .insert(crate::keys::run_header_key(RunId::new(8))?, bytes)?;
+226:     assert!(matches!(journal.run_inputs(RunId::new(8)),
+227:         Err(JournalError::WrongRun { expected, actual }) if expected == RunId::new(8) && actual == RunId::new(7)));
+228:     assert!(
+229:         matches!(journal.run_inputs(RunId::ZERO), Err(JournalError::InvalidRunId { run }) if run == RunId::ZERO)
+230:     );
+231:     Ok(())
+232: }
+233: 
+234: #[test]
+235: fn retained_mapping_rejects_workflow_digest_drift_before_execution() -> TestResult {
+236:     let original = workflow()?;
+237:     let retained = record(&original, Box::from([(SlotIdx::new(0), SlotValue::I64(8))]))?;
+238:     let mut parts = original.to_parts();
+239:     parts.name = "other_artifact".into();
+240:     parts.digest = WorkflowDigest::from_bytes([0; 32]);
+241:     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+242:     assert!(matches!(
+243:         retained.validate_workflow(&CompiledWorkflow::try_from_parts(parts)?),
+244:         Err(JournalError::PayloadDigestMismatch)
+245:     ));
+246:     Ok(())
+247: }

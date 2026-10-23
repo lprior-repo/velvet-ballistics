@@ -1,0 +1,56 @@
+ACTUAL SOURCE crates/vb_storage/src/executor/issuance_test_support.rs
+201:             contract,
+202:             pack,
+203:         })
+204:     }
+205: 
+206:     /// Prepare an artifact from this fixture's workflow and pack.
+207:     pub(super) fn prepare(
+208:         &self,
+209:         policy: RuntimePolicy,
+210:     ) -> Result<AcceptedArtifact, super::ExecutorError> {
+211:         self.catalog.prepare_artifact(
+212:             &self.workflow,
+213:             policy,
+214:             std::slice::from_ref(&self.contract),
+215:             std::slice::from_ref(&self.pack),
+216:         )
+217:     }
+218: 
+219:     /// Submit this fixture's artifact to the journal.
+220:     pub(super) fn submit(
+221:         &self,
+222:         journal: &FjallJournal,
+223:         policy: RuntimePolicy,
+224:     ) -> Result<AcceptedArtifact, super::ExecutorError> {
+225:         self.catalog.submit_artifact(
+226:             journal,
+227:             &self.workflow,
+228:             policy,
+229:             std::slice::from_ref(&self.contract),
+230:             std::slice::from_ref(&self.pack),
+231:         )
+232:     }
+233: 
+234:     /// Check a submitted artifact against the catalog.
+235:     pub(super) fn check(
+236:         &self,
+237:         journal: &FjallJournal,
+238:         artifact: &AcceptedArtifact,
+239:         policy: RuntimePolicy,
+240:     ) -> TestResult {
+241:         let restored = self.catalog.verify_artifact(artifact, policy)?;
+242:         if &restored != &self.workflow {
+243:             return Err("verified workflow differs from original".into());
+244:         }
+245:         match &artifact.verification.evidence {
+246:             vb_core::artifact::ArtifactEvidence::Packed(packed) => {
+247:                 if packed.base.admission_policy != policy {
+248:                     return Err("artifact admission policy differs from expected".into());
+249:                 }
+250:             }
+251:             other => return Err(format!("unexpected evidence: {other:?}").into()),
+252:         }
+253:         verify_artifact_readback(journal, artifact.digest, artifact)
+254:     }
+255: }

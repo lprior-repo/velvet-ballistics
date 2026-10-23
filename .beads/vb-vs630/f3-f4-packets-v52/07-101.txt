@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/keys.rs
+101: pub fn index_status_key(
+102:     state: crate::types::IndexStatusState,
+103:     timestamp: u64,
+104:     run: RunId,
+105: ) -> Result<[u8; INDEX_STATUS_KEY_BYTES], JournalError> {
+106:     // PO-cn2v4-001: a zero `RunId` is reserved as "no run" per the
+107:     // storage contract. Reject it before any byte writing so the typed
+108:     // error surfaces exactly once at the encoder boundary (the
+109:     // decoder in `decode_storage_key` mirrors this check). This is
+110:     // checked BEFORE the IndexStatusState collision check so the
+111:     // encoder ordering matches what the decoder reports when both
+112:     // conditions hold.
+113:     require_non_zero_run(run)?;
+114:     // VB-NOORE (wildcard elimination): use `to_u8_checked` so an
+115:     // `Other(v)` whose byte is in the collision range
+116:     // `0..MIN_OTHER_STATUS_BYTE` is rejected with a typed
+117:     // `JournalError::IndexStatusStateCollision` instead of silently
+118:     // emitting a collision byte (SC-001 / vb-f1xkn).
+119:     let state_byte = state.to_u8_checked()?;
+120:     let mut key = ArrayVec::<u8, INDEX_STATUS_KEY_BYTES>::new();
+121:     key.try_push(PREFIX_INDEX_STATUS)
+122:         .map_err(|_| JournalError::KeyCapacity)?;
+123:     key.try_push(state_byte)
+124:         .map_err(|_| JournalError::KeyCapacity)?;
+125:     key.try_extend_from_slice(&timestamp.to_be_bytes())
+126:         .map_err(|_| JournalError::KeyCapacity)?;
+127:     key.try_extend_from_slice(&run.get().to_be_bytes())
+128:         .map_err(|_| JournalError::KeyCapacity)?;
+129:     key.into_inner().map_err(|_| JournalError::KeyCapacity)
+130: }
+131: 
+132: /// Encodes `[0x31][workflow_id_u32_be][run_id_u64_be]`.
+133: pub fn index_workflow_key(
+134:     workflow: WorkflowId,
+135:     run: RunId,
+136: ) -> Result<[u8; INDEX_WORKFLOW_KEY_BYTES], JournalError> {
+137:     // PO-cn2v4-001: mirror the zero-RunId rejection at every public
+138:     // encoder (see `index_status_key` rationale).
+139:     require_non_zero_run(run)?;
+140:     let mut key = ArrayVec::<u8, INDEX_WORKFLOW_KEY_BYTES>::new();
+141:     key.try_push(PREFIX_INDEX_WORKFLOW)
+142:         .map_err(|_| JournalError::KeyCapacity)?;
+143:     key.try_extend_from_slice(&workflow.get().to_be_bytes())
+144:         .map_err(|_| JournalError::KeyCapacity)?;
+145:     key.try_extend_from_slice(&run.get().to_be_bytes())
+146:         .map_err(|_| JournalError::KeyCapacity)?;
+147:     key.into_inner().map_err(|_| JournalError::KeyCapacity)
+148: }
+149: 
+150: /// Encodes `[0x32][action_id_u16_be][run_id_u64_be][step_u16_be]`.
+151: pub fn index_action_key(
+152:     action: ActionId,
+153:     run: RunId,
+154:     step: vb_core::StepIdx,
+155: ) -> Result<[u8; INDEX_ACTION_KEY_BYTES], JournalError> {
+156:     // PO-cn2v4-001: mirror the zero-RunId rejection at every public
+157:     // encoder (see `index_status_key` rationale).
+158:     require_non_zero_run(run)?;
+159:     let mut key = ArrayVec::<u8, INDEX_ACTION_KEY_BYTES>::new();
+160:     key.try_push(PREFIX_INDEX_ACTION)
+161:         .map_err(|_| JournalError::KeyCapacity)?;
+162:     key.try_extend_from_slice(&action.get().to_be_bytes())
+163:         .map_err(|_| JournalError::KeyCapacity)?;
+164:     key.try_extend_from_slice(&run.get().to_be_bytes())
+165:         .map_err(|_| JournalError::KeyCapacity)?;
+166:     key.try_extend_from_slice(&step.get().to_be_bytes())
+167:         .map_err(|_| JournalError::KeyCapacity)?;
+168:     key.into_inner().map_err(|_| JournalError::KeyCapacity)
+169: }
+170: 
+171: /// Encodes any supported storage key into the provided buffer.
+172: ///
+173: /// `out` is cleared before writing. This avoids per-call allocation when
+174: /// the caller owns a reusable scratch `Vec<u8>` (see scan paths in
+175: /// `trimming/logic.rs` and the doctor preview loop).
+176: pub fn encode_key_into(key: &StorageKey, out: &mut Vec<u8>) -> Result<(), JournalError> {
+177:     out.clear();
+178:     match key {
+179:         StorageKey::WorkflowSource { digest } => {
+180:             out.extend_from_slice(&workflow_source_key(*digest)?);
+181:         }
+182:         StorageKey::CompiledIr { digest } => {
+183:             out.extend_from_slice(&compiled_ir_key(*digest)?);
+184:         }
+185:         StorageKey::RunHeader { run } => {
+186:             out.extend_from_slice(&run_header_key(*run)?);
+187:         }
+188:         StorageKey::RunEvent { run, seq } => {
+189:             out.extend_from_slice(&run_event_key(*run, *seq)?);
+190:         }
+191:         StorageKey::RunSnapshot { run, seq } => {
+192:             out.extend_from_slice(&run_snapshot_key(*run, *seq)?);
+193:         }
+194:         StorageKey::Blob { digest } => {
+195:             out.extend_from_slice(&blob_key(*digest)?);
+196:         }
+197:         StorageKey::IndexStatus {
+198:             state,
+199:             timestamp,
+200:             run,

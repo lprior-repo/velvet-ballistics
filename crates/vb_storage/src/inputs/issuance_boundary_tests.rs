@@ -3,6 +3,7 @@
 //! preservation, and bounded concurrent submission.
 
 use super::compute_input_digest;
+use super::issuance_snapshot_test_support::snapshot_journal;
 use super::issuance_test_support::*;
 use crate::{FjallJournal, JournalError};
 use std::sync::Arc;
@@ -140,6 +141,7 @@ fn cli_same_path_reopen_preserves_state_and_advances() -> TestResult {
         .run_header(vb_core::RunId::new(100))?
         .ok_or("header not found before close")?;
     let events = journal.events_for_run(vb_core::RunId::new(100))?;
+    let before_snapshot = snapshot_journal(&journal)?;
 
     journal.close()?;
     drop(journal);
@@ -148,7 +150,11 @@ fn cli_same_path_reopen_preserves_state_and_advances() -> TestResult {
     let mut journal = FjallJournal::open(dir.path(), None)?;
     assert_eq!(read_counter(&journal)?, Some(1));
 
-    // Verify retained state survives reopen
+    // Full journal state unchanged after reopen: all typed records and index rows identical
+    let after_reopen_snapshot = snapshot_journal(&journal)?;
+    assert_eq!(after_reopen_snapshot, before_snapshot);
+
+    // Old field-level assertions still hold
     let reopened_inputs = journal
         .run_inputs(vb_core::RunId::new(100))?
         .ok_or("inputs not found after reopen")?;
@@ -205,6 +211,30 @@ fn cli_same_path_reopen_preserves_state_and_advances() -> TestResult {
     assert_eq!(read_counter(&journal)?, Some(2));
     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(200), 2)?;
 
+    // First run's typed records remain exact equal after second submission
+    assert_eq!(
+        journal.run_inputs(vb_core::RunId::new(100))?.as_ref(),
+        Some(&reopened_inputs)
+    );
+    assert_eq!(
+        journal
+            .compiled_ir(reopened_inputs.artifact_digest())?
+            .as_ref(),
+        Some(&reopened_compiled)
+    );
+    assert_eq!(
+        journal
+            .workflow_source(reopened_inputs.source_digest())?
+            .as_ref(),
+        Some(&reopened_source)
+    );
+    assert_eq!(
+        journal.run_header(vb_core::RunId::new(100))?.as_ref(),
+        Some(&reopened_header)
+    );
+    let after_second_events = journal.events_for_run(vb_core::RunId::new(100))?;
+    assert_eq!(after_second_events, reopened_events);
+
     journal.close()?;
     Ok(())
 }
@@ -245,18 +275,21 @@ fn cli_bounded_concurrent_submissions() -> TestResult {
 
     assert_eq!(read_counter(&journal)?, Some(4));
 
-    // Verify each run got a distinct sequence
-    let mut seqs = Vec::new();
-    for (run, _) in run_configs {
-        let inputs = journal.run_inputs(run)?.ok_or("inputs not found")?;
-        let compiled = journal
-            .compiled_ir(inputs.artifact_digest())?
-            .ok_or("compiled not found")?;
-        let decoded: crate::AcceptedArtifact = postcard::from_bytes(&compiled.ir)?;
-        seqs.push(decoded.accepted_at_seq.get());
+    // Verify each run's full binding against its explicit (run,value) pair.
+    // Thread scheduling is nondeterministic, so collect actual sequences
+    // returned and verify the set {1,2,3,4} appears, not specific run->seq
+    // assignments.
+    let mut observed_sequences = Vec::new();
+    for (run, value) in [
+        (vb_core::RunId::new(100), 10),
+        (vb_core::RunId::new(101), 11),
+        (vb_core::RunId::new(102), 12),
+        (vb_core::RunId::new(103), 13),
+    ] {
+        let actual_seq = verify_concurrent_submission_binding(&journal, run, value)?;
+        observed_sequences.push(actual_seq);
     }
-
-    seqs.sort();
-    assert_eq!(seqs, [1, 2, 3, 4]);
+    observed_sequences.sort();
+    assert_eq!(observed_sequences, vec![1u64, 2, 3, 4]);
     Ok(())
 }
