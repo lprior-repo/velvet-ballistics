@@ -1,0 +1,44 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-vs630-batch-tests-local3090-v22/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.42s
+────────────
+ Nextest run ID 7f940c36-168b-4d0b-87bc-0ed138e3b4b8 with nextest profile: default
+    Starting 1670 tests across 1 binary
+        FAIL [   0.018s] (  67/1670) vb_storage batch::artifact_sequence_tests::put_counter_with_event_combined_budget
+  stdout ───
+
+    running 1 test
+    test batch::artifact_sequence_tests::put_counter_with_event_combined_budget ... FAILED
+
+    failures:
+
+    failures:
+        batch::artifact_sequence_tests::put_counter_with_event_combined_budget
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1669 filtered out; finished in 0.02s
+
+  stderr ───
+    Error: SequenceGap { expected: EventSeq(0), actual: EventSeq(1) }
+
+  Cancelling due to test failure: 31 tests still running
+        FAIL [   0.030s] (  90/1670) vb_storage batch::artifact_sequence_tests::put_event_then_counter_combined_budget
+  stdout ───
+
+    running 1 test
+    test batch::artifact_sequence_tests::put_event_then_counter_combined_budget ... FAILED
+
+    failures:
+
+    failures:
+        batch::artifact_sequence_tests::put_event_then_counter_combined_budget
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1669 filtered out; finished in 0.02s
+
+  stderr ───
+    Error: SequenceGap { expected: EventSeq(0), actual: EventSeq(1) }
+
+────────────
+     Summary [   0.106s] 98/1670 tests run: 96 passed, 2 failed, 0 skipped
+        FAIL [   0.018s] (  67/1670) vb_storage batch::artifact_sequence_tests::put_counter_with_event_combined_budget
+        FAIL [   0.030s] (  90/1670) vb_storage batch::artifact_sequence_tests::put_event_then_counter_combined_budget
+warning: 1572/1670 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed

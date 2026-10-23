@@ -94,7 +94,7 @@ fn put_counter_at_exact_budget_succeeds() -> Result<(), Box<dyn std::error::Erro
 #[test]
 fn put_counter_with_event_combined_budget() -> Result<(), Box<dyn std::error::Error>> {
     let (_path, journal) = open_test_journal()?;
-    let event = make_accepted_event(RunId::new(1), crate::types::EventSeq::new(1));
+    let event = make_accepted_event(RunId::new(1), crate::types::EventSeq::new(0));
     let event_bytes = encode_event_length(&event)?;
 
     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
@@ -118,14 +118,16 @@ fn put_counter_with_event_combined_budget() -> Result<(), Box<dyn std::error::Er
         .artifact_acceptance
         .get(LAST_ISSUED_KEY)
         .map_err(|e| format!("read counter failed: {}", e))?;
-    assert!(raw.is_some());
+    let raw = raw.ok_or("raw counter is None")?;
+    assert_eq!(raw.as_ref(), &1u64.to_be_bytes());
+    assert_eq!(journal.events_for_run(RunId::new(1))?, vec![event]);
     Ok(())
 }
 
 #[test]
 fn put_event_then_counter_combined_budget() -> Result<(), Box<dyn std::error::Error>> {
     let (_path, journal) = open_test_journal()?;
-    let event = make_accepted_event(RunId::new(2), crate::types::EventSeq::new(1));
+    let event = make_accepted_event(RunId::new(2), crate::types::EventSeq::new(0));
     let event_bytes = encode_event_length(&event)?;
 
     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
@@ -143,6 +145,15 @@ fn put_event_then_counter_combined_budget() -> Result<(), Box<dyn std::error::Er
 
     assert_eq!(batch.staged_event_bytes(), event_bytes);
     assert_eq!(batch.staged_metadata_bytes, 19);
+    batch.commit()?;
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    let raw = raw.ok_or("raw counter is None")?;
+    assert_eq!(raw.as_ref(), &1u64.to_be_bytes());
+    assert_eq!(journal.events_for_run(RunId::new(2))?, vec![event]);
     Ok(())
 }
 
@@ -195,7 +206,8 @@ fn metadata_overflow_with_some_limit_aborts() -> Result<(), Box<dyn std::error::
 
     let mut batch = JournalWriteBatch::new(&journal);
     batch.byte_limit = Some(u64::MAX);
-    batch.staged_metadata_bytes = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+    let original_metadata = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+    batch.staged_metadata_bytes = original_metadata;
 
     let result = batch.put_artifact_sequence(seq);
     assert!(matches!(
@@ -206,6 +218,15 @@ fn metadata_overflow_with_some_limit_aborts() -> Result<(), Box<dyn std::error::
         })
     ));
     assert!(batch.is_aborted());
+    assert_eq!(batch.staged_metadata_bytes, original_metadata);
+    assert_eq!(batch.staged_event_bytes(), 0);
+    assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
     Ok(())
 }
 
@@ -217,7 +238,8 @@ fn metadata_overflow_with_none_limit_aborts() -> Result<(), Box<dyn std::error::
 
     let mut batch = JournalWriteBatch::new(&journal);
     batch.byte_limit = None;
-    batch.staged_metadata_bytes = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+    let original_metadata = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+    batch.staged_metadata_bytes = original_metadata;
 
     let result = batch.put_artifact_sequence(seq);
     assert!(matches!(
@@ -228,6 +250,15 @@ fn metadata_overflow_with_none_limit_aborts() -> Result<(), Box<dyn std::error::
         })
     ));
     assert!(batch.is_aborted());
+    assert_eq!(batch.staged_metadata_bytes, original_metadata);
+    assert_eq!(batch.staged_event_bytes(), 0);
+    assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
     Ok(())
 }
 
@@ -250,6 +281,15 @@ fn combined_overflow_with_some_limit_aborts() -> Result<(), Box<dyn std::error::
         })
     ));
     assert!(batch.is_aborted());
+    assert_eq!(batch.staged_metadata_bytes, 0);
+    assert_eq!(batch.staged_event_bytes(), u64::MAX);
+    assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
     Ok(())
 }
 

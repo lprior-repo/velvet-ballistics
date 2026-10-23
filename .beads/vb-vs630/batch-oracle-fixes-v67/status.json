@@ -1,0 +1,11 @@
+{
+  "status": "WIP_FINAL_INDEPENDENT_TEST_REVIEW_PENDING",
+  "gate": "V65 all1670storage pass includes12batch+1658base tests; NO21CLInewtests in thisbranch",
+  "fixed": [
+    "B1 bothorders commit exactcounter1bytes+fullactualeventreadback",
+    "B2 metadatapreserved onoverflow/actualBatchAbortedcommit refusal/no counterpublication",
+    "V61 discovered2invalidfirsteventseq1fixtures; local3090v64corrected normativefirstseq0 without droppingoracles"
+  ],
+  "failed_gate_retained": "V61 96passed2failed then1572notrun; NOT full1670 executed",
+  "source_sha256": "e3756fbc02029e109e9de309bc815fa1bdabb79ce75072a682baf5536087a186"
+}
