@@ -1,0 +1,100 @@
+crates/vb_storage/src/executor/issuance_test_support.rs:101: }
+crates/vb_storage/src/executor/issuance_test_support.rs:102: 
+crates/vb_storage/src/executor/issuance_test_support.rs:103: fn canonicalize_parts(parts: &mut WorkflowParts) -> Result<(), BoxError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:104:     parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+crates/vb_storage/src/executor/issuance_test_support.rs:105:     let hash_bytes = postcard::to_allocvec(parts)?;
+crates/vb_storage/src/executor/issuance_test_support.rs:106:     let computed = blake3::hash(&hash_bytes);
+crates/vb_storage/src/executor/issuance_test_support.rs:107:     parts.digest = WorkflowDigest::from_bytes(computed.into());
+crates/vb_storage/src/executor/issuance_test_support.rs:108:     Ok(())
+crates/vb_storage/src/executor/issuance_test_support.rs:109: }
+crates/vb_storage/src/executor/issuance_test_support.rs:110: 
+crates/vb_storage/src/executor/issuance_test_support.rs:111: /// Build an action contract for a register action with REQUIRED capability.
+crates/vb_storage/src/executor/issuance_test_support.rs:112: pub(super) fn action_contract() -> Result<ActionContract, BoxError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:113:     let contract = ActionContract {
+crates/vb_storage/src/executor/issuance_test_support.rs:114:         id: vb_core::ActionId::new(0),
+crates/vb_storage/src/executor/issuance_test_support.rs:115:         name: ActionName::new("test_register")?,
+crates/vb_storage/src/executor/issuance_test_support.rs:116:         input_slot_count: 1,
+crates/vb_storage/src/executor/issuance_test_support.rs:117:         output_slot_count: 1,
+crates/vb_storage/src/executor/issuance_test_support.rs:118:         max_input_bytes: 64,
+crates/vb_storage/src/executor/issuance_test_support.rs:119:         max_output_bytes: 64,
+crates/vb_storage/src/executor/issuance_test_support.rs:120:         timeout_ms: 1000,
+crates/vb_storage/src/executor/issuance_test_support.rs:121:         idempotency: Idempotency::IdempotentExternal,
+crates/vb_storage/src/executor/issuance_test_support.rs:122:         side_effect: SideEffect::Writes,
+crates/vb_storage/src/executor/issuance_test_support.rs:123:         retry_safety: RetrySafety::KeyRequired,
+crates/vb_storage/src/executor/issuance_test_support.rs:124:         required_capabilities: Box::new([Capability::new(
+crates/vb_storage/src/executor/issuance_test_support.rs:125:             "velvet.register.write".into(),
+crates/vb_storage/src/executor/issuance_test_support.rs:126:             vb_core::ActionId::new(0),
+crates/vb_storage/src/executor/issuance_test_support.rs:127:         )]),
+crates/vb_storage/src/executor/issuance_test_support.rs:128:     };
+crates/vb_storage/src/executor/issuance_test_support.rs:129:     Ok(contract)
+crates/vb_storage/src/executor/issuance_test_support.rs:130: }
+crates/vb_storage/src/executor/issuance_test_support.rs:131: 
+crates/vb_storage/src/executor/issuance_test_support.rs:132: /// Build a capability scope spec for register write.
+crates/vb_storage/src/executor/issuance_test_support.rs:133: pub(super) fn register_scope() -> CapabilityScopeSpec {
+crates/vb_storage/src/executor/issuance_test_support.rs:134:     CapabilityScopeSpec {
+crates/vb_storage/src/executor/issuance_test_support.rs:135:         namespace: 15,
+crates/vb_storage/src/executor/issuance_test_support.rs:136:         key: 29,
+crates/vb_storage/src/executor/issuance_test_support.rs:137:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:138: }
+crates/vb_storage/src/executor/issuance_test_support.rs:139: 
+crates/vb_storage/src/executor/issuance_test_support.rs:140: /// Read the raw artifact acceptance counter from the journal.
+crates/vb_storage/src/executor/issuance_test_support.rs:141: pub(super) fn read_counter(journal: &FjallJournal) -> Result<Option<u64>, BoxError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:142:     let Some(raw) = journal.artifact_acceptance.get(b"last_issued")? else {
+crates/vb_storage/src/executor/issuance_test_support.rs:143:         return Ok(None);
+crates/vb_storage/src/executor/issuance_test_support.rs:144:     };
+crates/vb_storage/src/executor/issuance_test_support.rs:145:     let arr: [u8; 8] = raw.as_ref().try_into()?;
+crates/vb_storage/src/executor/issuance_test_support.rs:146:     Ok(Some(u64::from_be_bytes(arr)))
+crates/vb_storage/src/executor/issuance_test_support.rs:147: }
+crates/vb_storage/src/executor/issuance_test_support.rs:148: 
+crates/vb_storage/src/executor/issuance_test_support.rs:149: /// Write a raw counter value to the journal for fault injection.
+crates/vb_storage/src/executor/issuance_test_support.rs:150: pub(super) fn write_counter(journal: &FjallJournal, value: u64) -> Result<(), BoxError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:151:     journal
+crates/vb_storage/src/executor/issuance_test_support.rs:152:         .artifact_acceptance
+crates/vb_storage/src/executor/issuance_test_support.rs:153:         .insert(b"last_issued", &value.to_be_bytes())?;
+crates/vb_storage/src/executor/issuance_test_support.rs:154:     Ok(())
+crates/vb_storage/src/executor/issuance_test_support.rs:155: }
+crates/vb_storage/src/executor/issuance_test_support.rs:156: 
+crates/vb_storage/src/executor/issuance_test_support.rs:157: /// Verify that a persisted artifact can be read back and matches expectations.
+crates/vb_storage/src/executor/issuance_test_support.rs:158: pub(super) fn verify_artifact_readback(
+crates/vb_storage/src/executor/issuance_test_support.rs:159:     journal: &FjallJournal,
+crates/vb_storage/src/executor/issuance_test_support.rs:160:     digest: WorkflowDigest,
+crates/vb_storage/src/executor/issuance_test_support.rs:161:     expected: &AcceptedArtifact,
+crates/vb_storage/src/executor/issuance_test_support.rs:162: ) -> TestResult {
+crates/vb_storage/src/executor/issuance_test_support.rs:163:     let record = journal
+crates/vb_storage/src/executor/issuance_test_support.rs:164:         .compiled_ir(digest)?
+crates/vb_storage/src/executor/issuance_test_support.rs:165:         .ok_or("artifact record not found")?;
+crates/vb_storage/src/executor/issuance_test_support.rs:166:     if record.digest != digest {
+crates/vb_storage/src/executor/issuance_test_support.rs:167:         return Err("record digest does not match expected".into());
+crates/vb_storage/src/executor/issuance_test_support.rs:168:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:169:     let decoded: AcceptedArtifact = postcard::from_bytes(&record.ir)?;
+crates/vb_storage/src/executor/issuance_test_support.rs:170:     if decoded != *expected {
+crates/vb_storage/src/executor/issuance_test_support.rs:171:         return Err("decoded artifact does not match expected".into());
+crates/vb_storage/src/executor/issuance_test_support.rs:172:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:173:     if admission::accepted_artifact_digest(&decoded)? != decoded.digest {
+crates/vb_storage/src/executor/issuance_test_support.rs:174:         return Err("decoded artifact digest is inconsistent".into());
+crates/vb_storage/src/executor/issuance_test_support.rs:175:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:176:     if decoded.verification.digest != decoded.digest {
+crates/vb_storage/src/executor/issuance_test_support.rs:177:         return Err("verification.digest mismatch".into());
+crates/vb_storage/src/executor/issuance_test_support.rs:178:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:179:     Ok(())
+crates/vb_storage/src/executor/issuance_test_support.rs:180: }
+crates/vb_storage/src/executor/issuance_test_support.rs:181: 
+crates/vb_storage/src/executor/issuance_test_support.rs:182: /// Complete packed-verification fixture for test modules.
+crates/vb_storage/src/executor/issuance_test_support.rs:183: pub(super) struct PackedFixture {
+crates/vb_storage/src/executor/issuance_test_support.rs:184:     pub(super) catalog: super::ExecutorCatalog,
+crates/vb_storage/src/executor/issuance_test_support.rs:185:     pub(super) workflow: CompiledWorkflow,
+crates/vb_storage/src/executor/issuance_test_support.rs:186:     pub(super) contract: ActionContract,
+crates/vb_storage/src/executor/issuance_test_support.rs:187:     pub(super) pack: ActionPack,
+crates/vb_storage/src/executor/issuance_test_support.rs:188: }
+crates/vb_storage/src/executor/issuance_test_support.rs:189: 
+crates/vb_storage/src/executor/issuance_test_support.rs:190: impl PackedFixture {
+crates/vb_storage/src/executor/issuance_test_support.rs:191:     /// Construct a fixture with actual conformance results.
+crates/vb_storage/src/executor/issuance_test_support.rs:192:     pub(super) fn new() -> Result<Self, BoxError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:193:         let catalog = super::ExecutorCatalog::run_registered_conformance()?;
+crates/vb_storage/src/executor/issuance_test_support.rs:194:         let contract = action_contract()?;
+crates/vb_storage/src/executor/issuance_test_support.rs:195:         let pack =
+crates/vb_storage/src/executor/issuance_test_support.rs:196:             catalog.register_pack(&contract, register_scope(), RecoveryClass::ReconcileReceipt)?;
+crates/vb_storage/src/executor/issuance_test_support.rs:197:         let workflow = action_workflow()?;
+crates/vb_storage/src/executor/issuance_test_support.rs:198:         Ok(Self {
+crates/vb_storage/src/executor/issuance_test_support.rs:199:             catalog,
+crates/vb_storage/src/executor/issuance_test_support.rs:200:             workflow,

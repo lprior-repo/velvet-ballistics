@@ -1,0 +1,25 @@
+crates/vb_storage/src/executor/issuance_failure_tests.rs:101: }
+crates/vb_storage/src/executor/issuance_failure_tests.rs:102: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:103: /// Packed submission with invalid empty packs fails with EXACT
+crates/vb_storage/src/executor/issuance_failure_tests.rs:104: /// ExecutorError::PackMismatch before any counter or compiled_ir change.
+crates/vb_storage/src/executor/issuance_failure_tests.rs:105: #[test]
+crates/vb_storage/src/executor/issuance_failure_tests.rs:106: fn empty_packs_yield_pack_mismatch() -> TestResult {
+crates/vb_storage/src/executor/issuance_failure_tests.rs:107:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:108:     let (_dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_failure_tests.rs:109: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:110:     let result = fixture.catalog.submit_artifact(
+crates/vb_storage/src/executor/issuance_failure_tests.rs:111:         &journal,
+crates/vb_storage/src/executor/issuance_failure_tests.rs:112:         &fixture.workflow,
+crates/vb_storage/src/executor/issuance_failure_tests.rs:113:         RuntimePolicy::Relaxed,
+crates/vb_storage/src/executor/issuance_failure_tests.rs:114:         std::slice::from_ref(&fixture.contract),
+crates/vb_storage/src/executor/issuance_failure_tests.rs:115:         &[],
+crates/vb_storage/src/executor/issuance_failure_tests.rs:116:     );
+crates/vb_storage/src/executor/issuance_failure_tests.rs:117:     assert!(
+crates/vb_storage/src/executor/issuance_failure_tests.rs:118:         matches!(&result, Err(ExecutorError::PackMismatch)),
+crates/vb_storage/src/executor/issuance_failure_tests.rs:119:         "expected PackMismatch for empty packs, got: {result:?}"
+crates/vb_storage/src/executor/issuance_failure_tests.rs:120:     );
+crates/vb_storage/src/executor/issuance_failure_tests.rs:121: 
+crates/vb_storage/src/executor/issuance_failure_tests.rs:122:     assert_eq!(read_counter(&journal)?, None);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:123:     assert!(journal.compiled_ir.iter().next().is_none());
+crates/vb_storage/src/executor/issuance_failure_tests.rs:124:     Ok(())
+crates/vb_storage/src/executor/issuance_failure_tests.rs:125: }

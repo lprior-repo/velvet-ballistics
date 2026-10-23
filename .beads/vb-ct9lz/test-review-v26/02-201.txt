@@ -1,0 +1,55 @@
+crates/vb_storage/src/executor/issuance_test_support.rs:201:             contract,
+crates/vb_storage/src/executor/issuance_test_support.rs:202:             pack,
+crates/vb_storage/src/executor/issuance_test_support.rs:203:         })
+crates/vb_storage/src/executor/issuance_test_support.rs:204:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:205: 
+crates/vb_storage/src/executor/issuance_test_support.rs:206:     /// Prepare an artifact from this fixture's workflow and pack.
+crates/vb_storage/src/executor/issuance_test_support.rs:207:     pub(super) fn prepare(
+crates/vb_storage/src/executor/issuance_test_support.rs:208:         &self,
+crates/vb_storage/src/executor/issuance_test_support.rs:209:         policy: RuntimePolicy,
+crates/vb_storage/src/executor/issuance_test_support.rs:210:     ) -> Result<AcceptedArtifact, super::ExecutorError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:211:         self.catalog.prepare_artifact(
+crates/vb_storage/src/executor/issuance_test_support.rs:212:             &self.workflow,
+crates/vb_storage/src/executor/issuance_test_support.rs:213:             policy,
+crates/vb_storage/src/executor/issuance_test_support.rs:214:             std::slice::from_ref(&self.contract),
+crates/vb_storage/src/executor/issuance_test_support.rs:215:             std::slice::from_ref(&self.pack),
+crates/vb_storage/src/executor/issuance_test_support.rs:216:         )
+crates/vb_storage/src/executor/issuance_test_support.rs:217:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:218: 
+crates/vb_storage/src/executor/issuance_test_support.rs:219:     /// Submit this fixture's artifact to the journal.
+crates/vb_storage/src/executor/issuance_test_support.rs:220:     pub(super) fn submit(
+crates/vb_storage/src/executor/issuance_test_support.rs:221:         &self,
+crates/vb_storage/src/executor/issuance_test_support.rs:222:         journal: &FjallJournal,
+crates/vb_storage/src/executor/issuance_test_support.rs:223:         policy: RuntimePolicy,
+crates/vb_storage/src/executor/issuance_test_support.rs:224:     ) -> Result<AcceptedArtifact, super::ExecutorError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:225:         self.catalog.submit_artifact(
+crates/vb_storage/src/executor/issuance_test_support.rs:226:             journal,
+crates/vb_storage/src/executor/issuance_test_support.rs:227:             &self.workflow,
+crates/vb_storage/src/executor/issuance_test_support.rs:228:             policy,
+crates/vb_storage/src/executor/issuance_test_support.rs:229:             std::slice::from_ref(&self.contract),
+crates/vb_storage/src/executor/issuance_test_support.rs:230:             std::slice::from_ref(&self.pack),
+crates/vb_storage/src/executor/issuance_test_support.rs:231:         )
+crates/vb_storage/src/executor/issuance_test_support.rs:232:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:233: 
+crates/vb_storage/src/executor/issuance_test_support.rs:234:     /// Check a submitted artifact against the catalog.
+crates/vb_storage/src/executor/issuance_test_support.rs:235:     pub(super) fn check(
+crates/vb_storage/src/executor/issuance_test_support.rs:236:         &self,
+crates/vb_storage/src/executor/issuance_test_support.rs:237:         journal: &FjallJournal,
+crates/vb_storage/src/executor/issuance_test_support.rs:238:         artifact: &AcceptedArtifact,
+crates/vb_storage/src/executor/issuance_test_support.rs:239:         policy: RuntimePolicy,
+crates/vb_storage/src/executor/issuance_test_support.rs:240:     ) -> TestResult {
+crates/vb_storage/src/executor/issuance_test_support.rs:241:         let restored = self.catalog.verify_artifact(artifact, policy)?;
+crates/vb_storage/src/executor/issuance_test_support.rs:242:         if &restored != &self.workflow {
+crates/vb_storage/src/executor/issuance_test_support.rs:243:             return Err("verified workflow differs from original".into());
+crates/vb_storage/src/executor/issuance_test_support.rs:244:         }
+crates/vb_storage/src/executor/issuance_test_support.rs:245:         match &artifact.verification.evidence {
+crates/vb_storage/src/executor/issuance_test_support.rs:246:             vb_core::artifact::ArtifactEvidence::Packed(packed) => {
+crates/vb_storage/src/executor/issuance_test_support.rs:247:                 if packed.base.admission_policy != policy {
+crates/vb_storage/src/executor/issuance_test_support.rs:248:                     return Err("artifact admission policy differs from expected".into());
+crates/vb_storage/src/executor/issuance_test_support.rs:249:                 }
+crates/vb_storage/src/executor/issuance_test_support.rs:250:             }
+crates/vb_storage/src/executor/issuance_test_support.rs:251:             other => return Err(format!("unexpected evidence: {other:?}").into()),
+crates/vb_storage/src/executor/issuance_test_support.rs:252:         }
+crates/vb_storage/src/executor/issuance_test_support.rs:253:         verify_artifact_readback(journal, artifact.digest, artifact)
+crates/vb_storage/src/executor/issuance_test_support.rs:254:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:255: }

@@ -1,0 +1,34 @@
+{
+  "candidate": "6d6ee939a48d805c56d631e904854ad94c93e68a",
+  "files_sha256": {
+    ".beads/vb-ct9lz/contract.md": "9204b33f1f135061d4a3a18f9e2fa6f9d71eab9fe89bee279028e73eb4db5ed9",
+    "crates/vb_storage/src/executor/issuance_test_support.rs": "424f2db5ad9311aba4db951a5d38369bfad2805840045517ce205783e06eb3bf",
+    "crates/vb_storage/src/executor/issuance_tests.rs": "4cb1423d240fd52f1f827536111f03b891b3831f95fb340e3c5aeef8b4324025",
+    "crates/vb_storage/src/executor/issuance_failure_tests.rs": "be57bf6dd6401ea3068e46a510358c05fbe98dca2dbb616e6317627d929892b4",
+    "crates/vb_storage/src/executor/issuance_boundary_tests.rs": "d8bc3a7da4489debb2e074007562a54e74af3c09daf2d5192377baefe31a6cff",
+    "crates/vb_storage/src/executor/mod.rs": "77e7049e903d8b6bcb5c2a16d0cd5a4d6176d2b636299bacfffb8fda8dfa3a3a",
+    "crates/vb_storage/src/executor/packed.rs": "a85defdbf5703a620c5b23bde5f788f6d7c220cf017244e696c385ee1c3a7c78",
+    "crates/vb_storage/src/journal/artifact_acceptance.rs": "52cd2b67020270ac748c25d4705616615c3af8a592d89134359786cd2040103d",
+    "crates/vb_storage/src/admission/verification.rs": "cd1be552c9c77729c67f6b0e9741baadb647ad15c8fb0f17c936d9f3623100bb"
+  },
+  "packets": [
+    ".beads/vb-ct9lz/test-review-v26/01-001.txt",
+    ".beads/vb-ct9lz/test-review-v26/02-001.txt",
+    ".beads/vb-ct9lz/test-review-v26/02-101.txt",
+    ".beads/vb-ct9lz/test-review-v26/02-201.txt",
+    ".beads/vb-ct9lz/test-review-v26/03-001.txt",
+    ".beads/vb-ct9lz/test-review-v26/03-101.txt",
+    ".beads/vb-ct9lz/test-review-v26/04-001.txt",
+    ".beads/vb-ct9lz/test-review-v26/04-101.txt",
+    ".beads/vb-ct9lz/test-review-v26/05-001.txt",
+    ".beads/vb-ct9lz/test-review-v26/05-101.txt",
+    ".beads/vb-ct9lz/test-review-v26/06-001.txt",
+    ".beads/vb-ct9lz/test-review-v26/07-001.txt",
+    ".beads/vb-ct9lz/test-review-v26/07-101.txt",
+    ".beads/vb-ct9lz/test-review-v26/08-001.txt",
+    ".beads/vb-ct9lz/test-review-v26/08-101.txt",
+    ".beads/vb-ct9lz/test-review-v26/09-001.txt",
+    ".beads/vb-ct9lz/test-review-v26/09-101.txt",
+    ".beads/vb-ct9lz/test-review-v26/09-201.txt"
+  ]
+}
