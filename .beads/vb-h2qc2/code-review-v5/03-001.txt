@@ -1,0 +1,17 @@
+ACTUAL SOURCE fuzz/fuzz_targets/yaml_events.rs
+1: //! Fuzz target for YAML event parsing.
+2: //!
+3: //! This target verifies that YAML profile validation and event parsing never panic
+4: //! on any UTF-8 input.
+5: //!
+6: //! Corpus seeds are maintained in `fuzz/corpus/yaml_events/`.
+7: //!
+8: //! Command: cargo fuzz run yaml_events -- -max_len=65536 -runs=100000
+9: 
+10: #![no_main]
+11: 
+12: use libfuzzer_sys::fuzz_target;
+13: 
+14: fuzz_target!(|data: &[u8]| {
+15:     fuzz_lib::fuzz_yaml_events(data);
+16: });

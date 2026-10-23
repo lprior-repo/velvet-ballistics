@@ -1,0 +1,21 @@
+{
+  "status": "CODE_APPROVED_NARROW_ALREADY_RETAINED_FUZZ_SOURCE",
+  "ancestor_original6694_to_main_d064_exit": 0,
+  "source_equal_main_d064": {
+    "fuzz/src/yaml_target.rs": true,
+    "fuzz/fuzz_targets/yaml_events.rs": true,
+    "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs": true
+  },
+  "corrections": [
+    "raw allfunctionswithinlimit notfullrepo claim; actualscopeconstantand2doccommands; unchangedcoldpublicfuzzbody/test not25linehotruntime",
+    "raw checked arithmetic verified meansread-onlysourceinspection, notformalproof",
+    "raw REDGREENreferencesactualearlierlogs, nofreshfuzztestrunthispassyet",
+    "no speed/all-valid-inputs/parserproof/fuzzcampaign claim",
+    "independent TESTandfreshscopedlibrarytest pending beforebeadclosure"
+  ],
+  "source_sha256": {
+    "fuzz/src/yaml_target.rs": "878302d163b2de2bbc7e22fbce2f34edd7ecb6051d043852fddea3b164409bb5",
+    "fuzz/fuzz_targets/yaml_events.rs": "497e38991ea248e6c3d65dc606e55c1243327703ce1aeeb6a0ca9f22a3a662be",
+    "fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs": "795852155207cb6f5848a3d80ffcd5b4d5f376b8f6eb6094eb2b4178754ccfdc"
+  }
+}

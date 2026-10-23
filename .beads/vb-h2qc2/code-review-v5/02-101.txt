@@ -1,0 +1,101 @@
+ACTUAL SOURCE fuzz/src/yaml_target.rs
+101:         );
+102:         assert!(
+103:             workflow.node_count() >= 1,
+104:             "compiled workflow must have at least 1 node"
+105:         );
+106:     }
+107: }
+108: 
+109: pub fn fuzz_compile_source_ast_marks(data: &[u8]) {
+110:     use vb_compile::compile_workflow;
+111: 
+112:     let result = compile_workflow(data);
+113: 
+114:     match result {
+115:         Ok(_compiled) => {}
+116:         Err(errors) => {
+117:             assert!(
+118:                 !errors.is_empty(),
+119:                 "CompileErrors must contain at least one error"
+120:             );
+121:         }
+122:     }
+123: }
+124: 
+125: pub fn fuzz_span_bridge(data: &[u8]) {
+126:     use vb_compile::{SourceSpan, build_semantic_source_map, build_source_map};
+127: 
+128:     let mut values = [0usize; 6];
+129:     for (slot, byte) in values.iter_mut().zip(data.iter().copied()) {
+130:         *slot = usize::from(byte);
+131:     }
+132: 
+133:     let span = SourceSpan::new(
+134:         values[0], values[1], values[2], values[3], values[4], values[5],
+135:     );
+136:     assert_eq!(span.start_offset, values[0]);
+137:     assert_eq!(span.end_offset, values[1]);
+138:     assert_eq!(span.start_line, values[2]);
+139:     assert_eq!(span.start_col, values[3]);
+140:     assert_eq!(span.end_line, values[4]);
+141:     assert_eq!(span.end_col, values[5]);
+142: 
+143:     let Ok(text) = std::str::from_utf8(data) else {
+144:         return;
+145:     };
+146: 
+147:     if let Ok(map) = build_source_map(text) {
+148:         for (index, mapped_span) in map.iter() {
+149:             assert_eq!(map.span_for_node(index), Some(mapped_span));
+150:         }
+151:     }
+152: 
+153:     if let Ok(map) = build_semantic_source_map(text) {
+154:         let _root = map.span_for_path("$");
+155:         let _manual = map.span_for_path("$.when.manual");
+156:         let _step_zero = map.span_for_path("$.steps[0]");
+157:         // `_root`, `_manual`, and `_step_zero` are deliberately bound to
+158:         // underscore-prefixed identifiers so the strict
+159:         // `let_underscore_must_use` lint stays triggered only on
+160:         // bare `let _ = must_use_call()`. They prove the lookup table
+161:         // returns a span option without exercising it.
+162:     }
+163: }
+164: 
+165: #[cfg(test)]
+166: mod tests {
+167:     use super::*;
+168: 
+169:     #[test]
+170:     fn large_yaml_exceeds_4096_bound() -> Result<(), Box<dyn std::error::Error>> {
+171:         // Build valid YAML with >4096 events: a sequence of 5001 scalars
+172:         // stays within default max_sequence_len=10000 and max_source_bytes=1048576.
+173:         let item_count = 5001usize;
+174:         let mut yaml = "items:\n".to_string();
+175:         for i in 0..item_count {
+176:             yaml.push_str(&format!("  - item{}\n", i));
+177:         }
+178: 
+179:         // Validate via the real compile pipeline
+180:         vb_compile::validate_yaml_profile(&yaml)?;
+181: 
+182:         let events = vb_compile::parse_yaml_events(&yaml)?;
+183:         assert!(
+184:             events.len() > 4096,
+185:             "test YAML must produce >4096 events, got {}",
+186:             events.len()
+187:         );
+188:         assert!(
+189:             events.len() <= 100000,
+190:             "test YAML must stay within default max_nodes, got {}",
+191:             events.len()
+192:         );
+193: 
+194:         let source_map = vb_compile::build_source_map(&yaml)?;
+195:         assert!(
+196:             source_map.len() > 4096,
+197:             "test YAML must produce >4096 source map entries, got {}",
+198:             source_map.len()
+199:         );
+200:         assert!(

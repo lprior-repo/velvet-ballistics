@@ -1,0 +1,16 @@
+{
+  "candidate": "4df9e4f196e3047a280cb2d1755488afd1bfd60b",
+  "source_packets": [
+    ".beads/vb-h2qc2/code-review-v5/01-001.txt",
+    ".beads/vb-h2qc2/code-review-v5/02-001.txt",
+    ".beads/vb-h2qc2/code-review-v5/02-101.txt",
+    ".beads/vb-h2qc2/code-review-v5/02-201.txt",
+    ".beads/vb-h2qc2/code-review-v5/03-001.txt",
+    ".beads/vb-h2qc2/code-review-v5/04-001.txt",
+    ".beads/vb-h2qc2/code-review-v5/05-001.txt",
+    ".beads/vb-h2qc2/code-review-v5/05-101.txt",
+    ".beads/vb-h2qc2/code-review-v5/05-201.txt"
+  ],
+  "scope": "already in main source from6694, stalebead awaiting independent CODE/TEST; no new Rust edits",
+  "bead": "vb-h2qc2"
+}
