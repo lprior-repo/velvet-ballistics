@@ -1,0 +1,10 @@
+{
+  "bead": "vb-8eocj.2",
+  "parent": "vb-8eocj",
+  "status": "STRICT_LIBRARY_CHECK_PASS_SOURCE_TESTS_PENDING",
+  "production_author": "local_qwen_5090",
+  "independent_test_author": "local_qwen_3090",
+  "parent_F1_closed": false,
+  "remaining_parent_scope": "lexical inputs/vars, composite source values/text, named action registry, arbitrary scoped bodies, metadata/control, secret requirements/results/examples, real deploy/smoke/rollback, retry/error exit fixtures",
+  "no_new_lint_waivers": true
+}

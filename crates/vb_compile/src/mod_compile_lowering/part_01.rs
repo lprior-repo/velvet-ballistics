@@ -15,7 +15,9 @@ use vb_core::{
 
 #[path = "finish_inputs.rs"]
 mod finish_inputs;
-use finish_inputs::prepare_finish_input_slots;
+pub(crate) use finish_inputs::{
+    canonical_finish_slot_with_step_outputs, prepare_finish_input_slots,
+};
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
@@ -30,6 +32,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
     let layout = canonical_layout(steps).map_err(|e| CompileErrors(vec![e]))?;
     let mut builder = SlotCompiler::new();
     let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
+    let mut step_outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut step_names =
         canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
     let mut inputs_allocated = false;
@@ -39,7 +42,13 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         if index == last
             && let crate::StepPrimitive::Finish { result } = &step.primitive
         {
-            prepare_finish_input_slots(source, result, &mut outputs, &mut builder)?;
+            prepare_finish_input_slots(
+                source,
+                result,
+                &mut outputs,
+                &mut step_outputs,
+                &mut builder,
+            )?;
             inputs_allocated = true;
         }
         lower_canonical_step(
@@ -49,6 +58,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
             id,
             next,
             &mut outputs,
+            &mut step_outputs,
             &mut step_names,
             &mut builder,
         )?;
@@ -79,11 +89,6 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
 }
 
 /// Allocate declared input slots after all steps are lowered.
-///
-/// Reads the base slot count from the builder, checked-adds the declaration
-/// index for each input field in source order, creates the `SlotIdx`, calls
-/// `record_slot` and `record_input_slot`.  Source names are intentionally
-/// excluded from the emitted IR.
 pub(super) fn allocate_input_slots(
     inputs: &[InputField],
     builder: &mut SlotCompiler,
@@ -165,9 +170,6 @@ pub(super) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usi
 }
 
 pub(super) fn choose_width(branches: &[crate::ChooseBranch]) -> Result<usize, CompileError> {
-    // ChooseSlot node itself (1) + sum of body widths across all branches.
-    // body_width uses canonical_body_step_width, so each step contributes 1
-    // (Set or Do) and unsupported primitives produce Err.
     let mut width = 1usize;
     for branch in branches {
         width = width
