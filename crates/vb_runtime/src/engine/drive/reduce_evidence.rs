@@ -79,7 +79,7 @@ fn classify_reduce_next(
     }
 }
 
-fn emit_distinct(
+pub(super) fn emit_distinct(
     run: &RunFrame,
     evidence: &mut EvidenceCollector,
     drive_state: &mut DriveState,

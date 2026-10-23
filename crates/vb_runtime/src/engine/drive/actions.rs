@@ -15,6 +15,9 @@ use crate::primitives::collect::CollectStates;
 #[path = "reduce_evidence.rs"]
 mod reduce_evidence;
 
+#[path = "loop_control_evidence.rs"]
+mod loop_control_evidence;
+
 /// Emits a `SlotWritten` evidence event for the just-finished step when
 /// the node has a collect-style output slot or a plain `output` slot.
 /// `read_slot` errors are recorded on the drive state (RE-004) and the
@@ -33,6 +36,10 @@ pub(crate) fn emit_slot_evidence(
     // writes on each branch rather than unconditionally reading
     // node.output.
     if reduce_evidence::reduce_evidence(run, evidence, node, drive_state)?.is_some() {
+        return Ok(());
+    }
+
+    if loop_control_evidence::loop_control_evidence(run, evidence, node, drive_state)?.is_some() {
         return Ok(());
     }
 
