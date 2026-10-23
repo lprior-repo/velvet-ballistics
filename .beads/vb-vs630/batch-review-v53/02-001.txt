@@ -1,0 +1,62 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/artifact_sequence.rs
+1: #![forbid(unsafe_code)]
+2: 
+3: use crate::error::JournalError;
+4: use crate::journal::artifact_acceptance::{IssuedArtifactSequence, LAST_ISSUED_KEY};
+5: 
+6: use super::types::JournalWriteBatch;
+7: 
+8: fn compute_put_artifact_sequence(
+9:     current_metadata: u64,
+10:     current_bytes: u64,
+11:     byte_limit: Option<u64>,
+12: ) -> Result<u64, JournalError> {
+13:     // 19 bytes total: 11-byte LAST_ISSUED_KEY + 8-byte counter value
+14:     let metadata_bytes = 19u64;
+15:     let new_metadata = current_metadata.checked_add(metadata_bytes).ok_or(
+16:         JournalError::JournalBatchBytesExceeded {
+17:             attempted: u64::MAX,
+18:             limit: byte_limit.map_or(u64::MAX, |limit| limit),
+19:         },
+20:     )?;
+21:     if let Some(limit) = byte_limit {
+22:         let attempted = current_bytes.checked_add(new_metadata).ok_or(
+23:             JournalError::JournalBatchBytesExceeded {
+24:                 attempted: u64::MAX,
+25:                 limit,
+26:             },
+27:         )?;
+28:         if attempted > limit {
+29:             return Err(JournalError::JournalBatchBytesExceeded { attempted, limit });
+30:         }
+31:     }
+32:     Ok(new_metadata)
+33: }
+34: 
+35: impl<'j> JournalWriteBatch<'j> {
+36:     pub(crate) fn put_artifact_sequence(
+37:         &mut self,
+38:         seq: IssuedArtifactSequence,
+39:     ) -> Result<(), JournalError> {
+40:         if self.aborted {
+41:             return Err(JournalError::BatchAborted);
+42:         }
+43:         let new_metadata = compute_put_artifact_sequence(
+44:             self.staged_metadata_bytes,
+45:             self.staged_bytes,
+46:             self.byte_limit,
+47:         )
+48:         .map_err(|error| {
+49:             self.aborted = true;
+50:             error
+51:         })?;
+52:         self.staged_metadata_bytes = new_metadata;
+53:         let counter_value = seq.to_event_seq().get().to_be_bytes();
+54:         self.inner.insert(
+55:             &self.journal.artifact_acceptance,
+56:             LAST_ISSUED_KEY,
+57:             counter_value.as_ref(),
+58:         );
+59:         Ok(())
+60:     }
+61: }

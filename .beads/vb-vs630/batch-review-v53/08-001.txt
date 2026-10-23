@@ -1,0 +1,42 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/commit.rs
+1: #![forbid(unsafe_code)]
+2: use super::types::JournalWriteBatch;
+3: use crate::error::JournalError;
+4: 
+5: impl<'j> JournalWriteBatch<'j> {
+6:     /// Sets strict durability for the commit.
+7:     pub fn strict(mut self) -> Self {
+8:         self.inner = self.inner.durability(Some(fjall::PersistMode::SyncAll));
+9:         self
+10:     }
+11: 
+12:     /// Commits the batch atomically.
+13:     ///
+14:     /// Returns `Err(JournalError::BatchAborted)` when a prior `put_*` /
+15:     /// `append_event` staging step set `self.aborted = true`. The batch
+16:     /// is **never** committed in this case — neither the staged records
+17:     /// nor any partial state are made durable. Master §49
+18:     /// Crash-Consistency Rule forbids silent success on a partial
+19:     /// barrier; the typed error is the only honest return value.
+20:     pub fn commit(self) -> Result<(), JournalError> {
+21:         if self.aborted {
+22:             return Err(JournalError::BatchAborted);
+23:         }
+24:         // Test-only fault injection: return a synthetic `JournalError::Fjall`
+25:         // BEFORE the real `OwnedWriteBatch` reaches the storage engine. This
+26:         // proves the `append_strict` commit-failure contract (vb-o6qcf.3): the
+27:         // staged event is never made visible because the batch never commits,
+28:         // and a retry re-stages and commits cleanly (idempotent Ok). The hook
+29:         // is consumed exactly once, so a subsequent real commit succeeds.
+30:         // cfg(test) guarantees this path is absent from non-test builds.
+31:         #[cfg(test)]
+32:         if self.journal.consume_batch_commit_failure_for_test() {
+33:             return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+34:                 std::io::ErrorKind::Other,
+35:                 "injected batch commit failure (test hook)",
+36:             ))));
+37:         }
+38:         self.inner.commit()?;
+39:         Ok(())
+40:     }
+41: }

@@ -1,0 +1,9 @@
+{
+  "candidate": "e15052eff3c4a5215abd3607d15d8fd383b99ff9",
+  "scope": "12 counter metadata budget tests in crates/vb_storage/src/batch/artifact_sequence_tests.rs",
+  "status": "APPROVED",
+  "findings": [],
+  "test_count": 12,
+  "test_file_lines": 331,
+  "reviewed_at": "2026-10-22T00:00:00Z"
+}

@@ -1,0 +1,24 @@
+{
+  "status": "REJECTED_PENDING_EXACT_ORACLES",
+  "raw_model_verdict": "APPROVED retained unchanged",
+  "findings": [
+    {
+      "id": "B1",
+      "severity": "medium",
+      "path": "crates/vb_storage/src/batch/artifact_sequence_tests.rs",
+      "issue": "counter+event commit only checks raw.is_some; incorrect counter bytes or dropped event could survive focused assertion; event-first case no commit/readback"
+    },
+    {
+      "id": "B2",
+      "severity": "medium",
+      "issue": "overflow tests assert aborted flag but not unchanged metadata nor actual commit refusal/nonpublication; add exact assertions"
+    }
+  ],
+  "corrections": [
+    "JournalWriteBatch::new exists actualpubcrate, no inferred public integration API",
+    "12focused pass0.013s with1658 FILTERED skips only",
+    "None scenario one counter not proof of arbitrarily large batch",
+    "already_aborted named all_operations exercises counter+commit only",
+    "reviewed_at raw timestamp fabricated placeholder; actual invocation evidence authoritative"
+  ]
+}
