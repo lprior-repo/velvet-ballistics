@@ -16,3 +16,5 @@ mod cat_regression;
 mod common;
 
 mod cat_reduce_equal_target;
+
+mod cat_reduce_next_evidence;
