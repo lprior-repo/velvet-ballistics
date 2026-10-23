@@ -1,0 +1,5 @@
+verification/verus/production_inner/signals_production.rs:201:     AwaitingWait,
+verification/verus/production_inner/signals_production.rs:202:     AwaitingAsk,
+verification/verus/production_inner/signals_production.rs:203: }
+verification/verus/production_inner/signals_production.rs:204: 
+verification/verus/production_inner/signals_production.rs:205: } // verus!

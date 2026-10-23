@@ -1,0 +1,84 @@
+crates/vb_storage/src/batch/types.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/batch/types.rs:2: use std::collections::HashSet;
+crates/vb_storage/src/batch/types.rs:3: 
+crates/vb_storage/src/batch/types.rs:4: use crate::constants::JOURNAL_KEY_BYTES;
+crates/vb_storage/src/batch/types.rs:5: use crate::journal::FjallJournal;
+crates/vb_storage/src/batch/types.rs:6: 
+crates/vb_storage/src/batch/types.rs:7: /// Default journal batch encoded-byte budget (1 MiB).
+crates/vb_storage/src/batch/types.rs:8: ///
+crates/vb_storage/src/batch/types.rs:9: /// Matches the core `max_journal_batch_bytes` default of `1_048_576`.
+crates/vb_storage/src/batch/types.rs:10: pub const DEFAULT_JOURNAL_BATCH_BYTE_LIMIT: u64 = 1_048_576;
+crates/vb_storage/src/batch/types.rs:11: 
+crates/vb_storage/src/batch/types.rs:12: /// Atomic cross-keyspace write batch backed by Fjall.
+crates/vb_storage/src/batch/types.rs:13: ///
+crates/vb_storage/src/batch/types.rs:14: /// Accumulates writes across multiple keyspaces and commits them
+crates/vb_storage/src/batch/types.rs:15: /// atomically with a single WAL fsync.
+crates/vb_storage/src/batch/types.rs:16: ///
+crates/vb_storage/src/batch/types.rs:17: /// # Invariant I1
+crates/vb_storage/src/batch/types.rs:18: /// `JournalWriteBatch` is `!Send + !Sync` because it contains
+crates/vb_storage/src/batch/types.rs:19: /// `PhantomData<*mut FjallJournal>` which is `!Send + !Sync`,
+crates/vb_storage/src/batch/types.rs:20: /// preventing any batch handle from crossing thread boundaries.
+crates/vb_storage/src/batch/types.rs:21: pub struct JournalWriteBatch<'j> {
+crates/vb_storage/src/batch/types.rs:22:     pub(super) inner: fjall::OwnedWriteBatch,
+crates/vb_storage/src/batch/types.rs:23:     pub(super) journal: &'j FjallJournal,
+crates/vb_storage/src/batch/types.rs:24:     #[allow(dead_code)]
+crates/vb_storage/src/batch/types.rs:25:     pub(super) staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
+crates/vb_storage/src/batch/types.rs:26:     pub(super) aborted: bool,
+crates/vb_storage/src/batch/types.rs:27:     pub(super) staged_bytes: u64,
+crates/vb_storage/src/batch/types.rs:28:     pub(super) byte_limit: Option<u64>,
+crates/vb_storage/src/batch/types.rs:29:     pub(super) _not_send_or_sync: core::marker::PhantomData<*mut FjallJournal>,
+crates/vb_storage/src/batch/types.rs:30: }
+crates/vb_storage/src/batch/types.rs:31: 
+crates/vb_storage/src/batch/types.rs:32: impl<'j> JournalWriteBatch<'j> {
+crates/vb_storage/src/batch/types.rs:33:     /// Creates a new batch for the given journal.
+crates/vb_storage/src/batch/types.rs:34:     pub fn new(journal: &'j FjallJournal) -> Self {
+crates/vb_storage/src/batch/types.rs:35:         Self {
+crates/vb_storage/src/batch/types.rs:36:             inner: journal.database.batch(),
+crates/vb_storage/src/batch/types.rs:37:             journal,
+crates/vb_storage/src/batch/types.rs:38:             staged_event_keys: HashSet::new(),
+crates/vb_storage/src/batch/types.rs:39:             aborted: false,
+crates/vb_storage/src/batch/types.rs:40:             staged_bytes: 0,
+crates/vb_storage/src/batch/types.rs:41:             byte_limit: Some(DEFAULT_JOURNAL_BATCH_BYTE_LIMIT),
+crates/vb_storage/src/batch/types.rs:42:             _not_send_or_sync: core::marker::PhantomData,
+crates/vb_storage/src/batch/types.rs:43:         }
+crates/vb_storage/src/batch/types.rs:44:     }
+crates/vb_storage/src/batch/types.rs:45: 
+crates/vb_storage/src/batch/types.rs:46:     /// Returns the number of operations in the batch.
+crates/vb_storage/src/batch/types.rs:47:     #[must_use]
+crates/vb_storage/src/batch/types.rs:48:     pub fn len(&self) -> usize {
+crates/vb_storage/src/batch/types.rs:49:         if self.aborted { 0 } else { self.inner.len() }
+crates/vb_storage/src/batch/types.rs:50:     }
+crates/vb_storage/src/batch/types.rs:51: 
+crates/vb_storage/src/batch/types.rs:52:     /// Returns true if the batch contains no operations.
+crates/vb_storage/src/batch/types.rs:53:     #[must_use]
+crates/vb_storage/src/batch/types.rs:54:     pub fn is_empty(&self) -> bool {
+crates/vb_storage/src/batch/types.rs:55:         self.len() == 0
+crates/vb_storage/src/batch/types.rs:56:     }
+crates/vb_storage/src/batch/types.rs:57: 
+crates/vb_storage/src/batch/types.rs:58:     /// Returns true if the batch is in the aborted state.
+crates/vb_storage/src/batch/types.rs:59:     ///
+crates/vb_storage/src/batch/types.rs:60:     /// A batch becomes aborted when a fallible step sets
+crates/vb_storage/src/batch/types.rs:61:     /// `self.aborted = true` before propagating a typed error
+crates/vb_storage/src/batch/types.rs:62:     /// (`DuplicateEvent`, `KeyCapacity`, `PayloadTooLarge`, etc.).
+crates/vb_storage/src/batch/types.rs:63:     /// The `commit()` short-circuit then refuses to persist the
+crates/vb_storage/src/batch/types.rs:64:     /// partial batch. This accessor is the canonical way to
+crates/vb_storage/src/batch/types.rs:65:     /// distinguish an aborted batch from a fresh empty batch (both
+crates/vb_storage/src/batch/types.rs:66:     /// have `len() == 0`).
+crates/vb_storage/src/batch/types.rs:67:     #[must_use]
+crates/vb_storage/src/batch/types.rs:68:     pub fn is_aborted(&self) -> bool {
+crates/vb_storage/src/batch/types.rs:69:         self.aborted
+crates/vb_storage/src/batch/types.rs:70:     }
+crates/vb_storage/src/batch/types.rs:71: 
+crates/vb_storage/src/batch/types.rs:72:     /// Returns the accumulated encoded-byte total for journal events
+crates/vb_storage/src/batch/types.rs:73:     /// accepted in this batch so far.
+crates/vb_storage/src/batch/types.rs:74:     #[must_use]
+crates/vb_storage/src/batch/types.rs:75:     pub fn staged_event_bytes(&self) -> u64 {
+crates/vb_storage/src/batch/types.rs:76:         self.staged_bytes
+crates/vb_storage/src/batch/types.rs:77:     }
+crates/vb_storage/src/batch/types.rs:78: 
+crates/vb_storage/src/batch/types.rs:79:     /// Returns the byte limit for this batch, if one is set.
+crates/vb_storage/src/batch/types.rs:80:     #[must_use]
+crates/vb_storage/src/batch/types.rs:81:     pub fn byte_limit(&self) -> Option<u64> {
+crates/vb_storage/src/batch/types.rs:82:         self.byte_limit
+crates/vb_storage/src/batch/types.rs:83:     }
+crates/vb_storage/src/batch/types.rs:84: }

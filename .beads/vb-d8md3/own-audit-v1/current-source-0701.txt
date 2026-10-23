@@ -1,0 +1,67 @@
+current-source:701:         }
+current-source:702: 
+current-source:703:         // Dequeue must return in FIFO order
+current-source:704:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(0));
+current-source:705:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(1));
+current-source:706:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(2));
+current-source:707:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(3));
+current-source:708:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(4));
+current-source:709:         assert_eq!(queue.dequeue(), None);
+current-source:710:     }
+current-source:711: 
+current-source:712:     #[test]
+current-source:713:     fn action_queue_backpressure_no_warning_without_receiver() {
+current-source:714:         // Backpressure sender is optional — warnings can be silently dropped
+current-source:715:         let queue = BoundedActionCompletionQueue::new(10).unwrap();
+current-source:716: 
+current-source:717:         // Enqueue to 80% — should NOT panic even without a receiver
+current-source:718:         for i in 0..8 {
+current-source:719:             queue.enqueue(make_ticket(i)).unwrap();
+current-source:720:         }
+current-source:721:         // If we get here without panic, the test passes
+current-source:722:         assert_eq!(queue.len(), 8);
+current-source:723:     }
+current-source:724:     #[test]
+current-source:725:     fn backpressure_threshold_meets_documented_80_percent_vb_lxkqh() {
+current-source:726:         // Regression test for RP-019 (bead vb-lxkqh).
+current-source:727:         // The queue documents warnings at 80% capacity, so the threshold must be
+current-source:728:         // the *smallest* integer >= capacity * 8 / 10 (ceiling division), not the
+current-source:729:         // largest integer <= capacity * 8 / 10 (floor division). Floor division
+current-source:730:         // causes noisy and misleading backpressure signals for capacities where
+current-source:731:         // capacity * 8 is not a multiple of 10 (e.g. capacity=7 warns at 5, ~71%).
+current-source:732:         //
+current-source:733:         // For every c in `capacities`, the threshold must satisfy:
+current-source:734:         //   threshold(c) >= c * 4 / 5            (>= 80% in integer arithmetic)
+current-source:735:         //   threshold(c) >= ceil(c * 8 / 10)     (ceiling of 80%)
+current-source:736:         // and the minimum-1 clamp must hold for c = 1.
+current-source:737:         let capacities: &[usize] = &[1, 2, 3, 5, 7, 9, 10, 20, 100, 1_000];
+current-source:738:         for &c in capacities {
+current-source:739:             let threshold = backpressure_threshold(ActionQueueCapacity(c));
+current-source:740:             let floor_80pct = (c * 4) / 5;
+current-source:741:             let ceiling_80pct = (c * 8 + 9) / 10;
+current-source:742:             assert!(
+current-source:743:                 threshold >= floor_80pct,
+current-source:744:                 "threshold for capacity {c} must be >= 80% ({floor_80pct}); got {threshold}"
+current-source:745:             );
+current-source:746:             assert!(
+current-source:747:                 threshold >= ceiling_80pct,
+current-source:748:                 "threshold for capacity {c} must be >= ceil(80%) = {ceiling_80pct}; got {threshold}"
+current-source:749:             );
+current-source:750:         }
+current-source:751: 
+current-source:752:         // Minimum-1 clamp must still apply: with capacity = 1, floor(1 * 8 / 10) = 0
+current-source:753:         // but the queue must still warn at depth 1 (the queue itself).
+current-source:754:         assert_eq!(backpressure_threshold(ActionQueueCapacity(1)), 1);
+current-source:755: 
+current-source:756:         // Documented 80% on a capacity-100 queue must yield threshold == 80 exactly.
+current-source:757:         assert_eq!(backpressure_threshold(ActionQueueCapacity(100)), 80);
+current-source:758: 
+current-source:759:         // The original floor-division bug returned 5 for capacity = 7 (7 * 8 / 10 = 5).
+current-source:760:         // Ceiling division must return 6 (7 * 8 / 10 = 5.6 -> 6).
+current-source:761:         let threshold_7 = backpressure_threshold(ActionQueueCapacity(7));
+current-source:762:         assert!(
+current-source:763:             threshold_7 >= 6,
+current-source:764:             "capacity=7 must produce threshold >= 6 (ceiling of 80%); got {threshold_7}"
+current-source:765:         );
+current-source:766:     }
+current-source:767: }

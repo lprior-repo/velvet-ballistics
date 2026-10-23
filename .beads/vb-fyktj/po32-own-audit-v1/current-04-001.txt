@@ -1,0 +1,100 @@
+verification/verus/signals_invariant.rs:1: // Verus proof obligations for INV-001: StepBudget remaining <= MAX_STEP_BUDGET invariant.
+verification/verus/signals_invariant.rs:2: //
+verification/verus/signals_invariant.rs:3: // Obligation ID: VERUS-INV-001
+verification/verus/signals_invariant.rs:4: // Verifier: verus verification/verus/signals_invariant.rs
+verification/verus/signals_invariant.rs:5: // Expected evidence: Verus report shows 0 errors; spec_step_budget_invariant and
+verification/verus/signals_invariant.rs:6: //                   proof_remaining_bounded verified.
+verification/verus/signals_invariant.rs:7: //
+verification/verus/signals_invariant.rs:8: // =============================================================================
+verification/verus/signals_invariant.rs:9: // WEAK PRODUCTION BINDING (GOD RULE 2 compliance)
+verification/verus/signals_invariant.rs:10: // =============================================================================
+verification/verus/signals_invariant.rs:11: //
+verification/verus/signals_invariant.rs:12: // This file is bound to `crates/vb_core/src/engine/signals.rs` through the
+verification/verus/signals_invariant.rs:13: // companion extern surface `verification/verus/extern_signals_invariant.rs`,
+verification/verus/signals_invariant.rs:14: // which contains a `#[path]` inclusion of the in-tree production mirror
+verification/verus/signals_invariant.rs:15: // `verification/verus/production_inner/signals_production.rs`. That
+verification/verus/signals_invariant.rs:16: // mirror is a verbatim copy of production with one minimal substitution:
+verification/verus/signals_invariant.rs:17: // `StepBudget::remaining` is `pub` (relaxed from production's private
+verification/verus/signals_invariant.rs:18: // visibility) so Verus's `#[verifier::external_type_specification]`
+verification/verus/signals_invariant.rs:19: // bridge can establish a transparent binding for spec-mode field
+verification/verus/signals_invariant.rs:20: // access. Field NAMES and method SIGNATURES are preserved byte-for-byte;
+verification/verus/signals_invariant.rs:21: // any drift breaks the verification build.
+verification/verus/signals_invariant.rs:22: //
+verification/verus/signals_invariant.rs:23: // Drift between the mirror and production is detected by
+verification/verus/signals_invariant.rs:24: // `scripts/check-production-inner-drift.sh` (CI gate).
+verification/verus/signals_invariant.rs:25: //
+verification/verus/signals_invariant.rs:26: // The mirror's impl methods are wrapped with `#[verifier::external]`
+verification/verus/signals_invariant.rs:27: // so Verus treats their bodies as opaque; the spec contracts attached
+verification/verus/signals_invariant.rs:28: // via `assume_specification` in this file state the production
+verification/verus/signals_invariant.rs:29: // behavior the spec proofs discharge.
+verification/verus/signals_invariant.rs:30: //
+verification/verus/signals_invariant.rs:31: // The `assume_specification` bridges inside `verus!` attach production
+verification/verus/signals_invariant.rs:32: // contracts DIRECTLY to the mirror's exec methods surfaced via the
+verification/verus/signals_invariant.rs:33: // `#[path]` inclusion (`production::StepBudget::new`, `::try_take`,
+verification/verus/signals_invariant.rs:34: // `::remaining`). The `#[verifier::external_type_specification]`
+verification/verus/signals_invariant.rs:35: // bridge names the mirror type in spec mode (the bridge is required
+verification/verus/signals_invariant.rs:36: // because the mirror module is inside `verus!` and `#[path]`-included
+verification/verus/signals_invariant.rs:37: // with `#[verifier::external]`, so the type is nameable but not
+verification/verus/signals_invariant.rs:38: // directly usable in spec signatures without a bridge).
+verification/verus/signals_invariant.rs:39: //
+verification/verus/signals_invariant.rs:40: // BINDING LEDGER:
+verification/verus/signals_invariant.rs:41: //   - production::StepBudget::new       <- crates/vb_core/src/engine/signals.rs:27-35
+verification/verus/signals_invariant.rs:42: //   - production::StepBudget::try_take  <- crates/vb_core/src/engine/signals.rs:50-60
+verification/verus/signals_invariant.rs:43: //   - production::StepBudget::remaining <- crates/vb_core/src/engine/signals.rs:64-66
+verification/verus/signals_invariant.rs:44: //   - production::StepBudget::MAX       <- crates/vb_core/src/engine/signals.rs:20-22
+verification/verus/signals_invariant.rs:45: //   - production::EngineError::StepCounterOverflow <- crates/vb_core/src/errors.rs:241
+verification/verus/signals_invariant.rs:46: //
+verification/verus/signals_invariant.rs:47: // Source: vb-qi37.2.5 proof-obligations.planned.jsonl VERUS-INV-001
+verification/verus/signals_invariant.rs:48: 
+verification/verus/signals_invariant.rs:49: #[path = "extern_signals_invariant.rs"]
+verification/verus/signals_invariant.rs:50: mod production;
+verification/verus/signals_invariant.rs:51: 
+verification/verus/signals_invariant.rs:52: pub use production::{EngineError, EngineSignal, StepBudget};
+verification/verus/signals_invariant.rs:53: 
+verification/verus/signals_invariant.rs:54: use vstd::prelude::*;
+verification/verus/signals_invariant.rs:55: 
+verification/verus/signals_invariant.rs:56: verus! {
+verification/verus/signals_invariant.rs:57: 
+verification/verus/signals_invariant.rs:58: // =============================================================================
+verification/verus/signals_invariant.rs:59: // Production type bridge (GOD RULE 2 compliance)
+verification/verus/signals_invariant.rs:60: // =============================================================================
+verification/verus/signals_invariant.rs:61: //
+verification/verus/signals_invariant.rs:62: // The mirror `StepBudget` struct in
+verification/verus/signals_invariant.rs:63: // `production_inner/signals_production.rs` is a verbatim mirror of
+verification/verus/signals_invariant.rs:64: // production `StepBudget` (signals.rs:13-16) with one minimal
+verification/verus/signals_invariant.rs:65: // substitution:
+verification/verus/signals_invariant.rs:66: //
+verification/verus/signals_invariant.rs:67: //   1. `remaining` is declared `pub` (relaxed from production's
+verification/verus/signals_invariant.rs:68: //      `private`). This relaxation is required so the
+verification/verus/signals_invariant.rs:69: //      `#[verifier::external_type_specification]` bridge below can
+verification/verus/signals_invariant.rs:70: //      establish a transparent binding for spec-mode field access.
+verification/verus/signals_invariant.rs:71: //      Field NAME and TYPE are unchanged.
+verification/verus/signals_invariant.rs:72: //
+verification/verus/signals_invariant.rs:73: //   2. The mirror's impl methods are marked `#[verifier::external]`
+verification/verus/signals_invariant.rs:74: //      so Verus does not attempt to verify their bodies; the spec
+verification/verus/signals_invariant.rs:75: //      contracts below (`assume_specification` bridges) attach the
+verification/verus/signals_invariant.rs:76: //      production contracts to those methods.
+verification/verus/signals_invariant.rs:77: //
+verification/verus/signals_invariant.rs:78: // The `ExStepBudget` bridge below names the mirror type in spec
+verification/verus/signals_invariant.rs:79: // mode. Verus treats `ExStepBudget` and `production::StepBudget` as
+verification/verus/signals_invariant.rs:80: // the same type when the bridge is present, so spec contracts can
+verification/verus/signals_invariant.rs:81: // use either name; this spec uses `production::StepBudget` directly
+verification/verus/signals_invariant.rs:82: // throughout.
+verification/verus/signals_invariant.rs:83: 
+verification/verus/signals_invariant.rs:84: /// Spec-mode alias for the mirror `StepBudget` struct at
+verification/verus/signals_invariant.rs:85: /// `production_inner/signals_production.rs` (verbatim mirror of
+verification/verus/signals_invariant.rs:86: /// production `StepBudget` at signals.rs:13-16). The mirror struct
+verification/verus/signals_invariant.rs:87: /// is marked `#[verifier::external]` in the mirror file, so this
+verification/verus/signals_invariant.rs:88: /// `#[verifier::external_type_specification]` bridge is required to
+verification/verus/signals_invariant.rs:89: /// name the type in spec mode.
+verification/verus/signals_invariant.rs:90: #[verifier::external_type_specification]
+verification/verus/signals_invariant.rs:91: pub struct ExStepBudget(production::StepBudget);
+verification/verus/signals_invariant.rs:92: 
+verification/verus/signals_invariant.rs:93: // =============================================================================
+verification/verus/signals_invariant.rs:94: // Spec constants
+verification/verus/signals_invariant.rs:95: // =============================================================================
+verification/verus/signals_invariant.rs:96: 
+verification/verus/signals_invariant.rs:97: /// Spec-side projection of the production `MAX_STEP_BUDGET` u64 constant
+verification/verus/signals_invariant.rs:98: /// (production at `crates/vb_core/src/limits.rs:94 = 10_000`).
+verification/verus/signals_invariant.rs:99: #[allow(non_upper_case_globals)]
+verification/verus/signals_invariant.rs:100: pub const SPEC_MAX_STEP_BUDGET: u64 = 10_000;

@@ -1,0 +1,100 @@
+crates/velvet_ballistics/src/submit.rs:1: //! CLI submission prepares every record before its atomic publication boundary.
+crates/velvet_ballistics/src/submit.rs:2: 
+crates/velvet_ballistics/src/submit.rs:3: use crate::app_impl::prelude::*;
+crates/velvet_ballistics/src/submit.rs:4: use vb_storage::admission::prepare_compiled_artifact;
+crates/velvet_ballistics/src/submit.rs:5: 
+crates/velvet_ballistics/src/submit.rs:6: type TypedInputs = Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>;
+crates/velvet_ballistics/src/submit.rs:7: 
+crates/velvet_ballistics/src/submit.rs:8: struct PreparedSubmission {
+crates/velvet_ballistics/src/submit.rs:9:     admission: vb_storage::RunSubmission,
+crates/velvet_ballistics/src/submit.rs:10:     run: vb_core::RunId,
+crates/velvet_ballistics/src/submit.rs:11:     digest: vb_core::WorkflowDigest,
+crates/velvet_ballistics/src/submit.rs:12:     step_count: u16,
+crates/velvet_ballistics/src/submit.rs:13: }
+crates/velvet_ballistics/src/submit.rs:14: 
+crates/velvet_ballistics/src/submit.rs:15: pub(crate) fn cmd_submit(
+crates/velvet_ballistics/src/submit.rs:16:     workflow: &std::path::Path,
+crates/velvet_ballistics/src/submit.rs:17:     input_bin: &std::path::Path,
+crates/velvet_ballistics/src/submit.rs:18:     db: &std::path::Path,
+crates/velvet_ballistics/src/submit.rs:19:     durability: DurabilityMode,
+crates/velvet_ballistics/src/submit.rs:20:     output: OutputFormat,
+crates/velvet_ballistics/src/submit.rs:21: ) -> ExitCode {
+crates/velvet_ballistics/src/submit.rs:22:     let prepared = match prepare_submission(workflow, input_bin, durability, output) {
+crates/velvet_ballistics/src/submit.rs:23:         Ok(prepared) => prepared,
+crates/velvet_ballistics/src/submit.rs:24:         Err(code) => return code,
+crates/velvet_ballistics/src/submit.rs:25:     };
+crates/velvet_ballistics/src/submit.rs:26:     if let Err(error) = commit_submission(db, &prepared.admission, durability) {
+crates/velvet_ballistics/src/submit.rs:27:         write_failure_message(&error.to_string(), output, CliExitCode::StorageError);
+crates/velvet_ballistics/src/submit.rs:28:         return CliExitCode::StorageError.into();
+crates/velvet_ballistics/src/submit.rs:29:     }
+crates/velvet_ballistics/src/submit.rs:30:     emit_submission(&prepared, durability, output)
+crates/velvet_ballistics/src/submit.rs:31: }
+crates/velvet_ballistics/src/submit.rs:32: 
+crates/velvet_ballistics/src/submit.rs:33: fn prepare_submission(
+crates/velvet_ballistics/src/submit.rs:34:     workflow: &std::path::Path,
+crates/velvet_ballistics/src/submit.rs:35:     input_bin: &std::path::Path,
+crates/velvet_ballistics/src/submit.rs:36:     durability: DurabilityMode,
+crates/velvet_ballistics/src/submit.rs:37:     output: OutputFormat,
+crates/velvet_ballistics/src/submit.rs:38: ) -> Result<PreparedSubmission, ExitCode> {
+crates/velvet_ballistics/src/submit.rs:39:     let input = read_file(input_bin, output, CliExitCode::ValidationFailed)?;
+crates/velvet_ballistics/src/submit.rs:40:     let source = read_file(workflow, output, CliExitCode::ValidationFailed)?;
+crates/velvet_ballistics/src/submit.rs:41:     let compiled = compile_submission(&source, output)?;
+crates/velvet_ballistics/src/submit.rs:42:     let inputs = map_runtime_inputs(&compiled, &input).map_err(|error| {
+crates/velvet_ballistics/src/submit.rs:43:         write_failure_message(&error.to_string(), output, CliExitCode::ValidationFailed);
+crates/velvet_ballistics/src/submit.rs:44:         ExitCode::from(CliExitCode::ValidationFailed)
+crates/velvet_ballistics/src/submit.rs:45:     })?;
+crates/velvet_ballistics/src/submit.rs:46:     prepare_records(source, &compiled, inputs, durability).map_err(|error| {
+crates/velvet_ballistics/src/submit.rs:47:         write_failure_message(&error.to_string(), output, CliExitCode::ValidationFailed);
+crates/velvet_ballistics/src/submit.rs:48:         CliExitCode::ValidationFailed.into()
+crates/velvet_ballistics/src/submit.rs:49:     })
+crates/velvet_ballistics/src/submit.rs:50: }
+crates/velvet_ballistics/src/submit.rs:51: 
+crates/velvet_ballistics/src/submit.rs:52: fn compile_submission(
+crates/velvet_ballistics/src/submit.rs:53:     source: &[u8],
+crates/velvet_ballistics/src/submit.rs:54:     output: OutputFormat,
+crates/velvet_ballistics/src/submit.rs:55: ) -> Result<vb_core::CompiledWorkflow, ExitCode> {
+crates/velvet_ballistics/src/submit.rs:56:     vb_compile::compile_workflow(source).map_err(|errors| {
+crates/velvet_ballistics/src/submit.rs:57:         if output != OutputFormat::Text {
+crates/velvet_ballistics/src/submit.rs:58:             json_error(
+crates/velvet_ballistics/src/submit.rs:59:                 &serde_json::json!({
+crates/velvet_ballistics/src/submit.rs:60:                     "success": false, "error": "compilation failed",
+crates/velvet_ballistics/src/submit.rs:61:                     "errors": errors.0.iter().map(ToString::to_string).collect::<Vec<_>>()
+crates/velvet_ballistics/src/submit.rs:62:                 }),
+crates/velvet_ballistics/src/submit.rs:63:                 output,
+crates/velvet_ballistics/src/submit.rs:64:             );
+crates/velvet_ballistics/src/submit.rs:65:         } else {
+crates/velvet_ballistics/src/submit.rs:66:             for error in &errors.0 {
+crates/velvet_ballistics/src/submit.rs:67:                 errln!("compile error: {error}");
+crates/velvet_ballistics/src/submit.rs:68:             }
+crates/velvet_ballistics/src/submit.rs:69:         }
+crates/velvet_ballistics/src/submit.rs:70:         CliExitCode::CompileFailed.into()
+crates/velvet_ballistics/src/submit.rs:71:     })
+crates/velvet_ballistics/src/submit.rs:72: }
+crates/velvet_ballistics/src/submit.rs:73: 
+crates/velvet_ballistics/src/submit.rs:74: fn prepare_records(
+crates/velvet_ballistics/src/submit.rs:75:     source: Vec<u8>,
+crates/velvet_ballistics/src/submit.rs:76:     compiled: &vb_core::CompiledWorkflow,
+crates/velvet_ballistics/src/submit.rs:77:     inputs: TypedInputs,
+crates/velvet_ballistics/src/submit.rs:78:     durability: DurabilityMode,
+crates/velvet_ballistics/src/submit.rs:79: ) -> Result<PreparedSubmission, vb_storage::JournalError> {
+crates/velvet_ballistics/src/submit.rs:80:     let artifact = prepare_compiled_artifact(compiled, submission_policy(durability), &[])?;
+crates/velvet_ballistics/src/submit.rs:81:     let run = vb_core::RunId::new(generate_submit_run_id());
+crates/velvet_ballistics/src/submit.rs:82:     let source_record = source_record(source);
+crates/velvet_ballistics/src/submit.rs:83:     let retained = vb_storage::RunInputsRecord::new(
+crates/velvet_ballistics/src/submit.rs:84:         run,
+crates/velvet_ballistics/src/submit.rs:85:         artifact.digest,
+crates/velvet_ballistics/src/submit.rs:86:         source_record.digest,
+crates/velvet_ballistics/src/submit.rs:87:         compiled,
+crates/velvet_ballistics/src/submit.rs:88:         inputs,
+crates/velvet_ballistics/src/submit.rs:89:     )?;
+crates/velvet_ballistics/src/submit.rs:90:     let header = submission_header(run, compiled.digest());
+crates/velvet_ballistics/src/submit.rs:91:     let admission = vb_storage::RunSubmission::new(source_record, artifact, retained, header)?;
+crates/velvet_ballistics/src/submit.rs:92:     Ok(PreparedSubmission {
+crates/velvet_ballistics/src/submit.rs:93:         admission,
+crates/velvet_ballistics/src/submit.rs:94:         run,
+crates/velvet_ballistics/src/submit.rs:95:         digest: compiled.digest(),
+crates/velvet_ballistics/src/submit.rs:96:         step_count: compiled.node_count(),
+crates/velvet_ballistics/src/submit.rs:97:     })
+crates/velvet_ballistics/src/submit.rs:98: }
+crates/velvet_ballistics/src/submit.rs:99: 
+crates/velvet_ballistics/src/submit.rs:100: fn source_record(source: Vec<u8>) -> vb_storage::WorkflowSourceRecord {
