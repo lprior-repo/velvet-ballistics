@@ -111,8 +111,8 @@ pub(super) fn lower_canonical_repeat(
     }
     let body_step =
         checked_step_offset(id, 1, "repeat", "body").map_err(|e| CompileErrors(vec![e]))?;
-    let attempt =
-        checked_step_offset(id, 2, "repeat", "attempt").map_err(|e| CompileErrors(vec![e]))?;
+    let check =
+        checked_step_offset(id, 2, "repeat", "check").map_err(|e| CompileErrors(vec![e]))?;
     let done = checked_step_offset(id, 3, "repeat", "done").map_err(|e| CompileErrors(vec![e]))?;
     let attempt_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
     let body_result = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
@@ -133,19 +133,18 @@ pub(super) fn lower_canonical_repeat(
         body_step,
         index,
         body_result,
-        Some(attempt),
+        Some(check),
         builder,
         false,
     )?;
     builder.push_node(CompiledNode {
-        id: attempt,
+        id: check,
         output: None,
-        next: None,
+        next: Some(body_step),
         error_slot: None,
         on_error: None,
-        kind: CompiledNodeKind::RepeatAttempt {
+        kind: CompiledNodeKind::RepeatCheck {
             attempt_slot,
-            body: body_step,
             done,
         },
     });

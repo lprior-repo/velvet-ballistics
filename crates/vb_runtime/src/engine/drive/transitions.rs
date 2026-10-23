@@ -50,6 +50,7 @@ pub(super) fn loop_body_target(node: &CompiledNode) -> Option<StepIdx> {
     match node.kind {
         CompiledNodeKind::ForEachNext { body, .. }
         | CompiledNodeKind::ReduceNext { body, .. } => Some(body),
+        CompiledNodeKind::RepeatCheck { .. } => node.next,
         _ => None,
     }
 }
