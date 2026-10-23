@@ -1,0 +1,42 @@
+[
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V73_NATIVE.json",
+    "sha256": "93b09b1db06096df7b63c24a481e407587b76677b4ebc5b5a4272750152063f5"
+  },
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V73_NATIVE.stdout",
+    "sha256": "44e0c9a08732f73156c457def678666bf3093d2f88aae6b3cc8b126cbd2ed6dc"
+  },
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V73_NATIVE.stderr",
+    "sha256": "e2036dfe022e0782eb11ff5433a70cf36b353dea341a77d4bbdfcbdd92a14ee7"
+  },
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V73_NATIVE.source-before.json",
+    "sha256": "275ab5057bc3e79a285657b62370a8e1b842cc2e007b58d357353533375e7638"
+  },
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V73_NATIVE.source-after.json",
+    "sha256": "0c4ef32482ffca504e583b59f610b695e851d257b1aff29013d36a7f5deb0d7a"
+  },
+  {
+    "file": "ROOT_F1_STRICT3_CLIPPY_V73_NATIVE.json",
+    "sha256": "03b34bb3ecb18f733ad6792488aa983e3f2ebc795959ffa26f8de0da33831aa7"
+  },
+  {
+    "file": "ROOT_F1_STRICT3_CLIPPY_V73_NATIVE.stdout",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "ROOT_F1_STRICT3_CLIPPY_V73_NATIVE.stderr",
+    "sha256": "28b6c6391307a304182992304e2cf93a881201f3d51900853dbac3a56154d129"
+  },
+  {
+    "file": "ROOT_F1_STRICT3_CLIPPY_V73_NATIVE.source-before.json",
+    "sha256": "79df5687b609866a522b9d756c9e099176791e56388c0c9dd77513a3d33c9197"
+  },
+  {
+    "file": "ROOT_F1_STRICT3_CLIPPY_V73_NATIVE.source-after.json",
+    "sha256": "cc0839a662c73cf99d7b905e14f2e6c4af9d127fe187c1482899d927c1060474"
+  }
+]
