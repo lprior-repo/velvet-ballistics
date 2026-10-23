@@ -1,0 +1,1087 @@
+{
+  "review_scope": "Receipt integrity/source identity/binary provenance/verifier raw results only; no test/build/proof rerun",
+  "manifest_checks": [
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "folder": ".beads/vb-8eocj.5/native-qualification-v181-v193",
+      "manifest_sha256": "65225c5e3eb785ac37a2dc9cdbe6be0387b035124b56dfaa344ba92982c8d83f",
+      "entries": 65,
+      "all_match": true,
+      "files": [
+        {
+          "file": "ROOT_CLI_BINARY_V193.after.json",
+          "bytes": 302,
+          "sha256": "a6f6f673dd3f955f5f4d1578717308357d88d7e05e60701335199fcaa87b7f4a",
+          "match": true
+        },
+        {
+          "file": "ROOT_CLI_BINARY_V193.before.json",
+          "bytes": 302,
+          "sha256": "bbe505b0507f33322268a38c6f6718892536eb782e17a8e731f809a656134b2b",
+          "match": true
+        },
+        {
+          "file": "ROOT_CLI_PINNED_BUILD_V192_NATIVE.json",
+          "bytes": 645,
+          "sha256": "95a09f2144a1d176bc21b4672d3b6f66bd6acc7735bd340d2a3840ca493072bd",
+          "match": true
+        },
+        {
+          "file": "ROOT_CLI_PINNED_BUILD_V192_NATIVE.source-after.json",
+          "bytes": 236123,
+          "sha256": "7dd2aaf3e1d703a48b61322b164da554da0b2c3fe28687339a7584a5abec50fd",
+          "match": true
+        },
+        {
+          "file": "ROOT_CLI_PINNED_BUILD_V192_NATIVE.source-before.json",
+          "bytes": 236123,
+          "sha256": "0ba7742291b588af0b996891c559774e442e9b44aafc1c89ede874ec05a203d6",
+          "match": true
+        },
+        {
+          "file": "ROOT_CLI_PINNED_BUILD_V192_NATIVE.stderr",
+          "bytes": 316,
+          "sha256": "de009bb96ebccce1fad5689b212389918d55a2c420efd451cc9f08195f322a9e",
+          "match": true
+        },
+        {
+          "file": "ROOT_CLI_PINNED_BUILD_V192_NATIVE.stdout",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_APPLY_V181_NATIVE.json",
+          "bytes": 427,
+          "sha256": "5e022451ddc37dbb1c2ccdab3940d4ab44a05bee6e2f1dc39f6dfba1d02482e3",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_APPLY_V181_NATIVE.source-after.json",
+          "bytes": 236005,
+          "sha256": "4771aa697ffb64ab8679507cfd736bc829c71aabf3464c8796773b5a0c91ff0e",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_APPLY_V181_NATIVE.source-before.json",
+          "bytes": 236005,
+          "sha256": "b3fb8eab5c10a5c53db1e29d112fb0b65374c045401fdc0e637988700d031155",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_APPLY_V181_NATIVE.stderr",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_APPLY_V181_NATIVE.stdout",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_CHECK_V182_NATIVE.json",
+          "bytes": 444,
+          "sha256": "3c9268c3cf7a85e233150f0a8cf1797aca52795c251520c566552229764427ac",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_CHECK_V182_NATIVE.source-after.json",
+          "bytes": 236005,
+          "sha256": "5a50eaa6dcff9ba913a1aadc11fef98a8e926330863391e2b6b584cd29e5bf4f",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_CHECK_V182_NATIVE.source-before.json",
+          "bytes": 236005,
+          "sha256": "2b515eb1b4d7e3ecf9606d9d8f4b09ad00d4a6ab9685e7f506275ec610e68e53",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_CHECK_V182_NATIVE.stderr",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_CHECK_V182_NATIVE.stdout",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "match": true
+        },
+        {
+          "file": "ROOT_FORMAT_V182_SCOPE.json",
+          "bytes": 916,
+          "sha256": "656a3d23b9703a8d82ce0b2efd2caa70015a58b4e4c8ea742a8e8a587f384fd1",
+          "match": true
+        },
+        {
+          "file": "ROOT_KANI_HELP_V184.txt",
+          "bytes": 9049,
+          "sha256": "93a973a9b636e14d9f4885634259d8e8ac011054766397f5ba735a4bcd178a1e",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V180-content.txt",
+          "bytes": 7042,
+          "sha256": "833b61e35477d4a7b74c4a6bee0dc91e8b484ef9af7c19b0239efacc61a26c57",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V180-request.json",
+          "bytes": 14430,
+          "sha256": "21dc38eaf155377188c7751125b2ba69a8d6f7312f412363fe4951985387b06c",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V180-response.json",
+          "bytes": 29300,
+          "sha256": "d9a666299ed4deed54c14efc22d4779f9a1e3d61941750c82c70b10795a58597",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V180-result.json",
+          "bytes": 244,
+          "sha256": "4b332789987b22150651893c5b5c581e8485ff92412e58f06b7dcc509aff5fe2",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V183-content.txt",
+          "bytes": 7009,
+          "sha256": "a243f36e70328ef472db56afea14b51ad917d0556ecb2467fa9c1d0cb2af2dfe",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V183-request.json",
+          "bytes": 8568,
+          "sha256": "f1467bd4a0f556b5fd81b8c96d27ba56320c9d962188bbf03a3935882819a240",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V183-response.json",
+          "bytes": 9475,
+          "sha256": "0d40cc1aa6296b9abd01403b16108ab69c7c3f7d5d1f1d9ff114c2934cbfd81a",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V183-result.json",
+          "bytes": 242,
+          "sha256": "ea06968a2295af1b75452c1174a5e86afd7d58611e3fa13d4481b720858f0004",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V186_NATIVE.json",
+          "bytes": 961,
+          "sha256": "4ee525d61b212c4bf688a739b2ed3279d477f0fe36a69b5ac89307e83314eba1",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V186_NATIVE.source-after.json",
+          "bytes": 236123,
+          "sha256": "ad927f6c09591dcc6308668062ca8421e7f96f2d43f8d3d8b21338eb0f7a6c94",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V186_NATIVE.source-before.json",
+          "bytes": 236123,
+          "sha256": "906dec4f54e4841978380d4c9ae2ff3dbe5a27f626217794762af0b2b0072bb7",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V186_NATIVE.stderr",
+          "bytes": 101,
+          "sha256": "b36fc5e46b507fa618fa57109c38a261bb8dba6ef5e5563ba80545338915c94e",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V186_NATIVE.stdout",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V187_NATIVE.json",
+          "bytes": 866,
+          "sha256": "23b63287f942a13bbda3a0f90efd66a90b7d3dd486fff3ab8dd9fe43576ad45c",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V187_NATIVE.source-after.json",
+          "bytes": 236123,
+          "sha256": "d7e31740f1887c20abc9d9e1f342cbc691487f323da19cfafa3ab033cf6825e7",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V187_NATIVE.source-before.json",
+          "bytes": 236123,
+          "sha256": "92edeb3a5133ff0c11e5d9c1c65b6a90ce529b704b0640d0229a64e3885e7c39",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V187_NATIVE.stderr",
+          "bytes": 187,
+          "sha256": "537e6b5b486a39c031de9008aadc25074aa6ec543c85738b80d913486cb426b8",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V187_NATIVE.stdout",
+          "bytes": 11100,
+          "sha256": "51f68ca8d88c17bd2ae3f4d5467c7d6d90044652f89b7f2d9bd2a55bd992af4a",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V190_NATIVE.json",
+          "bytes": 746,
+          "sha256": "933b3b7afae6227f1fa4350c7fcb5cb8fabd51892475857fee8b6a54fb89a930",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V190_NATIVE.source-after.json",
+          "bytes": 236123,
+          "sha256": "5155704aeadb8c2d0466853957e2e511a5bfe1990ffa59786b37b99a52e8ab89",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V190_NATIVE.source-before.json",
+          "bytes": 236123,
+          "sha256": "bc68bbba9bbb0a96e099fe1bcfcc4f3b8e81c647245af80abcfeaba043501329",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V190_NATIVE.stderr",
+          "bytes": 3067,
+          "sha256": "f9fd003e5c5a476eabe538bb154bfa99461a942dfb62304740e09e8a4218c0b6",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V190_NATIVE.stdout",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V191_NATIVE.json",
+          "bytes": 744,
+          "sha256": "9efc7d6ad76f9204d09176b8359be6ca297b87828241769e6f8354901bf9fffc",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V191_NATIVE.source-after.json",
+          "bytes": 236123,
+          "sha256": "81cbad586a23ff74cd211b302971e2a77f4e56ef5fe2f56fbad10121241edadf",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V191_NATIVE.source-before.json",
+          "bytes": 236123,
+          "sha256": "7fbb69ddab6e8237e9a8b9c40a245210e317e102898bc7f5c39c6ead08544a9d",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V191_NATIVE.stderr",
+          "bytes": 696,
+          "sha256": "24916cd5119e224fb096568c49ad9c5a68cf0e5ecb6e5018c5d40eab9752dbb9",
+          "match": true
+        },
+        {
+          "file": "ROOT_REVIEW_FIXES_V191_NATIVE.stdout",
+          "bytes": 5682,
+          "sha256": "d94ae23908e1bb06446184cf2ba29aeb8fa9e3d603677568a5efb8d3c07c1980",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V185-content.txt",
+          "bytes": 2810,
+          "sha256": "99efd0e085fe4ffcade576d98218027df1939190e4bb44bb9864d4e7f7d653f7",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V185-request.json",
+          "bytes": 5751,
+          "sha256": "226fcf5f2ff37570fa9e19ff90c75f6fb4a675a01760f8cf254bfff955f48121",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V185-response.json",
+          "bytes": 9700,
+          "sha256": "9b5be8f6cff73f94b7c860b6288fb0e563f38d45975c763d755bd6739e0de620",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V185-result.json",
+          "bytes": 243,
+          "sha256": "522bcec4afd7dc801c5d6ba55f5d95dfae789f48df6ce6d44f20273cbaa30151",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V188-request.json",
+          "bytes": 4209,
+          "sha256": "357d3c177c260243f14414ee9e73cb5d6defee2a794581929083c3fdd550f091",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V188-response.json",
+          "bytes": 24291,
+          "sha256": "cf0b4242a5a814c2e2067071a2bfb14cae3afa0504b74d6c627d9ea0886dd546",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V188-result.json",
+          "bytes": 73,
+          "sha256": "285f1d8e15d8476fef469ebc6a482cbc97b0d0f12d95a65f6854189497a849a1",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V189-content.txt",
+          "bytes": 2049,
+          "sha256": "b99441df07d7eca37ebfdcad52ede6d161152c495719e58981fb6b97f3f6ee72",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V189-request.json",
+          "bytes": 1782,
+          "sha256": "2ec38376630536beb85cef10d6574e4640c49f2c3bb02c2beb4b4c84be3e572c",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V189-response.json",
+          "bytes": 10792,
+          "sha256": "195588608122733f0c968203012c768f75cf27235ea62b551d174ab4d8c6bc9b",
+          "match": true
+        },
+        {
+          "file": "ROOT_TWO_SET_REPEAT_V189-result.json",
+          "bytes": 241,
+          "sha256": "f654cd59167ee50bb670eb76efa6ca5d2f1b76d77f418878fe5980d956d105fd",
+          "match": true
+        },
+        {
+          "file": "ROOT_WHOLE_NEXTEST_V193_NATIVE.json",
+          "bytes": 898,
+          "sha256": "2cb7805d236abf78317b4d529323f491fe29358de0b1a25487706864cfdc4d33",
+          "match": true
+        },
+        {
+          "file": "ROOT_WHOLE_NEXTEST_V193_NATIVE.source-after.json",
+          "bytes": 236123,
+          "sha256": "08b1ca603189cd9c653b964c7f71c3f36de622b7ef710a61a1821dca332d4c20",
+          "match": true
+        },
+        {
+          "file": "ROOT_WHOLE_NEXTEST_V193_NATIVE.source-before.json",
+          "bytes": 236123,
+          "sha256": "3ca4919c9262e6e63554e86aa02c48a7a9c334f21d4e5c61dd7ae50e88e5b1d0",
+          "match": true
+        },
+        {
+          "file": "ROOT_WHOLE_NEXTEST_V193_NATIVE.stderr",
+          "bytes": 298,
+          "sha256": "c14d4894d27ef19e986b93f863f858b7ca0ac6e49f9cc99ac32b8f1890873b71",
+          "match": true
+        },
+        {
+          "file": "ROOT_WHOLE_NEXTEST_V193_NATIVE.stdout",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "match": true
+        },
+        {
+          "file": "kani-list-v184-vb_compile.json",
+          "bytes": 384,
+          "sha256": "d1f87e7e8662ee9e54189b92edeec80e94313b4169018298b65f56f0b0f05500",
+          "match": true
+        },
+        {
+          "file": "receipt.md",
+          "bytes": 3360,
+          "sha256": "0a639157201e9f414abb79edc54a35c13569cfe9e8fdf209e3c1e2b0422d8895",
+          "match": true
+        }
+      ]
+    },
+    {
+      "receipt": "747a8830613ca9f3a7a3fe513a32b5b45562d71a",
+      "folder": ".beads/vb-8eocj.5/native-repeat-kani-v194-v196",
+      "manifest_sha256": "d57f91ed584ad2d5ad04cfcd717daff7adf523dba8bc863bcf91fabe5d055da5",
+      "entries": 12,
+      "all_match": true,
+      "files": [
+        {
+          "file": "ROOT_KANI_EXTRACTION_V194-content.txt",
+          "bytes": 4216,
+          "sha256": "18eff8d504287799eef1daf156732cdbaf105acda5e098528bbc6c697f5634cf",
+          "match": true
+        },
+        {
+          "file": "ROOT_KANI_EXTRACTION_V194-request.json",
+          "bytes": 9686,
+          "sha256": "5fc41a6ee54cca7f96e3dd107fbb33ad2253c8fe866610f6f667f281e2875e19",
+          "match": true
+        },
+        {
+          "file": "ROOT_KANI_EXTRACTION_V194-response.json",
+          "bytes": 24726,
+          "sha256": "d626446637b87818149a514d3970b3707847b81cbb8131ac4f7095f2b45b9290",
+          "match": true
+        },
+        {
+          "file": "ROOT_KANI_EXTRACTION_V194-result.json",
+          "bytes": 243,
+          "sha256": "ec441c06354119f3d14fbc5b1f2a28eb2fb27a9df4684136d52840f3966123cb",
+          "match": true
+        },
+        {
+          "file": "ROOT_KANI_EXTRACTION_V195_INVARIANCE.json",
+          "bytes": 276,
+          "sha256": "9126fb23f22faa1bc14ae10ca63489f4c2b730c38815b59a9d58c45474712dab",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V196_NATIVE.json",
+          "bytes": 866,
+          "sha256": "cb24e9d114f91a4a3c8de99714fb1043d0cda212512e9018decbe93cc718921a",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V196_NATIVE.source-after.json",
+          "bytes": 236123,
+          "sha256": "25341351cf3867d15c56b8578c9c81d91377e58d9694db0afff741e34a68f303",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V196_NATIVE.source-before.json",
+          "bytes": 236123,
+          "sha256": "1ac3b211dcd75724b2e83288446c0ed49bd36529ef6d16778ba658f804c2dac0",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V196_NATIVE.stderr",
+          "bytes": 187,
+          "sha256": "29c8452cecfb5894753b707d88ad21697432138dd530df7bb11296254625e651",
+          "match": true
+        },
+        {
+          "file": "ROOT_REPEAT_KANI_V196_NATIVE.stdout",
+          "bytes": 426963,
+          "sha256": "943df019ac68d847a8cb9ab50f69af511d87e2225ea7a13d0702f51d0cb0da6a",
+          "match": true
+        },
+        {
+          "file": "imported-review-manifest.json",
+          "bytes": 7937,
+          "sha256": "f8d3ac2c9510e1eba72dedbfddea0cd0dc56627c0613b44126f5f4f5d4c1d8e9",
+          "match": true
+        },
+        {
+          "file": "receipt.json",
+          "bytes": 1185,
+          "sha256": "e2afeb416b474b9ee06bea977c556b150e357c01367b91896514900ead4fe8f9",
+          "match": true
+        }
+      ]
+    }
+  ],
+  "source_maps": [
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_CLI_PINNED_BUILD_V192_NATIVE.source-after.json",
+      "commit": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "file_count": 1860,
+      "source_sha256": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_CLI_PINNED_BUILD_V192_NATIVE.source-before.json",
+      "commit": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "file_count": 1860,
+      "source_sha256": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_FORMAT_APPLY_V181_NATIVE.source-after.json",
+      "commit": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+      "file_count": 1859,
+      "source_sha256": "3353421896cda13ce8fa663cfdd9947acfee43bfccae6c6a30896fde5570721b",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1859,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_FORMAT_APPLY_V181_NATIVE.source-before.json",
+      "commit": "3107f1e157916de3733a3e9dad3bcf60a8183a37",
+      "file_count": 1859,
+      "source_sha256": "aa5502124a7ce4b64124ec950009f34d45f79c8d07bd959c51c38222c92c4265",
+      "aggregate_recomputed": true,
+      "commit_available": false,
+      "limitation": "Recorded map valid; exact named commit blob identity unavailable. No fetch attempted.",
+      "fallback_context_only": "9aaa36d8ff29a9e8e3163cd8a1d145c0334cbcb8",
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1859,
+      "named_commit_blobs_verified": false
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_FORMAT_CHECK_V182_NATIVE.source-after.json",
+      "commit": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+      "file_count": 1859,
+      "source_sha256": "3353421896cda13ce8fa663cfdd9947acfee43bfccae6c6a30896fde5570721b",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1859,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_FORMAT_CHECK_V182_NATIVE.source-before.json",
+      "commit": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+      "file_count": 1859,
+      "source_sha256": "3353421896cda13ce8fa663cfdd9947acfee43bfccae6c6a30896fde5570721b",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1859,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REPEAT_KANI_V186_NATIVE.source-after.json",
+      "commit": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+      "file_count": 1860,
+      "source_sha256": "9c8edbcb6bd56934ced64890a685440404e6e82f303d36c4c477ce0cc8f2975f",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REPEAT_KANI_V186_NATIVE.source-before.json",
+      "commit": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+      "file_count": 1860,
+      "source_sha256": "9c8edbcb6bd56934ced64890a685440404e6e82f303d36c4c477ce0cc8f2975f",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REPEAT_KANI_V187_NATIVE.source-after.json",
+      "commit": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+      "file_count": 1860,
+      "source_sha256": "9c8edbcb6bd56934ced64890a685440404e6e82f303d36c4c477ce0cc8f2975f",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REPEAT_KANI_V187_NATIVE.source-before.json",
+      "commit": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+      "file_count": 1860,
+      "source_sha256": "9c8edbcb6bd56934ced64890a685440404e6e82f303d36c4c477ce0cc8f2975f",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REVIEW_FIXES_V190_NATIVE.source-after.json",
+      "commit": "405a7e83d27a928e8fb8e154df48bc452e7d367b",
+      "file_count": 1860,
+      "source_sha256": "e44f3b6b68894665b5b4e7d5260f9352d802d2566bc188d27a17af6a35eb5c25",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REVIEW_FIXES_V190_NATIVE.source-before.json",
+      "commit": "405a7e83d27a928e8fb8e154df48bc452e7d367b",
+      "file_count": 1860,
+      "source_sha256": "e44f3b6b68894665b5b4e7d5260f9352d802d2566bc188d27a17af6a35eb5c25",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REVIEW_FIXES_V191_NATIVE.source-after.json",
+      "commit": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "file_count": 1860,
+      "source_sha256": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REVIEW_FIXES_V191_NATIVE.source-before.json",
+      "commit": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "file_count": 1860,
+      "source_sha256": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_WHOLE_NEXTEST_V193_NATIVE.source-after.json",
+      "commit": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "file_count": 1860,
+      "source_sha256": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_WHOLE_NEXTEST_V193_NATIVE.source-before.json",
+      "commit": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "file_count": 1860,
+      "source_sha256": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    },
+    {
+      "receipt": "747a8830613ca9f3a7a3fe513a32b5b45562d71a",
+      "file": "ROOT_REPEAT_KANI_V196_NATIVE.source-after.json",
+      "commit": "ffbe2db185c6826b04f76c327503060775fc4b3c",
+      "file_count": 1860,
+      "source_sha256": "a2ae67c6aeddbb0c7f667f4fcddd5e9ba46bfc3d59c2893b2f5c7644907921e2",
+      "aggregate_recomputed": true,
+      "commit_available": false,
+      "limitation": "Recorded map valid; exact named commit blob identity unavailable. No fetch attempted.",
+      "fallback_context_only": "dd823160331dfac4280289541de419563cf0521f",
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": false
+    },
+    {
+      "receipt": "747a8830613ca9f3a7a3fe513a32b5b45562d71a",
+      "file": "ROOT_REPEAT_KANI_V196_NATIVE.source-before.json",
+      "commit": "dd823160331dfac4280289541de419563cf0521f",
+      "file_count": 1860,
+      "source_sha256": "a2ae67c6aeddbb0c7f667f4fcddd5e9ba46bfc3d59c2893b2f5c7644907921e2",
+      "aggregate_recomputed": true,
+      "commit_available": true,
+      "directory_symlink_excluded_by_native_is_file": [
+        "crates/velvet_ballistics/tests/fixtures/fixtures"
+      ],
+      "matched_blob_count": 1860,
+      "named_commit_blobs_verified": true
+    }
+  ],
+  "source_maps_checked": 18,
+  "git_blob_versions_hashed": 1839,
+  "unavailable_named_commits": [
+    "3107f1e157916de3733a3e9dad3bcf60a8183a37",
+    "ffbe2db185c6826b04f76c327503060775fc4b3c"
+  ],
+  "native_gates": [
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_CLI_PINNED_BUILD_V192_NATIVE.json",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTFLAGS=-Dwarnings",
+        "CARGO_BUILD_JOBS=2",
+        "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target",
+        "cargo",
+        "build",
+        "-p",
+        "velvet-ballistics",
+        "--bin",
+        "velvet-ballistics",
+        "--all-features"
+      ],
+      "exit_code": 0,
+      "seconds": 0.857,
+      "timed_out": false,
+      "commit_before": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "commit_after": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "source_unchanged": true,
+      "source_sha256_before": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+      "source_sha256_after": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784"
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_FORMAT_APPLY_V181_NATIVE.json",
+      "argv": [
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "fmt",
+        "--all"
+      ],
+      "exit_code": 0,
+      "seconds": 1.5,
+      "timed_out": false,
+      "commit_before": "3107f1e157916de3733a3e9dad3bcf60a8183a37",
+      "commit_after": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+      "source_unchanged": false,
+      "source_sha256_before": "aa5502124a7ce4b64124ec950009f34d45f79c8d07bd959c51c38222c92c4265",
+      "source_sha256_after": "3353421896cda13ce8fa663cfdd9947acfee43bfccae6c6a30896fde5570721b"
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_FORMAT_CHECK_V182_NATIVE.json",
+      "argv": [
+        "rustup",
+        "run",
+        "nightly-2026-04-28",
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 1.563,
+      "timed_out": false,
+      "commit_before": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+      "commit_after": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+      "source_unchanged": true,
+      "source_sha256_before": "3353421896cda13ce8fa663cfdd9947acfee43bfccae6c6a30896fde5570721b",
+      "source_sha256_after": "3353421896cda13ce8fa663cfdd9947acfee43bfccae6c6a30896fde5570721b"
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REPEAT_KANI_V186_NATIVE.json",
+      "argv": [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--quiet",
+        "-p",
+        "MemoryHigh=20G",
+        "-p",
+        "MemoryMax=24G",
+        "-p",
+        "MemorySwapMax=0",
+        "-p",
+        "WorkingDirectory=/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090",
+        "env",
+        "RUSTC_WRAPPER=",
+        "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/target",
+        "cargo",
+        "kani",
+        "-p",
+        "vb_compile",
+        "--lib",
+        "--harness",
+        "kani_lower_repeat::lower_repeat_allocates_fresh_slots_for_symbolic_prefix",
+        "--exact",
+        "-j",
+        "1",
+        "--output-format",
+        "regular"
+      ],
+      "exit_code": 1,
+      "seconds": 0.003,
+      "timed_out": false,
+      "commit_before": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+      "commit_after": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+      "source_unchanged": true,
+      "source_sha256_before": "9c8edbcb6bd56934ced64890a685440404e6e82f303d36c4c477ce0cc8f2975f",
+      "source_sha256_after": "9c8edbcb6bd56934ced64890a685440404e6e82f303d36c4c477ce0cc8f2975f"
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REPEAT_KANI_V187_NATIVE.json",
+      "argv": [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--quiet",
+        "-p",
+        "MemoryHigh=20G",
+        "-p",
+        "MemoryMax=24G",
+        "-p",
+        "MemorySwapMax=0",
+        "env",
+        "RUSTC_WRAPPER=",
+        "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/target",
+        "cargo",
+        "kani",
+        "-p",
+        "vb_compile",
+        "--lib",
+        "--harness",
+        "kani_lower_repeat::lower_repeat_allocates_fresh_slots_for_symbolic_prefix",
+        "--exact",
+        "-j",
+        "1",
+        "--output-format",
+        "regular"
+      ],
+      "exit_code": 124,
+      "seconds": 360.101,
+      "timed_out": true,
+      "commit_before": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+      "commit_after": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+      "source_unchanged": true,
+      "source_sha256_before": "9c8edbcb6bd56934ced64890a685440404e6e82f303d36c4c477ce0cc8f2975f",
+      "source_sha256_after": "9c8edbcb6bd56934ced64890a685440404e6e82f303d36c4c477ce0cc8f2975f"
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REVIEW_FIXES_V190_NATIVE.json",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTFLAGS=-Dwarnings",
+        "CARGO_BUILD_JOBS=2",
+        "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target",
+        "cargo",
+        "test",
+        "-p",
+        "vb_compile",
+        "--test",
+        "v1_primitive_lowering",
+        "--test",
+        "digest_repeat_unit",
+        "--test",
+        "vb_8mdp_7_collect_lowering_props",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 101,
+      "seconds": 0.626,
+      "timed_out": false,
+      "commit_before": "405a7e83d27a928e8fb8e154df48bc452e7d367b",
+      "commit_after": "405a7e83d27a928e8fb8e154df48bc452e7d367b",
+      "source_unchanged": true,
+      "source_sha256_before": "e44f3b6b68894665b5b4e7d5260f9352d802d2566bc188d27a17af6a35eb5c25",
+      "source_sha256_after": "e44f3b6b68894665b5b4e7d5260f9352d802d2566bc188d27a17af6a35eb5c25"
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_REVIEW_FIXES_V191_NATIVE.json",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTFLAGS=-Dwarnings",
+        "CARGO_BUILD_JOBS=2",
+        "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target",
+        "cargo",
+        "test",
+        "-p",
+        "vb_compile",
+        "--test",
+        "v1_primitive_lowering",
+        "--test",
+        "digest_repeat_unit",
+        "--test",
+        "vb_8mdp_7_collect_lowering_props",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "seconds": 1.051,
+      "timed_out": false,
+      "commit_before": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "commit_after": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "source_unchanged": true,
+      "source_sha256_before": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+      "source_sha256_after": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784"
+    },
+    {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "file": "ROOT_WHOLE_NEXTEST_V193_NATIVE.json",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target",
+        "TMPDIR=/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/target/tmp",
+        "RUSTC_WRAPPER=",
+        "RUSTFLAGS=-Dwarnings",
+        "RUST_TEST_THREADS=1",
+        "NEXTEST_TEST_THREADS=8",
+        "CARGO_BIN_EXE_velvet-ballistics=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/velvet-ballistics",
+        "cargo",
+        "nextest",
+        "run",
+        "--cargo-quiet",
+        "--workspace",
+        "--all-features",
+        "--no-fail-fast"
+      ],
+      "exit_code": 0,
+      "seconds": 527.295,
+      "timed_out": false,
+      "commit_before": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "commit_after": "daa75236facecac24c30be18ecb733d604fbf5d8",
+      "source_unchanged": true,
+      "source_sha256_before": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+      "source_sha256_after": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784"
+    },
+    {
+      "receipt": "747a8830613ca9f3a7a3fe513a32b5b45562d71a",
+      "file": "ROOT_REPEAT_KANI_V196_NATIVE.json",
+      "argv": [
+        "systemd-run",
+        "--user",
+        "--scope",
+        "--quiet",
+        "-p",
+        "MemoryHigh=20G",
+        "-p",
+        "MemoryMax=24G",
+        "-p",
+        "MemorySwapMax=0",
+        "env",
+        "RUSTC_WRAPPER=",
+        "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/target",
+        "cargo",
+        "kani",
+        "-p",
+        "vb_compile",
+        "--lib",
+        "--harness",
+        "kani_lower_repeat::lower_repeat_allocates_fresh_slots_for_symbolic_prefix",
+        "--exact",
+        "-j",
+        "1",
+        "--output-format",
+        "regular"
+      ],
+      "exit_code": 0,
+      "seconds": 806.705,
+      "timed_out": false,
+      "commit_before": "dd823160331dfac4280289541de419563cf0521f",
+      "commit_after": "ffbe2db185c6826b04f76c327503060775fc4b3c",
+      "source_unchanged": true,
+      "source_sha256_before": "a2ae67c6aeddbb0c7f667f4fcddd5e9ba46bfc3d59c2893b2f5c7644907921e2",
+      "source_sha256_after": "a2ae67c6aeddbb0c7f667f4fcddd5e9ba46bfc3d59c2893b2f5c7644907921e2"
+    }
+  ],
+  "v193_raw_aggregate": {
+    "run": 14728,
+    "passed": 14728,
+    "skipped": 27,
+    "binaries": 309,
+    "slow": 21,
+    "exit_code": 0,
+    "wrapper_seconds": 527.295,
+    "nextest_summary_seconds": 498.881,
+    "source": "daa75236facecac24c30be18ecb733d604fbf5d8",
+    "source_map_sha256": "f029a24e79f9b3b4ac863e84ff8d499bdc9e3dc6f96add195318566a5a78c784",
+    "crates_tree": "f701857d1c1266d0cb6dc692693d499fea616448",
+    "individual_pass_names_available": false,
+    "skip_identities_available": false,
+    "historical119_by_name_closure_established": false
+  },
+  "binary_provenance": {
+    "recorded_before_after_identical": true,
+    "metadata": {
+      "path": "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/velvet-ballistics",
+      "sha256": "d00ddb0d065d14be8c77029c89bcee8d6e76e9697e15183fdd07ffd70612e6dc",
+      "size": 96635296,
+      "source_pin": "daa75236facecac24c30be18ecb733d604fbf5d8"
+    },
+    "explicit_selected_path_matches": true,
+    "build_source_matches": true,
+    "build_precedes_captured_binary": true,
+    "limitation": "Historic binary image not stored here; verified captured hash/size/path/source/build/selection evidence, not a reproducible-build proof."
+  },
+  "v196_raw_result": {
+    "checks_total_excluding_covers": 562,
+    "success": 547,
+    "unreachable": 15,
+    "failed": 0,
+    "covers": 12,
+    "covers_satisfied": 12,
+    "harnesses_successful": 1,
+    "exit_code": 0,
+    "seconds": 806.705,
+    "verification_seconds_from_stdout": 804.8345,
+    "statuses_counted_from_all574blocks": true,
+    "unsupported_construct_inventory_retained": true,
+    "source_trees": {
+      "dd823160331dfac4280289541de419563cf0521f": "0a6af9645db41f4e41b15600fa00c0ac5f90049e",
+      "747a8830613ca9f3a7a3fe513a32b5b45562d71a": "0a6af9645db41f4e41b15600fa00c0ac5f90049e"
+    },
+    "receipt_parent_verified_as_dd": true,
+    "named_post_run_ffbe_commit_available": false,
+    "post_run_file_map_matches_dd_blobs": true,
+    "imported_review_files_verified": 31
+  },
+  "limits": [
+    "V193 output is aggregate; not historical119 by-name closure or identity of27skips.",
+    "3107 and post-run ffbe named commits unavailable locally: exact named-object identity/ffbe-parent unverified; recorded maps independently match verified9aaa/dd respectively. No fetch of these refs attempted.",
+    "V181 formatter applies11changes: raw0 differs from wrapper125 source-drift policy.",
+    "V187 timeout124 no verdict remains historical; V196 does not rewrite it.",
+    "Kani is one bounded raw-helper harness; not general runtime/admission/F1/canonicalCI/main acceptance.",
+    "Kani unsupported inventory/backend model messages retained; no entire-crate support claim."
+  ]
+}

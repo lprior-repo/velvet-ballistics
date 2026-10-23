@@ -1,0 +1,18 @@
+{
+  "receipts": [
+    [
+      "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      ".beads/vb-8eocj.5/native-qualification-v181-v193"
+    ],
+    [
+      "747a8830613ca9f3a7a3fe513a32b5b45562d71a",
+      ".beads/vb-8eocj.5/native-repeat-kani-v194-v196"
+    ]
+  ],
+  "prompt_bytes": 156787,
+  "prompt_sha256": "8c4275f1183a8885141c371a594e5ae3e613a26f3524281a90baee9bf1b3e354",
+  "raw_kani_log_bytes": 426963,
+  "selected_raw_kani_blocks": 101,
+  "no_native_execution_by_reviewer": true,
+  "model_packet_omissions_explicit": "Full source maps/full repeated Kani log mechanically verified and preserved in original pins; model sees exact host checks plus selected raw and full commands."
+}

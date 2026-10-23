@@ -1,0 +1,18 @@
+{
+  "README.md": {
+    "bytes": 738,
+    "sha256": "cf552915d7e0ae70d4981a5a90e1f6e421edca94261327a5934d7c2bdbc4be81"
+  },
+  "original-cloud-CODE.md": {
+    "bytes": 15478,
+    "sha256": "5aa1c2775d4dc25ca1b730fe1ecf3bf727fb356a2520f84ba15248ad12e2d2bd"
+  },
+  "original-cloud-TEST.md": {
+    "bytes": 34499,
+    "sha256": "5ff9b8deaa96b818d5c094cf295ec3bd0743669f93293226ddad6f3565d88038"
+  },
+  "provenance.json": {
+    "bytes": 1055,
+    "sha256": "c2e1c649c66b11b65b1124a2bb3bde832074e893be22ddca10910ca479871f5a"
+  }
+}
