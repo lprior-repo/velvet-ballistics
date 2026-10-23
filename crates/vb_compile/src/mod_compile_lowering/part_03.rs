@@ -136,7 +136,11 @@ pub(super) fn emit_together_branches(
             .map_err(|e| CompileErrors(vec![e]))?;
         builder.push_node(CompiledNode {
             id: branch_id,
-            output: Some(slots.result),
+            output: if branch_number == 0 {
+                None
+            } else {
+                Some(slots.result)
+            },
             next: None,
             error_slot: None,
             on_error: None,
