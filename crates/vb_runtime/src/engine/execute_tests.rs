@@ -1326,7 +1326,7 @@ fn execute_reduce_finish_errors_on_missing_next_step() {
 // =====================================================================
 
 #[test]
-fn execute_repeat_start_single_attempt_no_panic() {
+fn execute_repeat_start_single_attempt_no_panic() -> Result<(), String> {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
         next: None,
@@ -1339,35 +1339,34 @@ fn execute_repeat_start_single_attempt_no_panic() {
             done: StepIdx::new(2),
         },
     };
-    let node1 = finish_node(1, 0);
-    let node2 = finish_node(2, 0);
+    let mut node1 = finish_node(1, 0);
+    node1.output = None;
+    let mut node2 = finish_node(2, 0);
+    node2.output = None;
     let wf = make_workflow(vec![node0, node1, node2], 8);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
-    let n = match wf.node(StepIdx::ZERO) {
-        Some(n) => n,
-        None => return,
-    };
-    // This catch_unwind match is a panic-safety guard, not a fallible-result
-    // assertion. It verifies that execute_node_full itself does not panic;
-    // the inner RuntimeEngineResult is intentionally not asserted here.
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let _ = execute_node_full(
-            &wf,
-            &mut run,
-            &mut store,
-            n,
-            &[],
-            RetryPolicy::NEVER,
-            &mut cs,
-            &CapabilitySet::empty(),
-            1,
-        );
-    }));
-    if let Err(payload) = result {
-        std::panic::resume_unwind(payload);
-    }
+    let n = wf.node(StepIdx::ZERO).ok_or("missing repeat start")?;
+    let result = execute_node_full(
+        &wf,
+        &mut run,
+        &mut store,
+        n,
+        &[],
+        RetryPolicy::NEVER,
+        &mut cs,
+        &CapabilitySet::empty(),
+        1,
+    );
+    assert_eq!(result, Ok(RuntimeSignal::Continue));
+    assert_eq!(run.pc(), StepIdx::new(1));
+    assert_eq!(
+        run.read_slot(SlotIdx::new(0)),
+        Ok(&SlotValue::I64(4294967296))
+    );
+    assert_eq!(run.read_taint(SlotIdx::new(0)), Ok(Taint::Clean));
+    Ok(())
 }
 
 // =====================================================================
