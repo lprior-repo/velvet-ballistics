@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_yaml/src/event_collect.rs
+1: #![forbid(unsafe_code)]
+2: //! Event collection with strict YAML profile resource accounting.
+3: 
+4: use super::{check_null_bytes, check_scalar_length};
+5: use crate::yaml_error::{YamlError, YamlResult};
+6: use crate::yaml_events::{YamlEvent, convert_event};
+7: use crate::yaml_limits::YamlLimits;
+8: 
+9: /// Collect events from the parser while tracking depth, node counts, and
+10: /// sequence/mapping entry counts for enforcing YamlLimits.
+11: pub(crate) fn collect_and_validate_events(
+12:     text: &str,
+13:     limits: &YamlLimits,
+14: ) -> YamlResult<Vec<YamlEvent>> {
+15:     let mut parser = saphyr_parser::Parser::new_from_str(text);
+16:     let mut state = EventCollectionState::new();
+17:     while let Some(result) = parser.next_event() {
+18:         let (event, span) = result.map_err(|e| YamlError::ParseError {
+19:             line: e.marker().line(),
+20:             reason: e.info().into(),
+21:         })?;
+22:         state.apply_event(&event, limits)?;
+23:         state.record_node(limits)?;
+24:         state.events.push(convert_event(event, span));
+25:     }
+26:     state.finish()
+27: }
+28: 
+29: struct EventCollectionState {
+30:     events: Vec<YamlEvent>,
+31:     depth: u16,
+32:     node_count: u32,
+33:     document_count: usize,
+34:     found_content: bool,
+35:     seq_counters: Vec<usize>,
+36:     map_counters: Vec<usize>,
+37:     in_mapping: Vec<bool>,
+38:     expecting_key: Vec<bool>,
+39: }
+40: 
+41: impl EventCollectionState {
+42:     fn new() -> Self {
+43:         Self {
+44:             events: Vec::new(),
+45:             depth: 0,
+46:             node_count: 0,
+47:             document_count: 0,
+48:             found_content: false,
+49:             seq_counters: Vec::new(),
+50:             map_counters: Vec::new(),
+51:             in_mapping: Vec::new(),
+52:             expecting_key: Vec::new(),
+53:         }
+54:     }
+55: 
+56:     fn apply_event(
+57:         &mut self,
+58:         event: &saphyr_parser::Event<'_>,
+59:         limits: &YamlLimits,
+60:     ) -> YamlResult<()> {
+61:         match event {
+62:             saphyr_parser::Event::StreamStart
+63:             | saphyr_parser::Event::StreamEnd
+64:             | saphyr_parser::Event::DocumentEnd
+65:             | saphyr_parser::Event::Alias(_)
+66:             | saphyr_parser::Event::Nothing => Ok(()),
+67:             saphyr_parser::Event::DocumentStart(_) => self.record_document(),
+68:             saphyr_parser::Event::MappingStart(_, _) => self.start_mapping(limits),
+69:             saphyr_parser::Event::SequenceStart(_, _) => self.start_sequence(limits),
+70:             saphyr_parser::Event::Scalar(value, _, _, _) => self.record_scalar(value, limits),
+71:             saphyr_parser::Event::MappingEnd => self.end_mapping(limits),
+72:             saphyr_parser::Event::SequenceEnd => self.end_sequence(limits),
+73:         }
+74:     }
+75: 
+76:     fn record_document(&mut self) -> YamlResult<()> {
+77:         self.document_count = self
+78:             .document_count
+79:             .checked_add(1)
+80:             .ok_or(YamlError::MultipleDocuments { count: usize::MAX })?;
+81:         Ok(())
+82:     }
+83: 
+84:     fn start_mapping(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+85:         self.increment_depth(limits)?;
+86:         self.in_mapping.push(true);
+87:         self.expecting_key.push(true);
+88:         self.map_counters.push(0);
+89:         self.found_content = true;
+90:         Ok(())
+91:     }
+92: 
+93:     fn start_sequence(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+94:         self.increment_depth(limits)?;
+95:         self.in_mapping.push(false);
+96:         self.seq_counters.push(0);
+97:         self.found_content = true;
+98:         Ok(())
+99:     }
+100: 

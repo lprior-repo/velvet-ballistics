@@ -1,0 +1,7 @@
+{
+  "scope": "independent review one large valid-YAML fuzz assertion regression already on main; no Rust source edits",
+  "status": "APPROVED bounded test review; landing execution still pending",
+  "raw_review_correction": "owner_approved_debt label is reviewer wording only, not human waiver or evidence of approval; fresh actual execution remains required before closure",
+  "actual_evidence": "Historical RED V2 and GREEN V3/V4 retained; V82 canonical pending and fresh exact library rerun pending",
+  "limits": "No whole-workflow language acceptance, universal YAML bound, boundary sweep, fuzz campaign, performance or proof claim"
+}

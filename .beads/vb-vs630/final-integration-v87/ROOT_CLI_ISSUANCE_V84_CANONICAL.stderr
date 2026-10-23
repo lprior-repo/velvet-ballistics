@@ -1,0 +1,50 @@
+[ WARN 2026-10-22 21:04:19.614] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:04:19.726] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:04:23.871] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:04:25.488] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:04:25.564] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:04:25.966] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:04:31.752] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 21:04:32.145] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |  Nextest run ID 35bfe26f-fbde-4ad9-aec0-c4b8d1cce377 with nextest profile: default
+                       velvet-ballistics:test |     Starting 14538 tests across 299 binaries (27 tests skipped)
+[ WARN 21:04:52.393] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+                       velvet-ballistics:test |   Cancelling due to signal: 32 tests still running
+                       velvet-ballistics:test |      Killing due to second signal: : 32 tests still running
+                       velvet-ballistics:test |      SIGTERM [   0.028s] ( 9123/14538) vb_storage tests::tests::queue_strict_enqueue_and_drain_preserves_order
+                       velvet-ballistics:test |      SIGTERM [  12.514s] ( 9124/14538) vb_storage proptest_integration::proptests::ppi_001_deterministic_replay_invariant
+                       velvet-ballistics:test |      SIGTERM [   0.319s] ( 9125/14538) vb_storage tests::tests::put_compiled_ir_stores_and_retrieves
+                       velvet-ballistics:test |      SIGTERM [   0.840s] ( 9126/14538) vb_storage tests::tests::journal_writer_queue_drain_all_flushes_until_empty
+                       velvet-ballistics:test |      SIGTERM [  12.511s] ( 9127/14538) vb_storage proptest_integration::proptests::ppi_003_no_recovery_data_for_nonexistent_run
+                       velvet-ballistics:test |      SIGTERM [   0.113s] ( 9128/14538) vb_storage tests::tests::queue_journaled_enqueue_and_drain_preserves_order
+                       velvet-ballistics:test |      SIGTERM [   0.539s] ( 9129/14538) vb_storage tests::tests::persist_strict_flushes_and_reopens_cleanly
+                       velvet-ballistics:test |      SIGTERM [   0.166s] ( 9130/14538) vb_storage tests::tests::put_workflow_source_stores_and_retrieves
+                       velvet-ballistics:test |      SIGTERM [   0.319s] ( 9131/14538) vb_storage tests::tests::put_run_header_stores_and_retrieves
+                       velvet-ballistics:test |      SIGTERM [   0.607s] ( 9132/14538) vb_storage tests::tests::keyspace_profiles_return_distinct_configs
+                       velvet-ballistics:test |      SIGTERM [   0.179s] ( 9133/14538) vb_storage tests::tests::put_workflow_source_returns_none_for_missing_digest
+                       velvet-ballistics:test |      SIGTERM [   0.641s] ( 9134/14538) vb_storage tests::tests::journal_writer_queue_shutdown_rejects_new_writes_after_durable_drain
+                       velvet-ballistics:test |      SIGTERM [  12.374s] ( 9135/14538) vb_storage proptests::ppi_001_deterministic_replay_invariant
+                       velvet-ballistics:test |      SIGTERM [   0.321s] ( 9136/14538) vb_storage tests::tests::put_blob_stores_and_retrieves
+                       velvet-ballistics:test |      SIGTERM [   0.600s] ( 9137/14538) vb_storage tests::tests::multiple_runs_have_independent_events
+                       velvet-ballistics:test |      SIGTERM [   0.840s] ( 9138/14538) vb_storage tests::tests::journal_writer_queue_flush_persists_journaled_events_before_drain
+                       velvet-ballistics:test |      SIGTERM [   1.892s] ( 9139/14538) vb_storage tests::tests::journal_reopen_preserves_multiple_event_types
+                       velvet-ballistics:test |      SIGTERM [   0.011s] ( 9140/14538) vb_storage tests::tests::replay_journal_wrapper_uses_recovery_replay
+                       velvet-ballistics:test |      SIGTERM [   1.696s] ( 9141/14538) vb_storage tests::tests::journal_stores_and_retrieves_blob_with_zero_bytes
+                       velvet-ballistics:test |      SIGTERM [   0.067s] ( 9142/14538) vb_storage tests::tests::queue_mixed_journaled_and_strict_drain_returns_both
+                       velvet-ballistics:test |      SIGTERM [   0.708s] ( 9143/14538) vb_storage tests::tests::journal_writer_queue_rejects_same_flush_duplicate_keys
+                       velvet-ballistics:test |      SIGTERM [   0.478s] ( 9144/14538) vb_storage tests::tests::public_wrappers_delegate_to_journal_storage_paths
+                       velvet-ballistics:test |      SIGTERM [   0.207s] ( 9145/14538) vb_storage tests::tests::put_status_index_stores_and_retrieves
+                       velvet-ballistics:test |      SIGTERM [   0.539s] ( 9146/14538) vb_storage tests::tests::public_open_wrappers_create_declared_keyspaces
+                       velvet-ballistics:test |      SIGTERM [   0.123s] ( 9147/14538) vb_storage tests::tests::queue_flush_persists_before_drain
+                       velvet-ballistics:test |      SIGTERM [   0.127s] ( 9148/14538) vb_storage tests::tests::queue_empty_drain_returns_zero_events
+                       velvet-ballistics:test |      SIGTERM [   1.171s] ( 9149/14538) vb_storage tests::tests::journal_writer_queue_crash_window_retry_drains_already_written_same_event
+                       velvet-ballistics:test |      SIGTERM [   0.207s] ( 9150/14538) vb_storage tests::tests::put_workflow_index_stores_and_retrieves
+                       velvet-ballistics:test |      SIGTERM [   0.287s] ( 9151/14538) vb_storage tests::tests::put_snapshot_stores_and_retrieves
+                       velvet-ballistics:test |      SIGTERM [   0.669s] ( 9152/14538) vb_storage tests::tests::journal_writer_queue_retains_events_when_append_fails
+                       velvet-ballistics:test |      SIGTERM [   1.618s] ( 9153/14538) vb_storage tests::tests::journal_workflow_source_after_batch_commit_matches_input
+                       velvet-ballistics:test |      SIGTERM [   0.364s] ( 9154/14538) vb_storage tests::tests::put_action_index_stores_and_retrieves
+                       velvet-ballistics:test | ────────────
+                       velvet-ballistics:test |      Summary [  39.315s] 9154/14538 tests run: 9122 passed, 32 failed, 27 skipped
+                       velvet-ballistics:test | warning: 5384/14538 tests were not run due to second signal
+                       velvet-ballistics:test | error: test run failed

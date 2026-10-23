@@ -1,0 +1,101 @@
+ACTUAL SOURCE fuzz/Cargo.toml
+301: doc = false
+302: bench = false
+303: 
+304: [[bin]]
+305: name = "choose_lowering_fuzzer"
+306: path = "fuzz_targets/choose_lowering_fuzzer.rs"
+307: test = false
+308: doc = false
+309: bench = false
+310: 
+311: [[bin]]
+312: name = "fuzz_for_each_lowering"
+313: path = "fuzz_targets/fuzz_for_each_lowering.rs"
+314: test = false
+315: doc = false
+316: bench = false
+317: 
+318: [[bin]]
+319: name = "fuzz_collect_lowering"
+320: path = "fuzz_targets/fuzz_collect_lowering.rs"
+321: test = false
+322: doc = false
+323: bench = false
+324: 
+325: [[bin]]
+326: name = "fuzz_wait_lowering"
+327: path = "fuzz_targets/fuzz_wait_lowering.rs"
+328: test = false
+329: doc = false
+330: bench = false
+331: 
+332: [[bin]]
+333: name = "fuzz_set_lowering"
+334: path = "fuzz_targets/fuzz_set_lowering.rs"
+335: test = false
+336: doc = false
+337: bench = false
+338: 
+339: [[bin]]
+340: name = "fuzz_finish_lowering"
+341: path = "fuzz_targets/fuzz_finish_lowering.rs"
+342: test = false
+343: doc = false
+344: bench = false
+345: 
+346: [[bin]]
+347: name = "compile_workflow_fuzz"
+348: path = "fuzz_targets/compile_workflow_fuzz.rs"
+349: test = false
+350: doc = false
+351: bench = false
+352: 
+353: [[bin]]
+354: name = "compiled_ir_fuzz"
+355: path = "fuzz_targets/compiled_ir.rs"
+356: test = false
+357: doc = false
+358: bench = false
+359: 
+360: [[bin]]
+361: name = "decode_record"
+362: path = "fuzz_targets/decode_record.rs"
+363: test = false
+364: doc = false
+365: bench = false
+366: 
+367: [[bin]]
+368: name = "diagnostic_code_from_str_fuzz"
+369: path = "fuzz_targets/diagnostic_code_from_str.rs"
+370: test = false
+371: doc = false
+372: bench = false
+373: 
+374: [[bin]]
+375: name = "diagnostic_from_error_fuzz"
+376: path = "fuzz_targets/diagnostic_from_error.rs"
+377: test = false
+378: doc = false
+379: bench = false
+380: 
+381: [[bin]]
+382: name = "expr_eval_fuzz"
+383: path = "fuzz_targets/expr_eval.rs"
+384: test = false
+385: doc = false
+386: bench = false
+387: 
+388: [[bin]]
+389: name = "expression_fuzz"
+390: path = "fuzz_targets/expression.rs"
+391: test = false
+392: doc = false
+393: bench = false
+394: 
+395: [[bin]]
+396: name = "fuzz_choose_depth"
+397: path = "fuzz_targets/fuzz_choose_depth.rs"
+398: test = false
+399: doc = false
+400: bench = false

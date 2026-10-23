@@ -1,0 +1,45 @@
+diff --git a/fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs b/fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs
+index cc68897b0..f1868fc05 100644
+--- a/fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs
++++ b/fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs
+@@ -1,3 +1,7 @@
++//! Fuzz target for YAML compiler with strict profile validation.
++//!
++//! Command: cargo fuzz run vb_f04l_yaml_compiler_compile -- -max_len=65536 -runs=100000
++
+ #![no_main]
+ 
+ use libfuzzer_sys::fuzz_target;
+diff --git a/fuzz/fuzz_targets/yaml_events.rs b/fuzz/fuzz_targets/yaml_events.rs
+index b68482f4c..b135cd5d1 100644
+--- a/fuzz/fuzz_targets/yaml_events.rs
++++ b/fuzz/fuzz_targets/yaml_events.rs
+@@ -4,6 +4,8 @@
+ //! on any UTF-8 input.
+ //!
+ //! Corpus seeds are maintained in `fuzz/corpus/yaml_events/`.
++//!
++//! Command: cargo fuzz run yaml_events -- -max_len=65536 -runs=100000
+ 
+ #![no_main]
+ 
+diff --git a/fuzz/src/yaml_target.rs b/fuzz/src/yaml_target.rs
+index efff03612..e404c56f2 100644
+--- a/fuzz/src/yaml_target.rs
++++ b/fuzz/src/yaml_target.rs
+@@ -13,7 +13,7 @@
+ #![allow(clippy::doc_markdown)]
+ #![allow(clippy::len_zero)]
+ 
+-const MAX_FUZZ_PAYLOAD_USIZE: usize = 4096;
++const MAX_FUZZ_PAYLOAD_USIZE: usize = 100_000;
+ 
+ fn assert_typed_yaml_error(error: vb_compile::YamlError) {
+     use vb_compile::YamlError;
+@@ -208,4 +208,4 @@ mod tests {
+         fuzz_yaml_events(yaml.as_bytes());
+         Ok(())
+     }
+-}
+\ No newline at end of file
++}

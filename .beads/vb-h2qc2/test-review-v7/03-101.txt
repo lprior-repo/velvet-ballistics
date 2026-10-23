@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_yaml/src/event_collect.rs
+101:     fn increment_depth(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+102:         self.depth = self.depth.checked_add(1).ok_or(YamlError::NestingTooDeep {
+103:             depth: self.depth,
+104:             max: limits.max_depth,
+105:         })?;
+106:         if self.depth > limits.max_depth {
+107:             return Err(YamlError::NestingTooDeep {
+108:                 depth: self.depth,
+109:                 max: limits.max_depth,
+110:             });
+111:         }
+112:         Ok(())
+113:     }
+114: 
+115:     fn record_scalar(&mut self, value: &str, limits: &YamlLimits) -> YamlResult<()> {
+116:         check_scalar_length(value, limits.max_scalar_bytes)?;
+117:         check_null_bytes(value)?;
+118:         if let Some(&true) = self.in_mapping.last() {
+119:             self.record_mapping_scalar(limits)?;
+120:         } else if self.in_mapping.last().is_some() {
+121:             self.record_sequence_scalar(limits)?;
+122:         }
+123:         self.found_content = true;
+124:         Ok(())
+125:     }
+126: 
+127:     fn record_mapping_scalar(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+128:         if self.expecting_key.last() == Some(&true) {
+129:             if let Some(counter) = self.map_counters.last_mut() {
+130:                 *counter = counter.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
+131:                     count: u32::MAX,
+132:                     max: limits.max_nodes,
+133:                 })?;
+134:                 if *counter > limits.max_mapping_entries {
+135:                     return Err(YamlError::MappingTooLarge {
+136:                         count: *counter,
+137:                         max: limits.max_mapping_entries,
+138:                     });
+139:                 }
+140:             }
+141:             if let Some(expecting) = self.expecting_key.last_mut() {
+142:                 *expecting = false;
+143:             }
+144:         } else if let Some(expecting) = self.expecting_key.last_mut() {
+145:             *expecting = true;
+146:         }
+147:         Ok(())
+148:     }
+149: 
+150:     fn record_sequence_scalar(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+151:         if let Some(counter) = self.seq_counters.last_mut() {
+152:             *counter = counter.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
+153:                 count: u32::MAX,
+154:                 max: limits.max_nodes,
+155:             })?;
+156:             if *counter > limits.max_sequence_len {
+157:                 return Err(YamlError::SequenceTooLong {
+158:                     len: *counter,
+159:                     max: limits.max_sequence_len,
+160:                 });
+161:             }
+162:         }
+163:         Ok(())
+164:     }
+165: 
+166:     fn end_mapping(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+167:         if let Some((count, parent_count)) =
+168:             self.map_counters.pop().zip(self.map_counters.last_mut())
+169:         {
+170:             *parent_count =
+171:                 parent_count
+172:                     .checked_add(count)
+173:                     .ok_or(YamlError::NodeLimitExceeded {
+174:                         count: u32::MAX,
+175:                         max: limits.max_nodes,
+176:                     })?;
+177:         }
+178:         self.in_mapping.pop();
+179:         self.expecting_key.pop();
+180:         self.depth = self.depth.saturating_sub(1);
+181:         Ok(())
+182:     }
+183: 
+184:     fn end_sequence(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+185:         if let Some((count, parent_count)) =
+186:             self.seq_counters.pop().zip(self.seq_counters.last_mut())
+187:         {
+188:             *parent_count =
+189:                 parent_count
+190:                     .checked_add(count)
+191:                     .ok_or(YamlError::NodeLimitExceeded {
+192:                         count: u32::MAX,
+193:                         max: limits.max_nodes,
+194:                     })?;
+195:         }
+196:         self.in_mapping.pop();
+197:         self.depth = self.depth.saturating_sub(1);
+198:         Ok(())
+199:     }
+200: 

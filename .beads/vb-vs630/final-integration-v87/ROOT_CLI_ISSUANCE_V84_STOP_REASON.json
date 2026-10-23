@@ -1,0 +1,4 @@
+{
+  "reason": "V82 has actual Clippy map_err over inspect_err source finding; stop unchanged retry to repair rather than waste unchanged full verification",
+  "own_processes_signalled": 35
+}

@@ -1,0 +1,25 @@
+ACTUAL SOURCE crates/vb_yaml/src/event_collect.rs
+201:     fn record_node(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+202:         self.node_count = self
+203:             .node_count
+204:             .checked_add(1)
+205:             .ok_or(YamlError::NodeLimitExceeded {
+206:                 count: u32::MAX,
+207:                 max: limits.max_nodes,
+208:             })?;
+209:         if self.node_count > limits.max_nodes {
+210:             return Err(YamlError::NodeLimitExceeded {
+211:                 count: self.node_count,
+212:                 max: limits.max_nodes,
+213:             });
+214:         }
+215:         Ok(())
+216:     }
+217: 
+218:     fn finish(self) -> YamlResult<Vec<YamlEvent>> {
+219:         if !self.found_content || self.document_count == 0 {
+220:             return Err(YamlError::EmptySource);
+221:         }
+222:         Ok(self.events)
+223:     }
+224: }

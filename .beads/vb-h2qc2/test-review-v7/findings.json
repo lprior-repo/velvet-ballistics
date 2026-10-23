@@ -1,0 +1,56 @@
+{
+  "bead": "vb-h2qc2",
+  "review_version": "test-review-v7",
+  "candidate": "4df9e4f196e3047a280cb2d1755488afd1bfd60b",
+  "status": "APPROVED",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "OBSERVATION",
+      "category": "execution-scope",
+      "description": "V4 log ran entire fuzz library (--lib), not fresh canonical all-workspace. Fresh canonical all-workspace including fuzz member (V82) is in progress in integrator per manifest.",
+      "disposition": "owner_approved_debt",
+      "file": null,
+      "line": null
+    }
+  ],
+  "verification_executions": [
+    {
+      "version": "V2",
+      "label": "RED",
+      "command": "cargo test -p velvet-ballistics-fuzz --lib yaml_target::tests::large_yaml_exceeds_4096_bound",
+      "result": "FAILED",
+      "exit_code": 101,
+      "detail": "panic: event count 5010 exceeds max payload bound at yaml_target.rs:65:17"
+    },
+    {
+      "version": "V3",
+      "label": "GREEN",
+      "command": "cargo test -p velvet-ballistics-fuzz --lib yaml_target::tests::large_yaml_exceeds_4096_bound",
+      "result": "PASSED",
+      "exit_code": 0,
+      "detail": "1 passed; 0 failed; 0 ignored; 2 filtered out"
+    },
+    {
+      "version": "V4",
+      "label": "ALL_LIBRARY",
+      "command": "cargo test -p velvet-ballistics-fuzz --lib",
+      "result": "PASSED",
+      "exit_code": 0,
+      "detail": "3 passed; 0 failed; 0 ignored"
+    }
+  ],
+  "test_properties": {
+    "test_name": "large_yaml_exceeds_4096_bound",
+    "file": "fuzz/src/yaml_target.rs",
+    "yaml_constructed": "valid sequence of 5001 scalars",
+    "event_count": 5010,
+    "calls_production_fuzz_target": true,
+    "uses_catch_unwind": false,
+    "uses_should_panic": false,
+    "uses_ignore": false,
+    "assertion_shape": "exact >4096 and <=100000 inequalities",
+    "bounded_execution": true,
+    "deterministic": true
+  }
+}

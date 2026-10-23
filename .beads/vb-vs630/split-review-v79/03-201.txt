@@ -1,0 +1,97 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/issuance_boundary_tests.rs
+201:     if let Some(crate::JournalEvent::RunAdmission {
+202:         artifact_digest, ..
+203:     }) = accepted_event
+204:     {
+205:         assert_eq!(*artifact_digest, reopened_inputs.artifact_digest());
+206:     }
+207: 
+208:     // Submit a second run after reopen
+209:     let submission2 =
+210:         make_submission_for_run(RuntimePolicy::Journaled, 88, vb_core::RunId::new(200))?;
+211:     journal.commit_run_submission(&submission2, RuntimePolicy::Journaled)?;
+212:     assert_eq!(read_counter(&journal)?, Some(2));
+213:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(200), 2)?;
+214: 
+215:     // First run's typed records remain exact equal after second submission
+216:     assert_eq!(
+217:         journal.run_inputs(vb_core::RunId::new(100))?.as_ref(),
+218:         Some(&reopened_inputs)
+219:     );
+220:     assert_eq!(
+221:         journal
+222:             .compiled_ir(reopened_inputs.artifact_digest())?
+223:             .as_ref(),
+224:         Some(&reopened_compiled)
+225:     );
+226:     assert_eq!(
+227:         journal
+228:             .workflow_source(reopened_inputs.source_digest())?
+229:             .as_ref(),
+230:         Some(&reopened_source)
+231:     );
+232:     assert_eq!(
+233:         journal.run_header(vb_core::RunId::new(100))?.as_ref(),
+234:         Some(&reopened_header)
+235:     );
+236:     let after_second_events = journal.events_for_run(vb_core::RunId::new(100))?;
+237:     assert_eq!(after_second_events, reopened_events);
+238: 
+239:     journal.close()?;
+240:     Ok(())
+241: }
+242: 
+243: /// Bounded concurrent distinct-run CLI submissions produce distinct
+244: /// sequences with no collision.
+245: #[test]
+246: fn cli_bounded_concurrent_submissions() -> TestResult {
+247:     let (_dir, journal) = open_test_journal()?;
+248:     let journal = Arc::new(journal);
+249: 
+250:     let run_configs = [
+251:         (vb_core::RunId::new(100), 10),
+252:         (vb_core::RunId::new(101), 11),
+253:         (vb_core::RunId::new(102), 12),
+254:         (vb_core::RunId::new(103), 13),
+255:     ];
+256: 
+257:     let mut handles = Vec::new();
+258:     for (run, value) in run_configs {
+259:         let journal_clone = Arc::clone(&journal);
+260:         let handle = std::thread::spawn(move || {
+261:             let submission = make_submission_for_run(RuntimePolicy::Strict, value, run)
+262:                 .map_err(|e| format!("make submission failed: {e}"))?;
+263:             journal_clone
+264:                 .commit_run_submission(&submission, RuntimePolicy::Strict)
+265:                 .map_err(|e| format!("commit failed: {e}"))
+266:         });
+267:         handles.push(handle);
+268:     }
+269: 
+270:     for handle in handles.into_iter() {
+271:         handle
+272:             .join()
+273:             .map_err(|_| "submission thread panicked")?
+274:             .map_err(|e| format!("concurrent submission failed: {e}"))?;
+275:     }
+276: 
+277:     assert_eq!(read_counter(&journal)?, Some(4));
+278: 
+279:     // Verify each run's full binding against its explicit (run,value) pair.
+280:     // Thread scheduling is nondeterministic, so collect actual sequences
+281:     // returned and verify the set {1,2,3,4} appears, not specific run->seq
+282:     // assignments.
+283:     let mut observed_sequences = Vec::new();
+284:     for (run, value) in [
+285:         (vb_core::RunId::new(100), 10),
+286:         (vb_core::RunId::new(101), 11),
+287:         (vb_core::RunId::new(102), 12),
+288:         (vb_core::RunId::new(103), 13),
+289:     ] {
+290:         let actual_seq = verify_concurrent_submission_binding(&journal, run, value)?;
+291:         observed_sequences.push(actual_seq);
+292:     }
+293:     observed_sequences.sort();
+294:     assert_eq!(observed_sequences, vec![1u64, 2, 3, 4]);
+295:     Ok(())
+296: }

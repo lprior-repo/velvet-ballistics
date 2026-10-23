@@ -1,0 +1,12 @@
+ACTUAL SOURCE fuzz/src/yaml_target.rs
+201:             source_map.len() <= 100000,
+202:             "test YAML must stay within default max_nodes, got {}",
+203:             source_map.len()
+204:         );
+205: 
+206:         // This assertion will fail with MAX_FUZZ_PAYLOAD_USIZE=4096 (RED)
+207:         // and pass once the constant is fixed to 100000 (GREEN).
+208:         fuzz_yaml_events(yaml.as_bytes());
+209:         Ok(())
+210:     }
+211: }

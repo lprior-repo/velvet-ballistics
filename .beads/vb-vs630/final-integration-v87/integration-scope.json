@@ -1,0 +1,11 @@
+{
+  "previous_source": "bf03ac4c3eae3476f479f61149939f7b51ec66be",
+  "changed_files": [
+    "crates/vb_storage/src/batch/artifact_sequence.rs"
+  ],
+  "source_file_count": 1850,
+  "failed_V82": "15/17 passed; lint-src manual_inspect failed and test timeout:14534pass4SIGTERM27existing skipped; not accepted",
+  "V84": "coordinator terminated unchanged retry early after inspecting actual lint failure; do not use exit0 signal result as pass",
+  "fixed_source": "local5090 f7826caf inspect_err; unchanged12batch tests; root independent delta review",
+  "native_thread_scheduling": "Next full canonical NEXTEST_TEST_THREADS=16; all cases unchanged, 10min task timeout unchanged, no test skips or gate changes"
+}

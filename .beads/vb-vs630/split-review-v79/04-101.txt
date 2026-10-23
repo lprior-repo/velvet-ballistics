@@ -1,0 +1,62 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/mod.rs
+101:     fn enforce_kind_parity(
+102:         envelope: &crate::RecordEnvelope,
+103:         value: &Self,
+104:     ) -> Result<(), JournalError> {
+105:         if envelope.record_kind != RecordKind::RunInputs.id() {
+106:             return Err(JournalError::RecordKindPayloadMismatch {
+107:                 envelope_kind: envelope.record_kind,
+108:                 payload_kind: RecordKind::RunInputs.id(),
+109:             });
+110:         }
+111:         if envelope.sequence != value.run.get()
+112:             || compute_input_digest(&value.inputs)? != value.input_digest
+113:         {
+114:             return Err(JournalError::PayloadDigestMismatch);
+115:         }
+116:         Ok(())
+117:     }
+118: }
+119: 
+120: impl FjallJournal {
+121:     /// Reads retained inputs with envelope checksum and run identity validation.
+122:     /// The consumer must validate the workflow and artifact binding before use.
+123:     pub fn run_inputs(&self, run: RunId) -> Result<Option<RunInputsRecord>, JournalError> {
+124:         let key = crate::keys::run_header_key(run)?;
+125:         self.decode_optional_with(
+126:             &self.run_inputs,
+127:             &key,
+128:             MAGIC_INDEX_RECORD,
+129:             MAX_RUN_INPUT_BYTES,
+130:             |_, record: &RunInputsRecord| {
+131:                 if record.run == run {
+132:                     Ok(())
+133:                 } else {
+134:                     Err(JournalError::WrongRun {
+135:                         expected: run,
+136:                         actual: record.run,
+137:                     })
+138:                 }
+139:             },
+140:         )
+141:     }
+142: }
+143: 
+144: #[cfg(test)]
+145: mod issuance_binding_test_support;
+146: #[cfg(test)]
+147: mod issuance_boundary_tests;
+148: #[cfg(test)]
+149: mod issuance_failure_tests;
+150: #[cfg(test)]
+151: mod issuance_snapshot_test_support;
+152: #[cfg(test)]
+153: mod issuance_test_support;
+154: #[cfg(test)]
+155: mod issuance_tests;
+156: #[cfg(test)]
+157: mod receipt_tests;
+158: #[cfg(test)]
+159: mod submission_tests;
+160: #[cfg(test)]
+161: mod tests;

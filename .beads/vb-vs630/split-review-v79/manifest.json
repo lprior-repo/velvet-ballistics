@@ -1,0 +1,16 @@
+{
+  "candidate": "c9604f41a300e099a7bbd3a902bbc237faf5d3e4",
+  "source_packets": [
+    ".beads/vb-vs630/split-review-v79/01-001.txt",
+    ".beads/vb-vs630/split-review-v79/01-101.txt",
+    ".beads/vb-vs630/split-review-v79/02-001.txt",
+    ".beads/vb-vs630/split-review-v79/02-101.txt",
+    ".beads/vb-vs630/split-review-v79/03-001.txt",
+    ".beads/vb-vs630/split-review-v79/03-101.txt",
+    ".beads/vb-vs630/split-review-v79/03-201.txt",
+    ".beads/vb-vs630/split-review-v79/04-001.txt",
+    ".beads/vb-vs630/split-review-v79/04-101.txt"
+  ],
+  "actual": "V75source-lengthPASS;V77all1679storagePASS0skips1.524s",
+  "scope": "onlygenuinehelpermodule split; no newassertion orproductionlogic"
+}

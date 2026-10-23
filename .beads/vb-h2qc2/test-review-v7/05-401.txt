@@ -1,0 +1,101 @@
+ACTUAL SOURCE fuzz/Cargo.toml
+401: 
+402: [[bin]]
+403: name = "fuzz_choose_when_parse"
+404: path = "fuzz_targets/fuzz_choose_when_parse.rs"
+405: test = false
+406: doc = false
+407: bench = false
+408: 
+409: [[bin]]
+410: name = "fuzz_diagnostic_code_from_str"
+411: path = "fuzz_targets/fuzz_diagnostic_code_from_str.rs"
+412: test = false
+413: doc = false
+414: bench = false
+415: 
+416: [[bin]]
+417: name = "fuzz_digest_compile"
+418: path = "fuzz_targets/fuzz_digest_compile.rs"
+419: test = false
+420: doc = false
+421: bench = false
+422: 
+423: [[bin]]
+424: name = "fuzz_finish_digest_encoding"
+425: path = "fuzz_targets/fuzz_finish_digest_encoding.rs"
+426: test = false
+427: doc = false
+428: bench = false
+429: 
+430: [[bin]]
+431: name = "fuzz_retry_postcard_codec"
+432: path = "fuzz_targets/fuzz_retry_postcard_codec.rs"
+433: test = false
+434: doc = false
+435: bench = false
+436: 
+437: [[bin]]
+438: name = "fuzz_retry_normalize_ticket"
+439: path = "fuzz_targets/fuzz_retry_normalize_ticket.rs"
+440: test = false
+441: doc = false
+442: bench = false
+443: 
+444: [[bin]]
+445: name = "fuzz_retry_record_attempt"
+446: path = "fuzz_targets/fuzz_retry_record_attempt.rs"
+447: test = false
+448: doc = false
+449: bench = false
+450: 
+451: [[bin]]
+452: name = "fuzz_retry_validate_completion"
+453: path = "fuzz_targets/fuzz_retry_validate_completion.rs"
+454: test = false
+455: doc = false
+456: bench = false
+457: 
+458: [[bin]]
+459: name = "ipc_frame_fuzz"
+460: path = "fuzz_targets/ipc_frame.rs"
+461: test = false
+462: doc = false
+463: bench = false
+464: 
+465: [[bin]]
+466: name = "journal_decode"
+467: path = "fuzz_targets/journal_decode.rs"
+468: test = false
+469: doc = false
+470: bench = false
+471: 
+472: [[bin]]
+473: name = "journal_event_fuzz"
+474: path = "fuzz_targets/journal_event.rs"
+475: test = false
+476: doc = false
+477: bench = false
+478: 
+479: [[bin]]
+480: name = "vb_storage_codec"
+481: path = "fuzz_targets/vb_storage_codec.rs"
+482: test = false
+483: doc = false
+484: bench = false
+485: 
+486: [[bin]]
+487: name = "kind_validation"
+488: path = "fuzz_targets/kind_validation.rs"
+489: test = false
+490: doc = false
+491: bench = false
+492: 
+493: [[bin]]
+494: name = "parse_workflow_source_fuzz"
+495: path = "fuzz_targets/parse_workflow_source_fuzz.rs"
+496: test = false
+497: doc = false
+498: bench = false
+499: 
+500: [[bin]]
