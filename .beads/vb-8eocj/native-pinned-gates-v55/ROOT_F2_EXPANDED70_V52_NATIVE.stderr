@@ -1,0 +1,6 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.49s
+     Running tests/vb_f1_canonical_scalar_do.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f1_canonical_scalar_do-ddd4184b48b00c6d)
+     Running tests/vb_f1_repeat_counter_ownership.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f1_repeat_counter_ownership-3ebeae1116228062)
+     Running tests/vb_f2_remaining_source_preservation.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f2_remaining_source_preservation-f7e35aeba7e5449d)
+     Running tests/vb_f2_source_slot_preservation.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f2_source_slot_preservation-40d3cf0a98e4198a)

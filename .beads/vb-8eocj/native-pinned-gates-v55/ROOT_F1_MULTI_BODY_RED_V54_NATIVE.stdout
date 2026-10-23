@@ -1,0 +1,13 @@
+
+running 2 tests
+test repeat_max1_two_step_body_preserves_sentinels ... FAILED
+test repeat_max3_two_step_body_preserves_sentinels ... FAILED
+
+failures:
+
+failures:
+    repeat_max1_two_step_body_preserves_sentinels
+    repeat_max3_two_step_body_preserves_sentinels
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -1,0 +1,29 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_core)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.02s
+     Running unittests src/lib.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_runtime-e41f7eef45fa4cdf)
+
+thread 'engine::execute_tests::execute_repeat_start_single_attempt_no_panic' (3862715) panicked at crates/vb_runtime/src/engine/execute_tests.rs:72:13:
+workflow validation failed: step StepIdx(1) wrote to repeat counter slot SlotIdx(0) owned by step StepIdx(0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread '<unnamed>' (3864576) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+
+thread '<unnamed>' (3864578) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+
+thread '<unnamed>' (3864580) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+
+thread '<unnamed>' (3864582) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+
+thread '<unnamed>' (3864584) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+
+thread '<unnamed>' (3864586) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+error: test failed, to rerun pass `-p vb_runtime --lib`

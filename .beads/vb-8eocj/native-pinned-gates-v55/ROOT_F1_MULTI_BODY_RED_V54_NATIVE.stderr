@@ -1,0 +1,6 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.28s
+     Running tests/vb_f1_multistep_loop_bodies.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f1_multistep_loop_bodies-587323cd4cbdcf71)
+Error: "canonical source compilation failed: CompileErrors([StepFieldShape { step: 2, field: \"steps\", expected: \"exactly one set step\" }])"
+Error: "canonical source compilation failed: CompileErrors([StepFieldShape { step: 2, field: \"steps\", expected: \"exactly one set step\" }])"
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_f1_multistep_loop_bodies`

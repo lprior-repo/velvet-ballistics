@@ -1,0 +1,21 @@
+
+running 16 tests
+test repeat_body_error_slot_mutated_to_counter ... ok
+test repeat_body_kind_error_handler ... ok
+test repeat_body_kind_retry_check ... ok
+test repeat_body_output_mutated_to_counter ... ok
+test repeat_check_error_slot_mutated_to_counter ... ok
+test repeat_check_next_done ... ok
+test repeat_check_next_none ... ok
+test repeat_counter_ask_resume_foreign_write ... ok
+test repeat_max1_executes_once ... ok
+test repeat_max3_executes_three_times ... ok
+test repeat_owner_error_slot_mutated_to_counter ... ok
+test test_collect_start_foreign_write ... ok
+test test_explicit_reservation_after_owner ... ok
+test test_explicit_reservation_before_owner ... ok
+test test_implicit_counter_writers ... ok
+test test_together_join_foreign_write ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

@@ -1,0 +1,22 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.99s
+     Running unittests src/lib.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_runtime-e41f7eef45fa4cdf)
+
+thread '<unnamed>' (3869773) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread '<unnamed>' (3869775) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+
+thread '<unnamed>' (3869777) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+
+thread '<unnamed>' (3869779) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+
+thread '<unnamed>' (3869781) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
+
+thread '<unnamed>' (3869783) panicked at crates/vb_runtime/src/shard/types.rs:2365:13:
+intentional poison for RA-014 regression test
