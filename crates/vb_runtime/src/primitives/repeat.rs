@@ -91,7 +91,7 @@ pub fn repeat_attempt(
 /// Executes RepeatCheck: increments attempt counter, writes it back.
 /// If `current_attempt >= max_attempts`, jumps to `done` (RepeatFinish).
 /// Otherwise jumps to `next` (which points back to the loop body entry).
-fn repeat_check_with_policy<P: super::body_entry::BodyEntryPolicy>(
+pub(crate) fn repeat_check_with_policy<P: super::body_entry::BodyEntryPolicy>(
     run: &mut RunFrame,
     attempt_slot: SlotIdx,
     done: StepIdx,
@@ -125,23 +125,6 @@ pub fn repeat_check(
     step: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     repeat_check_with_policy::<super::body_entry::LegacyEntry>(run, attempt_slot, done, next, step)
-}
-
-/// Internal deferred-reset variant for owned driver preflight.
-pub(crate) fn repeat_check_deferred(
-    run: &mut RunFrame,
-    attempt_slot: SlotIdx,
-    done: StepIdx,
-    next: Option<StepIdx>,
-    step: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
-    repeat_check_with_policy::<super::body_entry::DeferredOwned>(
-        run,
-        attempt_slot,
-        done,
-        next,
-        step,
-    )
 }
 
 /// Executes RepeatFinish: writes the result value and advances.

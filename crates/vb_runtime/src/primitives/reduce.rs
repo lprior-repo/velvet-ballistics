@@ -91,7 +91,7 @@ pub fn reduce_start(
 
 /// Executes ReduceNext: advances iterator, binds next item to
 /// iterator slot, or exits when all items consumed.
-fn reduce_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
+pub(crate) fn reduce_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     run: &mut RunFrame,
     store: &mut ValueStore,
     iterator_slot: SlotIdx,
@@ -137,27 +137,6 @@ pub fn reduce_next(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     reduce_next_with_policy::<super::body_entry::LegacyEntry>(
-        run,
-        store,
-        iterator_slot,
-        actual_accumulator,
-        body,
-        done,
-        output,
-    )
-}
-
-/// Internal deferred-reset variant for owned driver preflight.
-pub(crate) fn reduce_next_deferred(
-    run: &mut RunFrame,
-    store: &mut ValueStore,
-    iterator_slot: SlotIdx,
-    actual_accumulator: SlotIdx,
-    body: StepIdx,
-    done: StepIdx,
-    output: Option<SlotIdx>,
-) -> Result<vb_core::EngineSignal, EngineError> {
-    reduce_next_with_policy::<super::body_entry::DeferredOwned>(
         run,
         store,
         iterator_slot,

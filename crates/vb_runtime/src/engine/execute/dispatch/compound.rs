@@ -16,12 +16,13 @@ use crate::engine::execute::handlers_compound::{
     handle_repeat_check, handle_repeat_finish, handle_repeat_start,
 };
 use crate::engine::types::{RuntimeEngineResult, RuntimeSignal};
+use crate::primitives::body_entry::BodyEntryPolicy;
 use crate::primitives::collect::CollectStates;
 
 use super::family_invariant;
 
 #[allow(clippy::too_many_arguments)]
-pub(super) fn dispatch_collect(
+pub(super) fn dispatch_collect<P: BodyEntryPolicy>(
     run: &mut RunFrame,
     store: &mut ValueStore,
     collect_states: &mut CollectStates,
@@ -54,7 +55,7 @@ pub(super) fn dispatch_collect(
             collector_slot,
             body,
             done,
-        } => handle_collect_next(run, store, collect_states, *collector_slot, *body, *done),
+        } => handle_collect_next::<P>(run, store, collect_states, *collector_slot, *body, *done),
         CompiledNodeKind::CollectFinish { collector_slot } => handle_collect_finish(
             run,
             collect_states,
@@ -67,7 +68,7 @@ pub(super) fn dispatch_collect(
     }
 }
 
-pub(super) fn dispatch_reduce(
+pub(super) fn dispatch_reduce<P: BodyEntryPolicy>(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
     store: &mut ValueStore,
@@ -96,7 +97,7 @@ pub(super) fn dispatch_reduce(
             accumulator,
             body,
             done,
-        } => handle_reduce_next(
+        } => handle_reduce_next::<P>(
             run,
             store,
             *iterator_slot,
@@ -112,7 +113,7 @@ pub(super) fn dispatch_reduce(
     }
 }
 
-pub(super) fn dispatch_repeat(
+pub(super) fn dispatch_repeat<P: BodyEntryPolicy>(
     run: &mut RunFrame,
     node: &CompiledNode,
 ) -> RuntimeEngineResult<RuntimeSignal> {
@@ -128,7 +129,7 @@ pub(super) fn dispatch_repeat(
             done,
         } => handle_repeat_attempt(run, *attempt_slot, *body, *done),
         CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
-            handle_repeat_check(run, *attempt_slot, *done, node.next, node.id)
+            handle_repeat_check::<P>(run, *attempt_slot, *done, node.next, node.id)
         }
         CompiledNodeKind::RepeatFinish { result } => {
             handle_repeat_finish(run, *result, node.output, node.next, node.id)

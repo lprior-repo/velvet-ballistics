@@ -59,7 +59,7 @@ pub fn for_each_start(
 }
 
 /// Executes ForEachNext: advances the cursor, binds the next item, or exits.
-fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
+pub(crate) fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     run: &mut RunFrame,
     store: &mut ValueStore,
     iterator_slot: SlotIdx,
@@ -107,25 +107,6 @@ pub fn for_each_next(
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     for_each_next_with_policy::<super::body_entry::LegacyEntry>(
-        run,
-        store,
-        iterator_slot,
-        body,
-        done,
-        output,
-    )
-}
-
-/// Internal deferred-reset variant for owned driver preflight.
-pub(crate) fn for_each_next_deferred(
-    run: &mut RunFrame,
-    store: &mut ValueStore,
-    iterator_slot: SlotIdx,
-    body: StepIdx,
-    done: StepIdx,
-    output: Option<SlotIdx>,
-) -> Result<vb_core::EngineSignal, EngineError> {
-    for_each_next_with_policy::<super::body_entry::DeferredOwned>(
         run,
         store,
         iterator_slot,
