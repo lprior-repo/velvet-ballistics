@@ -1,0 +1,11 @@
+
+running 1 test
+test engine::drive::tests::cat_reduce_equal_target::tests::reduce_start_body_equals_done_emits_all_evidence ... FAILED
+
+failures:
+
+failures:
+    engine::drive::tests::cat_reduce_equal_target::tests::reduce_start_body_equals_done_emits_all_evidence
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1989 filtered out; finished in 0.00s
+

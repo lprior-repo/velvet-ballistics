@@ -1,0 +1,32 @@
+
+running 27 tests
+test boolean_var_preserves_its_value ... ok
+test branch_bool_arithmetic_is_type_checked ... ok
+test branch_cannot_shadow_input_or_var_declarations ... ok
+test branch_local_names_cannot_escape ... ok
+test choose_body_reads_parent_declarations_and_shadows_without_leaking ... ok
+test choose_rejects_a_known_non_boolean_expression ... ok
+test declared_input_expression_preserves_derived_taint ... ok
+test declared_input_finish_uses_the_same_binding ... ok
+test declared_input_flows_through_real_do_completion ... ok
+test declared_input_is_available_before_finish ... ok
+test do_after_repeat_cannot_alias_private_counter_or_input ... ok
+test false_choose_does_not_execute_its_body ... ok
+test genuine_alias_and_step_id_ambiguity_is_rejected ... ok
+test ignored_body_controls_remain_rejected ... ok
+test input_boolean_arithmetic_is_rejected_statically ... ok
+test non_scalar_vars_are_not_faked_as_counts ... ok
+test null_var_preserves_its_value ... ok
+test numeric_choose_slot_with_known_integer_type_is_rejected ... ok
+test output_alias_cannot_forge_a_declaration_root ... ok
+test scalar_vars_execute_before_source_steps ... ok
+test selected_branch_do_completes_before_local_expression ... ok
+test sibling_branch_names_are_not_visible ... ok
+test two_differently_typed_inputs_resolve_to_their_own_ports ... ok
+test unknown_var_is_not_a_numeric_slot_error ... ok
+test unselected_branch_never_dispatches_do ... ok
+test vars_remain_namespaced_when_a_bare_alias_matches ... ok
+test wrong_var_type_is_rejected_statically ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

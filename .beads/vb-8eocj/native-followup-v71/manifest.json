@@ -1,0 +1,102 @@
+[
+  {
+    "file": "ROOT_F1_LEXICAL27_V67_NATIVE.json",
+    "sha256": "4afd9018b025e6bff086729be544d0790e2ba87de0fb7b6cbc41fa8b16730d72"
+  },
+  {
+    "file": "ROOT_F1_LEXICAL27_V67_NATIVE.stdout",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "ROOT_F1_LEXICAL27_V67_NATIVE.stderr",
+    "sha256": "7f045e0f084ea0af00d3e883dc88074b18bce64b2fe79171fcafe6ad9ade7636"
+  },
+  {
+    "file": "ROOT_F1_LEXICAL27_V67_NATIVE.source-before.json",
+    "sha256": "6a4bdeda1f8d224aa567abcce24e416ec0d2fedb2d9ecf6c2fd36e869b64bb5a"
+  },
+  {
+    "file": "ROOT_F1_LEXICAL27_V67_NATIVE.source-after.json",
+    "sha256": "b77cbd0f534f31a6309ab23b6d952b4dc64623e6af96f81eeafc64d82f43a0d3"
+  },
+  {
+    "file": "ROOT_F1_LEXICAL27_V68_NATIVE.json",
+    "sha256": "1e3a17fb43f5001931eeba9aa9a63ce2f5d3386609361546aea87f111eaca09b"
+  },
+  {
+    "file": "ROOT_F1_LEXICAL27_V68_NATIVE.stdout",
+    "sha256": "851550d64c97b30fa99f21c1330f298ab396a684e8a0cf46852cddf27f384392"
+  },
+  {
+    "file": "ROOT_F1_LEXICAL27_V68_NATIVE.stderr",
+    "sha256": "8a2d5733eb5e89e49cbd1a02fc76ab8cf0846a4d3f6cb4e2253501cf439cb785"
+  },
+  {
+    "file": "ROOT_F1_LEXICAL27_V68_NATIVE.source-before.json",
+    "sha256": "2a6fae52c1dd5683dce04f1094b72f977ad065ddae9e2ac167d37a09c50a044b"
+  },
+  {
+    "file": "ROOT_F1_LEXICAL27_V68_NATIVE.source-after.json",
+    "sha256": "879d9d3546801909418b66d35e31ad714a9229cc9cc7a8a17dc83e3da54b4a2b"
+  },
+  {
+    "file": "ROOT_F1_COUNTER19_LEXICAL27_V69_NATIVE.json",
+    "sha256": "5c7794333dee1f173f5c371c8150e29133aea02b5a6063041928b2c365697baf"
+  },
+  {
+    "file": "ROOT_F1_COUNTER19_LEXICAL27_V69_NATIVE.stdout",
+    "sha256": "0fd80c4691abe594a173905b20c8297f848f73598c7f385997695f3dc9e477a9"
+  },
+  {
+    "file": "ROOT_F1_COUNTER19_LEXICAL27_V69_NATIVE.stderr",
+    "sha256": "f1fe98c4339a5db797252e87059c0434e216f52edd31533bc8ac7a20c912be9e"
+  },
+  {
+    "file": "ROOT_F1_COUNTER19_LEXICAL27_V69_NATIVE.source-before.json",
+    "sha256": "72e7502441abae076a3910dcc1940a9a368a7cf92f104f63da3bdbcafa4b4ae5"
+  },
+  {
+    "file": "ROOT_F1_COUNTER19_LEXICAL27_V69_NATIVE.source-after.json",
+    "sha256": "eddaae38a7e7667586a573e08d6a8b565bbc3b3632210da841f0a2bbb2268eb6"
+  },
+  {
+    "file": "ROOT_F2_REDUCE_EQUAL_TARGET_RED_V70_NATIVE.json",
+    "sha256": "5c7cf98e33d7d2db8817321243a86cf50535fe69ed7b2f4e68a3c80f3b12d65a"
+  },
+  {
+    "file": "ROOT_F2_REDUCE_EQUAL_TARGET_RED_V70_NATIVE.stdout",
+    "sha256": "9b6aeaae435b2885270682395024e7ad1f24c96185ffefb5d61ca06f40921229"
+  },
+  {
+    "file": "ROOT_F2_REDUCE_EQUAL_TARGET_RED_V70_NATIVE.stderr",
+    "sha256": "5197ee967702bc4773fd32a14db20833f031ad2f60fe5ecec727a535dd850abc"
+  },
+  {
+    "file": "ROOT_F2_REDUCE_EQUAL_TARGET_RED_V70_NATIVE.source-before.json",
+    "sha256": "77aa5a41c0c97a3d5efd32a58d0dfb8ea017e772c9899b875b585cb83949e6e8"
+  },
+  {
+    "file": "ROOT_F2_REDUCE_EQUAL_TARGET_RED_V70_NATIVE.source-after.json",
+    "sha256": "c123fb41b173f55ebed715aa545f1c845b2381309f0f8d8be0c353f15e117c42"
+  },
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V71_NATIVE.json",
+    "sha256": "52b23a419b76297eca7eca5ecf1843c1b3c9163ff29582489efa2ecce362eb62"
+  },
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V71_NATIVE.stdout",
+    "sha256": "d31fd1fa65c5977c5cb79e3ce4837c5a0c8341c8c6ceb97662f3fdf7336eac77"
+  },
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V71_NATIVE.stderr",
+    "sha256": "8f963e9b2e4670f0552eda83f27bc1796d77542619ca9fc26d3d4f56331c9cea"
+  },
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V71_NATIVE.source-before.json",
+    "sha256": "c534a7f79a9467fa81d080bd682ee2642ed7f249317d94cb7bd86c480fbf7f70"
+  },
+  {
+    "file": "ROOT_F1_CORE_COMPILE_LIB_V71_NATIVE.source-after.json",
+    "sha256": "fde9479a15f33795e1e62d7aafc7822c0e0f09413095a4a5b0135fbbea0508bc"
+  }
+]

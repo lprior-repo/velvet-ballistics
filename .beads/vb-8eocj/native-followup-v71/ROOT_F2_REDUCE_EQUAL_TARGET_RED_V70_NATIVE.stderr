@@ -1,0 +1,8 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_core)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.78s
+     Running unittests src/lib.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_runtime-e41f7eef45fa4cdf)
+Error: "expected 3 SlotWritten events, got 1"
+error: test failed, to rerun pass `-p vb_runtime --lib`
