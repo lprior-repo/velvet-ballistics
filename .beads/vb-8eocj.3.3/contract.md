@@ -17,3 +17,5 @@
 **Test plan:** Strong typed negative tests; unchanged compiler-source max1/max3 positive plan. Historical unconditional observational probe removed from autodiscovery after preserving exact .beads historical copy, replaced by strong regressions.
 
 **Status:** No closure claim.
+
+The validator now recognizes AskResume.answer as a host-written slot, extending the repeat counter foreign-write detection to cover this additional write path alongside the existing writer inventory.

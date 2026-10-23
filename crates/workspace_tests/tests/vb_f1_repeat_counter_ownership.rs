@@ -430,3 +430,67 @@ fn repeat_body_kind_error_handler() -> Result<(), Box<dyn std::error::Error + Se
     let result = CompiledWorkflow::try_from_parts(parts);
     expect_repeat_counter_foreign_write(result, owner, body, counter_slot)
 }
+
+#[test]
+fn repeat_counter_ask_resume_foreign_write() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+{
+    let src = REPEAT_SOURCE.replace(
+        "  - id: bounded_repeat",
+        r#"  - id: query
+    ask:
+      prompt: "0"
+  - id: bounded_repeat"#,
+    );
+
+    let workflow = compile_workflow(src.as_bytes()).map_err(|e| format!("{e:?}"))?;
+
+    let mut parts = workflow.to_parts();
+
+    let (owner, _body, counter_slot, _body_output) =
+        find_repeat_slots(&workflow).ok_or("missing repeat slots")?;
+
+    let ask_resume_id = parts
+        .nodes
+        .iter()
+        .find(|n| matches!(&n.kind, CompiledNodeKind::AskResume { .. }))
+        .map(|n| n.id)
+        .ok_or("AskResume node not found")?;
+
+    let ask_node = parts
+        .nodes
+        .iter()
+        .find(|n| n.id == ask_resume_id)
+        .ok_or("AskResume node not found")?;
+    assert_ne!(
+        ask_node.output,
+        Some(counter_slot),
+        "original output should not be counter slot"
+    );
+
+    let original_output = ask_node.output;
+
+    for node in &mut parts.nodes {
+        if node.id == ask_resume_id {
+            if let CompiledNodeKind::AskResume { answer } = &mut node.kind {
+                *answer = counter_slot;
+            }
+        }
+    }
+
+    let ask_node_after = parts
+        .nodes
+        .iter()
+        .find(|n| n.id == ask_resume_id)
+        .ok_or("AskResume node not found")?;
+    assert_eq!(
+        ask_node_after.output, original_output,
+        "output should stay the same after mutation"
+    );
+
+    expect_repeat_counter_foreign_write(
+        CompiledWorkflow::try_from_parts(parts),
+        owner,
+        ask_resume_id,
+        counter_slot,
+    )
+}
