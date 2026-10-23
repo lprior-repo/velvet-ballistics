@@ -1,0 +1,100 @@
+old-source:301: 
+old-source:302:     /// Dequeues an action ticket in FIFO order.
+old-source:303:     ///
+old-source:304:     /// Returns `Some(ticket)` if an item was available.
+old-source:305:     /// Returns `None` if the queue is empty.
+old-source:306:     #[must_use]
+old-source:307:     pub fn dequeue(&self) -> Option<ActionTicket> {
+old-source:308:         let mut inner = match self.inner.lock() {
+old-source:309:             Ok(guard) => guard,
+old-source:310:             Err(poisoned) => poisoned.into_inner(),
+old-source:311:         };
+old-source:312:         inner.items.pop_front()
+old-source:313:     }
+old-source:314: 
+old-source:315:     /// Returns the number of items currently in the queue.
+old-source:316:     #[must_use]
+old-source:317:     pub fn len(&self) -> usize {
+old-source:318:         match self.inner.lock() {
+old-source:319:             Ok(guard) => guard.items.len(),
+old-source:320:             Err(poisoned) => poisoned.into_inner().items.len(),
+old-source:321:         }
+old-source:322:     }
+old-source:323: 
+old-source:324:     /// Returns `true` if the queue contains no items.
+old-source:325:     #[must_use]
+old-source:326:     pub fn is_empty(&self) -> bool {
+old-source:327:         self.len() == 0
+old-source:328:     }
+old-source:329: 
+old-source:330:     /// Returns `true` if the queue is at capacity.
+old-source:331:     #[must_use]
+old-source:332:     pub fn is_full(&self) -> bool {
+old-source:333:         self.len() >= self.capacity.get()
+old-source:334:     }
+old-source:335: 
+old-source:336:     /// Returns the number of slots available for new items.
+old-source:337:     #[must_use]
+old-source:338:     pub fn remaining_capacity(&self) -> usize {
+old-source:339:         self.capacity.get().saturating_sub(self.len())
+old-source:340:     }
+old-source:341: 
+old-source:342:     /// Returns the fixed capacity of this queue.
+old-source:343:     #[must_use]
+old-source:344:     pub fn capacity(&self) -> usize {
+old-source:345:         self.capacity.get()
+old-source:346:     }
+old-source:347: }
+old-source:348: 
+old-source:349: fn parse_capacity(capacity: usize) -> Result<ActionQueueCapacity, ActionQueueError> {
+old-source:350:     if capacity == 0 {
+old-source:351:         return Err(ActionQueueError::InvalidCapacity {
+old-source:352:             requested: capacity,
+old-source:353:             reason: InvalidActionQueueCapacity::Zero,
+old-source:354:         });
+old-source:355:     }
+old-source:356: 
+old-source:357:     if capacity > MAX_ACTION_COMPLETION_QUEUE_CAPACITY {
+old-source:358:         return Err(ActionQueueError::InvalidCapacity {
+old-source:359:             requested: capacity,
+old-source:360:             reason: InvalidActionQueueCapacity::AboveMaximum {
+old-source:361:                 maximum: MAX_ACTION_COMPLETION_QUEUE_CAPACITY,
+old-source:362:             },
+old-source:363:         });
+old-source:364:     }
+old-source:365: 
+old-source:366:     Ok(ActionQueueCapacity(capacity))
+old-source:367: }
+old-source:368: 
+old-source:369: /// Returns the backpressure threshold for a given capacity.
+old-source:370: ///
+old-source:371: /// The threshold is the smallest integer `>= capacity * 8 / 10` (ceiling of 80%),
+old-source:372: /// with a minimum of 1 so even a capacity-1 queue still emits a warning at depth 1.
+old-source:373: /// Uses checked arithmetic; if `capacity * 8` would overflow `usize`, the function
+old-source:374: /// falls back to `capacity` itself (which is already > the would-be threshold
+old-source:375: /// in any realistic capacity that could overflow).
+old-source:376: fn backpressure_threshold(capacity: ActionQueueCapacity) -> usize {
+old-source:377:     let raw = capacity.get();
+old-source:378:     // INVARIANT: ceiling division `ceil(raw * 8 / 10) = (raw * 8 + 9) / 10` is
+old-source:379:     // computed via checked arithmetic so that capacity values near `usize::MAX / 8`
+old-source:380:     // cannot wrap. On overflow we return `raw` (the original capacity) which is
+old-source:381:     // always >= any valid threshold for inputs the queue can hold.
+old-source:382:     let threshold = usize::checked_mul(raw, 8)
+old-source:383:         .and_then(|scaled| usize::checked_add(scaled, 9))
+old-source:384:         .and_then(|numerator| usize::checked_div(numerator, 10));
+old-source:385:     match threshold {
+old-source:386:         Some(value) => value.max(1),
+old-source:387:         None => raw,
+old-source:388:     }
+old-source:389: }
+old-source:390: 
+old-source:391: #[cfg(test)]
+old-source:392: mod unit_tests {
+old-source:393:     use super::*;
+old-source:394:     use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+old-source:395: 
+old-source:396:     fn make_ticket(seq: u32) -> ActionTicket {
+old-source:397:         ActionTicket {
+old-source:398:             run: RunId::new(1),
+old-source:399:             step: StepIdx::new(0),
+old-source:400:             seq: SeqNo::new(u64::from(seq)),
