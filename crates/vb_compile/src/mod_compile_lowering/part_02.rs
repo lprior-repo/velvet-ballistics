@@ -31,7 +31,7 @@ pub(super) fn lower_canonical_step(
     outputs: &mut HashMap<String, SlotIdx>,
     step_outputs: &mut HashMap<String, SlotIdx>,
     step_names: &mut Vec<Box<str>>,
-    prior_types: &mut HashMap<String, ExprType>,
+    slot_types: &mut HashMap<SlotIdx, ExprType>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let result = match &step.primitive {
@@ -49,13 +49,13 @@ pub(super) fn lower_canonical_step(
                 next,
                 outputs,
                 step_outputs,
-                prior_types,
+                slot_types,
                 builder,
             )?;
             outputs.insert(output.to_owned(), slot);
             step_outputs.insert(step.id.to_string(), slot);
             builder.record_slot(slot);
-            prior_types.insert(output.to_owned(), inferred);
+            slot_types.insert(slot, inferred);
             Ok(())
         }
         crate::StepPrimitive::Do { action, input } => {

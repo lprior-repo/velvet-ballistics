@@ -2,36 +2,177 @@
 //! Canonical expression type inference using shared vb_expr type checker.
 //!
 //! Converts canonical ParsedExpression to vb_expr ExprAst for shared type
-//! checking. Maintains per-Set step type context for reference resolution.
+//! checking. Uses slot-based type identity: types are stored by SlotIdx and
+//! resolved through the canonical reference resolver to ensure consistent
+//! types for known aliases and step forms.
 
 use crate::CompileError;
 use crate::expression::{
     BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp,
 };
 use std::collections::HashMap;
-use vb_expr::expr_parser::types::{ExprAst, ExprLiteral, ExprHelper};
-use vb_expr::expr_typecheck::{TypeContext, ExprType, typecheck_expr};
+use vb_core::SlotIdx;
+use vb_expr::expr_parser::types::{ExprAst, ExprHelper, ExprLiteral};
+use vb_expr::expr_typecheck::{ExprType, TypeContext, typecheck_expr};
 
 /// Type-checks a canonical expression and returns its inferred type.
 /// Unknown future references type as Unknown (dynamic), but known static type
 /// errors (e.g., bool + number) are rejected.
 ///
-/// Prior types are mapped using canonical reference names ($prefix) to match
-/// how ParsedExpression::Reference stores names, ensuring proper TypeContext
-/// lookup for known types (bool, i64, f64, etc.).
+/// Types are resolved by SlotIdx: references are resolved through the canonical
+/// resolver to their actual slot, and the type is looked up from the slot
+/// type map. This ensures that known aliases and step forms for the same
+/// slot produce consistent types.
 pub(super) fn infer_canonical_expr_type(
     expr: &ParsedExpression,
-    prior_types: &HashMap<String, ExprType>,
+    slot_types: &HashMap<SlotIdx, ExprType>,
+    outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
 ) -> Result<ExprType, CompileError> {
     let ast = to_vb_expr_ast(expr)?;
-    let mut context = TypeContext::new();
-    // Prior types stored as bare names (e.g., "valid"); TypeContext lookup
-    // requires canonical reference names with $ prefix to match Reference.
-    for (name, ty) in prior_types {
-        let canonical = format!("${name}");
-        context.add_variable(canonical.into(), *ty);
-    }
+    let context = build_type_context(slot_types, outputs, step_outputs)?;
     typecheck_expr(&ast, &context).map_err(vb_expr_error_to_compile)
+}
+
+/// Validates that all references in the expression resolve to known slots.
+/// Returns an error for unknown or ambiguous references before type checking,
+/// so that name errors take precedence over misleading type errors.
+pub(super) fn validate_canonical_references(
+    expr: &ParsedExpression,
+    outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
+) -> Result<(), CompileError> {
+    for (reference, _) in collect_references(expr) {
+        let body = reference.strip_prefix('$').unwrap_or(&reference);
+        if body.starts_with("input.")
+            || body.starts_with("vars.")
+            || body.starts_with("secrets.")
+        {
+            continue;
+        }
+        let _slot = resolve_reference_slot(body, &reference, outputs, step_outputs)?;
+    }
+    Ok(())
+}
+
+/// Collects all reference names from an expression tree.
+fn collect_references(expr: &ParsedExpression) -> Vec<(String, bool)> {
+    let mut refs = Vec::new();
+    collect_refs_inner(expr, &mut refs);
+    refs
+}
+
+fn collect_refs_inner(expr: &ParsedExpression, refs: &mut Vec<(String, bool)>) {
+    match expr {
+        ParsedExpression::Reference(name) => {
+            let is_explicit_step = name.contains(".step.") || name.contains(".steps.");
+            refs.push((name.to_string(), is_explicit_step));
+        }
+        ParsedExpression::Unary { op: _, expr: inner } => {
+            collect_refs_inner(inner, refs);
+        }
+        ParsedExpression::Binary {
+            op: _,
+            left,
+            right,
+        } => {
+            collect_refs_inner(left, refs);
+            collect_refs_inner(right, refs);
+        }
+        ParsedExpression::HelperCall { name: _, args } => {
+            for arg in args {
+                collect_refs_inner(arg, refs);
+            }
+        }
+        ParsedExpression::Literal(_) => {}
+    }
+}
+
+/// Resolves a reference body to its slot using the canonical resolver.
+fn resolve_reference_slot(
+    body: &str,
+    reference: &str,
+    outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
+) -> Result<SlotIdx, CompileError> {
+    if let Some((root, tail)) = body.split_once('.') {
+        if root == "step" || root == "steps" {
+            return resolve_explicit_step_id(tail, reference, step_outputs);
+        }
+    }
+    resolve_direct_name(body, reference, outputs, step_outputs)
+}
+
+fn resolve_explicit_step_id(
+    step_id: &str,
+    reference: &str,
+    step_outputs: &HashMap<String, SlotIdx>,
+) -> Result<SlotIdx, CompileError> {
+    step_outputs.get(step_id).copied().ok_or(
+        CompileError::UnknownReferenceName {
+            kind: "step",
+            reference: Box::from(reference),
+            name: Box::from(step_id),
+        },
+    )
+}
+
+fn resolve_direct_name(
+    name: &str,
+    reference: &str,
+    outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
+) -> Result<SlotIdx, CompileError> {
+    let in_outputs = outputs.get(name).copied();
+    let in_step_outputs = step_outputs.get(name).copied();
+
+    match (in_outputs, in_step_outputs) {
+        (Some(slot), Some(same_slot)) if slot == same_slot => Ok(slot),
+        (Some(slot), None) => Ok(slot),
+        (None, Some(slot)) => Ok(slot),
+        (Some(_), Some(_)) => Err(CompileError::ExpressionLoweringUnsupported {
+            feature: format!(
+                "ambiguous reference '{}' found in both output names and step IDs with different slots",
+                name
+            ).into(),
+        }),
+        (None, None) => Err(CompileError::UnknownReferenceName {
+            kind: "output",
+            reference: Box::from(reference),
+            name: Box::from(name),
+        }),
+    }
+}
+
+/// Builds a TypeContext by resolving all known references to their slots
+/// and mapping them to their types via the slot type map.
+fn build_type_context(
+    slot_types: &HashMap<SlotIdx, ExprType>,
+    outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
+) -> Result<TypeContext, CompileError> {
+    let mut context = TypeContext::new();
+
+    // Register all output names
+    for (name, slot) in outputs {
+        if let Some(ty) = slot_types.get(slot) {
+            let canonical = format!("${name}");
+            context.add_variable(canonical.into(), *ty);
+        }
+    }
+
+    // Register all step IDs
+    for (step_id, slot) in step_outputs {
+        if let Some(ty) = slot_types.get(slot) {
+            // Register as $step.<id> and $steps.<id>
+            let step_ref = format!("$step.{step_id}");
+            let steps_ref = format!("$steps.{step_id}");
+            context.add_variable(step_ref.into(), *ty);
+            context.add_variable(steps_ref.into(), *ty);
+        }
+    }
+
+    Ok(context)
 }
 
 /// Converts a vb_expr type-checking error to a CompileError variant.
