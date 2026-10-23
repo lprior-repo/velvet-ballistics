@@ -12,3 +12,4 @@ mod vb_f1_scalar_do_support;
 mod do_action;
 mod negative;
 mod positive;
+mod type_identity;
