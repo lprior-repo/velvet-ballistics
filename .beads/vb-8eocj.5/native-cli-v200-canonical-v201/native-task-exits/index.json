@@ -1,0 +1,205 @@
+{
+  "start_ms": 1792774933326.9612,
+  "end_ms": 1792780105498.7275,
+  "records": [
+    {
+      "exitCode": 0,
+      "hash": "9e16533b8b297f146a2619a4b26e39933c8f139dfcb634977001ad042a3c81c3",
+      "lastRunTime": 1792777839873,
+      "target": "velvet-ballistics:agent-cli-contract"
+    },
+    {
+      "exitCode": 0,
+      "hash": "a1ad98d54f69702dab1b594d408d4d9abedc4b3716a02e69a9f84a66f6be193c",
+      "lastRunTime": 1792777865262,
+      "target": "velvet-ballistics:banned-token-gates"
+    },
+    {
+      "exitCode": 0,
+      "hash": "1fe6d51b40c9c22e837eac7e025ef898433eed341f77135ef019e71f02e73700",
+      "lastRunTime": 1792777839877,
+      "target": "velvet-ballistics:beads-server-mode"
+    },
+    {
+      "exitCode": 0,
+      "hash": "a2f41a93e955dc1b1eaa6312dabb4d88df2fedbc0cc7f4b361b65fecf5f51eba",
+      "lastRunTime": 1792778495321,
+      "target": "velvet-ballistics:bench-build"
+    },
+    {
+      "exitCode": 1,
+      "hash": "",
+      "lastRunTime": 1792778515277,
+      "target": "velvet-ballistics:benchmark-regression-policy"
+    },
+    {
+      "exitCode": 0,
+      "hash": "3796946f323444eb58dbd878b2219660ab26aed2dd509c9067c3701574204c72",
+      "lastRunTime": 1792777874608,
+      "target": "velvet-ballistics:check"
+    },
+    {
+      "exitCode": 0,
+      "hash": "2dde1ab6179876bd65ca442979ba345150118f3d31a1b3fb1b80c6fa73951f0d",
+      "lastRunTime": 1792778464253,
+      "target": "velvet-ballistics:coverage"
+    },
+    {
+      "exitCode": 0,
+      "hash": "",
+      "lastRunTime": 1792778416582,
+      "target": "velvet-ballistics:doc"
+    },
+    {
+      "exitCode": 0,
+      "hash": "9d1b6d745a5bc7f06af173371439092e270d56d02e02a2a2a670c366c12c54d5",
+      "lastRunTime": 1792778411468,
+      "target": "velvet-ballistics:doc-test"
+    },
+    {
+      "exitCode": 0,
+      "hash": "1b8df9ec67c53b3bf958b7f4d9251deda1988f9382ee19424b32abe1e5c5468a",
+      "lastRunTime": 1792778420071,
+      "target": "velvet-ballistics:feature-powerset"
+    },
+    {
+      "exitCode": 0,
+      "hash": "768a3dde78e1c3d7023579316dd9f8854d7d7fa218fbd44cec193f221daa751b",
+      "lastRunTime": 1792777841474,
+      "target": "velvet-ballistics:fmt"
+    },
+    {
+      "exitCode": 0,
+      "hash": "",
+      "lastRunTime": 1792777851470,
+      "target": "velvet-ballistics:fuzz-proptest"
+    },
+    {
+      "exitCode": 0,
+      "hash": "",
+      "lastRunTime": 1792776335990,
+      "target": "velvet-ballistics:fuzz-regress"
+    },
+    {
+      "exitCode": 0,
+      "hash": "bbeb46a45dfefcf1642360b4a3dad35856eb4e7b8927f388f03f623e08d58c1c",
+      "lastRunTime": 1792778649788,
+      "target": "velvet-ballistics:fuzz-smoke"
+    },
+    {
+      "exitCode": 0,
+      "hash": "",
+      "lastRunTime": 1792777545367,
+      "target": "velvet-ballistics:fuzz-tsan"
+    },
+    {
+      "exitCode": 101,
+      "hash": "",
+      "lastRunTime": 1792778411550,
+      "target": "velvet-ballistics:hardened-build"
+    },
+    {
+      "exitCode": 0,
+      "hash": "986e2feb7c152091b0acd8bd643d16647949ee77e55d258d39d13488780c0e78",
+      "lastRunTime": 1792777841502,
+      "target": "velvet-ballistics:hot-cold-forbidden-apis"
+    },
+    {
+      "exitCode": 0,
+      "hash": "68e4602b8641df05314d86fb83d2f48b4c7b9c8b63a33726ae4cf5c5878937ed",
+      "lastRunTime": 1792777834392,
+      "target": "velvet-ballistics:ignored-fallible-results"
+    },
+    {
+      "exitCode": 0,
+      "hash": "9e5e33f1ee636de91aba0a4577cdf4d68a8cf93aa6c8094adcb93513483c37ba",
+      "lastRunTime": 1792777876572,
+      "target": "velvet-ballistics:lint-src"
+    },
+    {
+      "exitCode": 0,
+      "hash": "afb3facfae7ef9b5aeeac85988567085c348657626521d46ffbe02dc1043ee39",
+      "lastRunTime": 1792778445095,
+      "target": "velvet-ballistics:miri"
+    },
+    {
+      "exitCode": 0,
+      "hash": "",
+      "lastRunTime": 1792778464987,
+      "target": "velvet-ballistics:mutants-smoke"
+    },
+    {
+      "exitCode": 0,
+      "hash": "d0ace1d6576643a1569b6ee257d155da20cf33409afc75f9a72eb54006afb7f7",
+      "lastRunTime": 1792777839864,
+      "target": "velvet-ballistics:nightly-feature-gate"
+    },
+    {
+      "exitCode": 0,
+      "hash": "e80f3ed39a4cc6e23bb9922299b74572fe2670c53968ef572623d58d8acc81c4",
+      "lastRunTime": 1792777808248,
+      "target": "velvet-ballistics:panic-surface"
+    },
+    {
+      "exitCode": 0,
+      "hash": "001b893a1f1e0e7c31dadf26b7ed60ed38d981cd7151c16e791620e17cc5fbf6",
+      "lastRunTime": 1792777923917,
+      "target": "velvet-ballistics:sanitizer-address-check"
+    },
+    {
+      "exitCode": 0,
+      "hash": "193267b5f66223d125a26f461f4e4643656d43dda90bdff8ad7ece2ced37bc79",
+      "lastRunTime": 1792777869378,
+      "target": "velvet-ballistics:source-length"
+    },
+    {
+      "exitCode": 0,
+      "hash": "d5891e5aae749a856bf5d65cbfa1b7775f3dde8f9af46c7e7bee62c453c0c433",
+      "lastRunTime": 1792778410091,
+      "target": "velvet-ballistics:test"
+    },
+    {
+      "exitCode": 0,
+      "hash": "1ae928aed234744c89bdf68e35550c580c82cd23bc9a6dc86f22687026ab3e4d",
+      "lastRunTime": 1792777865155,
+      "target": "velvet-ballistics:test-integrity"
+    },
+    {
+      "exitCode": 0,
+      "hash": "558b0de73a446f2a76fb29e76e1f8380caa90b2074512782cd340e9497aa12c9",
+      "lastRunTime": 1792777808309,
+      "target": "velvet-ballistics:unsafe-audit"
+    },
+    {
+      "exitCode": 0,
+      "hash": "",
+      "lastRunTime": 1792777863809,
+      "target": "velvet-ballistics:verify-kani"
+    },
+    {
+      "exitCode": 0,
+      "hash": "",
+      "lastRunTime": 1792777804879,
+      "target": "velvet-ballistics:verify-kani-vb-validate"
+    },
+    {
+      "exitCode": 0,
+      "hash": "",
+      "lastRunTime": 1792777864828,
+      "target": "velvet-ballistics:verify-loom"
+    },
+    {
+      "exitCode": 0,
+      "hash": "",
+      "lastRunTime": 1792777862370,
+      "target": "velvet-ballistics:verify-verus"
+    },
+    {
+      "exitCode": 0,
+      "hash": "29cafe54e81b4945006e8e68a4da69fc6cf4717b61a24c9490d3ae52ab3cc122",
+      "lastRunTime": 1792777839886,
+      "target": "velvet-ballistics:workspace-assertions"
+    }
+  ],
+  "limit": "Only timestamp-bound completed lastRun records; interrupted task absent, cached tasks outside window excluded."
+}

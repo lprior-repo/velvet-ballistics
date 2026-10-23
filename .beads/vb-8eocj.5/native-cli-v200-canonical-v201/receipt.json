@@ -43,5 +43,21 @@
       "verdict": "RED_STALE_EVIDENCE"
     }
   ],
-  "correction": "Earlier task-completion markers are not successful exit receipts. These2 stages are RED, notPASS. Raw original logs unchanged."
+  "correction": "Earlier task-completion markers are not successful exit receipts. These2 stages are RED, notPASS. Raw original logs unchanged.",
+  "timestamp_bound_task_records": {
+    "count": 33,
+    "successes": 31,
+    "failures": [
+      {
+        "target": "hardened-build",
+        "exitCode": 101
+      },
+      {
+        "target": "benchmark-regression-policy",
+        "exitCode": 1
+      }
+    ],
+    "path": "native-task-exits/index.json",
+    "limit": "Only completed lastRun records whose timestamps fall within exact V201 before/after capture; cached older tasks/interrupted Kani absent."
+  }
 }

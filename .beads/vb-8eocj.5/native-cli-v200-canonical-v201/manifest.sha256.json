@@ -1,8 +1,8 @@
 [
   {
     "path": "README.md",
-    "bytes": 1139,
-    "sha256": "a2ee6eea4cd374e4b3c4a4e216b9a3b1501abaa51213ed7f90d1d5422659d5af"
+    "bytes": 1374,
+    "sha256": "51bc61defccfb0291f88c748837f9578bae08b99d78720b2f2d7d202f519be98"
   },
   {
     "path": "ROOT_CLI_BINARY_V201.after.json",
@@ -75,9 +75,179 @@
     "sha256": "1eb2bbe323f18088b03bc4f5bb21e600f07029a2d0d10a707dfa671ba12ed7d1"
   },
   {
+    "path": "native-task-exits/agent-cli-contract-lastRun.json",
+    "bytes": 164,
+    "sha256": "c4fca42e19276b8ce20c81a342e4921c4fbe501cd92511c13c9e00cc48be745e"
+  },
+  {
+    "path": "native-task-exits/banned-token-gates-lastRun.json",
+    "bytes": 164,
+    "sha256": "21c33c9ea29ea30b7da5753ffddbbee729f84e8a8cc40a27f5b75288ac79d599"
+  },
+  {
+    "path": "native-task-exits/beads-server-mode-lastRun.json",
+    "bytes": 163,
+    "sha256": "1585a1179ded8026dee41bdaf0c3608234153883e524271868259131947f5e15"
+  },
+  {
+    "path": "native-task-exits/bench-build-lastRun.json",
+    "bytes": 157,
+    "sha256": "0e05594766df4dc60371684d9ff2bbd06cd61cbd9140d39b8ebc26be77d7fd90"
+  },
+  {
+    "path": "native-task-exits/benchmark-regression-policy-lastRun.json",
+    "bytes": 109,
+    "sha256": "9c131529cd358624c9f19e0fdc3b1c2cf46447bd306be9f85b449fb893b33e33"
+  },
+  {
+    "path": "native-task-exits/check-lastRun.json",
+    "bytes": 151,
+    "sha256": "8642f1cb0b66d658dcb5b0dfe8ead454074b60bef1adf07b02e6736c1208e1f9"
+  },
+  {
+    "path": "native-task-exits/coverage-lastRun.json",
+    "bytes": 154,
+    "sha256": "7da7e769074ac681de86b08596c80364a5da01a9d51b96f459e68357ad5e912a"
+  },
+  {
+    "path": "native-task-exits/doc-lastRun.json",
+    "bytes": 85,
+    "sha256": "ee777f7fe4f13795f921d27e5bbddf59720b7f01fee6234e1ce222bed16cf270"
+  },
+  {
+    "path": "native-task-exits/doc-test-lastRun.json",
+    "bytes": 154,
+    "sha256": "ac5edc12f6d4b370e876c9ac7eb1c4fd39b2d627c49d8fa6e62551026901c4a5"
+  },
+  {
+    "path": "native-task-exits/feature-powerset-lastRun.json",
+    "bytes": 162,
+    "sha256": "75dd58caa97c19dfb0be8c6631dddf522ffd594514509d1a18d6a327d967cbfa"
+  },
+  {
+    "path": "native-task-exits/fmt-lastRun.json",
+    "bytes": 149,
+    "sha256": "aa1a8855bfdac1fc7e14c2b477b4c0cb44444f2aae6126fb968ecad9412e5602"
+  },
+  {
+    "path": "native-task-exits/fuzz-proptest-lastRun.json",
+    "bytes": 95,
+    "sha256": "b15c7f29a20d873b3715e43725449043a4aee147164b79cc690dac43426909d5"
+  },
+  {
+    "path": "native-task-exits/fuzz-regress-lastRun.json",
+    "bytes": 94,
+    "sha256": "a758bfbe9d49ec9f39e36caa963ddba9695a5431309ccd4fe8e028e0332f931c"
+  },
+  {
+    "path": "native-task-exits/fuzz-smoke-lastRun.json",
+    "bytes": 156,
+    "sha256": "fb3b4754fc380a55478aa14c88c669079abf75f27367a3c45da1a17468395f92"
+  },
+  {
+    "path": "native-task-exits/fuzz-tsan-lastRun.json",
+    "bytes": 91,
+    "sha256": "20495aa6a46b6612a92e785a54fa5f35a9dcae22a6bdb26da47c211f4893c612"
+  },
+  {
+    "path": "native-task-exits/hardened-build-lastRun.json",
+    "bytes": 98,
+    "sha256": "0756635a663523be749a159c4208c263b46c8950e5da6f11fb60e3518010185d"
+  },
+  {
+    "path": "native-task-exits/hot-cold-forbidden-apis-lastRun.json",
+    "bytes": 169,
+    "sha256": "96940ea34297eaea56cd3a5a8019436ca8326177aab531a514aebbbb16835327"
+  },
+  {
+    "path": "native-task-exits/ignored-fallible-results-lastRun.json",
+    "bytes": 170,
+    "sha256": "667363f11d90b16923119b3c737b0b0c52cb9b50d21466d683f18e30fb6efcfd"
+  },
+  {
+    "path": "native-task-exits/index.json",
+    "bytes": 6188,
+    "sha256": "c6d574e6bfeb26f144ce3cdf8e73ad72b4db4be84c0d1e0307db59c1875ca695"
+  },
+  {
+    "path": "native-task-exits/lint-src-lastRun.json",
+    "bytes": 154,
+    "sha256": "1677dc22082393c156cfa62332fa167874c59b8cc70bcb223aa3c1fec7176771"
+  },
+  {
+    "path": "native-task-exits/miri-lastRun.json",
+    "bytes": 150,
+    "sha256": "85e9de718e64a92a0a00e2d720c76b99773767e3d0f4d1cccc11a48ee211c069"
+  },
+  {
+    "path": "native-task-exits/mutants-smoke-lastRun.json",
+    "bytes": 95,
+    "sha256": "e2e462a8ca1821dc8d7cd3c491e97b462b99727fa717e67fcadd0df6ab8a0fa7"
+  },
+  {
+    "path": "native-task-exits/nightly-feature-gate-lastRun.json",
+    "bytes": 166,
+    "sha256": "6abb74dcc252a606be977295518b983f7a303f1b296ea3b2d9320aeb5f6e9593"
+  },
+  {
+    "path": "native-task-exits/panic-surface-lastRun.json",
+    "bytes": 159,
+    "sha256": "3163ddc91c3cc22e3f752dc49a2e76f4c8fb9fb8e99cffa49025e717839f69aa"
+  },
+  {
+    "path": "native-task-exits/sanitizer-address-check-lastRun.json",
+    "bytes": 169,
+    "sha256": "a0fe1510e7c455ea94250c2415f023829c3baca518da1a93437b457000352b3f"
+  },
+  {
+    "path": "native-task-exits/source-length-lastRun.json",
+    "bytes": 159,
+    "sha256": "a91e9bf4d321118ad5cadce997e0e8fd0509ee2b649eab6892dd6876c105674a"
+  },
+  {
+    "path": "native-task-exits/test-integrity-lastRun.json",
+    "bytes": 160,
+    "sha256": "b326ce9fd5c2b3ec1145a257a8d9eeadefb776fdfbd76280f8b4263e39b584b8"
+  },
+  {
+    "path": "native-task-exits/test-lastRun.json",
+    "bytes": 150,
+    "sha256": "d7a92fc1e00a41477c770f6af811c3bd690c36e89ad304f50bd9fbb2295efd38"
+  },
+  {
+    "path": "native-task-exits/unsafe-audit-lastRun.json",
+    "bytes": 158,
+    "sha256": "55f9b1d1a2e00e2861619b0e86f59782d61b09fe0de22d65e3e5d9b6f06cd814"
+  },
+  {
+    "path": "native-task-exits/verify-kani-lastRun.json",
+    "bytes": 93,
+    "sha256": "10ee6eb08bbe281a107446d655c14c4a904680bd1e487c406afa224c8f216832"
+  },
+  {
+    "path": "native-task-exits/verify-kani-vb-validate-lastRun.json",
+    "bytes": 105,
+    "sha256": "383862acea017931bbd26aee0f9d6c266cba7fa86287245f77374405cfd8c412"
+  },
+  {
+    "path": "native-task-exits/verify-loom-lastRun.json",
+    "bytes": 93,
+    "sha256": "27e71d641801ad10505c00a0b69f77d501038aba9ba97f6ca74c0a3a48beb771"
+  },
+  {
+    "path": "native-task-exits/verify-verus-lastRun.json",
+    "bytes": 94,
+    "sha256": "08c8474e65aea2dba7e252a1f9bafc60392f779fba5eee807fa88297585d0141"
+  },
+  {
+    "path": "native-task-exits/workspace-assertions-lastRun.json",
+    "bytes": 166,
+    "sha256": "ef953b1bff06e40741db1b06fe74e48af80f5b75aa2f2bcc80976ad3a75f0d3b"
+  },
+  {
     "path": "receipt.json",
-    "bytes": 2387,
-    "sha256": "b0593475c711844d3ad2b5f5c3a18f5839df0213a93d4efee0ba67ed4c4b12d7"
+    "bytes": 2851,
+    "sha256": "57bdaf7e8cda20d9f75e7bf8fc7eab0af1928aa036e9e453c4b4b1daeddd9a58"
   },
   {
     "path": "systemd-oom-kill.txt",

@@ -7,3 +7,5 @@ Exact argv, output, before/after source maps, binary hashes and journal evidence
 ## Corrected stage classifications
 
 Raw stderr also contains a missing `hardened` profile error(line357) and stale benchmark-evidence rejection(line462). These are RED stages, not successful checks; Moon duration/completion markers are insufficient. Original logs are retained unchanged. Overall acceptance remains blocked by these failures and interrupted baseline Kani.
+
+The appended native task records have timestamps inside V201:31 exits0, hardened-build101, benchmark-regression-policy1. Interrupted baseline Kani has no new terminal record. Older cached task records and stale ciReport are excluded.
