@@ -3,6 +3,7 @@
 //! preservation, and bounded concurrent submission.
 
 use super::compute_input_digest;
+use super::issuance_binding_test_support::verify_concurrent_submission_binding;
 use super::issuance_snapshot_test_support::snapshot_journal;
 use super::issuance_test_support::*;
 use crate::{FjallJournal, JournalError};

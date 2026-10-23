@@ -1,0 +1,12 @@
+{
+  "status": "SPLIT_REPAIR_WIP_INDEPENDENT_DELTA_REVIEW_PENDING",
+  "function_body_exact_bytes_unchanged": true,
+  "body_sha256": "da735a6196d74db32f79d4eea5706d786dcb86d8b24eeed72e5e4b30d1a6a30d",
+  "line_counts": {
+    "original_helper": 146,
+    "new_helper": 195
+  },
+  "source_length": "V75PASS4.932s noexception",
+  "V75test": "FAILEDunused2imports repairedlocalv76",
+  "V77test": "ALL1679PASS0skips1.524s"
+}
