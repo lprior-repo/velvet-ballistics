@@ -1,0 +1,5 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-impl-5090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running tests/vb_f1_repeat_counter_reset_probe.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f1_repeat_counter_reset_probe-be7a6bb2c325e00e)
+Error: "REJECTED: constructor did not accept mutated repeat IR with body.output=SlotIdx(1) for SetConst with value I64(12884901888): RepeatCounterForeignWrite { owner: StepIdx(1), writer: StepIdx(2), slot: SlotIdx(1) }"
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_f1_repeat_counter_reset_probe`

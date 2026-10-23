@@ -1,0 +1,13 @@
+
+running 2 tests
+test baseline_repeat_workflow_executes_correctly ... ok
+test repeat_check_output_slot_negative_probe ... Constructor rejected mutated repeat IR: RepeatCounterForeignWrite { owner: StepIdx(1), writer: StepIdx(2), slot: SlotIdx(1) } (body node StepIdx(2) had output Some(SlotIdx(2)) mutated to SlotIdx(1))
+FAILED
+
+failures:
+
+failures:
+    repeat_check_output_slot_negative_probe
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
