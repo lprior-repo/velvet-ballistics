@@ -1,0 +1,24 @@
+**Rationale:** The gate script excludes `**/*_tests.rs` but `support.rs` (test-only, compiled via `#[cfg(test)]` in `tests.rs`) doesn't match that pattern. Renaming it to `support_tests.rs` aligns with the existing convention and satisfies the exclusion without touching production code or the gate script.
+
+**Path rename:**
+```
+crates/vb_core/src/workflow/loop_regions/nested_entries/support.rs
+→ crates/vb_core/src/workflow/loop_regions/nested_entries/support_tests.rs
+```
+
+**Unified diff:**
+```diff
+diff --git a/crates/vb_core/src/workflow/loop_regions/nested_entries/tests.rs b/crates/vb_core/src/workflow/loop_regions/nested_entries/tests.rs
+index 0000000..1111111 100644
+--- a/crates/vb_core/src/workflow/loop_regions/nested_entries/tests.rs
++++ b/crates/vb_core/src/workflow/loop_regions/nested_entries/tests.rs
+@@ -4,7 +4,7 @@
+ 
+ #[path = "builders.rs"]
+ mod builders;
+-#[path = "support.rs"]
++#[path = "support_tests.rs"]
+ mod support;
+ #[path = "uncached.rs"]
+ mod uncached;
+```
