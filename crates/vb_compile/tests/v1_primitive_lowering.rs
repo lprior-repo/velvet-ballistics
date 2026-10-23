@@ -45,11 +45,12 @@ const TOGETHER_KINDS: &[&str] = &[
 const COLLECT_KINDS: &[&str] = &[
     "CollectStart",
     "SetConst",
-    "CollectPage",
+    "CollectNext",
     "CollectFinish",
     "Finish",
 ];
 const REDUCE_KINDS: &[&str] = &[
+    "Copy",
     "ReduceStart",
     "SetConst",
     "ReduceNext",
@@ -59,7 +60,7 @@ const REDUCE_KINDS: &[&str] = &[
 const REPEAT_KINDS: &[&str] = &[
     "RepeatStart",
     "SetConst",
-    "RepeatAttempt",
+    "RepeatCheck",
     "RepeatFinish",
     "Finish",
 ];
@@ -71,32 +72,32 @@ const PRIMITIVE_CASES: &[PrimitiveCase] = &[
         name: "for_each",
         yaml_steps: "  - id: loop\n    for_each:\n      variable: item\n      input: \"0\"\n      at_once: 2\n      steps:\n        - id: capture\n          set:\n            output: seen\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: FOREACH_KINDS,
-        expected_slot_count: 2,
+        expected_slot_count: 4,
     },
     PrimitiveCase {
         name: "together",
         yaml_steps: "  - id: fanout\n    together:\n      branches:\n        - label: left\n          steps:\n            - id: left_set\n              set:\n                output: left\n                value: \"1\"\n        - label: right\n          steps:\n            - id: right_set\n              set:\n                output: right\n                value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: TOGETHER_KINDS,
-        expected_slot_count: 4,
+        expected_slot_count: 3,
     },
     PrimitiveCase {
         name: "collect",
         yaml_steps: "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      pages: 3\n      items: 5\n      steps:\n        - id: remember_page\n          set:\n            output: page_seen\n            value: \"7\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: COLLECT_KINDS,
-        expected_slot_count: 2,
+        expected_slot_count: 3,
     },
     PrimitiveCase {
         name: "reduce",
         yaml_steps: "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: add_one
           set:\n            output: acc_out\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: REDUCE_KINDS,
-        expected_slot_count: 2,
+        expected_slot_count: 5,
     },
     PrimitiveCase {
         name: "repeat",
         yaml_steps: "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: attempt\n          set:\n            output: attempted\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: REPEAT_KINDS,
-        expected_slot_count: 2,
+        expected_slot_count: 3,
     },
     PrimitiveCase {
         name: "wait",
@@ -306,9 +307,9 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
 }
 
 #[test]
-fn compile_workflow_rejects_multi_step_body_in_scoped_primitives() -> Result<(), String> {
-    // Scoped primitives (repeat, for_each, collect, reduce) require exactly one set step
-    // in their body. Multiple steps must be rejected with StepFieldShape error.
+fn compile_workflow_enforces_scoped_body_width_contracts() -> Result<(), String> {
+    // Flat Repeat accepts both Set steps; ForEach, Collect and Reduce retain
+    // their exact single-body restriction in this compiler increment.
     let cases = [
         (
             "repeat with two steps in body",
@@ -328,29 +329,91 @@ fn compile_workflow_rejects_multi_step_body_in_scoped_primitives() -> Result<(),
         ),
     ];
 
-    for (case_name, yaml_steps) in cases {
+    let mut neg_count: u32 = 0;
+
+    for case in cases {
+        let case_name = case.0;
+        let yaml_steps = case.1;
         let yaml = workflow_yaml(yaml_steps);
-        let errors = compile_yaml_error(&yaml)?;
-        let first = first_compile_error(&errors)?;
-        match first {
-            CompileError::StepFieldShape {
-                step,
-                field,
-                expected,
-            } => {
-                assert_eq!(
-                    (*step, *field, expected.as_ref()),
-                    (0, "steps", "exactly one set step"),
-                    "case {case_name} expected step=0, 'steps' field with 'exactly one set step', got step={step} field='{field}' expected='{expected}'"
-                );
-            }
-            other => {
+
+        if case_name == "repeat with two steps in body" {
+            let workflow = compile_yaml(&yaml)?;
+            let parts = workflow.to_parts();
+            let node_names = node_kind_names(parts.nodes.as_ref());
+            let expected = [
+                "RepeatStart",
+                "SetConst",
+                "SetConst",
+                "RepeatCheck",
+                "RepeatFinish",
+                "Finish",
+            ];
+
+            if node_names.len() != expected.len() {
                 return Err(format!(
-                    "case {case_name} expected StepFieldShape error with 'exactly one set step', got {other:?}"
+                    "expected {} nodes, got {}",
+                    expected.len(),
+                    node_names.len()
                 ));
             }
+            for (i, (actual, exp)) in node_names.iter().zip(expected.iter()).enumerate() {
+                if actual != exp {
+                    return Err(format!(
+                        "node {} kind mismatch: expected {}, got {}",
+                        i, exp, actual
+                    ));
+                }
+            }
+
+            assert_dense_node_ids(&workflow, case_name)?;
+
+            let node1 = workflow.node(StepIdx::new(1)).ok_or("missing node 1")?;
+            let node2 = workflow.node(StepIdx::new(2)).ok_or("missing node 2")?;
+            let node3 = workflow.node(StepIdx::new(3)).ok_or("missing node 3")?;
+
+            let first_output = node1.output.ok_or("missing first output")?;
+            let second_output = node2.output.ok_or("missing second output")?;
+            assert_ne!(first_output, second_output);
+
+            assert_eq!(node1.next, Some(StepIdx::new(2)));
+            assert_eq!(node2.next, Some(StepIdx::new(3)));
+            assert_eq!(node3.next, Some(StepIdx::new(1)));
+
+            match &node3.kind {
+                CompiledNodeKind::RepeatCheck { done, .. } => {
+                    assert_eq!(*done, StepIdx::new(4));
+                }
+                _ => {
+                    return Err("node 3 is not RepeatCheck".to_string());
+                }
+            }
+        } else {
+            let errors = compile_yaml_error(&yaml)?;
+            let err = first_compile_error(&errors)?;
+            match err {
+                CompileError::StepFieldShape {
+                    step,
+                    field,
+                    expected,
+                    ..
+                } => {
+                    assert_eq!(
+                        (*step, *field, *expected),
+                        (0, "steps", "exactly one set step")
+                    );
+                }
+                other => {
+                    return Err(format!("unexpected error for {}: {:?}", case_name, other));
+                }
+            }
+            neg_count = neg_count.checked_add(1).ok_or("neg_count overflow")?;
         }
     }
+
+    if neg_count != 3 {
+        return Err(format!("expected 3 negative cases, got {}", neg_count));
+    }
+
     Ok(())
 }
 
@@ -505,10 +568,19 @@ fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result
         (
             "set_value_shape",
             "  - id: first\n    set:\n      output: value\n      value: not-an-integer\n  - id: done\n    finish:\n      result: value\n",
+            ExpectedCompileError::ExpressionUnknownIdentifier {
+                expression: "not-an-integer",
+                index: 4,
+                identifier: "an",
+            },
+        ),
+        (
+            "repeat_max_attempts_shape",
+            "  - id: retry\n    repeat:\n      max_attempts: 0\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::StepFieldShape {
                 step: 0,
-                field: "set.value",
-                expected: "integer string",
+                field: "repeat.max_attempts",
+                expected: "non-empty primitive field",
             },
         ),
         (
@@ -573,10 +645,19 @@ fn public_compile_apis_return_exact_error_variants_for_contract_taxonomy() -> Re
         (
             "set_value_shape",
             "  - id: first\n    set:\n      output: value\n      value: not-an-integer\n  - id: done\n    finish:\n      result: value\n",
+            ExpectedCompileError::ExpressionUnknownIdentifier {
+                expression: "not-an-integer",
+                index: 4,
+                identifier: "an",
+            },
+        ),
+        (
+            "repeat_max_attempts_shape",
+            "  - id: retry\n    repeat:\n      max_attempts: 0\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
             ExpectedCompileError::StepFieldShape {
                 step: 0,
-                field: "set.value",
-                expected: "integer string",
+                field: "repeat.max_attempts",
+                expected: "non-empty primitive field",
             },
         ),
         (
@@ -884,6 +965,11 @@ enum ExpectedCompileError {
         field: &'static str,
         expected: &'static str,
     },
+    ExpressionUnknownIdentifier {
+        expression: &'static str,
+        index: usize,
+        identifier: &'static str,
+    },
     SlotIndexOutOfRange {
         value: i64,
     },
@@ -975,6 +1061,25 @@ fn assert_expected_compile_error(
             assert_eq!(
                 *value, expected_value,
                 "case {case_name} slot range payload"
+            );
+            Ok(())
+        }
+        (
+            CompileError::ExpressionUnknownIdentifier {
+                expression,
+                index,
+                identifier,
+            },
+            ExpectedCompileError::ExpressionUnknownIdentifier {
+                expression: expected_expression,
+                index: expected_index,
+                identifier: expected_identifier,
+            },
+        ) => {
+            assert_eq!(
+                (expression.as_ref(), *index, identifier.as_ref()),
+                (expected_expression, expected_index, expected_identifier),
+                "case {case_name} expression unknown identifier payload"
             );
             Ok(())
         }
@@ -2226,7 +2331,15 @@ fn compile_workflow_rejects_empty_body_in_scoped_primitives() -> Result<(), Stri
             } => {
                 assert_eq!(
                     (*step, field.as_ref(), expected.as_ref()),
-                    (0, "steps", "exactly one set step"),
+                    (
+                        0,
+                        "steps",
+                        if case_name == "repeat with empty body" {
+                            "at least one set or do step"
+                        } else {
+                            "exactly one set step"
+                        }
+                    ),
                     "case {case_name}"
                 );
             }
@@ -2345,7 +2458,7 @@ fn compile_workflow_rejects_multi_step_together_branch() -> Result<(), String> {
 #[test]
 fn compile_workflow_choose_two_branches_with_otherwise() -> Result<(), String> {
     let yaml = workflow_yaml(
-        "  - id: setup\n    set:\n      output: condition\n      value: \"1\"\n  - id: pick\n    choose:\n      branches:\n        - when: \"0\"\n          steps: []\n        - when: \"1\"\n          steps: []\n      otherwise: done\n  - id: done\n    finish:\n      result: 0\n",
+        "  - id: setup\n    set:\n      output: condition\n      value: \"true\"\n  - id: pick\n    choose:\n      branches:\n        - when: \"0\"\n          steps: []\n        - when: \"1\"\n          steps: []\n      otherwise: done\n  - id: done\n    finish:\n      result: 0\n",
     );
     let workflow = compile_yaml(&yaml)?;
     let kinds = node_kind_names(workflow.to_parts().nodes.as_ref());
