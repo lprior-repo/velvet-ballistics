@@ -15,15 +15,15 @@ use vb_core::{ExprOp, SlotIdx};
 /// - `$step.id` / `$steps.id`: explicit step reference, only checks step_outputs
 /// - Direct `$name`: checks both maps, rejects if found in different slots
 /// - Numeric: backward compatibility slot index
-pub(super) struct StepReferenceResolver {
-    outputs: HashMap<String, SlotIdx>,
-    step_outputs: HashMap<String, SlotIdx>,
+pub(super) struct StepReferenceResolver<'a> {
+    outputs: &'a HashMap<String, SlotIdx>,
+    step_outputs: &'a HashMap<String, SlotIdx>,
 }
 
-impl StepReferenceResolver {
+impl<'a> StepReferenceResolver<'a> {
     pub(super) fn new(
-        outputs: HashMap<String, SlotIdx>,
-        step_outputs: HashMap<String, SlotIdx>,
+        outputs: &'a HashMap<String, SlotIdx>,
+        step_outputs: &'a HashMap<String, SlotIdx>,
     ) -> Self {
         Self {
             outputs,
@@ -59,13 +59,30 @@ fn resolve_dollar_reference(
 
     // Explicit step ID reference: $step.id or $steps.id
     if let Some((root, tail)) = body.split_once('.') {
-        if root == "step" || root == "steps" {
-            return resolve_explicit_step_id(tail, reference, step_outputs);
+        match root {
+            "step" | "steps" => return resolve_explicit_step_id(tail, reference, step_outputs),
+            "input" | "vars" => return resolve_declared_name(reference, reference, outputs),
+            _ => {}
         }
     }
 
     // Direct name: check both maps
     resolve_direct_name(body, reference, outputs, step_outputs)
+}
+
+fn resolve_declared_name(
+    name: &str,
+    reference: &str,
+    outputs: &HashMap<String, SlotIdx>,
+) -> Result<SlotIdx, CompileError> {
+    outputs
+        .get(name)
+        .copied()
+        .ok_or_else(|| CompileError::UnknownReferenceName {
+            kind: "declaration",
+            reference: Box::from(reference),
+            name: Box::from(name),
+        })
 }
 
 fn resolve_explicit_step_id(
@@ -127,9 +144,9 @@ fn resolve_numeric_slot(text: &str) -> Result<SlotIdx, CompileError> {
 }
 
 /// Implementation of the expression bytecode reference resolver.
-impl crate::expression_bytecode::ExpressionReferenceResolver for StepReferenceResolver {
+impl crate::expression_bytecode::ExpressionReferenceResolver for StepReferenceResolver<'_> {
     fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError> {
-        let slot = resolve_slot_reference(reference, &self.outputs, &self.step_outputs)?;
+        let slot = resolve_slot_reference(reference, self.outputs, self.step_outputs)?;
         Ok(ExprOp::LoadSlot(slot))
     }
 }

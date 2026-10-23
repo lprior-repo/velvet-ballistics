@@ -20,7 +20,10 @@ pub(super) fn reserve_source_slots(
     let mut pending = Vec::new();
     push_steps(&mut pending, source.steps())?;
     for (index, step) in source.steps().iter().enumerate() {
-        if matches!(step.primitive, StepPrimitive::Set { .. }) {
+        if matches!(
+            step.primitive,
+            StepPrimitive::Set { .. } | StepPrimitive::Do { .. }
+        ) {
             let slot = u16::try_from(index)
                 .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
             reserve_index(&mut count, slot)?;
@@ -108,8 +111,7 @@ fn reserve_numeric(count: &mut u16, text: &str) -> Result<(), CompileError> {
 }
 
 fn reserve_integer(count: &mut u16, value: i64) -> Result<(), CompileError> {
-    let index = u16::try_from(value)
-        .map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
+    let index = u16::try_from(value).map_err(|_| CompileError::SlotIndexOutOfRange { value })?;
     reserve_index(count, index)
 }
 

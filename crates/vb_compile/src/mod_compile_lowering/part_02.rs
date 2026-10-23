@@ -4,7 +4,12 @@ use std::collections::HashMap;
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
 
+#[cfg(test)]
 pub(crate) use super::part_14::lower_canonical_choose;
+
+#[path = "canonical_scope.rs"]
+mod canonical_scope;
+pub(super) use canonical_scope::{CanonicalScope, validate_output_alias};
 
 #[path = "canonical_references.rs"]
 mod canonical_references;
@@ -15,7 +20,7 @@ mod canonical_types;
 
 #[path = "canonical_scalar.rs"]
 mod canonical_scalar;
-use canonical_scalar::lower_canonical_set_expression;
+pub(super) use canonical_scalar::{compile_canonical_expression, lower_canonical_set_expression};
 
 #[path = "canonical_do.rs"]
 mod canonical_do;
@@ -36,6 +41,7 @@ pub(super) fn lower_canonical_step(
 ) -> Result<(), CompileErrors> {
     let result = match &step.primitive {
         crate::StepPrimitive::Set { output, value } => {
+            validate_output_alias(output).map_err(|e| CompileErrors(vec![e]))?;
             let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
             if outputs.contains_key(output) {
                 return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
@@ -47,9 +53,11 @@ pub(super) fn lower_canonical_step(
                 slot,
                 value,
                 next,
-                outputs,
-                step_outputs,
-                slot_types,
+                CanonicalScope {
+                    outputs,
+                    step_outputs,
+                    slot_types,
+                },
                 builder,
             )?;
             outputs.insert(output.to_owned(), slot);
@@ -64,10 +72,12 @@ pub(super) fn lower_canonical_step(
                 index,
                 action,
                 input,
-                Some(step.id.as_str()),
                 next,
-                outputs,
-                step_outputs,
+                CanonicalScope {
+                    outputs,
+                    step_outputs,
+                    slot_types,
+                },
                 builder,
             )?;
             if let Some(slot) = output_slot {
@@ -129,13 +139,20 @@ pub(super) fn lower_canonical_step(
         crate::StepPrimitive::Choose {
             branches,
             otherwise,
-        } => lower_canonical_choose(
-            index,
+        } => super::part_14::lower_canonical_choose_in_scope(
             id,
             branches,
             otherwise.as_deref(),
             next,
-            step_names.as_ref(),
+            super::part_14::ChooseScope {
+                index,
+                names: step_names.as_ref(),
+                bindings: CanonicalScope {
+                    outputs,
+                    step_outputs,
+                    slot_types,
+                },
+            },
             builder,
         ),
         other => Err(CompileErrors(vec![
@@ -199,9 +216,15 @@ pub(super) fn lower_canonical_for_each(
     let done =
         checked_step_offset(id, 3, "for_each", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.record_slot(input);
-    let iterator_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    let item_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    let body_result = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let iterator_slot = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let item_slot = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let body_result = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
         output: Some(iterator_slot),

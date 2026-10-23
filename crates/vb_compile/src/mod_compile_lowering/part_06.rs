@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#[cfg(test)]
 pub(crate) use super::part_14::emit_choose_branch_body;
 use super::*;
 use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};

@@ -63,9 +63,6 @@ pub(crate) fn validate_canonical_compile_scope(
             });
         }
     }
-    if !source.vars().is_empty() {
-        errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "vars" });
-    }
     if !source.secrets().is_empty() {
         errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "secrets" });
     }
