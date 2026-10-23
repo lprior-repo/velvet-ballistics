@@ -553,7 +553,14 @@ fn find_set_42(workflow: &CompiledWorkflow) -> Option<StepIdx> {
 
 #[test]
 fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let workflow = compile_with_trailing_set()?;
+    // Keep the alias probe structurally valid under distinct Reduce targets.
+    let source = REPEAT_SOURCE_WITH_TRAILING_SET.replacen(
+        "  - id: done\n",
+        "  - id: counter_probe_body\n    set:\n      output: counter_probe_value\n      value: \"88\"\n  - id: done\n",
+        1,
+    );
+    let workflow = compile_workflow(source.as_bytes())
+        .map_err(|error| format!("compile implicit writer fixture: {error:?}"))?;
     let (owner, _body, counter, _body_output) =
         find_repeat_slots(&workflow).ok_or("missing repeat slots")?;
     let trailing_writer = find_trailing_set_77(&workflow).ok_or("missing trailing set 77")?;
@@ -567,6 +574,13 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
     assert_ne!(writer_node.output, Some(counter));
 
     let target = writer_node.next.ok_or("missing forward Finish")?;
+    let done_target = parts
+        .nodes
+        .iter()
+        .find(|node| node.id == target)
+        .and_then(|node| node.next)
+        .ok_or("missing distinct forward Finish")?;
+    assert_ne!(target, done_target);
     let private = writer_node.output.ok_or("missing private output")?;
     let initial = match &writer_node.kind {
         CompiledNodeKind::SetConst { value } => *value,
@@ -615,7 +629,7 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
                 accumulator: private,
                 initial,
                 body: target,
-                done: target,
+                done: done_target,
             },
             "ReduceStart_input_counter",
         ),
@@ -625,7 +639,7 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
                 accumulator: counter,
                 initial,
                 body: target,
-                done: target,
+                done: done_target,
             },
             "ReduceStart_accum_counter",
         ),
@@ -634,7 +648,7 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
                 iterator_slot: counter,
                 accumulator: private,
                 body: target,
-                done: target,
+                done: done_target,
             },
             "ReduceNext",
         ),
