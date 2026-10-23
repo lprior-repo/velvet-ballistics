@@ -23,21 +23,16 @@ pub(crate) fn emit_slot_evidence(
     node: &CompiledNode,
     drive_state: &mut DriveState,
 ) -> RuntimeEngineResult<()> {
-    // RE-004: surface read_slot errors via `record_evidence_gap` rather
-    // than silently swallowing them. The previous `if let Ok(value) =
-    // run.read_slot(slot)` pattern hid both the slot evidence AND the
-    // underlying read error; explicit `match` makes the gap observable
-    // to the drive loop without changing the function's public
-    // success/failure contract (a read failure is recorded as a gap and
-    // the step continues — capacity overflows and other push_* errors
-    // still propagate via `?`).
-    //
-    // Black-hat FINDING-003: the slot is now threaded through the gap
-    // record so operators can see WHICH slot failed; the underlying
-    // `CoreError` variant is still collapsed to `Err(_)` because the
-    // only two callers (SlotOutOfBounds / SlotUninitialized) are
-    // surfaced identically at this layer and the variant will be
-    // classified at the report boundary.
+    // vb-8eocj.3: branch-specific evidence for Reduce nodes. Empty
+    // ReduceStart initializes the accumulator then jumps to done without
+    // writing the iterator slot. Exhausted ReduceNext jumps to done
+    // without writing the item slot. Emit evidence for the actual
+    // writes on each branch rather than unconditionally reading
+    // node.output.
+    if reduce_evidence(run, evidence, node, drive_state)?.is_some() {
+        return Ok(());
+    }
+
     if let Some(slot) = collect_written_slot(node) {
         match run.read_slot(slot) {
             Ok(value) => {
@@ -67,6 +62,97 @@ pub(crate) fn emit_slot_evidence(
         }
     }
     Ok(())
+}
+
+/// Records SlotWritten evidence for a single slot, or records an
+/// evidence gap if the slot cannot be read. Does not propagate read
+/// errors; gaps are tracked on the drive state.
+fn emit_slot(
+    run: &RunFrame,
+    evidence: &mut EvidenceCollector,
+    drive_state: &mut DriveState,
+    slot: SlotIdx,
+) -> RuntimeEngineResult<()> {
+    match run.read_slot(slot) {
+        Ok(value) => {
+            let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
+            evidence
+                .push_slot_written_with_taint(slot, *value, taint)
+                .map_err(RuntimeEngineError::Core)?;
+        }
+        Err(_) => {
+            drive_state.record_evidence_gap(slot);
+        }
+    }
+    Ok(())
+}
+
+/// Returns Some(()) when Reduce branch-specific evidence was emitted or
+/// the branch legitimately produces no slot writes. Returns None when
+/// the node is not a Reduce control node and the caller should fall
+/// through to generic handling.
+fn reduce_evidence(
+    run: &RunFrame,
+    evidence: &mut EvidenceCollector,
+    node: &CompiledNode,
+    drive_state: &mut DriveState,
+) -> RuntimeEngineResult<Option<()>> {
+    let (body, done) = match &node.kind {
+        CompiledNodeKind::ReduceStart { body, done, .. }
+        | CompiledNodeKind::ReduceNext { body, done, .. } => (*body, *done),
+        _ => return Ok(None),
+    };
+
+    let at_done = run.pc() == done;
+    let at_body = run.pc() == body;
+
+    if at_done {
+        match &node.kind {
+            CompiledNodeKind::ReduceStart { accumulator, .. } => {
+                // Empty iterator: accumulator was written with initial value.
+                emit_slot(run, evidence, drive_state, *accumulator)?;
+                Ok(Some(()))
+            }
+            CompiledNodeKind::ReduceNext { .. } => {
+                // Exhausted: no new slot write on this branch.
+                Ok(Some(()))
+            }
+            _ => Ok(None),
+        }
+    } else if at_body {
+        match &node.kind {
+            CompiledNodeKind::ReduceStart {
+                input,
+                accumulator,
+                output,
+                ..
+            } => {
+                // Non-empty: accumulator initialized, first item bound to
+                // input, iterator state written to output.
+                emit_slot(run, evidence, drive_state, *accumulator)?;
+                emit_slot(run, evidence, drive_state, *input)?;
+                if let Some(out) = *output {
+                    emit_slot(run, evidence, drive_state, out)?;
+                }
+                Ok(Some(()))
+            }
+            CompiledNodeKind::ReduceNext { iterator_slot, output, .. } => {
+                // Not exhausted: next item bound to output, iterator state
+                // advanced in iterator_slot.
+                if let Some(out) = *output {
+                    emit_slot(run, evidence, drive_state, out)?;
+                }
+                emit_slot(run, evidence, drive_state, *iterator_slot)?;
+                Ok(Some(()))
+            }
+            _ => Ok(None),
+        }
+    } else {
+        // PC is neither body nor done — unexpected control flow.
+        // Fall through to generic handling rather than suppressing
+        // the gap.
+        Ok(None)
+    }
 }
 
 /// Returns the slot whose `SlotWritten` evidence should carry the
