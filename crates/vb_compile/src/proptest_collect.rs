@@ -174,8 +174,8 @@ proptest! {
                 "node 1 is SetConst"
             );
             prop_assert!(
-                matches!(&nodes[2].kind, vb_core::CompiledNodeKind::CollectPage { .. }),
-                "node 2 is CollectPage"
+                matches!(&nodes[2].kind, vb_core::CompiledNodeKind::CollectNext { .. }),
+                "node 2 is CollectNext"
             );
             prop_assert!(
                 matches!(&nodes[3].kind, vb_core::CompiledNodeKind::CollectFinish { .. }),
