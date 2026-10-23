@@ -1,23 +1,30 @@
 //! Allocate declarations before lowering any source expression or scratch state.
 
-use super::{SlotCompiler, kind_from_input_schema, step_idx};
+use super::{
+    SlotCompiler, kind_from_input_schema, list_max_from_schema, step_idx,
+};
 use crate::{AuthorValue, CompileError, WorkflowSource};
 use std::collections::HashMap;
 use vb_core::{CompiledNode, CompiledNodeKind, ConstValue, InputSlotKind, SlotIdx};
 use vb_expr::expr_typecheck::ExprType;
 
+/// Prepare declarations and return the input list max map.
 pub(super) fn prepare_source_declarations(
     source: &WorkflowSource,
     outputs: &mut HashMap<String, SlotIdx>,
     types: &mut HashMap<SlotIdx, ExprType>,
     builder: &mut SlotCompiler,
-) -> Result<Vec<Box<str>>, CompileError> {
+) -> Result<(Vec<Box<str>>, HashMap<String, u32>), CompileError> {
+    let mut input_list_max = HashMap::new();
     for input in source.inputs() {
         let kind = kind_from_input_schema(&input.value)?;
         let slot = builder.allocate_slot()?;
         builder.record_input_slot(slot, kind);
         bind_declaration(outputs, format!("$input.{}", input.key), slot)?;
         types.insert(slot, input_type(kind));
+        if let Some(max) = list_max_from_schema(&input.value) {
+            input_list_max.insert(input.key.clone(), max);
+        }
     }
     let mut names = Vec::with_capacity(source.vars().len());
     for variable in source.vars() {
@@ -28,7 +35,7 @@ pub(super) fn prepare_source_declarations(
         types.insert(slot, ty);
         names.push(format!("$vars.{}", variable.key).into_boxed_str());
     }
-    Ok(names)
+    Ok((names, input_list_max))
 }
 
 fn bind_declaration(

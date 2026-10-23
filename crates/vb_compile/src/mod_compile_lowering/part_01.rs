@@ -37,7 +37,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
     let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut step_outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut slot_types: HashMap<SlotIdx, ExprType> = HashMap::new();
-    let mut step_names =
+    let (mut step_names, input_list_max) =
         prepare_source_declarations(source, &mut outputs, &mut slot_types, &mut builder)
             .map_err(|e| CompileErrors(vec![e]))?;
     let layout =
@@ -56,6 +56,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
             &mut step_outputs,
             &mut step_names,
             &mut slot_types,
+            &input_list_max,
             &mut builder,
         )?;
     }

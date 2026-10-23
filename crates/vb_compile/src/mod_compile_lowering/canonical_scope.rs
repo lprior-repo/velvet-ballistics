@@ -9,6 +9,7 @@ pub(in crate::mod_compile_lowering) struct CanonicalScope<'a> {
     pub outputs: &'a HashMap<String, SlotIdx>,
     pub step_outputs: &'a HashMap<String, SlotIdx>,
     pub slot_types: &'a HashMap<SlotIdx, ExprType>,
+    pub input_list_max: &'a HashMap<String, u32>,
 }
 
 /// Declaration roots are not mutable output aliases, in any lexical scope.

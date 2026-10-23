@@ -37,6 +37,7 @@ pub(super) fn lower_canonical_step(
     step_outputs: &mut HashMap<String, SlotIdx>,
     step_names: &mut Vec<Box<str>>,
     slot_types: &mut HashMap<SlotIdx, ExprType>,
+    input_list_max: &HashMap<String, u32>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let result = match &step.primitive {
@@ -93,7 +94,21 @@ pub(super) fn lower_canonical_step(
             input,
             at_once,
             body,
-            ..
+            variable,
+        } => lower_canonical_for_each(
+            variable,
+            index,
+            id,
+            next,
+            input,
+            *at_once,
+            body,
+            outputs,
+            step_outputs,
+            slot_types,
+            input_list_max,
+            builder,
+        ),
         } => lower_canonical_for_each(index, id, input, *at_once, body, builder),
         crate::StepPrimitive::Together { branches } => {
             lower_canonical_parallel(index, id, branches, next, builder)
