@@ -45,9 +45,8 @@ impl<'j> JournalWriteBatch<'j> {
             self.staged_bytes,
             self.byte_limit,
         )
-        .map_err(|error| {
+        .inspect_err(|_| {
             self.aborted = true;
-            error
         })?;
         self.staged_metadata_bytes = new_metadata;
         let counter_value = seq.to_event_seq().get().to_be_bytes();
