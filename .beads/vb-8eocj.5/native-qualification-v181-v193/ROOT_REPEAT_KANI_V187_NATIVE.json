@@ -1,0 +1,38 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090",
+  "argv": [
+    "systemd-run",
+    "--user",
+    "--scope",
+    "--quiet",
+    "-p",
+    "MemoryHigh=20G",
+    "-p",
+    "MemoryMax=24G",
+    "-p",
+    "MemorySwapMax=0",
+    "env",
+    "RUSTC_WRAPPER=",
+    "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/target",
+    "cargo",
+    "kani",
+    "-p",
+    "vb_compile",
+    "--lib",
+    "--harness",
+    "kani_lower_repeat::lower_repeat_allocates_fresh_slots_for_symbolic_prefix",
+    "--exact",
+    "-j",
+    "1",
+    "--output-format",
+    "regular"
+  ],
+  "exit_code": 124,
+  "seconds": 360.101,
+  "timeout_seconds": 360,
+  "timed_out": true,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_REPEAT_KANI_V187_NATIVE"
+}

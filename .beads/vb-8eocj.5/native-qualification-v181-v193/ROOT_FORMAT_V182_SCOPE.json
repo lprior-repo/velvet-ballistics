@@ -1,0 +1,18 @@
+{
+  "source_before": "9aaa36d8ff29",
+  "source_after": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+  "count": 11,
+  "files": [
+    "crates/vb_compile/src/mod_compile_lowering/canonical_repeat.rs",
+    "crates/vb_compile/src/mod_compile_lowering/canonical_repeat_tests.rs",
+    "crates/vb_compile/src/mod_compile_lowering/canonical_types.rs",
+    "crates/vb_compile/src/mod_compile_lowering/part_02.rs",
+    "crates/vb_compile/src/mod_compile_lowering/part_04.rs",
+    "crates/vb_compile/src/mod_compile_lowering/source_slot_reservation_tests.rs",
+    "crates/workspace_tests/tests/vb_f1_canonical_scalar_do/negative.rs",
+    "crates/workspace_tests/tests/vb_f1_canonical_scalar_do/positive.rs",
+    "crates/workspace_tests/tests/vb_f1_canonical_scalar_do/type_identity.rs",
+    "crates/workspace_tests/tests/vb_f1_scalar_do_support/mod.rs",
+    "crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs"
+  ]
+}

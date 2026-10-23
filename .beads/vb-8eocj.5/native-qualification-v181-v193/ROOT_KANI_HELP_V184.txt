@@ -1,0 +1,193 @@
+Verify a Rust crate. For more information, see https://github.com/model-checking/kani
+
+Usage: cargo-kani [OPTIONS] [COMMAND]
+
+Commands:
+  autoharness  Create and run harnesses automatically for eligible functions. Implies -Z function-contracts and -Z loop-contracts. See https://model-checking.github.io/kani/reference/experimental/autoharness.html for documentation
+  list         List contracts and harnesses
+  playback     Execute concrete playback testcases of a local package
+  help         Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+Verification Options:
+      --cbmc-args [<CBMC_ARGS>...]
+          Pass through directly to CBMC; must be the last flag. This feature is unstable and it requires `-Z unstable-options` to be used
+
+      --concrete-playback <CONCRETE_PLAYBACK>
+          Generate concrete playback unit test. If value supplied is 'print', Kani prints the unit test to stdout. If value supplied is 'inplace', Kani automatically adds the unit test to your source code. This option does not work with `--output-format old`
+          
+          [possible values: print, inplace]
+
+      --coverage
+          Enable Kani coverage output alongside verification result
+
+      --default-unwind <DEFAULT_UNWIND>
+          Specify the value used for loop unwinding in CBMC
+
+      --exact
+          When specified, the harness filter will only match the exact fully qualified name of a harness
+
+      --extra-pointer-checks
+          Enable extra pointer checks such as invalid pointers in relation operations and pointer arithmetic overflow. This feature is unstable and it may yield false counter examples. It requires `-Z unstable-options` to be used
+
+      --fail-fast
+          Stop the verification process as soon as one of the harnesses fails
+
+      --force-build
+          Force Kani to rebuild all packages before the verification
+
+      --gen-c
+          Generate C file equivalent to inputted program for debug purpose. This feature is unstable, and it requires `-Z unstable-options` to be used
+
+      --harness <HARNESS_FILTER>
+          If specified, only run harnesses that match this filter. This option can be provided multiple times, which will run all tests matching any of the filters. If used with --exact, the harness filter will only match the exact fully qualified name of a harness
+
+      --harness-timeout <HARNESS_TIMEOUT>
+          Timeout for each harness with optional suffix ('s': seconds, 'm': minutes, 'h': hours). Default is seconds. This option is experimental and requires `-Z unstable-options` to be used
+
+      --ignore-global-asm
+          Do not error out for crates containing `global_asm!`. This option may impact the soundness of the analysis and may cause false proofs and/or counterexamples
+
+  -j, --jobs [<JOBS>]
+          Number of threads to spawn to verify harnesses in parallel. Omit the flag entirely to run sequentially (i.e. one thread). Pass -j to run with the thread pool's default number of threads. Pass -j <N> to specify N threads
+
+      --keep-temps
+          Keep temporary files generated throughout Kani process. This is already the default behavior for `cargo-kani`
+
+      --no-assert-contracts
+          Do not assert the function contracts of dependencies. Requires -Z function-contracts
+
+      --no-assertion-reach-checks
+          Turn off assertion reachability checks
+
+      --no-codegen
+          Run Kani without codegen. Useful for quick feedback on whether the code would compile successfully (similar to `cargo check`). This feature is unstable and requires `-Z unstable-options` to be used
+
+      --no-restrict-vtable
+          Disable restricting the targets of virtual table function pointer calls
+
+      --no-slice-formula
+          Disable CBMC's slice formula which prevents values from being assigned to redundant variables in traces
+
+      --only-codegen
+          Kani will only compile the crate. No verification will be performed
+
+      --output-format <OUTPUT_FORMAT>
+          Toggle between different styles of output
+          
+          [default: regular]
+          [possible values: regular, terse, old]
+
+      --output-into-files
+          Write verification results into per-harness files, rather than to stdout
+
+      --prove-safety-only
+          Compute verification results under the assumption that no panic occurs. This feature is unstable, and it requires `-Z unstable-options` to be used
+
+      --randomize-layout [<RANDOMIZE_LAYOUT>]
+          Randomize the layout of structures. This option can help catching code that relies on a specific layout chosen by the compiler that is not guaranteed to be stable in the future. If a value is given, it will be used as the seed for randomization See the `-Z randomize-layout` and `-Z layout-seed` arguments of the rust compiler
+
+      --run-sanity-checks
+          Execute CBMC's sanity checks to ensure the goto-program we generate is correct
+
+      --solver <SOLVER>
+          Specify the CBMC solver to use. Overrides the harness `solver` attribute. If no solver is specified (with --solver or harness attribute), Kani will use CaDiCaL
+          
+          [possible values: bitwuzla, cadical, cvc5, kissat, minisat, z3, bin=<SAT_SOLVER_BINARY>]
+
+      --synthesize-loop-contracts
+          Synthesize loop contracts for all loops
+
+      --target-dir <TARGET_DIR>
+          Directory for all generated artifacts
+
+      --tests
+          Enable test function verification. Only use this option when the entry point is a test function
+
+      --unwind <UNWIND>
+          Specify the value used for loop unwinding for the specified harness in CBMC
+
+Memory Checks:
+      --no-default-checks
+          Turn off all default checks
+
+      --no-memory-safety-checks
+          Turn off default memory safety checks
+
+      --no-overflow-checks
+          Turn off default overflow checks
+
+      --no-undefined-function-checks
+          Turn off undefined function checks
+
+      --no-unwinding-checks
+          Turn off default unwinding checks
+
+Common Options:
+      --debug
+          Produce full debug information
+
+  -q, --quiet
+          Produces no output, just an exit code and requested artifacts; overrides --verbose
+
+  -v, --verbose
+          Output processing stages and commands, along with minor debug information
+
+  -Z, --unstable <UNSTABLE_FEATURE>
+          Possible values:
+          - async-lib:          Enable Kani's unstable async library
+          - autoharness:        Enable the autoharness subcommand
+          - concrete-playback:  Enable concrete playback flow
+          - c-ffi:              Allow Kani to link against C code
+          - float-lib:          Kani APIs related to floating-point operations (e.g. `float_to_int_in_range`)
+          - function-contracts: Enable function contracts [RFC 9](https://model-checking.github.io/kani/rfc/rfcs/0009-function-contracts.html)
+          - gen-c:              Generate a C-like file equivalent to input program used for debugging purpose
+          - ghost-state:        Ghost state and shadow memory APIs
+          - lean:               Enabled Lean backend (Aeneas/LLBC)
+          - loop-contracts:     Enable loop contracts [RFC 12](https://model-checking.github.io/kani/rfc/rfcs/0012-loop-contracts.html)
+          - mem-predicates:     Memory predicate APIs
+          - restrict-vtable:    Enable vtable restriction
+          - source-coverage:    Enable source-based code coverage workflow. See [RFC-0011](https://model-checking.github.io/kani/rfc/rfcs/0011-source-coverage.html)
+          - stubbing:           Allow replacing certain items with stubs (mocks). See [RFC-0002](https://model-checking.github.io/kani/rfc/rfcs/0002-function-stubbing.html)
+          - quantifiers:        Enable quantifiers [RFC 10](https://model-checking.github.io/kani/rfc/rfcs/0010-quantifiers.html)
+          - uninit-checks:      Automatically check that uninitialized memory is not used
+          - unstable-options:   Enable an unstable option or subcommand
+          - valid-value-checks: Automatically check that no invalid value is produced which is considered UB in Rust. Note that this does not include checking uninitialized value
+
+Cargo Common Options:
+      --all-features
+          Activate all package features
+
+  -e, --exclude <EXCLUDE>...
+          Exclude the specified packages
+
+  -F, --features <FEATURES>
+          Comma separated list of package features to activate
+
+      --manifest-path <PATH>
+          Path to Cargo.toml
+
+      --no-default-features
+          Do not activate the `default` feature
+
+  -p, --package <PACKAGE>...
+          Run Kani on the specified packages (see `cargo help pkgid` for the accepted format)
+
+      --workspace
+          Build all packages in the workspace
+
+Cargo Target Options:
+      --bin <BIN>
+          Check only the specified binary target
+
+      --bins
+          Check all binaries
+
+      --lib
+          Check only the package's library unit tests

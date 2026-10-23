@@ -1,0 +1,151 @@
+#![forbid(unsafe_code)]
+//! Kani harnesses for `lower_repeat` slot allocation and node structure.
+//! Tests full u16 domain for prefix, body, done, and max_attempts without
+//! assume narrowing. Verifies slot count arithmetic, overflow behavior,
+//! and exact CompiledNode field values.
+
+use crate::{CompileError, SlotCompiler, lower_repeat};
+use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
+
+/// Assert the three repeat nodes have exact expected structure.
+fn assert_repeat_node_structure(
+    nodes: &[CompiledNode],
+    id: StepIdx,
+    max_attempts: u16,
+    body: StepIdx,
+    done: StepIdx,
+    attempt_slot: SlotIdx,
+) {
+    match nodes {
+        [start, attempt, finish] => {
+            // RepeatStart node
+            kani::assert(start.id == id, "RepeatStart id must equal input id");
+            kani::assert(start.output == Some(attempt_slot), "RepeatStart output is attempt slot");
+            kani::assert(start.next.is_none(), "RepeatStart next is None");
+            kani::assert(start.error_slot.is_none(), "RepeatStart error_slot is None");
+            kani::assert(start.on_error.is_none(), "RepeatStart on_error is None");
+            match start.kind {
+                CompiledNodeKind::RepeatStart {
+                    max_attempts: actual_max,
+                    body: actual_body,
+                    done: actual_done,
+                } => {
+                    kani::assert(actual_max == max_attempts, "RepeatStart max_attempts preserved");
+                    kani::assert(actual_body == body, "RepeatStart body preserved");
+                    kani::assert(actual_done == done, "RepeatStart done preserved");
+                }
+                _ => kani::assert(false, "first node must be RepeatStart"),
+            }
+
+            // RepeatAttempt node
+            kani::assert(attempt.id == body, "RepeatAttempt id must equal body step");
+            kani::assert(attempt.output.is_none(), "RepeatAttempt output is None");
+            kani::assert(attempt.next.is_none(), "RepeatAttempt next is None");
+            kani::assert(attempt.error_slot.is_none(), "RepeatAttempt error_slot is None");
+            kani::assert(attempt.on_error.is_none(), "RepeatAttempt on_error is None");
+            match attempt.kind {
+                CompiledNodeKind::RepeatAttempt {
+                    attempt_slot: actual_slot,
+                    body: actual_body,
+                    done: actual_done,
+                } => {
+                    kani::assert(actual_slot == attempt_slot, "RepeatAttempt attempt_slot correct");
+                    kani::assert(actual_body == body, "RepeatAttempt body preserved");
+                    kani::assert(actual_done == done, "RepeatAttempt done preserved");
+                }
+                _ => kani::assert(false, "second node must be RepeatAttempt"),
+            }
+
+            // RepeatFinish node
+            kani::assert(finish.id == done, "RepeatFinish id must equal done step");
+            kani::assert(finish.output.is_some(), "RepeatFinish output is Some");
+            kani::assert(finish.next.is_none(), "RepeatFinish next is None");
+            kani::assert(finish.error_slot.is_none(), "RepeatFinish error_slot is None");
+            kani::assert(finish.on_error.is_none(), "RepeatFinish on_error is None");
+            match finish.kind {
+                CompiledNodeKind::RepeatFinish { result } => {
+                    kani::assert(result == attempt_slot, "RepeatFinish result is attempt slot");
+                }
+                _ => kani::assert(false, "third node must be RepeatFinish"),
+            }
+        }
+        _ => kani::assert(false, "lower_repeat must emit exactly three nodes"),
+    }
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn lower_repeat_allocates_fresh_slots_for_symbolic_prefix() {
+    // Full symbolic domain for all inputs - no assume narrowing
+    let prefix: u16 = kani::any();
+    let max_attempts: u16 = kani::any();
+    let body = StepIdx::new(kani::any::<u16>());
+    let done = StepIdx::new(kani::any::<u16>());
+    let id = StepIdx::new(prefix);
+
+    // Covers for critical boundary values
+    kani::cover!(prefix == 0, "prefix domain includes zero");
+    kani::cover!(prefix == 65533, "prefix domain includes max success boundary");
+    kani::cover!(prefix == 65534, "prefix domain includes first failure value");
+    kani::cover!(prefix == 65535, "prefix domain includes u16 max");
+    kani::cover!(max_attempts == 0, "max_attempts includes zero");
+    kani::cover!(max_attempts == u16::MAX, "max_attempts includes u16 max");
+    kani::cover!(body == id, "body may alias id");
+    kani::cover!(done == body, "done may alias body");
+    kani::cover!(done == id, "done may alias id");
+
+    // Reserve slots for the prefix
+    let mut builder = SlotCompiler::new();
+    let reserve_result = builder.reserve_slots(prefix);
+    kani::assert(reserve_result.is_ok(), "reserve_slots must succeed for any u16 prefix");
+
+    // Call actual lower_repeat
+    let result = lower_repeat(id, max_attempts, body, done, &mut builder);
+
+    // Determine expected outcome based on prefix value
+    let should_succeed = prefix <= 65533;
+
+    if should_succeed {
+        // Expect success with exact node structure
+        match result {
+            Ok(nodes) => {
+                // Verify slot count using checked arithmetic
+                let expected_count = prefix.checked_add(2);
+                match expected_count {
+                    Some(count) => {
+                        let actual_count_result = builder.slot_count();
+                        match actual_count_result {
+                            Ok(actual_count) => {
+                                kani::assert(
+                                    actual_count == count,
+                                    "slot count must equal prefix + 2 on success"
+                                );
+                            }
+                            Err(_) => kani::assert(false, "slot_count must succeed after successful lower_repeat"),
+                        }
+                    }
+                    None => kani::assert(false, "prefix <= 65533 guarantees prefix+2 fits in u16"),
+                }
+
+                // Verify node structure
+                assert_repeat_node_structure(&nodes, id, max_attempts, body, done, SlotIdx::new(prefix));
+                std::mem::forget(nodes);
+            }
+            Err(_) => kani::assert(false, "lower_repeat should succeed for prefix <= 65533"),
+        }
+    } else {
+        // Expect SlotIndexOutOfRange with value 65535
+        match result {
+            Ok(nodes) => {
+                std::mem::forget(nodes);
+                kani::assert(false, "lower_repeat should fail for prefix > 65533");
+            }
+            Err(CompileError::SlotIndexOutOfRange { value }) => {
+                kani::assert(value == 65535, "overflow error must report value 65535");
+            }
+            Err(_) => kani::assert(false, "expected SlotIndexOutOfRange error"),
+        }
+    }
+
+    std::mem::forget(builder);
+}

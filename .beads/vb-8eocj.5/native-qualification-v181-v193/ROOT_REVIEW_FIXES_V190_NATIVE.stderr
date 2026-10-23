@@ -1,0 +1,56 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile)
+error[E0277]: `StepIdx` doesn't implement `std::fmt::Display`
+   --> crates/vb_compile/tests/v1_primitive_lowering.rs:378:57
+    |
+378 |         return Err(format!("entry: expected 0, got {}", parts.entry));
+    |                                                    --   ^^^^^^^^^^^ `StepIdx` cannot be formatted with the default formatter
+    |                                                    |
+    |                                                    required by this formatting parameter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `StepIdx`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `StepIdx` doesn't implement `std::fmt::Display`
+   --> crates/vb_compile/tests/v1_primitive_lowering.rs:400:58
+    |
+400 |             return Err(format!("node {} has error_slot", node.id));
+    |                                      --                  ^^^^^^^ `StepIdx` cannot be formatted with the default formatter
+    |                                      |
+    |                                      required by this formatting parameter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `StepIdx`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `StepIdx` doesn't implement `std::fmt::Display`
+   --> crates/vb_compile/tests/v1_primitive_lowering.rs:403:56
+    |
+403 |             return Err(format!("node {} has on_error", node.id));
+    |                                      --                ^^^^^^^ `StepIdx` cannot be formatted with the default formatter
+    |                                      |
+    |                                      required by this formatting parameter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `StepIdx`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0308]: mismatched types
+    --> crates/vb_compile/tests/v1_primitive_lowering.rs:441:37
+     |
+ 441 |         let actual = node_at(nodes, id)?;
+     |                      -------        ^^ expected `usize`, found `u16`
+     |                      |
+     |                      arguments to this function are incorrect
+     |
+note: function defined here
+    --> crates/vb_compile/tests/v1_primitive_lowering.rs:2020:4
+     |
+2020 | fn node_at(nodes: &[CompiledNode], index: usize) -> Result<&CompiledNode, String> {
+     |    ^^^^^^^                         ------------
+help: you can convert a `u16` to a `usize`
+     |
+ 441 |         let actual = node_at(nodes, id.into())?;
+     |                                       +++++++
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `vb_compile` (test "v1_primitive_lowering") due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...

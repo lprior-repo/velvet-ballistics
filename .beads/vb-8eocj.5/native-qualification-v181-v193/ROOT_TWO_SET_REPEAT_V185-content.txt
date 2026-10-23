@@ -1,0 +1,60 @@
+fn assert_two_set_repeat_contract(workflow: &CompiledWorkflow) -> Result<(), String> {
+    let parts = workflow.to_parts();
+    let nodes = parts.nodes.as_ref();
+    let constants = parts.constants.as_ref();
+
+    assert_eq!(workflow.slot_count(), 4, "slot_count must be 4");
+    assert_eq!(workflow.input_reserved(), 0, "input_reserved must be 0");
+    assert_eq!(workflow.counter(), Some(SlotIdx::new(1)), "counter must be slot 1");
+    assert_eq!(nodes.len(), 6, "must have exactly 6 nodes");
+    assert_dense_node_ids(workflow, "twoSetRepeat")?;
+
+    assert_eq!(constants.len(), 2, "must have exactly 2 constants");
+    assert_eq!(constants[0], ConstValue::I64(1), "constant 0 must be I64(1)");
+    assert_eq!(constants[1], ConstValue::I64(2), "constant 1 must be I64(2)");
+
+    let node0 = node_at(nodes, 0)?;
+    assert_eq!(node0.output, Some(SlotIdx::new(1)), "node 0 output must be counter slot 1");
+    assert_eq!(node0.next, None, "node 0 next must be None");
+    match &node0.kind {
+        CompiledNodeKind::RepeatStart { max, body, done } => {
+            assert_eq!(*max, 3, "node 0 max must be 3");
+            assert_eq!(*body, StepIdx::new(1), "node 0 body must be step 1");
+            assert_eq!(*done, StepIdx::new(4), "node 0 done must be step 4");
+        }
+        other => return Err(format!("node 0 expected RepeatStart, got {other:?}")),
+    }
+
+    assert_set_const_node(nodes, constants, 1, Some(2), Some(3), 0, 1)?;
+    assert_set_const_node(nodes, constants, 2, Some(3), Some(3), 1, 2)?;
+
+    let node3 = node_at(nodes, 3)?;
+    assert_eq!(node3.output, Some(SlotIdx::new(1)), "node 3 output must be slot 1");
+    assert_eq!(node3.next, Some(StepIdx::new(1)), "node 3 next must be step 1");
+    match &node3.kind {
+        CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
+            assert_eq!(*attempt_slot, SlotIdx::new(1), "node 3 attempt_slot must be slot 1");
+            assert_eq!(*done, StepIdx::new(4), "node 3 done must be step 4");
+        }
+        other => return Err(format!("node 3 expected RepeatCheck, got {other:?}")),
+    }
+
+    let node4 = node_at(nodes, 4)?;
+    assert_eq!(node4.output, Some(SlotIdx::new(3)), "node 4 output must be slot 3");
+    assert_eq!(node4.next, Some(StepIdx::new(5)), "node 4 next must be step 5");
+    match &node4.kind {
+        CompiledNodeKind::RepeatFinish { result } => {
+            assert_eq!(*result, SlotIdx::new(3), "node 4 result must be slot 3");
+        }
+        other => return Err(format!("node 4 expected RepeatFinish, got {other:?}")),
+    }
+
+    assert_finish_node(nodes, 5, 0)?;
+
+    for (i, node) in nodes.iter().enumerate() {
+        assert_eq!(node.error_slot, None, "node {i} must not have error_slot");
+        assert_eq!(node.on_error, None, "node {i} must not have on_error");
+    }
+
+    Ok(())
+}

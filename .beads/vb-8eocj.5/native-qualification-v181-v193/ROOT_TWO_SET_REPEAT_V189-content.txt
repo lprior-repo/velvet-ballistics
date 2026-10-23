@@ -1,0 +1,36 @@
+fn assert_two_set_repeat_contract(workflow: &CompiledWorkflow) -> Result<(), String> {
+    let parts = workflow.to_parts();
+    if parts.slot_count != 4 { return Err(format!("slot_count: expected 4, got {}", parts.slot_count)); }
+    if parts.entry != 0 { return Err(format!("entry: expected 0, got {}", parts.entry)); }
+    if parts.nodes.len() != 6 { return Err(format!("nodes: expected 6, got {}", parts.nodes.len())); }
+    if parts.constants.len() != 2 { return Err(format!("constants: expected 2, got {}", parts.constants.len())); }
+    assert_dense_node_ids(workflow, "two_set_repeat")?;
+    assert_set_const_node(&parts.nodes, &parts.constants, 1, Some(2), Some(2), 0, 1)?;
+    assert_set_const_node(&parts.nodes, &parts.constants, 2, Some(3), Some(3), 1, 2)?;
+    let n1 = checked_node_at(&parts.nodes, 1)?;
+    let n2 = checked_node_at(&parts.nodes, 2)?;
+    if n1.output == n2.output { return Err("set nodes must have distinct outputs".to_string()); }
+    assert_finish_node(&parts.nodes, 5, 0);
+    for node in &parts.nodes {
+        if node.error_slot.is_some() { return Err(format!("node {} has error_slot", node.id)); }
+        if node.on_error.is_some() { return Err(format!("node {} has on_error", node.id)); }
+    }
+    assert_two_set_repeat_control(&parts.nodes)?;
+    Ok(())
+}
+
+fn assert_two_set_repeat_control(nodes: &[CompiledNode]) -> Result<(), String> {
+    let specs = [
+        (0u16, CompiledNodeKind::RepeatStart { max_attempts: 3, body: 1, done: 4 }, Some(1u16), None),
+        (3u16, CompiledNodeKind::RepeatCheck { attempt_slot: 1, done: 4 }, Some(1u16), Some(1u16)),
+        (4u16, CompiledNodeKind::RepeatFinish { result: 3 }, Some(3u16), Some(5u16)),
+    ];
+    for (id, kind, output, next) in specs {
+        let actual = checked_node_at(nodes, id)?;
+        let expected = CompiledNode { id, kind, output, next, error_slot: None, on_error: None };
+        if actual != &expected {
+            return Err(format!("node {} mismatch: actual={:?} expected={:?}", id, actual, expected));
+        }
+    }
+    Ok(())
+}

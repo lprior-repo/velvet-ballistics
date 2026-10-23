@@ -1,0 +1,16 @@
+{
+  "kani-version": "0.67.0",
+  "file-version": "0.1",
+  "standard-harnesses": {
+    "crates/vb_compile/src/kani_lower_repeat.rs": [
+      "kani_lower_repeat::lower_repeat_allocates_fresh_slots_for_symbolic_prefix"
+    ]
+  },
+  "contract-harnesses": {},
+  "contracts": [],
+  "totals": {
+    "standard-harnesses": 1,
+    "contract-harnesses": 0,
+    "functions-under-contract": 0
+  }
+}
