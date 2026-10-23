@@ -1,0 +1,20 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_compile)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.15s
+     Running tests/vb_f2_source_slot_preservation.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f2_source_slot_preservation-40d3cf0a98e4198a)
+Error: "unchanged source IR execution failed: Core(InternalInvariantViolation { reason: \"invalid_state_transition\" })"
+Error: "unchanged source IR execution failed: EvidenceGapsRecorded { count: 1, last_slot: Some(SlotIdx(3)) }"
+Error: "unchanged source IR execution failed: Core(InternalInvariantViolation { reason: \"invalid_state_transition\" })"
+Error: "unchanged source IR execution failed: Core(InternalInvariantViolation { reason: \"invalid_state_transition\" })"
+Error: "unchanged source IR execution failed: Core(InternalInvariantViolation { reason: \"invalid_state_transition\" })"
+Error: "unchanged source IR execution failed: EvidenceGapsRecorded { count: 1, last_slot: Some(SlotIdx(3)) }"
+Error: "unchanged source IR execution failed: EvidenceGapsRecorded { count: 1, last_slot: Some(SlotIdx(3)) }"
+Error: "canonical source compilation failed: CompileErrors([Workflow(ImproperLoopNesting { inner: StepIdx(8), outer_done: StepIdx(7) })])"
+Error: "unchanged source IR execution failed: Core(InternalInvariantViolation { reason: \"invalid_state_transition\" })"
+Error: "unchanged source IR execution failed: EvidenceGapsRecorded { count: 1, last_slot: Some(SlotIdx(10)) }"
+Error: "unchanged source IR execution failed: Core(InternalInvariantViolation { reason: \"invalid_state_transition\" })"
+Error: "unchanged source IR execution failed: Core(InternalInvariantViolation { reason: \"invalid_state_transition\" })"
+Error: "unchanged source IR execution failed: EvidenceGapsRecorded { count: 1, last_slot: Some(SlotIdx(11)) }"
+Error: "canonical source compilation failed: CompileErrors([Workflow(ImproperLoopNesting { inner: StepIdx(6), outer_done: StepIdx(5) })])"
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_f2_source_slot_preservation`

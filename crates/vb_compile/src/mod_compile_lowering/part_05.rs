@@ -11,7 +11,7 @@ pub use digest::canonical_digest;
 pub(crate) use digest::{canonical_primitive_name, digest_step_primitive, validate_branch_counts};
 pub use ir::{lower_do, lower_set, lower_steps_to_ir};
 pub(super) use utility::{
-    StepIdxSlotExt, canonical_finish_slot, optional_slot_from_text, parse_i64_field, slot_from_text,
+    canonical_finish_slot, optional_slot_from_text, parse_i64_field, slot_from_text,
 };
 
 // Unit tests for canonical_digest and digest_step_primitive live in a
