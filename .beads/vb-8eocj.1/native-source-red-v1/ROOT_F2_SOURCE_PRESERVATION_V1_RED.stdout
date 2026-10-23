@@ -1,0 +1,23 @@
+
+running 7 tests
+test repeat_finishes_with_prior_answer_42 ... FAILED
+test repeat_finishes_with_prior_sentinel_99 ... FAILED
+test together_finishes_with_prior_answer_42 ... FAILED
+test together_entry_preserves_prior_source_values ... FAILED
+test sequential_repeat_together_preserve_prior_source_values ... FAILED
+test together_finishes_with_prior_sentinel_99 ... FAILED
+test sequential_together_repeat_preserve_prior_source_values ... FAILED
+
+failures:
+
+failures:
+    repeat_finishes_with_prior_answer_42
+    repeat_finishes_with_prior_sentinel_99
+    sequential_repeat_together_preserve_prior_source_values
+    sequential_together_repeat_preserve_prior_source_values
+    together_entry_preserves_prior_source_values
+    together_finishes_with_prior_answer_42
+    together_finishes_with_prior_sentinel_99
+
+test result: FAILED. 0 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
