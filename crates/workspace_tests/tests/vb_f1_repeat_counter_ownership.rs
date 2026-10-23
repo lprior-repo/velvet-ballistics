@@ -747,3 +747,72 @@ fn test_together_join_foreign_write() -> Result<(), Box<dyn std::error::Error + 
 
     Ok(())
 }
+
+/// Malformed-IR region escape/reentry probe; not canonical-source acceptance.
+#[test]
+fn malformed_ir_loop_rearm_region_crossing_edge()
+-> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let workflow = compile_with_trailing_set()?;
+
+    let (_owner, body, _counter, _private_body_output) =
+        find_repeat_slots(&workflow).ok_or("repeat slots not found")?;
+    let (check, done) = find_check_and_done(&workflow).ok_or("check/done not found")?;
+    let trailing = find_trailing_set_77(&workflow).ok_or("trailing set not found")?;
+
+    let mut parts = workflow.to_parts();
+
+    let target_finish = parts
+        .nodes
+        .iter()
+        .find(|node| node.id == trailing)
+        .and_then(|node| node.next)
+        .ok_or("missing trailing continuation")?;
+
+    for node in &mut parts.nodes {
+        if node.id == body {
+            node.kind = CompiledNodeKind::Jump { target: trailing };
+            node.next = None;
+            node.output = None;
+        } else if node.id == trailing {
+            node.kind = CompiledNodeKind::Jump { target: check };
+            node.next = None;
+            node.output = None;
+        } else if node.id == done {
+            node.next = Some(target_finish);
+        }
+    }
+
+    let modified = CompiledWorkflow::try_from_parts(parts)
+        .map_err(|e| format!("region probe constructor: {e:?}"))?;
+
+    let mut frame = new_run_frame(RunId::new(1), &modified)?;
+    let mut store = ValueStore::new();
+    let mut evidence = EvidenceCollector::new();
+    let mut collect_states = CollectStates::new();
+    let mut budget = StepBudget::new(128);
+
+    let result = drive_deterministic_full(
+        &modified,
+        &mut frame,
+        &mut budget,
+        &mut store,
+        &[],
+        RetryPolicy::NEVER,
+        &mut evidence,
+        &mut collect_states,
+        &CapabilitySet::empty(),
+        1,
+    );
+
+    assert!(
+        matches!(
+            &result,
+            Err(vb_runtime::engine::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::InvalidCompiledWorkflow { reason }
+            )) if *reason == "loop rearm region crossing edge"
+        ),
+        "expected region guard, got {result:?}"
+    );
+
+    Ok(())
+}
