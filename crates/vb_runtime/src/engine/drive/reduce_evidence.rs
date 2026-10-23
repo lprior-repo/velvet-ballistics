@@ -12,7 +12,7 @@ use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeEngineR
 
 /// Emit slot-written evidence for the Reduce branch that just executed.
 /// Returns Some(()) when Reduce-specific evidence was emitted. Returns
-/// None when the node is not a Reduce control node.
+/// None when the node is not a Reduce control node or the PC is unexpected.
 pub(super) fn reduce_evidence(
     run: &RunFrame,
     evidence: &mut EvidenceCollector,
@@ -31,10 +31,58 @@ pub(super) fn reduce_evidence(
             iterator_slot,
             body,
             done,
+            ..
         } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
         _ => return Ok(None),
     };
 
+    let Some(slots) = slots else {
+        return Ok(None);
+    };
+
+    emit_distinct(run, evidence, drive_state, &slots)?;
+    Ok(Some(()))
+}
+
+fn classify_reduce_start(
+    run: &RunFrame,
+    node: &CompiledNode,
+    input: SlotIdx,
+    accumulator: SlotIdx,
+    body: vb_core::ids::StepIdx,
+    done: vb_core::ids::StepIdx,
+) -> Option<[Option<SlotIdx>; 3]> {
+    if run.pc() == done {
+        Some([Some(accumulator), None, None])
+    } else if run.pc() == body {
+        Some([Some(accumulator), Some(input), node.output])
+    } else {
+        None
+    }
+}
+
+fn classify_reduce_next(
+    run: &RunFrame,
+    node: &CompiledNode,
+    iterator_slot: SlotIdx,
+    body: vb_core::ids::StepIdx,
+    done: vb_core::ids::StepIdx,
+) -> Option<[Option<SlotIdx>; 3]> {
+    if run.pc() == done {
+        Some([None, None, None])
+    } else if run.pc() == body {
+        Some([node.output, Some(iterator_slot), None])
+    } else {
+        None
+    }
+}
+
+fn emit_distinct(
+    run: &RunFrame,
+    evidence: &mut EvidenceCollector,
+    drive_state: &mut DriveState,
+    slots: &[Option<SlotIdx>; 3],
+) -> RuntimeEngineResult<()> {
     for (position, &slot) in slots.iter().enumerate() {
         if slot.is_none() {
             continue;
@@ -46,46 +94,12 @@ pub(super) fn reduce_evidence(
         if earlier_has {
             continue;
         }
-        emit_if_some(run, evidence, drive_state, slot)?;
+        emit_slot(run, evidence, drive_state, slot)?;
     }
-
-    Ok(Some(()))
+    Ok(())
 }
 
-fn classify_reduce_start(
-    run: &RunFrame,
-    node: &CompiledNode,
-    input: SlotIdx,
-    accumulator: SlotIdx,
-    body: vb_core::ids::StepIdx,
-    done: vb_core::ids::StepIdx,
-) -> [Option<SlotIdx>; 3] {
-    if run.pc() == done {
-        [Some(accumulator), None, None]
-    } else if run.pc() == body {
-        [Some(accumulator), Some(input), node.output]
-    } else {
-        [None, None, None]
-    }
-}
-
-fn classify_reduce_next(
-    run: &RunFrame,
-    node: &CompiledNode,
-    iterator_slot: SlotIdx,
-    body: vb_core::ids::StepIdx,
-    done: vb_core::ids::StepIdx,
-) -> [Option<SlotIdx>; 3] {
-    if run.pc() == done {
-        [None, None, None]
-    } else if run.pc() == body {
-        [node.output, Some(iterator_slot), None]
-    } else {
-        [None, None, None]
-    }
-}
-
-fn emit_if_some(
+fn emit_slot(
     run: &RunFrame,
     evidence: &mut EvidenceCollector,
     drive_state: &mut DriveState,
