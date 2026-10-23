@@ -1,0 +1,24 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-vs630-batch-tests-local3090-v22",
+  "argv": [
+    "env",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "cargo",
+    "nextest",
+    "run",
+    "-p",
+    "vb_storage",
+    "--lib",
+    "--all-features",
+    "--locked"
+  ],
+  "exit_code": 100,
+  "seconds": 2.713,
+  "timeout_seconds": 300,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_CLI_BATCH_V61_ALL_STORAGE"
+}

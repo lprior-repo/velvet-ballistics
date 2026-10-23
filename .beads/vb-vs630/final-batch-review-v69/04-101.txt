@@ -1,0 +1,3 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/append_event.rs
+101:     }
+102: }

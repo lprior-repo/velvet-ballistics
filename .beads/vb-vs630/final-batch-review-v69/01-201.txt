@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/artifact_sequence_tests.rs
+201: #[test]
+202: fn metadata_overflow_with_some_limit_aborts() -> Result<(), Box<dyn std::error::Error>> {
+203:     let (_path, journal) = open_test_journal()?;
+204:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+205:         .map_err(|e| format!("prepare failed: {}", e))?;
+206: 
+207:     let mut batch = JournalWriteBatch::new(&journal);
+208:     batch.byte_limit = Some(u64::MAX);
+209:     let original_metadata = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+210:     batch.staged_metadata_bytes = original_metadata;
+211: 
+212:     let result = batch.put_artifact_sequence(seq);
+213:     assert!(matches!(
+214:         result,
+215:         Err(JournalError::JournalBatchBytesExceeded {
+216:             attempted: u64::MAX,
+217:             limit: u64::MAX
+218:         })
+219:     ));
+220:     assert!(batch.is_aborted());
+221:     assert_eq!(batch.staged_metadata_bytes, original_metadata);
+222:     assert_eq!(batch.staged_event_bytes(), 0);
+223:     assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+224: 
+225:     let raw = journal
+226:         .artifact_acceptance
+227:         .get(LAST_ISSUED_KEY)
+228:         .map_err(|e| format!("read counter failed: {}", e))?;
+229:     assert!(raw.is_none());
+230:     Ok(())
+231: }
+232: 
+233: #[test]
+234: fn metadata_overflow_with_none_limit_aborts() -> Result<(), Box<dyn std::error::Error>> {
+235:     let (_path, journal) = open_test_journal()?;
+236:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+237:         .map_err(|e| format!("prepare failed: {}", e))?;
+238: 
+239:     let mut batch = JournalWriteBatch::new(&journal);
+240:     batch.byte_limit = None;
+241:     let original_metadata = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+242:     batch.staged_metadata_bytes = original_metadata;
+243: 
+244:     let result = batch.put_artifact_sequence(seq);
+245:     assert!(matches!(
+246:         result,
+247:         Err(JournalError::JournalBatchBytesExceeded {
+248:             attempted: u64::MAX,
+249:             limit: u64::MAX
+250:         })
+251:     ));
+252:     assert!(batch.is_aborted());
+253:     assert_eq!(batch.staged_metadata_bytes, original_metadata);
+254:     assert_eq!(batch.staged_event_bytes(), 0);
+255:     assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+256: 
+257:     let raw = journal
+258:         .artifact_acceptance
+259:         .get(LAST_ISSUED_KEY)
+260:         .map_err(|e| format!("read counter failed: {}", e))?;
+261:     assert!(raw.is_none());
+262:     Ok(())
+263: }
+264: 
+265: #[test]
+266: fn combined_overflow_with_some_limit_aborts() -> Result<(), Box<dyn std::error::Error>> {
+267:     let (_path, journal) = open_test_journal()?;
+268:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+269:         .map_err(|e| format!("prepare failed: {}", e))?;
+270: 
+271:     let mut batch = JournalWriteBatch::new(&journal);
+272:     batch.byte_limit = Some(19);
+273:     batch.staged_bytes = u64::MAX;
+274: 
+275:     let result = batch.put_artifact_sequence(seq);
+276:     assert!(matches!(
+277:         result,
+278:         Err(JournalError::JournalBatchBytesExceeded {
+279:             attempted: u64::MAX,
+280:             limit: 19
+281:         })
+282:     ));
+283:     assert!(batch.is_aborted());
+284:     assert_eq!(batch.staged_metadata_bytes, 0);
+285:     assert_eq!(batch.staged_event_bytes(), u64::MAX);
+286:     assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+287: 
+288:     let raw = journal
+289:         .artifact_acceptance
+290:         .get(LAST_ISSUED_KEY)
+291:         .map_err(|e| format!("read counter failed: {}", e))?;
+292:     assert!(raw.is_none());
+293:     Ok(())
+294: }
+295: 
+296: #[test]
+297: fn no_byte_limit_allows_large_batch() -> Result<(), Box<dyn std::error::Error>> {
+298:     let (_path, journal) = open_test_journal()?;
+299:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+300:         .map_err(|e| format!("prepare failed: {}", e))?;
