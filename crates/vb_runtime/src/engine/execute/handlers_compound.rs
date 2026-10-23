@@ -47,9 +47,16 @@ pub(super) fn handle_for_each_next(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::for_each::for_each_next(run, store, iterator_slot, body, done, output)
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+    crate::primitives::for_each::for_each_next_deferred(
+        run,
+        store,
+        iterator_slot,
+        body,
+        done,
+        output,
+    )
+    .map_err(RuntimeEngineError::Core)
+    .map(runtime_from_core)
 }
 
 pub(super) fn handle_for_each_join(
@@ -164,7 +171,7 @@ pub(super) fn handle_collect_next(
     body: StepIdx,
     done: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::collect::collect_next(run, store, cs, collector_slot, body, done)
+    crate::primitives::collect::collect_next_deferred(run, store, cs, collector_slot, body, done)
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core)
 }
@@ -220,7 +227,7 @@ pub(super) fn handle_reduce_next(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::reduce::reduce_next(
+    crate::primitives::reduce::reduce_next_deferred(
         run,
         store,
         iterator_slot,
@@ -277,7 +284,7 @@ pub(super) fn handle_repeat_check(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::repeat::repeat_check(run, attempt_slot, done, next, step)
+    crate::primitives::repeat::repeat_check_deferred(run, attempt_slot, done, next, step)
         .map_err(RuntimeEngineError::Core)
         .map(runtime_from_core)
 }

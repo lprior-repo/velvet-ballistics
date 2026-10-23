@@ -59,7 +59,7 @@ pub fn for_each_start(
 }
 
 /// Executes ForEachNext: advances the cursor, binds the next item, or exits.
-pub fn for_each_next(
+fn for_each_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     run: &mut RunFrame,
     store: &mut ValueStore,
     iterator_slot: SlotIdx,
@@ -94,7 +94,45 @@ pub fn for_each_next(
     let next_state = build_iterator_state(source_id, next_cursor)?;
     let next_state_id = store.insert_list(next_state)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)?;
-    jump_to(run, body)
+    P::jump(run, body)
+}
+
+/// Legacy entry-only state reset; this API does not validate a complete region.
+pub fn for_each_next(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    iterator_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+    output: Option<SlotIdx>,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    for_each_next_with_policy::<super::body_entry::LegacyEntry>(
+        run,
+        store,
+        iterator_slot,
+        body,
+        done,
+        output,
+    )
+}
+
+/// Internal deferred-reset variant for owned driver preflight.
+pub(crate) fn for_each_next_deferred(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    iterator_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+    output: Option<SlotIdx>,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    for_each_next_with_policy::<super::body_entry::DeferredOwned>(
+        run,
+        store,
+        iterator_slot,
+        body,
+        done,
+        output,
+    )
 }
 
 /// Executes ForEachJoin: materializes ordered loop results to the output slot.

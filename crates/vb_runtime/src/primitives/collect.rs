@@ -525,7 +525,7 @@ fn upsert_started_collect(
 
 /// Executes CollectNext by advancing the bounded pagination cursor.
 #[allow(clippy::too_many_arguments)]
-pub fn collect_next(
+fn collect_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     run: &mut RunFrame,
     store: &mut ValueStore,
     states: &mut CollectStates,
@@ -549,7 +549,45 @@ pub fn collect_next(
         cursor,
         ..state
     })?;
-    jump_to(run, body)
+    P::jump(run, body)
+}
+
+/// Legacy entry-only state reset; this API does not validate a complete region.
+pub fn collect_next(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    states: &mut CollectStates,
+    collector_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    collect_next_with_policy::<super::body_entry::LegacyEntry>(
+        run,
+        store,
+        states,
+        collector_slot,
+        body,
+        done,
+    )
+}
+
+/// Internal deferred-reset variant for owned driver preflight.
+pub(crate) fn collect_next_deferred(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    states: &mut CollectStates,
+    collector_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    collect_next_with_policy::<super::body_entry::DeferredOwned>(
+        run,
+        store,
+        states,
+        collector_slot,
+        body,
+        done,
+    )
 }
 
 fn accept_empty_collect_page(
