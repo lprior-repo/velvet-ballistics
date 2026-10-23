@@ -1,22 +1,13 @@
-#![allow(unused_imports)]
-pub(crate) use super::part_14::lower_canonical_choose;
 use super::*;
-use crate::expression::parse_expression;
-use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
-use crate::mod_compile_validation::{
-    reject_unsupported_for_each_fields, validate_canonical_compile_scope,
-};
-use saphyr::Yaml;
+use crate::mod_compile_errors::{CompileError, CompileErrors};
 use std::collections::HashMap;
-use vb_core::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowError, WorkflowParts,
-};
+use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
+
+pub(crate) use super::part_14::lower_canonical_choose;
 
 #[path = "canonical_references.rs"]
 mod canonical_references;
-use canonical_references::resolve_slot_reference;
+pub(super) use canonical_references::resolve_slot_reference;
 
 #[path = "canonical_scalar.rs"]
 mod canonical_scalar;
@@ -34,15 +25,23 @@ pub(super) fn lower_canonical_step(
     id: StepIdx,
     next: Option<StepIdx>,
     outputs: &mut HashMap<String, SlotIdx>,
+    step_outputs: &mut HashMap<String, SlotIdx>,
     step_names: &mut Vec<Box<str>>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    match &step.primitive {
+    let result = match &step.primitive {
         crate::StepPrimitive::Set { output, value } => {
             let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
-            lower_canonical_set_expression(
-                id, slot, output, value, next, outputs, builder,
-            )
+            if outputs.contains_key(output) {
+                return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
+                    name: Box::from(output.as_str()),
+                }]));
+            }
+            lower_canonical_set_expression(id, slot, value, next, outputs, step_outputs, builder)?;
+            outputs.insert(output.to_owned(), slot);
+            step_outputs.insert(step.id.to_string(), slot);
+            builder.record_slot(slot);
+            Ok(())
         }
         crate::StepPrimitive::Do { action, input } => {
             let output_slot = lower_canonical_do(
@@ -53,17 +52,16 @@ pub(super) fn lower_canonical_step(
                 Some(step.id.as_str()),
                 next,
                 outputs,
+                step_outputs,
                 builder,
             )?;
             if let Some(slot) = output_slot {
-                // Register the Do output under the step ID for later reference
-                if !outputs.contains_key(step.id.as_str()) {
-                    outputs.insert(step.id.to_string(), slot);
-                }
+                step_outputs.insert(step.id.to_string(), slot);
             }
+            Ok(())
         }
         crate::StepPrimitive::Finish { result } => {
-            lower_canonical_finish(index, last, id, result, outputs, builder)
+            lower_canonical_finish(index, last, id, result, outputs, step_outputs, builder)
         }
         crate::StepPrimitive::ForEach {
             input,
@@ -130,7 +128,9 @@ pub(super) fn lower_canonical_step(
                 primitive: canonical_primitive_name(other),
             },
         ])),
-    }?;
+    };
+
+    result?;
     extend_step_names_for_generated(step_names, step.id.as_str(), builder.nodes.len());
     Ok(())
 }
@@ -145,64 +145,13 @@ pub(super) fn extend_step_names_for_generated(
     }
 }
 
-pub(super) fn lower_canonical_set(
-    id: StepIdx,
-    slot: SlotIdx,
-    output: &str,
-    value: &str,
-    next: Option<StepIdx>,
-    outputs: &mut HashMap<String, SlotIdx>,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    if outputs.contains_key(output) {
-        return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-            name: Box::from(output),
-        }]));
-    }
-    outputs.insert(output.to_owned(), slot);
-    builder.record_slot(slot);
-    
-    // Try to parse as I64 constant first (preserves SetConst shape)
-    if let Ok(constant) = value.parse::<i64>() {
-        let value_idx = builder.push_constant(ConstValue::I64(constant))
-            .map_err(|e| CompileErrors(vec![e]))?;
-        builder.push_node(lower_set(id, slot, value_idx, next));
-    } else {
-        // Compile as expression
-        let parsed = parse_expression(value).map_err(|e| {
-            CompileErrors(vec![CompileError::ExpressionUnexpectedToken {
-                expression: Box::<str>::from(value),
-                index: 0,
-                expected: "valid set value expression",
-            }])
-        })?;
-        
-        let mut resolver = canonical_references::StepReferenceResolver::new(outputs.clone());
-        let program = crate::expression_bytecode::compile_expr_to_bytecode_with_resolver(
-            &parsed,
-            &mut builder.constants,
-            &mut resolver,
-        ).map_err(|e| CompileErrors(vec![e]))?;
-        
-        let expr_idx = builder.push_expression(program)?;
-        builder.push_node(CompiledNode {
-            id,
-            output: Some(slot),
-            next,
-            error_slot: None,
-            on_error: None,
-            kind: CompiledNodeKind::EvalExpr { expr: expr_idx },
-        });
-    }
-    Ok(())
-}
-
 pub(super) fn lower_canonical_finish(
     index: usize,
     last: usize,
     id: StepIdx,
     result: &crate::ScalarValue,
     outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     if index != last {
@@ -212,7 +161,7 @@ pub(super) fn lower_canonical_finish(
             expected: "the last step",
         }]));
     }
-    let slot = canonical_finish_slot(result, outputs)?;
+    let slot = super::canonical_finish_slot_with_step_outputs(result, outputs, step_outputs)?;
     let node = lower_finish(id, slot, builder);
     builder.push_node(node);
     Ok(())

@@ -1,0 +1,8 @@
+{
+  "crates/vb_compile/src/mod_compile_lowering/canonical_do.rs": "d528f75c32880ef1296e87efbe88a75b16ab0766bbce905988beb7ca124fdac9",
+  "crates/vb_compile/src/mod_compile_lowering/canonical_references.rs": "52dfa829761072540e33e08c2eb9dd817e4f28c61bbee6e3578e777c1641ccaf",
+  "crates/vb_compile/src/mod_compile_lowering/canonical_scalar.rs": "09662e74439c23765994d90cd6c8dc4143380d064e7d13527835819ba2bbb840",
+  "crates/vb_compile/src/mod_compile_lowering/finish_inputs.rs": "1d6e8d636b1b49daec8e2332d8a1b07acf57b44234905b1b683c0db62643ee22",
+  "crates/vb_compile/src/mod_compile_lowering/part_01.rs": "3382ed148e2b14b6ba223f7f92041618b4276bdcdde3df25da807d2c232de115",
+  "crates/vb_compile/src/mod_compile_lowering/part_02.rs": "aa17106f0ea81877f8f35ed47171f1899cd6c42aa85ab3ed4a660fa68d33104e"
+}
