@@ -204,7 +204,7 @@ fn emit_choose_body_set(
     diagnostic_step: usize,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let slot = step_id.to_slot();
+    let slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
     let constant = parse_i64_field(value, diagnostic_step, "choose.body.set.value")?;
     let value_idx = builder
         .push_constant(ConstValue::I64(constant))
@@ -226,9 +226,10 @@ fn emit_choose_body_do(
     let input_idx = parse_choose_body_u16(input, diagnostic_step, "input")?;
     let input_slot = SlotIdx::new(input_idx);
     builder.record_slot(input_slot);
+    let output = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id: step_id,
-        output: None,
+        output: Some(output),
         next: step_next,
         error_slot: None,
         on_error: None,

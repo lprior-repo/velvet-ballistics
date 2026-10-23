@@ -19,6 +19,7 @@ mod finish_inputs;
 pub(crate) use finish_inputs::{
     canonical_finish_slot_with_step_outputs, prepare_finish_input_slots,
 };
+use super::source_slot_reservation::reserve_source_slots;
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
@@ -32,6 +33,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         .ok_or(CompileErrors(vec![CompileError::EmptySteps]))?;
     let layout = canonical_layout(steps).map_err(|e| CompileErrors(vec![e]))?;
     let mut builder = SlotCompiler::new();
+    reserve_source_slots(source, &mut builder).map_err(|e| CompileErrors(vec![e]))?;
     let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut step_outputs: HashMap<String, SlotIdx> = HashMap::new();
     let mut step_names =
@@ -154,8 +156,8 @@ pub(super) fn canonical_step_width(
         crate::StepPrimitive::Ask { .. } => Ok(2),
         crate::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
         crate::StepPrimitive::Collect { body, .. }
-        | crate::StepPrimitive::Aggregate { body, .. }
         | crate::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
+        crate::StepPrimitive::Aggregate { body, .. } => body_width(body, 4),
         crate::StepPrimitive::Together { branches } => together_width(branches),
         crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
         _ => Ok(1),

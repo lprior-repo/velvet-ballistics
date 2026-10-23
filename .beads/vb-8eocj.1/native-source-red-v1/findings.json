@@ -1,0 +1,13 @@
+{
+  "base": "d0645504a432552301d43094859e1261318a1bef",
+  "implementation_applied": false,
+  "actual_result": "0pass7fail0ignored0filtered11.247s101",
+  "scopes": [
+    "42clobberedbyTogetherStart List0",
+    "Repeat missing outputstep2",
+    "Togethermissingnextstep4",
+    "sequentialcompositesImproperLoopNesting"
+  ],
+  "IR_replaced": false,
+  "status": "RED regression candidate; no implementation accepted"
+}

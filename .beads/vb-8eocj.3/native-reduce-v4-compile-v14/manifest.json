@@ -1,0 +1,10 @@
+{
+  "tested_candidate": "944ab427d03092c370219e3e5a1adc203452a950",
+  "description_normalized_candidate": "aaad0fc908966533cc9d4bb273479d249877986f",
+  "identical_git_tree": "bad504a92dec13973fb735374e2d7f370d81503e",
+  "sha256": {
+    "crates/vb_runtime/src/engine/drive/actions.rs": "39cdf5c5add3b737efdf827ea156517ea3bf561e0a7b2d6c5680b5c84b62e483",
+    "crates/vb_runtime/src/engine/drive/reduce_evidence.rs": "60566ca249c0b210801966332662a5440709a21a25afab1d421bb3b64df11344",
+    "crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs": "49bcff41f94eaed46dab343ea2b771e7b5aa70cb2151b2f91fc99792915d708e"
+  }
+}

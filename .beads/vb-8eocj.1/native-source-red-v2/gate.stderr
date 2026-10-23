@@ -1,0 +1,22 @@
+    Blocking waiting for file lock on build directory
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.29s
+     Running tests/vb_f2_source_slot_preservation.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f2_source_slot_preservation-40d3cf0a98e4198a)
+Error: 
+thread 'generated_composite_roles_do_not_alias_source_outputs' (2224047) panicked at crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs:214:13:
+generated TogetherStart { branches: [StepIdx(3), StepIdx(5)], join: StepIdx(7) } overwrites protected SlotIdx(0)
+"note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+ForEachStart lacks iterator output"
+Error: "unchanged source IR execution failed: Core(MissingOutputSlot { step: StepIdx(2) })"
+Error: "ReduceStart lacks iterator output"
+Error: "unchanged source IR execution failed: Core(MissingNextStep { step: StepIdx(4) })"
+Error: "unchanged source IR execution failed: Core(MissingOutputSlot { step: StepIdx(2) })"
+Error: "canonical source compilation failed: CompileErrors([Workflow(ImproperLoopNesting { inner: StepIdx(6), outer_done: StepIdx(5) })])"
+
+thread 'together_entry_preserves_prior_source_values' (2224054) panicked at crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs:88:13:
+assertion `left == right` failed: source output 42 was clobbered
+  left: List(ListId(0))
+ right: I64(42)
+Error: "unchanged source IR execution failed: Core(MissingNextStep { step: StepIdx(4) })"
+Error: "canonical source compilation failed: CompileErrors([Workflow(ImproperLoopNesting { inner: StepIdx(8), outer_done: StepIdx(7) })])"
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_f2_source_slot_preservation`

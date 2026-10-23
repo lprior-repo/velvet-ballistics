@@ -1,0 +1,30 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.70s
+     Running tests/vb_f2_source_slot_preservation.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f2_source_slot_preservation-40d3cf0a98e4198a)
+
+running 19 tests
+test declared_scalar_list_object_inputs_survive_repeat ... ok
+test declared_scalar_list_object_inputs_survive_together ... ok
+test for_each_empty_list_preserves_source_values ... ok
+test for_each_single_item_preserves_source_values ... ok
+test for_each_two_items_preserve_source_values ... ok
+test generated_composite_roles_do_not_alias_source_outputs ... ok
+test numeric_source_for_each_preserves_42_99_and_list_taint ... ok
+test numeric_source_reduce_preserves_42_99_and_list_taint ... ok
+test reduce_compiles_with_four_distinct_private_roles_and_no_nop ... ok
+test reduce_empty_list_preserves_source_values ... ok
+test reduce_single_item_preserves_source_values ... ok
+test reduce_two_items_preserve_source_values ... ok
+test repeat_finishes_with_prior_answer_42 ... ok
+test repeat_finishes_with_prior_sentinel_99 ... ok
+test sequential_repeat_together_preserve_prior_source_values ... ok
+test sequential_together_repeat_preserve_prior_source_values ... ok
+test together_entry_preserves_prior_source_values ... ok
+test together_finishes_with_prior_answer_42 ... ok
+test together_finishes_with_prior_sentinel_99 ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

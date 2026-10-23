@@ -1,0 +1,34 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_runtime)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_compile)
+error[E0027]: pattern does not mention field `accumulator`
+  --> crates/vb_runtime/src/engine/drive/reduce_evidence.rs:30:9
+   |
+30 | /         CompiledNodeKind::ReduceNext {
+31 | |             iterator_slot,
+32 | |             body,
+33 | |             done,
+34 | |         } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
+   | |_________^ missing field `accumulator`
+   |
+help: include the missing field in the pattern
+   |
+33 -             done,
+34 -         } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
+33 +             done, accumulator } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
+   |
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+33 -             done,
+34 -         } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
+33 +             done, accumulator: _ } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
+   |
+help: or always ignore missing fields here
+   |
+33 -             done,
+34 -         } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
+33 +             done, .. } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
+   |
+
+For more information about this error, try `rustc --explain E0027`.
+error: could not compile `vb_runtime` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
