@@ -1,0 +1,43 @@
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_05.rs b/crates/vb_compile/src/mod_compile_lowering/part_05.rs
+index cad3cada..fb344d9c 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_05.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_05.rs
+@@ -11,7 +11,7 @@ pub use digest::canonical_digest;
+ pub(crate) use digest::{canonical_primitive_name, digest_step_primitive, validate_branch_counts};
+ pub use ir::{lower_do, lower_set, lower_steps_to_ir};
+ pub(super) use utility::{
+-    StepIdxSlotExt, canonical_finish_slot, optional_slot_from_text, parse_i64_field, slot_from_text,
++    canonical_finish_slot, optional_slot_from_text, parse_i64_field, slot_from_text,
+ };
+ 
+ // Unit tests for canonical_digest and digest_step_primitive live in a
+diff --git a/crates/vb_compile/src/mod_compile_lowering/part_05_utility.rs b/crates/vb_compile/src/mod_compile_lowering/part_05_utility.rs
+index 0fa182e2..329ebccd 100644
+--- a/crates/vb_compile/src/mod_compile_lowering/part_05_utility.rs
++++ b/crates/vb_compile/src/mod_compile_lowering/part_05_utility.rs
+@@ -2,7 +2,7 @@
+ 
+ use crate::mod_compile_errors::{CompileError, CompileErrors};
+ use std::collections::HashMap;
+-use vb_core::{SlotIdx, StepIdx};
++use vb_core::SlotIdx;
+ 
+ pub(in crate::mod_compile_lowering) fn parse_i64_field(
+     value: &str,
+@@ -53,16 +53,6 @@ pub(in crate::mod_compile_lowering) fn optional_slot_from_text(
+     }
+ }
+ 
+-pub(in crate::mod_compile_lowering) trait StepIdxSlotExt {
+-    fn to_slot(self) -> SlotIdx;
+-}
+-
+-impl StepIdxSlotExt for StepIdx {
+-    fn to_slot(self) -> SlotIdx {
+-        SlotIdx::new(self.get())
+-    }
+-}
+-
+ pub(in crate::mod_compile_lowering) fn canonical_finish_slot(
+     result: &crate::ScalarValue,
+     outputs: &HashMap<String, SlotIdx>,

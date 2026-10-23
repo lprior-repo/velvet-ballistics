@@ -1,0 +1,17 @@
+{
+  "status": "NATIVE_RED",
+  "passed": 5,
+  "failed": 14,
+  "ignored": 0,
+  "frozen_tests": 19,
+  "source_ir_mutated_by_tests": false,
+  "unused_helper_patch": "9fc5ad874f6639fd12b6e76735aea01e490a58bbc53745e9358addbca16e8cd3",
+  "remaining_failure_families": [
+    "bounded loop step-state reentry",
+    "Repeat progression",
+    "Together/Reduce output evidence gaps",
+    "completed sequential loop span nesting"
+  ],
+  "runtime_followup": "vb-8eocj.3",
+  "parent_F1_closed": false
+}
