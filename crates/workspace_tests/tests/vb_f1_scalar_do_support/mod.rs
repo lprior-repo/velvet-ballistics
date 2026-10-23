@@ -5,10 +5,10 @@ use std::sync::Arc;
 
 use vb_compile::compile_workflow;
 use vb_core::{
-    new_run_frame, CapabilitySet, CompiledWorkflow, RunFrame, RunId, SlotIdx, SlotValue, Taint,
-    ValueStore,
+    CapabilitySet, CompiledWorkflow, RunFrame, RunId, SlotIdx, SlotValue, Taint, ValueStore,
+    new_run_frame,
 };
-use vb_runtime::engine::{drive_deterministic_full, EvidenceCollector, RuntimeSignal};
+use vb_runtime::engine::{EvidenceCollector, RuntimeSignal, drive_deterministic_full};
 use vb_runtime::journal::VolatileRuntimeJournal;
 use vb_runtime::primitives::collect::CollectStates;
 use vb_runtime::runtime::Runtime;

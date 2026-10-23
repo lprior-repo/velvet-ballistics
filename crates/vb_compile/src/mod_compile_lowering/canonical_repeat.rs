@@ -15,13 +15,19 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     if max_attempts == 0 {
-        return Err(field_error(index, "repeat.max_attempts", "non-empty primitive field"));
+        return Err(field_error(
+            index,
+            "repeat.max_attempts",
+            "non-empty primitive field",
+        ));
     }
     if body.is_empty() {
         return Err(field_error(index, "steps", "at least one set or do step"));
     }
     let layout = RepeatLayout::new(id, body).map_err(|e| CompileErrors(vec![e]))?;
-    let attempt_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let attempt_slot = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
         output: Some(attempt_slot),
@@ -52,8 +58,8 @@ impl RepeatLayout {
         // Nested primitives remain explicitly unsupported rather than gaining
         // activation semantics merely because their source body has a length.
         let width = body_width(steps, 0)?;
-        let width = u16::try_from(width)
-            .map_err(|_| CompileError::StepIndexOutOfRange { value: width })?;
+        let width =
+            u16::try_from(width).map_err(|_| CompileError::StepIndexOutOfRange { value: width })?;
         let body = checked_step_offset(id, 1, "repeat", "body")?;
         let check = checked_step_offset(body, width, "repeat", "check")?;
         let done = checked_step_offset(check, 1, "repeat", "done")?;
@@ -90,7 +96,11 @@ fn push_repeat_continuations(
 }
 
 fn field_error(step: usize, field: &'static str, expected: &'static str) -> CompileErrors {
-    CompileErrors(vec![CompileError::StepFieldShape { step, field, expected }])
+    CompileErrors(vec![CompileError::StepFieldShape {
+        step,
+        field,
+        expected,
+    }])
 }
 
 #[cfg(test)]

@@ -38,7 +38,10 @@ fn allocation_checks_every_representable_count_before_mutation() -> TestResult {
             assert_eq!(result?, SlotIdx::new(count));
             assert_eq!(builder.slot_count()?, next);
         } else {
-            assert!(matches!(result, Err(CompileError::SlotIndexOutOfRange { .. })));
+            assert!(matches!(
+                result,
+                Err(CompileError::SlotIndexOutOfRange { .. })
+            ));
             assert_eq!(builder.max_slot, before);
         }
     }
@@ -74,9 +77,18 @@ fn positional_outputs_preserve_holes_and_ignore_literals() -> TestResult {
 fn numeric_read_fields_reserve_but_non_slot_numbers_do_not() -> TestResult {
     let cases = [
         ("    do: {action: \"65535\", input: \"7\"}\n", 8),
-        ("    for_each: {variable: item, input: \"8\", at_once: 9000, steps: []}\n", 9),
-        ("    collect: {variable: page, source: \"9\", pages: 9000, items: 8000, steps: []}\n", 10),
-        ("    reduce: {variable: total, input: \"10\", initial: \"65535\", steps: []}\n", 11),
+        (
+            "    for_each: {variable: item, input: \"8\", at_once: 9000, steps: []}\n",
+            9,
+        ),
+        (
+            "    collect: {variable: page, source: \"9\", pages: 9000, items: 8000, steps: []}\n",
+            10,
+        ),
+        (
+            "    reduce: {variable: total, input: \"10\", initial: \"65535\", steps: []}\n",
+            11,
+        ),
         ("    wait: {event: \"11\", timeout: \"12\"}\n", 13),
         ("    ask: {prompt: \"13\", timeout: \"14\"}\n", 15),
         ("    finish: {result: 15}\n", 16),
@@ -133,7 +145,10 @@ fn invalid_late_reference_leaves_previous_reservation_unchanged() -> TestResult 
         ))?;
         let mut builder = SlotCompiler::new();
         builder.reserve_slots(3)?;
-        assert!(matches!(reserve_source_slots(&source, &mut builder), Err(CompileError::SlotIndexOutOfRange { .. })));
+        assert!(matches!(
+            reserve_source_slots(&source, &mut builder),
+            Err(CompileError::SlotIndexOutOfRange { .. })
+        ));
         assert_eq!(builder.slot_count()?, 3);
     }
     Ok(())

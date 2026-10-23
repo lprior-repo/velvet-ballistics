@@ -6,9 +6,7 @@
 //! expression through the canonical resolver and mapping to slot types.
 
 use crate::CompileError;
-use crate::expression::{
-    BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp,
-};
+use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp};
 use std::collections::HashMap;
 use vb_core::SlotIdx;
 use vb_expr::expr_parser::types::{ExprAst, ExprHelper, ExprLiteral};
@@ -80,10 +78,7 @@ fn build_type_context(
     let mut context = TypeContext::new();
     for (reference, _) in collect_references(expr) {
         let slot = resolve_slot_reference(&reference, outputs, step_outputs)?;
-        let ty = slot_types
-            .get(&slot)
-            .copied()
-            .unwrap_or(ExprType::Unknown);
+        let ty = slot_types.get(&slot).copied().unwrap_or(ExprType::Unknown);
         context.add_variable(reference.clone().into(), ty);
     }
     Ok(context)
@@ -112,7 +107,9 @@ fn vb_expr_error_to_compile(e: vb_expr::ExprError) -> CompileError {
             }
         }
         vb_expr::ExprError::HelperArityMismatch {
-            helper, expected, actual,
+            helper,
+            expected,
+            actual,
         } => CompileError::ExpressionHelperArity {
             helper: helper_name_static(&helper),
             expected,

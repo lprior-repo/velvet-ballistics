@@ -23,10 +23,18 @@ pub(super) fn lower_canonical_aggregate(
 ) -> Result<(), CompileErrors> {
     let input = slot_from_text(input, index, "aggregate.input")?;
     builder.record_slot(input);
-    let initial_input = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    let next_item = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    let iterator_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    let accumulator = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let initial_input = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let next_item = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let iterator_slot = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let accumulator = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
     let initial = parse_i64_field(initial, index, "aggregate.initial")?;
     let initial = builder
         .push_constant(ConstValue::I64(initial))
@@ -143,7 +151,9 @@ pub(super) fn lower_canonical_ask(
     if let Some(timeout_slot) = timeout {
         builder.record_slot(timeout_slot);
     }
-    let answer = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let answer = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
     let mut nodes =
         lower_ask(id, prompt, answer, timeout, builder).map_err(|e| CompileErrors(vec![e]))?;
     let resume = nodes

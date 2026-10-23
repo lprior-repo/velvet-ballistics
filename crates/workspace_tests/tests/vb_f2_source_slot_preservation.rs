@@ -16,7 +16,8 @@ use vb_runtime::engine::{
 };
 use vb_runtime::primitives::collect::CollectStates;
 
-const HEADER: &str = "version: velvet-ballistics/v1\nname: f2_preservation\nwhen:\n  manual: {}\nsteps:\n";
+const HEADER: &str =
+    "version: velvet-ballistics/v1\nname: f2_preservation\nwhen:\n  manual: {}\nsteps:\n";
 const SENTINELS: &str = "  - id: first\n    set:\n      output: answer\n      value: \"42\"\n  - id: second\n    set:\n      output: sentinel\n      value: \"99\"\n";
 const TOGETHER: &str = "  - id: fanout\n    together:\n      branches:\n        - label: left\n          steps:\n            - id: left_value\n              set:\n                output: left_result\n                value: \"7\"\n        - label: right\n          steps:\n            - id: right_value\n              set:\n                output: right_result\n                value: \"11\"\n";
 const REPEAT: &str = "  - id: bounded_repeat\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: body_value\n          set:\n            output: body_result\n            value: \"13\"\n";
@@ -81,12 +82,24 @@ impl SourceRun {
     fn assert_sentinels(&self) -> Result<(), String> {
         for expected in [42, 99] {
             let slot = self.constant_output(expected)?;
-            let value = self.frame.read_slot(slot)
+            let value = self
+                .frame
+                .read_slot(slot)
                 .map_err(|error| format!("sentinel {expected} unreadable: {error:?}"))?;
-            let taint = self.frame.read_taint(slot)
+            let taint = self
+                .frame
+                .read_taint(slot)
                 .map_err(|error| format!("sentinel {expected} taint unreadable: {error:?}"))?;
-            assert_eq!(*value, SlotValue::I64(expected), "source output {expected} was clobbered");
-            assert_eq!(taint, Taint::Clean, "source output {expected} taint changed");
+            assert_eq!(
+                *value,
+                SlotValue::I64(expected),
+                "source output {expected} was clobbered"
+            );
+            assert_eq!(
+                taint,
+                Taint::Clean,
+                "source output {expected} taint changed"
+            );
         }
         Ok(())
     }
@@ -94,15 +107,21 @@ impl SourceRun {
     fn assert_body_counts(&mut self, expected: &[(i64, usize)]) {
         let events = self.evidence.drain();
         for (body_value, count) in expected {
-            let actual = events.iter().filter(|event| match event {
-                EvidenceEvent::StepSucceeded { step, .. } => matches!(
-                    self.workflow.node(*step).map(|node| &node.kind),
-                    Some(CompiledNodeKind::SetConst { value })
-                        if self.workflow.constant(*value) == Some(&ConstValue::I64(*body_value))
-                ),
-                _ => false,
-            }).count();
-            assert_eq!(actual, *count, "source body value {body_value} execution count");
+            let actual = events
+                .iter()
+                .filter(|event| match event {
+                    EvidenceEvent::StepSucceeded { step, .. } => matches!(
+                        self.workflow.node(*step).map(|node| &node.kind),
+                        Some(CompiledNodeKind::SetConst { value })
+                            if self.workflow.constant(*value) == Some(&ConstValue::I64(*body_value))
+                    ),
+                    _ => false,
+                })
+                .count();
+            assert_eq!(
+                actual, *count,
+                "source body value {body_value} execution count"
+            );
         }
     }
 }
@@ -119,10 +138,17 @@ fn assert_finished_preserving(
 ) -> Result<(), String> {
     let mut run = SourceRun::new(&source(composites, finish))?;
     let original = run.workflow.to_parts();
-    assert_eq!(run.drive(128)?, RuntimeSignal::Finished(SlotValue::I64(expected)));
+    assert_eq!(
+        run.drive(128)?,
+        RuntimeSignal::Finished(SlotValue::I64(expected))
+    );
     run.assert_sentinels()?;
     run.assert_body_counts(body_counts);
-    assert_eq!(run.workflow.to_parts(), original, "compiled IR was modified during execution");
+    assert_eq!(
+        run.workflow.to_parts(),
+        original,
+        "compiled IR was modified during execution"
+    );
     Ok(())
 }
 
@@ -157,12 +183,22 @@ fn repeat_finishes_with_prior_sentinel_99() -> Result<(), String> {
 
 #[test]
 fn sequential_together_repeat_preserve_prior_source_values() -> Result<(), String> {
-    assert_finished_preserving(&format!("{TOGETHER}{REPEAT}"), "answer", 42, &[(7, 1), (11, 1), (13, 3)])
+    assert_finished_preserving(
+        &format!("{TOGETHER}{REPEAT}"),
+        "answer",
+        42,
+        &[(7, 1), (11, 1), (13, 3)],
+    )
 }
 
 #[test]
 fn sequential_repeat_together_preserve_prior_source_values() -> Result<(), String> {
-    assert_finished_preserving(&format!("{REPEAT}{TOGETHER}"), "sentinel", 99, &[(7, 1), (11, 1), (13, 3)])
+    assert_finished_preserving(
+        &format!("{REPEAT}{TOGETHER}"),
+        "sentinel",
+        99,
+        &[(7, 1), (11, 1), (13, 3)],
+    )
 }
 
 // Numeric source operands are the existing authoring subset, not F1 named
@@ -184,7 +220,11 @@ fn assert_role_isolation(run: &SourceRun, numeric_input: Option<SlotIdx>) -> Res
         writes.extend(node.error_slot);
         writes.extend(implicit_state_writes(node)?);
         for slot in writes {
-            assert!(!protected.contains(&slot), "generated {:?} overwrites protected {slot:?}", node.kind);
+            assert!(
+                !protected.contains(&slot),
+                "generated {:?} overwrites protected {slot:?}",
+                node.kind
+            );
         }
     }
     Ok(())
@@ -199,10 +239,15 @@ fn implicit_state_writes(node: &CompiledNode) -> Result<Vec<SlotIdx>, String> {
             writes.push(*item_slot);
         }
         CompiledNodeKind::ForEachNext { iterator_slot, .. } => writes.push(*iterator_slot),
-        CompiledNodeKind::ReduceStart { input, accumulator, .. } => {
+        CompiledNodeKind::ReduceStart {
+            input, accumulator, ..
+        } => {
             let state = node.output.ok_or("ReduceStart lacks iterator output")?;
             assert_ne!(state, *input, "reduce item aliases iterator state");
-            assert_ne!(state, *accumulator, "reduce accumulator aliases iterator state");
+            assert_ne!(
+                state, *accumulator,
+                "reduce accumulator aliases iterator state"
+            );
             assert_ne!(*input, *accumulator, "reduce item aliases accumulator");
             writes.extend([*input, *accumulator]);
         }
@@ -231,24 +276,42 @@ fn assert_numeric_list_preserved(
     let mut run = SourceRun::new(&source(composite, "answer"))?;
     let operand = SlotIdx::new(8);
     let parts = run.workflow.to_parts();
-    assert!(parts.nodes.iter().any(|node| match &node.kind {
-        CompiledNodeKind::ForEachStart { input, .. }
-        | CompiledNodeKind::ReduceStart { input, .. } => *input == operand,
-        CompiledNodeKind::Copy { source } => *source == operand,
-        _ => false,
-    }), "the authored numeric source operand was lost");
+    assert!(
+        parts.nodes.iter().any(|node| match &node.kind {
+            CompiledNodeKind::ForEachStart { input, .. }
+            | CompiledNodeKind::ReduceStart { input, .. } => *input == operand,
+            CompiledNodeKind::Copy { source } => *source == operand,
+            _ => false,
+        }),
+        "the authored numeric source operand was lost"
+    );
     assert_role_isolation(&run, Some(operand))?;
-    let list = run.store.insert_list(Box::<[SlotValue]>::from(items))
+    let list = run
+        .store
+        .insert_list(Box::<[SlotValue]>::from(items))
         .map_err(|error| format!("input list creation failed: {error:?}"))?;
-    run.frame.write_slot_with_taint(operand, SlotValue::List(list), taint)
+    run.frame
+        .write_slot_with_taint(operand, SlotValue::List(list), taint)
         .map_err(|error| format!("numeric source initialization failed: {error:?}"))?;
     assert_eq!(run.drive(128)?, RuntimeSignal::Finished(SlotValue::I64(42)));
     run.assert_sentinels()?;
     run.assert_body_counts(&[(7, items.len())]);
-    assert_eq!(*run.frame.read_slot(operand).map_err(|e| format!("{e:?}"))?, SlotValue::List(list));
-    assert_eq!(run.frame.read_taint(operand).map_err(|e| format!("{e:?}"))?, taint);
+    assert_eq!(
+        *run.frame.read_slot(operand).map_err(|e| format!("{e:?}"))?,
+        SlotValue::List(list)
+    );
+    assert_eq!(
+        run.frame
+            .read_taint(operand)
+            .map_err(|e| format!("{e:?}"))?,
+        taint
+    );
     assert_eq!(run.store.list(list).map_err(|e| format!("{e:?}"))?, items);
-    assert_eq!(run.workflow.to_parts(), parts, "numeric-source IR was replaced");
+    assert_eq!(
+        run.workflow.to_parts(),
+        parts,
+        "numeric-source IR was replaced"
+    );
     Ok(())
 }
 
@@ -264,7 +327,11 @@ fn generated_composite_roles_do_not_alias_source_outputs() -> Result<(), String>
 #[test]
 fn numeric_source_for_each_preserves_42_99_and_list_taint() -> Result<(), String> {
     for taint in [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret] {
-        assert_numeric_list_preserved(FOR_EACH, taint, &[SlotValue::I64(3), SlotValue::I64(5), SlotValue::I64(8)])?;
+        assert_numeric_list_preserved(
+            FOR_EACH,
+            taint,
+            &[SlotValue::I64(3), SlotValue::I64(5), SlotValue::I64(8)],
+        )?;
     }
     Ok(())
 }
@@ -272,14 +339,20 @@ fn numeric_source_for_each_preserves_42_99_and_list_taint() -> Result<(), String
 #[test]
 fn numeric_source_reduce_preserves_42_99_and_list_taint() -> Result<(), String> {
     for taint in [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret] {
-        assert_numeric_list_preserved(REDUCE, taint, &[SlotValue::I64(3), SlotValue::I64(5), SlotValue::I64(8)])?;
+        assert_numeric_list_preserved(
+            REDUCE,
+            taint,
+            &[SlotValue::I64(3), SlotValue::I64(5), SlotValue::I64(8)],
+        )?;
     }
     Ok(())
 }
 
 fn assert_small_list_preserved(composite: &str, length: usize) -> Result<(), String> {
     let values = [SlotValue::I64(3), SlotValue::I64(5)];
-    let items = values.get(..length).ok_or("invalid bounded fixture length")?;
+    let items = values
+        .get(..length)
+        .ok_or("invalid bounded fixture length")?;
     for taint in [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret] {
         assert_numeric_list_preserved(composite, taint, items)?;
     }
@@ -320,39 +393,61 @@ fn reduce_two_items_preserve_source_values() -> Result<(), String> {
 fn reduce_compiles_with_four_distinct_private_roles_and_no_nop() -> Result<(), String> {
     let run = SourceRun::new(&source(REDUCE, "answer"))?;
     let parts = run.workflow.to_parts();
-    let (initial_item, accumulator, iterator) = parts.nodes.iter().find_map(|node| {
-        match &node.kind {
-            CompiledNodeKind::ReduceStart { input, accumulator, .. } => {
-                Some((*input, *accumulator, node.output))
-            }
+    let (initial_item, accumulator, iterator) = parts
+        .nodes
+        .iter()
+        .find_map(|node| match &node.kind {
+            CompiledNodeKind::ReduceStart {
+                input, accumulator, ..
+            } => Some((*input, *accumulator, node.output)),
             _ => None,
-        }
-    }).ok_or("missing compiled ReduceStart")?;
+        })
+        .ok_or("missing compiled ReduceStart")?;
     let iterator = iterator.ok_or("ReduceStart lacks private iterator output")?;
-    let (next_iterator, next_accumulator, next_item) = parts.nodes.iter().find_map(|node| {
-        match &node.kind {
-            CompiledNodeKind::ReduceNext { iterator_slot, accumulator, .. } => {
-                Some((*iterator_slot, *accumulator, node.output))
-            }
+    let (next_iterator, next_accumulator, next_item) = parts
+        .nodes
+        .iter()
+        .find_map(|node| match &node.kind {
+            CompiledNodeKind::ReduceNext {
+                iterator_slot,
+                accumulator,
+                ..
+            } => Some((*iterator_slot, *accumulator, node.output)),
             _ => None,
-        }
-    }).ok_or("missing compiled ReduceNext")?;
+        })
+        .ok_or("missing compiled ReduceNext")?;
     let next_item = next_item.ok_or("ReduceNext lacks private item output")?;
-    assert_eq!(next_iterator, iterator, "ReduceNext uses the wrong iterator");
-    assert_eq!(next_accumulator, accumulator, "ReduceNext uses the wrong accumulator");
+    assert_eq!(
+        next_iterator, iterator,
+        "ReduceNext uses the wrong iterator"
+    );
+    assert_eq!(
+        next_accumulator, accumulator,
+        "ReduceNext uses the wrong accumulator"
+    );
     let roles = [initial_item, next_item, iterator, accumulator];
     for (index, slot) in roles.iter().enumerate() {
-        let next = index.checked_add(1).ok_or("fixed Reduce role index overflow")?;
+        let next = index
+            .checked_add(1)
+            .ok_or("fixed Reduce role index overflow")?;
         for other in roles.iter().skip(next) {
             assert_ne!(slot, other, "two independent Reduce roles alias");
         }
     }
-    assert!(parts.nodes.iter().any(|node| matches!(
-        &node.kind,
-        CompiledNodeKind::Copy { source } if *source == SlotIdx::new(8)
-            && node.output == Some(initial_item)
-    )), "Reduce must preserve its authored list through a private Copy");
-    assert!(!parts.nodes.iter().any(|node| matches!(&node.kind, CompiledNodeKind::Nop)));
+    assert!(
+        parts.nodes.iter().any(|node| matches!(
+            &node.kind,
+            CompiledNodeKind::Copy { source } if *source == SlotIdx::new(8)
+                && node.output == Some(initial_item)
+        )),
+        "Reduce must preserve its authored list through a private Copy"
+    );
+    assert!(
+        !parts
+            .nodes
+            .iter()
+            .any(|node| matches!(&node.kind, CompiledNodeKind::Nop))
+    );
     assert_role_isolation(&run, Some(SlotIdx::new(8)))
 }
 
@@ -360,26 +455,37 @@ fn payload(store: &mut ValueStore, case: u8, taint: Taint) -> Result<SlotValue, 
     let values = [SlotValue::I64(3), SlotValue::I64(5), SlotValue::I64(8)];
     match case {
         0 => Ok(SlotValue::I64(314)),
-        1 => store.insert_list(Box::<[SlotValue]>::from(values))
-            .map(SlotValue::List).map_err(|e| format!("{e:?}")),
+        1 => store
+            .insert_list(Box::<[SlotValue]>::from(values))
+            .map(SlotValue::List)
+            .map_err(|e| format!("{e:?}")),
         2 => {
             let key = store.insert_symbol("left").map_err(|e| format!("{e:?}"))?;
             let nested_key = store.insert_symbol("right").map_err(|e| format!("{e:?}"))?;
-            let nested = store.insert_list(Box::<[SlotValue]>::from([
-                SlotValue::I64(19), SlotValue::I64(23),
-            ])).map_err(|e| format!("{e:?}"))?;
+            let nested = store
+                .insert_list(Box::<[SlotValue]>::from([
+                    SlotValue::I64(19),
+                    SlotValue::I64(23),
+                ]))
+                .map_err(|e| format!("{e:?}"))?;
             let fields = [
                 ObjectField::with_taint(key, SlotValue::I64(17), taint),
                 ObjectField::with_taint(nested_key, SlotValue::List(nested), taint),
             ];
-            store.insert_object(Box::<[ObjectField]>::from(fields))
-                .map(SlotValue::Object).map_err(|e| format!("{e:?}"))
+            store
+                .insert_object(Box::<[ObjectField]>::from(fields))
+                .map(SlotValue::Object)
+                .map_err(|e| format!("{e:?}"))
         }
         _ => Err("invalid fixed payload test case".into()),
     }
 }
 
-fn assert_payload_content(store: &ValueStore, value: SlotValue, taint: Taint) -> Result<(), String> {
+fn assert_payload_content(
+    store: &ValueStore,
+    value: SlotValue,
+    taint: Taint,
+) -> Result<(), String> {
     match value {
         SlotValue::I64(number) => assert_eq!(number, 314),
         SlotValue::List(list) => assert_eq!(
@@ -391,12 +497,23 @@ fn assert_payload_content(store: &ValueStore, value: SlotValue, taint: Taint) ->
             assert_eq!(fields.len(), 2);
             let left = fields.first().ok_or("missing left field")?;
             let right = fields.get(1).ok_or("missing right field")?;
-            assert_eq!(store.symbol(left.key).map_err(|e| format!("{e:?}"))?, "left");
-            assert_eq!(store.symbol(right.key).map_err(|e| format!("{e:?}"))?, "right");
+            assert_eq!(
+                store.symbol(left.key).map_err(|e| format!("{e:?}"))?,
+                "left"
+            );
+            assert_eq!(
+                store.symbol(right.key).map_err(|e| format!("{e:?}"))?,
+                "right"
+            );
             assert_eq!(left.value, SlotValue::I64(17));
             assert_eq!((left.taint, right.taint), (taint, taint));
-            let SlotValue::List(nested) = right.value else { return Err("nested list type changed".into()); };
-            assert_eq!(store.list(nested).map_err(|e| format!("{e:?}"))?, &[SlotValue::I64(19), SlotValue::I64(23)]);
+            let SlotValue::List(nested) = right.value else {
+                return Err("nested list type changed".into());
+            };
+            assert_eq!(
+                store.list(nested).map_err(|e| format!("{e:?}"))?,
+                &[SlotValue::I64(19), SlotValue::I64(23)]
+            );
         }
         other => return Err(format!("declared input type changed: {other:?}")),
     }
@@ -404,24 +521,44 @@ fn assert_payload_content(store: &ValueStore, value: SlotValue, taint: Taint) ->
 }
 
 fn declared_input_survives(composite: &str, body_counts: &[(i64, usize)]) -> Result<(), String> {
-    let source = source(composite, "$input.payload")
-        .replacen("steps:\n", "inputs:\n  payload: any\nsteps:\n", 1);
+    let source = source(composite, "$input.payload").replacen(
+        "steps:\n",
+        "inputs:\n  payload: any\nsteps:\n",
+        1,
+    );
     for case in 0..3 {
         for taint in [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret] {
             let mut run = SourceRun::new(&source)?;
             let original = run.workflow.to_parts();
             assert_eq!(run.workflow.input_slots().len(), 1);
-            let input = run.workflow.input_slots().first().ok_or("missing declared input")?.slot;
+            let input = run
+                .workflow
+                .input_slots()
+                .first()
+                .ok_or("missing declared input")?
+                .slot;
             assert_role_isolation(&run, Some(input))?;
             let value = payload(&mut run.store, case, taint)?;
-            run.frame.write_slot_with_taint(input, value, taint).map_err(|e| format!("{e:?}"))?;
+            run.frame
+                .write_slot_with_taint(input, value, taint)
+                .map_err(|e| format!("{e:?}"))?;
             assert_eq!(run.drive(128)?, RuntimeSignal::Finished(value));
             run.assert_sentinels()?;
             run.assert_body_counts(body_counts);
-            assert_eq!(*run.frame.read_slot(input).map_err(|e| format!("{e:?}"))?, value);
-            assert_eq!(run.frame.read_taint(input).map_err(|e| format!("{e:?}"))?, taint);
+            assert_eq!(
+                *run.frame.read_slot(input).map_err(|e| format!("{e:?}"))?,
+                value
+            );
+            assert_eq!(
+                run.frame.read_taint(input).map_err(|e| format!("{e:?}"))?,
+                taint
+            );
             assert_payload_content(&run.store, value, taint)?;
-            assert_eq!(run.workflow.to_parts(), original, "declared-input IR was replaced");
+            assert_eq!(
+                run.workflow.to_parts(),
+                original,
+                "declared-input IR was replaced"
+            );
         }
     }
     Ok(())

@@ -2,17 +2,16 @@
 //! Compile-time type errors for boolean arithmetic and runtime
 //! verification of numeric identity preservation.
 
-use vb_compile::{compile_workflow, CompileError};
+use vb_compile::{CompileError, compile_workflow};
 use vb_core::value::SlotValue;
 
-use crate::vb_f1_scalar_do_support::{assert_finished_with_value, F1SourceRun};
+use crate::vb_f1_scalar_do_support::{F1SourceRun, assert_finished_with_value};
 
 fn yaml_bool_producer_consumer(value: &str) -> String {
     format!(
         "version: velvet-ballistics/v1\nname: bool_prod\nwhen: {{ manual: {{}} }}\nsteps:\n  - id: producer\n    set:\n      output: flag\n      value: \"true\"\n  - id: consumer\n    set:\n      output: result\n      value: \"{value}\"\n  - id: done\n    finish:\n      result: 0\n"
     )
 }
-
 
 fn yaml_steps_prefix_consumer(value: &str) -> String {
     format!(
@@ -91,9 +90,9 @@ fn test_step_prefix_bool_producer() -> Result<(), String> {
                 "expected TypeMismatch(set.value, number, boolean), got: {errors:?}"
             ))
         }
-        Ok(_) => Err(
-            "expected compile error for $step.producer bool arithmetic, got success".to_owned(),
-        ),
+        Ok(_) => {
+            Err("expected compile error for $step.producer bool arithmetic, got success".to_owned())
+        }
     }
 }
 
@@ -175,9 +174,9 @@ fn test_direct_literal_bool_arithmetic() -> Result<(), String> {
                 "expected TypeMismatch(set.value, number, boolean), got: {errors:?}"
             ))
         }
-        Ok(_) => Err(
-            "expected compile error for direct literal bool arithmetic, got success".to_owned(),
-        ),
+        Ok(_) => {
+            Err("expected compile error for direct literal bool arithmetic, got success".to_owned())
+        }
     }
 }
 

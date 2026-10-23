@@ -1,6 +1,6 @@
 //! Negative F1 compile-time and type error tests.
 
-use vb_compile::{compile_workflow, CompileError};
+use vb_compile::{CompileError, compile_workflow};
 
 use crate::vb_f1_scalar_do_support::compile_f1_workflow;
 

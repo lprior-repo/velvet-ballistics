@@ -2,7 +2,7 @@
 
 use vb_core::value::SlotValue;
 
-use crate::vb_f1_scalar_do_support::{assert_finished_with_value, F1SourceRun};
+use crate::vb_f1_scalar_do_support::{F1SourceRun, assert_finished_with_value};
 
 fn yaml_set_finish(output: &str, value: &str) -> String {
     format!(
