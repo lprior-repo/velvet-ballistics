@@ -1,0 +1,17 @@
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_runtime)
+error: unreachable `pub` item
+  --> crates/vb_runtime/src/primitives/body_entry.rs:11:5
+   |
+11 |     pub trait Sealed {}
+   |     ---^^^^^^^^^^^^^
+   |     |
+   |     help: consider restricting its visibility: `pub(crate)`
+   |
+   = help: or consider exporting it for use by other crates
+note: the lint level is defined here
+  --> crates/vb_runtime/src/lib.rs:3:9
+   |
+ 3 | #![deny(unreachable_pub)]
+   |         ^^^^^^^^^^^^^^^
+
+error: could not compile `vb_runtime` (lib test) due to 1 previous error

@@ -1,0 +1,15 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090",
+  "argv": [
+    "bash",
+    "scripts/check-source-length.sh"
+  ],
+  "exit_code": 1,
+  "seconds": 3.877,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_F2_POLICY_SOURCE_LENGTH_V111_NATIVE"
+}
