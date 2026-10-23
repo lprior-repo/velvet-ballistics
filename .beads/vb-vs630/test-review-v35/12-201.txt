@@ -1,0 +1,78 @@
+201:                     .source,
+202:                 yaml.as_bytes()
+203:             );
+204:             let events = journal.events_for_run(header.run)?;
+205:             if *mode == "none" {
+206:                 assert!(events.is_empty());
+207:             } else {
+208:                 assert_eq!(
+209:                     events,
+210:                     vec![
+211:                         vb_storage::JournalEvent::RunAccepted {
+212:                             run: header.run,
+213:                             seq: EventSeq::new(0),
+214:                             workflow: compiled.digest()
+215:                         },
+216:                         vb_storage::JournalEvent::RunAdmission {
+217:                             input_digest: vb_storage::RunInputBinding::Digest(
+218:                                 retained.input_digest()
+219:                             ),
+220:                             run: header.run,
+221:                             seq: EventSeq::new(1),
+222:                             artifact_digest: retained.artifact_digest(),
+223:                             policy_pin: vb_storage::RunPolicyPin::Pinned(artifact.policy_digest),
+224:                             granted_capabilities: vb_core::CapabilitySet::empty(),
+225:                             policy: if *mode == "strict" {
+226:                                 vb_core::RuntimePolicy::Strict
+227:                             } else {
+228:                                 vb_core::RuntimePolicy::Journaled
+229:                             },
+230:                         }
+231:                     ]
+232:                 );
+233:             }
+234:         }
+235:     }
+236:     Ok(())
+237: }
+238: 
+239: #[test]
+240: fn validation_precedes_journal_open() -> Result<(), Box<dyn std::error::Error>> {
+241:     for mode in ["none", "journaled", "strict"] {
+242:         let dir = tempdir()?;
+243:         let db = db_path(&dir);
+244:         let wf = write_file(&dir, "wf.yaml", NO_PORTS_YAML.as_bytes())?;
+245:         let inp = write_file(&dir, "input.bin", &[255])?;
+246:         let journal = vb_storage::FjallJournal::open(&db, None)?;
+247:         let compiled = vb_compile::compile_workflow(NO_PORTS_YAML.as_bytes())?;
+248:         let run = vb_core::RunId::new(77);
+249:         let header = vb_storage::RunHeaderRecord {
+250:             run,
+251:             workflow_id: vb_core::WorkflowId::new(0),
+252:             compiled_digest: compiled.digest(),
+253:             status: 0,
+254:             accepted_at_ms: 1,
+255:         };
+256:         vb_storage::put_run_header(&journal, &header)?;
+257:         journal.append_strict_batch(&[vb_storage::JournalEvent::RunAccepted {
+258:             run,
+259:             seq: vb_storage::EventSeq::new(0),
+260:             workflow: compiled.digest(),
+261:         }])?;
+262:         let before_headers = journal.run_headers()?;
+263:         let before_events = journal.events_for_run(run)?;
+264:         let result = subprocess(&wf, &inp, &db, mode)?;
+265:         assert_eq!(result.status.code(), Some(2));
+266:         assert_eq!(result.stdout, b"");
+267:         assert_eq!(
+268:             result.stderr,
+269:             b"INPUT_MAPPING_FAILED: input-bin decode failed\n"
+270:         );
+271:         let after_headers = journal.run_headers()?;
+272:         let after_events = journal.events_for_run(run)?;
+273:         assert_eq!(before_headers, after_headers);
+274:         assert_eq!(before_events, after_events);
+275:         drop(journal);
+276:     }
+277:     Ok(())
+278: }

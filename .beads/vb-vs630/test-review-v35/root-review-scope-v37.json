@@ -1,0 +1,14 @@
+{
+  "status": "REJECTED originalreport retained; factual corrections and additionalassertiongaps pendingfreshreview",
+  "corrections": [
+    "Current duplicate test compares inputs/events/counter only, NOT all source/compiled/header/indexes; raw fullycovered claim false.",
+    "Reopen test compares header compiled_digest/events LEN and some input fields; raw fullrecord equality claim false.",
+    "Concurrency test checks unique seqs, NOTfulltypedbindings perrun.",
+    "Policy test constructs/open journal then validates; raw beforejournalopen claim false.",
+    "Pureprepare test does not inspect artifactseq0, merelyno counter/rows.",
+    "No mutationengine executed and no actualfullmutationproof; thought experiments only.",
+    "PostcardEncodeFailed/bind-digest error reachability for closedderivedSerializable types must be established, no fictional corruptstructure serializer or fakehooks.",
+    "Contract explicitlyrequests malformed7/9 boundary probes; notproofallpossiblelengths, noauthoritytoexpandmandatoryeverylengthunchecked.",
+    "No explicitpanic/expect/unwrap allowed; do notrecommendnewpanicmacro lockpoison tests."
+  ]
+}

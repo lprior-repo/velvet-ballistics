@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/keys.rs
+401:             }
+402:             let run = RunId::new(run_val);
+403:             let seq = EventSeq::new(seq_val);
+404:             match prefix {
+405:                 KeyPrefix::RunEvent => Ok(StorageKey::RunEvent { run, seq }),
+406:                 _ => Ok(StorageKey::RunSnapshot { run, seq }),
+407:             }
+408:         }
+409:         KeyPrefix::IndexStatus => {
+410:             let state_byte = key_byte(bytes, prefix, 1)?;
+411:             let state = IndexStatusState::from_u8(state_byte);
+412:             let timestamp = u64::from_be_bytes(key_array::<8>(bytes, prefix, 2..10)?);
+413:             let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 10..18)?);
+414:             if run_val == 0 {
+415:                 return Err(KeyDecodeError::InvalidRunId);
+416:             }
+417:             Ok(StorageKey::IndexStatus {
+418:                 state,
+419:                 timestamp,
+420:                 run: RunId::new(run_val),
+421:             })
+422:         }
+423:         KeyPrefix::IndexWorkflow => {
+424:             let workflow_val = u32::from_be_bytes(key_array::<4>(bytes, prefix, 1..5)?);
+425:             let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 5..13)?);
+426:             if run_val == 0 {
+427:                 return Err(KeyDecodeError::InvalidRunId);
+428:             }
+429:             Ok(StorageKey::IndexWorkflow {
+430:                 workflow: WorkflowId::new(workflow_val),
+431:                 run: RunId::new(run_val),
+432:             })
+433:         }
+434:         KeyPrefix::IndexAction => {
+435:             let action_val = u16::from_be_bytes(key_array::<2>(bytes, prefix, 1..3)?);
+436:             let run_val = u64::from_be_bytes(key_array::<8>(bytes, prefix, 3..11)?);
+437:             if run_val == 0 {
+438:                 return Err(KeyDecodeError::InvalidRunId);
+439:             }
+440:             let step_val = u16::from_be_bytes(key_array::<2>(bytes, prefix, 11..13)?);
+441:             Ok(StorageKey::IndexAction {
+442:                 action: ActionId::new(action_val),
+443:                 run: RunId::new(run_val),
+444:                 step: vb_core::StepIdx::new(step_val),
+445:             })
+446:         }
+447:     }
+448: }
+449: 
+450: /// Decodes a raw journal-event key byte slice into its typed
+451: /// `StorageKey::RunEvent { run, seq }` form.
+452: ///
+453: /// Convenience wrapper around [`decode_storage_key`] that narrows the
+454: /// result to the run-event variant the journal event keyspace uses,
+455: /// and converts [`KeyDecodeError`] into [`JournalError`] so replay
+456: /// loops do not need a second `match` arm.
+457: ///
+458: /// # Errors
+459: ///
+460: /// Returns [`JournalError::MalformedKeyspaceRow`] for any
+461: /// `KeyDecodeError` (length mismatch, unknown prefix, invalid run id,
+462: /// reserved seq sentinel). Returns [`JournalError::MalformedKeyspaceRow`]
+463: /// with `actual_len == 17` shape when the prefix/format is fine but the
+464: /// stored shape is a different variant (e.g. RunHeader) than RunEvent.
+465: pub fn decode_run_event_key(
+466:     bytes: &[u8],
+467:     expected_run: RunId,
+468: ) -> Result<(RunId, EventSeq), JournalError> {
+469:     decode_storage_key(bytes)
+470:         .map_err(|_err| JournalError::MalformedKeyspaceRow {
+471:             prefix: PREFIX_RUN_EVENT,
+472:             expected_len: JOURNAL_KEY_BYTES,
+473:             actual_len: bytes.len(),
+474:         })
+475:         .and_then(|key| match key {
+476:             StorageKey::RunEvent { run, seq } if run == expected_run => Ok((run, seq)),
+477:             StorageKey::RunEvent { .. } => Err(JournalError::MalformedKeyspaceRow {
+478:                 prefix: PREFIX_RUN_EVENT,
+479:                 expected_len: JOURNAL_KEY_BYTES,
+480:                 actual_len: bytes.len(),
+481:             }),
+482:             _ => Err(JournalError::MalformedKeyspaceRow {
+483:                 prefix: PREFIX_RUN_EVENT,
+484:                 expected_len: JOURNAL_KEY_BYTES,
+485:                 actual_len: bytes.len(),
+486:             }),
+487:         })
+488: }
+489: 
+490: pub fn journal_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+491:     sequenced_run_key(PREFIX_RUN_EVENT, run, seq)
+492: }
+493: 
+494: fn sequenced_run_key(
+495:     prefix: u8,
+496:     run: RunId,
+497:     seq: EventSeq,
+498: ) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+499:     // PO-cn2v4-001: a zero `RunId` is reserved as "no run"; reject
+500:     // it before any byte writing. The order matters: run validation

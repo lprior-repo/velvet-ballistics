@@ -1,0 +1,27 @@
+1: use crate::constants::{MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES};
+2: use crate::{JournalError, RunInputsRecord, codec::encode_record};
+3: 
+4: impl crate::JournalWriteBatch<'_> {
+5:     pub(crate) fn put_run_inputs(&mut self, record: &RunInputsRecord) -> Result<(), JournalError> {
+6:         let encoded = crate::keys::run_header_key(record.run()).and_then(|key| {
+7:             encode_record(
+8:                 MAGIC_INDEX_RECORD,
+9:                 crate::RecordKind::RunInputs,
+10:                 record.run().get(),
+11:                 record,
+12:                 MAX_RUN_INPUT_BYTES,
+13:             )
+14:             .map(|value| (key, value))
+15:         });
+16:         match encoded {
+17:             Ok((key, value)) => {
+18:                 self.inner.insert(&self.journal.run_inputs, key, value);
+19:                 Ok(())
+20:             }
+21:             Err(error) => {
+22:                 self.aborted = true;
+23:                 Err(error)
+24:             }
+25:         }
+26:     }
+27: }

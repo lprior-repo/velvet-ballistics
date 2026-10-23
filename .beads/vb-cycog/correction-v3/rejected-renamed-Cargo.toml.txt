@@ -1,0 +1,53 @@
+[package]
+name = "velvet-ballistics"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+vb_compile = { path = "../vb_compile" }
+vb_core = { path = "../vb_core" }
+vb_ipc = { path = "../vb_ipc" }
+vb_runtime = { path = "../vb_runtime" }
+vb_storage = { path = "../vb_storage" }
+vb_validate = { path = "../vb_validate" }
+postcard = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["alloc"] }
+serde-saphyr = { workspace = true }
+chrono.workspace = true
+crc32fast.workspace = true
+blake3.workspace = true
+
+[lib]
+name = "velvet_ballistics"
+path = "src/lib.rs"
+
+[[bin]]
+name = "velvet-ballistics"
+path = "src/main.rs"
+
+[dev-dependencies]
+bytes = { workspace = true }
+proptest = { workspace = true }
+serde = { workspace = true }
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+[[test]]
+name = "cli_submit_retained_inputs"
+path = "../workspace_tests/tests/cli/submit_retained_inputs.rs"
+
+[[test]]
+name = "cli_submit_input_boundary"
+path = "../workspace_tests/tests/cli/submit_input_boundary.rs"
+
+[[test]]
+name = "cli_finish_input_execution"
+path = "../workspace_tests/tests/cli/finish_input_execution.rs"
+
+[[test]]
+name = "cli_verify_budget_profiles"
+path = "../workspace_tests/tests/cli/verify_budget_profiles.rs"

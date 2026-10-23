@@ -25,6 +25,7 @@ pub struct JournalWriteBatch<'j> {
     pub(super) staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
     pub(super) aborted: bool,
     pub(super) staged_bytes: u64,
+    pub(super) staged_metadata_bytes: u64,
     pub(super) byte_limit: Option<u64>,
     pub(super) _not_send_or_sync: core::marker::PhantomData<*mut FjallJournal>,
 }
@@ -38,6 +39,7 @@ impl<'j> JournalWriteBatch<'j> {
             staged_event_keys: HashSet::new(),
             aborted: false,
             staged_bytes: 0,
+            staged_metadata_bytes: 0,
             byte_limit: Some(DEFAULT_JOURNAL_BATCH_BYTE_LIMIT),
             _not_send_or_sync: core::marker::PhantomData,
         }

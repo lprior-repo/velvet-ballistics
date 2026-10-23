@@ -1,0 +1,157 @@
+#![forbid(unsafe_code)]
+use crate::batch::JournalWriteBatch;
+use crate::events::JournalEvent;
+use crate::journal::artifact_acceptance::{
+    IssuedArtifactSequence, LAST_ISSUED_KEY, prepare_artifact_with_sequence,
+};
+use crate::keys::run_event_key;
+use crate::types::{EventSeq, RunId};
+use crate::JournalError;
+use vb_core::WorkflowDigest;
+
+use super::artifact_sequence_test_support::{minimal_artifact, test_journal};
+
+fn make_accepted_event(run: RunId, seq: EventSeq) -> JournalEvent {
+    JournalEvent::RunAccepted {
+        run,
+        seq,
+        workflow: WorkflowDigest::from_bytes([0; 32]),
+    }
+}
+
+fn encode_event_length(event: &JournalEvent) -> Result<u64, Box<dyn std::error::Error>> {
+    let value = crate::codec::encode_record(
+        crate::constants::MAGIC_JOURNAL_EVENT,
+        event.record_kind(),
+        event.seq().get(),
+        event,
+        crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )
+    .map_err(|e| format!("encode_record failed: {}", e))?;
+    Ok(u64::try_from(value.len())
+        .map_err(|_| "value.len() exceeds u64")?)
+}
+
+#[test]
+fn put_counter_over_budget_fails_immediately() -> Result<(), Box<dyn std::error::Error>> {
+    test_journal()?;
+    let (_path, journal) = open_test_journal()?;
+    let artifact = minimal_artifact()?;
+    let (seq, _stamped) = prepare_artifact_with_sequence(&journal, artifact)
+        .map_err(|e| format!("prepare_artifact_with_sequence failed: {}", e))?;
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(18);
+
+    let result = batch.put_artifact_sequence(seq);
+    let error = result.map_err(|e| format!("expected error, got Ok: {:?}", e))?;
+
+    match error {
+        JournalError::JournalBatchBytesExceeded { attempted, limit } => {
+            if attempted != 19 || limit != 18 {
+                return Err(format!(
+                    "expected attempted=19, limit=18; got attempted={}, limit={}",
+                    attempted, limit
+                )
+                .into());
+            }
+        }
+        other => {
+            return Err(format!("expected JournalBatchBytesExceeded, got {:?}", other).into());
+        }
+    }
+
+    if !batch.is_aborted() {
+        return Err("expected batch to be aborted".into());
+    }
+    if batch.staged_event_bytes() != 0 {
+        return Err("expected staged_event_bytes to be 0".into());
+    }
+    if batch.staged_metadata_bytes != 0 {
+        return Err("expected staged_metadata_bytes to be 0".into());
+    }
+    if batch.len() != 0 {
+        return Err(format!("expected batch len to be 0, got {}", batch.len()).into());
+    }
+
+    let (seq2, _stamped2) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("second prepare failed: {}", e))?;
+    let subsequent = batch.put_artifact_sequence(seq2);
+    match subsequent {
+        Err(JournalError::BatchAborted) => {}
+        other => {
+            return Err(format!(
+                "expected BatchAborted on subsequent put, got {:?}",
+                other
+            )
+            .into());
+        }
+    }
+
+    let commit_result = batch.commit();
+    match commit_result {
+        Err(JournalError::BatchAborted) => {}
+        other => {
+            return Err(format!(
+                "expected BatchAborted on commit, got {:?}",
+                other
+            )
+            .into());
+        }
+    }
+
+    let raw_counter = journal.artifact_acceptance.get(LAST_ISSUED_KEY)?;
+    if raw_counter.is_some() {
+        return Err("expected raw counter to be absent after failed batch".into());
+    }
+
+    Ok(())
+}
+
+#[test]
+fn put_counter_at_exact_budget_succeeds() -> Result<(), Box<dyn std::error::Error>> {
+    test_journal()?;
+    let (_path, journal) = open_test_journal()?;
+    let artifact = minimal_artifact()?;
+    let (seq, _stamped) = prepare_artifact_with_sequence(&journal, artifact)
+        .map_err(|e| format!("prepare_artifact_with_sequence failed: {}", e))?;
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(19);
+
+    let result = batch.put_artifact_sequence(seq);
+    result.map_err(|e| format!("put_artifact_sequence failed: {}", e))?;
+
+    if batch.staged_metadata_bytes != 19 {
+        return Err(format!(
+            "expected staged_metadata_bytes=19, got {}",
+            batch.staged_metadata_bytes
+        )
+        .into());
+    }
+    if batch.staged_event_bytes() != 0 {
+        return Err(format!(
+            "expected staged_event_bytes=0, got {}",
+            batch.staged_event_bytes()
+        )
+        .into());
+    }
+
+    drop(batch);
+    let raw_counter = journal.artifact_acceptance.get(LAST_ISSUED_KEY)?;
+    if raw_counter.is_some() {
+        return Err(
+            "expected raw counter to be absent after dropped uncommitted batch".into(),
+        );
+    }
+
+    Ok(())
+}
+
+fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), Box<dyn std::error::Error>> {
+    let path = tempfile::TempDir::new()
+        .map_err(|e| format!("failed to create temp dir: {}", e))?;
+    let journal = FjallJournal::open(path.path(), None)
+        .map_err(|e| format!("failed to open journal: {}", e))?;
+    Ok((path, journal))
+}

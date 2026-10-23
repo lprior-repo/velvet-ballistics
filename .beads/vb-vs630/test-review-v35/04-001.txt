@@ -1,0 +1,71 @@
+1: //! Failure tests for CLI run submission artifact issuance.
+2: //! Verifies duplicate rejection, batch commit failure atomicity,
+3: //! and counter state preservation on failure.
+4: 
+5: use super::issuance_test_support::*;
+6: use crate::JournalError;
+7: use fjall;
+8: use vb_core::RuntimePolicy;
+9: 
+10: /// Duplicate run submission fails with RunAlreadyExists before counter change.
+11: #[test]
+12: fn cli_duplicate_run_rejected_before_counter_publication() -> TestResult {
+13:     let (_dir, journal) = open_test_journal()?;
+14:     let submission = make_submission(RuntimePolicy::Strict, 1)?;
+15:     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
+16:     assert_eq!(read_counter(&journal)?, Some(1));
+17: 
+18:     let before_inputs = journal.run_inputs(vb_core::RunId::new(100))?;
+19:     let before_events = journal.events_for_run(vb_core::RunId::new(100))?;
+20: 
+21:     let result = journal.commit_run_submission(&submission, RuntimePolicy::Strict);
+22:     assert!(
+23:         matches!(result, Err(JournalError::RunAlreadyExists)),
+24:         "expected RunAlreadyExists, got: {result:?}"
+25:     );
+26:     assert_eq!(read_counter(&journal)?, Some(1));
+27:     assert_eq!(journal.run_inputs(vb_core::RunId::new(100))?, before_inputs);
+28:     assert_eq!(
+29:         journal.events_for_run(vb_core::RunId::new(100))?,
+30:         before_events
+31:     );
+32:     Ok(())
+33: }
+34: 
+35: /// Injected batch commit failure: all three policies leave counter and
+36: /// all keyspaces unchanged before retry succeeds at seq 1.
+37: #[test]
+38: fn cli_injected_batch_commit_failure_strict() -> TestResult {
+39:     check_batch_failure(RuntimePolicy::Strict)?;
+40:     Ok(())
+41: }
+42: 
+43: #[test]
+44: fn cli_injected_batch_commit_failure_journaled() -> TestResult {
+45:     check_batch_failure(RuntimePolicy::Journaled)?;
+46:     Ok(())
+47: }
+48: 
+49: #[test]
+50: fn cli_injected_batch_commit_failure_relaxed() -> TestResult {
+51:     check_batch_failure(RuntimePolicy::Relaxed)?;
+52:     Ok(())
+53: }
+54: 
+55: fn check_batch_failure(policy: RuntimePolicy) -> TestResult {
+56:     let (_dir, journal) = open_test_journal()?;
+57:     let submission = make_submission(policy, 42)?;
+58:     journal.fail_next_batch_commit_for_test();
+59:     let result = journal.commit_run_submission(&submission, policy);
+60:     assert!(
+61:         matches!(&result, Err(JournalError::Fjall(fjall::Error::Io(error))) if error.kind() == std::io::ErrorKind::Other),
+62:         "expected Fjall I/O error with Other kind, got: {result:?}"
+63:     );
+64:     assert_eq!(read_counter(&journal)?, None);
+65:     verify_empty_journal(&journal)?;
+66: 
+67:     journal.commit_run_submission(&submission, policy)?;
+68:     assert_eq!(read_counter(&journal)?, Some(1));
+69:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(100), 1)?;
+70:     Ok(())
+71: }

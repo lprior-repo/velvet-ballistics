@@ -1,0 +1,222 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-vs630-impl-local5090-v6/crates/vb_storage)
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:64:1
+   |
+64 | impl PartialEq for Snapshot {
+   | ^^^^^---------^^^^^--------
+   |      |             |
+   |      |             this is not defined in the current crate because arrays are always foreign
+   |      this is not defined in the current crate because this is a foreign trait
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+   --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:25:76
+    |
+ 25 |     let artifact_acceptance = iterate_keyspace(journal.artifact_acceptance.iter(b"")?)?;
+    |                                                                            ^^^^ --- unexpected argument of type `&'static [u8; 0]`
+    |
+note: method defined here
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/keyspace/mod.rs:419:12
+    |
+419 |     pub fn iter(&self) -> Iter {
+    |            ^^^^
+help: remove the extra argument
+    |
+ 25 -     let artifact_acceptance = iterate_keyspace(journal.artifact_acceptance.iter(b"")?)?;
+ 25 +     let artifact_acceptance = iterate_keyspace(journal.artifact_acceptance.iter()?)?;
+    |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:25:48
+   |
+25 |     let artifact_acceptance = iterate_keyspace(journal.artifact_acceptance.iter(b"")?)?;
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `fjall::Iter`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `fjall::Iter`
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+   --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:31:68
+    |
+ 31 |     let workflow_source = iterate_keyspace(journal.workflow_source.iter(b"")?)?;
+    |                                                                    ^^^^ --- unexpected argument of type `&'static [u8; 0]`
+    |
+note: method defined here
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/keyspace/mod.rs:419:12
+    |
+419 |     pub fn iter(&self) -> Iter {
+    |            ^^^^
+help: remove the extra argument
+    |
+ 31 -     let workflow_source = iterate_keyspace(journal.workflow_source.iter(b"")?)?;
+ 31 +     let workflow_source = iterate_keyspace(journal.workflow_source.iter()?)?;
+    |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:31:44
+   |
+31 |     let workflow_source = iterate_keyspace(journal.workflow_source.iter(b"")?)?;
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `fjall::Iter`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `fjall::Iter`
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+   --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:34:60
+    |
+ 34 |     let compiled_ir = iterate_keyspace(journal.compiled_ir.iter(b"")?)?;
+    |                                                            ^^^^ --- unexpected argument of type `&'static [u8; 0]`
+    |
+note: method defined here
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/keyspace/mod.rs:419:12
+    |
+419 |     pub fn iter(&self) -> Iter {
+    |            ^^^^
+help: remove the extra argument
+    |
+ 34 -     let compiled_ir = iterate_keyspace(journal.compiled_ir.iter(b"")?)?;
+ 34 +     let compiled_ir = iterate_keyspace(journal.compiled_ir.iter()?)?;
+    |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:34:40
+   |
+34 |     let compiled_ir = iterate_keyspace(journal.compiled_ir.iter(b"")?)?;
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `fjall::Iter`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `fjall::Iter`
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+   --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:37:58
+    |
+ 37 |     let run_header = iterate_keyspace(journal.run_header.iter(b"")?)?;
+    |                                                          ^^^^ --- unexpected argument of type `&'static [u8; 0]`
+    |
+note: method defined here
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/keyspace/mod.rs:419:12
+    |
+419 |     pub fn iter(&self) -> Iter {
+    |            ^^^^
+help: remove the extra argument
+    |
+ 37 -     let run_header = iterate_keyspace(journal.run_header.iter(b"")?)?;
+ 37 +     let run_header = iterate_keyspace(journal.run_header.iter()?)?;
+    |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:37:39
+   |
+37 |     let run_header = iterate_keyspace(journal.run_header.iter(b"")?)?;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `fjall::Iter`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `fjall::Iter`
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+   --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:40:58
+    |
+ 40 |     let run_inputs = iterate_keyspace(journal.run_inputs.iter(b"")?)?;
+    |                                                          ^^^^ --- unexpected argument of type `&'static [u8; 0]`
+    |
+note: method defined here
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/keyspace/mod.rs:419:12
+    |
+419 |     pub fn iter(&self) -> Iter {
+    |            ^^^^
+help: remove the extra argument
+    |
+ 40 -     let run_inputs = iterate_keyspace(journal.run_inputs.iter(b"")?)?;
+ 40 +     let run_inputs = iterate_keyspace(journal.run_inputs.iter()?)?;
+    |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:40:39
+   |
+40 |     let run_inputs = iterate_keyspace(journal.run_inputs.iter(b"")?)?;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `fjall::Iter`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `fjall::Iter`
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+   --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:43:50
+    |
+ 43 |     let events = iterate_keyspace(journal.events.iter(b"")?)?;
+    |                                                  ^^^^ --- unexpected argument of type `&'static [u8; 0]`
+    |
+note: method defined here
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/keyspace/mod.rs:419:12
+    |
+419 |     pub fn iter(&self) -> Iter {
+    |            ^^^^
+help: remove the extra argument
+    |
+ 43 -     let events = iterate_keyspace(journal.events.iter(b"")?)?;
+ 43 +     let events = iterate_keyspace(journal.events.iter()?)?;
+    |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:43:35
+   |
+43 |     let events = iterate_keyspace(journal.events.iter(b"")?)?;
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `fjall::Iter`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `fjall::Iter`
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+   --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:46:62
+    |
+ 46 |     let index_status = iterate_keyspace(journal.index_status.iter(b"")?)?;
+    |                                                              ^^^^ --- unexpected argument of type `&'static [u8; 0]`
+    |
+note: method defined here
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/keyspace/mod.rs:419:12
+    |
+419 |     pub fn iter(&self) -> Iter {
+    |            ^^^^
+help: remove the extra argument
+    |
+ 46 -     let index_status = iterate_keyspace(journal.index_status.iter(b"")?)?;
+ 46 +     let index_status = iterate_keyspace(journal.index_status.iter()?)?;
+    |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:46:41
+   |
+46 |     let index_status = iterate_keyspace(journal.index_status.iter(b"")?)?;
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `fjall::Iter`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `fjall::Iter`
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+   --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:49:66
+    |
+ 49 |     let index_workflow = iterate_keyspace(journal.index_workflow.iter(b"")?)?;
+    |                                                                  ^^^^ --- unexpected argument of type `&'static [u8; 0]`
+    |
+note: method defined here
+   --> /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/fjall-3.1.4/src/keyspace/mod.rs:419:12
+    |
+419 |     pub fn iter(&self) -> Iter {
+    |            ^^^^
+help: remove the extra argument
+    |
+ 49 -     let index_workflow = iterate_keyspace(journal.index_workflow.iter(b"")?)?;
+ 49 +     let index_workflow = iterate_keyspace(journal.index_workflow.iter()?)?;
+    |
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> crates/vb_storage/src/inputs/issuance_snapshot_test_support.rs:49:43
+   |
+49 |     let index_workflow = iterate_keyspace(journal.index_workflow.iter(b"")?)?;
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `fjall::Iter`
+   |
+   = help: the nightly-only, unstable trait `Try` is not implemented for `fjall::Iter`
+
+Some errors have detailed explanations: E0061, E0117, E0277.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `vb_storage` (lib test) due to 17 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

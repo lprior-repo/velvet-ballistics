@@ -1,0 +1,100 @@
+1: use super::*;
+2: use crate::{RunHeaderRecord, WorkflowSourceRecord};
+3: use vb_core::RuntimePolicy;
+4: 
+5: type TestResult = Result<(), Box<dyn std::error::Error>>;
+6: 
+7: fn submission(
+8:     policy: RuntimePolicy,
+9:     value: i64,
+10: ) -> Result<RunSubmission, Box<dyn std::error::Error>> {
+11:     let workflow = super::tests::workflow()?;
+12:     let artifact = crate::admission::prepare_compiled_artifact(&workflow, policy, &[])?;
+13:     let source = b"original source fixture".to_vec();
+14:     let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
+15:     let inputs = RunInputsRecord::new(
+16:         RunId::new(7),
+17:         artifact.digest,
+18:         digest,
+19:         &workflow,
+20:         Box::from([(SlotIdx::new(0), SlotValue::I64(value))]),
+21:     )?;
+22:     Ok(RunSubmission::new(
+23:         WorkflowSourceRecord { digest, source },
+24:         artifact,
+25:         inputs,
+26:         RunHeaderRecord {
+27:             run: RunId::new(7),
+28:             workflow_id: vb_core::WorkflowId::new(0),
+29:             compiled_digest: workflow.digest(),
+30:             status: 0,
+31:             accepted_at_ms: 123,
+32:         },
+33:     )?)
+34: }
+35: 
+36: fn assert_empty(journal: &FjallJournal) -> TestResult {
+37:     for keyspace in [
+38:         &journal.workflow_source,
+39:         &journal.compiled_ir,
+40:         &journal.run_header,
+41:         &journal.run_inputs,
+42:         &journal.events,
+43:         &journal.index_status,
+44:         &journal.index_workflow,
+45:     ] {
+46:         assert!(keyspace.is_empty()?);
+47:     }
+48:     Ok(())
+49: }
+50: 
+51: #[test]
+52: fn injected_atomic_commit_failure_exposes_no_record_or_index_and_retry_succeeds() -> TestResult {
+53:     for policy in [
+54:         RuntimePolicy::Relaxed,
+55:         RuntimePolicy::Journaled,
+56:         RuntimePolicy::Strict,
+57:     ] {
+58:         let directory = tempfile::tempdir()?;
+59:         let journal = FjallJournal::open(directory.path(), None)?;
+60:         let submission = submission(policy, 73)?;
+61:         journal.fail_next_batch_commit_for_test();
+62:         assert!(matches!(
+63:             journal.commit_run_submission(&submission, policy),
+64:             Err(JournalError::Fjall(_))
+65:         ));
+66:         assert_empty(&journal)?;
+67:         journal.commit_run_submission(&submission, policy)?;
+68:         let retained = journal.run_inputs(RunId::new(7))?.ok_or("missing inputs")?;
+69:         assert_eq!(retained.inputs(), [(SlotIdx::new(0), SlotValue::I64(73))]);
+70:         assert!(journal.compiled_ir(retained.artifact_digest())?.is_some());
+71:         assert!(journal.workflow_source(retained.source_digest())?.is_some());
+72:         assert!(journal.run_header(retained.run())?.is_some());
+73:         let expected_event_count = if policy == RuntimePolicy::Relaxed {
+74:             0
+75:         } else {
+76:             2
+77:         };
+78:         assert_eq!(
+79:             journal.events_for_run(retained.run())?.len(),
+80:             expected_event_count
+81:         );
+82:         assert!(
+83:             journal.has_workflow_index_entry(crate::keys::index_workflow_key(
+84:                 vb_core::WorkflowId::new(0),
+85:                 retained.run()
+86:             )?)?
+87:         );
+88:         assert!(
+89:             journal.has_status_index_entry(crate::keys::index_status_key(
+90:                 crate::IndexStatusState::Submitted,
+91:                 123,
+92:                 retained.run()
+93:             )?)?
+94:         );
+95:     }
+96:     Ok(())
+97: }
+98: 
+99: #[test]
+100: fn colliding_run_cannot_replace_retained_input_or_existing_admission() -> TestResult {

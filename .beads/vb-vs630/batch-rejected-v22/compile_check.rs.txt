@@ -1,0 +1,9 @@
+fn main() {
+    let output = std::process::Command::new("cargo")
+        .args(["test", "-p", "vb_storage", "--lib", "artifact_sequence_tests", "--no-run"])
+        .output()
+        .expect("failed to run cargo test");
+    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    println!("status: {}", output.status);
+}

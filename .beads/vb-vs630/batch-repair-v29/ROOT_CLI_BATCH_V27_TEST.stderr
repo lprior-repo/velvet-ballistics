@@ -1,0 +1,249 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling libc v0.2.186
+   Compiling syn v2.0.117
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.228
+   Compiling serde v1.0.228
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+   Compiling serde_derive v1.0.228
+   Compiling getrandom v0.3.4
+   Compiling crossbeam-utils v0.8.21
+   Compiling getrandom v0.4.2
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling autocfg v1.5.1
+   Compiling rustix v1.1.4
+   Compiling num-traits v0.2.19
+   Compiling lock_api v0.4.14
+   Compiling linux-raw-sys v0.12.1
+   Compiling bitflags v2.11.1
+   Compiling equivalent v1.0.2
+   Compiling thiserror v2.0.18
+   Compiling thiserror-impl v2.0.18
+   Compiling fastrand v2.4.1
+   Compiling zerocopy v0.8.48
+   Compiling crossbeam-epoch v0.9.20
+   Compiling tempfile v3.27.0
+   Compiling rand_core v0.9.5
+   Compiling spin v0.9.8
+   Compiling parking_lot_core v0.9.12
+   Compiling find-msvc-tools v0.1.9
+   Compiling shlex v1.3.0
+   Compiling cc v1.2.62
+   Compiling heapless v0.7.17
+   Compiling iana-time-zone v0.1.65
+   Compiling twox-hash v2.1.2
+   Compiling hashbrown v0.16.1
+   Compiling byteorder-lite v0.1.0
+   Compiling compare v0.0.6
+   Compiling log v0.4.29
+   Compiling smallvec v1.15.1
+   Compiling byteorder v1.5.0
+   Compiling xxhash-rust v0.8.15
+   Compiling hashbrown v0.17.1
+   Compiling sfa v1.0.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling hash32 v0.2.1
+   Compiling indexmap v2.14.0
+   Compiling interval-heap v0.0.5
+   Compiling quick_cache v0.6.22
+   Compiling lz4_flex v0.13.1
+   Compiling chrono v0.4.44
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling blake3 v1.8.5
+   Compiling bytes v1.11.1
+   Compiling enum_dispatch v0.3.13
+   Compiling crc32c v0.6.8
+   Compiling wait-timeout v0.2.1
+   Compiling rustc-hash v2.1.2
+   Compiling varint-rs v2.2.0
+   Compiling quick-error v1.2.3
+   Compiling hashbrown v0.14.5
+   Compiling fnv v1.0.7
+   Compiling bit-vec v0.8.0
+   Compiling byteview v0.10.1
+   Compiling stable_deref_trait v1.2.1
+   Compiling self_cell v1.2.2
+   Compiling lsm-tree v3.1.4
+   Compiling dashmap v6.2.1
+   Compiling bit-set v0.8.0
+   Compiling rusty-fork v0.3.1
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-vs630-batch-tests-local3090-v22/crates/vb_core)
+   Compiling rand_chacha v0.9.0
+   Compiling flume v0.12.0
+   Compiling rand_xorshift v0.4.0
+   Compiling rand v0.9.4
+   Compiling cobs v0.3.0
+   Compiling constant_time_eq v0.4.2
+   Compiling cpufeatures v0.3.0
+   Compiling arrayref v0.3.9
+   Compiling arrayvec v0.7.6
+   Compiling unarray v0.1.4
+   Compiling regex-syntax v0.8.10
+   Compiling postcard v1.1.3
+   Compiling fjall v3.1.4
+   Compiling proptest v1.11.0
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-vs630-batch-tests-local3090-v22/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-vs630-batch-tests-local3090-v22/crates/vb_storage)
+error[E0425]: cannot find type `FjallJournal` in this scope
+   --> crates/vb_storage/src/batch/artifact_sequence_tests.rs:151:54
+    |
+151 | fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), Box<dyn std::error::Error>> {
+    |                                                      ^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct through its public re-export
+    |
+  2 + use crate::FjallJournal;
+    |
+
+error[E0433]: cannot find type `FjallJournal` in this scope
+   --> crates/vb_storage/src/batch/artifact_sequence_tests.rs:154:19
+    |
+154 |     let journal = FjallJournal::open(path.path(), None)
+    |                   ^^^^^^^^^^^^ use of undeclared type `FjallJournal`
+    |
+help: consider importing this struct through its public re-export
+    |
+  2 + use crate::FjallJournal;
+    |
+
+error[E0603]: struct import `RunId` is private
+   --> crates/vb_storage/src/batch/artifact_sequence_tests.rs:8:30
+    |
+  8 | use crate::types::{EventSeq, RunId};
+    |                              ^^^^^ private struct import
+    |
+note: the struct import `RunId` is defined here...
+   --> crates/vb_storage/src/types.rs:6:25
+    |
+  6 | use vb_core::{ActionId, RunId, WorkflowId};
+    |                         ^^^^^
+note: ...and refers to the struct `RunId` which is defined here
+   --> crates/vb_core/src/lib.rs:122:61
+    |
+122 |     FanoutLimit, ListId, MaxAttempts, ObjectId, RetryCount, RunId, SeqNo, SlotIdx, StepIdx,
+    |                                                             ^^^^^ you could import this directly
+help: import `RunId` directly
+    |
+  8 | use crate::types::{EventSeq, vb_core::ids::RunId};
+    |                              ++++++++++++++
+
+error: unused import: `IssuedArtifactSequence`
+ --> crates/vb_storage/src/batch/artifact_sequence_tests.rs:5:5
+  |
+5 |     IssuedArtifactSequence, LAST_ISSUED_KEY, prepare_artifact_with_sequence,
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused import: `crate::keys::run_event_key`
+ --> crates/vb_storage/src/batch/artifact_sequence_tests.rs:7:5
+  |
+7 | use crate::keys::run_event_key;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `std::collections::HashMap`
+ --> crates/vb_storage/src/batch/artifact_sequence_test_support.rs:2:5
+  |
+2 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/vb_storage/src/batch/artifact_sequence_tests.rs:40:68
+    |
+ 40 |     let (seq, _stamped) = prepare_artifact_with_sequence(&journal, artifact)
+    |                           ------------------------------           ^^^^^^^^ expected `AcceptedArtifact`, found `()`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+note: function defined here
+   --> crates/vb_storage/src/journal/artifact_acceptance.rs:115:15
+    |
+115 | pub(crate) fn prepare_artifact_with_sequence(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+116 |     journal: &FjallJournal,
+117 |     artifact: AcceptedArtifact,
+    |     --------------------------
+
+error[E0308]: mismatched types
+  --> crates/vb_storage/src/batch/artifact_sequence_tests.rs:50:9
+   |
+49 |     match error {
+   |           ----- this expression has type `()`
+50 |         JournalError::JournalBatchBytesExceeded { attempted, limit } => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `JournalError`
+
+error[E0308]: `?` operator has incompatible types
+  --> crates/vb_storage/src/batch/artifact_sequence_tests.rs:77:70
+   |
+77 |     let (seq2, _stamped2) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+   |                                                                      ^^^^^^^^^^^^^^^^^^^ expected `AcceptedArtifact`, found `()`
+   |
+   = note: `?` operator cannot convert from `()` to `admission::AcceptedArtifact`
+
+error[E0308]: mismatched types
+   --> crates/vb_storage/src/batch/artifact_sequence_tests.rs:116:68
+    |
+116 |     let (seq, _stamped) = prepare_artifact_with_sequence(&journal, artifact)
+    |                           ------------------------------           ^^^^^^^^ expected `AcceptedArtifact`, found `()`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+note: function defined here
+   --> crates/vb_storage/src/journal/artifact_acceptance.rs:115:15
+    |
+115 | pub(crate) fn prepare_artifact_with_sequence(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+116 |     journal: &FjallJournal,
+117 |     artifact: AcceptedArtifact,
+    |     --------------------------
+
+error[E0599]: no method named `ok_or` found for enum `Result<T, E>` in the current scope
+  --> crates/vb_storage/src/batch/artifact_sequence_test_support.rs:14:10
+   |
+13 |       let path = tempfile::TempDir::new()
+   |  ________________-
+14 | |         .ok_or("failed to create temp dir")?;
+   | |         -^^^^^ method not found in `Result<TempDir, std::io::Error>`
+   | |_________|
+   |
+
+error[E0599]: no method named `ok_or` found for enum `Result<T, E>` in the current scope
+  --> crates/vb_storage/src/batch/artifact_sequence_test_support.rs:16:10
+   |
+15 |       let _ = FjallJournal::open(path.path(), None)
+   |  _____________-
+16 | |         .ok_or("failed to open journal")?;
+   | |         -^^^^^ method not found in `Result<journal::core::FjallJournal, error::JournalError>`
+   | |_________|
+   |
+
+error[E0308]: mismatched types
+   --> crates/vb_storage/src/batch/artifact_sequence_test_support.rs:41:8
+    |
+ 41 |     Ok(artifact)
+    |     -- ^^^^^^^^ expected `()`, found `AcceptedArtifact`
+    |     |
+    |     arguments to this enum variant are incorrect
+    |
+help: the type constructed contains `admission::AcceptedArtifact` due to the type of the argument passed
+   --> crates/vb_storage/src/batch/artifact_sequence_test_support.rs:41:5
+    |
+ 41 |     Ok(artifact)
+    |     ^^^--------^
+    |        |
+    |        this argument influences the type of `Ok`
+note: tuple variant defined here
+   --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:561:5
+    |
+561 |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ^^
+
+Some errors have detailed explanations: E0308, E0425, E0433, E0599, E0603.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `vb_storage` (lib test) due to 13 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

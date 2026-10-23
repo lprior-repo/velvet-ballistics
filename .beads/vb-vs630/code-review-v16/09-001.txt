@@ -1,0 +1,100 @@
+1: #![forbid(unsafe_code)]
+2: use super::types::JournalWriteBatch;
+3: use crate::codec::encode_record;
+4: use crate::constants::{
+5:     MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
+6:     MAX_COMPILED_IR_BYTES, MAX_RUN_HEADER_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
+7: };
+8: use crate::error::JournalError;
+9: use crate::keys::{
+10:     blob_key, compiled_ir_key, index_action_key, index_status_key, index_workflow_key,
+11:     run_header_key, workflow_source_key,
+12: };
+13: use crate::records::{
+14:     BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
+15: };
+16: // Snapshot-only imports. These are the sole non-test consumers of the
+17: // `#[cfg(test)]`-gated `JournalWriteBatch::put_snapshot` (vb-o6qcf.4). They
+18: // are gated to match so the production lib build stays warning-free under
+19: // `-D warnings` (Holzman Rule 10) once that method leaves the public API.
+20: #[cfg(test)]
+21: use crate::{
+22:     constants::{MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES},
+23:     keys::run_snapshot_key,
+24:     recovery::RunSnapshot,
+25: };
+26: 
+27: impl<'j> JournalWriteBatch<'j> {
+28:     /// Inserts a workflow source record, verifying digest before staging.
+29:     pub fn put_workflow_source(
+30:         &mut self,
+31:         record: &WorkflowSourceRecord,
+32:     ) -> Result<(), JournalError> {
+33:         if let Err(e) =
+34:             crate::journal::verify_content_digest(&record.source, &record.digest.as_bytes())
+35:         {
+36:             self.aborted = true;
+37:             return Err(e);
+38:         }
+39:         let key = match workflow_source_key(record.digest.as_bytes()) {
+40:             Ok(k) => k,
+41:             Err(e) => {
+42:                 self.aborted = true;
+43:                 return Err(e);
+44:             }
+45:         };
+46:         let value = match encode_record(
+47:             MAGIC_WORKFLOW_SOURCE,
+48:             RecordKind::WorkflowSource,
+49:             0,
+50:             record,
+51:             MAX_WORKFLOW_SOURCE_BYTES,
+52:         ) {
+53:             Ok(v) => v,
+54:             Err(e) => {
+55:                 self.aborted = true;
+56:                 return Err(e);
+57:             }
+58:         };
+59:         self.inner.insert(&self.journal.workflow_source, key, value);
+60:         Ok(())
+61:     }
+62: 
+63:     /// Inserts a compiled IR record into the batch.
+64:     ///
+65:     /// The IR bytes are verified against the claimed digest before staging
+66:     /// so a forged `CompiledIrRecord { digest, ir }` cannot be persisted
+67:     /// under the digest key (master §18 invariant 8: digest↔content binding).
+68:     /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+69:     /// and [`Self::put_blob`]: every fallible step sets
+70:     /// `self.aborted = true` before propagating the typed error.
+71:     pub fn put_compiled_ir(&mut self, record: &CompiledIrRecord) -> Result<(), JournalError> {
+72:         if let Err(e) = crate::journal::verify_compiled_ir_record_digest(record) {
+73:             self.aborted = true;
+74:             return Err(e);
+75:         }
+76:         let key = match compiled_ir_key(record.digest.as_bytes()) {
+77:             Ok(k) => k,
+78:             Err(e) => {
+79:                 self.aborted = true;
+80:                 return Err(e);
+81:             }
+82:         };
+83:         let value = match encode_record(
+84:             MAGIC_COMPILED_ARTIFACT,
+85:             RecordKind::CompiledIr,
+86:             0,
+87:             record,
+88:             MAX_COMPILED_IR_BYTES,
+89:         ) {
+90:             Ok(v) => v,
+91:             Err(e) => {
+92:                 self.aborted = true;
+93:                 return Err(e);
+94:             }
+95:         };
+96:         self.inner.insert(&self.journal.compiled_ir, key, value);
+97:         Ok(())
+98:     }
+99: 
+100:     /// Inserts a run header record into the batch.

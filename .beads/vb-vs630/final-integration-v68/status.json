@@ -1,0 +1,12 @@
+{
+  "status": "FROZEN_CANDIDATE_FINAL_GATES_PENDING",
+  "source_merge": "6e4ddad21799ac44fcafe5d05ecec2f5cd393fc4",
+  "base_main": "d0645504a432552301d43094859e1261318a1bef",
+  "cli_source": "856a71ab950092226b8e510d917e824afcefd5f6",
+  "batch_source": "ecb70032f725cccdb108c37c6d513890bc28e633",
+  "CODE": "7d17e67eb6dbac712af51071d73a0c403fc53cd6",
+  "CLI_TEST": "ae7fa18a5a061f1dc267e702a3e16054ef17b8ad scope corrections binding",
+  "batch_TEST": "oldb3c48 approval withheld, repairedfinal review next",
+  "invalid_cycog": "alreadywired; original11testsPASS0.278s not0.259 typo in older metadata",
+  "source_file_count": 1849
+}

@@ -1,0 +1,371 @@
+#![forbid(unsafe_code)]
+
+use crate::JournalError;
+use crate::batch::JournalWriteBatch;
+use crate::events::JournalEvent;
+use crate::journal::artifact_acceptance::{LAST_ISSUED_KEY, prepare_artifact_with_sequence};
+use vb_core::WorkflowDigest;
+use vb_core::ids::RunId;
+
+use super::artifact_sequence_test_support::{minimal_artifact, open_test_journal};
+
+fn make_accepted_event(run: RunId, seq: crate::types::EventSeq) -> JournalEvent {
+    JournalEvent::RunAccepted {
+        run,
+        seq,
+        workflow: WorkflowDigest::from_bytes([0; 32]),
+    }
+}
+
+fn encode_event_length(event: &JournalEvent) -> Result<u64, Box<dyn std::error::Error>> {
+    let value = crate::codec::encode_record(
+        crate::constants::MAGIC_JOURNAL_EVENT,
+        event.record_kind(),
+        event.seq().get(),
+        event,
+        crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )
+    .map_err(|e| format!("encode_record failed: {}", e))?;
+    Ok(u64::try_from(value.len()).map_err(|_| "value.len() exceeds u64")?)
+}
+
+#[test]
+fn put_counter_over_budget_fails_immediately() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(18);
+    let result = batch.put_artifact_sequence(seq);
+
+    assert!(matches!(
+        result,
+        Err(JournalError::JournalBatchBytesExceeded {
+            attempted: 19,
+            limit: 18
+        })
+    ));
+    assert!(batch.is_aborted());
+    assert_eq!(batch.staged_event_bytes(), 0);
+    assert_eq!(batch.staged_metadata_bytes, 0);
+    assert_eq!(batch.len(), 0);
+
+    let (seq2, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("second prepare failed: {}", e))?;
+    assert!(matches!(
+        batch.put_artifact_sequence(seq2),
+        Err(JournalError::BatchAborted)
+    ));
+    assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
+    Ok(())
+}
+
+#[test]
+fn put_counter_at_exact_budget_succeeds() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(19);
+    batch
+        .put_artifact_sequence(seq)
+        .map_err(|e| format!("put failed: {}", e))?;
+
+    assert_eq!(batch.staged_metadata_bytes, 19);
+    assert_eq!(batch.staged_event_bytes(), 0);
+
+    drop(batch);
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
+    Ok(())
+}
+
+#[test]
+fn put_counter_with_event_combined_budget() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let event = make_accepted_event(RunId::new(1), crate::types::EventSeq::new(0));
+    let event_bytes = encode_event_length(&event)?;
+
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let budget = 19u64.checked_add(event_bytes).ok_or("combined overflow")?;
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(budget);
+    batch
+        .put_artifact_sequence(seq)
+        .map_err(|e| format!("put failed: {}", e))?;
+    batch
+        .append_event(&event)
+        .map_err(|e| format!("append failed: {}", e))?;
+
+    assert_eq!(batch.staged_metadata_bytes, 19);
+    assert_eq!(batch.staged_event_bytes(), event_bytes);
+    batch.commit()?;
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    let raw = raw.ok_or("raw counter is None")?;
+    assert_eq!(raw.as_ref(), &1u64.to_be_bytes());
+    assert_eq!(journal.events_for_run(RunId::new(1))?, vec![event]);
+    Ok(())
+}
+
+#[test]
+fn put_event_then_counter_combined_budget() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let event = make_accepted_event(RunId::new(2), crate::types::EventSeq::new(0));
+    let event_bytes = encode_event_length(&event)?;
+
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let budget = event_bytes.checked_add(19u64).ok_or("combined overflow")?;
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(budget);
+    batch
+        .append_event(&event)
+        .map_err(|e| format!("append failed: {}", e))?;
+    batch
+        .put_artifact_sequence(seq)
+        .map_err(|e| format!("put failed: {}", e))?;
+
+    assert_eq!(batch.staged_event_bytes(), event_bytes);
+    assert_eq!(batch.staged_metadata_bytes, 19);
+    batch.commit()?;
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    let raw = raw.ok_or("raw counter is None")?;
+    assert_eq!(raw.as_ref(), &1u64.to_be_bytes());
+    assert_eq!(journal.events_for_run(RunId::new(2))?, vec![event]);
+    Ok(())
+}
+
+#[test]
+fn combined_budget_exceeded_fails() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let event = make_accepted_event(RunId::new(3), crate::types::EventSeq::new(1));
+    let event_bytes = encode_event_length(&event)?;
+
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let budget = 19u64
+        .checked_add(event_bytes)
+        .ok_or("combined overflow")?
+        .checked_sub(1)
+        .ok_or("event_bytes is 0")?;
+    let attempted = event_bytes.checked_add(19u64).ok_or("combined overflow")?;
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(budget);
+    batch
+        .put_artifact_sequence(seq)
+        .map_err(|e| format!("put failed: {}", e))?;
+
+    let result = batch.append_event(&event);
+    assert!(matches!(
+        result,
+        Err(JournalError::JournalBatchBytesExceeded {
+            attempted: expected,
+            limit: actual_limit
+        }) if expected == attempted && actual_limit == budget
+    ));
+    assert!(!batch.is_aborted());
+    assert_eq!(batch.staged_event_bytes(), 0);
+    assert_eq!(batch.staged_metadata_bytes, 19);
+    drop(batch);
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
+    Ok(())
+}
+
+#[test]
+fn metadata_overflow_with_some_limit_aborts() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(u64::MAX);
+    let original_metadata = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+    batch.staged_metadata_bytes = original_metadata;
+
+    let result = batch.put_artifact_sequence(seq);
+    assert!(matches!(
+        result,
+        Err(JournalError::JournalBatchBytesExceeded {
+            attempted: u64::MAX,
+            limit: u64::MAX
+        })
+    ));
+    assert!(batch.is_aborted());
+    assert_eq!(batch.staged_metadata_bytes, original_metadata);
+    assert_eq!(batch.staged_event_bytes(), 0);
+    assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
+    Ok(())
+}
+
+#[test]
+fn metadata_overflow_with_none_limit_aborts() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = None;
+    let original_metadata = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+    batch.staged_metadata_bytes = original_metadata;
+
+    let result = batch.put_artifact_sequence(seq);
+    assert!(matches!(
+        result,
+        Err(JournalError::JournalBatchBytesExceeded {
+            attempted: u64::MAX,
+            limit: u64::MAX
+        })
+    ));
+    assert!(batch.is_aborted());
+    assert_eq!(batch.staged_metadata_bytes, original_metadata);
+    assert_eq!(batch.staged_event_bytes(), 0);
+    assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
+    Ok(())
+}
+
+#[test]
+fn combined_overflow_with_some_limit_aborts() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(19);
+    batch.staged_bytes = u64::MAX;
+
+    let result = batch.put_artifact_sequence(seq);
+    assert!(matches!(
+        result,
+        Err(JournalError::JournalBatchBytesExceeded {
+            attempted: u64::MAX,
+            limit: 19
+        })
+    ));
+    assert!(batch.is_aborted());
+    assert_eq!(batch.staged_metadata_bytes, 0);
+    assert_eq!(batch.staged_event_bytes(), u64::MAX);
+    assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
+    Ok(())
+}
+
+#[test]
+fn no_byte_limit_allows_large_batch() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = None;
+    batch
+        .put_artifact_sequence(seq)
+        .map_err(|e| format!("put failed with no limit: {}", e))?;
+
+    assert_eq!(batch.staged_metadata_bytes, 19);
+    Ok(())
+}
+
+#[test]
+fn soft_limit_reject_does_not_abort() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let event = make_accepted_event(RunId::new(4), crate::types::EventSeq::new(1));
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.byte_limit = Some(0);
+    let result = batch.append_event(&event);
+
+    assert!(matches!(
+        result,
+        Err(JournalError::JournalBatchBytesExceeded { limit: 0, .. })
+    ));
+    assert!(!batch.is_aborted());
+    Ok(())
+}
+
+#[test]
+fn drop_batch_without_commit_persists_nothing() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    {
+        let mut batch = JournalWriteBatch::new(&journal);
+        batch
+            .put_artifact_sequence(seq)
+            .map_err(|e| format!("put failed: {}", e))?;
+    }
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
+    Ok(())
+}
+
+#[test]
+fn already_aborted_batch_rejects_all_operations() -> Result<(), Box<dyn std::error::Error>> {
+    let (_path, journal) = open_test_journal()?;
+    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+        .map_err(|e| format!("prepare failed: {}", e))?;
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.aborted = true;
+
+    let result = batch.put_artifact_sequence(seq);
+    assert!(matches!(result, Err(JournalError::BatchAborted)));
+    assert_eq!(batch.staged_metadata_bytes, 0);
+    assert_eq!(batch.staged_event_bytes(), 0);
+    assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+
+    let raw = journal
+        .artifact_acceptance
+        .get(LAST_ISSUED_KEY)
+        .map_err(|e| format!("read counter failed: {}", e))?;
+    assert!(raw.is_none());
+    Ok(())
+}

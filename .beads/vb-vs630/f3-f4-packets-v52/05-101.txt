@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/executor/issuance_test_support.rs
+101: }
+102: 
+103: fn canonicalize_parts(parts: &mut WorkflowParts) -> Result<(), BoxError> {
+104:     parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+105:     let hash_bytes = postcard::to_allocvec(parts)?;
+106:     let computed = blake3::hash(&hash_bytes);
+107:     parts.digest = WorkflowDigest::from_bytes(computed.into());
+108:     Ok(())
+109: }
+110: 
+111: /// Build an action contract for a register action with REQUIRED capability.
+112: pub(super) fn action_contract() -> Result<ActionContract, BoxError> {
+113:     let contract = ActionContract {
+114:         id: vb_core::ActionId::new(0),
+115:         name: ActionName::new("test_register")?,
+116:         input_slot_count: 1,
+117:         output_slot_count: 1,
+118:         max_input_bytes: 64,
+119:         max_output_bytes: 64,
+120:         timeout_ms: 1000,
+121:         idempotency: Idempotency::IdempotentExternal,
+122:         side_effect: SideEffect::Writes,
+123:         retry_safety: RetrySafety::KeyRequired,
+124:         required_capabilities: Box::new([Capability::new(
+125:             "velvet.register.write".into(),
+126:             vb_core::ActionId::new(0),
+127:         )]),
+128:     };
+129:     Ok(contract)
+130: }
+131: 
+132: /// Build a capability scope spec for register write.
+133: pub(super) fn register_scope() -> CapabilityScopeSpec {
+134:     CapabilityScopeSpec {
+135:         namespace: 15,
+136:         key: 29,
+137:     }
+138: }
+139: 
+140: /// Read the raw artifact acceptance counter from the journal.
+141: pub(super) fn read_counter(journal: &FjallJournal) -> Result<Option<u64>, BoxError> {
+142:     let Some(raw) = journal.artifact_acceptance.get(b"last_issued")? else {
+143:         return Ok(None);
+144:     };
+145:     let arr: [u8; 8] = raw.as_ref().try_into()?;
+146:     Ok(Some(u64::from_be_bytes(arr)))
+147: }
+148: 
+149: /// Write a raw counter value to the journal for fault injection.
+150: pub(super) fn write_counter(journal: &FjallJournal, value: u64) -> Result<(), BoxError> {
+151:     journal
+152:         .artifact_acceptance
+153:         .insert(b"last_issued", &value.to_be_bytes())?;
+154:     Ok(())
+155: }
+156: 
+157: /// Verify that a persisted artifact can be read back and matches expectations.
+158: pub(super) fn verify_artifact_readback(
+159:     journal: &FjallJournal,
+160:     digest: WorkflowDigest,
+161:     expected: &AcceptedArtifact,
+162: ) -> TestResult {
+163:     let record = journal
+164:         .compiled_ir(digest)?
+165:         .ok_or("artifact record not found")?;
+166:     if record.digest != digest {
+167:         return Err("record digest does not match expected".into());
+168:     }
+169:     let decoded: AcceptedArtifact = postcard::from_bytes(&record.ir)?;
+170:     if decoded != *expected {
+171:         return Err("decoded artifact does not match expected".into());
+172:     }
+173:     if admission::accepted_artifact_digest(&decoded)? != decoded.digest {
+174:         return Err("decoded artifact digest is inconsistent".into());
+175:     }
+176:     if decoded.verification.digest != decoded.digest {
+177:         return Err("verification.digest mismatch".into());
+178:     }
+179:     Ok(())
+180: }
+181: 
+182: /// Complete packed-verification fixture for test modules.
+183: pub(super) struct PackedFixture {
+184:     pub(super) catalog: super::ExecutorCatalog,
+185:     pub(super) workflow: CompiledWorkflow,
+186:     pub(super) contract: ActionContract,
+187:     pub(super) pack: ActionPack,
+188: }
+189: 
+190: impl PackedFixture {
+191:     /// Construct a fixture with actual conformance results.
+192:     pub(super) fn new() -> Result<Self, BoxError> {
+193:         let catalog = super::ExecutorCatalog::run_registered_conformance()?;
+194:         let contract = action_contract()?;
+195:         let pack =
+196:             catalog.register_pack(&contract, register_scope(), RecoveryClass::ReconcileReceipt)?;
+197:         let workflow = action_workflow()?;
+198:         Ok(Self {
+199:             catalog,
+200:             workflow,

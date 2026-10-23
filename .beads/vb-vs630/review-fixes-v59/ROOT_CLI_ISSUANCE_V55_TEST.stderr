@@ -1,0 +1,346 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-vs630-impl-local5090-v6/crates/vb_storage)
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:166:48
+    |
+166 |         .ok_or(format!("inputs missing for run {run}"))?;
+    |                                                ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:170:14
+    |
+170 |         "run {run}: typed input values mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:175:14
+    |
+175 |         "run {run}: input digest mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:180:14
+    |
+180 |         "run {run}: workflow digest mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:186:48
+    |
+186 |         .ok_or(format!("source missing for run {run}"))?;
+    |                                                ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:190:14
+    |
+190 |         "run {run}: source bytes mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:196:14
+    |
+196 |         "run {run}: source digest mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:201:14
+    |
+201 |         "run {run}: inputs source digest mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:207:50
+    |
+207 |         .ok_or(format!("compiled missing for run {run}"))?;
+    |                                                  ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:211:14
+    |
+211 |         "run {run}: record digest mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:214:67
+    |
+214 |         postcard::from_bytes(&record.ir).map_err(|e| format!("run {run}: decode failed: {e}"))?;
+    |                                                                   ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:219:14
+    |
+219 |         "run {run}: artifact digest mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:224:14
+    |
+224 |         "run {run}: verification digest mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:229:35
+    |
+229 |         .map_err(|e| format!("run {run}: verify failed: {e}"))?;
+    |                                   ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:232:14
+    |
+232 |         "run {run}: restored workflow mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:238:48
+    |
+238 |         .ok_or(format!("header missing for run {run}"))?;
+    |                                                ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:239:38
+    |
+239 |     assert_eq!(header.run, run, "run {run}: header run mismatch");
+    |                                      ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:243:14
+    |
+243 |         "run {run}: header workflow_id mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:245:39
+    |
+245 |     assert_eq!(header.status, 0, "run {run}: header status mismatch");
+    |                                       ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:248:14
+    |
+248 |         "run {run}: header accepted_at_ms mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:252:14
+    |
+252 |         "run {run}: header compiled_digest mismatch"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:261:29
+    |
+261 |         .ok_or(format!("run {run}: status index row missing"))?;
+    |                             ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:266:14
+    |
+266 |         "run {run}: status index value should be empty marker"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:274:29
+    |
+274 |         .ok_or(format!("run {run}: workflow index row missing"))?;
+    |                             ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:279:14
+    |
+279 |         "run {run}: workflow index value should be empty marker"
+    |              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:284:38
+    |
+284 |     assert_eq!(events.len(), 2, "run {run}: expected 2 events");
+    |                                      ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:289:29
+    |
+289 |         .ok_or(format!("run {run}: first event missing"))?;
+    |                             ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:296:43
+    |
+296 |             assert_eq!(*ev_run, run, "run {run}: event0 run mismatch");
+    |                                           ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:297:46
+    |
+297 |             assert_eq!(ev_seq.get(), 0, "run {run}: event0 seq mismatch");
+    |                                              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:300:22
+    |
+300 |                 "run {run}: event0 workflow mismatch"
+    |                      ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:303:42
+    |
+303 |         other => return Err(format!("run {run}: event0 is {other:?}").into()),
+    |                                          ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:309:29
+    |
+309 |         .ok_or(format!("run {run}: second event missing"))?;
+    |                             ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:318:43
+    |
+318 |             assert_eq!(*ev_run, run, "run {run}: event1 run mismatch");
+    |                                           ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:319:46
+    |
+319 |             assert_eq!(ev_seq.get(), 1, "run {run}: event1 seq mismatch");
+    |                                              ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:323:22
+    |
+323 |                 "run {run}: event1 artifact digest mismatch"
+    |                      ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:328:26
+    |
+328 |                     "run {run}: event1 input digest mismatch"
+    |                          ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:331:41
+    |
+331 |                 return Err(format!("run {run}: event1 input digest not Digest").into());
+    |                                         ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error[E0277]: `vb_core::RunId` doesn't implement `std::fmt::Display`
+   --> crates/vb_storage/src/inputs/issuance_test_support.rs:334:42
+    |
+334 |         other => return Err(format!("run {run}: event1 is {other:?}").into()),
+    |                                          ^^^^^ `vb_core::RunId` cannot be formatted with the default formatter
+    |
+    = help: the trait `std::fmt::Display` is not implemented for `vb_core::RunId`
+    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `vb_storage` (lib test) due to 38 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

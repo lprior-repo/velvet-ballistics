@@ -1,0 +1,100 @@
+1: //! Boundary tests for CLI run submission artifact issuance.
+2: //! Verifies malformed counter, u64::MAX overflow, close/reopen state
+3: //! preservation, and bounded concurrent submission.
+4: 
+5: use super::compute_input_digest;
+6: use super::issuance_test_support::*;
+7: use crate::{FjallJournal, JournalError};
+8: use std::sync::Arc;
+9: use vb_core::{RunId, RuntimePolicy, SlotIdx, SlotValue};
+10: 
+11: /// 7-byte counter yields exact MalformedKeyspaceRow error.
+12: #[test]
+13: fn cli_malformed_counter_seven_bytes() -> TestResult {
+14:     check_malformed_counter(&[0, 1, 2, 3, 4, 5, 6], 7)?;
+15:     Ok(())
+16: }
+17: 
+18: /// 9-byte counter yields exact MalformedKeyspaceRow error.
+19: #[test]
+20: fn cli_malformed_counter_nine_bytes() -> TestResult {
+21:     check_malformed_counter(&[0, 1, 2, 3, 4, 5, 6, 7, 8], 9)?;
+22:     Ok(())
+23: }
+24: 
+25: fn check_malformed_counter(bytes: &[u8], expected_actual_len: usize) -> TestResult {
+26:     let (_dir, journal) = open_test_journal()?;
+27:     write_malformed_counter(&journal, bytes)?;
+28:     // Verify the raw malformed counter is stored as-is (don't call production read_counter,
+29:     // which returns None on length mismatch and would exit early)
+30:     let before = journal
+31:         .artifact_acceptance
+32:         .get(b"last_issued")?
+33:         .ok_or("counter row missing")?;
+34:     assert_eq!(before.as_ref(), bytes);
+35: 
+36:     let submission = make_submission(RuntimePolicy::Strict, 99)?;
+37:     let result = journal.commit_run_submission(&submission, RuntimePolicy::Strict);
+38:     match result {
+39:         Err(JournalError::MalformedKeyspaceRow {
+40:             prefix,
+41:             expected_len,
+42:             actual_len,
+43:         }) => {
+44:             assert_eq!(prefix, 0);
+45:             assert_eq!(expected_len, 8);
+46:             assert_eq!(actual_len, expected_actual_len);
+47:         }
+48:         other => return Err(format!("expected MalformedKeyspaceRow, got: {other:?}").into()),
+49:     }
+50:     // Verify counter unchanged and journal otherwise empty
+51:     let after = journal
+52:         .artifact_acceptance
+53:         .get(b"last_issued")?
+54:         .ok_or("counter row missing")?;
+55:     assert_eq!(after.as_ref(), before.as_ref());
+56:     verify_empty_journal(&journal)?;
+57:     Ok(())
+58: }
+59: 
+60: /// Counter at u64::MAX yields exact SequenceOverflow error.
+61: #[test]
+62: fn cli_counter_at_max_yields_sequence_overflow() -> TestResult {
+63:     let (_dir, journal) = open_test_journal()?;
+64:     write_counter(&journal, u64::MAX)?;
+65: 
+66:     let submission = make_submission(RuntimePolicy::Strict, 1)?;
+67:     let result = journal.commit_run_submission(&submission, RuntimePolicy::Strict);
+68:     match result {
+69:         Err(JournalError::SequenceOverflow) => {}
+70:         other => return Err(format!("expected SequenceOverflow, got: {other:?}").into()),
+71:     }
+72:     assert_eq!(read_counter(&journal)?, Some(u64::MAX));
+73:     Ok(())
+74: }
+75: 
+76: /// Counter at u64::MAX-1 allows one more submission at u64::MAX,
+77: /// then subsequent submission fails with SequenceOverflow.
+78: #[test]
+79: fn cli_counter_at_max_minus_one_allows_one_more() -> TestResult {
+80:     let (_dir, journal) = open_test_journal()?;
+81:     write_counter(&journal, u64::MAX.checked_sub(1).ok_or("max predecessor")?)?;
+82: 
+83:     let submission = make_submission(RuntimePolicy::Strict, 1)?;
+84:     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
+85:     assert_eq!(read_counter(&journal)?, Some(u64::MAX));
+86:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(100), u64::MAX)?;
+87:     // Snapshot the prior successful run's artifacts before the overflow submission
+88:     let first_inputs = journal
+89:         .run_inputs(RunId::new(100))?
+90:         .ok_or("first run inputs not found")?;
+91:     let first_artifact = journal
+92:         .compiled_ir(first_inputs.artifact_digest())?
+93:         .ok_or("first run compiled IR not found")?;
+94: 
+95:     let submission2 = make_submission_run200(RuntimePolicy::Strict, 2)?;
+96:     let result = journal.commit_run_submission(&submission2, RuntimePolicy::Strict);
+97:     match result {
+98:         Err(JournalError::SequenceOverflow) => {}
+99:         other => return Err(format!("expected SequenceOverflow, got: {other:?}").into()),
+100:     }

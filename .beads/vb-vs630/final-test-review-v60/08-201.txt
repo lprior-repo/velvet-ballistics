@@ -1,0 +1,86 @@
+ACTUAL SOURCE crates/vb_storage/src/executor/issuance_test_support.rs
+201:     Ok(crate::RunSubmission::new(
+202:         crate::WorkflowSourceRecord {
+203:             digest: source_digest,
+204:             source: source_bytes,
+205:         },
+206:         artifact,
+207:         inputs,
+208:         header,
+209:     )?)
+210: }
+211: 
+212: /// Complete packed-verification fixture for test modules.
+213: pub(super) struct PackedFixture {
+214:     pub(super) catalog: super::ExecutorCatalog,
+215:     pub(super) workflow: CompiledWorkflow,
+216:     pub(super) contract: ActionContract,
+217:     pub(super) pack: ActionPack,
+218: }
+219: 
+220: impl PackedFixture {
+221:     /// Construct a fixture with actual conformance results.
+222:     pub(super) fn new() -> Result<Self, BoxError> {
+223:         let catalog = super::ExecutorCatalog::run_registered_conformance()?;
+224:         let contract = action_contract()?;
+225:         let pack =
+226:             catalog.register_pack(&contract, register_scope(), RecoveryClass::ReconcileReceipt)?;
+227:         let workflow = action_workflow()?;
+228:         Ok(Self {
+229:             catalog,
+230:             workflow,
+231:             contract,
+232:             pack,
+233:         })
+234:     }
+235: 
+236:     /// Prepare an artifact from this fixture's workflow and pack.
+237:     pub(super) fn prepare(
+238:         &self,
+239:         policy: RuntimePolicy,
+240:     ) -> Result<AcceptedArtifact, super::ExecutorError> {
+241:         self.catalog.prepare_artifact(
+242:             &self.workflow,
+243:             policy,
+244:             std::slice::from_ref(&self.contract),
+245:             std::slice::from_ref(&self.pack),
+246:         )
+247:     }
+248: 
+249:     /// Submit this fixture's artifact to the journal.
+250:     pub(super) fn submit(
+251:         &self,
+252:         journal: &FjallJournal,
+253:         policy: RuntimePolicy,
+254:     ) -> Result<AcceptedArtifact, super::ExecutorError> {
+255:         self.catalog.submit_artifact(
+256:             journal,
+257:             &self.workflow,
+258:             policy,
+259:             std::slice::from_ref(&self.contract),
+260:             std::slice::from_ref(&self.pack),
+261:         )
+262:     }
+263: 
+264:     /// Check a submitted artifact against the catalog.
+265:     pub(super) fn check(
+266:         &self,
+267:         journal: &FjallJournal,
+268:         artifact: &AcceptedArtifact,
+269:         policy: RuntimePolicy,
+270:     ) -> TestResult {
+271:         let restored = self.catalog.verify_artifact(artifact, policy)?;
+272:         if &restored != &self.workflow {
+273:             return Err("verified workflow differs from original".into());
+274:         }
+275:         match &artifact.verification.evidence {
+276:             vb_core::artifact::ArtifactEvidence::Packed(packed) => {
+277:                 if packed.base.admission_policy != policy {
+278:                     return Err("artifact admission policy differs from expected".into());
+279:                 }
+280:             }
+281:             other => return Err(format!("unexpected evidence: {other:?}").into()),
+282:         }
+283:         verify_artifact_readback(journal, artifact.digest, artifact)
+284:     }
+285: }

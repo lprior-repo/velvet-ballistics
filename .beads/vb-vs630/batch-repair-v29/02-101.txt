@@ -1,0 +1,57 @@
+101:     }
+102: 
+103:     let raw_counter = journal.artifact_acceptance.get(LAST_ISSUED_KEY)?;
+104:     if raw_counter.is_some() {
+105:         return Err("expected raw counter to be absent after failed batch".into());
+106:     }
+107: 
+108:     Ok(())
+109: }
+110: 
+111: #[test]
+112: fn put_counter_at_exact_budget_succeeds() -> Result<(), Box<dyn std::error::Error>> {
+113:     test_journal()?;
+114:     let (_path, journal) = open_test_journal()?;
+115:     let artifact = minimal_artifact()?;
+116:     let (seq, _stamped) = prepare_artifact_with_sequence(&journal, artifact)
+117:         .map_err(|e| format!("prepare_artifact_with_sequence failed: {}", e))?;
+118: 
+119:     let mut batch = JournalWriteBatch::new(&journal);
+120:     batch.byte_limit = Some(19);
+121: 
+122:     let result = batch.put_artifact_sequence(seq);
+123:     result.map_err(|e| format!("put_artifact_sequence failed: {}", e))?;
+124: 
+125:     if batch.staged_metadata_bytes != 19 {
+126:         return Err(format!(
+127:             "expected staged_metadata_bytes=19, got {}",
+128:             batch.staged_metadata_bytes
+129:         )
+130:         .into());
+131:     }
+132:     if batch.staged_event_bytes() != 0 {
+133:         return Err(format!(
+134:             "expected staged_event_bytes=0, got {}",
+135:             batch.staged_event_bytes()
+136:         )
+137:         .into());
+138:     }
+139: 
+140:     drop(batch);
+141:     let raw_counter = journal.artifact_acceptance.get(LAST_ISSUED_KEY)?;
+142:     if raw_counter.is_some() {
+143:         return Err(
+144:             "expected raw counter to be absent after dropped uncommitted batch".into(),
+145:         );
+146:     }
+147: 
+148:     Ok(())
+149: }
+150: 
+151: fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), Box<dyn std::error::Error>> {
+152:     let path = tempfile::TempDir::new()
+153:         .map_err(|e| format!("failed to create temp dir: {}", e))?;
+154:     let journal = FjallJournal::open(path.path(), None)
+155:         .map_err(|e| format!("failed to open journal: {}", e))?;
+156:     Ok((path, journal))
+157: }

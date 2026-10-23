@@ -1,0 +1,62 @@
+201:     // Submit a second run after reopen
+202:     let submission2 =
+203:         make_submission_for_run(RuntimePolicy::Journaled, 88, vb_core::RunId::new(200))?;
+204:     journal.commit_run_submission(&submission2, RuntimePolicy::Journaled)?;
+205:     assert_eq!(read_counter(&journal)?, Some(2));
+206:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(200), 2)?;
+207: 
+208:     journal.close()?;
+209:     Ok(())
+210: }
+211: 
+212: /// Bounded concurrent distinct-run CLI submissions produce distinct
+213: /// sequences with no collision.
+214: #[test]
+215: fn cli_bounded_concurrent_submissions() -> TestResult {
+216:     let (_dir, journal) = open_test_journal()?;
+217:     let journal = Arc::new(journal);
+218: 
+219:     let run_configs = [
+220:         (vb_core::RunId::new(100), 10),
+221:         (vb_core::RunId::new(101), 11),
+222:         (vb_core::RunId::new(102), 12),
+223:         (vb_core::RunId::new(103), 13),
+224:     ];
+225: 
+226:     let mut handles = Vec::new();
+227:     for (run, value) in run_configs {
+228:         let journal_clone = Arc::clone(&journal);
+229:         let handle = std::thread::spawn(move || {
+230:             let submission = make_submission_for_run(RuntimePolicy::Strict, value, run)
+231:                 .map_err(|e| format!("make submission failed: {e}"))?;
+232:             journal_clone
+233:                 .commit_run_submission(&submission, RuntimePolicy::Strict)
+234:                 .map_err(|e| format!("commit failed: {e}"))
+235:         });
+236:         handles.push(handle);
+237:     }
+238: 
+239:     for handle in handles.into_iter() {
+240:         handle
+241:             .join()
+242:             .map_err(|_| "submission thread panicked")?
+243:             .map_err(|e| format!("concurrent submission failed: {e}"))?;
+244:     }
+245: 
+246:     assert_eq!(read_counter(&journal)?, Some(4));
+247: 
+248:     // Verify each run got a distinct sequence
+249:     let mut seqs = Vec::new();
+250:     for (run, _) in run_configs {
+251:         let inputs = journal.run_inputs(run)?.ok_or("inputs not found")?;
+252:         let compiled = journal
+253:             .compiled_ir(inputs.artifact_digest())?
+254:             .ok_or("compiled not found")?;
+255:         let decoded: crate::AcceptedArtifact = postcard::from_bytes(&compiled.ir)?;
+256:         seqs.push(decoded.accepted_at_seq.get());
+257:     }
+258: 
+259:     seqs.sort();
+260:     assert_eq!(seqs, [1, 2, 3, 4]);
+261:     Ok(())
+262: }

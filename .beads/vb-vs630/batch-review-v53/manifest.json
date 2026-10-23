@@ -1,0 +1,20 @@
+{
+  "candidate": "e15052eff3c4a5215abd3607d15d8fd383b99ff9",
+  "source_packets": [
+    ".beads/vb-vs630/batch-review-v53/01-001.txt",
+    ".beads/vb-vs630/batch-review-v53/01-101.txt",
+    ".beads/vb-vs630/batch-review-v53/02-001.txt",
+    ".beads/vb-vs630/batch-review-v53/03-001.txt",
+    ".beads/vb-vs630/batch-review-v53/03-101.txt",
+    ".beads/vb-vs630/batch-review-v53/03-201.txt",
+    ".beads/vb-vs630/batch-review-v53/03-301.txt",
+    ".beads/vb-vs630/batch-review-v53/04-001.txt",
+    ".beads/vb-vs630/batch-review-v53/05-001.txt",
+    ".beads/vb-vs630/batch-review-v53/05-101.txt",
+    ".beads/vb-vs630/batch-review-v53/06-001.txt",
+    ".beads/vb-vs630/batch-review-v53/07-001.txt",
+    ".beads/vb-vs630/batch-review-v53/07-101.txt",
+    ".beads/vb-vs630/batch-review-v53/07-201.txt",
+    ".beads/vb-vs630/batch-review-v53/08-001.txt"
+  ]
+}

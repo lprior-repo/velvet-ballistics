@@ -1,0 +1,54 @@
+ACTUAL SOURCE crates/velvet_ballistics/Cargo.toml
+1: [package]
+2: name = "velvet-ballistics"
+3: edition.workspace = true
+4: license.workspace = true
+5: version.workspace = true
+6: 
+7: [dependencies]
+8: vb_compile = { path = "../vb_compile" }
+9: vb_core = { path = "../vb_core" }
+10: vb_ipc = { path = "../vb_ipc" }
+11: vb_runtime = { path = "../vb_runtime" }
+12: vb_storage = { path = "../vb_storage" }
+13: vb_validate = { path = "../vb_validate" }
+14: postcard = { workspace = true }
+15: serde = { workspace = true, features = ["derive"] }
+16: serde_json = { workspace = true, features = ["alloc"] }
+17: serde-saphyr = { workspace = true }
+18: chrono.workspace = true
+19: crc32fast.workspace = true
+20: blake3.workspace = true
+21: 
+22: [lib]
+23: name = "velvet_ballistics"
+24: path = "src/lib.rs"
+25: 
+26: [[bin]]
+27: name = "velvet-ballistics"
+28: path = "src/main.rs"
+29: 
+30: [dev-dependencies]
+31: bytes = { workspace = true }
+32: proptest = { workspace = true }
+33: serde = { workspace = true }
+34: tempfile.workspace = true
+35: 
+36: [lints]
+37: workspace = true
+38: 
+39: [[test]]
+40: name = "submit_input_boundary"
+41: path = "../workspace_tests/tests/cli/submit_input_boundary.rs"
+42: 
+43: [[test]]
+44: name = "finish_input_execution"
+45: path = "../workspace_tests/tests/cli/finish_input_execution.rs"
+46: 
+47: [[test]]
+48: name = "verify_budget_profiles"
+49: path = "../workspace_tests/tests/cli/verify_budget_profiles.rs"
+50: 
+51: [[test]]
+52: name = "submit_retained_inputs"
+53: path = "../workspace_tests/tests/cli/submit_retained_inputs.rs"

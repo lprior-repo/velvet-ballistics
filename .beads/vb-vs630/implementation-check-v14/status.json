@@ -1,0 +1,11 @@
+{
+  "status": "WIP production compile and existing1658 storage tests passed; NEW acceptance tests and independent reviews pending; NOT main accepted",
+  "hashes": {
+    "batch/append_event.rs": "eb1f0ca8068e80d5a10fdac0e0a5f25914ba923781e7e723891f6f4a2c1b5da5",
+    "batch/artifact_sequence.rs": "a1d375855d3f5d0165e1aa3c13232cf66415209a8a8a17c41e198db4d78df0c7",
+    "batch/mod.rs": "f0ab2f42e520ba8f09b07e9b02607864107d4b5e96992963472c71a4ad93c103",
+    "batch/types.rs": "7dbbf6852a27a83ef013c05416e5b601061eaaf37f6d2a9654418dc720e56905",
+    "inputs/submission.rs": "c87f3c8d762806d17742154a51d8234f6e5d4471a5189dbada6260a9ec735f30",
+    "journal/artifact_acceptance.rs": "25d03128bcfcb288bb8d8007a8918870a4555c444d66db9c1cc6868d57f888ff"
+  }
+}

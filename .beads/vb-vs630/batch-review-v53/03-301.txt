@@ -1,0 +1,32 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/artifact_sequence_tests.rs
+301: 
+302:     let raw = journal
+303:         .artifact_acceptance
+304:         .get(LAST_ISSUED_KEY)
+305:         .map_err(|e| format!("read counter failed: {}", e))?;
+306:     assert!(raw.is_none());
+307:     Ok(())
+308: }
+309: 
+310: #[test]
+311: fn already_aborted_batch_rejects_all_operations() -> Result<(), Box<dyn std::error::Error>> {
+312:     let (_path, journal) = open_test_journal()?;
+313:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+314:         .map_err(|e| format!("prepare failed: {}", e))?;
+315: 
+316:     let mut batch = JournalWriteBatch::new(&journal);
+317:     batch.aborted = true;
+318: 
+319:     let result = batch.put_artifact_sequence(seq);
+320:     assert!(matches!(result, Err(JournalError::BatchAborted)));
+321:     assert_eq!(batch.staged_metadata_bytes, 0);
+322:     assert_eq!(batch.staged_event_bytes(), 0);
+323:     assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+324: 
+325:     let raw = journal
+326:         .artifact_acceptance
+327:         .get(LAST_ISSUED_KEY)
+328:         .map_err(|e| format!("read counter failed: {}", e))?;
+329:     assert!(raw.is_none());
+330:     Ok(())
+331: }

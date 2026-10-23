@@ -1,0 +1,200 @@
+//! Isolated issuance tests using support PackedFixture.
+//! No production modifications; all behavior verified through actual fixtures.
+
+use super::issuance_test_support::{
+    PackedFixture, TestResult, minimal_workflow, open_test_journal, read_counter,
+    verify_artifact_readback,
+};
+use crate::admission;
+use vb_core::RuntimePolicy;
+
+// Case 1: Pure prepare across policies produces empty sequence.
+#[test]
+fn prepare_produces_no_sequence() -> TestResult {
+    for policy in [
+        &RuntimePolicy::Strict,
+        &RuntimePolicy::Journaled,
+        &RuntimePolicy::Relaxed,
+    ] {
+        let fixture = PackedFixture::new()?;
+        let (_dir, journal) = open_test_journal()?;
+        assert_eq!(read_counter(&journal)?, None);
+        assert!(journal.list_artifacts()?.is_empty());
+        let artifact = fixture.prepare(*policy)?;
+        assert_eq!(artifact.accepted_at_seq.get(), 0);
+        let restored = fixture.catalog.verify_artifact(&artifact, *policy)?;
+        assert_eq!(&restored, &fixture.workflow);
+        assert_eq!(read_counter(&journal)?, None);
+        assert!(journal.list_artifacts()?.is_empty());
+    }
+    Ok(())
+}
+
+// Case 2a: Strict policy submit returns sequence 1.
+#[test]
+fn strict_submit_sequence_one() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
+    let artifact = fixture.submit(&journal, RuntimePolicy::Strict)?;
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
+    assert_eq!(read_counter(&journal)?, Some(1));
+    fixture.check(&journal, &artifact, RuntimePolicy::Strict)
+}
+
+// Case 2b: Journaled policy submit returns sequence 1.
+#[test]
+fn journaled_submit_sequence_one() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
+    let artifact = fixture.submit(&journal, RuntimePolicy::Journaled)?;
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
+    assert_eq!(read_counter(&journal)?, Some(1));
+    fixture.check(&journal, &artifact, RuntimePolicy::Journaled)
+}
+
+// Case 2c: Relaxed policy submit returns sequence 1.
+#[test]
+fn relaxed_submit_sequence_one() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
+    let artifact = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
+    assert_eq!(read_counter(&journal)?, Some(1));
+    fixture.check(&journal, &artifact, RuntimePolicy::Relaxed)
+}
+
+// Case 3: Same journal, three policies increment sequence.
+#[test]
+fn sequential_submissions_increment() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let (_dir, journal) = open_test_journal()?;
+    let strict = fixture.submit(&journal, RuntimePolicy::Strict)?;
+    assert_eq!(strict.accepted_at_seq.get(), 1);
+    let journaled = fixture.submit(&journal, RuntimePolicy::Journaled)?;
+    assert_eq!(journaled.accepted_at_seq.get(), 2);
+    let relaxed = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+    assert_eq!(relaxed.accepted_at_seq.get(), 3);
+    assert_ne!(strict.digest, journaled.digest);
+    assert_ne!(journaled.digest, relaxed.digest);
+    assert_ne!(strict.digest, relaxed.digest);
+    fixture.check(&journal, &strict, RuntimePolicy::Strict)?;
+    fixture.check(&journal, &journaled, RuntimePolicy::Journaled)?;
+    fixture.check(&journal, &relaxed, RuntimePolicy::Relaxed)?;
+    assert_eq!(read_counter(&journal)?, Some(3));
+    Ok(())
+}
+
+// Case 4: Mixed default and catalog workflow submissions.
+#[test]
+fn mixed_default_and_catalog_submissions() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let default_workflow = minimal_workflow()?;
+    let (_dir, journal) = open_test_journal()?;
+    let default_artifact =
+        admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+    assert_eq!(default_artifact.accepted_at_seq.get(), 1);
+    let catalog_artifact = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+    assert_eq!(catalog_artifact.accepted_at_seq.get(), 2);
+    let default_artifact2 =
+        admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+    assert_eq!(default_artifact2.accepted_at_seq.get(), 3);
+    verify_artifact_readback(&journal, default_artifact.digest, &default_artifact)?;
+    verify_artifact_readback(&journal, default_artifact2.digest, &default_artifact2)?;
+    fixture.check(&journal, &catalog_artifact, RuntimePolicy::Relaxed)?;
+    assert_eq!(
+        crate::admission::verify_accepted_artifact(&default_artifact)?,
+        default_workflow
+    );
+    assert_eq!(
+        crate::admission::verify_accepted_artifact(&default_artifact2)?,
+        default_workflow
+    );
+    assert_ne!(default_artifact.digest, catalog_artifact.digest);
+    assert_ne!(catalog_artifact.digest, default_artifact2.digest);
+    assert_ne!(default_artifact.digest, default_artifact2.digest);
+    assert_eq!(read_counter(&journal)?, Some(3));
+    Ok(())
+}
+
+// Case 5: Journal reopened on same path preserves state.
+#[test]
+fn journal_reopen_preserves_sequence() -> TestResult {
+    use crate::FjallJournal;
+    let fixture = PackedFixture::new()?;
+    let (dir, journal) = open_test_journal()?;
+    let artifact = fixture.submit(&journal, RuntimePolicy::Strict)?;
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
+    fixture.check(&journal, &artifact, RuntimePolicy::Strict)?;
+    assert_eq!(read_counter(&journal)?, Some(1));
+    drop(journal);
+    let journal2 = FjallJournal::open(dir.path(), None)?;
+    fixture.check(&journal2, &artifact, RuntimePolicy::Strict)?;
+    assert_eq!(read_counter(&journal2)?, Some(1));
+    let artifact2 = fixture.submit(&journal2, RuntimePolicy::Strict)?;
+    assert_eq!(artifact2.accepted_at_seq.get(), 2);
+    fixture.check(&journal2, &artifact2, RuntimePolicy::Strict)?;
+    fixture.check(&journal2, &artifact, RuntimePolicy::Strict)?;
+    assert_ne!(artifact2.digest, artifact.digest);
+    assert_eq!(read_counter(&journal2)?, Some(2));
+    Ok(())
+}
+
+// Case 6: Same-journal four-way sequence (default, catalog, CLI, default).
+#[test]
+fn same_journal_four_way_sequence() -> TestResult {
+    let fixture = PackedFixture::new()?;
+    let default_workflow = minimal_workflow()?;
+    let (_dir, journal) = open_test_journal()?;
+
+    // Submission 1: default admission submit_artifact -> seq 1
+    let default1 =
+        crate::admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+    assert_eq!(default1.accepted_at_seq.get(), 1);
+
+    // Submission 2: real registered catalog fixture.submit -> seq 2
+    let catalog1 = fixture.submit(&journal, RuntimePolicy::Relaxed)?;
+    assert_eq!(catalog1.accepted_at_seq.get(), 2);
+
+    // Submission 3: actual CLI RunSubmission + journal.commit_run_submission -> seq 3
+    let cli_submission = super::issuance_test_support::make_cli_submission(
+        RuntimePolicy::Relaxed,
+        vb_core::RunId::new(77),
+    )?;
+    journal.commit_run_submission(&cli_submission, RuntimePolicy::Relaxed)?;
+
+    // Submission 4: default again -> seq 4
+    let default2 =
+        crate::admission::submit_artifact(&journal, &default_workflow, RuntimePolicy::Relaxed)?;
+    assert_eq!(default2.accepted_at_seq.get(), 4);
+
+    // Verify seq 1 artifact readback intact
+    verify_artifact_readback(&journal, default1.digest, &default1)?;
+
+    // Verify seq 2 catalog artifact intact
+    fixture.check(&journal, &catalog1, RuntimePolicy::Relaxed)?;
+
+    // Verify seq 3 CLI submission: decode artifact and check binding
+    let run77_inputs = journal
+        .run_inputs(vb_core::RunId::new(77))?
+        .ok_or("run 77 inputs missing")?;
+    let run77_record = journal
+        .compiled_ir(run77_inputs.artifact_digest())?
+        .ok_or("run 77 compiled missing")?;
+    let run77_decoded: crate::AcceptedArtifact =
+        postcard::from_bytes(&run77_record.ir)?;
+    assert_eq!(run77_decoded.accepted_at_seq.get(), 3);
+    assert_eq!(run77_decoded.digest, run77_inputs.artifact_digest());
+    assert_eq!(run77_decoded.verification.digest, run77_inputs.artifact_digest());
+    assert_eq!(run77_decoded.policy_digest, run77_inputs.workflow_digest());
+
+    // Relaxed policy: no events for seq 3
+    let run77_events = journal.events_for_run(vb_core::RunId::new(77))?;
+    assert!(run77_events.is_empty(), "Relaxed policy should have no events");
+
+    // Verify seq 4 default artifact intact
+    verify_artifact_readback(&journal, default2.digest, &default2)?;
+
+    // Final counter
+    assert_eq!(read_counter(&journal)?, Some(4));
+    Ok(())
+}

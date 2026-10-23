@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/artifact_sequence_tests.rs
+201:     assert!(matches!(
+202:         result,
+203:         Err(JournalError::JournalBatchBytesExceeded {
+204:             attempted: u64::MAX,
+205:             limit: u64::MAX
+206:         })
+207:     ));
+208:     assert!(batch.is_aborted());
+209:     Ok(())
+210: }
+211: 
+212: #[test]
+213: fn metadata_overflow_with_none_limit_aborts() -> Result<(), Box<dyn std::error::Error>> {
+214:     let (_path, journal) = open_test_journal()?;
+215:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+216:         .map_err(|e| format!("prepare failed: {}", e))?;
+217: 
+218:     let mut batch = JournalWriteBatch::new(&journal);
+219:     batch.byte_limit = None;
+220:     batch.staged_metadata_bytes = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+221: 
+222:     let result = batch.put_artifact_sequence(seq);
+223:     assert!(matches!(
+224:         result,
+225:         Err(JournalError::JournalBatchBytesExceeded {
+226:             attempted: u64::MAX,
+227:             limit: u64::MAX
+228:         })
+229:     ));
+230:     assert!(batch.is_aborted());
+231:     Ok(())
+232: }
+233: 
+234: #[test]
+235: fn combined_overflow_with_some_limit_aborts() -> Result<(), Box<dyn std::error::Error>> {
+236:     let (_path, journal) = open_test_journal()?;
+237:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+238:         .map_err(|e| format!("prepare failed: {}", e))?;
+239: 
+240:     let mut batch = JournalWriteBatch::new(&journal);
+241:     batch.byte_limit = Some(19);
+242:     batch.staged_bytes = u64::MAX;
+243: 
+244:     let result = batch.put_artifact_sequence(seq);
+245:     assert!(matches!(
+246:         result,
+247:         Err(JournalError::JournalBatchBytesExceeded {
+248:             attempted: u64::MAX,
+249:             limit: 19
+250:         })
+251:     ));
+252:     assert!(batch.is_aborted());
+253:     Ok(())
+254: }
+255: 
+256: #[test]
+257: fn no_byte_limit_allows_large_batch() -> Result<(), Box<dyn std::error::Error>> {
+258:     let (_path, journal) = open_test_journal()?;
+259:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+260:         .map_err(|e| format!("prepare failed: {}", e))?;
+261: 
+262:     let mut batch = JournalWriteBatch::new(&journal);
+263:     batch.byte_limit = None;
+264:     batch
+265:         .put_artifact_sequence(seq)
+266:         .map_err(|e| format!("put failed with no limit: {}", e))?;
+267: 
+268:     assert_eq!(batch.staged_metadata_bytes, 19);
+269:     Ok(())
+270: }
+271: 
+272: #[test]
+273: fn soft_limit_reject_does_not_abort() -> Result<(), Box<dyn std::error::Error>> {
+274:     let (_path, journal) = open_test_journal()?;
+275:     let event = make_accepted_event(RunId::new(4), crate::types::EventSeq::new(1));
+276: 
+277:     let mut batch = JournalWriteBatch::new(&journal);
+278:     batch.byte_limit = Some(0);
+279:     let result = batch.append_event(&event);
+280: 
+281:     assert!(matches!(
+282:         result,
+283:         Err(JournalError::JournalBatchBytesExceeded { limit: 0, .. })
+284:     ));
+285:     assert!(!batch.is_aborted());
+286:     Ok(())
+287: }
+288: 
+289: #[test]
+290: fn drop_batch_without_commit_persists_nothing() -> Result<(), Box<dyn std::error::Error>> {
+291:     let (_path, journal) = open_test_journal()?;
+292:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+293:         .map_err(|e| format!("prepare failed: {}", e))?;
+294: 
+295:     {
+296:         let mut batch = JournalWriteBatch::new(&journal);
+297:         batch
+298:             .put_artifact_sequence(seq)
+299:             .map_err(|e| format!("put failed: {}", e))?;
+300:     }

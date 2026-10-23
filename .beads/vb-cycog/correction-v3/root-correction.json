@@ -1,0 +1,12 @@
+{
+  "finding": "withdrawn_wrong_package_inventory",
+  "already_wired_in": [
+    "ebe0984326b7fd17603c977dbb9ee680b43522f4",
+    "52a69710e78634fb765cdf51a09bf39ef00106ae",
+    "d0645504a432552301d43094859e1261318a1bef"
+  ],
+  "source_mutations_retained": false,
+  "wrong_earlier_claim": "dormant tests; four targets absent",
+  "scope_violation": "native3090 wrote unassigned status.json; stopped by scope watch; not trusted evidence",
+  "verification": "V2 real 11 tests passed with unnecessary renamed targets; original targets next"
+}

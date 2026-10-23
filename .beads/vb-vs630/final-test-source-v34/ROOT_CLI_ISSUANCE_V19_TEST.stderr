@@ -1,0 +1,77 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-vs630-impl-local5090-v6/crates/vb_storage)
+error[E0425]: cannot find function `compute_input_digest` in this scope
+  --> crates/vb_storage/src/inputs/issuance_boundary_tests.rs:97:33
+   |
+97 |     let expected_input_digest = compute_input_digest(&[(SlotIdx::new(0), SlotValue::I64(77))])
+   |                                 ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this function through its public re-export
+   |
+ 5 + use crate::inputs::compute_input_digest;
+   |
+
+error[E0425]: cannot find function `compute_input_digest` in this scope
+  --> crates/vb_storage/src/inputs/issuance_tests.rs:96:33
+   |
+96 |     let expected_input_digest = compute_input_digest(&[(SlotIdx::new(0), SlotValue::I64(88))])
+   |                                 ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this function through its public re-export
+   |
+ 5 + use crate::inputs::compute_input_digest;
+   |
+
+error: unused import: `FjallJournal`
+ --> crates/vb_storage/src/inputs/issuance_failure_tests.rs:6:13
+  |
+6 | use crate::{FjallJournal, JournalError};
+  |             ^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused import: `FjallJournal`
+ --> crates/vb_storage/src/inputs/issuance_tests.rs:6:13
+  |
+6 | use crate::{FjallJournal, admission};
+  |             ^^^^^^^^^^^^
+
+error[E0599]: no method named `clone` found for struct `journal::core::FjallJournal` in the current scope
+   --> crates/vb_storage/src/inputs/issuance_boundary_tests.rs:216:37
+    |
+216 |         let journal_clone = journal.clone();
+    |                                     ^^^^^
+    |
+   ::: crates/vb_storage/src/journal/core.rs:47:1
+    |
+ 47 | pub struct FjallJournal {
+    | ----------------------- method `clone` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `clone`, perhaps you need to implement it:
+            candidate #1: `Clone`
+help: there is a method `close` with a similar name
+    |
+216 -         let journal_clone = journal.clone();
+216 +         let journal_clone = journal.close();
+    |
+
+error[E0599]: no method named `kind` found for reference `&fjall::Error` in the current scope
+  --> crates/vb_storage/src/inputs/issuance_failure_tests.rs:69:64
+   |
+69 |         matches!(&result, Err(JournalError::Fjall(err)) if err.kind() == std::io::ErrorKind::Other),
+   |                                                                ^^^^ method not found in `&fjall::Error`
+
+error: unused variable: `submission`
+   --> crates/vb_storage/src/inputs/issuance_tests.rs:216:9
+    |
+216 |     let submission = make_submission(RuntimePolicy::Strict, 1).expect("make submission");
+    |         ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_submission`
+    |
+    = note: `-D unused-variables` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(unused_variables)]`
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `vb_storage` (lib test) due to 7 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

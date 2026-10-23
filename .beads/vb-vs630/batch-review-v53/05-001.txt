@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/append_event.rs
+1: #![forbid(unsafe_code)]
+2: use super::types::JournalWriteBatch;
+3: use crate::codec::encode_record;
+4: use crate::constants::{MAGIC_JOURNAL_EVENT, MAX_BATCH_COUNT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
+5: use crate::error::JournalError;
+6: use crate::events::JournalEvent;
+7: use crate::keys::run_event_key;
+8: 
+9: impl<'j> JournalWriteBatch<'j> {
+10:     /// Appends a journal event into the batch.
+11:     ///
+12:     /// # Invariant I20
+13:     /// Duplicate event detection is enforced at `append_event` time by
+14:     /// checking both the current batch's staged keys and the journal's
+15:     /// keyspace for already-committed events. Same-batch duplicate
+16:     /// keys are rejected before Fjall can collapse them silently.
+17:     ///
+18:     /// # Guard Precedence (C6)
+19:     /// 1. Key construction
+20:     /// 2. Semantic event validation
+21:     /// 3. Same-batch duplicate check (HashSet guard)
+22:     /// 4. Durable duplicate check → aborts batch
+23:     /// 5. Count capacity check (QueueFull)
+24:     /// 6. Per-record encoding / payload size check (PayloadTooLarge)
+25:     /// 7. Accumulated byte admission check (JournalBatchBytesExceeded)
+26:     /// 8. Insert into inner OwnedWriteBatch
+27:     ///
+28:     /// # Preconditions (requires)
+29:     /// - The batch is not already aborted.
+30:     /// - `event.run_id()` and `event.seq()` form a valid key.
+31:     /// - `event` payload is bounded by `MAX_JOURNAL_EVENT_PAYLOAD_BYTES`.
+32:     ///
+33:     /// # Postconditions (ensures)
+34:     /// - On success: the event is staged in `inner`, `staged_bytes` is
+35:     ///   incremented by the full encoded record length.
+36:     /// - On `DuplicateStagedKey`: no state mutated, batch remains open.
+37:     /// - On `DuplicateEvent`: batch is aborted, no state mutated.
+38:     /// - On `QueueFull`: no state mutated, batch remains open.
+39:     /// - On `PayloadTooLarge`: no state mutated.
+40:     /// - On `JournalBatchBytesExceeded`: no state mutated,
+41:     ///   `staged_bytes` unchanged, batch remains open.
+42:     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
+43:         let key = run_event_key(event.run_id(), event.seq())?;
+44:         if !event.is_valid() {
+45:             return Err(JournalError::InvalidEvent);
+46:         }
+47:         // Same-batch duplicate guard (vb-1rqz7.18 / vb-byk3q / SA-003).
+48:         if self.staged_event_keys.contains(&key) {
+49:             return Err(JournalError::DuplicateStagedKey {
+50:                 run: event.run_id(),
+51:                 seq: event.seq(),
+52:             });
+53:         }
+54:         if self.journal.events.contains_key(key)? {
+55:             self.aborted = true;
+56:             return Err(JournalError::DuplicateEvent {
+57:                 run: event.run_id(),
+58:                 seq: event.seq(),
+59:             });
+60:         }
+61:         if self.inner.len() >= MAX_BATCH_COUNT {
+62:             return Err(JournalError::QueueFull);
+63:         }
+64:         let value = encode_record(
+65:             MAGIC_JOURNAL_EVENT,
+66:             event.record_kind(),
+67:             event.seq().get(),
+68:             event,
+69:             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+70:         )?;
+71: 
+72:         // Byte admission check: guard 6 per C6 contract.
+73:         // Checks combined event + metadata bytes against the limit.
+74:         if let Some(limit) = self.byte_limit {
+75:             let encoded_len =
+76:                 u64::try_from(value.len()).map_err(|_| JournalError::SequenceOverflow)?;
+77:             // Enforce combined event+metadata budget per accepted contract
+78:             let attempted = self
+79:                 .staged_bytes
+80:                 .checked_add(self.staged_metadata_bytes)
+81:                 .and_then(|combined| combined.checked_add(encoded_len))
+82:                 .ok_or(JournalError::JournalBatchBytesExceeded {
+83:                     attempted: u64::MAX,
+84:                     limit,
+85:                 })?;
+86:             if attempted > limit {
+87:                 return Err(JournalError::JournalBatchBytesExceeded { attempted, limit });
+88:             }
+89:             // staged_bytes tracks only event bytes, not metadata
+90:             self.staged_bytes = self
+91:                 .staged_bytes
+92:                 .checked_add(encoded_len)
+93:                 .ok_or(JournalError::SequenceOverflow)?;
+94:         }
+95: 
+96:         self.journal
+97:             .stage_recovery_index_ops(&mut self.inner, event)?;
+98:         self.inner.insert(&self.journal.events, key, value);
+99:         self.staged_event_keys.insert(key);
+100:         Ok(())

@@ -1,0 +1,7 @@
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/vb-cycog-impl-local3090-v1/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.99s
+────────────
+ Nextest run ID 106edf9d-9dfd-4c20-a392-c3d78f6671a9 with nextest profile: default
+    Starting 11 tests across 4 binaries
+────────────
+     Summary [   0.278s] 11 tests run: 11 passed, 0 skipped

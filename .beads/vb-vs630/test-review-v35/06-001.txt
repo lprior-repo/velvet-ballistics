@@ -1,0 +1,100 @@
+1: use super::RunInputsRecord;
+2: use crate::{
+3:     AcceptedArtifact, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
+4:     RunHeaderRecord, WorkflowSourceRecord,
+5: };
+6: use vb_core::RuntimePolicy;
+7: 
+8: /// Complete prepared admission. Private members prevent partial publication.
+9: pub struct RunSubmission {
+10:     source: WorkflowSourceRecord,
+11:     artifact: AcceptedArtifact,
+12:     inputs: RunInputsRecord,
+13:     header: RunHeaderRecord,
+14: }
+15: 
+16: impl RunSubmission {
+17:     /// Binds retained inputs, source and header to the exact executable artifact.
+18:     pub fn new(
+19:         source: WorkflowSourceRecord,
+20:         artifact: AcceptedArtifact,
+21:         inputs: RunInputsRecord,
+22:         header: RunHeaderRecord,
+23:     ) -> Result<Self, JournalError> {
+24:         let submission = Self {
+25:             source,
+26:             artifact,
+27:             inputs,
+28:             header,
+29:         };
+30:         submission.validate_binding()?;
+31:         Ok(submission)
+32:     }
+33: 
+34:     fn validate_binding(&self) -> Result<(), JournalError> {
+35:         self.validate_identities()?;
+36:         crate::journal::verify_content_digest(&self.source.source, &self.source.digest.as_bytes())?;
+37:         let workflow = crate::admission::verify_accepted_artifact(&self.artifact)?;
+38:         self.inputs.validate_workflow(&workflow)?;
+39:         if crate::admission::compute_policy_digest(&workflow)? != self.artifact.policy_digest {
+40:             return Err(JournalError::PayloadDigestMismatch);
+41:         }
+42:         Ok(())
+43:     }
+44: 
+45:     fn validate_identities(&self) -> Result<(), JournalError> {
+46:         let digest = crate::admission::accepted_artifact_digest(&self.artifact)?;
+47:         if digest != self.artifact.digest
+48:             || digest != self.artifact.verification.digest
+49:             || digest != self.inputs.artifact_digest()
+50:             || self.header.run != self.inputs.run()
+51:             || self.header.compiled_digest != self.inputs.workflow_digest()
+52:             || self.source.digest != self.inputs.source_digest()
+53:             || self.artifact.source_digest != self.inputs.workflow_digest()
+54:         {
+55:             return Err(JournalError::PayloadDigestMismatch);
+56:         }
+57:         Ok(())
+58:     }
+59: 
+60:     fn validate_policy(&self, policy: RuntimePolicy) -> Result<(), JournalError> {
+61:         if !matches!(
+62:             policy,
+63:             RuntimePolicy::Relaxed | RuntimePolicy::Journaled | RuntimePolicy::Strict
+64:         ) {
+65:             return Err(JournalError::AdmissionRequired);
+66:         }
+67:         if !self.artifact.required_capabilities.is_empty() {
+68:             return Err(JournalError::CapabilityDenied);
+69:         }
+70:         crate::admission::verify_accepted_artifact_for_policy(&self.artifact, policy)?;
+71:         Ok(())
+72:     }
+73: 
+74:     fn stage(&self, batch: &mut crate::JournalWriteBatch<'_>) -> Result<(), JournalError> {
+75:         batch.put_workflow_source(&self.source)?;
+76:         let ir =
+77:             postcard::to_allocvec(&self.artifact).map_err(JournalError::PostcardEncodeFailed)?;
+78:         batch.put_compiled_ir(&CompiledIrRecord {
+79:             digest: self.artifact.digest,
+80:             ir,
+81:         })?;
+82:         batch.put_run_inputs(&self.inputs)?;
+83:         batch.put_run_header(&self.header)?;
+84:         batch.put_workflow_index(self.header.workflow_id, self.header.run)?;
+85:         batch.put_status_index(
+86:             crate::IndexStatusState::Submitted,
+87:             self.header.accepted_at_ms,
+88:             self.header.run,
+89:         )
+90:     }
+91: 
+92:     fn stage_acceptance(
+93:         &self,
+94:         batch: &mut crate::JournalWriteBatch<'_>,
+95:         policy: RuntimePolicy,
+96:     ) -> Result<(), JournalError> {
+97:         if policy == RuntimePolicy::Relaxed {
+98:             return Ok(());
+99:         }
+100:         batch.append_event(&self.accepted_event())?;

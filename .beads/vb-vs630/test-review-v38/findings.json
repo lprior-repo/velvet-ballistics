@@ -1,0 +1,91 @@
+{
+  "review_version": "v38",
+  "candidate_bead": "vb-vs630",
+  "status": "REJECTED",
+  "prior_review": "v35",
+  "corrections_from_v35": [
+    "WriteLockPoisoned is a preexisting infrastructure guard; unreachable without panic macros; not a contract-required test target",
+    "PostcardEncodeFailed is unreachable for closed derived Serialize types; OOM is panic not Result",
+    "bind_artifact_digest errors are PostcardEncodeFailed; no distinct bind error variant exists",
+    "Malformed counter contract only requires 7/9 byte probes; no infinite enumeration authority",
+    "Pure preparation test correctly asserts counter is None AND all keyspaces empty via verify_empty_journal"
+  ],
+  "genuine_coverage_gaps": [
+    {
+      "id": "F1",
+      "title": "Duplicate rejection test omits full record preservation assertions",
+      "test_location": "crates/vb_storage/src/inputs/issuance_failure_tests.rs::cli_duplicate_run_rejected_before_counter_publication",
+      "asserts": ["run_inputs unchanged", "events unchanged", "counter unchanged"],
+      "omits": ["compiled_ir unchanged", "workflow_source unchanged", "run_header unchanged", "index_workflow entries unchanged", "index_status entries unchanged"],
+      "contract_requirement": "exact unchanged state before retry",
+      "severity": "MEDIUM"
+    },
+    {
+      "id": "F2",
+      "title": "Close/reopen test omits full record content verification",
+      "test_location": "crates/vb_storage/src/inputs/issuance_boundary_tests.rs::cli_same_path_reopen_preserves_state_and_advances",
+      "asserts": ["input digests preserved", "typed inputs preserved", "compiled_ir bytes preserved", "source bytes preserved", "header compiled_digest preserved", "events count preserved", "one event artifact_digest spot-checked"],
+      "omits": ["full header field equality (run, workflow_id, status, accepted_at_ms)", "full events content equality", "index entry existence after reopen"],
+      "contract_requirement": "same-path close/reopen state preservation",
+      "severity": "MEDIUM"
+    },
+    {
+      "id": "F3",
+      "title": "Concurrency test omits per-run typed data integrity verification",
+      "test_location": "crates/vb_storage/src/inputs/issuance_boundary_tests.rs::cli_bounded_concurrent_submissions",
+      "asserts": ["counter is 4", "each run got a distinct sequence from [1,2,3,4]"],
+      "omits": ["per-run typed input values correct", "per-run source digests correct", "per-run header fields correct", "per-run index entries correct"],
+      "contract_requirement": "bounded concurrent submissions",
+      "severity": "MEDIUM"
+    },
+    {
+      "id": "F4",
+      "title": "No mixed default + catalog + CLI single-journal test",
+      "test_location": null,
+      "existing_pairwise_tests": [
+        "issuance_tests.rs::mixed_default_and_cli_submissions_share_counter",
+        "executor/issuance_tests.rs::mixed_default_and_catalog_submissions"
+      ],
+      "missing": "single test exercising all three submission methods in one journal with shared counter",
+      "contract_requirement": "mixed default/catalog/CLI global ordering",
+      "severity": "LOW-MEDIUM"
+    }
+  ],
+  "verified_policies": [
+    "all 3 policies stamp accepted_at_seq correctly",
+    "retained typed values preserved",
+    "input digest preserved",
+    "source preserved",
+    "workflow digest preserved",
+    "header compiled_digest preserved",
+    "per-run event 0/1 semantics",
+    "mixed default+CLI global ordering",
+    "pure prepare does not advance counter",
+    "injected IoOther batch hook propagates",
+    "malformed 7/9 byte counter yields exact MalformedKeyspaceRow",
+    "u64::MAX yields SequenceOverflow",
+    "u64::MAX-1 allows one more then overflows"
+  ],
+  "error_variant_analysis": {
+    "WriteLockPoisoned": {
+      "reachable": "technically yes, practically no",
+      "tested": false,
+      "reason": "requires panic! while holding lock; no panic macros permitted; preexisting guard not contract-required test target"
+    },
+    "PostcardEncodeFailed": {
+      "reachable": "no for closed types",
+      "tested": false,
+      "reason": "to_allocvec failure requires OOM (panic) or custom fallible serializer; AcceptedArtifact is closed derived Serialize"
+    },
+    "bind_artifact_digest_errors": {
+      "distinct_variant": false,
+      "reason": "bind_artifact_digest calls accepted_artifact_digest which calls postcard::to_allocvec; failure IS PostcardEncodeFailed"
+    },
+    "MalformedKeyspaceRow": {
+      "reachable": "yes",
+      "tested": true,
+      "evidence": "7/9 byte probes assert exact variant"
+    }
+  },
+  "executed_evidence": "1678 storage lib tests passed, 0 skipped, 1.499s"
+}

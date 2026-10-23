@@ -1,0 +1,11 @@
+{
+  "model": "local-5090-ninfer/qwen3.8-27b-uncensored",
+  "workspace": "/home/lewis/src/isoloated/vb-vs630-impl-local5090-v6",
+  "prompt": "/tmp/vb-vs630-local5090-snapshot-exact-v49.txt",
+  "cloud_fallback": false,
+  "thinking": "high",
+  "runner": "mise exec -- omp",
+  "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+  "tools": "native text read exact replace edit write grep glob; NO shell",
+  "images_blocked": true
+}

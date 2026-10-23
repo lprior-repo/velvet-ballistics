@@ -1,0 +1,42 @@
+{
+  "candidate": "856a71ab950092226b8e510d917e824afcefd5f6",
+  "reviewer": "fresh-independent-test-reviewer",
+  "status": "APPROVED",
+  "scope": "final CLI behavioral suite: 21 new tests + 1 changed existing executor test",
+  "actual_execution": "V57: 1679 tests run, 1679 passed, 0 skipped, 1.521s; CLI original 11 passed; combined canonical pending",
+  "previous_findings_fixed": [
+    {
+      "finding": "F1",
+      "description": "Duplicate full raw keyspaces unchanged before fresh retry",
+      "fixed_by": "cli_duplicate_run_rejected_before_counter_publication",
+      "evidence": "snapshot_journal captures all 8 keyspaces before and after duplicate; after_snapshot == before_snapshot; fresh run 200 commits successfully"
+    },
+    {
+      "finding": "F2",
+      "description": "Full raw keyspaces exact after close/DROP/reopen and second commit",
+      "fixed_by": "cli_same_path_reopen_preserves_state_and_advances",
+      "evidence": "snapshot_journal compared before close vs after reopen; all typed records exact after reopen; second run committed; first run records still exact after second commit"
+    },
+    {
+      "finding": "F3",
+      "description": "Bounded 4 concurrent runs with exact typed bindings and arbitrary scheduling",
+      "fixed_by": "cli_bounded_concurrent_submissions",
+      "evidence": "4 threads submit distinct runs; verify_concurrent_submission_binding asserts exact typed values, digests, header, indices, events 0/1 for each; collected sequences sorted to verify {1,2,3,4}"
+    },
+    {
+      "finding": "F4",
+      "description": "One actual journal with all three producers in sequence",
+      "fixed_by": "same_journal_four_way_sequence",
+      "evidence": "Single journal: default admission seq 1, real catalog fixture.submit seq 2, actual CLI RunSubmission seq 3, default admission seq 4; each verified via actual readback; counter equals 4"
+    }
+  ],
+  "open_findings": [],
+  "contract_coverage": {
+    "functional": "8/8 criteria exercised",
+    "error_handling": "6/7 variants directly tested (write lock poison design-verified)",
+    "durability": "all three policies tested, atomicity verified via snapshots",
+    "policy_acceptance": "all three policies, relaxed eventless, journaled/strict events",
+    "mixed_submission_ordering": "default + CLI + default sequence verified",
+    "boundary_cases": "u64::MAX, u64::MAX-1, 7/9 byte malformed, empty/zero"
+  }
+}

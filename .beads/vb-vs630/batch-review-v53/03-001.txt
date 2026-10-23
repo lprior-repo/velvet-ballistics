@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/artifact_sequence_tests.rs
+1: #![forbid(unsafe_code)]
+2: 
+3: use crate::JournalError;
+4: use crate::batch::JournalWriteBatch;
+5: use crate::events::JournalEvent;
+6: use crate::journal::artifact_acceptance::{LAST_ISSUED_KEY, prepare_artifact_with_sequence};
+7: use vb_core::WorkflowDigest;
+8: use vb_core::ids::RunId;
+9: 
+10: use super::artifact_sequence_test_support::{minimal_artifact, open_test_journal};
+11: 
+12: fn make_accepted_event(run: RunId, seq: crate::types::EventSeq) -> JournalEvent {
+13:     JournalEvent::RunAccepted {
+14:         run,
+15:         seq,
+16:         workflow: WorkflowDigest::from_bytes([0; 32]),
+17:     }
+18: }
+19: 
+20: fn encode_event_length(event: &JournalEvent) -> Result<u64, Box<dyn std::error::Error>> {
+21:     let value = crate::codec::encode_record(
+22:         crate::constants::MAGIC_JOURNAL_EVENT,
+23:         event.record_kind(),
+24:         event.seq().get(),
+25:         event,
+26:         crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+27:     )
+28:     .map_err(|e| format!("encode_record failed: {}", e))?;
+29:     Ok(u64::try_from(value.len()).map_err(|_| "value.len() exceeds u64")?)
+30: }
+31: 
+32: #[test]
+33: fn put_counter_over_budget_fails_immediately() -> Result<(), Box<dyn std::error::Error>> {
+34:     let (_path, journal) = open_test_journal()?;
+35:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+36:         .map_err(|e| format!("prepare failed: {}", e))?;
+37: 
+38:     let mut batch = JournalWriteBatch::new(&journal);
+39:     batch.byte_limit = Some(18);
+40:     let result = batch.put_artifact_sequence(seq);
+41: 
+42:     assert!(matches!(
+43:         result,
+44:         Err(JournalError::JournalBatchBytesExceeded {
+45:             attempted: 19,
+46:             limit: 18
+47:         })
+48:     ));
+49:     assert!(batch.is_aborted());
+50:     assert_eq!(batch.staged_event_bytes(), 0);
+51:     assert_eq!(batch.staged_metadata_bytes, 0);
+52:     assert_eq!(batch.len(), 0);
+53: 
+54:     let (seq2, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+55:         .map_err(|e| format!("second prepare failed: {}", e))?;
+56:     assert!(matches!(
+57:         batch.put_artifact_sequence(seq2),
+58:         Err(JournalError::BatchAborted)
+59:     ));
+60:     assert!(matches!(batch.commit(), Err(JournalError::BatchAborted)));
+61: 
+62:     let raw = journal
+63:         .artifact_acceptance
+64:         .get(LAST_ISSUED_KEY)
+65:         .map_err(|e| format!("read counter failed: {}", e))?;
+66:     assert!(raw.is_none());
+67:     Ok(())
+68: }
+69: 
+70: #[test]
+71: fn put_counter_at_exact_budget_succeeds() -> Result<(), Box<dyn std::error::Error>> {
+72:     let (_path, journal) = open_test_journal()?;
+73:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+74:         .map_err(|e| format!("prepare failed: {}", e))?;
+75: 
+76:     let mut batch = JournalWriteBatch::new(&journal);
+77:     batch.byte_limit = Some(19);
+78:     batch
+79:         .put_artifact_sequence(seq)
+80:         .map_err(|e| format!("put failed: {}", e))?;
+81: 
+82:     assert_eq!(batch.staged_metadata_bytes, 19);
+83:     assert_eq!(batch.staged_event_bytes(), 0);
+84: 
+85:     drop(batch);
+86:     let raw = journal
+87:         .artifact_acceptance
+88:         .get(LAST_ISSUED_KEY)
+89:         .map_err(|e| format!("read counter failed: {}", e))?;
+90:     assert!(raw.is_none());
+91:     Ok(())
+92: }
+93: 
+94: #[test]
+95: fn put_counter_with_event_combined_budget() -> Result<(), Box<dyn std::error::Error>> {
+96:     let (_path, journal) = open_test_journal()?;
+97:     let event = make_accepted_event(RunId::new(1), crate::types::EventSeq::new(1));
+98:     let event_bytes = encode_event_length(&event)?;
+99: 
+100:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)

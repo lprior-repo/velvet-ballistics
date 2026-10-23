@@ -1,0 +1,100 @@
+101:     ///
+102:     /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+103:     /// and [`Self::put_blob`]: every fallible step sets
+104:     /// `self.aborted = true` before propagating the typed error, so a
+105:     /// subsequent `commit()` cannot persist a partial batch.
+106:     pub fn put_run_header(&mut self, record: &RunHeaderRecord) -> Result<(), JournalError> {
+107:         let key = match run_header_key(record.run) {
+108:             Ok(k) => k,
+109:             Err(e) => {
+110:                 self.aborted = true;
+111:                 return Err(e);
+112:             }
+113:         };
+114:         let value = match encode_record(
+115:             MAGIC_INDEX_RECORD,
+116:             RecordKind::RunHeader,
+117:             record.run.get(),
+118:             record,
+119:             MAX_RUN_HEADER_BYTES,
+120:         ) {
+121:             Ok(v) => v,
+122:             Err(e) => {
+123:                 self.aborted = true;
+124:                 return Err(e);
+125:             }
+126:         };
+127:         self.inner.insert(&self.journal.run_header, key, value);
+128:         Ok(())
+129:     }
+130: 
+131:     /// Inserts a run snapshot record into the batch.
+132:     ///
+133:     /// **TEST-ONLY (vb-o6qcf.4 / master §49 Crash-Consistency Rule).**
+134:     /// This method is gated behind `#[cfg(test)]` so it cannot appear in
+135:     /// the production public API. Unlike [`crate::snapshots::FjallJournal::put_snapshot`],
+136:     /// this batch putter stages the snapshot into the `OwnedWriteBatch`
+137:     /// **without** `PersistMode::SyncAll`; durability here depends on the
+138:     /// caller invoking [`Self::strict`] / a strict commit. A non-strict
+139:     /// commit would let `latest_durable_snapshot_seq` name a snapshot the
+140:     /// WAL has not flushed, and a subsequent trim would delete the
+141:     /// pre-snapshot events that snapshot was meant to cover — the exact
+142:     /// b09dm bug class. The type system must make that path
+143:     /// unreachable in production, not a "no production caller" convention
+144:     /// (Holzman Rule 5: invariants live in types). Production writes a
+145:     /// snapshot only via [`crate::snapshots::FjallJournal::put_snapshot`],
+146:     /// which commits the insert and the `SyncAll` barrier atomically.
+147:     ///
+148:     /// Mirrors the abort-flag contract of [`Self::put_workflow_source`]
+149:     /// and [`Self::put_blob`]: every fallible step sets
+150:     /// `self.aborted = true` before propagating the typed error, so a
+151:     /// subsequent `commit()` cannot persist a partial batch.
+152:     #[cfg(test)]
+153:     pub fn put_snapshot(&mut self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
+154:         let key = match run_snapshot_key(snapshot.run, snapshot.seq) {
+155:             Ok(k) => k,
+156:             Err(e) => {
+157:                 self.aborted = true;
+158:                 return Err(e);
+159:             }
+160:         };
+161:         let value = match encode_record(
+162:             MAGIC_SNAPSHOT,
+163:             RecordKind::Snapshot,
+164:             snapshot.seq.get(),
+165:             snapshot,
+166:             MAX_SNAPSHOT_BYTES,
+167:         ) {
+168:             Ok(v) => v,
+169:             Err(e) => {
+170:                 self.aborted = true;
+171:                 return Err(e);
+172:             }
+173:         };
+174:         self.inner.insert(&self.journal.run_snapshot, key, value);
+175:         Ok(())
+176:     }
+177: 
+178:     /// Inserts a blob record into the batch.
+179:     ///
+180:     /// The blob bytes are verified against the claimed digest before staging.
+181:     pub fn put_blob(&mut self, record: &BlobRecord) -> Result<(), JournalError> {
+182:         if let Err(e) = crate::journal::verify_content_digest(&record.bytes, &record.digest) {
+183:             self.aborted = true;
+184:             return Err(e);
+185:         }
+186:         let key = match blob_key(record.digest) {
+187:             Ok(k) => k,
+188:             Err(e) => {
+189:                 self.aborted = true;
+190:                 return Err(e);
+191:             }
+192:         };
+193:         let value = match encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES) {
+194:             Ok(v) => v,
+195:             Err(e) => {
+196:                 self.aborted = true;
+197:                 return Err(e);
+198:             }
+199:         };
+200:         self.inner.insert(&self.journal.blob, key, value);

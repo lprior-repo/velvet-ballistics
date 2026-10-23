@@ -1,0 +1,36 @@
+1: use crate::{
+2:     admission::{AcceptedArtifact, accepted_artifact_digest},
+3:     error::JournalError,
+4:     records::CompiledIrRecord,
+5: };
+6: 
+7: /// Verifies that content bytes hash to the expected digest.
+8: /// Used at admission time to prevent digest forgery.
+9: pub(crate) fn verify_content_digest(content: &[u8], expected: &[u8]) -> Result<(), JournalError> {
+10:     let computed = blake3::hash(content);
+11:     if computed.as_bytes() == expected {
+12:         Ok(())
+13:     } else {
+14:         Err(JournalError::PayloadDigestMismatch)
+15:     }
+16: }
+17: 
+18: pub(crate) fn verify_compiled_ir_record_digest(
+19:     record: &CompiledIrRecord,
+20: ) -> Result<(), JournalError> {
+21:     if verify_content_digest(&record.ir, &record.digest.as_bytes()).is_ok() {
+22:         return Ok(());
+23:     }
+24: 
+25:     let artifact = postcard::from_bytes::<AcceptedArtifact>(&record.ir)
+26:         .map_err(|_| JournalError::PayloadDigestMismatch)?;
+27:     let digest = accepted_artifact_digest(&artifact)?;
+28:     if digest == record.digest
+29:         && artifact.digest == record.digest
+30:         && artifact.verification.digest == record.digest
+31:     {
+32:         Ok(())
+33:     } else {
+34:         Err(JournalError::PayloadDigestMismatch)
+35:     }
+36: }

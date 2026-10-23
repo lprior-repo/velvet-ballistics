@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/tests.rs
+101:     let encode = |kind, seq| {
+102:         crate::codec::encode_record(
+103:             MAGIC_INDEX_RECORD,
+104:             kind,
+105:             seq,
+106:             &retained,
+107:             MAX_RUN_INPUT_BYTES,
+108:         )
+109:     };
+110:     let valid = encode(RecordKind::RunInputs, 7)?;
+111:     let (_, decoded): (_, RunInputsRecord) =
+112:         crate::decode_record(&valid, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES)?;
+113:     assert_eq!(decoded, retained);
+114:     assert!(matches!(
+115:         crate::decode_record::<RunInputsRecord>(
+116:             &encode(RecordKind::RunHeader, 7)?,
+117:             MAGIC_INDEX_RECORD,
+118:             MAX_RUN_INPUT_BYTES
+119:         ),
+120:         Err(JournalError::RecordKindPayloadMismatch {
+121:             envelope_kind: 3,
+122:             payload_kind: 4
+123:         })
+124:     ));
+125:     assert!(matches!(
+126:         crate::decode_record::<RunInputsRecord>(
+127:             &encode(RecordKind::RunInputs, 8)?,
+128:             MAGIC_INDEX_RECORD,
+129:             MAX_RUN_INPUT_BYTES
+130:         ),
+131:         Err(JournalError::PayloadDigestMismatch)
+132:     ));
+133:     let mut trailing = valid.clone();
+134:     trailing.push(0);
+135:     assert!(matches!(
+136:         crate::decode_record::<RunInputsRecord>(&trailing, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES),
+137:         Err(JournalError::PostcardDecodeFailed(
+138:             postcard::Error::DeserializeBadEncoding
+139:         ))
+140:     ));
+141:     let mut corrupted = valid;
+142:     let last = corrupted.last_mut().ok_or("empty encoding")?;
+143:     *last ^= 1;
+144:     assert!(matches!(
+145:         crate::decode_record::<RunInputsRecord>(
+146:             &corrupted,
+147:             MAGIC_INDEX_RECORD,
+148:             MAX_RUN_INPUT_BYTES
+149:         ),
+150:         Err(JournalError::PayloadDigestMismatch)
+151:     ));
+152:     Ok(())
+153: }
+154: 
+155: #[test]
+156: fn retained_mapping_rejects_unbacked_arena_handles_and_zero_run() -> TestResult {
+157:     let mut parts = workflow()?.to_parts();
+158:     for input in &mut parts.input_slots {
+159:         input.kind = InputSlotKind::Any;
+160:     }
+161:     parts.digest = WorkflowDigest::from_bytes([0; 32]);
+162:     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+163:     let workflow = CompiledWorkflow::try_from_parts(parts)?;
+164:     for value in [
+165:         SlotValue::List(vb_core::ListId::new(0)),
+166:         SlotValue::Object(vb_core::ObjectId::new(0)),
+167:         SlotValue::Blob(vb_core::BlobId::new(0)),
+168:         SlotValue::Symbol(vb_core::SymbolId::new(0)),
+169:     ] {
+170:         assert!(matches!(
+171:             record(&workflow, Box::from([(SlotIdx::new(0), value)])),
+172:             Err(JournalError::InputSchemaMismatch)
+173:         ));
+174:     }
+175:     assert!(matches!(
+176:         RunInputsRecord::new(
+177:             RunId::ZERO,
+178:             WorkflowDigest::from_bytes([0; 32]),
+179:             WorkflowDigest::from_bytes([0; 32]),
+180:             &workflow,
+181:             Box::new([])
+182:         ), Err(JournalError::InvalidRunId { run }) if run == RunId::ZERO
+183:     ));
+184:     Ok(())
+185: }
+186: 
+187: proptest::proptest! {
+188:     #![proptest_config(proptest::test_runner::Config {
+189:         cases: 64,
+190:         rng_seed: proptest::test_runner::RngSeed::Fixed(0xe2_2026),
+191:         ..proptest::test_runner::Config::default()
+192:     })]
+193:     #[test]
+194:     fn arbitrary_i64_retained_values_roundtrip_exactly(value in proptest::prelude::any::<i64>()) {
+195:         let workflow = workflow().map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+196:         let retained = record(&workflow, Box::from([(SlotIdx::new(0), SlotValue::I64(value))]))
+197:             .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+198:         let bytes = crate::encode_record(MAGIC_INDEX_RECORD, RecordKind::RunInputs, 7, &retained, MAX_RUN_INPUT_BYTES)
+199:             .map_err(|error| proptest::test_runner::TestCaseError::fail(error.to_string()))?;
+200:         let (_, decoded): (_, RunInputsRecord) = crate::decode_record(&bytes, MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES)

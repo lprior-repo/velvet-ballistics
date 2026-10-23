@@ -1,0 +1,87 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/types.rs
+1: #![forbid(unsafe_code)]
+2: use std::collections::HashSet;
+3: 
+4: use crate::constants::JOURNAL_KEY_BYTES;
+5: use crate::journal::FjallJournal;
+6: 
+7: /// Default journal batch encoded-byte budget (1 MiB).
+8: ///
+9: /// Matches the core `max_journal_batch_bytes` default of `1_048_576`.
+10: pub const DEFAULT_JOURNAL_BATCH_BYTE_LIMIT: u64 = 1_048_576;
+11: 
+12: /// Atomic cross-keyspace write batch backed by Fjall.
+13: ///
+14: /// Accumulates writes across multiple keyspaces and commits them
+15: /// atomically with a single WAL fsync.
+16: ///
+17: /// # Invariant I1
+18: /// `JournalWriteBatch` is `!Send + !Sync` because it contains
+19: /// `PhantomData<*mut FjallJournal>` which is `!Send + !Sync`,
+20: /// preventing any batch handle from crossing thread boundaries.
+21: pub struct JournalWriteBatch<'j> {
+22:     pub(super) inner: fjall::OwnedWriteBatch,
+23:     pub(super) journal: &'j FjallJournal,
+24:     #[allow(dead_code)]
+25:     pub(super) staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
+26:     pub(super) aborted: bool,
+27:     pub(super) staged_bytes: u64,
+28:     pub(super) staged_metadata_bytes: u64,
+29:     pub(super) byte_limit: Option<u64>,
+30:     pub(super) _not_send_or_sync: core::marker::PhantomData<*mut FjallJournal>,
+31: }
+32: 
+33: impl<'j> JournalWriteBatch<'j> {
+34:     /// Creates a new batch for the given journal.
+35:     pub fn new(journal: &'j FjallJournal) -> Self {
+36:         Self {
+37:             inner: journal.database.batch(),
+38:             journal,
+39:             staged_event_keys: HashSet::new(),
+40:             aborted: false,
+41:             staged_bytes: 0,
+42:             staged_metadata_bytes: 0,
+43:             byte_limit: Some(DEFAULT_JOURNAL_BATCH_BYTE_LIMIT),
+44:             _not_send_or_sync: core::marker::PhantomData,
+45:         }
+46:     }
+47: 
+48:     /// Returns the number of operations in the batch.
+49:     #[must_use]
+50:     pub fn len(&self) -> usize {
+51:         if self.aborted { 0 } else { self.inner.len() }
+52:     }
+53: 
+54:     /// Returns true if the batch contains no operations.
+55:     #[must_use]
+56:     pub fn is_empty(&self) -> bool {
+57:         self.len() == 0
+58:     }
+59: 
+60:     /// Returns true if the batch is in the aborted state.
+61:     ///
+62:     /// A batch becomes aborted when a fallible step sets
+63:     /// `self.aborted = true` before propagating a typed error
+64:     /// (`DuplicateEvent`, `KeyCapacity`, `PayloadTooLarge`, etc.).
+65:     /// The `commit()` short-circuit then refuses to persist the
+66:     /// partial batch. This accessor is the canonical way to
+67:     /// distinguish an aborted batch from a fresh empty batch (both
+68:     /// have `len() == 0`).
+69:     #[must_use]
+70:     pub fn is_aborted(&self) -> bool {
+71:         self.aborted
+72:     }
+73: 
+74:     /// Returns the accumulated encoded-byte total for journal events
+75:     /// accepted in this batch so far.
+76:     #[must_use]
+77:     pub fn staged_event_bytes(&self) -> u64 {
+78:         self.staged_bytes
+79:     }
+80: 
+81:     /// Returns the byte limit for this batch, if one is set.
+82:     #[must_use]
+83:     pub fn byte_limit(&self) -> Option<u64> {
+84:         self.byte_limit
+85:     }
+86: }

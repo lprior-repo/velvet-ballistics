@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/tests.rs
+1: use super::*;
+2: use vb_core::{
+3:     CompiledInputSlot, CompiledNode, CompiledNodeKind, InputSlotKind, StepIdx, WorkflowParts,
+4: };
+5: 
+6: type TestResult = Result<(), Box<dyn std::error::Error>>;
+7: 
+8: pub(super) fn workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+9:     let mut parts = WorkflowParts {
+10:         name: "retained_input".into(),
+11:         digest: WorkflowDigest::from_bytes([0; 32]),
+12:         semantic_source_identity: None,
+13:         input_slots: Box::from([
+14:             CompiledInputSlot {
+15:                 slot: SlotIdx::new(0),
+16:                 kind: InputSlotKind::I64,
+17:             },
+18:             CompiledInputSlot {
+19:                 slot: SlotIdx::new(1),
+20:                 kind: InputSlotKind::I64,
+21:             },
+22:         ]),
+23:         nodes: Box::from([CompiledNode {
+24:             id: StepIdx::new(0),
+25:             output: None,
+26:             next: None,
+27:             on_error: None,
+28:             error_slot: None,
+29:             kind: CompiledNodeKind::Finish {
+30:                 result: SlotIdx::new(0),
+31:             },
+32:         }]),
+33:         expressions: Box::new([]),
+34:         accessors: Box::new([]),
+35:         constants: Box::new([]),
+36:         slot_count: 3,
+37:         symbols_count: 0,
+38:         entry: StepIdx::new(0),
+39:         resource_contract: vb_core::ResourceContract::DEFAULT,
+40:         step_names: Box::new([]),
+41:     };
+42:     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+43:     Ok(CompiledWorkflow::try_from_parts(parts)?)
+44: }
+45: 
+46: fn record(
+47:     workflow: &CompiledWorkflow,
+48:     inputs: Box<[(SlotIdx, SlotValue)]>,
+49: ) -> Result<RunInputsRecord, JournalError> {
+50:     RunInputsRecord::new(
+51:         RunId::new(7),
+52:         WorkflowDigest::from_bytes([1; 32]),
+53:         WorkflowDigest::from_bytes([2; 32]),
+54:         workflow,
+55:         inputs,
+56:     )
+57: }
+58: 
+59: #[test]
+60: fn retained_mapping_rejects_duplicate_undeclared_out_of_range_and_wrong_kind() -> TestResult {
+61:     let workflow = workflow()?;
+62:     let invalid: [Box<[(SlotIdx, SlotValue)]>; 4] = [
+63:         Box::from([
+64:             (SlotIdx::new(0), SlotValue::I64(1)),
+65:             (SlotIdx::new(0), SlotValue::I64(2)),
+66:         ]),
+67:         Box::from([(SlotIdx::new(2), SlotValue::I64(1))]),
+68:         Box::from([(SlotIdx::new(u16::MAX), SlotValue::I64(1))]),
+69:         Box::from([(SlotIdx::new(0), SlotValue::Bool(true))]),
+70:     ];
+71:     for inputs in invalid {
+72:         assert!(matches!(
+73:             record(&workflow, inputs),
+74:             Err(JournalError::InputSchemaMismatch)
+75:         ));
+76:     }
+77:     Ok(())
+78: }
+79: 
+80: #[test]
+81: fn retained_mapping_preserves_extreme_values_and_empty_mapping() -> TestResult {
+82:     let workflow = workflow()?;
+83:     for value in [i64::MIN, -1, 0, 42, i64::MAX] {
+84:         let expected: Box<[(SlotIdx, SlotValue)]> =
+85:             Box::from([(SlotIdx::new(0), SlotValue::I64(value))]);
+86:         let retained = record(&workflow, expected.clone())?;
+87:         retained.validate_workflow(&workflow)?;
+88:         assert_eq!(retained.inputs(), expected.as_ref());
+89:     }
+90:     assert!(record(&workflow, Box::new([]))?.inputs().is_empty());
+91:     Ok(())
+92: }
+93: 
+94: #[test]
+95: fn retained_record_envelope_rejects_kind_sequence_trailing_bytes_and_checksum_corruption()
+96: -> TestResult {
+97:     let retained = record(
+98:         &workflow()?,
+99:         Box::from([(SlotIdx::new(0), SlotValue::I64(9))]),
+100:     )?;

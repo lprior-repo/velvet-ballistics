@@ -1,0 +1,7 @@
+{
+  "status": "REJECTED openF1-F4 fullrecord/mixedproducer/assertion gaps; no acceptance",
+  "serializer_analysis": "localreviewer source-inference only, not mathematicalunreachability proof; RustOOM may abort ratherthanpanic. No newfakefault hooks/unreachablepayloadrequired or errorpropagationweakened.",
+  "lock_poison": "unchanged preexistinginfrastructure guard; raw noexplicitpanicmacro recommendation withdrawn; no blanketclaim technicallyunreachablewithotherpaniccauses",
+  "additional_finding": "Actualcargo metadata130targets andNextestlistv41 doNOTinclude tracked tests/cli/{submit_retained_inputs,submit_input_boundary,finish_input_execution,verify_budget_profiles}.rs. Readingthese fileswasNOTexecutedcoverage. NewclaimedP1vb-cycog tracksrestoration.",
+  "nextest_inventory_external": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-cli-target-inventory-v41.json"
+}

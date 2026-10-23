@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/batch/artifact_sequence_tests.rs
+101:         .map_err(|e| format!("prepare failed: {}", e))?;
+102: 
+103:     let budget = 19u64.checked_add(event_bytes).ok_or("combined overflow")?;
+104:     let mut batch = JournalWriteBatch::new(&journal);
+105:     batch.byte_limit = Some(budget);
+106:     batch
+107:         .put_artifact_sequence(seq)
+108:         .map_err(|e| format!("put failed: {}", e))?;
+109:     batch
+110:         .append_event(&event)
+111:         .map_err(|e| format!("append failed: {}", e))?;
+112: 
+113:     assert_eq!(batch.staged_metadata_bytes, 19);
+114:     assert_eq!(batch.staged_event_bytes(), event_bytes);
+115:     batch.commit()?;
+116: 
+117:     let raw = journal
+118:         .artifact_acceptance
+119:         .get(LAST_ISSUED_KEY)
+120:         .map_err(|e| format!("read counter failed: {}", e))?;
+121:     assert!(raw.is_some());
+122:     Ok(())
+123: }
+124: 
+125: #[test]
+126: fn put_event_then_counter_combined_budget() -> Result<(), Box<dyn std::error::Error>> {
+127:     let (_path, journal) = open_test_journal()?;
+128:     let event = make_accepted_event(RunId::new(2), crate::types::EventSeq::new(1));
+129:     let event_bytes = encode_event_length(&event)?;
+130: 
+131:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+132:         .map_err(|e| format!("prepare failed: {}", e))?;
+133: 
+134:     let budget = event_bytes.checked_add(19u64).ok_or("combined overflow")?;
+135:     let mut batch = JournalWriteBatch::new(&journal);
+136:     batch.byte_limit = Some(budget);
+137:     batch
+138:         .append_event(&event)
+139:         .map_err(|e| format!("append failed: {}", e))?;
+140:     batch
+141:         .put_artifact_sequence(seq)
+142:         .map_err(|e| format!("put failed: {}", e))?;
+143: 
+144:     assert_eq!(batch.staged_event_bytes(), event_bytes);
+145:     assert_eq!(batch.staged_metadata_bytes, 19);
+146:     Ok(())
+147: }
+148: 
+149: #[test]
+150: fn combined_budget_exceeded_fails() -> Result<(), Box<dyn std::error::Error>> {
+151:     let (_path, journal) = open_test_journal()?;
+152:     let event = make_accepted_event(RunId::new(3), crate::types::EventSeq::new(1));
+153:     let event_bytes = encode_event_length(&event)?;
+154: 
+155:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+156:         .map_err(|e| format!("prepare failed: {}", e))?;
+157: 
+158:     let budget = 19u64
+159:         .checked_add(event_bytes)
+160:         .ok_or("combined overflow")?
+161:         .checked_sub(1)
+162:         .ok_or("event_bytes is 0")?;
+163:     let attempted = event_bytes.checked_add(19u64).ok_or("combined overflow")?;
+164:     let mut batch = JournalWriteBatch::new(&journal);
+165:     batch.byte_limit = Some(budget);
+166:     batch
+167:         .put_artifact_sequence(seq)
+168:         .map_err(|e| format!("put failed: {}", e))?;
+169: 
+170:     let result = batch.append_event(&event);
+171:     assert!(matches!(
+172:         result,
+173:         Err(JournalError::JournalBatchBytesExceeded {
+174:             attempted: expected,
+175:             limit: actual_limit
+176:         }) if expected == attempted && actual_limit == budget
+177:     ));
+178:     assert!(!batch.is_aborted());
+179:     assert_eq!(batch.staged_event_bytes(), 0);
+180:     assert_eq!(batch.staged_metadata_bytes, 19);
+181:     drop(batch);
+182:     let raw = journal
+183:         .artifact_acceptance
+184:         .get(LAST_ISSUED_KEY)
+185:         .map_err(|e| format!("read counter failed: {}", e))?;
+186:     assert!(raw.is_none());
+187:     Ok(())
+188: }
+189: 
+190: #[test]
+191: fn metadata_overflow_with_some_limit_aborts() -> Result<(), Box<dyn std::error::Error>> {
+192:     let (_path, journal) = open_test_journal()?;
+193:     let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+194:         .map_err(|e| format!("prepare failed: {}", e))?;
+195: 
+196:     let mut batch = JournalWriteBatch::new(&journal);
+197:     batch.byte_limit = Some(u64::MAX);
+198:     batch.staged_metadata_bytes = u64::MAX.checked_sub(10).ok_or("sub overflow")?;
+199: 
+200:     let result = batch.put_artifact_sequence(seq);

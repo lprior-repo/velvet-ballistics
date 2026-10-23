@@ -1,0 +1,96 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/submission.rs
+101:         batch.append_event(&self.admission_event(policy))
+102:     }
+103: 
+104:     fn accepted_event(&self) -> JournalEvent {
+105:         JournalEvent::RunAccepted {
+106:             run: self.header.run,
+107:             seq: EventSeq::new(0),
+108:             workflow: self.header.compiled_digest,
+109:         }
+110:     }
+111: 
+112:     fn admission_event(&self, policy: RuntimePolicy) -> JournalEvent {
+113:         JournalEvent::RunAdmission {
+114:             input_digest: crate::RunInputBinding::Digest(self.inputs.input_digest()),
+115:             run: self.header.run,
+116:             seq: EventSeq::new(1),
+117:             artifact_digest: self.artifact.digest,
+118:             policy_pin: crate::RunPolicyPin::Pinned(self.artifact.policy_digest),
+119:             granted_capabilities: vb_core::CapabilitySet::empty(),
+120:             policy,
+121:         }
+122:     }
+123: 
+124:     fn commit(
+125:         self,
+126:         batch: crate::JournalWriteBatch<'_>,
+127:         seq: crate::journal::artifact_acceptance::IssuedArtifactSequence,
+128:         policy: RuntimePolicy,
+129:     ) -> Result<(), JournalError> {
+130:         let mut batch = batch;
+131:         batch.put_artifact_sequence(seq)?;
+132:         self.stage(&mut batch)?;
+133:         self.stage_acceptance(&mut batch, policy)?;
+134:         match policy {
+135:             RuntimePolicy::Strict => batch.strict().commit(),
+136:             _ => batch.commit(),
+137:         }
+138:     }
+139: }
+140: 
+141: fn check_duplicate_run(journal: &FjallJournal, run: vb_core::RunId) -> Result<(), JournalError> {
+142:     if journal.run_header(run)?.is_some()
+143:         || journal.run_inputs(run)?.is_some()
+144:         || !journal.events_for_run(run)?.is_empty()
+145:     {
+146:         return Err(JournalError::RunAlreadyExists);
+147:     }
+148:     Ok(())
+149: }
+150: 
+151: fn prepare_stamped_submission(
+152:     journal: &FjallJournal,
+153:     submission: &RunSubmission,
+154: ) -> Result<
+155:     (
+156:         crate::journal::artifact_acceptance::IssuedArtifactSequence,
+157:         RunSubmission,
+158:     ),
+159:     JournalError,
+160: > {
+161:     let (seq, stamped) = crate::journal::artifact_acceptance::prepare_artifact_with_sequence(
+162:         journal,
+163:         submission.artifact.clone(),
+164:     )?;
+165:     let mut inputs_with_stamped = submission.inputs.clone();
+166:     inputs_with_stamped.artifact_digest = stamped.digest;
+167:     let scratch = RunSubmission {
+168:         source: submission.source.clone(),
+169:         artifact: stamped,
+170:         inputs: inputs_with_stamped,
+171:         header: submission.header.clone(),
+172:     };
+173:     scratch.validate_binding()?;
+174:     Ok((seq, scratch))
+175: }
+176: 
+177: impl FjallJournal {
+178:     /// Commits source, executable artifact, inputs, header and acceptance indexes atomically.
+179:     /// Strict returns only after SyncAll. Journaled/Relaxed retain a data-loss window.
+180:     pub fn commit_run_submission(
+181:         &self,
+182:         submission: &RunSubmission,
+183:         policy: RuntimePolicy,
+184:     ) -> Result<(), JournalError> {
+185:         submission.validate_policy(policy)?;
+186:         let _guard = self
+187:             .write_lock
+188:             .lock()
+189:             .map_err(|_| JournalError::WriteLockPoisoned)?;
+190:         check_duplicate_run(self, submission.header.run)?;
+191:         let (seq, scratch) = prepare_stamped_submission(self, submission)?;
+192:         let batch = self.batch();
+193:         scratch.commit(batch, seq, policy)
+194:     }
+195: }

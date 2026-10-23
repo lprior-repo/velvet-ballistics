@@ -1,0 +1,39 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/issuance_test_support.rs
+301:             );
+302:         }
+303:         other => return Err(format!("run {run:?}: event0 is {other:?}").into()),
+304:     }
+305: 
+306:     // Event 1: RunAdmission with all expected fields
+307:     let event1 = events
+308:         .get(1)
+309:         .ok_or(format!("run {run:?}: second event missing"))?;
+310:     match event1 {
+311:         crate::JournalEvent::RunAdmission {
+312:             run: ev_run,
+313:             seq: ev_seq,
+314:             artifact_digest: ev_artifact,
+315:             input_digest: ev_input_digest,
+316:             ..
+317:         } => {
+318:             assert_eq!(*ev_run, run, "run {run:?}: event1 run mismatch");
+319:             assert_eq!(ev_seq.get(), 1, "run {run:?}: event1 seq mismatch");
+320:             assert_eq!(
+321:                 *ev_artifact,
+322:                 inputs.artifact_digest(),
+323:                 "run {run:?}: event1 artifact digest mismatch"
+324:             );
+325:             if let crate::RunInputBinding::Digest(ev_digest) = ev_input_digest {
+326:                 assert_eq!(
+327:                     *ev_digest, expected_input_digest,
+328:                     "run {run:?}: event1 input digest mismatch"
+329:                 );
+330:             } else {
+331:                 return Err(format!("run {run:?}: event1 input digest not Digest").into());
+332:             }
+333:         }
+334:         other => return Err(format!("run {run:?}: event1 is {other:?}").into()),
+335:     }
+336: 
+337:     Ok(actual_seq)
+338: }

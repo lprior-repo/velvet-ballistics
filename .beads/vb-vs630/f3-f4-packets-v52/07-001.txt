@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/keys.rs
+1: #![forbid(unsafe_code)]
+2: //! Key encoding functions for Fjall keyspaces.
+3: //!
+4: //! Each key variant uses a specific binary format with a type prefix
+5: //! followed by the payload fields in big-endian byte order.
+6: 
+7: use arrayvec::ArrayVec;
+8: use std::ops::Range;
+9: use vb_core::{ActionId, RunId, WorkflowId};
+10: 
+11: use crate::{
+12:     JournalError,
+13:     constants::{
+14:         DIGEST_KEY_BYTES, INDEX_ACTION_KEY_BYTES, INDEX_STATUS_KEY_BYTES, INDEX_WORKFLOW_KEY_BYTES,
+15:         JOURNAL_KEY_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,
+16:         PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RUN_EVENT, PREFIX_RUN_HEADER,
+17:         PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RUN_ONLY_KEY_BYTES,
+18:     },
+19:     error::KeyDecodeError,
+20:     types::{EventSeq, IndexStatusState, StorageKey},
+21: };
+22: 
+23: /// Policy that decides how a keyspace iteration handles rows whose key
+24: /// cannot be parsed back into a typed `StorageKey` (truncated bytes,
+25: /// unknown prefix, or shape mismatch).
+26: ///
+27: /// Picking a single policy per call site is the unifying rule for CC-002:
+28: /// production paths default to [`Self::FailClosed`]; diagnostic/doctor
+29: /// callers that must keep scanning across partial corruption opt in to
+30: /// [`Self::SkipMalformed`]. Never use `SkipMalformed` on a production
+31: /// read path that is supposed to surface evidence of corruption.
+32: #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+33: pub enum KeyspaceScanPolicy {
+34:     /// Surface the first malformed row as a typed
+35:     /// [`crate::JournalError::MalformedKeyspaceRow`] error and abort the
+36:     /// scan. This is the default for production paths.
+37:     #[default]
+38:     FailClosed,
+39:     /// Skip malformed rows silently and continue scanning. Reserved for
+40:     /// doctor/diagnostic tooling that must produce a partial view of a
+41:     /// partially-corrupt keyspace. The caller is responsible for
+42:     /// reporting the skipped count to the operator; the policy itself
+43:     /// does not log.
+44:     SkipMalformed,
+45: }
+46: 
+47: impl KeyspaceScanPolicy {
+48:     /// Returns the policy used by production scan APIs by default.
+49:     pub const fn default_production() -> Self {
+50:         Self::FailClosed
+51:     }
+52: 
+53:     /// Returns the policy used by doctor/diagnostic scan APIs by
+54:     /// default. Doctor paths must tolerate partial corruption so the
+55:     /// operator can see whatever is still well-formed.
+56:     pub const fn default_doctor() -> Self {
+57:         Self::SkipMalformed
+58:     }
+59: }
+60: 
+61: /// Encodes `[0x01][workflow_digest_32]`.
+62: pub fn workflow_source_key(
+63:     digest: [u8; crate::constants::DIGEST_BYTES],
+64: ) -> Result<[u8; DIGEST_KEY_BYTES], JournalError> {
+65:     digest_key(PREFIX_WORKFLOW_SOURCE, digest)
+66: }
+67: 
+68: /// Encodes `[0x02][compiled_digest_32]`.
+69: pub fn compiled_ir_key(
+70:     digest: [u8; crate::constants::DIGEST_BYTES],
+71: ) -> Result<[u8; DIGEST_KEY_BYTES], JournalError> {
+72:     digest_key(PREFIX_COMPILED_IR, digest)
+73: }
+74: 
+75: /// Encodes `[0x10][run_id_u64_be]`.
+76: pub fn run_header_key(run: RunId) -> Result<[u8; RUN_ONLY_KEY_BYTES], JournalError> {
+77:     run_only_key(PREFIX_RUN_HEADER, run)
+78: }
+79: 
+80: /// Encodes `[0x11][run_id_u64_be][seq_u64_be]`.
+81: pub fn run_event_key(run: RunId, seq: EventSeq) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+82:     journal_key(run, seq)
+83: }
+84: 
+85: /// Encodes `[0x12][run_id_u64_be][seq_u64_be]`.
+86: pub fn run_snapshot_key(
+87:     run: RunId,
+88:     seq: EventSeq,
+89: ) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+90:     sequenced_run_key(PREFIX_RUN_SNAPSHOT, run, seq)
+91: }
+92: 
+93: /// Encodes `[0x20][blob_digest_32]`.
+94: pub fn blob_key(
+95:     digest: [u8; crate::constants::DIGEST_BYTES],
+96: ) -> Result<[u8; DIGEST_KEY_BYTES], JournalError> {
+97:     digest_key(PREFIX_BLOB, digest)
+98: }
+99: 
+100: /// Encodes `[0x30][state_u8][timestamp_u64_be][run_id_u64_be]`.

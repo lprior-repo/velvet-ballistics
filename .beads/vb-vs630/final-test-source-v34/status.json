@@ -1,0 +1,10 @@
+{
+  "status": "WIP20newtests compile and all1678storage libtestsPASS0skips1.499s; independentTEST,focusedbatchbudgettests,metrics/fullcanonical pending; NOTacceptedmain",
+  "production_unchanged_from_code_review": "ebe0984326b7fd17603c977dbb9ee680b43522f4",
+  "test_sha256": {
+    "crates/vb_storage/src/inputs/issuance_test_support.rs": "fc0479633b287efbc8395c5f322536d42c5908fc0afb3bef01ddb88d1ac8aaf1",
+    "crates/vb_storage/src/inputs/issuance_tests.rs": "948aca0d0463dca9083a5268733349c9c14dc624fba41cdb97e8296f5cae03aa",
+    "crates/vb_storage/src/inputs/issuance_failure_tests.rs": "60696f262e7e759db9f13ec5fb2f459ddeb8b39e2c6574d40aaf97abed9fc145",
+    "crates/vb_storage/src/inputs/issuance_boundary_tests.rs": "69567e0382dfa33ef6531d0a62383c5a22b015a1badcd9abaca673d047e454a4"
+  }
+}

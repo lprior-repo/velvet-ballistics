@@ -1,0 +1,75 @@
+ACTUAL SOURCE crates/vb_storage/src/keys.rs
+501:     // runs first so the encoder matches the decoder ordering for
+502:     // the (run=0, seq=MAX) case (this surfaces `SequenceOverflow` is
+503:     // NOT possible for zero runs, only `InvalidRunId`).
+504:     require_non_zero_run(run)?;
+505:     if seq.get() == u64::MAX {
+506:         return Err(JournalError::SequenceOverflow);
+507:     }
+508:     let mut key = ArrayVec::<u8, JOURNAL_KEY_BYTES>::new();
+509:     key.try_push(prefix)
+510:         .map_err(|_| JournalError::KeyCapacity)?;
+511:     key.try_extend_from_slice(&run.get().to_be_bytes())
+512:         .map_err(|_| JournalError::KeyCapacity)?;
+513:     key.try_extend_from_slice(&seq.get().to_be_bytes())
+514:         .map_err(|_| JournalError::KeyCapacity)?;
+515:     key.into_inner().map_err(|_| JournalError::KeyCapacity)
+516: }
+517: 
+518: fn run_prefix(run: RunId) -> Result<[u8; 9], JournalError> {
+519:     run_only_key(PREFIX_RUN_EVENT, run)
+520: }
+521: 
+522: fn digest_key(
+523:     prefix: u8,
+524:     digest: [u8; crate::constants::DIGEST_BYTES],
+525: ) -> Result<[u8; DIGEST_KEY_BYTES], JournalError> {
+526:     let mut key = ArrayVec::<u8, DIGEST_KEY_BYTES>::new();
+527:     key.try_push(prefix)
+528:         .map_err(|_| JournalError::KeyCapacity)?;
+529:     key.try_extend_from_slice(&digest)
+530:         .map_err(|_| JournalError::KeyCapacity)?;
+531:     key.into_inner().map_err(|_| JournalError::KeyCapacity)
+532: }
+533: 
+534: fn run_only_key(prefix: u8, run: RunId) -> Result<[u8; RUN_ONLY_KEY_BYTES], JournalError> {
+535:     // PO-cn2v4-001: a zero `RunId` is reserved as "no run"; reject
+536:     // it before any byte writing. Covers `run_header_key`,
+537:     // `run_prefix_key`, and the `run_prefix` scan helper used by
+538:     // journal replay/trimming paths.
+539:     require_non_zero_run(run)?;
+540:     let mut key = ArrayVec::<u8, RUN_ONLY_KEY_BYTES>::new();
+541:     key.try_push(prefix)
+542:         .map_err(|_| JournalError::KeyCapacity)?;
+543:     key.try_extend_from_slice(&run.get().to_be_bytes())
+544:         .map_err(|_| JournalError::KeyCapacity)?;
+545:     key.into_inner().map_err(|_| JournalError::KeyCapacity)
+546: }
+547: 
+548: /// Validates that `run` is non-zero.
+549: ///
+550: /// Zero is reserved as the "no run" sentinel and must not be encoded
+551: /// into any storage key. The decoder in `decode_storage_key` already
+552: /// rejects this on the read path; the encoders mirror the same rule
+553: /// so storage never silently accepts a zero run id at write time
+554: /// and a later decode would surface a different key shape.
+555: ///
+556: /// PO-cn2v4-001: zero `RunId` rejection at every storage-key encoder
+557: /// boundary; defence-in-depth against accidental all-zero run
+558: /// encoding that would collide with no-row sentinel keys.
+559: #[inline]
+560: fn require_non_zero_run(run: RunId) -> Result<(), JournalError> {
+561:     if run.get() == 0 {
+562:         return Err(JournalError::InvalidRunId { run });
+563:     }
+564:     Ok(())
+565: }
+566: 
+567: // Re-export run_prefix for use by FjallJournal
+568: pub(crate) fn run_prefix_key(run: RunId) -> Result<[u8; 9], JournalError> {
+569:     run_prefix(run)
+570: }
+571: 
+572: #[cfg(test)]
+573: #[path = "keys/tests.rs"]
+574: mod tests;

@@ -1,0 +1,56 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-vs630-impl-local5090-v6/crates/vb_storage)
+error[E0433]: cannot find type `RunId` in this scope
+  --> crates/vb_storage/src/inputs/issuance_boundary_tests.rs:89:21
+   |
+89 |         .run_inputs(RunId::new(100))?
+   |                     ^^^^^ use of undeclared type `RunId`
+   |
+help: consider importing one of these structs
+   |
+ 5 + use crate::inputs::RunId;
+   |
+ 5 + use vb_core::RunId;
+   |
+
+error[E0433]: cannot find type `RunId` in this scope
+   --> crates/vb_storage/src/inputs/issuance_boundary_tests.rs:103:28
+    |
+103 |         journal.run_inputs(RunId::new(100))?.as_ref(),
+    |                            ^^^^^ use of undeclared type `RunId`
+    |
+help: consider importing one of these structs
+    |
+  5 + use crate::inputs::RunId;
+    |
+  5 + use vb_core::RunId;
+    |
+
+error[E0433]: cannot find type `RunId` in this scope
+   --> crates/vb_storage/src/inputs/issuance_boundary_tests.rs:110:32
+    |
+110 |     assert!(journal.run_inputs(RunId::new(200))?.is_none());
+    |                                ^^^^^ use of undeclared type `RunId`
+    |
+help: consider importing one of these structs
+    |
+  5 + use crate::inputs::RunId;
+    |
+  5 + use vb_core::RunId;
+    |
+
+error[E0433]: cannot find type `RunId` in this scope
+   --> crates/vb_storage/src/inputs/issuance_boundary_tests.rs:111:32
+    |
+111 |     assert!(journal.run_header(RunId::new(200))?.is_none());
+    |                                ^^^^^ use of undeclared type `RunId`
+    |
+help: consider importing one of these structs
+    |
+  5 + use crate::inputs::RunId;
+    |
+  5 + use vb_core::RunId;
+    |
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `vb_storage` (lib test) due to 4 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

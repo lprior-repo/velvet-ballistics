@@ -1,0 +1,63 @@
+{
+  "candidate": "52a69710e78634fb765cdf51a09bf39ef00106ae",
+  "status": "REJECTED",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "title": "WriteLockPoisoned not tested",
+      "contract_error": "JournalError::WriteLockPoisoned",
+      "test_location": null,
+      "required_location": "crates/vb_storage/src/inputs/submission_tests.rs",
+      "evidence": "No test poisons the write lock and asserts the WriteLockPoisoned variant. Contract lists this as an exact actual error."
+    },
+    {
+      "id": "F2",
+      "severity": "MEDIUM",
+      "title": "PostcardEncodeFailed not tested",
+      "contract_error": "JournalError::PostcardEncodeFailed",
+      "test_location": null,
+      "required_location": "crates/vb_storage/src/inputs/submission_tests.rs",
+      "evidence": "No test triggers postcard encoding failure during issuance or stamped artifact encoding. Contract lists this as an exact actual error."
+    },
+    {
+      "id": "F3",
+      "severity": "LOW-MEDIUM",
+      "title": "bind_artifact_digest failure propagation not tested",
+      "contract_error": "actual bind_artifact_digest errors",
+      "test_location": null,
+      "required_location": "crates/vb_storage/src/inputs/submission_tests.rs",
+      "evidence": "Contract states actual bind_artifact_digest errors propagate distinct from PayloadDigestMismatch. No test triggers an actual bind failure and asserts the propagated variant."
+    },
+    {
+      "id": "F4",
+      "severity": "LOW",
+      "title": "Malformed counter tests incomplete length coverage",
+      "contract_error": "JournalError::MalformedKeyspaceRow",
+      "test_location": "crates/vb_storage/src/inputs/issuance_boundary_tests.rs (only 7 and 9 bytes)",
+      "required_location": "Same file, expanded test set",
+      "evidence": "Only 7-byte and 9-byte counters tested. Lengths 0,1,2,3,4,5,6,10,100 not tested. Any length != 8 should yield MalformedKeyspaceRow."
+    }
+  ],
+  "verified_policies": [
+    "all 3 policies stamp accepted_at_seq=1",
+    "retained typed values preserved",
+    "input digest preserved",
+    "source preserved",
+    "workflow digest preserved",
+    "header compiled_digest preserved",
+    "all 4 artifact digests consistent",
+    "event 0/1 semantics",
+    "mixed default+CLI global ordering",
+    "pure prepare does not advance counter",
+    "duplicate rejected before counter publication",
+    "pre-policy failure before counter",
+    "exact IoOther batch hook",
+    "malformed 7/9 with raw counter retained",
+    "MAX-1 allows MAX then overflow",
+    "close/reopen full record preservation",
+    "bounded 4-thread concurrency unique seqs"
+  ],
+  "byte_budget_tests": "separate pending gate, not counted",
+  "executed_evidence": "1678 storage lib tests passed, 0 skipped, 1.499s"
+}

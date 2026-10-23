@@ -1,0 +1,11 @@
+{
+  "model": "local-3090-llama/qwen3.8-27b-uncensored",
+  "workspace": "/home/lewis/src/isoloated/vb-vs630-batch-tests-local3090-v22",
+  "prompt": "/tmp/vb-vs630-local3090-batch-oracles-v58.txt",
+  "cloud_fallback": false,
+  "thinking": "high",
+  "runner": "mise exec -- omp",
+  "per_run_config": "/tmp/vb-omp-local-text-tools-guarded.yml",
+  "tools": "native text read exact replace edit write grep glob; NO shell",
+  "images_blocked": true
+}
