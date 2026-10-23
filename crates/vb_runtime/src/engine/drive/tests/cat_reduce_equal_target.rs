@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use super::common::{cn, fin, mkr, mkwfc};
+use super::common::{cn, fin, mkr, mkwfc, nop};
 use crate::engine::drive::drive_deterministic_full;
 use crate::engine::types::{EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal};
 use crate::primitives::collect::CollectStates;
@@ -31,7 +31,7 @@ mod tests {
         );
         let finish = fin(2, 1);
         let wf = mkwfc(
-            vec![reduce, super::common::nop(1, 2), finish],
+            vec![reduce, nop(1, 2), finish],
             3,
             vec![ConstValue::I64(42)],
         )?;
@@ -171,7 +171,7 @@ mod tests {
             },
         );
         let baseline = mkwfc(
-            vec![reduce, super::common::nop(1, 2), fin(2, 1)],
+            vec![reduce, nop(1, 2), fin(2, 1)],
             3,
             vec![ConstValue::I64(42)],
         )
