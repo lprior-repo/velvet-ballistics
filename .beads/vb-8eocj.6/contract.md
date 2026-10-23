@@ -1,8 +1,8 @@
 # vb-8eocj.6 — Canonical ForEach Increment Contract
 
-**Status:** PROPOSED / NOT ACCEPTED — pending independent actual3090 review  
-**Author:** actual5090  
-**Assignee:** Lewis  
+**Status:** PROPOSED / NOT ACCEPTED — pending independent actual3090 review
+**Author:** actual5090
+**Assignee:** Lewis
 **Scope:** Proposed source-to-runtime flat multi-step ForEach over direct declared bounded list inputs; all proposed behavior below awaits implementation and independent review.
 
 ## 1. Input and Bound Extraction
