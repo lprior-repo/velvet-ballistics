@@ -602,7 +602,7 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
             CompiledNodeKind::ForEachNext {
                 iterator_slot: counter,
                 body: target,
-                done: target,
+                done: done_target,
             },
             "ForEachNext",
         ),
