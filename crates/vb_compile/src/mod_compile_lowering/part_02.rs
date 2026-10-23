@@ -175,16 +175,18 @@ pub(super) fn lower_canonical_for_each(
     let done =
         checked_step_offset(id, 3, "for_each", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.record_slot(input);
-    builder.record_slot(SlotIdx::new(1));
+    let iterator_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let item_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let body_result = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
-        output: None,
+        output: Some(iterator_slot),
         next: None,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::ForEachStart {
             input,
-            item_slot: SlotIdx::new(1),
+            item_slot,
             limit: at_once.unwrap_or(1),
             body: body_step,
             done,
@@ -194,19 +196,19 @@ pub(super) fn lower_canonical_for_each(
         body,
         body_step,
         index,
-        SlotIdx::new(1),
+        body_result,
         Some(next_step),
         builder,
         false,
     )?;
     builder.push_node(CompiledNode {
         id: next_step,
-        output: None,
+        output: Some(item_slot),
         next: None,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::ForEachNext {
-            iterator_slot: SlotIdx::new(1),
+            iterator_slot,
             body: body_step,
             done,
         },

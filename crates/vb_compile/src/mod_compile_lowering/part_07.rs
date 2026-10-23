@@ -20,16 +20,12 @@ pub fn lower_repeat(
     done: StepIdx,
     builder: &mut SlotCompiler,
 ) -> Result<Vec<CompiledNode>, CompileError> {
-    let attempt_slot = slot_idx_for_step(
-        id.as_usize()
-            .checked_add(1)
-            .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
-    )?;
-    builder.record_slot(attempt_slot);
+    let attempt_slot = builder.allocate_slot()?;
+    let result = builder.allocate_slot()?;
     Ok(vec![
         CompiledNode {
             id,
-            output: None,
+            output: Some(attempt_slot),
             next: None,
             error_slot: None,
             on_error: None,
@@ -41,7 +37,7 @@ pub fn lower_repeat(
         },
         CompiledNode {
             id: body,
-            output: Some(attempt_slot),
+            output: None,
             next: None,
             error_slot: None,
             on_error: None,
@@ -53,7 +49,7 @@ pub fn lower_repeat(
         },
         CompiledNode {
             id: done,
-            output: None,
+            output: Some(result),
             next: None,
             error_slot: None,
             on_error: None,
@@ -120,6 +116,9 @@ pub fn lower_ask(
 ) -> Result<Vec<CompiledNode>, CompileError> {
     builder.record_slot(prompt);
     builder.record_slot(answer);
+    if let Some(timeout) = timeout_slot {
+        builder.record_slot(timeout);
+    }
     let resume = id
         .checked_add(1)
         .ok_or(CompileError::PrimitiveLoweringLimitExceeded {
@@ -131,7 +130,7 @@ pub fn lower_ask(
     Ok(vec![
         CompiledNode {
             id,
-            output: None,
+            output: Some(answer),
             next: None,
             error_slot: None,
             on_error: None,

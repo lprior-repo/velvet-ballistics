@@ -1,0 +1,11 @@
+{
+  "patches": {
+    "allocator-code-v2.patch": "c6ba7822fcf593a846252be085be96a33cd9a3a89cd1ad387329becb6766dd9d",
+    "allocator-integration.patch": "5997f0ed211637dd630048a104c3e5979da8d0796015275e9f8bd15de52c5cec",
+    "composite-v3.patch": "cbcd1a9e776d2986e071e606e3db0944651f3363fc36b81e6038755d01e441f6",
+    "composite-width-integration.patch": "2a5671023e574d0170d90bd2932248efda5f5b4c96cd5e36f321f2348514adfc"
+  },
+  "source_tests_patch": "1ab090c54d12199ff88b14442bf4fd33e4af63d0f470e694a84268695c0d2cd1",
+  "status": "APPLIED_NOT_EXECUTED",
+  "base": "d0645504a432552301d43094859e1261318a1bef"
+}

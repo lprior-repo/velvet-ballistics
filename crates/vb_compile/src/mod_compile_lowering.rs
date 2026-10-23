@@ -14,6 +14,7 @@ mod part_11;
 mod part_12;
 mod part_13;
 mod part_14;
+mod source_slot_reservation;
 
 // Kani harnesses for ForEach digest coverage (PO-K-FE-01 through PO-K-FE-10).
 // Bead: vb-xi2f.28 | State: 5 (proof-writer)
