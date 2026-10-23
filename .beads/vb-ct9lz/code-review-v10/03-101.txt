@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission/verification.rs:101: ) -> Result<&ArtifactVerificationEvidence, JournalError> {
+crates/vb_storage/src/admission/verification.rs:102:     match evidence {
+crates/vb_storage/src/admission/verification.rs:103:         ArtifactEvidence::Packed(_) => Err(JournalError::ArtifactMalformed),
+crates/vb_storage/src/admission/verification.rs:104:         ArtifactEvidence::Unverified => Err(JournalError::MigrationRequired {
+crates/vb_storage/src/admission/verification.rs:105:             from: 1,
+crates/vb_storage/src/admission/verification.rs:106:             to: EVIDENCE_VERSION,
+crates/vb_storage/src/admission/verification.rs:107:         }),
+crates/vb_storage/src/admission/verification.rs:108:         ArtifactEvidence::Verified(evidence) if evidence.schema_version == 2 => {
+crates/vb_storage/src/admission/verification.rs:109:             Err(JournalError::MigrationRequired {
+crates/vb_storage/src/admission/verification.rs:110:                 from: 2,
+crates/vb_storage/src/admission/verification.rs:111:                 to: EVIDENCE_VERSION,
+crates/vb_storage/src/admission/verification.rs:112:             })
+crates/vb_storage/src/admission/verification.rs:113:         }
+crates/vb_storage/src/admission/verification.rs:114:         ArtifactEvidence::Verified(evidence) if evidence.schema_version == EVIDENCE_VERSION => {
+crates/vb_storage/src/admission/verification.rs:115:             Ok(evidence)
+crates/vb_storage/src/admission/verification.rs:116:         }
+crates/vb_storage/src/admission/verification.rs:117:         ArtifactEvidence::Verified(evidence) => Err(JournalError::UnsupportedSchemaVersion {
+crates/vb_storage/src/admission/verification.rs:118:             version: evidence.schema_version,
+crates/vb_storage/src/admission/verification.rs:119:         }),
+crates/vb_storage/src/admission/verification.rs:120:     }
+crates/vb_storage/src/admission/verification.rs:121: }
+crates/vb_storage/src/admission/verification.rs:122: 
+crates/vb_storage/src/admission/verification.rs:123: pub(crate) fn verify_expected_bindings(
+crates/vb_storage/src/admission/verification.rs:124:     actual: &AcceptedArtifact,
+crates/vb_storage/src/admission/verification.rs:125:     expected: &AcceptedArtifact,
+crates/vb_storage/src/admission/verification.rs:126: ) -> Result<(), JournalError> {
+crates/vb_storage/src/admission/verification.rs:127:     let mut proof = actual.verification.clone();
+crates/vb_storage/src/admission/verification.rs:128:     proof.digest = expected.verification.digest;
+crates/vb_storage/src/admission/verification.rs:129:     if actual.source_digest != expected.source_digest
+crates/vb_storage/src/admission/verification.rs:130:         || actual.policy_digest != expected.policy_digest
+crates/vb_storage/src/admission/verification.rs:131:         || actual.ir != expected.ir
+crates/vb_storage/src/admission/verification.rs:132:         || proof != expected.verification
+crates/vb_storage/src/admission/verification.rs:133:         || actual.required_capabilities != expected.required_capabilities
+crates/vb_storage/src/admission/verification.rs:134:     {
+crates/vb_storage/src/admission/verification.rs:135:         return Err(JournalError::ArtifactMalformed);
+crates/vb_storage/src/admission/verification.rs:136:     }
+crates/vb_storage/src/admission/verification.rs:137:     Ok(())
+crates/vb_storage/src/admission/verification.rs:138: }
+crates/vb_storage/src/admission/verification.rs:139: 
+crates/vb_storage/src/admission/verification.rs:140: fn checked_parts(
+crates/vb_storage/src/admission/verification.rs:141:     workflow: &CompiledWorkflow,
+crates/vb_storage/src/admission/verification.rs:142:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/verification.rs:143:     contracts: &[ActionContract],
+crates/vb_storage/src/admission/verification.rs:144:     profile: &ExecutorProfile<'_>,
+crates/vb_storage/src/admission/verification.rs:145: ) -> Result<WorkflowParts, JournalError> {
+crates/vb_storage/src/admission/verification.rs:146:     match policy {
+crates/vb_storage/src/admission/verification.rs:147:         RuntimePolicy::Relaxed | RuntimePolicy::Journaled | RuntimePolicy::Strict => {}
+crates/vb_storage/src/admission/verification.rs:148:         _ => return Err(JournalError::ArtifactMalformed),
+crates/vb_storage/src/admission/verification.rs:149:     }
+crates/vb_storage/src/admission/verification.rs:150:     let mut parts = workflow.to_parts();
+crates/vb_storage/src/admission/verification.rs:151:     CompiledWorkflow::try_from_parts(parts.clone())
+crates/vb_storage/src/admission/verification.rs:152:         .map_err(JournalError::WorkflowReconstruction)?;
+crates/vb_storage/src/admission/verification.rs:153:     vb_validate::shared::validate_with_contracts(&parts, contracts)
+crates/vb_storage/src/admission/verification.rs:154:         .map_err(JournalError::ArtifactValidation)?;
+crates/vb_storage/src/admission/verification.rs:155:     vb_core::action::validate_action_registry(contracts)
+crates/vb_storage/src/admission/verification.rs:156:         .map_err(JournalError::ArtifactActionRegistry)?;
+crates/vb_storage/src/admission/verification.rs:157:     validate_idempotency_contracts(contracts)?;
+crates/vb_storage/src/admission/verification.rs:158:     profile.check(policy, contracts)?;
+crates/vb_storage/src/admission/verification.rs:159:     parts.digest = zero_workflow_digest();
+crates/vb_storage/src/admission/verification.rs:160:     let canonical = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission/verification.rs:161:     if digest(&canonical) != workflow.digest() {
+crates/vb_storage/src/admission/verification.rs:162:         return Err(JournalError::ArtifactChecksumMismatch);
+crates/vb_storage/src/admission/verification.rs:163:     }
+crates/vb_storage/src/admission/verification.rs:164:     parts.digest = workflow.digest();
+crates/vb_storage/src/admission/verification.rs:165:     Ok(parts)
+crates/vb_storage/src/admission/verification.rs:166: }
+crates/vb_storage/src/admission/verification.rs:167: 
+crates/vb_storage/src/admission/verification.rs:168: fn build_evidence(
+crates/vb_storage/src/admission/verification.rs:169:     parts: &WorkflowParts,
+crates/vb_storage/src/admission/verification.rs:170:     ir: &[u8],
+crates/vb_storage/src/admission/verification.rs:171:     policy: RuntimePolicy,
+crates/vb_storage/src/admission/verification.rs:172:     contracts: &[ActionContract],
+crates/vb_storage/src/admission/verification.rs:173: ) -> Result<ArtifactVerificationEvidence, JournalError> {
+crates/vb_storage/src/admission/verification.rs:174:     let policy_bytes = postcard::to_allocvec(&parts.resource_contract)
+crates/vb_storage/src/admission/verification.rs:175:         .map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission/verification.rs:176:     let contract_bytes =
+crates/vb_storage/src/admission/verification.rs:177:         postcard::to_allocvec(contracts).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/admission/verification.rs:178:     let policy_digest = digest(&policy_bytes);
+crates/vb_storage/src/admission/verification.rs:179:     let verifier_digest = verifier_digest();
+crates/vb_storage/src/admission/verification.rs:180:     Ok(ArtifactVerificationEvidence {
+crates/vb_storage/src/admission/verification.rs:181:         schema_version: EVIDENCE_VERSION,
+crates/vb_storage/src/admission/verification.rs:182:         payload_digest: digest(ir),
+crates/vb_storage/src/admission/verification.rs:183:         workflow_digest: parts.digest,
+crates/vb_storage/src/admission/verification.rs:184:         action_contract_digest: digest(&contract_bytes),
+crates/vb_storage/src/admission/verification.rs:185:         policy_digest,
+crates/vb_storage/src/admission/verification.rs:186:         admission_policy: policy,
+crates/vb_storage/src/admission/verification.rs:187:         verifier_digest,
+crates/vb_storage/src/admission/verification.rs:188:         ledger: obligation_ledger(
+crates/vb_storage/src/admission/verification.rs:189:             policy_digest,
+crates/vb_storage/src/admission/verification.rs:190:             verifier_digest,
+crates/vb_storage/src/admission/verification.rs:191:             effect_closure(contracts, verifier_digest)?,
+crates/vb_storage/src/admission/verification.rs:192:         )?,
+crates/vb_storage/src/admission/verification.rs:193:     })
+crates/vb_storage/src/admission/verification.rs:194: }
+crates/vb_storage/src/admission/verification.rs:195: 
+crates/vb_storage/src/admission/verification.rs:196: fn effect_closure(
+crates/vb_storage/src/admission/verification.rs:197:     contracts: &[ActionContract],
+crates/vb_storage/src/admission/verification.rs:198:     verifier_digest: WorkflowDigest,
+crates/vb_storage/src/admission/verification.rs:199: ) -> Result<ObligationClosure, JournalError> {
+crates/vb_storage/src/admission/verification.rs:200:     if contracts.is_empty() {
