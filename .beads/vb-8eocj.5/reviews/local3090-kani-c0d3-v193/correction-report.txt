@@ -1,0 +1,44 @@
+{
+  "corrected_verdict": "APPROVE_STATIC",
+  "corrected_unwind_analysis": {
+    "bound": 12,
+    "source_loops": "None in harness or called lowering functions",
+    "source_recursion": "None",
+    "std_internal_loops": "Vec push/grow may loop internally but are opaque to Kani unwind",
+    "adequacy": "Unwind 12 is adequate for any reasonable loop expansion in the call chain; no explicit loops require expansion",
+    "notes": "Previous analysis incorrectly cited call-frame depth. Kani unwind bounds loop/recursion expansion, not acyclic call depth. No loops exist in the harness or lower_repeat call path."
+  },
+  "allocation_failure_traces": {
+    "prefix_65534": {
+      "reserve_slots": "Succeeds, reserves 0..65533, max_slot=65533",
+      "first_allocate_slot": "slot_count()=65534, reserves 65535 (0..65534), returns SlotIdx(65534)",
+      "second_allocate_slot": "slot_count()=65535, checked_add(1) overflows u16, fails with SlotIndexOutOfRange { value: 65535 }",
+      "final_slot_count": 65535
+    },
+    "prefix_65535": {
+      "reserve_slots": "Succeeds, reserves 0..65534, max_slot=65534",
+      "first_allocate_slot": "slot_count()=65535, checked_add(1) overflows u16, fails with SlotIndexOutOfRange { value: 65535 }",
+      "final_slot_count": 65535
+    },
+    "notes": "Both failure cases report value=65535. prefix=65534 fails on second allocation; prefix=65535 fails on first. Harness correctly asserts value==65535 for both."
+  },
+  "preexisting_disabled_module_fact": {
+    "module": "kani_lower_control.rs",
+    "disabled_by": "Preexisting #[cfg(any())] in lib.rs",
+    "reason_in_comment": "stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up",
+    "causal_correction": "This module was already disabled before this change. The new kani_lower_repeat.rs is registered with #[cfg(kani)] as a separate module. The change does not disable kani_lower_control.rs; it was already disabled."
+  },
+  "reviewability": {
+    "main_proof_lines": 109,
+    "line_range": "96-204",
+    "one_page_guidance": "Repository guidance suggests ~80 lines per page for reviewability",
+    "classification": "Non-blocking reviewability limitation. The proof is correct but exceeds one-page guidance, making it harder to review in a single pass. No correctness impact.",
+    "notes": "The proof is logically sound and covers all required cases. The length is due to exhaustive boundary coverage and explicit error handling, not redundancy."
+  },
+  "proof_status": {
+    "v187_run": "Timed out at 360 seconds, exit 124, no verdict",
+    "formal_verdict": "Pending - no formal PASS/FAIL established",
+    "static_assessment": "Source logic is correct; all assertions match implementation behavior",
+    "notes": "Listing/codegen is not proof. Native whole nextest is running elsewhere. Do not infer formal PASS from static review."
+  }
+}

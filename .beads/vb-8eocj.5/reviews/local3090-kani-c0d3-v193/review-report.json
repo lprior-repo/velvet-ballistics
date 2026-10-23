@@ -1,0 +1,62 @@
+{
+  "verdict": "APPROVE_STATIC",
+  "blocking_findings": [],
+  "domain_analysis": {
+    "symbolic_inputs": ["prefix (u16)", "max_attempts (u16)", "body (StepIdx)", "done (StepIdx)", "id (StepIdx)"],
+    "assume_narrowing": false,
+    "full_domain": true,
+    "boundary_coverage": ["prefix=0", "prefix=65533 (max success)", "prefix=65534 (first failure)", "prefix=65535 (u16 max)", "max_attempts=0", "max_attempts=65535", "id/body/done=u16::MAX", "body==id", "done==body", "done==id"],
+    "notes": "All five inputs use kani::any() with no kani::assume() narrowing. Cover statements document boundary exploration. The id parameter is symbolic but not used for slot allocation (builder-driven), which is correct per implementation."
+  },
+  "allocation_cases": {
+    "success_range": "prefix <= 65533",
+    "failure_range": "prefix >= 65534",
+    "success_slot_count": "prefix + 2",
+    "failure_slot_count": 65535,
+    "error_value": 65535,
+    "error_type": "CompileError::SlotIndexOutOfRange",
+    "analysis": "lower_repeat calls allocate_slot() twice. With prefix P reserved, slot_count() returns P. First allocation reserves P+1, second reserves P+2. Success requires P+2 <= 65535, i.e., P <= 65533. At P=65534, second allocation fails with value=65535. Harness correctly encodes all cases."
+  },
+  "node_fields_analysis": {
+    "repeat_start": {
+      "id": "preserved from input",
+      "output": "Some(attempt_slot) - first allocated slot",
+      "next": "None",
+      "error_slot": "None",
+      "on_error": "None",
+      "kind_fields": "max_attempts, body, done all preserved"
+    },
+    "repeat_attempt": {
+      "id": "body step index",
+      "output": "None",
+      "next": "None",
+      "error_slot": "None",
+      "on_error": "None",
+      "kind_fields": "attempt_slot, body, done all preserved"
+    },
+    "repeat_finish": {
+      "id": "done step index",
+      "output": "Some(result_slot) - second allocated slot (prefix+1)",
+      "next": "None",
+      "error_slot": "None",
+      "on_error": "None",
+      "kind_fields": "result = attempt_slot (not result_slot)"
+    },
+    "notes": "All fields verified against implementation in part_07.rs. RepeatFinish.output is the fresh result slot while RepeatFinish.kind.result is the attempt slot - harness correctly distinguishes these."
+  },
+  "unchanged_other_harnesses": {
+    "ask_harnesses": "Unchanged in kani_lower_control.rs - still use id+1 resume assumption which is correct for lower_ask",
+    "choose_harnesses": "Unchanged - fanout limit tests remain valid",
+    "module_registration": "kani_lower_control.rs disabled with #[cfg(any())] due to stale Repeat harnesses; new kani_lower_repeat.rs registered with #[cfg(kani)]"
+  },
+  "unwind_analysis": {
+    "bound": 12,
+    "adequate": true,
+    "reasoning": "Call graph is linear with no loops: harness -> reserve_slots -> slot_count -> lower_repeat -> allocate_slot (x2) -> slot_count -> reserve_slots. Maximum depth is ~8-9 frames. Unwind 12 provides margin."
+  },
+  "limitations": [
+    "Harness tests lower_repeat in isolation with manual reserve_slots; does not test integration with full workflow compilation",
+    "Does not verify runtime behavior of RepeatStart/RepeatAttempt/RepeatFinish nodes - only structural correctness of lowering",
+    "Slot count verification relies on builder.slot_count() which is tested indirectly"
+  ]
+}
