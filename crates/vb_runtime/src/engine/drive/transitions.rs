@@ -49,7 +49,8 @@ pub(super) fn begin_drive_step<'a>(
 pub(super) fn loop_body_target(node: &CompiledNode) -> Option<StepIdx> {
     match node.kind {
         CompiledNodeKind::ForEachNext { body, .. }
-        | CompiledNodeKind::ReduceNext { body, .. } => Some(body),
+        | CompiledNodeKind::ReduceNext { body, .. }
+        | CompiledNodeKind::CollectNext { body, .. } => Some(body),
         CompiledNodeKind::RepeatCheck { .. } => node.next,
         _ => None,
     }
@@ -74,7 +75,8 @@ pub(super) fn owned_continuation_rearm(
     if body >= step.pc {
         return Ok(());
     }
-    run.mark_pending(step.pc).map_err(RuntimeEngineError::Core)?;
+    run.mark_pending(step.pc)
+        .map_err(RuntimeEngineError::Core)?;
     Ok(())
 }
 

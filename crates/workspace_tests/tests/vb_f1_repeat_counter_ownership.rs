@@ -494,3 +494,204 @@ fn repeat_counter_ask_resume_foreign_write() -> Result<(), Box<dyn std::error::E
         counter_slot,
     )
 }
+
+const REPEAT_SOURCE_WITH_TRAILING_SET: &str = r#"version: velvet-ballistics/v1
+name: f1_repeat_counter_ownership
+when:
+  manual: {}
+steps:
+  - id: first
+    set:
+      output: answer
+      value: "42"
+  - id: bounded_repeat
+    repeat:
+      max_attempts: 3
+      steps:
+        - id: body_value
+          set:
+            output: body_result
+            value: "12884901888"
+  - id: trailing_set
+    set:
+      output: tail_result
+      value: "77"
+  - id: done
+    finish:
+      result: answer
+"#;
+
+fn compile_with_trailing_set() -> Result<CompiledWorkflow, Box<dyn std::error::Error + Send + Sync>>
+{
+    compile_workflow(REPEAT_SOURCE_WITH_TRAILING_SET.as_bytes())
+        .map_err(|e| format!("compile failed: {e:?}").into())
+}
+
+fn find_trailing_set_77(workflow: &CompiledWorkflow) -> Option<StepIdx> {
+    let parts = workflow.to_parts();
+    for node in &parts.nodes {
+        if let CompiledNodeKind::SetConst { value } = &node.kind {
+            if workflow.constant(*value) == Some(&vb_core::ConstValue::I64(77)) {
+                return Some(node.id);
+            }
+        }
+    }
+    None
+}
+
+fn find_set_42(workflow: &CompiledWorkflow) -> Option<StepIdx> {
+    let parts = workflow.to_parts();
+    for node in &parts.nodes {
+        if let CompiledNodeKind::SetConst { value } = &node.kind {
+            if workflow.constant(*value) == Some(&vb_core::ConstValue::I64(42)) {
+                return Some(node.id);
+            }
+        }
+    }
+    None
+}
+
+#[test]
+fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let workflow = compile_with_trailing_set()?;
+    let (owner, _body, counter, _body_output) =
+        find_repeat_slots(&workflow).ok_or("missing repeat slots")?;
+    let trailing_writer = find_trailing_set_77(&workflow).ok_or("missing trailing set 77")?;
+
+    let parts = workflow.to_parts();
+    let writer_node = parts
+        .nodes
+        .iter()
+        .find(|n| n.id == trailing_writer)
+        .ok_or("missing writer node")?;
+    assert_ne!(writer_node.output, Some(counter));
+
+    let target = writer_node.next.ok_or("missing forward Finish")?;
+    let private = writer_node.output.ok_or("missing private output")?;
+    let initial = match &writer_node.kind {
+        CompiledNodeKind::SetConst { value } => *value,
+        _ => return Err("writer is not SetConst".into()),
+    };
+
+    let test_cases = vec![
+        (
+            CompiledNodeKind::ForEachStart {
+                input: private,
+                item_slot: counter,
+                limit: 1,
+                body: target,
+                done: target,
+            },
+            "ForEachStart",
+        ),
+        (
+            CompiledNodeKind::ForEachNext {
+                iterator_slot: counter,
+                body: target,
+                done: target,
+            },
+            "ForEachNext",
+        ),
+        (
+            CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: target,
+                join: target,
+                accumulator: counter,
+            },
+            "TogetherBranch",
+        ),
+        (
+            CompiledNodeKind::CollectNext {
+                collector_slot: counter,
+                body: target,
+                done: target,
+            },
+            "CollectNext",
+        ),
+        (
+            CompiledNodeKind::ReduceStart {
+                input: counter,
+                accumulator: private,
+                initial,
+                body: target,
+                done: target,
+            },
+            "ReduceStart_input_counter",
+        ),
+        (
+            CompiledNodeKind::ReduceStart {
+                input: private,
+                accumulator: counter,
+                initial,
+                body: target,
+                done: target,
+            },
+            "ReduceStart_accum_counter",
+        ),
+        (
+            CompiledNodeKind::ReduceNext {
+                iterator_slot: counter,
+                accumulator: private,
+                body: target,
+                done: target,
+            },
+            "ReduceNext",
+        ),
+    ];
+
+    for (kind, _desc) in test_cases {
+        let mut parts = workflow.to_parts();
+        let writer_node = parts
+            .nodes
+            .iter_mut()
+            .find(|n| n.id == trailing_writer)
+            .ok_or("missing writer node")?;
+        writer_node.kind = kind;
+        let result = CompiledWorkflow::try_from_parts(parts);
+        expect_repeat_counter_foreign_write(result, owner, trailing_writer, counter)?;
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_explicit_reservation_before_owner() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+{
+    let workflow = compile_with_trailing_set()?;
+    let (owner, _body, counter, _body_output) =
+        find_repeat_slots(&workflow).ok_or("missing repeat slots")?;
+    let set_42 = find_set_42(&workflow).ok_or("missing set 42")?;
+
+    let mut parts = workflow.to_parts();
+    let writer_node = parts
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == set_42)
+        .ok_or("missing writer node")?;
+    writer_node.output = Some(counter);
+    let result = CompiledWorkflow::try_from_parts(parts);
+    expect_repeat_counter_foreign_write(result, owner, set_42, counter)?;
+
+    Ok(())
+}
+
+#[test]
+fn test_explicit_reservation_after_owner() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let workflow = compile_with_trailing_set()?;
+    let (owner, _body, counter, _body_output) =
+        find_repeat_slots(&workflow).ok_or("missing repeat slots")?;
+    let trailing_writer = find_trailing_set_77(&workflow).ok_or("missing trailing set 77")?;
+
+    let mut parts = workflow.to_parts();
+    let writer_node = parts
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == trailing_writer)
+        .ok_or("missing writer node")?;
+    writer_node.output = Some(counter);
+    let result = CompiledWorkflow::try_from_parts(parts);
+    expect_repeat_counter_foreign_write(result, owner, trailing_writer, counter)?;
+
+    Ok(())
+}

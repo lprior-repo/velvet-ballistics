@@ -354,3 +354,110 @@ fn ask_without_timeout_resumes() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn collect_eleven_items_three_pages() -> Result<(), String> {
+    let composites = "  - id: gather\n    collect:\n      source: \"8\"\n      variable: page\n      pages: 3\n      items: 5\n      steps:\n        - id: body\n          set:\n            output: collect_result\n            value: \"7\"\n";
+    let mut run = SourceRun::new(&source(composites, "answer"))?;
+    let original = run.workflow.to_parts();
+
+    let input_slot = original
+        .nodes
+        .iter()
+        .find_map(|node| match &node.kind {
+            CompiledNodeKind::CollectStart { source, .. } if *source == SlotIdx::new(8) => {
+                Some(*source)
+            }
+            _ => None,
+        })
+        .ok_or("missing collect input slot")?;
+
+    let collect_node = original
+        .nodes
+        .iter()
+        .find(|node| matches!(&node.kind, CompiledNodeKind::CollectStart { .. }))
+        .ok_or("missing CollectStart node")?;
+    match &collect_node.kind {
+        CompiledNodeKind::CollectStart {
+            limit, page_size, ..
+        } => {
+            assert_eq!(*limit, 15, "IR limit should be 15 (3 pages * 5 items)");
+            assert_eq!(*page_size, 5, "IR page_size should be 5");
+        }
+        _ => return Err("CollectStart node has unexpected kind".to_string()),
+    }
+
+    let items: Vec<SlotValue> = (1..=11).map(|n| SlotValue::I64(n)).collect();
+    let list = run
+        .store
+        .insert_list(Box::<[SlotValue]>::from(items.clone()))
+        .map_err(|e| format!("{e:?}"))?;
+    run.frame
+        .write_slot(input_slot, SlotValue::List(list))
+        .map_err(|error| format!("collect input write failed: {error:?}"))?;
+
+    assert_eq!(run.drive(128)?, RuntimeSignal::Finished(SlotValue::I64(42)));
+    run.assert_sentinels()?;
+    run.assert_body_counts(&[(7, 3)]);
+
+    let source_value = run
+        .frame
+        .read_slot(input_slot)
+        .map_err(|error| format!("source slot read failed: {error:?}"))?;
+    assert_eq!(*source_value, SlotValue::List(list));
+    match source_value {
+        SlotValue::List(list_id) => {
+            let stored = run.store.list(*list_id).map_err(|e| format!("{e:?}"))?;
+            assert_eq!(stored, items.as_slice(), "source list changed");
+        }
+        _ => return Err("source slot no longer contains a list".to_string()),
+    }
+
+    let source_taint = run
+        .frame
+        .read_taint(input_slot)
+        .map_err(|error| format!("source taint read failed: {error:?}"))?;
+    assert_eq!(source_taint, Taint::Clean, "source slot taint changed");
+
+    assert_eq!(
+        run.workflow.to_parts(),
+        original,
+        "compiled IR was modified during execution"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn collect_total_item_limit_overflow_rejected() -> Result<(), String> {
+    let composites = "  - id: gather\n    collect:\n      source: \"8\"\n      variable: page\n      pages: 4294967295\n      items: 2\n      steps:\n        - id: body\n          set:\n            output: collect_result\n            value: \"7\"\n";
+    let source_text = source(composites, "answer");
+
+    match compile_workflow(source_text.as_bytes()) {
+        Ok(_) => return Err("expected compilation to fail for overflow".to_string()),
+        Err(errors) => {
+            let slice = errors.0.as_slice();
+            let first = slice
+                .first()
+                .ok_or("expected at least one compile error".to_string())?;
+            match first {
+                vb_compile::CompileError::StepFieldShape {
+                    step,
+                    field,
+                    expected,
+                } => {
+                    assert_eq!(*step, 2, "error should be on step 2 (collect)");
+                    assert_eq!(*field, "collect", "error field should be 'collect'");
+                    assert_eq!(
+                        *expected, "pages * items must fit u32",
+                        "error message mismatch"
+                    );
+                }
+                other => {
+                    return Err(format!("expected StepFieldShape error, got: {other:?}"));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
