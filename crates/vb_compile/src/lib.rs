@@ -104,6 +104,8 @@ pub mod kani_foreach_parity;
 #[cfg(any())]
 // disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
 pub mod kani_lower_control;
+#[cfg(kani)]
+pub mod kani_lower_repeat;
 
 // Kani harnesses for vb-xi2f.33: digest covering Ask primitives.
 // Feature-gated behind test-util because these harnesses depend on
