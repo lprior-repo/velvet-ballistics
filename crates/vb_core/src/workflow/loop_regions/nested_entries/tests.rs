@@ -4,7 +4,7 @@
 
 #[path = "builders.rs"]
 mod builders;
-#[path = "support.rs"]
+#[path = "support_tests.rs"]
 mod support;
 #[path = "uncached.rs"]
 mod uncached;
