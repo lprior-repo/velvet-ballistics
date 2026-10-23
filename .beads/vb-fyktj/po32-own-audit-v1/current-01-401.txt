@@ -1,0 +1,100 @@
+crates/vb_core/src/engine/signals.rs:401:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:402: 
+crates/vb_core/src/engine/signals.rs:403:     proptest::proptest! {
+crates/vb_core/src/engine/signals.rs:404:         #[test]
+crates/vb_core/src/engine/signals.rs:405:         fn property_step_budget_new_clamp(v: u64) {
+crates/vb_core/src/engine/signals.rs:406:             use proptest::prop_assert_eq;
+crates/vb_core/src/engine/signals.rs:407:             let budget = StepBudget::new(v);
+crates/vb_core/src/engine/signals.rs:408:             let expected = v.min(MAX_STEP_BUDGET);
+crates/vb_core/src/engine/signals.rs:409:             prop_assert_eq!(budget.remaining(), expected, "new({}) should clamp to {}", v, expected);
+crates/vb_core/src/engine/signals.rs:410:         }
+crates/vb_core/src/engine/signals.rs:411:     }
+crates/vb_core/src/engine/signals.rs:412: 
+crates/vb_core/src/engine/signals.rs:413:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:414:     // Proptest property: PROPTEST-POST-001
+crates/vb_core/src/engine/signals.rs:415:     // try_take returns Ok(true) exactly min(n, initial) times when called n times
+crates/vb_core/src/engine/signals.rs:416:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:417: 
+crates/vb_core/src/engine/signals.rs:418:     proptest::proptest! {
+crates/vb_core/src/engine/signals.rs:419:         #[test]
+crates/vb_core/src/engine/signals.rs:420:         fn property_try_take_count(initial: u64, n: u64) {
+crates/vb_core/src/engine/signals.rs:421:             use proptest::prop_assert_eq;
+crates/vb_core/src/engine/signals.rs:422:             let mut budget = StepBudget::new(initial);
+crates/vb_core/src/engine/signals.rs:423:             let clamped_initial = initial.min(MAX_STEP_BUDGET);
+crates/vb_core/src/engine/signals.rs:424:             let mut true_count = 0u64;
+crates/vb_core/src/engine/signals.rs:425:             for _ in 0..n {
+crates/vb_core/src/engine/signals.rs:426:                 match budget.try_take() {
+crates/vb_core/src/engine/signals.rs:427:                     Ok(true) => { true_count += 1; }
+crates/vb_core/src/engine/signals.rs:428:                     Ok(false) => { break; }
+crates/vb_core/src/engine/signals.rs:429:                     Err(e) => panic!("try_take should not error: {:?}", e),
+crates/vb_core/src/engine/signals.rs:430:                 }
+crates/vb_core/src/engine/signals.rs:431:             }
+crates/vb_core/src/engine/signals.rs:432:             // try_take returns true exactly min(n, clamped_initial) times
+crates/vb_core/src/engine/signals.rs:433:             prop_assert_eq!(true_count, n.min(clamped_initial));
+crates/vb_core/src/engine/signals.rs:434:             // After all successful takes, remaining = clamped_initial - true_count
+crates/vb_core/src/engine/signals.rs:435:             prop_assert_eq!(budget.remaining(), clamped_initial.saturating_sub(true_count));
+crates/vb_core/src/engine/signals.rs:436:         }
+crates/vb_core/src/engine/signals.rs:437:     }
+crates/vb_core/src/engine/signals.rs:438: 
+crates/vb_core/src/engine/signals.rs:439:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:440:     // Additional coverage: EngineError::BudgetParse display
+crates/vb_core/src/engine/signals.rs:441:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:442: 
+crates/vb_core/src/engine/signals.rs:443:     #[test]
+crates/vb_core/src/engine/signals.rs:444:     fn engine_error_budget_parse_display() {
+crates/vb_core/src/engine/signals.rs:445:         let err = crate::errors::EngineError::BudgetParse {
+crates/vb_core/src/engine/signals.rs:446:             reason: "invalid u64 value",
+crates/vb_core/src/engine/signals.rs:447:         };
+crates/vb_core/src/engine/signals.rs:448:         let display = format!("{}", err);
+crates/vb_core/src/engine/signals.rs:449:         assert!(display.contains("budget env var parse error"));
+crates/vb_core/src/engine/signals.rs:450:         assert!(display.contains("invalid u64 value"));
+crates/vb_core/src/engine/signals.rs:451:     }
+crates/vb_core/src/engine/signals.rs:452: 
+crates/vb_core/src/engine/signals.rs:453:     #[test]
+crates/vb_core/src/engine/signals.rs:454:     fn engine_error_budget_parse_reason_only() {
+crates/vb_core/src/engine/signals.rs:455:         let err = crate::errors::EngineError::BudgetParse {
+crates/vb_core/src/engine/signals.rs:456:             reason: "custom reason",
+crates/vb_core/src/engine/signals.rs:457:         };
+crates/vb_core/src/engine/signals.rs:458:         let display = format!("{}", err);
+crates/vb_core/src/engine/signals.rs:459:         assert!(display.contains("custom reason"));
+crates/vb_core/src/engine/signals.rs:460:     }
+crates/vb_core/src/engine/signals.rs:461: 
+crates/vb_core/src/engine/signals.rs:462:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:463:     // Additional coverage: StepBudget debug format
+crates/vb_core/src/engine/signals.rs:464:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:465: 
+crates/vb_core/src/engine/signals.rs:466:     #[test]
+crates/vb_core/src/engine/signals.rs:467:     fn step_budget_debug_format() {
+crates/vb_core/src/engine/signals.rs:468:         let b = StepBudget::new(100);
+crates/vb_core/src/engine/signals.rs:469:         let debug = format!("{:?}", b);
+crates/vb_core/src/engine/signals.rs:470:         assert!(debug.contains("StepBudget"));
+crates/vb_core/src/engine/signals.rs:471:         assert!(debug.contains("remaining"));
+crates/vb_core/src/engine/signals.rs:472:     }
+crates/vb_core/src/engine/signals.rs:473: 
+crates/vb_core/src/engine/signals.rs:474:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:475:     // Additional coverage: EngineSignal all variant debug formats
+crates/vb_core/src/engine/signals.rs:476:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:477: 
+crates/vb_core/src/engine/signals.rs:478:     #[test]
+crates/vb_core/src/engine/signals.rs:479:     fn engine_signal_debug_format_all_variants_exhaustive() {
+crates/vb_core/src/engine/signals.rs:480:         assert!(format!("{:?}", EngineSignal::Continue).contains("Continue"));
+crates/vb_core/src/engine/signals.rs:481:         assert!(format!("{:?}", EngineSignal::StepBudgetExhausted).contains("StepBudgetExhausted"));
+crates/vb_core/src/engine/signals.rs:482:         assert!(format!("{:?}", EngineSignal::AwaitingAction).contains("AwaitingAction"));
+crates/vb_core/src/engine/signals.rs:483:         assert!(format!("{:?}", EngineSignal::AwaitingWait).contains("AwaitingWait"));
+crates/vb_core/src/engine/signals.rs:484:         assert!(format!("{:?}", EngineSignal::AwaitingAsk).contains("AwaitingAsk"));
+crates/vb_core/src/engine/signals.rs:485:         assert!(
+crates/vb_core/src/engine/signals.rs:486:             format!(
+crates/vb_core/src/engine/signals.rs:487:                 "{:?}",
+crates/vb_core/src/engine/signals.rs:488:                 EngineSignal::Finished(SlotValue::Null, Taint::Clean)
+crates/vb_core/src/engine/signals.rs:489:             )
+crates/vb_core/src/engine/signals.rs:490:             .contains("Finished")
+crates/vb_core/src/engine/signals.rs:491:         );
+crates/vb_core/src/engine/signals.rs:492:         assert!(
+crates/vb_core/src/engine/signals.rs:493:             format!(
+crates/vb_core/src/engine/signals.rs:494:                 "{:?}",
+crates/vb_core/src/engine/signals.rs:495:                 EngineSignal::Finished(SlotValue::I64(0), Taint::Secret)
+crates/vb_core/src/engine/signals.rs:496:             )
+crates/vb_core/src/engine/signals.rs:497:             .contains("Finished")
+crates/vb_core/src/engine/signals.rs:498:         );
+crates/vb_core/src/engine/signals.rs:499:         assert!(
+crates/vb_core/src/engine/signals.rs:500:             format!(

@@ -1,0 +1,55 @@
+crates/vb_storage/src/inputs/validation.rs:1: use crate::JournalError;
+crates/vb_storage/src/inputs/validation.rs:2: use vb_core::{CompiledWorkflow, InputSlotKind, SlotIdx, SlotValue};
+crates/vb_storage/src/inputs/validation.rs:3: 
+crates/vb_storage/src/inputs/validation.rs:4: pub(super) fn validate_inputs(
+crates/vb_storage/src/inputs/validation.rs:5:     workflow: &CompiledWorkflow,
+crates/vb_storage/src/inputs/validation.rs:6:     inputs: &[(SlotIdx, SlotValue)],
+crates/vb_storage/src/inputs/validation.rs:7: ) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/validation.rs:8:     if inputs.len() > workflow.input_slots().len() {
+crates/vb_storage/src/inputs/validation.rs:9:         return Err(JournalError::InputSchemaMismatch);
+crates/vb_storage/src/inputs/validation.rs:10:     }
+crates/vb_storage/src/inputs/validation.rs:11:     let mut remaining = declared_kinds(workflow)?;
+crates/vb_storage/src/inputs/validation.rs:12:     for (slot, value) in inputs {
+crates/vb_storage/src/inputs/validation.rs:13:         let expected = remaining
+crates/vb_storage/src/inputs/validation.rs:14:             .get_mut(usize::from(slot.get()))
+crates/vb_storage/src/inputs/validation.rs:15:             .and_then(Option::take)
+crates/vb_storage/src/inputs/validation.rs:16:             .ok_or(JournalError::InputSchemaMismatch)?;
+crates/vb_storage/src/inputs/validation.rs:17:         let kind = retained_value_kind(workflow, *value)?;
+crates/vb_storage/src/inputs/validation.rs:18:         if expected != InputSlotKind::Any && expected != kind {
+crates/vb_storage/src/inputs/validation.rs:19:             return Err(JournalError::InputSchemaMismatch);
+crates/vb_storage/src/inputs/validation.rs:20:         }
+crates/vb_storage/src/inputs/validation.rs:21:     }
+crates/vb_storage/src/inputs/validation.rs:22:     Ok(())
+crates/vb_storage/src/inputs/validation.rs:23: }
+crates/vb_storage/src/inputs/validation.rs:24: 
+crates/vb_storage/src/inputs/validation.rs:25: fn declared_kinds(workflow: &CompiledWorkflow) -> Result<Vec<Option<InputSlotKind>>, JournalError> {
+crates/vb_storage/src/inputs/validation.rs:26:     let mut remaining = Vec::new();
+crates/vb_storage/src/inputs/validation.rs:27:     remaining
+crates/vb_storage/src/inputs/validation.rs:28:         .try_reserve_exact(usize::from(workflow.slot_count()))
+crates/vb_storage/src/inputs/validation.rs:29:         .map_err(JournalError::AdmissionAllocationFailed)?;
+crates/vb_storage/src/inputs/validation.rs:30:     remaining.resize(usize::from(workflow.slot_count()), None);
+crates/vb_storage/src/inputs/validation.rs:31:     for declaration in workflow.input_slots() {
+crates/vb_storage/src/inputs/validation.rs:32:         let slot = remaining
+crates/vb_storage/src/inputs/validation.rs:33:             .get_mut(usize::from(declaration.slot.get()))
+crates/vb_storage/src/inputs/validation.rs:34:             .ok_or(JournalError::InputSchemaMismatch)?;
+crates/vb_storage/src/inputs/validation.rs:35:         *slot = Some(declaration.kind);
+crates/vb_storage/src/inputs/validation.rs:36:     }
+crates/vb_storage/src/inputs/validation.rs:37:     Ok(remaining)
+crates/vb_storage/src/inputs/validation.rs:38: }
+crates/vb_storage/src/inputs/validation.rs:39: 
+crates/vb_storage/src/inputs/validation.rs:40: fn retained_value_kind(
+crates/vb_storage/src/inputs/validation.rs:41:     workflow: &CompiledWorkflow,
+crates/vb_storage/src/inputs/validation.rs:42:     value: SlotValue,
+crates/vb_storage/src/inputs/validation.rs:43: ) -> Result<InputSlotKind, JournalError> {
+crates/vb_storage/src/inputs/validation.rs:44:     match value {
+crates/vb_storage/src/inputs/validation.rs:45:         SlotValue::Null => Ok(InputSlotKind::Null),
+crates/vb_storage/src/inputs/validation.rs:46:         SlotValue::Bool(_) => Ok(InputSlotKind::Bool),
+crates/vb_storage/src/inputs/validation.rs:47:         SlotValue::I64(_) => Ok(InputSlotKind::I64),
+crates/vb_storage/src/inputs/validation.rs:48:         SlotValue::F64(_) => Ok(InputSlotKind::F64),
+crates/vb_storage/src/inputs/validation.rs:49:         SlotValue::Symbol(symbol) if symbol.get() < workflow.symbols_count() => {
+crates/vb_storage/src/inputs/validation.rs:50:             Ok(InputSlotKind::Symbol)
+crates/vb_storage/src/inputs/validation.rs:51:         }
+crates/vb_storage/src/inputs/validation.rs:52:         // The positional CLI wire carries handles, not their arena payloads.
+crates/vb_storage/src/inputs/validation.rs:53:         _ => Err(JournalError::InputSchemaMismatch),
+crates/vb_storage/src/inputs/validation.rs:54:     }
+crates/vb_storage/src/inputs/validation.rs:55: }

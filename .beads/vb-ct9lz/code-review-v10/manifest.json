@@ -1,0 +1,7 @@
+[
+  "crates/vb_storage/src/executor/packed.rs",
+  "crates/vb_storage/src/journal/artifact_acceptance.rs",
+  "crates/vb_storage/src/admission/verification.rs",
+  "crates/vb_storage/src/admission/verification/executor_profile.rs",
+  "crates/vb_storage/src/executor/error.rs"
+]

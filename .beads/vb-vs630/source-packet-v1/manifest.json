@@ -1,0 +1,10 @@
+[
+  "crates/vb_storage/src/inputs/submission.rs",
+  "crates/vb_storage/src/inputs/validation.rs",
+  "crates/vb_storage/src/inputs/mod.rs",
+  "crates/vb_storage/src/journal/artifact_acceptance.rs",
+  "crates/vb_storage/src/inputs/submission_tests.rs",
+  "crates/vb_storage/src/inputs/receipt_tests.rs",
+  "crates/velvet_ballistics/src/submit.rs",
+  "crates/vb_storage/src/events/wire_serialize_admission.rs"
+]

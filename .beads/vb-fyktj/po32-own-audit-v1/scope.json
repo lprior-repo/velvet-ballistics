@@ -1,0 +1,13 @@
+{
+  "base": "48ef265727dbbe1426c8349ce09bdcbde0e8ae11",
+  "old": "dd50c691bb67624f7d39bb19ca057223aed43abe",
+  "ownfiles": [
+    "contracts/proof_obligations.yaml",
+    "verification/verus/extern_signals_invariant.rs",
+    "verification/verus/production_inner/signals_production.rs",
+    "verification/verus/signals_from_env.rs"
+  ],
+  "unified_hunks": 7,
+  "inherited_branch": "unresolved; owncommit audit only",
+  "execution": "No historicalartifact execution or newproof pass"
+}

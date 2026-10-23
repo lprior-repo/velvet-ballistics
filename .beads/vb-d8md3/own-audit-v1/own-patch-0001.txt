@@ -1,0 +1,100 @@
+own-patch:1: diff --git a/crates/vb_runtime/src/action_queue.rs b/crates/vb_runtime/src/action_queue.rs
+own-patch:2: index 79b12356d..8a7794fd0 100644
+own-patch:3: --- a/crates/vb_runtime/src/action_queue.rs
+own-patch:4: +++ b/crates/vb_runtime/src/action_queue.rs
+own-patch:5: @@ -5,6 +5,7 @@
+own-patch:6:  //! - Backpressure warning at 80% capacity
+own-patch:7:  //! - FIFO dequeue ordering
+own-patch:8:  //! - Accurate remaining capacity tracking
+own-patch:9: +//! - Backpressure warning send outcome surfacing (VB-D8MD3)
+own-patch:10:  //!
+own-patch:11:  //! This module implements the LETHAL-5 fix for the missing bounded action
+own-patch:12:  //! completion queue requirement from Section 4.
+own-patch:13: @@ -100,6 +101,22 @@ pub struct BackpressureWarning {
+own-patch:14:      pub capacity: usize,
+own-patch:15:  }
+own-patch:16:  
+own-patch:17: +/// Outcome of attempting to send a backpressure warning notification.
+own-patch:18: +///
+own-patch:19: +/// Returned by [`BoundedActionCompletionQueue::enqueue_with_backpressure_warning_outcome`]
+own-patch:20: +/// so callers can determine whether the backpressure warning was actually
+own-patch:21: +/// delivered, the channel was full, or the receiver was disconnected.
+own-patch:22: +#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+own-patch:23: +#[non_exhaustive]
+own-patch:24: +pub enum BackpressureWarningOutcome {
+own-patch:25: +    /// The backpressure warning was delivered to the channel.
+own-patch:26: +    Delivered,
+own-patch:27: +    /// The notification channel is full; the warning was dropped.
+own-patch:28: +    ChannelFull,
+own-patch:29: +    /// The notification channel receiver was dropped; the warning was not delivered.
+own-patch:30: +    ChannelDisconnected,
+own-patch:31: +}
+own-patch:32: +
+own-patch:33:  impl BoundedActionCompletionQueue {
+own-patch:34:      /// Creates a new bounded queue with the given capacity.
+own-patch:35:      ///
+own-patch:36: @@ -228,6 +245,60 @@ impl BoundedActionCompletionQueue {
+own-patch:37:          Ok(())
+own-patch:38:      }
+own-patch:39:  
+own-patch:40: +    /// Attempts to enqueue an action ticket, surfacing the backpressure
+own-patch:41: +    /// warning send outcome to the caller.
+own-patch:42: +    ///
+own-patch:43: +    /// Returns a tuple of:
+own-patch:44: +    /// 1. `Result<(), ActionQueueError>` — whether the ticket was enqueued
+own-patch:45: +    /// 2. `BackpressureWarningOutcome` — the result of any backpressure warning send
+own-patch:46: +    ///
+own-patch:47: +    /// If no backpressure channel is configured (`backpressure_tx` is `None`),
+own-patch:48: +    /// the outcome is always [`BackpressureWarningOutcome::Delivered`].
+own-patch:49: +    ///
+own-patch:50: +    /// This method is a superset of [`BoundedActionCompletionQueue::enqueue`]:
+own-patch:51: +    /// `enqueue` is equivalent to discarding the outcome from this method.
+own-patch:52: +    pub fn enqueue_with_backpressure_warning_outcome(
+own-patch:53: +        &self,
+own-patch:54: +        ticket: ActionTicket,
+own-patch:55: +    ) -> (Result<(), ActionQueueError>, BackpressureWarningOutcome) {
+own-patch:56: +        let mut inner = match self.inner.lock() {
+own-patch:57: +            Ok(guard) => guard,
+own-patch:58: +            Err(poisoned) => poisoned.into_inner(),
+own-patch:59: +        };
+own-patch:60: +        if inner.items.len() >= self.capacity.get() {
+own-patch:61: +            return (
+own-patch:62: +                Err(ActionQueueError::QueueFull {
+own-patch:63: +                    capacity: self.capacity,
+own-patch:64: +                }),
+own-patch:65: +                BackpressureWarningOutcome::Delivered,
+own-patch:66: +            );
+own-patch:67: +        }
+own-patch:68: +
+own-patch:69: +        inner.items.push_back(ticket);
+own-patch:70: +
+own-patch:71: +        let depth = inner.items.len();
+own-patch:72: +        let threshold = backpressure_threshold(self.capacity);
+own-patch:73: +        let bp_outcome = if depth >= threshold {
+own-patch:74: +            match &self.backpressure_tx {
+own-patch:75: +                Some(tx) => match tx.try_send(BackpressureWarning {
+own-patch:76: +                    depth,
+own-patch:77: +                    capacity: self.capacity.get(),
+own-patch:78: +                }) {
+own-patch:79: +                    Ok(()) => BackpressureWarningOutcome::Delivered,
+own-patch:80: +                    Err(TrySendError::Full(_)) => BackpressureWarningOutcome::ChannelFull,
+own-patch:81: +                    Err(TrySendError::Disconnected(_)) => {
+own-patch:82: +                        BackpressureWarningOutcome::ChannelDisconnected
+own-patch:83: +                    }
+own-patch:84: +                },
+own-patch:85: +                None => BackpressureWarningOutcome::Delivered,
+own-patch:86: +            }
+own-patch:87: +        } else {
+own-patch:88: +            BackpressureWarningOutcome::Delivered
+own-patch:89: +        };
+own-patch:90: +
+own-patch:91: +        (Ok(()), bp_outcome)
+own-patch:92: +    }
+own-patch:93: +
+own-patch:94:      /// Dequeues an action ticket in FIFO order.
+own-patch:95:      ///
+own-patch:96:      /// Returns `Some(ticket)` if an item was available.
+own-patch:97: @@ -763,4 +834,201 @@ mod unit_tests {
+own-patch:98:              "capacity=7 must produce threshold >= 6 (ceiling of 80%); got {threshold_7}"
+own-patch:99:          );
+own-patch:100:      }

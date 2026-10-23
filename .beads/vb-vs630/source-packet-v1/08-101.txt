@@ -1,0 +1,44 @@
+crates/vb_storage/src/events/wire_serialize_admission.rs:101: fn serialize_pinned_bound_admission<S>(
+crates/vb_storage/src/events/wire_serialize_admission.rs:102:     serializer: S,
+crates/vb_storage/src/events/wire_serialize_admission.rs:103:     fields: AdmissionFields<'_>,
+crates/vb_storage/src/events/wire_serialize_admission.rs:104:     input_digest: &vb_core::WorkflowDigest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:105:     policy_digest: &vb_core::WorkflowDigest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:106: ) -> Result<S::Ok, S::Error>
+crates/vb_storage/src/events/wire_serialize_admission.rs:107: where
+crates/vb_storage/src/events/wire_serialize_admission.rs:108:     S: Serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:109: {
+crates/vb_storage/src/events/wire_serialize_admission.rs:110:     let (run, seq, artifact, caps, policy) = fields;
+crates/vb_storage/src/events/wire_serialize_admission.rs:111:     let payload = (
+crates/vb_storage/src/events/wire_serialize_admission.rs:112:         run,
+crates/vb_storage/src/events/wire_serialize_admission.rs:113:         seq,
+crates/vb_storage/src/events/wire_serialize_admission.rs:114:         artifact,
+crates/vb_storage/src/events/wire_serialize_admission.rs:115:         input_digest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:116:         policy_digest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:117:         caps,
+crates/vb_storage/src/events/wire_serialize_admission.rs:118:         policy,
+crates/vb_storage/src/events/wire_serialize_admission.rs:119:     );
+crates/vb_storage/src/events/wire_serialize_admission.rs:120:     serialize_record_kind_variant(
+crates/vb_storage/src/events/wire_serialize_admission.rs:121:         serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:122:         TAG_RUN_ADMISSION_BOUND_PINNED,
+crates/vb_storage/src/events/wire_serialize_admission.rs:123:         "RunAdmission",
+crates/vb_storage/src/events/wire_serialize_admission.rs:124:         &payload,
+crates/vb_storage/src/events/wire_serialize_admission.rs:125:     )
+crates/vb_storage/src/events/wire_serialize_admission.rs:126: }
+crates/vb_storage/src/events/wire_serialize_admission.rs:127: 
+crates/vb_storage/src/events/wire_serialize_admission.rs:128: fn serialize_bound_admission_payload<S>(
+crates/vb_storage/src/events/wire_serialize_admission.rs:129:     serializer: S,
+crates/vb_storage/src/events/wire_serialize_admission.rs:130:     fields: AdmissionFields<'_>,
+crates/vb_storage/src/events/wire_serialize_admission.rs:131:     input_digest: &vb_core::WorkflowDigest,
+crates/vb_storage/src/events/wire_serialize_admission.rs:132: ) -> Result<S::Ok, S::Error>
+crates/vb_storage/src/events/wire_serialize_admission.rs:133: where
+crates/vb_storage/src/events/wire_serialize_admission.rs:134:     S: Serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:135: {
+crates/vb_storage/src/events/wire_serialize_admission.rs:136:     let (run, seq, artifact, caps, policy) = fields;
+crates/vb_storage/src/events/wire_serialize_admission.rs:137:     let payload = (run, seq, artifact, input_digest, caps, policy);
+crates/vb_storage/src/events/wire_serialize_admission.rs:138:     serialize_record_kind_variant(
+crates/vb_storage/src/events/wire_serialize_admission.rs:139:         serializer,
+crates/vb_storage/src/events/wire_serialize_admission.rs:140:         TAG_RUN_ADMISSION_BOUND,
+crates/vb_storage/src/events/wire_serialize_admission.rs:141:         "RunAdmission",
+crates/vb_storage/src/events/wire_serialize_admission.rs:142:         &payload,
+crates/vb_storage/src/events/wire_serialize_admission.rs:143:     )
+crates/vb_storage/src/events/wire_serialize_admission.rs:144: }

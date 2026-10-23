@@ -1,0 +1,100 @@
+crates/vb_storage/src/inputs/mod.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/inputs/mod.rs:2: //! Artifact-bound typed inputs retained at the run submission boundary.
+crates/vb_storage/src/inputs/mod.rs:3: 
+crates/vb_storage/src/inputs/mod.rs:4: mod digest;
+crates/vb_storage/src/inputs/mod.rs:5: mod submission;
+crates/vb_storage/src/inputs/mod.rs:6: mod validation;
+crates/vb_storage/src/inputs/mod.rs:7: 
+crates/vb_storage/src/inputs/mod.rs:8: use crate::constants::{MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES};
+crates/vb_storage/src/inputs/mod.rs:9: use crate::{FjallJournal, JournalError, RecordKind, codec::EnforceKindParity};
+crates/vb_storage/src/inputs/mod.rs:10: pub use digest::{RunInputBinding, RunPolicyPin, compute_input_digest};
+crates/vb_storage/src/inputs/mod.rs:11: pub use submission::RunSubmission;
+crates/vb_storage/src/inputs/mod.rs:12: use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest};
+crates/vb_storage/src/inputs/mod.rs:13: 
+crates/vb_storage/src/inputs/mod.rs:14: /// Immutable input mapping and its run, artifact, workflow and source identities.
+crates/vb_storage/src/inputs/mod.rs:15: #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+crates/vb_storage/src/inputs/mod.rs:16: pub struct RunInputsRecord {
+crates/vb_storage/src/inputs/mod.rs:17:     run: RunId,
+crates/vb_storage/src/inputs/mod.rs:18:     artifact_digest: WorkflowDigest,
+crates/vb_storage/src/inputs/mod.rs:19:     workflow_digest: WorkflowDigest,
+crates/vb_storage/src/inputs/mod.rs:20:     source_digest: WorkflowDigest,
+crates/vb_storage/src/inputs/mod.rs:21:     input_digest: WorkflowDigest,
+crates/vb_storage/src/inputs/mod.rs:22:     inputs: Box<[(SlotIdx, SlotValue)]>,
+crates/vb_storage/src/inputs/mod.rs:23: }
+crates/vb_storage/src/inputs/mod.rs:24: 
+crates/vb_storage/src/inputs/mod.rs:25: impl RunInputsRecord {
+crates/vb_storage/src/inputs/mod.rs:26:     /// Constrains typed input mappings against the numeric workflow schema.
+crates/vb_storage/src/inputs/mod.rs:27:     pub fn new(
+crates/vb_storage/src/inputs/mod.rs:28:         run: RunId,
+crates/vb_storage/src/inputs/mod.rs:29:         artifact_digest: WorkflowDigest,
+crates/vb_storage/src/inputs/mod.rs:30:         source_digest: WorkflowDigest,
+crates/vb_storage/src/inputs/mod.rs:31:         workflow: &CompiledWorkflow,
+crates/vb_storage/src/inputs/mod.rs:32:         inputs: Box<[(SlotIdx, SlotValue)]>,
+crates/vb_storage/src/inputs/mod.rs:33:     ) -> Result<Self, JournalError> {
+crates/vb_storage/src/inputs/mod.rs:34:         crate::keys::run_header_key(run)?;
+crates/vb_storage/src/inputs/mod.rs:35:         validation::validate_inputs(workflow, &inputs)?;
+crates/vb_storage/src/inputs/mod.rs:36:         Ok(Self {
+crates/vb_storage/src/inputs/mod.rs:37:             run,
+crates/vb_storage/src/inputs/mod.rs:38:             artifact_digest,
+crates/vb_storage/src/inputs/mod.rs:39:             workflow_digest: workflow.digest(),
+crates/vb_storage/src/inputs/mod.rs:40:             source_digest,
+crates/vb_storage/src/inputs/mod.rs:41:             input_digest: compute_input_digest(&inputs)?,
+crates/vb_storage/src/inputs/mod.rs:42:             inputs,
+crates/vb_storage/src/inputs/mod.rs:43:         })
+crates/vb_storage/src/inputs/mod.rs:44:     }
+crates/vb_storage/src/inputs/mod.rs:45: 
+crates/vb_storage/src/inputs/mod.rs:46:     /// Run owning this mapping.
+crates/vb_storage/src/inputs/mod.rs:47:     pub const fn run(&self) -> RunId {
+crates/vb_storage/src/inputs/mod.rs:48:         self.run
+crates/vb_storage/src/inputs/mod.rs:49:     }
+crates/vb_storage/src/inputs/mod.rs:50:     /// Content-addressed accepted artifact.
+crates/vb_storage/src/inputs/mod.rs:51:     pub const fn artifact_digest(&self) -> WorkflowDigest {
+crates/vb_storage/src/inputs/mod.rs:52:         self.artifact_digest
+crates/vb_storage/src/inputs/mod.rs:53:     }
+crates/vb_storage/src/inputs/mod.rs:54:     /// Digest of the compiled numeric workflow.
+crates/vb_storage/src/inputs/mod.rs:55:     pub const fn workflow_digest(&self) -> WorkflowDigest {
+crates/vb_storage/src/inputs/mod.rs:56:         self.workflow_digest
+crates/vb_storage/src/inputs/mod.rs:57:     }
+crates/vb_storage/src/inputs/mod.rs:58:     /// BLAKE3 of original source bytes, for cold diagnostics only.
+crates/vb_storage/src/inputs/mod.rs:59:     pub const fn source_digest(&self) -> WorkflowDigest {
+crates/vb_storage/src/inputs/mod.rs:60:         self.source_digest
+crates/vb_storage/src/inputs/mod.rs:61:     }
+crates/vb_storage/src/inputs/mod.rs:62:     /// Canonical digest of the retained typed mapping.
+crates/vb_storage/src/inputs/mod.rs:63:     pub const fn input_digest(&self) -> WorkflowDigest {
+crates/vb_storage/src/inputs/mod.rs:64:         self.input_digest
+crates/vb_storage/src/inputs/mod.rs:65:     }
+crates/vb_storage/src/inputs/mod.rs:66:     /// Original validated typed values in supplied mapping order.
+crates/vb_storage/src/inputs/mod.rs:67:     pub fn inputs(&self) -> &[(SlotIdx, SlotValue)] {
+crates/vb_storage/src/inputs/mod.rs:68:         &self.inputs
+crates/vb_storage/src/inputs/mod.rs:69:     }
+crates/vb_storage/src/inputs/mod.rs:70: 
+crates/vb_storage/src/inputs/mod.rs:71:     /// Checks the normative admission receipt before using retained inputs for recovery.
+crates/vb_storage/src/inputs/mod.rs:72:     pub fn validate_admission(&self, event: &crate::JournalEvent) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/mod.rs:73:         match event {
+crates/vb_storage/src/inputs/mod.rs:74:             crate::JournalEvent::RunAdmission {
+crates/vb_storage/src/inputs/mod.rs:75:                 run,
+crates/vb_storage/src/inputs/mod.rs:76:                 artifact_digest,
+crates/vb_storage/src/inputs/mod.rs:77:                 input_digest: RunInputBinding::Digest(input_digest),
+crates/vb_storage/src/inputs/mod.rs:78:                 ..
+crates/vb_storage/src/inputs/mod.rs:79:             } if *run == self.run
+crates/vb_storage/src/inputs/mod.rs:80:                 && *artifact_digest == self.artifact_digest
+crates/vb_storage/src/inputs/mod.rs:81:                 && *input_digest == self.input_digest =>
+crates/vb_storage/src/inputs/mod.rs:82:             {
+crates/vb_storage/src/inputs/mod.rs:83:                 Ok(())
+crates/vb_storage/src/inputs/mod.rs:84:             }
+crates/vb_storage/src/inputs/mod.rs:85:             _ => Err(JournalError::PayloadDigestMismatch),
+crates/vb_storage/src/inputs/mod.rs:86:         }
+crates/vb_storage/src/inputs/mod.rs:87:     }
+crates/vb_storage/src/inputs/mod.rs:88: 
+crates/vb_storage/src/inputs/mod.rs:89:     /// Revalidates retained input state against its bound executable workflow.
+crates/vb_storage/src/inputs/mod.rs:90:     pub fn validate_workflow(&self, workflow: &CompiledWorkflow) -> Result<(), JournalError> {
+crates/vb_storage/src/inputs/mod.rs:91:         if self.workflow_digest != workflow.digest()
+crates/vb_storage/src/inputs/mod.rs:92:             || compute_input_digest(&self.inputs)? != self.input_digest
+crates/vb_storage/src/inputs/mod.rs:93:         {
+crates/vb_storage/src/inputs/mod.rs:94:             return Err(JournalError::PayloadDigestMismatch);
+crates/vb_storage/src/inputs/mod.rs:95:         }
+crates/vb_storage/src/inputs/mod.rs:96:         validation::validate_inputs(workflow, &self.inputs)
+crates/vb_storage/src/inputs/mod.rs:97:     }
+crates/vb_storage/src/inputs/mod.rs:98: }
+crates/vb_storage/src/inputs/mod.rs:99: 
+crates/vb_storage/src/inputs/mod.rs:100: impl EnforceKindParity for RunInputsRecord {

@@ -1,0 +1,98 @@
+own-patch:201: +                capacity: ActionQueueCapacity(capacity)
+own-patch:202: +            })
+own-patch:203: +        );
+own-patch:204: +        assert_eq!(
+own-patch:205: +            bp_outcome,
+own-patch:206: +            BackpressureWarningOutcome::Delivered,
+own-patch:207: +            "queue full: outcome is Delivered (no enqueue, no warning sent)"
+own-patch:208: +        );
+own-patch:209: +
+own-patch:210: +        // No warnings should have been sent (threshold for cap=3 is ceil(3*8/10)=3,
+own-patch:211: +        // but we never actually enqueued to reach threshold because the 4th failed)
+own-patch:212: +        assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+own-patch:213: +    }
+own-patch:214: +
+own-patch:215: +    #[test]
+own-patch:216: +    fn backpressure_outcome_delivered_via_channel_with_backpressure() {
+own-patch:217: +        // Verifies that when a backpressure channel is present and active,
+own-patch:218: +        // enqueue_with_backpressure_warning_outcome reports Delivered and
+own-patch:219: +        // the receiver can observe the matching warning.
+own-patch:220: +        let capacity = 5;
+own-patch:221: +        let (queue, rx) = BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+own-patch:222: +
+own-patch:223: +        // For capacity 5, threshold = ceil(5*8/10) = 4.
+own-patch:224: +        // Items 0-3: first three below threshold, fourth at threshold.
+own-patch:225: +        for i in 0..3 {
+own-patch:226: +            let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+own-patch:227: +            assert_eq!(enqueue_result, Ok(()));
+own-patch:228: +            assert_eq!(
+own-patch:229: +                bp_outcome,
+own-patch:230: +                BackpressureWarningOutcome::Delivered,
+own-patch:231: +                "below threshold ({i}/3): Delivered, no warning sent"
+own-patch:232: +            );
+own-patch:233: +        }
+own-patch:234: +
+own-patch:235: +        // 4th item (80%) triggers a warning — must be Delivered and visible on channel
+own-patch:236: +        let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(3));
+own-patch:237: +        assert_eq!(enqueue_result, Ok(()));
+own-patch:238: +        assert_eq!(
+own-patch:239: +            bp_outcome,
+own-patch:240: +            BackpressureWarningOutcome::Delivered,
+own-patch:241: +            "at threshold: Delivered when channel receiver is live"
+own-patch:242: +        );
+own-patch:243: +
+own-patch:244: +        let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
+own-patch:245: +        assert_eq!(
+own-patch:246: +            warning,
+own-patch:247: +            Ok(BackpressureWarning { depth: 4, capacity: 5 }),
+own-patch:248: +            "channel must contain the warning when outcome is Delivered"
+own-patch:249: +        );
+own-patch:250: +    }
+own-patch:251: +
+own-patch:252: +    #[test]
+own-patch:253: +    fn backpressure_outcome_channel_disconnected_when_receiver_dropped() {
+own-patch:254: +        // Create queue with backpressure, drop the receiver, then enqueue
+own-patch:255: +        let capacity = 10;
+own-patch:256: +        let (queue, rx) = BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+own-patch:257: +        drop(rx);
+own-patch:258: +
+own-patch:259: +        // Enqueue to threshold — should get ChannelDisconnected outcome
+own-patch:260: +        for i in 0..7 {
+own-patch:261: +            let (_enqueue_result, bp_outcome) =
+own-patch:262: +                queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+own-patch:263: +            assert_eq!(
+own-patch:264: +                bp_outcome,
+own-patch:265: +                BackpressureWarningOutcome::Delivered,
+own-patch:266: +                "before threshold: Delivered (no send attempted)"
+own-patch:267: +            );
+own-patch:268: +        }
+own-patch:269: +
+own-patch:270: +        // 8th item triggers warning — receiver is gone
+own-patch:271: +        let (enqueue_result, bp_outcome) =
+own-patch:272: +            queue.enqueue_with_backpressure_warning_outcome(make_ticket(7));
+own-patch:273: +        assert_eq!(enqueue_result, Ok(()));
+own-patch:274: +        assert_eq!(
+own-patch:275: +            bp_outcome,
+own-patch:276: +            BackpressureWarningOutcome::ChannelDisconnected,
+own-patch:277: +            "receiver dropped: outcome must be ChannelDisconnected when warning sent"
+own-patch:278: +        );
+own-patch:279: +    }
+own-patch:280: +
+own-patch:281: +    #[test]
+own-patch:282: +    fn backpressure_outcome_consistent_with_enqueue_method() {
+own-patch:283: +        // The outcome from enqueue_with_backpressure_warning_outcome must always
+own-patch:284: +        // be Delivered when no backpressure channel is configured, matching
+own-patch:285: +        // the behavior of the plain enqueue method.
+own-patch:286: +        let queue = BoundedActionCompletionQueue::new_infallible(10);
+own-patch:287: +
+own-patch:288: +        for i in 0..10 {
+own-patch:289: +            let (result1, _outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+own-patch:290: +            assert_eq!(result1, Ok(()));
+own-patch:291: +
+own-patch:292: +            let result2 = queue.dequeue();
+own-patch:293: +            assert!(result2.is_some());
+own-patch:294: +        }
+own-patch:295: +
+own-patch:296: +        assert!(queue.is_empty());
+own-patch:297: +    }
+own-patch:298:  }

@@ -1,0 +1,34 @@
+old-source:1001:                 BackpressureWarningOutcome::Delivered,
+old-source:1002:                 "before threshold: Delivered (no send attempted)"
+old-source:1003:             );
+old-source:1004:         }
+old-source:1005: 
+old-source:1006:         // 8th item triggers warning — receiver is gone
+old-source:1007:         let (enqueue_result, bp_outcome) =
+old-source:1008:             queue.enqueue_with_backpressure_warning_outcome(make_ticket(7));
+old-source:1009:         assert_eq!(enqueue_result, Ok(()));
+old-source:1010:         assert_eq!(
+old-source:1011:             bp_outcome,
+old-source:1012:             BackpressureWarningOutcome::ChannelDisconnected,
+old-source:1013:             "receiver dropped: outcome must be ChannelDisconnected when warning sent"
+old-source:1014:         );
+old-source:1015:     }
+old-source:1016: 
+old-source:1017:     #[test]
+old-source:1018:     fn backpressure_outcome_consistent_with_enqueue_method() {
+old-source:1019:         // The outcome from enqueue_with_backpressure_warning_outcome must always
+old-source:1020:         // be Delivered when no backpressure channel is configured, matching
+old-source:1021:         // the behavior of the plain enqueue method.
+old-source:1022:         let queue = BoundedActionCompletionQueue::new_infallible(10);
+old-source:1023: 
+old-source:1024:         for i in 0..10 {
+old-source:1025:             let (result1, _outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+old-source:1026:             assert_eq!(result1, Ok(()));
+old-source:1027: 
+old-source:1028:             let result2 = queue.dequeue();
+old-source:1029:             assert!(result2.is_some());
+old-source:1030:         }
+old-source:1031: 
+old-source:1032:         assert!(queue.is_empty());
+old-source:1033:     }
+old-source:1034: }

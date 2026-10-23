@@ -1,0 +1,100 @@
+current-source:101: }
+current-source:102: 
+current-source:103: impl BoundedActionCompletionQueue {
+current-source:104:     /// Creates a new bounded queue with the given capacity.
+current-source:105:     ///
+current-source:106:     /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero
+current-source:107:     /// or exceeds [`MAX_ACTION_COMPLETION_QUEUE_CAPACITY`].
+current-source:108:     pub fn new(capacity: usize) -> Result<Self, ActionQueueError> {
+current-source:109:         let capacity = parse_capacity(capacity)?;
+current-source:110:         Ok(Self {
+current-source:111:             inner: std::sync::Mutex::new(Inner {
+current-source:112:                 items: VecDeque::with_capacity(capacity.get()),
+current-source:113:             }),
+current-source:114:             capacity,
+current-source:115:             backpressure_tx: None,
+current-source:116:         })
+current-source:117:     }
+current-source:118: 
+current-source:119:     /// Creates a new bounded queue with the given capacity, skipping capacity
+current-source:120:     /// validation.
+current-source:121:     ///
+current-source:122:     /// Use this constructor ONLY when the caller has verified that
+current-source:123:     /// `1 <= capacity <= MAX_ACTION_COMPLETION_QUEUE_CAPACITY`. Unlike
+current-source:124:     /// [`BoundedActionCompletionQueue::new`], this constructor does NOT
+current-source:125:     /// validate the input and is purely infallible (no Result, no panic).
+current-source:126:     /// The naming convention `new_infallible` makes the trust boundary
+current-source:127:     /// explicit at the call site.
+current-source:128:     ///
+current-source:129:     /// For runtime/derived capacity where the value is not statically known,
+current-source:130:     /// use the fallible [`BoundedActionCompletionQueue::new`] and propagate
+current-source:131:     /// the error.
+current-source:132:     pub fn new_infallible(capacity: usize) -> Self {
+current-source:133:         let capacity = ActionQueueCapacity::new_unchecked(capacity);
+current-source:134:         Self {
+current-source:135:             inner: std::sync::Mutex::new(Inner {
+current-source:136:                 items: VecDeque::with_capacity(capacity.get()),
+current-source:137:             }),
+current-source:138:             capacity,
+current-source:139:             backpressure_tx: None,
+current-source:140:         }
+current-source:141:     }
+current-source:142: 
+current-source:143:     /// Creates a new bounded queue with backpressure notification channel,
+current-source:144:     /// skipping capacity validation.
+current-source:145:     ///
+current-source:146:     /// Use this constructor ONLY when the caller has verified that
+current-source:147:     /// `1 <= capacity <= MAX_ACTION_COMPLETION_QUEUE_CAPACITY`. Unlike
+current-source:148:     /// [`BoundedActionCompletionQueue::with_backpressure`], this constructor
+current-source:149:     /// does NOT validate the input and is purely infallible (no Result, no
+current-source:150:     /// panic). The naming convention `with_backpressure_infallible` makes
+current-source:151:     /// the trust boundary explicit at the call site.
+current-source:152:     ///
+current-source:153:     /// Returns the queue together with the receiving end of the backpressure
+current-source:154:     /// notification channel. The sender is owned by the queue.
+current-source:155:     ///
+current-source:156:     /// For runtime/derived capacity where the value is not statically known,
+current-source:157:     /// use the fallible [`BoundedActionCompletionQueue::with_backpressure`]
+current-source:158:     /// and propagate the error.
+current-source:159:     pub fn with_backpressure_infallible(capacity: usize) -> (Self, Receiver<BackpressureWarning>) {
+current-source:160:         let capacity = ActionQueueCapacity::new_unchecked(capacity);
+current-source:161:         let (tx, rx) = std::sync::mpsc::sync_channel(capacity.get());
+current-source:162:         (
+current-source:163:             Self {
+current-source:164:                 inner: std::sync::Mutex::new(Inner {
+current-source:165:                     items: VecDeque::with_capacity(capacity.get()),
+current-source:166:                 }),
+current-source:167:                 capacity,
+current-source:168:                 backpressure_tx: Some(tx),
+current-source:169:             },
+current-source:170:             rx,
+current-source:171:         )
+current-source:172:     }
+current-source:173: 
+current-source:174:     /// Creates a new bounded queue with backpressure notification channel.
+current-source:175:     ///
+current-source:176:     /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero
+current-source:177:     /// or exceeds [`MAX_ACTION_COMPLETION_QUEUE_CAPACITY`].
+current-source:178:     pub fn with_backpressure(
+current-source:179:         capacity: usize,
+current-source:180:     ) -> Result<(Self, Receiver<BackpressureWarning>), ActionQueueError> {
+current-source:181:         let capacity = parse_capacity(capacity)?;
+current-source:182:         let (tx, rx) = std::sync::mpsc::sync_channel(capacity.get());
+current-source:183:         Ok((
+current-source:184:             Self {
+current-source:185:                 inner: std::sync::Mutex::new(Inner {
+current-source:186:                     items: VecDeque::with_capacity(capacity.get()),
+current-source:187:                 }),
+current-source:188:                 capacity,
+current-source:189:                 backpressure_tx: Some(tx),
+current-source:190:             },
+current-source:191:             rx,
+current-source:192:         ))
+current-source:193:     }
+current-source:194: 
+current-source:195:     /// Attempts to enqueue an action ticket.
+current-source:196:     ///
+current-source:197:     /// Returns `Ok(())` if the item was enqueued.
+current-source:198:     /// Returns `Err(ActionQueueError::QueueFull)` if the queue is at capacity.
+current-source:199:     ///
+current-source:200:     /// Emits a backpressure warning if the queue reaches or exceeds 80% capacity
