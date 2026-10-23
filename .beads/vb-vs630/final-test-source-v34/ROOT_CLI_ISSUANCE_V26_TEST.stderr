@@ -1,0 +1,61 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-vs630-impl-local5090-v6/crates/vb_storage)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.57s
+────────────
+ Nextest run ID 4a28931b-6722-4625-909f-066bdcef7bde with nextest profile: default
+    Starting 1678 tests across 1 binary
+        FAIL [   0.021s] ( 505/1678) vb_storage inputs::issuance_boundary_tests::cli_malformed_counter_nine_bytes
+  stdout ───
+
+    running 1 test
+    test inputs::issuance_boundary_tests::cli_malformed_counter_nine_bytes ... FAILED
+
+    failures:
+
+    failures:
+        inputs::issuance_boundary_tests::cli_malformed_counter_nine_bytes
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1677 filtered out; finished in 0.02s
+
+  stderr ───
+    Error: MalformedKeyspaceRow { prefix: 0, expected_len: 8, actual_len: 9 }
+
+  Cancelling due to test failure: 31 tests still running
+        FAIL [   0.021s] ( 506/1678) vb_storage inputs::issuance_boundary_tests::cli_counter_at_max_minus_one_allows_one_more
+  stdout ───
+
+    running 1 test
+    test inputs::issuance_boundary_tests::cli_counter_at_max_minus_one_allows_one_more ... FAILED
+
+    failures:
+
+    failures:
+        inputs::issuance_boundary_tests::cli_counter_at_max_minus_one_allows_one_more
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1677 filtered out; finished in 0.02s
+
+  stderr ───
+    Error: "expected SequenceOverflow, got: Err(RunAlreadyExists)"
+
+        FAIL [   0.023s] ( 512/1678) vb_storage inputs::issuance_boundary_tests::cli_malformed_counter_seven_bytes
+  stdout ───
+
+    running 1 test
+    test inputs::issuance_boundary_tests::cli_malformed_counter_seven_bytes ... FAILED
+
+    failures:
+
+    failures:
+        inputs::issuance_boundary_tests::cli_malformed_counter_seven_bytes
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1677 filtered out; finished in 0.02s
+
+  stderr ───
+    Error: MalformedKeyspaceRow { prefix: 0, expected_len: 8, actual_len: 7 }
+
+────────────
+     Summary [   0.331s] 536/1678 tests run: 533 passed, 3 failed, 0 skipped
+        FAIL [   0.021s] ( 505/1678) vb_storage inputs::issuance_boundary_tests::cli_malformed_counter_nine_bytes
+        FAIL [   0.021s] ( 506/1678) vb_storage inputs::issuance_boundary_tests::cli_counter_at_max_minus_one_allows_one_more
+        FAIL [   0.023s] ( 512/1678) vb_storage inputs::issuance_boundary_tests::cli_malformed_counter_seven_bytes
+warning: 1142/1678 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed
