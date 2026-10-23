@@ -695,3 +695,55 @@ fn test_explicit_reservation_after_owner() -> Result<(), Box<dyn std::error::Err
 
     Ok(())
 }
+
+/// Malformed IR constructor probes for conservative global counter reservation.
+#[test]
+fn test_collect_start_foreign_write() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let workflow = compile_with_trailing_set()?;
+    let (owner, _body, counter, _body_output) =
+        find_repeat_slots(&workflow).ok_or("missing repeat slots")?;
+    let trailing_writer = find_trailing_set_77(&workflow).ok_or("missing trailing set 77")?;
+
+    let mut parts = workflow.to_parts();
+    let writer_node = parts
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == trailing_writer)
+        .ok_or("missing writer node")?;
+    writer_node.output = None;
+    let target = writer_node.next.ok_or("missing forward target")?;
+    writer_node.kind = CompiledNodeKind::CollectStart {
+        source: counter,
+        limit: 1,
+        page_size: 1,
+        body: target,
+        done: target,
+    };
+    let result = CompiledWorkflow::try_from_parts(parts);
+    expect_repeat_counter_foreign_write(result, owner, trailing_writer, counter)?;
+
+    Ok(())
+}
+
+#[test]
+fn test_together_join_foreign_write() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let workflow = compile_with_trailing_set()?;
+    let (owner, _body, counter, _body_output) =
+        find_repeat_slots(&workflow).ok_or("missing repeat slots")?;
+    let trailing_writer = find_trailing_set_77(&workflow).ok_or("missing trailing set 77")?;
+
+    let mut parts = workflow.to_parts();
+    let writer_node = parts
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == trailing_writer)
+        .ok_or("missing writer node")?;
+    writer_node.kind = CompiledNodeKind::TogetherJoin {
+        branch_count: 1,
+        accumulator: counter,
+    };
+    let result = CompiledWorkflow::try_from_parts(parts);
+    expect_repeat_counter_foreign_write(result, owner, trailing_writer, counter)?;
+
+    Ok(())
+}
