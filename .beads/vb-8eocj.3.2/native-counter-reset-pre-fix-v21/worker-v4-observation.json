@@ -1,0 +1,11 @@
+{
+  "workspace": "/home/lewis/src/isoloated/vb-8eocj-repeat-probes-local3090-v1",
+  "git_head": "9820a5d9dcd73b478bfcdb653435e3c91eea1da0",
+  "event_command": "/bin/zsh -lc 'cd /home/lewis/src/isoloated/vb-8eocj-repeat-probes-local3090-v1 && wc -l crates/workspace_tests/tests/vb_f1_repeat_counter_reset_probe.rs && echo \"---\" && RUSTC_WRAPPER=\"\" cargo test --test vb_f1_repeat_counter_reset_probe -- --nocapture 2>&1 | tail -20'",
+  "pipeline_exit_code": 0,
+  "cargo_exit_code": "NOT CAPTURED: pipeline without pipefail",
+  "captured_output": "201 crates/workspace_tests/tests/vb_f1_repeat_counter_reset_probe.rs\n---\n   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-repeat-probes-local3090-v1/crates/workspace_tests)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.21s\n     Running tests/vb_f1_repeat_counter_reset_probe.rs (target/debug/deps/vb_f1_repeat_counter_reset_probe-1f00dbdfe8e11693)\n\nrunning 2 tests\nConstructor accepted mutated repeat IR (body.output = SlotIdx(1))\nError: \"ACCEPTED (RED if post-fix): constructor accepted, runtime signal=StepBudgetExhausted, body_step_executions=31, counter_slot_writes=63\"\ntest baseline_repeat_workflow_executes_correctly ... ok\ntest repeat_check_output_slot_negative_probe ... FAILED\n\nfailures:\n\nfailures:\n    repeat_check_output_slot_negative_probe\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\nerror: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_f1_repeat_counter_reset_probe`\n",
+  "test_file_sha256": "ef94ba0c697f9e3d1be2fe8d3121e4ccf0e2ddb7772588e3ca2aadc8e6f61e3b",
+  "strict_Dwarnings": false,
+  "status": "observed worker runtime RED; root receipt pending"
+}

@@ -1,0 +1,22 @@
+{
+  "tested_candidate": "e35d5f074750c0102b2b211c5c666be7e2758a15",
+  "frozen_local5090_source": "e35bbd233b01844553b4826d137762c3b6c251c6",
+  "production_base": "9820a5d9dcd73b478bfcdb653435e3c91eea1da0",
+  "tested_crates_tree": "c77714082733c14a7178ff56ab70aa74ad6c5392",
+  "test_sha256": "ef94ba0c697f9e3d1be2fe8d3121e4ccf0e2ddb7772588e3ca2aadc8e6f61e3b",
+  "execution": {
+    "passed": 1,
+    "failed": 1,
+    "ignored": 0,
+    "filtered": 0,
+    "exit_code": 101,
+    "seconds": 1.987,
+    "warnings": "denied",
+    "constructor": "ACCEPTED body.output aliased to attempt SlotIdx(1)",
+    "runtime": "StepBudgetExhausted",
+    "step_budget": 64,
+    "body_executions": 31,
+    "counter_slot_writes": 63
+  },
+  "worker_provenance": "Earlier worker pipeline exit0 masked Cargo exit; raw worker output preserved separately. Root strict gate captured real Cargo101."
+}
