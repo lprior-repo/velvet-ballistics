@@ -30,12 +30,14 @@ pub struct CompiledWorkflow {
     resource_contract: ResourceContract,
     step_names: Box<[Box<str>]>,
     input_slots: Box<[CompiledInputSlot]>,
+    loop_regions: Box<[Option<CompiledLoopRegion>]>,
 }
 
 impl CompiledWorkflow {
     /// Creates a compiled workflow after validating all numeric references.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
+        let loop_regions = loop_regions::validate(&parts)?;
         validate_budget(&parts)?;
         validate_input_slots(&parts)?;
         Ok(Self {
@@ -52,6 +54,7 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
+            loop_regions,
         })
     }
 
@@ -75,6 +78,7 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
+            loop_regions: Vec::new().into_boxed_slice(),
         }
     }
 
@@ -96,6 +100,7 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
+            loop_regions: Vec::new().into_boxed_slice(),
         }
     }
 
@@ -184,6 +189,18 @@ impl CompiledWorkflow {
     #[must_use]
     pub fn input_slots(&self) -> &[CompiledInputSlot] {
         self.input_slots.as_ref()
+    }
+
+    /// Returns the compiled loop region for a control step, if any.
+    ///
+    /// The cold constructor validates ownership and edge closure; this checked
+    /// lookup returns its immutable body/control/done region for runtime use. Returns `None` for non-loop steps or when the cache
+    /// was not populated (unchecked constructors).
+    #[must_use]
+    pub fn loop_region(&self, control: StepIdx) -> Option<&CompiledLoopRegion> {
+        self.loop_regions
+            .get(control.as_usize())
+            .and_then(Option::as_ref)
     }
 
     /// Converts back to the serializable parts representation for artifact emission.
@@ -565,6 +582,30 @@ pub enum WorkflowError {
         /// The out-of-order slot index.
         curr_slot: SlotIdx,
     },
+    /// A loop control step has no matching loop body or done target.
+    #[error("loop control step {control:?} is unpaired")]
+    LoopRegionUnpaired {
+        /// The unpaired loop control step.
+        control: StepIdx,
+    },
+    /// Loop regions cross each other, violating proper nesting.
+    #[error("loop region at {control:?} crosses from {from:?} to {to:?}")]
+    LoopRegionCrossing {
+        /// The loop control step with the crossing region.
+        control: StepIdx,
+        /// The start of the crossing region.
+        from: StepIdx,
+        /// The end of the crossing region.
+        to: StepIdx,
+    },
+    /// A loop control step references an unsupported node kind.
+    #[error("loop control step {control:?} references unsupported step {step:?}")]
+    LoopRegionUnsupported {
+        /// The loop control step.
+        control: StepIdx,
+        /// The unsupported referenced step.
+        step: StepIdx,
+    },
 }
 
 /// Bounded postfix expression bytecode program.
@@ -867,6 +908,9 @@ pub enum CompiledNodeKind {
 }
 
 mod repeat_counter_ownership;
+
+mod loop_regions;
+pub use loop_regions::CompiledLoopRegion;
 
 fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     if parts.nodes.is_empty() {

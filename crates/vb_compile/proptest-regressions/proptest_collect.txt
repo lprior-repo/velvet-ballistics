@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 8d3db7beefe108c3ff5e23a1dd85be58550e9a73c4b6be99878664dd79be203f # shrinks to input = CollectInput { source: "0", pages: None, items: None, body: [StepAst { id: "set_step", name: None, condition: None, primitive: Set { output: "x", value: "0" }, with: None, retry: None, on_error: None, then: None }] }
