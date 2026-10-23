@@ -1,0 +1,100 @@
+crates/vb_storage/src/inputs/receipt_tests.rs:1: use super::*;
+crates/vb_storage/src/inputs/receipt_tests.rs:2: use crate::{EventSeq, JournalEvent};
+crates/vb_storage/src/inputs/receipt_tests.rs:3: use vb_core::{CapabilitySet, RuntimePolicy};
+crates/vb_storage/src/inputs/receipt_tests.rs:4: 
+crates/vb_storage/src/inputs/receipt_tests.rs:5: type TestResult = Result<(), Box<dyn std::error::Error>>;
+crates/vb_storage/src/inputs/receipt_tests.rs:6: 
+crates/vb_storage/src/inputs/receipt_tests.rs:7: fn retained() -> Result<RunInputsRecord, Box<dyn std::error::Error>> {
+crates/vb_storage/src/inputs/receipt_tests.rs:8:     Ok(RunInputsRecord::new(
+crates/vb_storage/src/inputs/receipt_tests.rs:9:         RunId::new(7),
+crates/vb_storage/src/inputs/receipt_tests.rs:10:         WorkflowDigest::from_bytes([1; 32]),
+crates/vb_storage/src/inputs/receipt_tests.rs:11:         WorkflowDigest::from_bytes([2; 32]),
+crates/vb_storage/src/inputs/receipt_tests.rs:12:         &super::tests::workflow()?,
+crates/vb_storage/src/inputs/receipt_tests.rs:13:         Box::from([(SlotIdx::new(0), SlotValue::I64(9))]),
+crates/vb_storage/src/inputs/receipt_tests.rs:14:     )?)
+crates/vb_storage/src/inputs/receipt_tests.rs:15: }
+crates/vb_storage/src/inputs/receipt_tests.rs:16: 
+crates/vb_storage/src/inputs/receipt_tests.rs:17: fn receipt(record: &RunInputsRecord) -> JournalEvent {
+crates/vb_storage/src/inputs/receipt_tests.rs:18:     JournalEvent::RunAdmission {
+crates/vb_storage/src/inputs/receipt_tests.rs:19:         run: record.run(),
+crates/vb_storage/src/inputs/receipt_tests.rs:20:         seq: EventSeq::new(1),
+crates/vb_storage/src/inputs/receipt_tests.rs:21:         artifact_digest: record.artifact_digest(),
+crates/vb_storage/src/inputs/receipt_tests.rs:22:         input_digest: RunInputBinding::Digest(record.input_digest()),
+crates/vb_storage/src/inputs/receipt_tests.rs:23:         granted_capabilities: CapabilitySet::empty(),
+crates/vb_storage/src/inputs/receipt_tests.rs:24:         policy: RuntimePolicy::Strict,
+crates/vb_storage/src/inputs/receipt_tests.rs:25:         policy_pin: crate::RunPolicyPin::Unverified,
+crates/vb_storage/src/inputs/receipt_tests.rs:26:     }
+crates/vb_storage/src/inputs/receipt_tests.rs:27: }
+crates/vb_storage/src/inputs/receipt_tests.rs:28: 
+crates/vb_storage/src/inputs/receipt_tests.rs:29: #[test]
+crates/vb_storage/src/inputs/receipt_tests.rs:30: fn canonical_input_digest_binds_slots_values_and_types_without_order_dependency() -> TestResult {
+crates/vb_storage/src/inputs/receipt_tests.rs:31:     let first = (SlotIdx::new(0), SlotValue::I64(9));
+crates/vb_storage/src/inputs/receipt_tests.rs:32:     let second = (SlotIdx::new(1), SlotValue::Bool(true));
+crates/vb_storage/src/inputs/receipt_tests.rs:33:     let digest = compute_input_digest(&[first, second])?;
+crates/vb_storage/src/inputs/receipt_tests.rs:34:     assert_eq!(digest, compute_input_digest(&[second, first])?);
+crates/vb_storage/src/inputs/receipt_tests.rs:35:     for changed in [
+crates/vb_storage/src/inputs/receipt_tests.rs:36:         [(SlotIdx::new(2), SlotValue::I64(9)), second],
+crates/vb_storage/src/inputs/receipt_tests.rs:37:         [(SlotIdx::new(0), SlotValue::I64(10)), second],
+crates/vb_storage/src/inputs/receipt_tests.rs:38:         [(SlotIdx::new(0), SlotValue::Bool(true)), second],
+crates/vb_storage/src/inputs/receipt_tests.rs:39:     ] {
+crates/vb_storage/src/inputs/receipt_tests.rs:40:         assert_ne!(digest, compute_input_digest(&changed)?);
+crates/vb_storage/src/inputs/receipt_tests.rs:41:     }
+crates/vb_storage/src/inputs/receipt_tests.rs:42:     assert_ne!(digest, compute_input_digest(&[])?);
+crates/vb_storage/src/inputs/receipt_tests.rs:43:     assert!(matches!(
+crates/vb_storage/src/inputs/receipt_tests.rs:44:         compute_input_digest(&[first, first]),
+crates/vb_storage/src/inputs/receipt_tests.rs:45:         Err(JournalError::InputSchemaMismatch)
+crates/vb_storage/src/inputs/receipt_tests.rs:46:     ));
+crates/vb_storage/src/inputs/receipt_tests.rs:47:     Ok(())
+crates/vb_storage/src/inputs/receipt_tests.rs:48: }
+crates/vb_storage/src/inputs/receipt_tests.rs:49: 
+crates/vb_storage/src/inputs/receipt_tests.rs:50: #[test]
+crates/vb_storage/src/inputs/receipt_tests.rs:51: fn retained_input_receipt_rejects_legacy_digest_artifact_and_run_mismatch() -> TestResult {
+crates/vb_storage/src/inputs/receipt_tests.rs:52:     let record = retained()?;
+crates/vb_storage/src/inputs/receipt_tests.rs:53:     record.validate_admission(&receipt(&record))?;
+crates/vb_storage/src/inputs/receipt_tests.rs:54:     let recovered = crate::recovery::replay::recover_run_admission_from_events(&[receipt(&record)])
+crates/vb_storage/src/inputs/receipt_tests.rs:55:         .ok_or("missing admission summary")?;
+crates/vb_storage/src/inputs/receipt_tests.rs:56:     assert_eq!(
+crates/vb_storage/src/inputs/receipt_tests.rs:57:         recovered.input_digest,
+crates/vb_storage/src/inputs/receipt_tests.rs:58:         RunInputBinding::Digest(record.input_digest())
+crates/vb_storage/src/inputs/receipt_tests.rs:59:     );
+crates/vb_storage/src/inputs/receipt_tests.rs:60:     let mut bad_digest = receipt(&record);
+crates/vb_storage/src/inputs/receipt_tests.rs:61:     if let JournalEvent::RunAdmission { input_digest, .. } = &mut bad_digest {
+crates/vb_storage/src/inputs/receipt_tests.rs:62:         *input_digest = RunInputBinding::Digest(WorkflowDigest::from_bytes([9; 32]));
+crates/vb_storage/src/inputs/receipt_tests.rs:63:     }
+crates/vb_storage/src/inputs/receipt_tests.rs:64:     let mut legacy = receipt(&record);
+crates/vb_storage/src/inputs/receipt_tests.rs:65:     if let JournalEvent::RunAdmission { input_digest, .. } = &mut legacy {
+crates/vb_storage/src/inputs/receipt_tests.rs:66:         *input_digest = RunInputBinding::LegacyUnbound;
+crates/vb_storage/src/inputs/receipt_tests.rs:67:     }
+crates/vb_storage/src/inputs/receipt_tests.rs:68:     let mut bad_artifact = receipt(&record);
+crates/vb_storage/src/inputs/receipt_tests.rs:69:     if let JournalEvent::RunAdmission {
+crates/vb_storage/src/inputs/receipt_tests.rs:70:         artifact_digest, ..
+crates/vb_storage/src/inputs/receipt_tests.rs:71:     } = &mut bad_artifact
+crates/vb_storage/src/inputs/receipt_tests.rs:72:     {
+crates/vb_storage/src/inputs/receipt_tests.rs:73:         *artifact_digest = WorkflowDigest::from_bytes([9; 32]);
+crates/vb_storage/src/inputs/receipt_tests.rs:74:     }
+crates/vb_storage/src/inputs/receipt_tests.rs:75:     let mut bad_run = receipt(&record);
+crates/vb_storage/src/inputs/receipt_tests.rs:76:     if let JournalEvent::RunAdmission { run, .. } = &mut bad_run {
+crates/vb_storage/src/inputs/receipt_tests.rs:77:         *run = RunId::new(8);
+crates/vb_storage/src/inputs/receipt_tests.rs:78:     }
+crates/vb_storage/src/inputs/receipt_tests.rs:79:     for event in [bad_digest, legacy, bad_artifact, bad_run] {
+crates/vb_storage/src/inputs/receipt_tests.rs:80:         assert!(matches!(
+crates/vb_storage/src/inputs/receipt_tests.rs:81:             record.validate_admission(&event),
+crates/vb_storage/src/inputs/receipt_tests.rs:82:             Err(JournalError::PayloadDigestMismatch)
+crates/vb_storage/src/inputs/receipt_tests.rs:83:         ));
+crates/vb_storage/src/inputs/receipt_tests.rs:84:     }
+crates/vb_storage/src/inputs/receipt_tests.rs:85:     Ok(())
+crates/vb_storage/src/inputs/receipt_tests.rs:86: }
+crates/vb_storage/src/inputs/receipt_tests.rs:87: 
+crates/vb_storage/src/inputs/receipt_tests.rs:88: #[test]
+crates/vb_storage/src/inputs/receipt_tests.rs:89: fn retained_value_tampering_with_recomputed_envelope_checksum_is_rejected() -> TestResult {
+crates/vb_storage/src/inputs/receipt_tests.rs:90:     let mut record = retained()?;
+crates/vb_storage/src/inputs/receipt_tests.rs:91:     record.inputs = Box::from([(SlotIdx::new(0), SlotValue::I64(10))]);
+crates/vb_storage/src/inputs/receipt_tests.rs:92:     assert!(matches!(
+crates/vb_storage/src/inputs/receipt_tests.rs:93:         record.validate_workflow(&super::tests::workflow()?),
+crates/vb_storage/src/inputs/receipt_tests.rs:94:         Err(JournalError::PayloadDigestMismatch)
+crates/vb_storage/src/inputs/receipt_tests.rs:95:     ));
+crates/vb_storage/src/inputs/receipt_tests.rs:96:     let bytes = crate::encode_record(
+crates/vb_storage/src/inputs/receipt_tests.rs:97:         MAGIC_INDEX_RECORD,
+crates/vb_storage/src/inputs/receipt_tests.rs:98:         RecordKind::RunInputs,
+crates/vb_storage/src/inputs/receipt_tests.rs:99:         7,
+crates/vb_storage/src/inputs/receipt_tests.rs:100:         &record,

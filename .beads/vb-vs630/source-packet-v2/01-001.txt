@@ -1,0 +1,100 @@
+crates/vb_storage/src/admission.rs:1: #![forbid(unsafe_code)]
+crates/vb_storage/src/admission.rs:2: //! Artifact admission and verification functions.
+crates/vb_storage/src/admission.rs:3: //!
+crates/vb_storage/src/admission.rs:4: //! Provides artifact submission and admission flows with policy-controlled durability.
+crates/vb_storage/src/admission.rs:5: 
+crates/vb_storage/src/admission.rs:6: use std::fmt;
+crates/vb_storage/src/admission.rs:7: 
+crates/vb_storage/src/admission.rs:8: use crate::{CompiledIrRecord, error::JournalError, types::EventSeq};
+crates/vb_storage/src/admission.rs:9: 
+crates/vb_storage/src/admission.rs:10: use crate::journal::FjallJournal;
+crates/vb_storage/src/admission.rs:11: use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+crates/vb_storage/src/admission.rs:12: 
+crates/vb_storage/src/admission.rs:13: /// A soft verification failure that does not block admission but should be reported.
+crates/vb_storage/src/admission.rs:14: ///
+crates/vb_storage/src/admission.rs:15: /// Each warning is associated with a specific verification gate (1-2 range per
+crates/vb_storage/src/admission.rs:16: /// contract §4.2) and carries a numeric code and human-readable message.
+crates/vb_storage/src/admission.rs:17: #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+crates/vb_storage/src/admission.rs:18: pub struct VerificationWarning {
+crates/vb_storage/src/admission.rs:19:     /// Numeric code identifying the specific warning condition.
+crates/vb_storage/src/admission.rs:20:     pub code: u32,
+crates/vb_storage/src/admission.rs:21:     /// Human-readable description of the warning.
+crates/vb_storage/src/admission.rs:22:     pub message: Box<str>,
+crates/vb_storage/src/admission.rs:23:     /// Which verification gate produced this warning (1-2 range per contract).
+crates/vb_storage/src/admission.rs:24:     pub gate: u8,
+crates/vb_storage/src/admission.rs:25: }
+crates/vb_storage/src/admission.rs:26: 
+crates/vb_storage/src/admission.rs:27: impl VerificationWarning {
+crates/vb_storage/src/admission.rs:28:     /// Minimum valid gate value (inclusive).
+crates/vb_storage/src/admission.rs:29:     pub const MIN_GATE: u8 = 1;
+crates/vb_storage/src/admission.rs:30:     /// Maximum valid gate value (inclusive). Contract §4.2 specifies gate_count = 15.
+crates/vb_storage/src/admission.rs:31:     pub const MAX_GATE: u8 = 15;
+crates/vb_storage/src/admission.rs:32: 
+crates/vb_storage/src/admission.rs:33:     /// Returns `true` if the `gate` field falls within the valid 1-2 range.
+crates/vb_storage/src/admission.rs:34:     #[must_use]
+crates/vb_storage/src/admission.rs:35:     pub fn is_valid(&self) -> bool {
+crates/vb_storage/src/admission.rs:36:         self.gate >= Self::MIN_GATE && self.gate <= Self::MAX_GATE
+crates/vb_storage/src/admission.rs:37:     }
+crates/vb_storage/src/admission.rs:38: }
+crates/vb_storage/src/admission.rs:39: 
+crates/vb_storage/src/admission.rs:40: impl fmt::Display for VerificationWarning {
+crates/vb_storage/src/admission.rs:41:     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+crates/vb_storage/src/admission.rs:42:         write!(f, "gate {}: [{}] {}", self.gate, self.code, self.message)
+crates/vb_storage/src/admission.rs:43:     }
+crates/vb_storage/src/admission.rs:44: }
+crates/vb_storage/src/admission.rs:45: 
+crates/vb_storage/src/admission.rs:46: /// Proof flag that must be true for an accepted artifact.
+crates/vb_storage/src/admission.rs:47: #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+crates/vb_storage/src/admission.rs:48: #[non_exhaustive]
+crates/vb_storage/src/admission.rs:49: pub enum ProofFlag {
+crates/vb_storage/src/admission.rs:50:     /// Artifact IR is size-bounded.
+crates/vb_storage/src/admission.rs:51:     Bounded,
+crates/vb_storage/src/admission.rs:52:     /// Artifact does not propagate taint.
+crates/vb_storage/src/admission.rs:53:     TaintSafe,
+crates/vb_storage/src/admission.rs:54:     /// Artifact actions are safe to retry.
+crates/vb_storage/src/admission.rs:55:     RetrySafe,
+crates/vb_storage/src/admission.rs:56:     /// Artifact can be replayed.
+crates/vb_storage/src/admission.rs:57:     Replayable,
+crates/vb_storage/src/admission.rs:58: }
+crates/vb_storage/src/admission.rs:59: 
+crates/vb_storage/src/admission.rs:60: /// Legacy display flags plus typed, payload-bound artifact evidence.
+crates/vb_storage/src/admission.rs:61: ///
+crates/vb_storage/src/admission.rs:62: /// Flags and counts are not admission authority. Consumers must independently
+crates/vb_storage/src/admission.rs:63: /// run `verify_accepted_artifact`; legacy constructors are unverified.
+crates/vb_storage/src/admission.rs:64: #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+crates/vb_storage/src/admission.rs:65: pub struct VerificationProof {
+crates/vb_storage/src/admission.rs:66:     /// Confirmed digest of the verified artifact.
+crates/vb_storage/src/admission.rs:67:     pub digest: vb_core::WorkflowDigest,
+crates/vb_storage/src/admission.rs:68:     /// Number of verification gates that passed.
+crates/vb_storage/src/admission.rs:69:     pub gate_count: u8,
+crates/vb_storage/src/admission.rs:70:     /// Whether the proof was durably persisted (SyncAll).
+crates/vb_storage/src/admission.rs:71:     pub durable: bool,
+crates/vb_storage/src/admission.rs:72:     /// Artifact IR is size-bounded (CLAIMED - actual verification not yet implemented).
+crates/vb_storage/src/admission.rs:73:     pub bounded_claimed: bool,
+crates/vb_storage/src/admission.rs:74:     /// Artifact does not propagate taint (CLAIMED - actual verification not yet implemented).
+crates/vb_storage/src/admission.rs:75:     pub taint_safe_claimed: bool,
+crates/vb_storage/src/admission.rs:76:     /// Artifact actions are safe to retry (CLAIMED - actual verification not yet implemented).
+crates/vb_storage/src/admission.rs:77:     pub retry_safe_claimed: bool,
+crates/vb_storage/src/admission.rs:78:     /// Artifact idempotency evidence was verified by the acceptance gate (CLAIMED).
+crates/vb_storage/src/admission.rs:79:     pub idempotency_verified_claimed: bool,
+crates/vb_storage/src/admission.rs:80:     /// Artifact can be replayed (CLAIMED - actual verification not yet implemented).
+crates/vb_storage/src/admission.rs:81:     pub replayable_claimed: bool,
+crates/vb_storage/src/admission.rs:82:     /// Actions keyed by idempotency key.
+crates/vb_storage/src/admission.rs:83:     pub idempotency_keyed: Box<[vb_core::ActionId]>,
+crates/vb_storage/src/admission.rs:84:     /// Actions with idempotency attested.
+crates/vb_storage/src/admission.rs:85:     pub idempotency_attested: Box<[vb_core::ActionId]>,
+crates/vb_storage/src/admission.rs:86:     /// Soft verification failures encountered during admission.
+crates/vb_storage/src/admission.rs:87:     pub warnings: Vec<VerificationWarning>,
+crates/vb_storage/src/admission.rs:88:     /// Typed evidence bound by the accepted envelope digest.
+crates/vb_storage/src/admission.rs:89:     pub evidence: vb_core::artifact::ArtifactEvidence,
+crates/vb_storage/src/admission.rs:90: }
+crates/vb_storage/src/admission.rs:91: 
+crates/vb_storage/src/admission.rs:92: /// Allocation-free core of [`VerificationProof`] construction.
+crates/vb_storage/src/admission.rs:93: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+crates/vb_storage/src/admission.rs:94: pub(crate) struct VerificationProofCore {
+crates/vb_storage/src/admission.rs:95:     /// Confirmed digest of the verified artifact.
+crates/vb_storage/src/admission.rs:96:     pub(crate) digest: vb_core::WorkflowDigest,
+crates/vb_storage/src/admission.rs:97:     /// Number of verification gates that passed.
+crates/vb_storage/src/admission.rs:98:     pub(crate) gate_count: u8,
+crates/vb_storage/src/admission.rs:99:     /// Whether the proof was durably persisted.
+crates/vb_storage/src/admission.rs:100:     pub(crate) durable: bool,
