@@ -118,7 +118,9 @@ fn writes_slot(node: &CompiledNode, slot: SlotIdx) -> bool {
     match &node.kind {
         CompiledNodeKind::ForEachStart { item_slot, .. } => *item_slot == slot,
         CompiledNodeKind::ForEachNext { iterator_slot, .. } => *iterator_slot == slot,
-        CompiledNodeKind::TogetherBranch { accumulator, .. } => *accumulator == slot,
+        CompiledNodeKind::TogetherBranch { accumulator, .. }
+        | CompiledNodeKind::TogetherJoin { accumulator, .. } => *accumulator == slot,
+        CompiledNodeKind::CollectStart { source, .. } => node.output.is_none() && *source == slot,
         CompiledNodeKind::CollectNext { collector_slot, .. } => *collector_slot == slot,
         CompiledNodeKind::ReduceStart {
             input, accumulator, ..
