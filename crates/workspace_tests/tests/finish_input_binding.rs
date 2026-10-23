@@ -100,12 +100,14 @@ fn test_unknown_ref() -> Result<(), Box<dyn std::error::Error>> {
         Err(errors) => {
             assert_eq!(
                 errors,
-                CompileErrors(vec![CompileError::UnknownOutputName {
+                CompileErrors(vec![CompileError::UnknownReferenceName {
+                    kind: "declaration",
+                    reference: Box::from("$input.missing"),
                     name: Box::from("$input.missing")
                 }])
             );
         }
-        Ok(_) => return Err("expected UnknownOutputName".into()),
+        Ok(_) => return Err("expected UnknownReferenceName".into()),
     }
     Ok(())
 }
