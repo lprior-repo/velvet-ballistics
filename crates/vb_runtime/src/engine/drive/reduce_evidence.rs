@@ -10,16 +10,8 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind};
 use crate::engine::drive::recovery::DriveState;
 use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeEngineResult};
 
-/// Emit slot-written evidence for the Reduce branch that just executed.
-/// Returns Some(()) when Reduce-specific evidence was emitted. Returns
-/// None when the node is not a Reduce control node or the PC is unexpected.
-pub(super) fn reduce_evidence(
-    run: &RunFrame,
-    evidence: &mut EvidenceCollector,
-    node: &CompiledNode,
-    drive_state: &mut DriveState,
-) -> RuntimeEngineResult<Option<()>> {
-    let slots = match &node.kind {
+fn classify_reduce_node(run: &RunFrame, node: &CompiledNode) -> Option<[Option<SlotIdx>; 3]> {
+    match &node.kind {
         CompiledNodeKind::ReduceStart {
             input,
             accumulator,
@@ -33,13 +25,23 @@ pub(super) fn reduce_evidence(
             done,
             ..
         } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
-        _ => return Ok(None),
-    };
+        _ => None,
+    }
+}
 
+/// Emit slot-written evidence for the Reduce branch that just executed.
+/// Returns Some(()) when Reduce-specific evidence was emitted. Returns
+/// None when the node is not a Reduce control node or the PC is unexpected.
+pub(super) fn reduce_evidence(
+    run: &RunFrame,
+    evidence: &mut EvidenceCollector,
+    node: &CompiledNode,
+    drive_state: &mut DriveState,
+) -> RuntimeEngineResult<Option<()>> {
+    let slots = classify_reduce_node(run, node);
     let Some(slots) = slots else {
         return Ok(None);
     };
-
     emit_distinct(run, evidence, drive_state, &slots)?;
     Ok(Some(()))
 }
@@ -87,10 +89,7 @@ fn emit_distinct(
         if slot.is_none() {
             continue;
         }
-        let earlier_has = slots
-            .iter()
-            .take(position)
-            .any(|prev| *prev == slot);
+        let earlier_has = slots.iter().take(position).any(|prev| *prev == slot);
         if earlier_has {
             continue;
         }
