@@ -1,0 +1,64 @@
+let mut neg_count: u32 = 0;
+
+for case in cases {
+    let case_name = case.0;
+    let yaml_steps = case.1;
+    let yaml = workflow_yaml(yaml_steps);
+
+    if case_name == "repeat with two steps in body" {
+        let workflow = compile_yaml(&yaml)?;
+        let parts = workflow.to_parts();
+        let node_names = node_kind_names(parts.nodes.as_ref());
+        let expected = ["RepeatStart", "SetConst", "SetConst", "RepeatCheck", "RepeatFinish", "Finish"];
+
+        if node_names.len() != expected.len() {
+            return Err(format!("expected {} nodes, got {}", expected.len(), node_names.len()));
+        }
+        for (i, (actual, exp)) in node_names.iter().zip(expected.iter()).enumerate() {
+            if actual != exp {
+                return Err(format!("node {} kind mismatch: expected {}, got {}", i, exp, actual));
+            }
+        }
+
+        assert_dense_node_ids(&workflow, case_name)?;
+
+        let node1 = workflow.node(StepIdx::new(1)).ok_or("missing node 1")?;
+        let node2 = workflow.node(StepIdx::new(2)).ok_or("missing node 2")?;
+        let node3 = workflow.node(StepIdx::new(3)).ok_or("missing node 3")?;
+
+        let first_output = node1.output.ok_or("missing first output")?;
+        let second_output = node2.output.ok_or("missing second output")?;
+        assert_ne!(first_output, second_output);
+
+        assert_eq!(node1.next, Some(StepIdx::new(2)));
+        assert_eq!(node2.next, Some(StepIdx::new(3)));
+        assert_eq!(node3.next, Some(StepIdx::new(1)));
+
+        match &node3.kind {
+            CompiledNodeKind::RepeatCheck { done, .. } => {
+                assert_eq!(*done, StepIdx::new(4));
+            }
+            _ => {
+                return Err("node 3 is not RepeatCheck".to_string());
+            }
+        }
+    } else {
+        let errors = compile_yaml_error(&yaml)?;
+        let err = first_compile_error(&errors)?;
+        match err {
+            CompileError::StepFieldShape { step, field, expected, .. } => {
+                assert_eq!((*step, *field, *expected), (0, "steps", "exactly one set step"));
+            }
+            other => {
+                return Err(format!("unexpected error for {}: {:?}", case_name, other));
+            }
+        }
+        neg_count = neg_count.checked_add(1).ok_or("neg_count overflow")?;
+    }
+}
+
+if neg_count != 3 {
+    return Err(format!("expected 3 negative cases, got {}", neg_count));
+}
+
+Ok(())

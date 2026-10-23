@@ -1,0 +1,108 @@
+--- a/crates/vb_compile/tests/v1_primitive_lowering.rs
++++ b/crates/vb_compile/tests/v1_primitive_lowering.rs
+@@ -1,6 +1,12 @@
+ #[derive(Clone, Copy)]
+ enum ExpectedCompileError {
+     EmptySteps,
+     UnsupportedTopLevelResult,
+     UnsupportedStepControlField {
+         step: usize,
+         field: &'static str,
+     },
+     DuplicateStepId(&'static str),
+     DuplicateOutputName(&'static str),
+     UnknownOutputName(&'static str),
+     StepFieldShape {
+         step: usize,
+         field: &'static str,
+         expected: &'static str,
+     },
+     SlotIndexOutOfRange {
+         value: i64,
+     },
++    ExpressionUnknownIdentifier {
++        expression: &'static str,
++        index: usize,
++        identifier: &'static str,
++    },
+ }
+ 
+ fn assert_expected_compile_error(
+@@ -1,6 +1,18 @@
+         (
+             CompileError::SlotIndexOutOfRange { value },
+             ExpectedCompileError::SlotIndexOutOfRange {
+                 value: expected_value,
+             },
+         ) => {
+             assert_eq!(
+                 *value, expected_value,
+                 "case {case_name} slot range payload"
+             );
+             Ok(())
+         }
++        (
++            CompileError::ExpressionUnknownIdentifier {
++                expression,
++                index,
++                identifier,
++            },
++            ExpectedCompileError::ExpressionUnknownIdentifier {
++                expression: expected_expression,
++                index: expected_index,
++                identifier: expected_identifier,
++            },
++        ) => {
++            assert_eq!(
++                (expression.as_ref(), *index, identifier.as_ref()),
++                (expected_expression, expected_index, expected_identifier),
++                "case {case_name} expression unknown identifier payload"
++            );
++            Ok(())
++        }
+         (other, _) => Err(format!("case {case_name} returned wrong error {other:?}")),
+     }
+ }
+@@ -1,6 +1,6 @@
+         (
+             "set_value_shape",
+             "  - id: first\n    set:\n      output: value\n      value: not-an-integer\n  - id: done\n    finish:\n      result: value\n",
+-            ExpectedCompileError::StepFieldShape {
+-                step: 0,
+-                field: "set.value",
+-                expected: "integer string",
+-            },
++            ExpectedCompileError::ExpressionUnknownIdentifier {
++                expression: "not-an-integer",
++                index: 4,
++                identifier: "an",
++            },
+         ),
+@@ -1,6 +1,6 @@
+         (
+             "set_value_shape",
+             "  - id: first\n    set:\n      output: value\n      value: not-an-integer\n  - id: done\n    finish:\n      result: value\n",
+-            ExpectedCompileError::StepFieldShape {
+-                step: 0,
+-                field: "set.value",
+-                expected: "integer string",
+-            },
++            ExpectedCompileError::ExpressionUnknownIdentifier {
++                expression: "not-an-integer",
++                index: 4,
++                identifier: "an",
++            },
+         ),
+@@ -1,3 +1,15 @@
++        (
++            "repeat_max_attempts_shape",
++            "  - id: retry\n    repeat:\n      max_attempts: 0\n    steps: []\n  - id: done\n    finish:\n      result: 0\n",
++            ExpectedCompileError::StepFieldShape {
++                step: 0,
++                field: "repeat.max_attempts",
++                expected: "non-empty primitive field",
++            },
++        ),
+         (
+             "slot_index_out_of_range",
+             "  - id: done\n    finish:\n      result: 65536\n",
