@@ -1,0 +1,30 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-8eocj2-source-native-integration-v1/crates/vb_compile)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-8eocj2-source-native-integration-v1/crates/velvet_ballistics)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/velvet-ballistics-vb-8eocj2-source-native-integration-v1/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.10s
+     Running tests/vb_f1_canonical_scalar_do.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f1_canonical_scalar_do-ddd4184b48b00c6d)
+
+running 20 tests
+test do_action::test_do_action_suspension_and_completion ... ok
+test negative::test_ambiguous_bare_name_error ... ok
+test negative::test_duplicate_output_name_error ... ok
+test negative::test_finish_expression_not_supported ... ok
+test negative::test_forward_reference_error ... ok
+test negative::test_invalid_action_id_negative ... ok
+test negative::test_invalid_action_id_too_large ... ok
+test negative::test_invalid_input_slot_negative ... ok
+test negative::test_scalar_type_error_bool_plus_i64 ... ok
+test negative::test_self_reference_error ... ok
+test negative::test_step_prefix_disambiguates_to_step ... ok
+test negative::test_undefined_name_reference_error ... ok
+test positive::test_arithmetic_through_prior_output_alias ... ok
+test positive::test_bool_set_to_finish ... ok
+test positive::test_f64_set_to_finish ... ok
+test positive::test_i64_set_unchanged_to_finish ... ok
+test positive::test_null_set_to_finish ... ok
+test positive::test_step_reference_by_id ... ok
+test positive::test_step_reference_qualified ... ok
+test positive::test_step_reference_steps_prefix ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

@@ -2,57 +2,108 @@
 //! Canonical expression type inference using shared vb_expr type checker.
 //!
 //! Converts canonical ParsedExpression to vb_expr ExprAst for shared type
-//! checking. Maintains per-Set step type context for reference resolution.
+//! checking. Builds a TypeContext by resolving each reference in the
+//! expression through the canonical resolver and mapping to slot types.
 
 use crate::CompileError;
 use crate::expression::{
     BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp,
 };
 use std::collections::HashMap;
-use vb_expr::expr_parser::types::{ExprAst, ExprLiteral, ExprHelper};
-use vb_expr::expr_typecheck::{TypeContext, ExprType, typecheck_expr};
+use vb_core::SlotIdx;
+use vb_expr::expr_parser::types::{ExprAst, ExprHelper, ExprLiteral};
+use vb_expr::expr_typecheck::{ExprType, TypeContext, typecheck_expr};
+
+use super::canonical_references::resolve_slot_reference;
 
 /// Type-checks a canonical expression and returns its inferred type.
-/// Unknown future references type as Unknown (dynamic), but known static type
-/// errors (e.g., bool + number) are rejected.
-///
-/// Prior types are mapped using canonical reference names ($prefix) to match
-/// how ParsedExpression::Reference stores names, ensuring proper TypeContext
-/// lookup for known types (bool, i64, f64, etc.).
+/// Known static type errors (e.g., bool + number) are rejected. Dynamic
+/// action outputs remain Unknown.
 pub(super) fn infer_canonical_expr_type(
     expr: &ParsedExpression,
-    prior_types: &HashMap<String, ExprType>,
+    slot_types: &HashMap<SlotIdx, ExprType>,
+    outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
 ) -> Result<ExprType, CompileError> {
     let ast = to_vb_expr_ast(expr)?;
-    let mut context = TypeContext::new();
-    // Prior types stored as bare names (e.g., "valid"); TypeContext lookup
-    // requires canonical reference names with $ prefix to match Reference.
-    for (name, ty) in prior_types {
-        let canonical = format!("${name}");
-        context.add_variable(canonical.into(), *ty);
-    }
+    let context = build_type_context(expr, slot_types, outputs, step_outputs)?;
     typecheck_expr(&ast, &context).map_err(vb_expr_error_to_compile)
+}
+
+/// Validates that all references resolve to known slots.
+pub(super) fn validate_canonical_references(
+    expr: &ParsedExpression,
+    outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
+) -> Result<(), CompileError> {
+    for (reference, _) in collect_references(expr) {
+        resolve_slot_reference(&reference, outputs, step_outputs)?;
+    }
+    Ok(())
+}
+
+/// Collects all reference names from an expression tree.
+fn collect_references(expr: &ParsedExpression) -> Vec<(String, bool)> {
+    let mut refs = Vec::new();
+    collect_refs_inner(expr, &mut refs);
+    refs
+}
+
+fn collect_refs_inner(expr: &ParsedExpression, refs: &mut Vec<(String, bool)>) {
+    match expr {
+        ParsedExpression::Reference(name) => {
+            let is_explicit_step = name.contains(".step.") || name.contains(".steps.");
+            refs.push((name.to_string(), is_explicit_step));
+        }
+        ParsedExpression::Unary { expr: inner, .. } => collect_refs_inner(inner, refs),
+        ParsedExpression::Binary { left, right, .. } => {
+            collect_refs_inner(left, refs);
+            collect_refs_inner(right, refs);
+        }
+        ParsedExpression::HelperCall { args, .. } => {
+            for arg in args {
+                collect_refs_inner(arg, refs);
+            }
+        }
+        ParsedExpression::Literal(_) => {}
+    }
+}
+
+/// Builds a TypeContext by resolving each reference in the expression
+/// through the canonical resolver and mapping to slot types.
+fn build_type_context(
+    expr: &ParsedExpression,
+    slot_types: &HashMap<SlotIdx, ExprType>,
+    outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
+) -> Result<TypeContext, CompileError> {
+    let mut context = TypeContext::new();
+    for (reference, _) in collect_references(expr) {
+        let slot = resolve_slot_reference(&reference, outputs, step_outputs)?;
+        let ty = slot_types
+            .get(&slot)
+            .copied()
+            .unwrap_or(ExprType::Unknown);
+        context.add_variable(reference.clone().into(), ty);
+    }
+    Ok(context)
 }
 
 /// Converts a vb_expr type-checking error to a CompileError variant.
 fn vb_expr_error_to_compile(e: vb_expr::ExprError) -> CompileError {
     match e {
-        vb_expr::ExprError::TypeMismatch { expected, found } => {
-            CompileError::TypeMismatch {
-                field: "set.value",
-                expected: type_name_static(&expected),
-                found: type_name_static(&found),
-            }
-        }
+        vb_expr::ExprError::TypeMismatch { expected, found } => CompileError::TypeMismatch {
+            field: "set.value",
+            expected: type_name_static(&expected),
+            found: type_name_static(&found),
+        },
         vb_expr::ExprError::StackUnderflow
         | vb_expr::ExprError::DivisionByZero
-        | vb_expr::ExprError::IntegerOverflow => {
-            CompileError::TypeMismatch {
-                field: "set.value",
-                expected: "valid expression",
-                found: "invalid runtime value",
-            }
-        }
+        | vb_expr::ExprError::IntegerOverflow => CompileError::TypeMismatch {
+            field: "set.value",
+            expected: "valid expression",
+            found: "invalid runtime value",
+        },
         vb_expr::ExprError::ExpressionTooLong { max, .. } => {
             CompileError::ExpressionLimitExceeded {
                 expression: Box::from("expression"),
@@ -67,13 +118,11 @@ fn vb_expr_error_to_compile(e: vb_expr::ExprError) -> CompileError {
             expected,
             actual,
         },
-        vb_expr::ExprError::UnknownHelper { helper } => {
-            CompileError::ExpressionUnexpectedToken {
-                expression: Box::from(format!("unknown helper: {helper}")),
-                index: 0,
-                expected: "valid expression",
-            }
-        }
+        vb_expr::ExprError::UnknownHelper { helper } => CompileError::ExpressionUnexpectedToken {
+            expression: Box::from(format!("unknown helper: {helper}")),
+            index: 0,
+            expected: "valid expression",
+        },
         _ => CompileError::ExpressionUnexpectedToken {
             expression: Box::from(format!("{e}")),
             index: 0,
@@ -82,7 +131,6 @@ fn vb_expr_error_to_compile(e: vb_expr::ExprError) -> CompileError {
     }
 }
 
-/// Maps a dynamic vb_expr type name string to a static &'static str.
 fn type_name_static(name: &str) -> &'static str {
     match name {
         "null" => "null",
@@ -98,7 +146,6 @@ fn type_name_static(name: &str) -> &'static str {
     }
 }
 
-/// Maps a dynamic helper name to a static &'static str.
 fn helper_name_static(name: &str) -> &'static str {
     match name {
         "contains" => "contains",
@@ -122,21 +169,16 @@ fn helper_name_static(name: &str) -> &'static str {
 /// checking. Reference names are passed through with $ prefix intact.
 fn to_vb_expr_ast(expr: &ParsedExpression) -> Result<ExprAst, CompileError> {
     match expr {
-        ParsedExpression::Literal(lit) => {
-            Ok(ExprAst::Literal(to_vb_expr_literal(lit)?))
-        }
-        ParsedExpression::Reference(name) => {
-            Ok(ExprAst::Reference(name.clone()))
-        }
+        ParsedExpression::Literal(lit) => Ok(ExprAst::Literal(to_vb_expr_literal(lit)?)),
+        ParsedExpression::Reference(name) => Ok(ExprAst::Reference(name.clone())),
         ParsedExpression::Unary { op, expr: inner } => {
             let vb_op = match op {
                 UnaryOp::Not => vb_expr::lexer::UnaryOp::Not,
                 UnaryOp::Neg => vb_expr::lexer::UnaryOp::Neg,
             };
-            let vb_inner = to_vb_expr_ast(inner)?;
             Ok(ExprAst::Unary {
                 op: vb_op,
-                expr: Box::new(vb_inner),
+                expr: Box::new(to_vb_expr_ast(inner)?),
             })
         }
         ParsedExpression::Binary { op, left, right } => {
@@ -154,12 +196,10 @@ fn to_vb_expr_ast(expr: &ParsedExpression) -> Result<ExprAst, CompileError> {
                 BinaryOp::Mul => vb_expr::lexer::BinaryOp::Mul,
                 BinaryOp::Div => vb_expr::lexer::BinaryOp::Div,
             };
-            let vb_left = to_vb_expr_ast(left)?;
-            let vb_right = to_vb_expr_ast(right)?;
             Ok(ExprAst::Binary {
                 op: vb_op,
-                left: Box::new(vb_left),
-                right: Box::new(vb_right),
+                left: Box::new(to_vb_expr_ast(left)?),
+                right: Box::new(to_vb_expr_ast(right)?),
             })
         }
         ParsedExpression::HelperCall { name, args } => {

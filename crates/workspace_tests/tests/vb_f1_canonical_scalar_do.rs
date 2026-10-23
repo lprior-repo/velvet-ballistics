@@ -15,3 +15,5 @@ mod do_action;
 mod negative;
 #[path = "vb_f1_canonical_scalar_do/positive.rs"]
 mod positive;
+#[path = "vb_f1_canonical_scalar_do/type_identity.rs"]
+mod type_identity;
