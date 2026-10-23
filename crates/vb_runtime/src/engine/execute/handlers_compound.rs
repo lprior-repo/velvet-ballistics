@@ -1,8 +1,14 @@
 #![forbid(unsafe_code)]
 
-//! Compound iterator handlers: ForEach, Together, Collect, Reduce, Repeat.
+//! Compound iterator handlers: ForEach, Together, Collect, Reduce.
+//! Repeat handlers live in the `repeat` submodule.
 //! Each `handle_*` helper wraps the matching primitive and converts the
 //! resulting core signal into a runtime signal.
+
+mod repeat;
+pub(super) use repeat::{
+    handle_repeat_attempt, handle_repeat_check, handle_repeat_finish, handle_repeat_start,
+};
 
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ConstIdx, FanoutLimit, SlotIdx, StepIdx};
@@ -255,51 +261,4 @@ pub(super) fn handle_reduce_finish(
         Ok(signal) => Ok(runtime_from_core(signal)),
         Err(e) => Err(RuntimeEngineError::Core(e)),
     }
-}
-
-pub(super) fn handle_repeat_start(
-    run: &mut RunFrame,
-    max_attempts: u16,
-    body: StepIdx,
-    done: StepIdx,
-    output: Option<SlotIdx>,
-) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::repeat::repeat_start(run, max_attempts, body, done, output)
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
-}
-
-pub(super) fn handle_repeat_attempt(
-    run: &mut RunFrame,
-    attempt_slot: SlotIdx,
-    body: StepIdx,
-    done: StepIdx,
-) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::repeat::repeat_attempt(run, attempt_slot, body, done)
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
-}
-
-pub(super) fn handle_repeat_check<P: BodyEntryPolicy>(
-    run: &mut RunFrame,
-    attempt_slot: SlotIdx,
-    done: StepIdx,
-    next: Option<StepIdx>,
-    step: StepIdx,
-) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::repeat::repeat_check_with_policy::<P>(run, attempt_slot, done, next, step)
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
-}
-
-pub(super) fn handle_repeat_finish(
-    run: &mut RunFrame,
-    result: SlotIdx,
-    output: Option<SlotIdx>,
-    next: Option<StepIdx>,
-    step: StepIdx,
-) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::repeat::repeat_finish(run, result, output, next, step)
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
 }
