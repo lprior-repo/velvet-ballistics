@@ -1,0 +1,31 @@
+
+running 26 tests
+test primitives::reduce::tests::reduce_finish_copies_accumulator_to_output_verbatim ... ok
+test primitives::reduce::tests::reduce_finish_increments_executed_counter ... ok
+test primitives::reduce::tests::reduce_finish_returns_error_when_next_missing ... ok
+test primitives::reduce::tests::reduce_finish_returns_error_when_output_missing ... ok
+test primitives::reduce::tests::reduce_finish_writes_final_accumulator_to_output ... ok
+test primitives::reduce::tests::reduce_next_applies_item_to_accumulator ... ok
+test primitives::reduce::tests::reduce_next_binds_first_remaining_item ... ok
+test primitives::reduce::tests::reduce_next_increments_executed_counter ... ok
+test primitives::reduce::tests::reduce_next_jumps_to_done_when_remaining_empty ... ok
+test primitives::reduce::tests::reduce_next_returns_error_when_not_list ... ok
+test primitives::reduce::tests::reduce_next_returns_error_when_output_missing ... ok
+test primitives::reduce::tests::reduce_next_single_remaining_item_produces_exhausted_cursor ... ok
+test primitives::reduce::tests::reduce_next_writes_cursor_state_to_iterator_slot ... ok
+test primitives::reduce::tests::reduce_start_bool_initial_constant_succeeds ... ok
+test primitives::reduce::tests::reduce_start_empty_list_with_initial_value_jumps_to_done ... ok
+test primitives::reduce::tests::reduce_start_first_item_in_input_cursor_state_in_output ... ok
+test primitives::reduce::tests::reduce_start_increments_executed_counter ... ok
+test primitives::reduce::tests::reduce_start_jumps_to_done_when_list_empty ... ok
+test primitives::reduce::tests::reduce_start_null_initial_constant_succeeds ... ok
+test primitives::reduce::tests::reduce_start_returns_error_when_constant_missing ... ok
+test primitives::reduce::tests::reduce_start_returns_error_when_input_is_not_list ... ok
+test primitives::reduce::tests::reduce_start_returns_error_when_output_missing ... ok
+test primitives::reduce::tests::reduce_start_single_item_list_writes_cursor_state_and_jumps_to_body ... ok
+test primitives::reduce::tests::reduce_start_writes_cursor_state_to_iterator_slot ... ok
+test primitives::reduce::tests::reduce_start_writes_initial_accumulator ... ok
+test primitives::reduce::tests::reduce_start_writes_initial_accumulator_from_constant ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 1963 filtered out; finished in 0.00s
+
