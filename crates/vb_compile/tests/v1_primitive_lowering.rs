@@ -758,10 +758,12 @@ fn assert_repeat_raw_allocation_contract() -> Result<(), String> {
             match ir_result {
                 Err(errors) => {
                     if errors
-                        != vb_compile::CompileErrors(vec![CompileError::Workflow(
-                            WorkflowError::NodeIdMismatch {
-                                expected: StepIdx::new(0),
-                                actual: StepIdx::MAX,
+                        != vb_compile::CompileErrors(vec![CompileError::Validation(
+                            vb_validate::ValidationError::LoopBodyStepOutOfRange {
+                                step: 65535,
+                                node_count: 3,
+                                source_node: 0,
+                                label: String::from("repeat body"),
                             },
                         )])
                     {
