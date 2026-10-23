@@ -1,77 +1,100 @@
-# vb-8eocj.6 — Canonical ForEach Increment Contract
+# vb-8eocj.6 — ForEach flat-body slice (incremental)
+Author: actual local5090 V222; assignee Lewis.
+Status: PROPOSED / NOT ACCEPTED (pending independent actual3090).
+Scope: direct declared list<any> inputs only; typed element schemas remain parent F1.
 
-**Status:** PROPOSED / NOT ACCEPTED — pending independent actual3090 review
-**Author:** actual5090
-**Assignee:** Lewis
-**Scope:** Proposed source-to-runtime flat multi-step ForEach over direct declared bounded list inputs; all proposed behavior below awaits implementation and independent review.
+## CLOSED INPUT DOMAIN
+  Accept only direct declared $input.NAME with schema {is:list, of:any, max:N}.
+  N is existing schema max integer, nonnegative, checked u32 conversion.
+  N=0 is empty-only. Typed element schemas (number/boolean/text/object) and
+  shorthand schemas are rejected deterministically; full typed element
+  admission remains parent F1. InputSlotKind::List does not retain per-element
+  shape; of:any means every SlotValue is legal and item ExprTypeUnknown is
+  honest. This is a deliberate temporary source coverage limit.
 
-## 1. Input and Bound Extraction
+## PROPOSED COLD BOUND METADATA
+  Immutable direct-input declaration-origin map seeded before scratch
+  allocation, keyed by resolved actual input SlotIdx (bound to original
+  declaration name), storing N and Any item type. No default N, no implicit
+  MAX, no alias/copy/transform producer propagation; all non-direct/untracked
+  references reject. Read-only input slots never overwritten. ForEachStart.limit=N,
+  never at_once.
 
-- Input must be a declared list slot with a finite `max` bound in its schema.
-- Compiler extracts `max` via checked `u32` conversion; carries bound metadata alongside slot and type maps.
-- Missing or non-finite `max` is rejected at compile time. No implicit `u32::MAX` or policy fallback.
-- `max: 0` means empty-only; any non-empty list fails at runtime.
-- Derived or unproven list-bound references are unsupported and rejected.
+## CONCURRENCY CLOSED
+  at_once omitted or 1 (serial) supported. at_once=0 or at_once>1 -> CompileError::StepFieldShape
+  {step:index, field:"for_each.at_once", expected:"omitted or 1 until concurrent
+  for_each lowering is implemented"}. N=0 is cardinality, not at_once=0.
 
-## 2. Cardinality vs Concurrency
+## EXACT PROPOSED DIAGNOSTICS
+  Wrong shape / unbounded / numeric / derived input -> StepFieldShape
+  {step:index, field:"for_each.input", expected:"direct declared list<any> input
+  with finite schema max"}. Unknown named input -> UnknownReferenceName.
+  Typed list element schema other than any -> same StepFieldShape.
+  max > u32::MAX -> InvalidInputSchema {field:"inputs.max", expected:"list maximum
+  representable as u32"}. Invalid variable -> InvalidName {field:"for_each.variable",
+  value:actual}. Isolated item binding collision -> DuplicateOutputName {name:variable}.
+  Isolated ordinary duplicate body IDs -> DuplicateStepId {id:actual}.
+  Precedence: existing schemas, body shape/layout, named resolution/domain,
+  concurrency/name/collisions before node emission.
 
-- `ForEachStart.limit` receives the independent cardinality bound from schema `max`.
-- `at_once` is a separate concurrency parameter: omitted or `1` means explicitly SERIAL.
-- `at_once` values of `0` or `>1` are rejected with a precise compile error (existing or newly defined).
-- A list with multiple items is valid at `at_once: 1` given an independent finite `max`.
+## LEXICAL NAME DECISION
+  Reuse actual validate_public_name(field,value): lower ASCII <=64 + RESERVED_NAMES.
+  Forbid exact singular step root if shared validator allows it. RESERVED_NAMES
+  includes literal "item"; it remains invalid here. Legal example variable "entry"
+  exposes $entry via actual direct resolver bare key. Do NOT globally unreserve
+  "item" or claim universal $item. Require no capture/collision of item binding
+  with inherited outputs/step IDs or body set output/body ID. Parent maps
+  cloned/immutable; body local bindings don't escape.
 
+## UNKNOWN TYPE DECISION
+  Item is ExprTypeUnknown. Do results Unknown unless actual declared contract
+  typing wired (separate future). For NEW canonical ForEach body ONLY introduce
+  explicit scope-local strict compound operand policy before expression bytecode
+  emission: resolve each reference with actual resolver, use evolving local type
+  environment, reject compound arithmetic/boolean/comparison/helper expression
+  with Unknown operand via CompileError::TypeMismatch {field:"set.value",
+  expected:"known static operand type", found:"unknown"}. Opaque direct reference
+  Set copies and Do inputs allowed, propagate Unknown. No fake I64/typed list
+  guarantee. Known literal/outer typed scalar expressions still share existing
+  type checker. Ordinary unknown name fails UnknownReferenceName first.
 
-The new internal bound metadata is a proposal, not an existing `CanonicalScope` API. Key it by the resolved declared input `SlotIdx`, retain direct declaration origin and element type, and prevent aliases/derived lists from accidentally acquiring bounds. Shared default resource/boundedness validation remains mandatory; a large explicit maximum does not bypass policy.
+## LAYOUT / OWNERSHIP
+  N_body >= 1. Start at S, body at S+1..S+N_body, Next at S+N_body+1, done at
+  S+N_body+2 (actual next top-level). All checked usize/u16 arithmetic, no casts.
+  Start.output fresh iterator; fresh item; fresh output per syntactic body target.
+  Next.output item, iterator refs same private. Earlier body.next -> next body,
+  last body.next -> Next, Start/Next.body -> first body; both done -> actual
+  following step. Shared emit_scoped_flat_body supports Set/Do with scoped refs;
+  controls/nested primitives reject unchanged. No extra result/Join claim.
+  Slots allocated once/reused across iterations; lexical non-escape NOT physical
+  zeroing. Real runtime body entry re-arms ready/completion/value evidence and
+  refreshes item; body must actually execute again.
 
+## FUTURE ACCEPTANCE (PENDING)
+  public compile_workflow(&[u8] authored_source) -> unchanged compiled workflow
+  -> shared actual runtime. Direct list of any max 3, at_once 1: len 0/1/3 exact
+  iterations; max 0 empty accept / nonempty exact reject; len 4 max 3 ->
+  EngineError::IterationLimitExceeded {resource:"for_each_limit"} before any body
+  action. Two dependent opaque Set copies of $entry, actual registered Do using
+  last copy, exact ordered SlotValue/taint inputs/results/effect observations.
+  Runtime registered normal no-retry action with opaque/Any-compatible input
+  contract; each iteration actually ticketed/suspends/completes, distinct per
+  iteration tickets/current run identity. Do results need not be statically
+  typed/cast. Mixed SlotValue Any list valid; Unknown compound arithmetic rejected
+  at source; unknown names/lexical escape/collisions/overflow/concurrency negative
+  precise. Input list + taint preserved; body outputs recomputed in same private
+  slots. Changing N changes actual IR limit, semantic digest, whole budget
+  independent A.
 
-## 3. Proposed type contract
+PARENT F1 OPEN (NOT IN THIS SLICE)
+  Typed list element admission/schema artifact plumbing, of:number/boolean/text/object
+  support, ordered results/Join, concurrency >1, derived lists/arbitrary nested
+  controls, source action names, secrets/metadata/results/examples/deploy smoke
+  rollback. Do not mark .6 complete or authorize implementation until independent
+  review of exact contract.
 
-- Item ExprType derives from declared element schema: number→I64, boolean→Bool, text→Text, object→Object, any→Unknown.
-- Unsupported or nested element types are rejected by existing schema validation; no synthetic I64 for `any`.
-- No inferred Do result type; typed unsupported arithmetic fails closed at compile time.
-- All bindings are local and cloned; item and body locals do not persist after loop completion.
+## Delivery qualifications
 
-## 4. Proposed exact diagnostics using existing variants
+Root mechanically normalized local5090 V222 output and made its requested A=0 rejection explicit. Shared default resource/boundedness validation remains mandatory; a large explicit maximum does not bypass policy. Existing capability/idempotency policy remains in force for real Do acceptance, with a bounded no-retry fixture and precise undeclared-action/capability failure before effects. This adds no retry or recovery claim.
 
-- Missing, non-list, derived, or numeric ForEach input: `StepFieldShape{step, field:"for_each.input", expected:"direct declared list input with finite schema max"}`.
-- Unknown `$input.missing` fails resolver first as `UnknownReferenceName`; not converted to generic shape error.
-- `at_once` 0 or >1: `StepFieldShape{step, field:"for_each.at_once", expected:"omitted or 1 until concurrent for_each lowering is implemented"}`.
-- `max` > u32::MAX: `InvalidInputSchema{field:"inputs.max", expected:"list maximum representable as u32"}`.
-- Reserved/invalid variable name: `InvalidName{field:"for_each.variable", value:actual}`.
-- Item binding collides with inherited/local output names or step IDs: `DuplicateOutputName{name:variable}`.
-- Ordinary duplicate step IDs retain `DuplicateStepId`; negative/malformed bounds preserve prior schema diagnostics.
-
-## 5. Proposed lexical binding
-
-- Valid bare name bound as bare outputs key; direct `$variable` resolver strips dollar prefix.
-- Declared `$input.foo` keys retain dollar prefix in resolver namespace.
-- Item binding cannot be overwritten by body Set output or step ID, even if shared emitter permits shadowing.
-- Explicit proposed protection required before shared emission to prevent accidental binding capture.
-
-## 6. Proposed checked layout and ownership
-
-- For N≥1 flat body: Start at S; body at S+1 through S+N; Next at S+N+1; done at S+N+2 (actual next top-level start).
-- All offset/usize/u16 conversions checked via existing `StepIndexOutOfRange`/`checked_step_offset`.
-- Start.output is fresh iterator; fresh item; each body output fresh; Next.output is item; same iterator private reference.
-- Body last.next→Next, earlier.next→following body; Start/Next.body→first body.
-- No extra result slot or Join promise; empty body retains exact existing body rejection.
-- Nested primitive/control rejects retained; shared `emit_scoped_flat_body` supports flat Set/Do lexical local refs.
-- Actual runtime `body_entry` rearm must be exercised across repeated items.
-
-## 7. Required future acceptance behavior
-
-- `compile_workflow(&[u8])` → unchanged actual compiled workflow → real shared runtime.
-- len 0/1/3 with schema max 3 and at_once 1 includes all three full body iterations.
-- len 4/max 3 yields exact `EngineError::IterationLimitExceeded{resource:"for_each_limit"}`.
-- max 0 accepts empty list, rejects non-empty; input list/taint preserved, item refreshed each iteration.
-- Distinct private output slots; two dependent named Set outputs plus registered real Do each iteration.
-- Action input/result/effect exact ordered observations; out-of-scope references rejected.
-- Schema max changes digest/budget/IR limit independently at once; original numeric source topology fixtures migrate to valid bounded source only while retaining exact ownership/layout assertions.
-
-## 8. Delivery and limits
-
-- Contract author: actual local5090 responses V216/V219; root mechanically assembled these sections. Independent actual3090 review PENDING.
-- Implementation, behavioral tests, independent CODE review, independent TEST review and native acceptance are PENDING. No code has been changed for this contract.
-- Raw numeric helper APIs remain separate and unchanged. Existing canonical source fixtures may migrate only to valid bounded source while preserving exact original ownership/layout assertions.
-- Ordered output/Join, concurrency greater than one, derived lists, arbitrary nesting/control fields and source action-name resolution remain parent F1 work. This increment does not complete ForEach or F1.
-- No Go-skill/full proof-planning stage; formal-harness GOD RULES and the master acceptance contract remain in force.
+Source-fixture migrations must retain original ownership/layout/error intent with valid bounded source, including intentional use of a legal variable such as entry. No hand-built IR replacement, manual PC resets, ignored tests, weaker assertions, or gate waivers. Implementation, behavioral tests, independent CODE review and independent TEST review are PENDING. Rust contract -> implementation -> tests -> CODE review -> TEST review; no Go-skill/full proof-planning stage.
