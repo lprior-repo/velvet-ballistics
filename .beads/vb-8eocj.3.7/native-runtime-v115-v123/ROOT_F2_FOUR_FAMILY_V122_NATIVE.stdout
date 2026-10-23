@@ -1,0 +1,29 @@
+
+running 2 tests
+test engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body ... FAILED
+test engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body ... FAILED
+
+failures:
+
+---- engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body stdout ----
+
+thread 'engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body' (4146162) panicked at crates/vb_runtime/src/engine/drive/tests/cat_owned_rearm/expected.rs:58:5:
+assertion `left == right` failed
+  left: Clean
+ right: Secret
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body stdout ----
+
+thread 'engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body' (4146163) panicked at crates/vb_runtime/src/engine/drive/tests/cat_owned_rearm/expected.rs:58:5:
+assertion `left == right` failed
+  left: Clean
+ right: Secret
+
+
+failures:
+    engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body
+    engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 2002 filtered out; finished in 0.00s
+

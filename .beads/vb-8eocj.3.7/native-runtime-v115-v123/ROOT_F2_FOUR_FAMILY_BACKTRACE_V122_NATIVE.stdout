@@ -1,0 +1,80 @@
+
+running 2 tests
+test engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body ... FAILED
+test engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body ... FAILED
+
+failures:
+
+---- engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body stdout ----
+
+thread 'engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body' (4146758) panicked at crates/vb_runtime/src/engine/drive/tests/cat_owned_rearm/expected.rs:58:5:
+assertion `left == right` failed
+  left: Clean
+ right: Secret
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/52b6e2c208b73276ccb36ec0b68456913a801c96/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/52b6e2c208b73276ccb36ec0b68456913a801c96/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/52b6e2c208b73276ccb36ec0b68456913a801c96/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<vb_core::value::Taint, vb_core::value::Taint>
+             at /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panicking.rs:394:5
+   4: vb_runtime::engine::drive::tests::cat_owned_rearm::expected::list_slot
+             at ./src/engine/drive/tests/cat_owned_rearm/expected.rs:58:5
+   5: vb_runtime::engine::drive::tests::cat_owned_rearm::expected::collect_writes
+             at ./src/engine/drive/tests/cat_owned_rearm/expected.rs:141:16
+   6: vb_runtime::engine::drive::tests::cat_owned_rearm::expected::verify
+             at ./src/engine/drive/tests/cat_owned_rearm/expected.rs:25:28
+   7: vb_runtime::engine::drive::tests::cat_owned_rearm::check_case
+             at ./src/engine/drive/tests/cat_owned_rearm.rs:160:5
+   8: vb_runtime::engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body
+             at ./src/engine/drive/tests/cat_owned_rearm.rs:182:9
+   9: vb_runtime::engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body::{closure#0}
+             at ./src/engine/drive/tests/cat_owned_rearm.rs:180:65
+  10: <vb_runtime::engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+  11: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/52b6e2c208b73276ccb36ec0b68456913a801c96/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body stdout ----
+
+thread 'engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body' (4146759) panicked at crates/vb_runtime/src/engine/drive/tests/cat_owned_rearm/expected.rs:58:5:
+assertion `left == right` failed
+  left: Clean
+ right: Secret
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/52b6e2c208b73276ccb36ec0b68456913a801c96/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/52b6e2c208b73276ccb36ec0b68456913a801c96/library/core/src/panicking.rs:80:14
+   2: core::panicking::assert_failed_inner
+             at /rustc/52b6e2c208b73276ccb36ec0b68456913a801c96/library/core/src/panicking.rs:439:17
+   3: core::panicking::assert_failed::<vb_core::value::Taint, vb_core::value::Taint>
+             at /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panicking.rs:394:5
+   4: vb_runtime::engine::drive::tests::cat_owned_rearm::expected::list_slot
+             at ./src/engine/drive/tests/cat_owned_rearm/expected.rs:58:5
+   5: vb_runtime::engine::drive::tests::cat_owned_rearm::expected::collect_writes
+             at ./src/engine/drive/tests/cat_owned_rearm/expected.rs:141:16
+   6: vb_runtime::engine::drive::tests::cat_owned_rearm::expected::verify
+             at ./src/engine/drive/tests/cat_owned_rearm/expected.rs:25:28
+   7: vb_runtime::engine::drive::tests::cat_owned_rearm::check_case
+             at ./src/engine/drive/tests/cat_owned_rearm.rs:160:5
+   8: vb_runtime::engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body
+             at ./src/engine/drive/tests/cat_owned_rearm.rs:174:9
+   9: vb_runtime::engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body::{closure#0}
+             at ./src/engine/drive/tests/cat_owned_rearm.rs:172:64
+  10: <vb_runtime::engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+             at /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+  11: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/52b6e2c208b73276ccb36ec0b68456913a801c96/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body
+    engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 2002 filtered out; finished in 0.02s
+

@@ -1,0 +1,29 @@
+
+running 2 tests
+test engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body ... FAILED
+test engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body ... FAILED
+
+failures:
+
+---- engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body stdout ----
+
+thread 'engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body' (4141463) panicked at crates/vb_runtime/src/engine/drive/tests/cat_owned_rearm/expected.rs:41:5:
+assertion `left == right` failed: ForEach, productive=false
+  left: [StepStarted { step: StepIdx(3) }, SlotWritten { slot: SlotIdx(1), value: I64(7), taint: Secret, extra: None }, StepSucceeded { step: StepIdx(3), output: Some(SlotIdx(1)) }]
+ right: [StepStarted { step: StepIdx(3) }, StepSucceeded { step: StepIdx(3), output: Some(SlotIdx(1)) }]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body stdout ----
+
+thread 'engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body' (4141464) panicked at crates/vb_runtime/src/engine/drive/tests/cat_owned_rearm/expected.rs:41:5:
+assertion `left == right` failed: ForEach, productive=true
+  left: [StepStarted { step: StepIdx(3) }, SlotWritten { slot: SlotIdx(1), value: I64(9), taint: Secret, extra: None }, StepSucceeded { step: StepIdx(3), output: Some(SlotIdx(1)) }]
+ right: [StepStarted { step: StepIdx(3) }, SlotWritten { slot: SlotIdx(1), value: I64(9), taint: Secret, extra: None }, SlotWritten { slot: SlotIdx(2), value: List(ListId(2)), taint: Secret, extra: None }, StepSucceeded { step: StepIdx(3), output: Some(SlotIdx(1)) }]
+
+
+failures:
+    engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body
+    engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 1998 filtered out; finished in 0.00s
+

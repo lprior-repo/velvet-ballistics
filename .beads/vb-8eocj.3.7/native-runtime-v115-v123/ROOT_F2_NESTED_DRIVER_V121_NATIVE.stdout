@@ -1,0 +1,9 @@
+
+running 4 tests
+test engine::drive::tests::cat_nested_activation::test_entered_nested_start_rejects_before_effects ... ok
+test engine::drive::tests::cat_nested_activation::test_restored_cached_inner_body_and_control_reject_before_effects ... ok
+test engine::drive::tests::cat_nested_activation::test_skipped_pending_nested_region_allows_outer_rearm ... ok
+test engine::drive::tests::cat_nested_activation::test_zero_budget_preserves_precedence_at_nested_start ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 2000 filtered out; finished in 0.00s
+

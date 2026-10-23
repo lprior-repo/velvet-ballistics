@@ -1,0 +1,30 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090",
+  "argv": [
+    "env",
+    "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target",
+    "RUSTFLAGS=-Dwarnings",
+    "RUSTC_WRAPPER=",
+    "CARGO_BUILD_JOBS=2",
+    "cargo",
+    "clippy",
+    "-p",
+    "vb_core",
+    "-p",
+    "vb_compile",
+    "-p",
+    "vb_runtime",
+    "--lib",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "exit_code": 0,
+  "seconds": 0.842,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_F2_NESTED_CLIPPY_V119_NATIVE"
+}

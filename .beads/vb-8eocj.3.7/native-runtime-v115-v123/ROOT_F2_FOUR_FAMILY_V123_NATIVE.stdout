@@ -1,0 +1,7 @@
+
+running 2 tests
+test engine::drive::tests::cat_owned_rearm::exhausted_control_does_not_rearm_even_with_waiting_body ... ok
+test engine::drive::tests::cat_owned_rearm::productive_bad_later_state_does_not_reset_earlier_body ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 2002 filtered out; finished in 0.00s
+
