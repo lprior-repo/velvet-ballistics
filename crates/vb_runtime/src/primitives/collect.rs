@@ -743,9 +743,8 @@ fn write_collected_page(
     collector: SlotIdx,
     items: Box<[SlotValue]>,
 ) -> Result<ListId, EngineError> {
-    let page_id = store.insert_list(items)?;
-    run.write_slot(collector, SlotValue::List(page_id))?;
-    Ok(page_id)
+    let taint = run.read_taint(collector)?;
+    write_collected_page_with_taint(run, store, collector, items, taint)
 }
 
 fn write_collected_page_with_taint(
