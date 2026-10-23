@@ -9,6 +9,9 @@
 
 mod vb_f1_scalar_do_support;
 
+#[path = "vb_f1_canonical_scalar_do/do_action.rs"]
 mod do_action;
+#[path = "vb_f1_canonical_scalar_do/negative.rs"]
 mod negative;
+#[path = "vb_f1_canonical_scalar_do/positive.rs"]
 mod positive;
