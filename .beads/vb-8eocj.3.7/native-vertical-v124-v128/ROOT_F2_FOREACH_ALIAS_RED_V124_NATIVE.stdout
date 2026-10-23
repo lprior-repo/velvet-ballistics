@@ -1,0 +1,20 @@
+
+running 1 test
+test engine::drive::tests::cat_for_each_alias::forward_aliased_for_each_next_emits_actual_writes ... FAILED
+
+failures:
+
+---- engine::drive::tests::cat_for_each_alias::forward_aliased_for_each_next_emits_actual_writes stdout ----
+
+thread 'engine::drive::tests::cat_for_each_alias::forward_aliased_for_each_next_emits_actual_writes' (4173123) panicked at crates/vb_runtime/src/engine/drive/tests/cat_for_each_alias.rs:102:5:
+assertion `left == right` failed
+  left: [StepStarted { step: StepIdx(1) }, StepSucceeded { step: StepIdx(1), output: Some(SlotIdx(1)) }]
+ right: [StepStarted { step: StepIdx(1) }, SlotWritten { slot: SlotIdx(1), value: I64(9), taint: Secret, extra: None }, SlotWritten { slot: SlotIdx(2), value: List(ListId(2)), taint: Secret, extra: None }, StepSucceeded { step: StepIdx(1), output: Some(SlotIdx(1)) }]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    engine::drive::tests::cat_for_each_alias::forward_aliased_for_each_next_emits_actual_writes
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2004 filtered out; finished in 0.00s
+

@@ -1,0 +1,13 @@
+
+running 8 tests
+test mod_compile_lowering::part_04::canonical_repeat::tests::flat_repeat_layout_uses_actual_width_and_private_outputs ... ok
+test mod_compile_lowering::part_04::canonical_repeat::tests::nested_repeat_activation_remains_unsupported ... ok
+test mod_compile_lowering::part_04::canonical_repeat::tests::repeat_body_alias_does_not_escape ... ok
+test mod_compile_lowering::part_04::canonical_repeat::tests::repeat_body_controls_remain_unsupported ... ok
+test mod_compile_lowering::part_04::canonical_repeat::tests::repeat_do_reads_prior_local_and_feeds_following_expression ... ok
+test mod_compile_lowering::part_04::canonical_repeat::tests::repeat_expressions_bind_input_vars_and_prior_local_step ... ok
+test mod_compile_lowering::part_04::canonical_repeat::tests::repeat_forward_body_reference_is_rejected ... ok
+test mod_compile_lowering::part_04::canonical_repeat::tests::repeat_known_boolean_arithmetic_is_rejected ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 505 filtered out; finished in 0.01s
+

@@ -1,0 +1,8 @@
+
+running 3 tests
+test engine::drive::tests::cat_for_each_alias::for_each_next_body_done_alias_rejected_at_construction ... ok
+test engine::drive::tests::cat_for_each_alias::for_each_next_out_of_bounds_precedes_alias_check ... ok
+test engine::drive::tests::cat_for_each_alias::forward_distinct_for_each_next_emits_actual_writes ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 2004 filtered out; finished in 0.00s
+
