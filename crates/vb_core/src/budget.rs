@@ -16,7 +16,7 @@ pub struct WholeWorkflowBudget {
     pub max_total_slots: u64,
     /// Maximum concurrent branches (fanout).
     pub max_fanout: u16,
-    /// Maximum loop nesting depth.
+    /// Conservative structural nesting bound over reachable owners.
     pub max_nesting_depth: u16,
     /// Maximum executable step count per workflow admission.
     pub max_steps_executable: u32,
@@ -96,7 +96,6 @@ impl WholeWorkflowBudget {
             let max_total_steps = count_total_steps(nodes, entry, node_count)?;
 
             let mut max_fanout: u16 = 0;
-            let mut max_nesting_depth: u16 = 0;
             let mut max_action_tickets: u32 = 0;
             let mut max_parallel_in_flight: u16 = 0;
             let mut max_gather_pages: u32 = 0;
@@ -105,15 +104,13 @@ impl WholeWorkflowBudget {
             let mut max_together_branches: u16 = 0;
             let mut max_repeat_attempts: u16 = 0;
             let mut max_timer_entries: u32 = 0;
-            compute_fanout_and_depth(
+            compute_reachable_metrics(
                 nodes,
                 entry,
                 &mut visited,
                 &mut in_path,
                 node_count,
-                0,
                 &mut max_fanout,
-                &mut max_nesting_depth,
                 &mut max_action_tickets,
                 &mut max_parallel_in_flight,
                 &mut max_gather_pages,
@@ -124,6 +121,7 @@ impl WholeWorkflowBudget {
                 &mut max_timer_entries,
             )?;
 
+            let max_nesting_depth = compute_structural_depth(nodes, &visited)?;
             let max_total_slots = u64::from(contract.max_slots);
 
             // Phase 0 executes at most one step per runtime tick, so steps bound time.
@@ -188,6 +186,10 @@ pub(crate) enum BudgetTraversalError {
         step: StepIdx,
         target: StepIdx,
     },
+    BackwardScopeExit {
+        from: StepIdx,
+        to: StepIdx,
+    },
 }
 
 impl From<BudgetTraversalError> for WorkflowError {
@@ -200,6 +202,7 @@ impl From<BudgetTraversalError> for WorkflowError {
             }
             BudgetTraversalError::DepthOverflow { depth } => Self::DepthOverflow { depth },
             BudgetTraversalError::JumpCycle { step, target } => Self::JumpCycle { step, target },
+            BudgetTraversalError::BackwardScopeExit { from, to } => Self::BackwardEdge { from, to },
         }
     }
 }
@@ -1971,17 +1974,15 @@ fn insert_tracked_jump_edge(
     Ok(true)
 }
 
-/// Computes max fanout and max nesting depth via a DFS walk.
+/// Computes once-only resource metrics and reachability via a DFS walk.
 #[allow(clippy::too_many_arguments)]
-fn compute_fanout_and_depth(
+fn compute_reachable_metrics(
     nodes: &[crate::workflow::CompiledNode],
     current: StepIdx,
     visited: &mut [bool],
     in_path: &mut Vec<u16>,
     node_count: usize,
-    current_depth: u16,
     max_fanout: &mut u16,
-    max_nesting_depth: &mut u16,
     max_action_tickets: &mut u32,
     max_parallel_in_flight: &mut u16,
     max_gather_pages: &mut u32,
@@ -2016,7 +2017,6 @@ fn compute_fanout_and_depth(
         }
     }
 
-    let child_depth = compute_child_depth(&node.kind, current_depth, max_nesting_depth)?;
     update_fanout(&node.kind, max_fanout)?;
     update_workflow_metrics(
         &node.kind,
@@ -2038,15 +2038,13 @@ fn compute_fanout_and_depth(
 
     for target in targets {
         if find_node_position(nodes, target, node_count).is_ok() {
-            compute_fanout_and_depth(
+            compute_reachable_metrics(
                 nodes,
                 target,
                 visited,
                 in_path,
                 node_count,
-                child_depth,
                 max_fanout,
-                max_nesting_depth,
                 max_action_tickets,
                 max_parallel_in_flight,
                 max_gather_pages,
@@ -2063,6 +2061,63 @@ fn compute_fanout_and_depth(
     Ok(())
 }
 
+/// Cold structural upper bound for vb-8eocj.3.6, independent of DFS order.
+/// Reachable owner spans are half-open: an exit retires before a start there.
+/// Alternate-entry IR can conservatively overlap mutually exclusive owners;
+/// canonical source scopes have their exact lexical nesting depth.
+fn compute_structural_depth(
+    nodes: &[crate::workflow::CompiledNode],
+    visited: &[bool],
+) -> Result<u16, BudgetTraversalError> {
+    let mut owners = reachable_nesting_owners(nodes, visited)?;
+    owners.sort_unstable_by_key(|(node, _)| node.id);
+    let mut active_exits = bounded_tracking_vec(owners.len());
+    let mut max_depth = 0;
+    for (node, exit) in owners {
+        active_exits.retain(|end| *end > node.id);
+        let depth = u16::try_from(active_exits.len())
+            .map_err(|_| BudgetTraversalError::DepthOverflow { depth: u16::MAX })?;
+        compute_child_depth(&node.kind, depth, &mut max_depth)?;
+        active_exits.push(exit);
+    }
+    Ok(max_depth)
+}
+
+fn reachable_nesting_owners<'a>(
+    nodes: &'a [crate::workflow::CompiledNode],
+    visited: &[bool],
+) -> Result<Vec<(&'a crate::workflow::CompiledNode, StepIdx)>, BudgetTraversalError> {
+    let mut owners = bounded_tracking_vec(nodes.len());
+    for (index, node) in nodes.iter().enumerate() {
+        if visited.get(index).copied() != Some(true) {
+            continue;
+        }
+        let Some(exit) = nesting_scope_exit(&node.kind) else {
+            continue;
+        };
+        find_node_position(nodes, exit, nodes.len())?;
+        if exit <= node.id {
+            return Err(BudgetTraversalError::BackwardScopeExit {
+                from: node.id,
+                to: exit,
+            });
+        }
+        owners.push((node, exit));
+    }
+    Ok(owners)
+}
+
+fn nesting_scope_exit(kind: &CompiledNodeKind) -> Option<StepIdx> {
+    match kind {
+        CompiledNodeKind::ForEachStart { done, .. }
+        | CompiledNodeKind::CollectStart { done, .. }
+        | CompiledNodeKind::ReduceStart { done, .. }
+        | CompiledNodeKind::RepeatStart { done, .. } => Some(*done),
+        CompiledNodeKind::TogetherStart { join, .. } => Some(*join),
+        _ => None,
+    }
+}
+
 fn compute_child_depth(
     kind: &CompiledNodeKind,
     current_depth: u16,
@@ -2070,16 +2125,10 @@ fn compute_child_depth(
 ) -> Result<u16, BudgetTraversalError> {
     match kind {
         CompiledNodeKind::ForEachStart { .. }
-        | CompiledNodeKind::ForEachNext { .. }
         | CompiledNodeKind::CollectStart { .. }
-        | CompiledNodeKind::CollectPage { .. }
-        | CompiledNodeKind::CollectNext { .. }
         | CompiledNodeKind::ReduceStart { .. }
-        | CompiledNodeKind::ReduceNext { .. }
         | CompiledNodeKind::RepeatStart { .. }
-        | CompiledNodeKind::RepeatAttempt { .. }
-        | CompiledNodeKind::TogetherStart { .. }
-        | CompiledNodeKind::TogetherBranch { .. } => {
+        | CompiledNodeKind::TogetherStart { .. } => {
             let new_depth =
                 current_depth
                     .checked_add(1)
