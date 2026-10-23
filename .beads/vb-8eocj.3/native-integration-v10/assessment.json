@@ -1,0 +1,29 @@
+{
+  "status": "WIP_REJECT_RELEASE_ACCEPTANCE",
+  "parent_F1": "OPEN",
+  "V9": {
+    "passed": 8,
+    "failed": 11,
+    "ignored": 0,
+    "filtered": 0,
+    "exit": 101,
+    "scope": "reviewed Together branch0 actual output metadata delta only"
+  },
+  "V10": {
+    "passed": 12,
+    "failed": 7,
+    "ignored": 0,
+    "filtered": 0,
+    "exit": 101,
+    "scope": "Together delta plus local5090 owned ForEach/Reduce continuation rearm and completed loop span retirement"
+  },
+  "remaining": {
+    "Repeat_invalid_state_transition": 5,
+    "Reduce_actual_output_evidence_gap": 2
+  },
+  "frozen_test_sha256": "49bcff41f94eaed46dab343ea2b771e7b5aa70cb2151b2f91fc99792915d708e",
+  "independent_code_review": "local3090 review running on frozen f186338ce71c3298735a1ec25e0eede0173de0d0",
+  "full_F1_coverage": false,
+  "main_merge": false,
+  "no_oracle_or_generic_state_machine_weakening": true
+}

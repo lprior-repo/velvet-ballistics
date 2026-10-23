@@ -1,0 +1,11 @@
+{
+  "tested_candidate": "84b5707254de2660a3ac7a677164e281359c2f29",
+  "repeat_fix": "0645d54fe328294a363f93a5c938bc0a4cc62821",
+  "counter_metadata": "9bb4c49aaea5659c2bfd0f6c181b051001750c24",
+  "sha256": {
+    "crates/vb_core/src/workflow/mod.rs": "0b0d70a6d665c9f28c1cf4414406b53823186ddbd94efaefc95e7dd3622ded1a",
+    "crates/vb_runtime/src/engine/drive/transitions.rs": "6f1b4dafedc3e27d12efa7f0533c0fb3680ac67d852f39bef161683da1c86da0",
+    "crates/vb_compile/src/mod_compile_lowering/part_04.rs": "8946ef2e6933bb42e52dc1c3b558bd6493a83a260023cc8d1e3ea40223215fc5",
+    "crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs": "49bcff41f94eaed46dab343ea2b771e7b5aa70cb2151b2f91fc99792915d708e"
+  }
+}

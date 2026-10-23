@@ -1,0 +1,6 @@
+{
+  "crates/vb_compile/src/mod_compile_lowering/part_03.rs": "a5a629f6bc998be33289c4a402689d4ef1b7d4db7633757e1ffa31d097758a41",
+  "crates/vb_core/src/workflow/mod.rs": "ac09b3e031d74578d6cfaa3f7eb43be436daa4ea80d5d33b283815b705fb8e54",
+  "crates/vb_runtime/src/engine/drive/transitions.rs": "9892a6be4ec563a953dee3dee011f7a472742352fb6617abf48ae6558c85f3da",
+  "crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs": "49bcff41f94eaed46dab343ea2b771e7b5aa70cb2151b2f91fc99792915d708e"
+}

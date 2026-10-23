@@ -1,0 +1,29 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_core)
+error: unused import: `SlotIdx`
+    --> crates/vb_core/src/workflow/mod.rs:1839:58
+     |
+1839 |     use super::{CompiledNode, CompiledNodeKind, StepIdx, SlotIdx, WorkflowParts, WorkflowError};
+     |                                                          ^^^^^^^
+     |
+     = note: `-D unused-imports` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unreachable `pub` item
+    --> crates/vb_core/src/workflow/mod.rs:1863:5
+     |
+1863 |       pub fn validate(
+     |       ^--
+     |       |
+     |  _____help: consider restricting its visibility: `pub(super)`
+     | |
+1864 | |         parts: &WorkflowParts,
+1865 | |         check_index: usize,
+1866 | |         check: &CompiledNode,
+1867 | |         back_target: StepIdx,
+1868 | |     ) -> Result<(), WorkflowError> {
+     | |__________________________________^
+     |
+     = help: or consider exporting it for use by other crates
+     = note: requested on the command line with `-D unreachable-pub`
+
+error: could not compile `vb_core` (lib) due to 2 previous errors

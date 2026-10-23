@@ -12,6 +12,9 @@ use crate::engine::drive::recovery::DriveState;
 use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeEngineResult};
 use crate::primitives::collect::CollectStates;
 
+#[path = "reduce_evidence.rs"]
+mod reduce_evidence;
+
 /// Emits a `SlotWritten` evidence event for the just-finished step when
 /// the node has a collect-style output slot or a plain `output` slot.
 /// `read_slot` errors are recorded on the drive state (RE-004) and the
@@ -23,21 +26,16 @@ pub(crate) fn emit_slot_evidence(
     node: &CompiledNode,
     drive_state: &mut DriveState,
 ) -> RuntimeEngineResult<()> {
-    // RE-004: surface read_slot errors via `record_evidence_gap` rather
-    // than silently swallowing them. The previous `if let Ok(value) =
-    // run.read_slot(slot)` pattern hid both the slot evidence AND the
-    // underlying read error; explicit `match` makes the gap observable
-    // to the drive loop without changing the function's public
-    // success/failure contract (a read failure is recorded as a gap and
-    // the step continues — capacity overflows and other push_* errors
-    // still propagate via `?`).
-    //
-    // Black-hat FINDING-003: the slot is now threaded through the gap
-    // record so operators can see WHICH slot failed; the underlying
-    // `CoreError` variant is still collapsed to `Err(_)` because the
-    // only two callers (SlotOutOfBounds / SlotUninitialized) are
-    // surfaced identically at this layer and the variant will be
-    // classified at the report boundary.
+    // vb-8eocj.3: branch-specific evidence for Reduce nodes. Empty
+    // ReduceStart initializes the accumulator then jumps to done without
+    // writing the iterator slot. Exhausted ReduceNext jumps to done
+    // without writing the item slot. Emit evidence for the actual
+    // writes on each branch rather than unconditionally reading
+    // node.output.
+    if reduce_evidence::reduce_evidence(run, evidence, node, drive_state)?.is_some() {
+        return Ok(());
+    }
+
     if let Some(slot) = collect_written_slot(node) {
         match run.read_slot(slot) {
             Ok(value) => {

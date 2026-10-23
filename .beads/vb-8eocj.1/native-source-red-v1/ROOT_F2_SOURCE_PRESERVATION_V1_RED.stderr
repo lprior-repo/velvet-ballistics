@@ -1,0 +1,26 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_core)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/workspace_tests)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_storage)
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_yaml)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_compile)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_runtime)
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/xtask)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/vb_ipc)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-f2-native-red-v1/crates/velvet_ballistics)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.20s
+     Running tests/vb_f2_source_slot_preservation.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f2_source_slot_preservation-40d3cf0a98e4198a)
+Error: "unchanged source IR execution failed: Core(MissingOutputSlot { step: StepIdx(2) })"
+Error: "unchanged source IR execution failed: Core(MissingOutputSlot { step: StepIdx(2) })"
+Error: "
+thread 'together_entry_preserves_prior_source_values' (2164739) panicked at crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs:86:13:
+assertion `left == right` failed: source output 42 was clobbered
+  left: List(ListId(0))
+ right: I64(42)
+unchanged source IR execution failed: Core(MissingNextStep { step: StepIdx(4) })note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+"
+Error: "canonical source compilation failed: CompileErrors([Workflow(ImproperLoopNesting { inner: StepIdx(6), outer_done: StepIdx(5) })])"
+Error: "unchanged source IR execution failed: Core(MissingNextStep { step: StepIdx(4) })"
+Error: "canonical source compilation failed: CompileErrors([Workflow(ImproperLoopNesting { inner: StepIdx(8), outer_done: StepIdx(7) })])"
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_f2_source_slot_preservation`

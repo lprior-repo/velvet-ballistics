@@ -12,6 +12,12 @@ use vb_core::{
     WorkflowError, WorkflowParts,
 };
 
+#[derive(Clone, Copy)]
+pub(super) struct TogetherSlots {
+    accumulator: SlotIdx,
+    result: SlotIdx,
+}
+
 pub(super) fn lower_canonical_parallel(
     index: usize,
     id: StepIdx,
@@ -19,8 +25,9 @@ pub(super) fn lower_canonical_parallel(
     next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let accumulator = SlotIdx::new(0);
-    builder.record_slot(accumulator);
+    let accumulator = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let result = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let slots = TogetherSlots { accumulator, result };
     let join_offset = together_join_offset(branches).map_err(|e| CompileErrors(vec![e]))?;
     let join = checked_step_offset(id, join_offset, "parallel", "join")
         .map_err(|e| CompileErrors(vec![e]))?;
@@ -64,10 +71,10 @@ pub(super) fn lower_canonical_parallel(
             join,
         },
     });
-    emit_together_branches(id, branches, join, accumulator, index, builder)?;
+    emit_together_branches(id, branches, join, slots, index, builder)?;
     builder.push_node(CompiledNode {
         id: join,
-        output: Some(accumulator),
+        output: Some(result),
         next,
         error_slot: None,
         on_error: None,
@@ -93,7 +100,7 @@ pub(super) fn emit_together_branches(
     base: StepIdx,
     branches: &[crate::TogetherBranch],
     join: StepIdx,
-    accumulator: SlotIdx,
+    slots: TogetherSlots,
     diagnostic_step: usize,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
@@ -120,9 +127,20 @@ pub(super) fn emit_together_branches(
                 limit: usize::from(u16::MAX),
             }])
         })?;
+        let width = u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
+            .map_err(|_| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: branch_index }]))?;
+        let following_offset = cursor.checked_add(width).ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange { value: branch_index }])
+        })?;
+        let following = checked_step_offset(base, following_offset, "parallel", "next")
+            .map_err(|e| CompileErrors(vec![e]))?;
         builder.push_node(CompiledNode {
             id: branch_id,
-            output: None,
+            output: if branch_number == 0 {
+                None
+            } else {
+                Some(slots.result)
+            },
             next: None,
             error_slot: None,
             on_error: None,
@@ -130,30 +148,19 @@ pub(super) fn emit_together_branches(
                 branch: branch_number,
                 entry,
                 join,
-                accumulator,
+                accumulator: slots.accumulator,
             },
         });
         emit_single_body_set(
             &branch.steps,
             entry,
             diagnostic_step,
-            branch_id.to_slot(),
-            None,
+            slots.result,
+            Some(following),
             builder,
             true,
         )?;
-        let width =
-            u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
-                .map_err(|_| {
-                    CompileErrors(vec![CompileError::StepIndexOutOfRange {
-                        value: branch_index,
-                    }])
-                })?;
-        cursor = cursor.checked_add(width).ok_or_else(|| {
-            CompileErrors(vec![CompileError::StepIndexOutOfRange {
-                value: branch_index,
-            }])
-        })?;
+        cursor = following_offset;
     }
     Ok(())
 }
@@ -207,9 +214,11 @@ pub(super) fn lower_canonical_collect(
     // Offset 3: id + 3 (done), proved = id + 3 (L3 consecutive IDs)
     let done = checked_step_offset(id, 3, "collect", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.record_slot(source);
+    let collector_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let body_result = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
-        output: None,
+        output: Some(collector_slot),
         next: None,
         error_slot: None,
         on_error: None,
@@ -225,7 +234,7 @@ pub(super) fn lower_canonical_collect(
         collect.body,
         body_step,
         index,
-        SlotIdx::new(1),
+        body_result,
         Some(page),
         builder,
         false,
@@ -236,20 +245,20 @@ pub(super) fn lower_canonical_collect(
         next: None,
         error_slot: None,
         on_error: None,
-        kind: CompiledNodeKind::CollectPage {
-            collector_slot: source,
+        kind: CompiledNodeKind::CollectNext {
+            collector_slot,
             body: body_step,
             done,
         },
     });
     builder.push_node(CompiledNode {
         id: done,
-        output: None,
+        output: Some(body_result),
         next: collect.next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::CollectFinish {
-            collector_slot: source,
+            collector_slot,
         },
     });
     Ok(())

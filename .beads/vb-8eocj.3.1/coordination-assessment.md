@@ -1,0 +1,3 @@
+# Candidate scope assessment
+
+Local worker exit0; actual one-line RepeatCheck output metadata hunk exists. Backup source preserved outside candidate in cache, not shipped. Author report compilation claim is not the root strict native acceptance gate. Its Gate13 paragraph describes runtime evidence emission, not the dependency validator: actual Gate13 ignores equal read/output slot self edges; combined pipeline must be exercised without weakening dependency rules. Public driver counts and counter journal assertions, independent CODE/TEST review remain pending. No runtime, core, test or allocator changes in this lane.

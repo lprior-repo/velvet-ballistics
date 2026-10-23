@@ -21,6 +21,40 @@ impl SlotCompiler {
         Self::default()
     }
 
+    /// Allocates one slot above every previously recorded or reserved slot.
+    ///
+    /// The resulting slot count must remain representable as `u16`. In
+    /// particular, slot 65_535 cannot be allocated because its count would
+    /// be 65_536. Overflow leaves the builder unchanged.
+    pub fn allocate_slot(&mut self) -> Result<SlotIdx, CompileError> {
+        let index = self.slot_count()?;
+        let count = index
+            .checked_add(1)
+            .ok_or(CompileError::SlotIndexOutOfRange {
+                value: i64::from(index),
+            })?;
+        self.reserve_slots(count)?;
+        Ok(SlotIdx::new(index))
+    }
+
+    /// Reserves `[0, count)` without shrinking an existing reservation.
+    ///
+    /// Source-visible slots must be reserved before generated scratch slots
+    /// are allocated. Zero is a no-op; a failed check never changes state.
+    pub fn reserve_slots(&mut self, count: u16) -> Result<(), CompileError> {
+        if count == 0 {
+            return Ok(());
+        }
+        let current = self.slot_count()?;
+        if count > current {
+            let last = count
+                .checked_sub(1)
+                .ok_or(CompileError::SlotIndexOutOfRange { value: 0 })?;
+            self.record_slot(SlotIdx::new(last));
+        }
+        Ok(())
+    }
+
     /// Pushes a constant value and returns its index.
     pub fn push_constant(&mut self, value: ConstValue) -> Result<ConstIdx, CompileError> {
         let index = u16::try_from(self.constants.len()).map_err(|_| {

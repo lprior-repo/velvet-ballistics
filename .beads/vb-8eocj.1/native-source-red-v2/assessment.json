@@ -1,0 +1,9 @@
+{
+  "status": "RED",
+  "passed": 0,
+  "failed": 10,
+  "ignored": 0,
+  "implementation_applied": false,
+  "meaning": "Compiled source-route tests executed unchanged compiler IR. Failures include slot preservation plus independent missing iterator output/continuation/loop validation defects; not all are allocator failures.",
+  "raw_gate": "gate.json"
+}

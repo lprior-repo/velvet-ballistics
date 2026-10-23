@@ -1,0 +1,10 @@
+{
+  "native_candidate": "5ff172776b9e48a92c43aaf8fbad3c7208fecac7",
+  "repeat_author": "20806fcbc6de2a6928b31e9c2ff77241d937fbb1",
+  "sha256": {
+    "crates/vb_core/src/workflow/mod.rs": "79bfe201fc822f4eb4e41ccacef29aea2616ae04674d84c3ad3413cb576aefaf",
+    "crates/vb_runtime/src/engine/drive/transitions.rs": "6f1b4dafedc3e27d12efa7f0533c0fb3680ac67d852f39bef161683da1c86da0",
+    "crates/vb_compile/src/mod_compile_lowering/part_04.rs": "b93cdfb0c465d36e517d0cdcb02c8cb65462780f9ba617b78c422698ee67cd42",
+    "crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs": "49bcff41f94eaed46dab343ea2b771e7b5aa70cb2151b2f91fc99792915d708e"
+  }
+}

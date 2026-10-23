@@ -22,27 +22,39 @@ pub(super) fn lower_canonical_aggregate(
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let input = slot_from_text(input, index, "aggregate.input")?;
-    let accumulator = SlotIdx::new(1);
+    builder.record_slot(input);
+    let initial_input = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let next_item = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let iterator_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let accumulator = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
     let initial = parse_i64_field(initial, index, "aggregate.initial")?;
     let initial = builder
         .push_constant(ConstValue::I64(initial))
         .map_err(|e| CompileErrors(vec![e]))?;
+    let start =
+        checked_step_offset(id, 1, "aggregate", "start").map_err(|e| CompileErrors(vec![e]))?;
     let body_step =
-        checked_step_offset(id, 1, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
+        checked_step_offset(id, 2, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
     let next_step =
-        checked_step_offset(id, 2, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
+        checked_step_offset(id, 3, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
     let done =
-        checked_step_offset(id, 3, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
-    builder.record_slot(input);
-    builder.record_slot(accumulator);
+        checked_step_offset(id, 4, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
-        output: None,
+        output: Some(initial_input),
+        next: Some(start),
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::Copy { source: input },
+    });
+    builder.push_node(CompiledNode {
+        id: start,
+        output: Some(iterator_slot),
         next: None,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::ReduceStart {
-            input,
+            input: initial_input,
             accumulator,
             initial,
             body: body_step,
@@ -60,12 +72,12 @@ pub(super) fn lower_canonical_aggregate(
     )?;
     builder.push_node(CompiledNode {
         id: next_step,
-        output: None,
+        output: Some(next_item),
         next: None,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::ReduceNext {
-            iterator_slot: accumulator,
+            iterator_slot,
             accumulator,
             body: body_step,
             done,
@@ -73,7 +85,7 @@ pub(super) fn lower_canonical_aggregate(
     });
     builder.push_node(CompiledNode {
         id: done,
-        output: None,
+        output: Some(accumulator),
         next,
         error_slot: None,
         on_error: None,
@@ -99,14 +111,14 @@ pub(super) fn lower_canonical_repeat(
     }
     let body_step =
         checked_step_offset(id, 1, "repeat", "body").map_err(|e| CompileErrors(vec![e]))?;
-    let attempt =
-        checked_step_offset(id, 2, "repeat", "attempt").map_err(|e| CompileErrors(vec![e]))?;
+    let check =
+        checked_step_offset(id, 2, "repeat", "check").map_err(|e| CompileErrors(vec![e]))?;
     let done = checked_step_offset(id, 3, "repeat", "done").map_err(|e| CompileErrors(vec![e]))?;
-    let attempt_slot = SlotIdx::new(1);
-    builder.record_slot(attempt_slot);
+    let attempt_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
+    let body_result = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
-        output: None,
+        output: Some(attempt_slot),
         next: None,
         error_slot: None,
         on_error: None,
@@ -120,31 +132,30 @@ pub(super) fn lower_canonical_repeat(
         body,
         body_step,
         index,
-        SlotIdx::new(1),
-        Some(attempt),
+        body_result,
+        Some(check),
         builder,
         false,
     )?;
     builder.push_node(CompiledNode {
-        id: attempt,
+        id: check,
         output: Some(attempt_slot),
-        next: None,
+        next: Some(body_step),
         error_slot: None,
         on_error: None,
-        kind: CompiledNodeKind::RepeatAttempt {
+        kind: CompiledNodeKind::RepeatCheck {
             attempt_slot,
-            body: body_step,
             done,
         },
     });
     builder.push_node(CompiledNode {
         id: done,
-        output: None,
+        output: Some(body_result),
         next,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::RepeatFinish {
-            result: attempt_slot,
+            result: body_result,
         },
     });
     Ok(())
@@ -191,7 +202,11 @@ pub(super) fn lower_canonical_ask(
 ) -> Result<(), CompileErrors> {
     let prompt = slot_from_text(prompt, index, "ask.prompt")?;
     let timeout = optional_slot_from_text(timeout, index, "ask.timeout")?;
-    let answer = SlotIdx::new(2);
+    builder.record_slot(prompt);
+    if let Some(timeout_slot) = timeout {
+        builder.record_slot(timeout_slot);
+    }
+    let answer = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
     let mut nodes =
         lower_ask(id, prompt, answer, timeout, builder).map_err(|e| CompileErrors(vec![e]))?;
     let resume = nodes
@@ -273,10 +288,11 @@ pub(super) fn emit_single_body_set(
             })?;
             let input_slot = SlotIdx::new(input_idx);
             builder.record_slot(input_slot);
+            builder.record_slot(slot);
             // Construct Do node directly to avoid double-borrow of builder
             builder.push_node(CompiledNode {
                 id,
-                output: None,
+                output: Some(slot),
                 next,
                 error_slot: None,
                 on_error: None,

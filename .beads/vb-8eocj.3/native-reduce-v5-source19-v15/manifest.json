@@ -1,0 +1,20 @@
+{
+  "tested_candidate": "987029ba6517d56d74bb8a7445e405b1e30658eb",
+  "reduce_v5_frozen_source": "536a144f792404445610365067159d810bcea456",
+  "baseline_v14_receipt": "ffc106a68b816fa4a59e971f1ca70bd674064a16",
+  "sha256": {
+    "crates/vb_runtime/src/engine/drive/actions.rs": "39cdf5c5add3b737efdf827ea156517ea3bf561e0a7b2d6c5680b5c84b62e483",
+    "crates/vb_runtime/src/engine/drive/reduce_evidence.rs": "e05e11555f3044194b178b519466ae2cde433f2ce8148e041c283ba2bfeafa19",
+    "crates/workspace_tests/tests/vb_f2_source_slot_preservation.rs": "49bcff41f94eaed46dab343ea2b771e7b5aa70cb2151b2f91fc99792915d708e"
+  },
+  "execution": {
+    "passed": 19,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0,
+    "exit_code": 0,
+    "seconds": 1.773,
+    "warnings": "denied"
+  },
+  "scope": "Frozen19 bounded canonical source compile_workflow and emitted unchanged IR. Numeric list slot8 fixtures; Repeat max3; sequential bounded composites. Not full F1 or counter reset safety acceptance."
+}

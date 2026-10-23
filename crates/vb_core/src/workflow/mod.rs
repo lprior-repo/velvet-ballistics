@@ -1716,7 +1716,13 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
         })?);
 
         if let Some(next) = node.next {
-            validate_forward_target(next, index, current_id)?;
+            if matches!(node.kind, CompiledNodeKind::RepeatCheck { .. })
+                && next.as_usize() <= index
+            {
+                repeat_check_validate::validate(parts, index, node, next)?;
+            } else {
+                validate_forward_target(next, index, current_id)?;
+            }
         }
 
         if let Some(handler) = node.on_error {
@@ -1826,6 +1832,84 @@ fn validate_loop_done_only(done: StepIdx, ci: usize, cid: StepIdx) -> Result<(),
     validate_forward_target(done, ci, cid)
 }
 
+/// Validates RepeatCheck backward next-edges against RepeatStart loop owners.
+/// RepeatCheck.next must target the owning RepeatStart's body step, and the
+/// check must match the owner's attempt slot and done target.
+mod repeat_check_validate {
+    use super::{CompiledNode, CompiledNodeKind, StepIdx, WorkflowParts, WorkflowError};
+
+    /// Finds the nearest active enclosing structured start.
+    /// Active means the structured start's done/join target extends beyond check_index.
+    fn nearest_active_owner(
+        parts: &WorkflowParts,
+        check_index: usize,
+    ) -> Option<(usize, &CompiledNode)> {
+        for (i, node) in parts.nodes.iter().take(check_index).enumerate().rev() {
+            let end_target = match &node.kind {
+                CompiledNodeKind::ForEachStart { done, .. }
+                | CompiledNodeKind::CollectStart { done, .. }
+                | CompiledNodeKind::ReduceStart { done, .. }
+                | CompiledNodeKind::RepeatStart { done, .. } => *done,
+                CompiledNodeKind::TogetherStart { join, .. } => *join,
+                _ => continue,
+            };
+            if end_target.as_usize() > check_index {
+                return Some((i, node));
+            }
+        }
+        None
+    }
+
+    pub(super) fn validate(
+        parts: &WorkflowParts,
+        check_index: usize,
+        check: &CompiledNode,
+        back_target: StepIdx,
+    ) -> Result<(), WorkflowError> {
+        let Some((owner_index, owner)) = nearest_active_owner(parts, check_index) else {
+            return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target });
+        };
+        if !matches!(owner.kind, CompiledNodeKind::RepeatStart { .. }) {
+            return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target });
+        }
+        let owner_body = match &owner.kind {
+            CompiledNodeKind::RepeatStart { body, .. } => *body,
+            _ => return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target }),
+        };
+        let owner_done = match &owner.kind {
+            CompiledNodeKind::RepeatStart { done, .. } => *done,
+            _ => return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target }),
+        };
+        let check_attempt = match &check.kind {
+            CompiledNodeKind::RepeatCheck { attempt_slot, .. } => *attempt_slot,
+            _ => return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target }),
+        };
+        let check_done = match &check.kind {
+            CompiledNodeKind::RepeatCheck { done, .. } => *done,
+            _ => return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target }),
+        };
+        if owner.output != Some(check_attempt) {
+            return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target });
+        }
+        if owner_body != back_target {
+            return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target });
+        }
+        if owner_done != check_done {
+            return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target });
+        }
+        if owner_index >= check_index {
+            return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target });
+        }
+        if owner_body.as_usize() >= check_index {
+            return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target });
+        }
+        if check_index >= owner_done.as_usize() {
+            return Err(WorkflowError::BackwardEdge { from: check.id, to: back_target });
+        }
+        Ok(())
+    }
+}
+
 /// Validates that both `body` and `done` edges of a `*Start` loop node point
 /// strictly forward from the current node. `body` here is the entry into the
 /// loop body (a forward edge); only `*Next` carries the back-edge in its
@@ -1893,6 +1977,15 @@ fn push_loop_span(
         return Ok(());
     };
 
+    // Retire finished spans BEFORE the nesting comparison so that
+    // sequential loops are not rejected as improperly nested.
+    while spans
+        .last()
+        .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
+    {
+        spans.pop();
+    }
+
     match spans.last().copied() {
         Some((_outer_start, outer_done)) if done_idx > outer_done => {
             return Err(WorkflowError::ImproperLoopNesting {
@@ -1909,13 +2002,6 @@ fn push_loop_span(
             });
         }
         _ => {}
-    }
-
-    while spans
-        .last()
-        .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
-    {
-        spans.pop();
     }
 
     spans.push((ci, done_idx));
