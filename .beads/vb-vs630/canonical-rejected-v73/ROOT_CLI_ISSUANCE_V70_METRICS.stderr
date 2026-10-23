@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 872, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 777, in main
+    check_clean(root)
+    ~~~~~~~~~~~^^^^^^
+  File "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/.beads/vb-j3e3s/collect_benchmark_evidence.py", line 472, in check_clean
+    raise CollectorError("dirty benchmark/source/toolchain/Cargo/config/budget inputs: "
+                         + ", ".join(dirty[:20]))
+CollectorError: dirty benchmark/source/toolchain/Cargo/config/budget inputs: untracked:xtask/target/CACHEDIR.TAG, untracked:xtask/target/debug/.cargo-artifact-lock, untracked:xtask/target/debug/.cargo-build-lock, untracked:xtask/target/debug/.cargo-lock, untracked:xtask/target/debug/.fingerprint/adler2-901dfda43ff479d5/dep-lib-adler2, untracked:xtask/target/debug/.fingerprint/adler2-901dfda43ff479d5/invoked.timestamp, untracked:xtask/target/debug/.fingerprint/adler2-901dfda43ff479d5/lib-adler2, untracked:xtask/target/debug/.fingerprint/adler2-901dfda43ff479d5/lib-adler2.json, untracked:xtask/target/debug/.fingerprint/ahash-17ac34ded60a4298/build-script-build-script-build, untracked:xtask/target/debug/.fingerprint/ahash-17ac34ded60a4298/build-script-build-script-build.json, untracked:xtask/target/debug/.fingerprint/ahash-17ac34ded60a4298/dep-build-script-build-script-build, untracked:xtask/target/debug/.fingerprint/ahash-17ac34ded60a4298/invoked.timestamp, untracked:xtask/target/debug/.fingerprint/ahash-68a1cef86c4d1ba6/run-build-script-build-script-build, untracked:xtask/target/debug/.fingerprint/ahash-68a1cef86c4d1ba6/run-build-script-build-script-build.json, untracked:xtask/target/debug/.fingerprint/ahash-c0fbee221a2400a6/dep-lib-ahash, untracked:xtask/target/debug/.fingerprint/ahash-c0fbee221a2400a6/invoked.timestamp, untracked:xtask/target/debug/.fingerprint/ahash-c0fbee221a2400a6/lib-ahash, untracked:xtask/target/debug/.fingerprint/ahash-c0fbee221a2400a6/lib-ahash.json, untracked:xtask/target/debug/.fingerprint/aho-corasick-3c3adc9c32988c84/dep-lib-aho_corasick, untracked:xtask/target/debug/.fingerprint/aho-corasick-3c3adc9c32988c84/invoked.timestamp

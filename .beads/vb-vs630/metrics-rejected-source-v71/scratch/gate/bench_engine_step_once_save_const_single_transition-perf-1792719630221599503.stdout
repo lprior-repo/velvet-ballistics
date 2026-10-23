@@ -1,0 +1,5 @@
+runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...
+                        time:   [16.460 ns 16.592 ns 16.664 ns]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low severe
+

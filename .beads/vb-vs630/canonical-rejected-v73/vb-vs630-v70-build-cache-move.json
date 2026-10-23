@@ -1,0 +1,1 @@
+{"reason": "unchanged collector correctly rejected ignored nested xtask/target as untracked inputs", "action": "reversible move only, no deletion or gate edit", "from": "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/xtask/target", "to": "/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/xtask-preserved-v70"}

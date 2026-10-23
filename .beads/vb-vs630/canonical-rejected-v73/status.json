@@ -1,0 +1,9 @@
+{
+  "canonical": "FAILED_INTERRUPTED_RETAINED",
+  "specific_failure": "source-length categorizes input issuance_test_support338>300 production filename; noexceptionauthorized/added",
+  "CI": "rootstoppedown37processtreeafteractualfailure;reportstatusinterrupted;notfullsuitepass",
+  "metrics_v70": "failed0.402s dirtynestedxtaskbuildcache, notbenchmarkbehavior",
+  "metrics_v71": "PASS121.695s3actualrecords4df9 oldsource beforehelper-split; rawretained finalnewsourcecollectionrequired",
+  "old_source": "4df9e4f196e3047a280cb2d1755488afd1bfd60b",
+  "repair": "local5090splithelper genuine module <=300; pending"
+}

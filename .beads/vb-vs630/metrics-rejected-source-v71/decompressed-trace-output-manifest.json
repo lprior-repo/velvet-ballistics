@@ -1,0 +1,29 @@
+{
+  "derived_outputs": [
+    {
+      "path": ".beads/vb-vs630/metrics-rejected-source-v71/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792719632622623924-zstd.stdout",
+      "bytes": 17505888,
+      "sha256": "924375be7a0ea76f65b5c013f39522c2572b3ec3001c9888502c69bea9aefb60",
+      "local_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v71/scratch/gate/bench_engine_step_once_save_const_single_transition-heaptrack-1792719632622623924-zstd.stdout",
+      "regenerate": "zstd -dc retained corresponding scratch/heaptrack/ht-<metric>.zst",
+      "reason": "redundant decompressed binary trace output; full original compressed trace retained in Git; originals also retained locally"
+    },
+    {
+      "path": ".beads/vb-vs630/metrics-rejected-source-v71/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792719658299194185-zstd.stdout",
+      "bytes": 17082744,
+      "sha256": "0e9dd4d76fab962b1371e0c6a4e29cec2ecbc6c96abb2c7a2a84c72362e8aac0",
+      "local_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v71/scratch/gate/engine_run_until_blocked_budget_10_small_workflow-heaptrack-1792719658299194185-zstd.stdout",
+      "regenerate": "zstd -dc retained corresponding scratch/heaptrack/ht-<metric>.zst",
+      "reason": "redundant decompressed binary trace output; full original compressed trace retained in Git; originals also retained locally"
+    },
+    {
+      "path": ".beads/vb-vs630/metrics-rejected-source-v71/scratch/gate/ipc_frame_decode-heaptrack-1792719642475725773-zstd.stdout",
+      "bytes": 210370453,
+      "sha256": "11006af0f1425126690fb2591cf14e67d35699a67c4f8d9da7148ecaa4ab37ce",
+      "local_original": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-vs630-metrics-v71/scratch/gate/ipc_frame_decode-heaptrack-1792719642475725773-zstd.stdout",
+      "regenerate": "zstd -dc retained corresponding scratch/heaptrack/ht-<metric>.zst",
+      "reason": "redundant decompressed binary trace output; full original compressed trace retained in Git; originals also retained locally"
+    }
+  ],
+  "remote_rejection": "GH001 oversized200.62MiB decompressed output rejected; oldcommit b51 neverpublished; no originaldata deleted"
+}
