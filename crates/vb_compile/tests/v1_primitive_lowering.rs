@@ -375,7 +375,7 @@ fn assert_two_set_repeat_contract(workflow: &CompiledWorkflow) -> Result<(), Str
         return Err(format!("slot_count: expected 4, got {}", parts.slot_count));
     }
     if parts.entry != StepIdx::new(0) {
-        return Err(format!("entry: expected 0, got {}", parts.entry));
+        return Err(format!("entry: expected 0, got {}", parts.entry.get()));
     }
     if parts.nodes.len() != 6 {
         return Err(format!("nodes: expected 6, got {}", parts.nodes.len()));
@@ -397,10 +397,10 @@ fn assert_two_set_repeat_contract(workflow: &CompiledWorkflow) -> Result<(), Str
     assert_finish_node(&parts.nodes, 5, 0)?;
     for node in &parts.nodes {
         if node.error_slot.is_some() {
-            return Err(format!("node {} has error_slot", node.id));
+            return Err(format!("node {} has error_slot", node.id.get()));
         }
         if node.on_error.is_some() {
-            return Err(format!("node {} has on_error", node.id));
+            return Err(format!("node {} has on_error", node.id.get()));
         }
     }
     assert_two_set_repeat_control(&parts.nodes)?;
@@ -438,7 +438,7 @@ fn assert_two_set_repeat_control(nodes: &[CompiledNode]) -> Result<(), String> {
         ),
     ];
     for (id, kind, output, next) in specs {
-        let actual = node_at(nodes, id)?;
+        let actual = node_at(nodes, usize::from(id))?;
         let expected = CompiledNode {
             id: StepIdx::new(id),
             kind,
