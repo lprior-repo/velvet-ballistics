@@ -1,0 +1,33 @@
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:1: //! Fuzz target for YAML compiler with strict profile validation.
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:2: //!
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:3: //! Command: cargo fuzz run vb_f04l_yaml_compiler_compile -- -max_len=65536 -runs=100000
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:4: 
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:5: #![no_main]
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:6: 
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:7: use libfuzzer_sys::fuzz_target;
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:8: use vb_compile::{CompileError, YamlCompiler};
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:9: 
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:10: fuzz_target!(|data: &[u8]| {
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:11:     let result = YamlCompiler::default().compile(data);
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:12:     if let Err(errors) = result {
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:13:         for error in errors.iter() {
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:14:             match error {
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:15:                 CompileError::CanonicalYaml { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:16:                 | CompileError::EmptySteps
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:17:                 | CompileError::UnsupportedTopLevelDeclaration { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:18:                 | CompileError::UnsupportedTopLevelResult
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:19:                 | CompileError::UnsupportedStepControlField { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:20:                 | CompileError::DuplicateStepId { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:21:                 | CompileError::DuplicateOutputName { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:22:                 | CompileError::UnknownOutputName { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:23:                 | CompileError::StepFieldShape { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:24:                 | CompileError::StepIndexOutOfRange { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:25:                 | CompileError::SlotIndexOutOfRange { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:26:                 | CompileError::PrimitiveLoweringLimitExceeded { .. }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:27:                 | CompileError::Workflow(_)
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:28:                 | CompileError::UnsupportedStepPrimitive { .. } => {}
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:29:                 _ => {}
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:30:             }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:31:         }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:32:     }
+fuzz/fuzz_targets/vb_f04l_yaml_compiler_compile.rs:33: });

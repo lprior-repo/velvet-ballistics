@@ -1,0 +1,51 @@
+crates/workspace_tests/src/test_util/seed.rs:1: use rand::rngs::StdRng;
+crates/workspace_tests/src/test_util/seed.rs:2: use rand::{Rng, SeedableRng};
+crates/workspace_tests/src/test_util/seed.rs:3: 
+crates/workspace_tests/src/test_util/seed.rs:4: /// A fixed-size byte array generated deterministically from a u64 seed.
+crates/workspace_tests/src/test_util/seed.rs:5: #[derive(Debug, Clone, PartialEq, Eq)]
+crates/workspace_tests/src/test_util/seed.rs:6: pub struct SeededBytes<const N: usize> {
+crates/workspace_tests/src/test_util/seed.rs:7:     pub bytes: [u8; N],
+crates/workspace_tests/src/test_util/seed.rs:8: }
+crates/workspace_tests/src/test_util/seed.rs:9: 
+crates/workspace_tests/src/test_util/seed.rs:10: impl<const N: usize> SeededBytes<N> {
+crates/workspace_tests/src/test_util/seed.rs:11:     /// Generate `N` deterministic bytes from a `u64` seed.
+crates/workspace_tests/src/test_util/seed.rs:12:     ///
+crates/workspace_tests/src/test_util/seed.rs:13:     /// # Errors
+crates/workspace_tests/src/test_util/seed.rs:14:     ///
+crates/workspace_tests/src/test_util/seed.rs:15:     /// Returns `None` only if `N` is zero (empty array). For all other `N`
+crates/workspace_tests/src/test_util/seed.rs:16:     /// the operation is infallible.
+crates/workspace_tests/src/test_util/seed.rs:17:     pub fn new(seed: u64) -> Option<Self> {
+crates/workspace_tests/src/test_util/seed.rs:18:         if N == 0 {
+crates/workspace_tests/src/test_util/seed.rs:19:             return None;
+crates/workspace_tests/src/test_util/seed.rs:20:         }
+crates/workspace_tests/src/test_util/seed.rs:21:         let mut rng = StdRng::seed_from_u64(seed);
+crates/workspace_tests/src/test_util/seed.rs:22:         let mut bytes = [0u8; N];
+crates/workspace_tests/src/test_util/seed.rs:23:         rng.fill(bytes.as_mut_slice());
+crates/workspace_tests/src/test_util/seed.rs:24:         Some(Self { bytes })
+crates/workspace_tests/src/test_util/seed.rs:25:     }
+crates/workspace_tests/src/test_util/seed.rs:26: }
+crates/workspace_tests/src/test_util/seed.rs:27: 
+crates/workspace_tests/src/test_util/seed.rs:28: #[cfg(test)]
+crates/workspace_tests/src/test_util/seed.rs:29: mod tests {
+crates/workspace_tests/src/test_util/seed.rs:30:     use super::*;
+crates/workspace_tests/src/test_util/seed.rs:31: 
+crates/workspace_tests/src/test_util/seed.rs:32:     #[test]
+crates/workspace_tests/src/test_util/seed.rs:33:     fn seeded_bytes_determinism() {
+crates/workspace_tests/src/test_util/seed.rs:34:         let a = SeededBytes::<32>::new(42).unwrap();
+crates/workspace_tests/src/test_util/seed.rs:35:         let b = SeededBytes::<32>::new(42).unwrap();
+crates/workspace_tests/src/test_util/seed.rs:36:         assert_eq!(a.bytes, b.bytes);
+crates/workspace_tests/src/test_util/seed.rs:37:     }
+crates/workspace_tests/src/test_util/seed.rs:38: 
+crates/workspace_tests/src/test_util/seed.rs:39:     #[test]
+crates/workspace_tests/src/test_util/seed.rs:40:     fn seeded_bytes_different_seeds() {
+crates/workspace_tests/src/test_util/seed.rs:41:         let a = SeededBytes::<32>::new(42).unwrap();
+crates/workspace_tests/src/test_util/seed.rs:42:         let b = SeededBytes::<32>::new(43).unwrap();
+crates/workspace_tests/src/test_util/seed.rs:43:         assert_ne!(a.bytes, b.bytes);
+crates/workspace_tests/src/test_util/seed.rs:44:     }
+crates/workspace_tests/src/test_util/seed.rs:45: 
+crates/workspace_tests/src/test_util/seed.rs:46:     #[test]
+crates/workspace_tests/src/test_util/seed.rs:47:     fn seeded_bytes_zero_capacity() {
+crates/workspace_tests/src/test_util/seed.rs:48:         let result = SeededBytes::<0>::new(42);
+crates/workspace_tests/src/test_util/seed.rs:49:         assert!(result.is_none());
+crates/workspace_tests/src/test_util/seed.rs:50:     }
+crates/workspace_tests/src/test_util/seed.rs:51: }
