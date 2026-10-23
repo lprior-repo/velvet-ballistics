@@ -1912,7 +1912,7 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
+                output: Some(SlotIdx::new(2)),
                 next: None,
                 on_error: None,
                 error_slot: None,
@@ -2083,7 +2083,7 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
+                output: Some(SlotIdx::new(4)),
                 next: None,
                 on_error: None,
                 error_slot: None,
@@ -2097,7 +2097,7 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
+                output: Some(SlotIdx::new(3)),
                 next: None,
                 on_error: None,
                 error_slot: None,
