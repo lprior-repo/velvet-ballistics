@@ -1,0 +1,22 @@
+{
+  "publication_kind": "original reviewer-authored reports, byte-preserving coordinator transfer",
+  "coordinator_thread": "01a157af-f03a-75e8-83ee-04ea600b80da",
+  "receiving_liaison_thread": "01a16629-38a8-734a-aac8-b04a9e9250c1",
+  "reports": [
+    {
+      "file": "original-cloud-CODE.md",
+      "author": "/root/review_velvet_f2_composites",
+      "bytes": 15478,
+      "sha256": "5aa1c2775d4dc25ca1b730fe1ecf3bf727fb356a2520f84ba15248ad12e2d2bd"
+    },
+    {
+      "file": "original-cloud-TEST.md",
+      "author": "/root/verify_velvet_f1_acceptance",
+      "bytes": 34499,
+      "sha256": "5ff9b8deaa96b818d5c094cf295ec3bd0743669f93293226ddad6f3565d88038"
+    }
+  ],
+  "transport": "HTML/XML entity decoding only; exact supplied byte counts and SHA256 matched",
+  "signature_limit": "Task identity and exact transfer hashes; no Git or machine cryptographic attestation",
+  "historical_scope": "Reports preserve original author-time V196 pending/no-verdict wording. Later V196 evidence is assessed separately, without rewriting these originals."
+}

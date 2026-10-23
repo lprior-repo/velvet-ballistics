@@ -1,0 +1,3446 @@
+[
+  {
+    "id": 1,
+    "property": "core::ub_checks::is_valid_allocation_size.assertion.1",
+    "status": "UNREACHABLE",
+    "description": "\"attempt to divide by zero\""
+  },
+  {
+    "id": 2,
+    "property": "core::ub_checks::is_valid_allocation_size.arithmetic_overflow.1",
+    "status": "SUCCESS",
+    "description": "\"attempt to divide by zero\""
+  },
+  {
+    "id": 3,
+    "property": "kani_lower_repeat::assert_start_node.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"RepeatStart id must equal input id\""
+  },
+  {
+    "id": 4,
+    "property": "kani_lower_repeat::assert_start_node.assertion.2",
+    "status": "SUCCESS",
+    "description": "\"RepeatStart output is attempt slot\""
+  },
+  {
+    "id": 5,
+    "property": "kani_lower_repeat::assert_start_node.assertion.3",
+    "status": "SUCCESS",
+    "description": "\"RepeatStart next is None\""
+  },
+  {
+    "id": 6,
+    "property": "kani_lower_repeat::assert_start_node.assertion.4",
+    "status": "SUCCESS",
+    "description": "\"RepeatStart error_slot is None\""
+  },
+  {
+    "id": 7,
+    "property": "kani_lower_repeat::assert_start_node.assertion.5",
+    "status": "SUCCESS",
+    "description": "\"RepeatStart on_error is None\""
+  },
+  {
+    "id": 8,
+    "property": "kani_lower_repeat::assert_start_node.assertion.6",
+    "status": "UNREACHABLE",
+    "description": "\"first node must be RepeatStart\""
+  },
+  {
+    "id": 9,
+    "property": "kani_lower_repeat::assert_start_node.assertion.7",
+    "status": "SUCCESS",
+    "description": "\"RepeatStart max_attempts preserved\""
+  },
+  {
+    "id": 10,
+    "property": "kani_lower_repeat::assert_start_node.assertion.8",
+    "status": "SUCCESS",
+    "description": "\"RepeatStart body preserved\""
+  },
+  {
+    "id": 11,
+    "property": "kani_lower_repeat::assert_start_node.assertion.9",
+    "status": "SUCCESS",
+    "description": "\"RepeatStart done preserved\""
+  },
+  {
+    "id": 12,
+    "property": "core::panicking::panic_nounwind_fmt::runtime.unsupported_construct.1",
+    "status": "SUCCESS",
+    "description": "\"call to foreign \"Rust\" function `_RNvCs1hStedNDpZ2_7___rustc17rust_begin_unwind` is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/new/choose\""
+  },
+  {
+    "id": 13,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<str>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 14,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<str>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `align_of_val`\""
+  },
+  {
+    "id": 15,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<str>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `align_of_val` for extern types\""
+  },
+  {
+    "id": 16,
+    "property": "kani_lower_repeat::verify_success_slot_count.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 17,
+    "property": "kani_lower_repeat::verify_success_slot_count.assertion.1",
+    "status": "UNREACHABLE",
+    "description": "\"slot_count must succeed after successful lower_repeat\""
+  },
+  {
+    "id": 18,
+    "property": "kani_lower_repeat::verify_success_slot_count.assertion.2",
+    "status": "SUCCESS",
+    "description": "\"slot count must equal prefix + 2 on success\""
+  },
+  {
+    "id": 19,
+    "property": "kani_lower_repeat::verify_success_slot_count.assertion.3",
+    "status": "UNREACHABLE",
+    "description": "\"prefix <= 65533 guarantees prefix+2 fits in u16\""
+  },
+  {
+    "id": 20,
+    "property": "kani_lower_repeat::verify_failure_path.assertion.1",
+    "status": "UNREACHABLE",
+    "description": "\"expected SlotIndexOutOfRange error\""
+  },
+  {
+    "id": 21,
+    "property": "kani_lower_repeat::verify_failure_path.assertion.2",
+    "status": "SUCCESS",
+    "description": "\"overflow error must report value 65535\""
+  },
+  {
+    "id": 22,
+    "property": "kani_lower_repeat::verify_failure_path.assertion.3",
+    "status": "UNREACHABLE",
+    "description": "\"lower_repeat should fail for prefix > 65533\""
+  },
+  {
+    "id": 23,
+    "property": "kani_lower_repeat::verify_failure_path.assertion.4",
+    "status": "UNREACHABLE",
+    "description": "\"slot_count must succeed after failed lower_repeat\""
+  },
+  {
+    "id": 24,
+    "property": "kani_lower_repeat::verify_failure_path.assertion.5",
+    "status": "SUCCESS",
+    "description": "\"slot count must be 65535 on failure\""
+  },
+  {
+    "id": 25,
+    "property": "kani_lower_repeat::verify_failure_path.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 26,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::allocate_slot.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 27,
+    "property": "__rust_dealloc.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"Alignment is power of two\""
+  },
+  {
+    "id": 28,
+    "property": "__rust_dealloc.assertion.2",
+    "status": "SUCCESS",
+    "description": "\"rust_dealloc must be called on an object whose allocated size matches its layout\""
+  },
+  {
+    "id": 29,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<str>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 30,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<str>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `size_of_val`\""
+  },
+  {
+    "id": 31,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<str>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `size_of_val` for extern types\""
+  },
+  {
+    "id": 32,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::reserve_slots.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 33,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 34,
+    "property": "kani_lower_repeat::verify_success_nodes.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 35,
+    "property": "kani_lower_repeat::verify_success_nodes.assertion.1",
+    "status": "UNREACHABLE",
+    "description": "\"successful allocation prefix has a result slot\""
+  },
+  {
+    "id": 36,
+    "property": "kani_lower_repeat::verify_success_nodes.assertion.2",
+    "status": "UNREACHABLE",
+    "description": "\"lower_repeat must emit exactly three nodes\""
+  },
+  {
+    "id": 37,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 38,
+    "property": "core::num::<impl u16>::checked_sub.arithmetic_overflow.1",
+    "status": "SUCCESS",
+    "description": "\"attempt to compute `unchecked_sub` which would overflow\""
+  },
+  {
+    "id": 39,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::StepIdx]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 40,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::StepIdx]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `align_of_val`\""
+  },
+  {
+    "id": 41,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::StepIdx]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `align_of_val` for extern types\""
+  },
+  {
+    "id": 42,
+    "property": "std::alloc::Layout::max_size_for_align.assertion.1",
+    "status": "UNREACHABLE",
+    "description": "\"attempt to add with overflow\""
+  },
+  {
+    "id": 43,
+    "property": "std::alloc::Layout::max_size_for_align.arithmetic_overflow.1",
+    "status": "SUCCESS",
+    "description": "\"attempt to compute `unchecked_sub` which would overflow\""
+  },
+  {
+    "id": 44,
+    "property": "std::alloc::Layout::is_size_align_valid.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 45,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::ExprBranch]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 46,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::ExprBranch]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `size_of_val`\""
+  },
+  {
+    "id": 47,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::ExprBranch]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `size_of_val` for extern types\""
+  },
+  {
+    "id": 48,
+    "property": "std::panic::Location::<'_>::caller.unsupported_construct.1",
+    "status": "SUCCESS",
+    "description": "\"caller_location is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/374\""
+  },
+  {
+    "id": 49,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::StepIdx]>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 50,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::StepIdx]>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 51,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotBranch]>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 52,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotBranch]>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 53,
+    "property": "<std::result::Result<u16, mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 54,
+    "property": "malloc.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"max allocation size exceeded\""
+  },
+  {
+    "id": 55,
+    "property": "malloc.assertion.2",
+    "status": "SUCCESS",
+    "description": "\"max allocation may fail\""
+  },
+  {
+    "id": 56,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 57,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 58,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::ExprBranch]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 59,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::ExprBranch]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `align_of_val`\""
+  },
+  {
+    "id": 60,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::ExprBranch]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `align_of_val` for extern types\""
+  },
+  {
+    "id": 61,
+    "property": "kani_lower_repeat::assert_finish_node.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"RepeatFinish id must equal done step\""
+  },
+  {
+    "id": 62,
+    "property": "kani_lower_repeat::assert_finish_node.assertion.2",
+    "status": "SUCCESS",
+    "description": "\"RepeatFinish output is exact expected slot\""
+  },
+  {
+    "id": 63,
+    "property": "kani_lower_repeat::assert_finish_node.assertion.3",
+    "status": "SUCCESS",
+    "description": "\"RepeatFinish next is None\""
+  },
+  {
+    "id": 64,
+    "property": "kani_lower_repeat::assert_finish_node.assertion.4",
+    "status": "SUCCESS",
+    "description": "\"RepeatFinish error_slot is None\""
+  },
+  {
+    "id": 65,
+    "property": "kani_lower_repeat::assert_finish_node.assertion.5",
+    "status": "SUCCESS",
+    "description": "\"RepeatFinish on_error is None\""
+  },
+  {
+    "id": 66,
+    "property": "kani_lower_repeat::assert_finish_node.assertion.6",
+    "status": "UNREACHABLE",
+    "description": "\"third node must be RepeatFinish\""
+  },
+  {
+    "id": 67,
+    "property": "kani_lower_repeat::assert_finish_node.assertion.7",
+    "status": "SUCCESS",
+    "description": "\"RepeatFinish result is attempt slot\""
+  },
+  {
+    "id": 68,
+    "property": "core::num::<impl usize>::unchecked_mul.arithmetic_overflow.1",
+    "status": "SUCCESS",
+    "description": "\"attempt to compute `unchecked_mul` which would overflow\""
+  },
+  {
+    "id": 69,
+    "property": "std::ptr::drop_in_place::<std::vec::Vec<vb_core::Capability>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 70,
+    "property": "std::ptr::drop_in_place::<std::vec::Vec<vb_core::Capability>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 71,
+    "property": "core::num::<impl u16>::checked_add.arithmetic_overflow.1",
+    "status": "SUCCESS",
+    "description": "\"attempt to compute `unchecked_add` which would overflow\""
+  },
+  {
+    "id": 72,
+    "property": "<std::result::Result<(), mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 73,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[(vb_core::SymbolId, vb_core::SlotIdx)]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 74,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[(vb_core::SymbolId, vb_core::SlotIdx)]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `size_of_val`\""
+  },
+  {
+    "id": 75,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[(vb_core::SymbolId, vb_core::SlotIdx)]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `size_of_val` for extern types\""
+  },
+  {
+    "id": 76,
+    "property": "std::ptr::drop_in_place::<std::vec::Vec<u8>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 77,
+    "property": "std::ptr::drop_in_place::<std::vec::Vec<u8>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 78,
+    "property": "std::slice::from_raw_parts::<'_, vb_core::CompiledNode>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 79,
+    "property": "std::slice::from_raw_parts::<'_, vb_core::CompiledNode>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 80,
+    "property": "alloc::raw_vec::RawVecInner::deallocate.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 81,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.1",
+    "status": "SATISFIED",
+    "description": "\"prefix domain includes zero\""
+  },
+  {
+    "id": 82,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.2",
+    "status": "SATISFIED",
+    "description": "\"prefix domain includes max success boundary\""
+  },
+  {
+    "id": 83,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.3",
+    "status": "SATISFIED",
+    "description": "\"prefix domain includes first failure value\""
+  },
+  {
+    "id": 84,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.4",
+    "status": "SATISFIED",
+    "description": "\"prefix domain includes u16 max\""
+  },
+  {
+    "id": 85,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.5",
+    "status": "SATISFIED",
+    "description": "\"max_attempts includes zero\""
+  },
+  {
+    "id": 86,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.6",
+    "status": "SATISFIED",
+    "description": "\"max_attempts includes u16 max\""
+  },
+  {
+    "id": 87,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.7",
+    "status": "SATISFIED",
+    "description": "\"id domain includes u16 max\""
+  },
+  {
+    "id": 88,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.8",
+    "status": "SATISFIED",
+    "description": "\"body domain includes u16 max\""
+  },
+  {
+    "id": 89,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.9",
+    "status": "SATISFIED",
+    "description": "\"done domain includes u16 max\""
+  },
+  {
+    "id": 90,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.10",
+    "status": "SATISFIED",
+    "description": "\"body may alias id\""
+  },
+  {
+    "id": 91,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.11",
+    "status": "SATISFIED",
+    "description": "\"done may alias body\""
+  },
+  {
+    "id": 92,
+    "property": "kani_lower_repeat::cover_repeat_inputs.cover.12",
+    "status": "SATISFIED",
+    "description": "\"done may alias id\""
+  },
+  {
+    "id": 93,
+    "property": "std::ptr::const_ptr::<impl *const ()>::is_aligned_to.assertion.1",
+    "status": "UNREACHABLE",
+    "description": "\"attempt to subtract with overflow\""
+  },
+  {
+    "id": 94,
+    "property": "std::ptr::const_ptr::<impl *const ()>::is_aligned_to.assertion.2",
+    "status": "SUCCESS",
+    "description": "\"This is a placeholder message; Kani doesn't support message formatted at runtime\""
+  },
+  {
+    "id": 95,
+    "property": "std::ptr::drop_in_place::<alloc::raw_vec::RawVec<vb_core::CompiledNode>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 96,
+    "property": "std::ptr::drop_in_place::<alloc::raw_vec::RawVec<vb_core::CompiledNode>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 97,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::ExprBranch]>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 98,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::ExprBranch]>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 99,
+    "property": "std::boxed::Box::<[vb_core::CompiledNode]>::into_raw_with_allocator.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 100,
+    "property": "std::boxed::Box::<[vb_core::CompiledNode]>::into_raw_with_allocator.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 101,
+    "property": "<std::result::Result<vb_core::SlotIdx, mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 102,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 103,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotIdx]>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 104,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotIdx]>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 105,
+    "property": "core::num::<impl usize>::checked_add.arithmetic_overflow.1",
+    "status": "SUCCESS",
+    "description": "\"attempt to compute `unchecked_add` which would overflow\""
+  },
+  {
+    "id": 106,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[(vb_core::SymbolId, vb_core::SlotIdx)]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 107,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[(vb_core::SymbolId, vb_core::SlotIdx)]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `align_of_val`\""
+  },
+  {
+    "id": 108,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[(vb_core::SymbolId, vb_core::SlotIdx)]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `align_of_val` for extern types\""
+  },
+  {
+    "id": 109,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<str>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 110,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<str>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 111,
+    "property": "std::fmt::Arguments::<'_>::from_str.assertion.1",
+    "status": "UNREACHABLE",
+    "description": "\"attempt to shift left with overflow\""
+  },
+  {
+    "id": 112,
+    "property": "std::ptr::drop_in_place::<alloc::raw_vec::RawVec<u8>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 113,
+    "property": "std::ptr::drop_in_place::<alloc::raw_vec::RawVec<u8>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 114,
+    "property": "mod_compile_lowering::part_07::lower_repeat.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 115,
+    "property": "mod_compile_lowering::part_07::lower_repeat.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer dereference: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 116,
+    "property": "mod_compile_lowering::part_07::lower_repeat.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"null pointer dereference occurred\""
+  },
+  {
+    "id": 117,
+    "property": "std::slice::<impl [vb_core::CompiledNode]>::into_vec::<std::alloc::Global>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 118,
+    "property": "std::slice::<impl [vb_core::CompiledNode]>::into_vec::<std::alloc::Global>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 119,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::StepIdx]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 120,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::StepIdx]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `size_of_val`\""
+  },
+  {
+    "id": 121,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::StepIdx]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `size_of_val` for extern types\""
+  },
+  {
+    "id": 122,
+    "property": "<std::result::Result<usize, mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 123,
+    "property": "kani_lower_repeat::assert_attempt_node.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"RepeatAttempt id must equal body step\""
+  },
+  {
+    "id": 124,
+    "property": "kani_lower_repeat::assert_attempt_node.assertion.2",
+    "status": "SUCCESS",
+    "description": "\"RepeatAttempt output is None\""
+  },
+  {
+    "id": 125,
+    "property": "kani_lower_repeat::assert_attempt_node.assertion.3",
+    "status": "SUCCESS",
+    "description": "\"RepeatAttempt next is None\""
+  },
+  {
+    "id": 126,
+    "property": "kani_lower_repeat::assert_attempt_node.assertion.4",
+    "status": "SUCCESS",
+    "description": "\"RepeatAttempt error_slot is None\""
+  },
+  {
+    "id": 127,
+    "property": "kani_lower_repeat::assert_attempt_node.assertion.5",
+    "status": "SUCCESS",
+    "description": "\"RepeatAttempt on_error is None\""
+  },
+  {
+    "id": 128,
+    "property": "kani_lower_repeat::assert_attempt_node.assertion.6",
+    "status": "UNREACHABLE",
+    "description": "\"second node must be RepeatAttempt\""
+  },
+  {
+    "id": 129,
+    "property": "kani_lower_repeat::assert_attempt_node.assertion.7",
+    "status": "SUCCESS",
+    "description": "\"RepeatAttempt attempt_slot correct\""
+  },
+  {
+    "id": 130,
+    "property": "kani_lower_repeat::assert_attempt_node.assertion.8",
+    "status": "SUCCESS",
+    "description": "\"RepeatAttempt body preserved\""
+  },
+  {
+    "id": 131,
+    "property": "kani_lower_repeat::assert_attempt_node.assertion.9",
+    "status": "SUCCESS",
+    "description": "\"RepeatAttempt done preserved\""
+  },
+  {
+    "id": 132,
+    "property": "kani_lower_repeat::verify_success_path.assertion.1",
+    "status": "UNREACHABLE",
+    "description": "\"lower_repeat should succeed for prefix <= 65533\""
+  },
+  {
+    "id": 133,
+    "property": "kani_lower_repeat::verify_success_path.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 134,
+    "property": "kani_lower_repeat::lower_repeat_allocates_fresh_slots_for_symbolic_prefix.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"reserve_slots must succeed for any u16 prefix\""
+  },
+  {
+    "id": 135,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::SlotIdx]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 136,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::SlotIdx]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `size_of_val`\""
+  },
+  {
+    "id": 137,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::SlotIdx]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `size_of_val` for extern types\""
+  },
+  {
+    "id": 138,
+    "property": "std::option::Option::<usize>::ok_or::<mod_compile_errors::kind::CompileError>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 139,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::SlotIdx]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 140,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::SlotIdx]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `align_of_val`\""
+  },
+  {
+    "id": 141,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::SlotIdx]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `align_of_val` for extern types\""
+  },
+  {
+    "id": 142,
+    "property": "std::ptr::drop_in_place::<alloc::raw_vec::RawVec<vb_core::Capability>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 143,
+    "property": "std::ptr::drop_in_place::<alloc::raw_vec::RawVec<vb_core::Capability>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 144,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::SlotBranch]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 145,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::SlotBranch]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `size_of_val`\""
+  },
+  {
+    "id": 146,
+    "property": "kani::rustc_intrinsics::size_of_val_raw::<[vb_core::SlotBranch]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `size_of_val` for extern types\""
+  },
+  {
+    "id": 147,
+    "property": "std::ptr::drop_in_place::<std::vec::Vec<vb_core::CompiledNode>>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"misaligned pointer to reference cast: address must be a multiple of its type's alignment\""
+  },
+  {
+    "id": 148,
+    "property": "std::ptr::drop_in_place::<std::vec::Vec<vb_core::CompiledNode>>.safety_check.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 149,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::SlotBranch]>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 150,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::SlotBranch]>.safety_check.1",
+    "status": "SUCCESS",
+    "description": "\"failed to compute `align_of_val`\""
+  },
+  {
+    "id": 151,
+    "property": "kani::rustc_intrinsics::align_of_val_raw::<[vb_core::SlotBranch]>.assertion.1",
+    "status": "SUCCESS",
+    "description": "\"cannot compute `align_of_val` for extern types\""
+  },
+  {
+    "id": 152,
+    "property": "std::option::Option::<u16>::ok_or::<mod_compile_errors::kind::CompileError>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 153,
+    "property": "std::result::Result::<u16, std::num::TryFromIntError>::map_err::<mod_compile_errors::kind::CompileError, {closure@crates/vb_compile/src/mod_compile_lowering/part_08.rs:136:46: 136:49}>.unreachable.1",
+    "status": "SUCCESS",
+    "description": "\"unreachable code\""
+  },
+  {
+    "id": 154,
+    "property": "<std::boxed::Box<[vb_core::SlotBranch]> as std::ops::Drop>::drop.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 155,
+    "property": "<std::boxed::Box<[vb_core::SlotBranch]> as std::ops::Drop>::drop.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 156,
+    "property": "<std::boxed::Box<[vb_core::SlotBranch]> as std::ops::Drop>::drop.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 157,
+    "property": "<std::boxed::Box<[vb_core::SlotBranch]> as std::ops::Drop>::drop.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 158,
+    "property": "<std::boxed::Box<[vb_core::SlotBranch]> as std::ops::Drop>::drop.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 159,
+    "property": "<std::boxed::Box<[vb_core::SlotBranch]> as std::ops::Drop>::drop.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 160,
+    "property": "std::alloc::Layout::size.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 161,
+    "property": "std::alloc::Layout::size.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 162,
+    "property": "std::alloc::Layout::size.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 163,
+    "property": "std::alloc::Layout::size.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 164,
+    "property": "std::alloc::Layout::size.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 165,
+    "property": "std::alloc::Layout::size.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 166,
+    "property": "<std::vec::Vec<vb_core::Capability> as std::ops::Drop>::drop.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 167,
+    "property": "<std::vec::Vec<vb_core::Capability> as std::ops::Drop>::drop.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 168,
+    "property": "<std::vec::Vec<vb_core::Capability> as std::ops::Drop>::drop.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 169,
+    "property": "<std::vec::Vec<vb_core::Capability> as std::ops::Drop>::drop.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 170,
+    "property": "<std::vec::Vec<vb_core::Capability> as std::ops::Drop>::drop.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 171,
+    "property": "<std::vec::Vec<vb_core::Capability> as std::ops::Drop>::drop.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 172,
+    "property": "std::option::Option::<u16>::ok_or::<mod_compile_errors::kind::CompileError>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 173,
+    "property": "std::ptr::drop_in_place::<std::result::Result<std::vec::Vec<vb_core::CompiledNode>, mod_compile_errors::kind::CompileError>>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 174,
+    "property": "std::ptr::drop_in_place::<std::result::Result<std::vec::Vec<vb_core::CompiledNode>, mod_compile_errors::kind::CompileError>>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 175,
+    "property": "std::ptr::drop_in_place::<std::result::Result<std::vec::Vec<vb_core::CompiledNode>, mod_compile_errors::kind::CompileError>>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 176,
+    "property": "std::ptr::drop_in_place::<std::result::Result<std::vec::Vec<vb_core::CompiledNode>, mod_compile_errors::kind::CompileError>>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 177,
+    "property": "std::ptr::drop_in_place::<std::result::Result<std::vec::Vec<vb_core::CompiledNode>, mod_compile_errors::kind::CompileError>>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 178,
+    "property": "std::ptr::drop_in_place::<std::result::Result<std::vec::Vec<vb_core::CompiledNode>, mod_compile_errors::kind::CompileError>>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 179,
+    "property": "__rust_dealloc.precondition_instance.1",
+    "status": "SUCCESS",
+    "description": "\"free argument must be NULL or valid pointer\""
+  },
+  {
+    "id": 180,
+    "property": "__rust_dealloc.precondition_instance.2",
+    "status": "SUCCESS",
+    "description": "\"free argument must be dynamic object\""
+  },
+  {
+    "id": 181,
+    "property": "__rust_dealloc.precondition_instance.3",
+    "status": "SUCCESS",
+    "description": "\"free argument has offset zero\""
+  },
+  {
+    "id": 182,
+    "property": "__rust_dealloc.precondition_instance.4",
+    "status": "SUCCESS",
+    "description": "\"double free\""
+  },
+  {
+    "id": 183,
+    "property": "__rust_dealloc.precondition_instance.5",
+    "status": "SUCCESS",
+    "description": "\"free called for new[] object\""
+  },
+  {
+    "id": 184,
+    "property": "__rust_dealloc.precondition_instance.6",
+    "status": "SUCCESS",
+    "description": "\"free called for stack-allocated object\""
+  },
+  {
+    "id": 185,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::Capability>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 186,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::Capability>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 187,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::Capability>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 188,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::Capability>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 189,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::Capability>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 190,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::Capability>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 191,
+    "property": "std::option::Option::<usize>::ok_or::<mod_compile_errors::kind::CompileError>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 192,
+    "property": "<std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 193,
+    "property": "<std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 194,
+    "property": "<std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 195,
+    "property": "<std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 196,
+    "property": "<std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 197,
+    "property": "<std::boxed::Box<str> as std::ops::Drop>::drop.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 198,
+    "property": "kani_lower_repeat::verify_success_path.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 199,
+    "property": "kani_lower_repeat::verify_success_path.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 200,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 201,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 202,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 203,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 204,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 205,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 206,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 207,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 208,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 209,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 210,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 211,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 212,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.13",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 213,
+    "property": "kani_lower_repeat::assert_attempt_node.pointer_dereference.14",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 214,
+    "property": "<std::result::Result<usize, mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 215,
+    "property": "<std::result::Result<usize, mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 216,
+    "property": "<std::vec::Vec<vb_core::CompiledNode> as std::ops::Drop>::drop.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 217,
+    "property": "<std::vec::Vec<vb_core::CompiledNode> as std::ops::Drop>::drop.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 218,
+    "property": "<std::vec::Vec<vb_core::CompiledNode> as std::ops::Drop>::drop.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 219,
+    "property": "<std::vec::Vec<vb_core::CompiledNode> as std::ops::Drop>::drop.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 220,
+    "property": "<std::vec::Vec<vb_core::CompiledNode> as std::ops::Drop>::drop.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 221,
+    "property": "<std::vec::Vec<vb_core::CompiledNode> as std::ops::Drop>::drop.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 222,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 223,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 224,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 225,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 226,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 227,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 228,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 229,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 230,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 231,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 232,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 233,
+    "property": "std::ptr::drop_in_place::<vb_core::CoreError>.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 234,
+    "property": "std::ptr::drop_in_place::<std::result::Result<(), mod_compile_errors::kind::CompileError>>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 235,
+    "property": "std::ptr::drop_in_place::<std::result::Result<(), mod_compile_errors::kind::CompileError>>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 236,
+    "property": "std::ptr::drop_in_place::<std::result::Result<(), mod_compile_errors::kind::CompileError>>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 237,
+    "property": "std::ptr::drop_in_place::<std::result::Result<(), mod_compile_errors::kind::CompileError>>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 238,
+    "property": "std::ptr::drop_in_place::<std::result::Result<(), mod_compile_errors::kind::CompileError>>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 239,
+    "property": "std::ptr::drop_in_place::<std::result::Result<(), mod_compile_errors::kind::CompileError>>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 240,
+    "property": "<std::boxed::Box<[vb_core::StepIdx]> as std::ops::Drop>::drop.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 241,
+    "property": "<std::boxed::Box<[vb_core::StepIdx]> as std::ops::Drop>::drop.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 242,
+    "property": "<std::boxed::Box<[vb_core::StepIdx]> as std::ops::Drop>::drop.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 243,
+    "property": "<std::boxed::Box<[vb_core::StepIdx]> as std::ops::Drop>::drop.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 244,
+    "property": "<std::boxed::Box<[vb_core::StepIdx]> as std::ops::Drop>::drop.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 245,
+    "property": "<std::boxed::Box<[vb_core::StepIdx]> as std::ops::Drop>::drop.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 246,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 247,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 248,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 249,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 250,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 251,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 252,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 253,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 254,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 255,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 256,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 257,
+    "property": "<vb_core::StepIdx as std::cmp::PartialEq>::eq.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 258,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 259,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 260,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 261,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 262,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 263,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 264,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 265,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 266,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 267,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 268,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 269,
+    "property": "std::ptr::drop_in_place::<vb_validate::ValidationError>.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 270,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 271,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 272,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 273,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 274,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 275,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 276,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 277,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 278,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 279,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 280,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 281,
+    "property": "<vb_core::SlotIdx as std::cmp::PartialEq>::eq.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 282,
+    "property": "<std::result::Result<u16, mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 283,
+    "property": "<std::result::Result<u16, mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 284,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::StepIdx]>>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 285,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::StepIdx]>>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 286,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::StepIdx]>>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 287,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::StepIdx]>>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 288,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::StepIdx]>>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 289,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::StepIdx]>>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 290,
+    "property": "<std::boxed::Box<[vb_core::SlotIdx]> as std::ops::Drop>::drop.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 291,
+    "property": "<std::boxed::Box<[vb_core::SlotIdx]> as std::ops::Drop>::drop.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 292,
+    "property": "<std::boxed::Box<[vb_core::SlotIdx]> as std::ops::Drop>::drop.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 293,
+    "property": "<std::boxed::Box<[vb_core::SlotIdx]> as std::ops::Drop>::drop.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 294,
+    "property": "<std::boxed::Box<[vb_core::SlotIdx]> as std::ops::Drop>::drop.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 295,
+    "property": "<std::boxed::Box<[vb_core::SlotIdx]> as std::ops::Drop>::drop.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 296,
+    "property": "std::alloc::Layout::is_size_align_valid.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 297,
+    "property": "std::ptr::Alignment::new.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 298,
+    "property": "<std::boxed::Box<[vb_core::ExprBranch]> as std::ops::Drop>::drop.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 299,
+    "property": "<std::boxed::Box<[vb_core::ExprBranch]> as std::ops::Drop>::drop.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 300,
+    "property": "<std::boxed::Box<[vb_core::ExprBranch]> as std::ops::Drop>::drop.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 301,
+    "property": "<std::boxed::Box<[vb_core::ExprBranch]> as std::ops::Drop>::drop.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 302,
+    "property": "<std::boxed::Box<[vb_core::ExprBranch]> as std::ops::Drop>::drop.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 303,
+    "property": "<std::boxed::Box<[vb_core::ExprBranch]> as std::ops::Drop>::drop.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 304,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<u8>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 305,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<u8>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 306,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<u8>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 307,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<u8>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 308,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<u8>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 309,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<u8>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 310,
+    "property": "std::vec::Vec::<vb_core::CompiledNode>::as_slice.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 311,
+    "property": "std::vec::Vec::<vb_core::CompiledNode>::as_slice.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 312,
+    "property": "std::vec::Vec::<vb_core::CompiledNode>::as_slice.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 313,
+    "property": "std::vec::Vec::<vb_core::CompiledNode>::as_slice.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 314,
+    "property": "std::vec::Vec::<vb_core::CompiledNode>::as_slice.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 315,
+    "property": "std::vec::Vec::<vb_core::CompiledNode>::as_slice.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 316,
+    "property": "<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]> as std::ops::Drop>::drop.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 317,
+    "property": "<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]> as std::ops::Drop>::drop.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 318,
+    "property": "<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]> as std::ops::Drop>::drop.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 319,
+    "property": "<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]> as std::ops::Drop>::drop.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 320,
+    "property": "<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]> as std::ops::Drop>::drop.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 321,
+    "property": "<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]> as std::ops::Drop>::drop.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 322,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 323,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 324,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 325,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 326,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 327,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 328,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 329,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 330,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 331,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 332,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 333,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 334,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.13",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 335,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.14",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 336,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count.pointer_dereference.15",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 337,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 338,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 339,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 340,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 341,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 342,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 343,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 344,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 345,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 346,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 347,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 348,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 349,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.13",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 350,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.14",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 351,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.15",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 352,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.16",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 353,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.17",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 354,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::record_slot.pointer_dereference.18",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 355,
+    "property": "<std::result::Result<vb_core::SlotIdx, mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 356,
+    "property": "<std::result::Result<vb_core::SlotIdx, mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 357,
+    "property": "std::boxed::Box::<[vb_core::CompiledNode]>::into_raw_with_allocator.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 358,
+    "property": "std::boxed::Box::<[vb_core::CompiledNode]>::into_raw_with_allocator.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 359,
+    "property": "std::boxed::Box::<[vb_core::CompiledNode]>::into_raw_with_allocator.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 360,
+    "property": "std::boxed::Box::<[vb_core::CompiledNode]>::into_raw_with_allocator.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 361,
+    "property": "std::boxed::Box::<[vb_core::CompiledNode]>::into_raw_with_allocator.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 362,
+    "property": "std::boxed::Box::<[vb_core::CompiledNode]>::into_raw_with_allocator.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 363,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 364,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 365,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 366,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 367,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 368,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 369,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 370,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 371,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 372,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 373,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 374,
+    "property": "std::ptr::drop_in_place::<mod_compile_errors::kind::CompileError>.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 375,
+    "property": "std::option::Option::<vb_core::StepIdx>::is_some.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 376,
+    "property": "std::option::Option::<vb_core::StepIdx>::is_some.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 377,
+    "property": "std::option::Option::<vb_core::StepIdx>::is_some.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 378,
+    "property": "std::option::Option::<vb_core::StepIdx>::is_some.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 379,
+    "property": "std::option::Option::<vb_core::StepIdx>::is_some.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 380,
+    "property": "std::option::Option::<vb_core::StepIdx>::is_some.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 381,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::CompiledNode>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 382,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::CompiledNode>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 383,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::CompiledNode>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 384,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::CompiledNode>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 385,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::CompiledNode>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 386,
+    "property": "alloc::raw_vec::RawVecInner::non_null::<vb_core::CompiledNode>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 387,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 388,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 389,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 390,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 391,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 392,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 393,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 394,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 395,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 396,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 397,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 398,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 399,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.13",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 400,
+    "property": "kani_lower_repeat::assert_start_node.pointer_dereference.14",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 401,
+    "property": "kani_lower_repeat::verify_success_slot_count.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 402,
+    "property": "core::ub_checks::is_valid_allocation_size.division-by-zero.1",
+    "status": "SUCCESS",
+    "description": "\"division by zero\""
+  },
+  {
+    "id": 403,
+    "property": "std::result::Result::<(), mod_compile_errors::kind::CompileError>::is_ok.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 404,
+    "property": "std::result::Result::<(), mod_compile_errors::kind::CompileError>::is_ok.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 405,
+    "property": "std::result::Result::<(), mod_compile_errors::kind::CompileError>::is_ok.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 406,
+    "property": "std::result::Result::<(), mod_compile_errors::kind::CompileError>::is_ok.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 407,
+    "property": "std::result::Result::<(), mod_compile_errors::kind::CompileError>::is_ok.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 408,
+    "property": "std::result::Result::<(), mod_compile_errors::kind::CompileError>::is_ok.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 409,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotBranch]>>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 410,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotBranch]>>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 411,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotBranch]>>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 412,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotBranch]>>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 413,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotBranch]>>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 414,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotBranch]>>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 415,
+    "property": "std::result::Result::<u16, std::num::TryFromIntError>::map_err::<mod_compile_errors::kind::CompileError, {closure@crates/vb_compile/src/mod_compile_lowering/part_08.rs:136:46: 136:49}>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 416,
+    "property": "<std::vec::Vec<u8> as std::ops::Drop>::drop.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 417,
+    "property": "<std::vec::Vec<u8> as std::ops::Drop>::drop.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 418,
+    "property": "<std::vec::Vec<u8> as std::ops::Drop>::drop.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 419,
+    "property": "<std::vec::Vec<u8> as std::ops::Drop>::drop.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 420,
+    "property": "<std::vec::Vec<u8> as std::ops::Drop>::drop.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 421,
+    "property": "<std::vec::Vec<u8> as std::ops::Drop>::drop.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 422,
+    "property": "std::ptr::drop_in_place::<vb_core::CompiledNodeKind>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 423,
+    "property": "std::ptr::drop_in_place::<vb_core::CompiledNodeKind>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 424,
+    "property": "std::ptr::drop_in_place::<vb_core::CompiledNodeKind>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 425,
+    "property": "std::ptr::drop_in_place::<vb_core::CompiledNodeKind>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 426,
+    "property": "std::ptr::drop_in_place::<vb_core::CompiledNodeKind>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 427,
+    "property": "std::ptr::drop_in_place::<vb_core::CompiledNodeKind>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 428,
+    "property": "std::alloc::Layout::align.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 429,
+    "property": "std::alloc::Layout::align.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 430,
+    "property": "std::alloc::Layout::align.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 431,
+    "property": "std::alloc::Layout::align.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 432,
+    "property": "std::alloc::Layout::align.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 433,
+    "property": "std::alloc::Layout::align.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 434,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::reserve_slots.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 435,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::reserve_slots.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 436,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::reserve_slots.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 437,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::reserve_slots.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 438,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::reserve_slots.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 439,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 440,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 441,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 442,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 443,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 444,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 445,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 446,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 447,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 448,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 449,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 450,
+    "property": "std::cmp::impls::<impl std::cmp::PartialOrd for usize>::lt.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 451,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 452,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 453,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 454,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 455,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 456,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 457,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 458,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 459,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 460,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 461,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 462,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 463,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.13",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 464,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.14",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 465,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.15",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 466,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.16",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 467,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.17",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 468,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.18",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 469,
+    "property": "alloc::raw_vec::RawVecInner::current_memory.pointer_dereference.19",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 470,
+    "property": "kani_lower_repeat::verify_failure_path.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 471,
+    "property": "kani_lower_repeat::verify_failure_path.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 472,
+    "property": "kani_lower_repeat::verify_failure_path.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 473,
+    "property": "kani_lower_repeat::verify_failure_path.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 474,
+    "property": "kani_lower_repeat::verify_failure_path.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 475,
+    "property": "kani_lower_repeat::verify_failure_path.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 476,
+    "property": "kani_lower_repeat::verify_failure_path.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 477,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::allocate_slot.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 478,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::allocate_slot.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 479,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::allocate_slot.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 480,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::allocate_slot.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 481,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::allocate_slot.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 482,
+    "property": "mod_compile_lowering::part_07::lower_repeat.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 483,
+    "property": "mod_compile_lowering::part_07::lower_repeat.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 484,
+    "property": "mod_compile_lowering::part_07::lower_repeat.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 485,
+    "property": "mod_compile_lowering::part_07::lower_repeat.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 486,
+    "property": "mod_compile_lowering::part_07::lower_repeat.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 487,
+    "property": "mod_compile_lowering::part_07::lower_repeat.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 488,
+    "property": "mod_compile_lowering::part_07::lower_repeat.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 489,
+    "property": "mod_compile_lowering::part_07::lower_repeat.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 490,
+    "property": "mod_compile_lowering::part_07::lower_repeat.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 491,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 492,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 493,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 494,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 495,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 496,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 497,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 498,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 499,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 500,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 501,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 502,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 503,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.13",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 504,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.14",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 505,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.15",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 506,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.16",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 507,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.17",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 508,
+    "property": "<std::option::Option<vb_core::SlotIdx> as std::cmp::PartialEq>::eq.pointer_dereference.18",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 509,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]>>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 510,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]>>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 511,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]>>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 512,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]>>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 513,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]>>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 514,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[(vb_core::SymbolId, vb_core::SlotIdx)]>>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 515,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 516,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 517,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 518,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 519,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 520,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 521,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 522,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 523,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 524,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 525,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 526,
+    "property": "kani_lower_repeat::assert_finish_node.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 527,
+    "property": "std::ptr::drop_in_place::<std::result::Result<u16, mod_compile_errors::kind::CompileError>>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 528,
+    "property": "std::ptr::drop_in_place::<std::result::Result<u16, mod_compile_errors::kind::CompileError>>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 529,
+    "property": "std::ptr::drop_in_place::<std::result::Result<u16, mod_compile_errors::kind::CompileError>>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 530,
+    "property": "std::ptr::drop_in_place::<std::result::Result<u16, mod_compile_errors::kind::CompileError>>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 531,
+    "property": "std::ptr::drop_in_place::<std::result::Result<u16, mod_compile_errors::kind::CompileError>>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 532,
+    "property": "std::ptr::drop_in_place::<std::result::Result<u16, mod_compile_errors::kind::CompileError>>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 533,
+    "property": "<std::result::Result<(), mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 534,
+    "property": "<std::result::Result<(), mod_compile_errors::kind::CompileError> as std::ops::Try>::branch.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 535,
+    "property": "mod_compile_lowering::part_08::<impl mod_compile_lowering::part_07::SlotCompiler>::slot_count::{closure#0}.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 536,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 537,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 538,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 539,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 540,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 541,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 542,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.7",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 543,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.8",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 544,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.9",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 545,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.10",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 546,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.11",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 547,
+    "property": "std::ptr::drop_in_place::<vb_core::WorkflowError>.pointer_dereference.12",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 548,
+    "property": "alloc::raw_vec::RawVecInner::deallocate.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 549,
+    "property": "std::option::Option::<vb_core::SlotIdx>::is_some.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 550,
+    "property": "std::option::Option::<vb_core::SlotIdx>::is_some.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 551,
+    "property": "std::option::Option::<vb_core::SlotIdx>::is_some.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 552,
+    "property": "std::option::Option::<vb_core::SlotIdx>::is_some.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 553,
+    "property": "std::option::Option::<vb_core::SlotIdx>::is_some.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 554,
+    "property": "std::option::Option::<vb_core::SlotIdx>::is_some.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 555,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::ExprBranch]>>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 556,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::ExprBranch]>>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 557,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::ExprBranch]>>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 558,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::ExprBranch]>>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 559,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::ExprBranch]>>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 560,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::ExprBranch]>>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 561,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotIdx]>>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 562,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotIdx]>>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 563,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotIdx]>>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 564,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotIdx]>>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 565,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotIdx]>>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 566,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<[vb_core::SlotIdx]>>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 567,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.1",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer NULL\""
+  },
+  {
+    "id": 568,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.2",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer invalid\""
+  },
+  {
+    "id": 569,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.3",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: deallocated dynamic object\""
+  },
+  {
+    "id": 570,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.4",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: dead object\""
+  },
+  {
+    "id": 571,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.5",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: pointer outside object bounds\""
+  },
+  {
+    "id": 572,
+    "property": "std::ptr::drop_in_place::<std::boxed::Box<str>>.pointer_dereference.6",
+    "status": "SUCCESS",
+    "description": "\"dereference failure: invalid integer address\""
+  },
+  {
+    "id": 573,
+    "property": "std::ptr::drop_in_place::<[vb_core::Capability]>.unwind.0",
+    "status": "SUCCESS",
+    "description": "\"unwinding assertion loop 0\""
+  },
+  {
+    "id": 574,
+    "property": "std::ptr::drop_in_place::<[vb_core::CompiledNode]>.unwind.0",
+    "status": "SUCCESS",
+    "description": "\"unwinding assertion loop 0\""
+  }
+]

@@ -1,0 +1,85 @@
+{
+  "verdict": "APPROVE_BOUNDED_EVIDENCE",
+  "blocking_findings": [],
+  "manifest_and_source_identity": {
+    "v193_manifest": {
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660",
+      "entries": 65,
+      "all_match": true,
+      "source": "host mechanics"
+    },
+    "v196_manifest": {
+      "receipt": "747a8830613ca9f3a7a3fe513a32b5b45562d71a",
+      "entries": 12,
+      "all_match": true,
+      "source": "host mechanics"
+    },
+    "source_maps": {
+      "checked": 18,
+      "git_blobs_hashed": 1839,
+      "unavailable_named_commits": [
+        "3107f1e157916de3733a3e9dad3bcf60a8183a37",
+        "ffbe2db185c6826b04f76c327503060775fc4b3c"
+      ],
+      "source": "host mechanics"
+    }
+  },
+  "native_results": {
+    "v193_aggregate": {
+      "run": 14728,
+      "passed": 14728,
+      "skipped": 27,
+      "binaries": 309,
+      "exit_code": 0,
+      "source": "raw data"
+    },
+    "v196_kani": {
+      "checks_total": 562,
+      "success": 547,
+      "unreachable": 15,
+      "failed": 0,
+      "covers_satisfied": 12,
+      "covers_total": 12,
+      "harnesses_successful": 1,
+      "exit_code": 0,
+      "source": "raw data"
+    }
+  },
+  "binary_provenance": {
+    "recorded_before_after_identical": true,
+    "sha256": "d00ddb0d065d14be8c77029c89bcee8d6e76e9697e15183fdd07ffd70612e6dc",
+    "source_pin": "daa75236facecac24c30be18ecb733d604fbf5d8",
+    "explicit_selected_path_matches": true,
+    "build_source_matches": true,
+    "build_precedes_captured_binary": true,
+    "source": "host mechanics"
+  },
+  "v196_result_scope": {
+    "harness": "kani_lower_repeat::lower_repeat_allocates_fresh_slots_for_symbolic_prefix",
+    "bound": "unwind 12",
+    "flags": "no stubs/assume narrowing or manual verification disabling",
+    "source": "raw data"
+  },
+  "provenance_limitations": [
+    "V193 output is aggregate; not historical 119 by-name closure or identity of 27 skips.",
+    "3107 and post-run ffbe named commits unavailable locally: exact named-object identity/ffbe-parent unverified; recorded maps independently match verified 9aaa/dd respectively. No fetch of these refs attempted.",
+    "V181 formatter applies 11 changes: raw 0 differs from wrapper 125 source-drift policy.",
+    "V187 timeout 124 no verdict remains historical; V196 does not rewrite it.",
+    "Kani is one bounded raw-helper harness; not general runtime/admission/F1/canonical CI/main acceptance.",
+    "Kani unsupported inventory/backend model messages retained; no entire-crate support claim.",
+    "Historic binary image not stored here; verified captured hash/size/path/source/build/selection evidence, not a reproducible-build proof."
+  ],
+  "final_acceptance_gaps": [
+    "Canonical Moon/F1/main/lineage/runtime/replay acceptance OPEN outside these receipts.",
+    "Historical 119 by-name closure claim in V193 receipt.md not supported by aggregate output.",
+    "Post-run ffbe commit parent not verified."
+  ],
+  "overstrong_prose_qualifications": [
+    {
+      "claim": "Every original 119 RED group now included in successful full run; no test/domain reduction.",
+      "receipt": "3de0bcfb9b95eaa99c172d8827a9a957e8d67660/receipt.md",
+      "qualification": "Aggregate output lacks per-test PASS names and 27 skip identities; historical 119 by-name closure not established from this evidence.",
+      "source": "host mechanics"
+    }
+  ]
+}
