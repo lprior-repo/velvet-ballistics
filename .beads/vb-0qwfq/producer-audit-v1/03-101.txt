@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/journal/artifact_acceptance.rs
+101:     let seq = IssuedArtifactSequence::new(next)?;
+102:     let mut stamped = artifact;
+103:     stamped.accepted_at_seq = seq.to_event_seq();
+104:     bind_artifact_digest(&mut stamped)?;
+105:     Ok((next, stamped))
+106: }
+107: 
+108: /// Crate-private lock-free prepare helper.
+109: ///
+110: /// Reads the counter, increments it, stamps the artifact with the issued
+111: /// sequence, and returns both the typed issued sequence token and the
+112: /// stamped artifact. No locking; the caller must hold the write lock
+113: /// and be prepared to stage the counter write in the same batch as the
+114: /// run admission records.
+115: pub(crate) fn prepare_artifact_with_sequence(
+116:     journal: &FjallJournal,
+117:     artifact: AcceptedArtifact,
+118: ) -> Result<(IssuedArtifactSequence, AcceptedArtifact), JournalError> {
+119:     let last = read_counter(journal)?;
+120:     let (next, stamped) = prepare_artifact(last, artifact)?;
+121:     let seq = IssuedArtifactSequence::new(next)?;
+122:     Ok((seq, stamped))
+123: }
+124: 
+125: /// Encode the stamped artifact into a compiled IR record and envelope.
+126: fn encode_record(stamped: &AcceptedArtifact) -> Result<(CompiledIrRecord, Vec<u8>), JournalError> {
+127:     let ir = postcard::to_allocvec(stamped).map_err(JournalError::PostcardEncodeFailed)?;
+128:     let record = CompiledIrRecord {
+129:         digest: stamped.digest,
+130:         ir,
+131:     };
+132:     verify_compiled_ir_record_digest(&record)?;
+133:     let encoded = crate::codec::encode_record(
+134:         MAGIC_COMPILED_ARTIFACT,
+135:         RecordKind::CompiledIr,
+136:         0,
+137:         &record,
+138:         MAX_COMPILED_IR_BYTES,
+139:     )?;
+140:     Ok((record, encoded))
+141: }
+142: 
+143: /// Build the raw OwnedWriteBatch with counter and artifact writes.
+144: fn build_batch(
+145:     journal: &FjallJournal,
+146:     next: u64,
+147:     stamped: &AcceptedArtifact,
+148:     encoded: &[u8],
+149: ) -> Result<fjall::OwnedWriteBatch, JournalError> {
+150:     let mut batch = journal.database.batch();
+151:     let counter_value = encode_counter_value(next);
+152:     batch.insert(
+153:         &journal.artifact_acceptance,
+154:         LAST_ISSUED_KEY,
+155:         counter_value.as_ref(),
+156:     );
+157:     let artifact_key = compiled_ir_key(stamped.digest.as_bytes())?;
+158:     batch.insert(&journal.compiled_ir, artifact_key, encoded);
+159:     Ok(batch)
+160: }
+161: 
+162: /// Apply policy durability and commit the batch.
+163: fn commit_batch(
+164:     _journal: &FjallJournal,
+165:     mut batch: fjall::OwnedWriteBatch,
+166:     policy: RuntimePolicy,
+167: ) -> Result<(), JournalError> {
+168:     if policy == RuntimePolicy::Strict {
+169:         #[cfg(test)]
+170:         if _journal.consume_persist_failure_for_test() {
+171:             return Err(JournalError::StrictDurabilityFailed);
+172:         }
+173:         batch = batch.durability(Some(fjall::PersistMode::SyncAll));
+174:     }
+175:     #[cfg(test)]
+176:     if _journal.consume_batch_commit_failure_for_test() {
+177:         return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+178:             std::io::ErrorKind::Other,
+179:             "injected batch commit failure (test hook)",
+180:         ))));
+181:     }
+182:     batch.commit()?;
+183:     Ok(())
+184: }
+185: 
+186: /// Atomically issues the next artifact sequence and persists the
+187: /// stamped artifact in a single `fjall::OwnedWriteBatch`.
+188: fn issue_artifact(
+189:     journal: &FjallJournal,
+190:     artifact: AcceptedArtifact,
+191:     policy: RuntimePolicy,
+192: ) -> Result<AcceptedArtifact, JournalError> {
+193:     let _write_guard = journal
+194:         .write_lock
+195:         .lock()
+196:         .map_err(|_| JournalError::WriteLockPoisoned)?;
+197: 
+198:     let (seq, stamped) = prepare_artifact_with_sequence(journal, artifact)?;
+199:     let (_record, encoded) = encode_record(&stamped)?;
+200:     let batch = build_batch(journal, seq.0.get(), &stamped, &encoded)?;

@@ -1,0 +1,13 @@
+{
+  "status": "FINAL_SPLIT_SOURCE_FROZEN_REVIEW_AND_GATES_PENDING",
+  "source_file_count": 1850,
+  "split": "c9604f41a300e099a7bbd3a902bbc237faf5d3e4",
+  "exact_old_fn_body_unchanged": true,
+  "batch_exact_ecb_unchanged": true,
+  "CODE_production": "7d17e67e",
+  "TEST_CLI": "ae7fa18a scope corrections",
+  "TEST_batch": "83f68c7e scope corrections",
+  "SPLIT_delta_review": "local3090v79 inprogress",
+  "rejected": "V73source-length338 oldcanonical interrupted saved; metricV71oldsource retainedcompressedtrace",
+  "no_lint_waiver": true
+}

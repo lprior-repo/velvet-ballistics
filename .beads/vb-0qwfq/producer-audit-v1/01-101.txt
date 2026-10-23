@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/admission/verification.rs
+101: ) -> Result<&ArtifactVerificationEvidence, JournalError> {
+102:     match evidence {
+103:         ArtifactEvidence::Packed(_) => Err(JournalError::ArtifactMalformed),
+104:         ArtifactEvidence::Unverified => Err(JournalError::MigrationRequired {
+105:             from: 1,
+106:             to: EVIDENCE_VERSION,
+107:         }),
+108:         ArtifactEvidence::Verified(evidence) if evidence.schema_version == 2 => {
+109:             Err(JournalError::MigrationRequired {
+110:                 from: 2,
+111:                 to: EVIDENCE_VERSION,
+112:             })
+113:         }
+114:         ArtifactEvidence::Verified(evidence) if evidence.schema_version == EVIDENCE_VERSION => {
+115:             Ok(evidence)
+116:         }
+117:         ArtifactEvidence::Verified(evidence) => Err(JournalError::UnsupportedSchemaVersion {
+118:             version: evidence.schema_version,
+119:         }),
+120:     }
+121: }
+122: 
+123: pub(crate) fn verify_expected_bindings(
+124:     actual: &AcceptedArtifact,
+125:     expected: &AcceptedArtifact,
+126: ) -> Result<(), JournalError> {
+127:     let mut proof = actual.verification.clone();
+128:     proof.digest = expected.verification.digest;
+129:     if actual.source_digest != expected.source_digest
+130:         || actual.policy_digest != expected.policy_digest
+131:         || actual.ir != expected.ir
+132:         || proof != expected.verification
+133:         || actual.required_capabilities != expected.required_capabilities
+134:     {
+135:         return Err(JournalError::ArtifactMalformed);
+136:     }
+137:     Ok(())
+138: }
+139: 
+140: fn checked_parts(
+141:     workflow: &CompiledWorkflow,
+142:     policy: RuntimePolicy,
+143:     contracts: &[ActionContract],
+144:     profile: &ExecutorProfile<'_>,
+145: ) -> Result<WorkflowParts, JournalError> {
+146:     match policy {
+147:         RuntimePolicy::Relaxed | RuntimePolicy::Journaled | RuntimePolicy::Strict => {}
+148:         _ => return Err(JournalError::ArtifactMalformed),
+149:     }
+150:     let mut parts = workflow.to_parts();
+151:     CompiledWorkflow::try_from_parts(parts.clone())
+152:         .map_err(JournalError::WorkflowReconstruction)?;
+153:     vb_validate::shared::validate_with_contracts(&parts, contracts)
+154:         .map_err(JournalError::ArtifactValidation)?;
+155:     vb_core::action::validate_action_registry(contracts)
+156:         .map_err(JournalError::ArtifactActionRegistry)?;
+157:     validate_idempotency_contracts(contracts)?;
+158:     profile.check(policy, contracts)?;
+159:     parts.digest = zero_workflow_digest();
+160:     let canonical = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+161:     if digest(&canonical) != workflow.digest() {
+162:         return Err(JournalError::ArtifactChecksumMismatch);
+163:     }
+164:     parts.digest = workflow.digest();
+165:     Ok(parts)
+166: }
+167: 
+168: fn build_evidence(
+169:     parts: &WorkflowParts,
+170:     ir: &[u8],
+171:     policy: RuntimePolicy,
+172:     contracts: &[ActionContract],
+173: ) -> Result<ArtifactVerificationEvidence, JournalError> {
+174:     let policy_bytes = postcard::to_allocvec(&parts.resource_contract)
+175:         .map_err(JournalError::PostcardEncodeFailed)?;
+176:     let contract_bytes =
+177:         postcard::to_allocvec(contracts).map_err(JournalError::PostcardEncodeFailed)?;
+178:     let policy_digest = digest(&policy_bytes);
+179:     let verifier_digest = verifier_digest();
+180:     Ok(ArtifactVerificationEvidence {
+181:         schema_version: EVIDENCE_VERSION,
+182:         payload_digest: digest(ir),
+183:         workflow_digest: parts.digest,
+184:         action_contract_digest: digest(&contract_bytes),
+185:         policy_digest,
+186:         admission_policy: policy,
+187:         verifier_digest,
+188:         ledger: obligation_ledger(
+189:             policy_digest,
+190:             verifier_digest,
+191:             effect_closure(contracts, verifier_digest)?,
+192:         )?,
+193:     })
+194: }
+195: 
+196: fn effect_closure(
+197:     contracts: &[ActionContract],
+198:     verifier_digest: WorkflowDigest,
+199: ) -> Result<ObligationClosure, JournalError> {
+200:     if contracts.is_empty() {

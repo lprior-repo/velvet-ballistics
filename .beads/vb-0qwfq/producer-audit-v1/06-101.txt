@@ -1,0 +1,88 @@
+ACTUAL SOURCE crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
+101:                 },
+102:             )?;
+103: 
+104:             // INV-002: digest binding must be total. The loaded artifact's digest
+105:             // must match the requested digest exactly — a crafted artifact with
+106:             // valid gates but wrong identity must not be admitted.
+107:             if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
+108:                 return Err(AdmissionError::ArtifactDigestMismatch {
+109:                     requested: artifact_digest,
+110:                     found: artifact.digest,
+111:                 });
+112:             }
+113: 
+114:             // INV-003: proof digest must match artifact digest. The verification
+115:             // proof's digest field must bind to the artifact content exactly.
+116:             if artifact.verification.digest != artifact.digest {
+117:                 return Err(AdmissionError::ArtifactDigestMismatch {
+118:                     requested: artifact_digest,
+119:                     found: artifact.verification.digest,
+120:                 });
+121:             }
+122: 
+123:             if artifact.accepted_at_seq < required_at_least {
+124:                 return Err(AdmissionError::ArtifactCertificateStale {
+125:                     digest: artifact_digest,
+126:                     accepted_at_seq: artifact.accepted_at_seq,
+127:                     required_at_least,
+128:                 });
+129:             }
+130: 
+131:             // spec: VERUS-CARD-003 strict equality (cardinality-exact + membership-exact admission).
+132:             // F-001 fix: restore strict capability equality (VERUS-CARD-003).
+133:             //
+134:             // Strict admission requires that granted capabilities exactly match the
+135:             // artifact's declared required capabilities — same cardinality AND same
+136:             // membership. Subset grants with extras are rejected because the runtime
+137:             // re-checks `RunAdmission::granted_capabilities` per action in
+138:             // `engine::action::execute_do`; preserving extras would let an over-granted
+139:             // capability authorize actions the artifact never declared, violating
+140:             // least-privilege and contradicting the cardinality-exact Verus proof
+141:             // model (`verification/verus/capability_artifact_model.rs::exact_profile`).
+142:             //
+143:             // Order: per-required subset check runs first so under-grant reports the
+144:             // specific missing capability; only when every required is covered do we
+145:             // gate on cardinality to reject over-grants (extras / duplicates).
+146:             //
+147:             // RA-023 fix: when cardinality differs, surface a typed
+148:             // `CapabilityCountMismatch { required_count, granted_count }` instead of
+149:             // fabricating a `CapabilityDenied` that names a granted capability as the
+150:             // missing one. Honesty-preserving error variants matter for the operator
+151:             // diagnostic surface (admission_result / RuntimeError mapping).
+152:             for required_cap in artifact.required_capabilities.iter() {
+153:                 check_capability(required_cap.action_id(), required_cap, &caps)?;
+154:             }
+155:             let required_count = artifact.required_capabilities.len();
+156:             let granted_count = caps.len();
+157:             if required_count != granted_count {
+158:                 return Err(AdmissionError::CapabilityCountMismatch {
+159:                     required_count,
+160:                     granted_count,
+161:                 });
+162:             }
+163: 
+164:             let admitted_digest = artifact.digest;
+165:             Ok(RunAdmission::with_idempotency_evidence(
+166:                 admitted_digest,
+167:                 run_id,
+168:                 caps,
+169:                 policy,
+170:                 artifact.verification.idempotency_attested,
+171:             )
+172:             .with_policy_pin(RunPolicyPin::Pinned(artifact.policy_digest)))
+173:         }
+174:         RuntimePolicy::Relaxed => {
+175:             // Relaxed: skip artifact loading and capability checking.
+176:             Ok(RunAdmission::new(
+177:                 artifact_digest,
+178:                 run_id,
+179:                 caps,
+180:                 policy,
+181:             ))
+182:         }
+183:         _ => Err(AdmissionError::ArtifactInvalidProofFlag {
+184:             flag: "runtime_policy",
+185:         }),
+186:     }
+187: }

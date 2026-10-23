@@ -1,0 +1,14 @@
+ACTUAL SOURCE crates/vb_storage/src/journal/artifact_acceptance.rs
+201:     commit_batch(journal, batch, policy)?;
+202: 
+203:     Ok(stamped)
+204: }
+205: 
+206: /// Exposes the private issuance helper to admission.rs via pub(crate).
+207: pub(crate) fn issue_next_artifact_sequence(
+208:     journal: &FjallJournal,
+209:     artifact: AcceptedArtifact,
+210:     policy: RuntimePolicy,
+211: ) -> Result<AcceptedArtifact, JournalError> {
+212:     issue_artifact(journal, artifact, policy)
+213: }

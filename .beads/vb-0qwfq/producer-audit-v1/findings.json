@@ -1,0 +1,72 @@
+{
+  "audit": "vb-0qwfq producer-audit-v1",
+  "candidate": "4df9e4f196e3047a280cb2d1755488afd1bfd60b",
+  "scope": "parent vb-0qwfq only: persisted production artifact producers",
+  "verified_producer_entrypoints": [
+    {
+      "name": "admission::submit_artifact",
+      "path": "crates/vb_storage/src/admission.rs:341",
+      "delegates_to": "submit_artifact_with_contracts"
+    },
+    {
+      "name": "admission::submit_artifact_with_contracts",
+      "path": "crates/vb_storage/src/admission.rs:351",
+      "issuance_call": "issue_next_artifact_sequence(journal, artifact, policy)"
+    },
+    {
+      "name": "ExecutorCatalog::submit_artifact",
+      "path": "crates/vb_storage/src/executor/packed.rs:48",
+      "issuance_call": "issue_next_artifact_sequence(journal, artifact, RuntimePolicy::Strict)"
+    },
+    {
+      "name": "FjallJournal::commit_run_submission",
+      "path": "crates/vb_storage/src/inputs/submission.rs:180",
+      "issuance_call": "prepare_artifact_with_sequence(journal, artifact) + batch.put_artifact_sequence(seq)"
+    }
+  ],
+  "non_producers_correctly_unstamped": [
+    "admission::prepare_compiled_artifact",
+    "admission::verify_accepted_artifact",
+    "admission::verify_accepted_artifact_for_policy",
+    "ExecutorCatalog::prepare_artifact",
+    "ExecutorCatalog::verify_artifact",
+    "vb_storage::put_compiled_ir",
+    "JournalWriteBatch::put_compiled_ir",
+    "FjallJournal::put_compiled_ir"
+  ],
+  "synthetic_store": {
+    "name": "AlwaysPresentArtifactStore",
+    "path": "crates/vb_runtime/src/admission/parts/chunk_003_stores.rs",
+    "seq_sentinel": 0,
+    "interacts_with_journal_counter": false
+  },
+  "counter_authority": {
+    "keyspace": "artifact_acceptance",
+    "key": "last_issued",
+    "encoding": "big-endian u64",
+    "lock": "FjallJournal.write_lock (Mutex)",
+    "atomicity": "single fjall::OwnedWriteBatch for counter + artifact",
+    "overflow_handling": "checked_add(1) + NonZeroU64 wrapper"
+  },
+  "sentinel_distinction": {
+    "seq_0_means": "pure prepare or synthetic compatibility artifact",
+    "seq_ge_1_means": "issued from public producer entrypoint"
+  },
+  "policy_durability": {
+    "strict": "PersistMode::SyncAll before return",
+    "journaled": "batch commit, data-loss window",
+    "relaxed": "batch commit, data-loss window"
+  },
+  "test_evidence": [
+    "prepare_produces_no_sequence",
+    "strict_submit_sequence_one",
+    "sequential_submissions_increment",
+    "mixed_default_and_catalog_submissions",
+    "same_journal_four_way_sequence",
+    "journal_reopen_preserves_sequence",
+    "cli_pure_prepare_does_not_advance_counter"
+  ],
+  "missing_producers_found": false,
+  "findings": "NONE",
+  "conclusion": "All four public persisted artifact producer entrypoints stamp accepted_at_seq via the private single-counter issuance path with write-lock and single-batch atomicity. Zero sentinel correctly reserved for prepare/synthetic. No additional persisted production producers bypass issuance."
+}

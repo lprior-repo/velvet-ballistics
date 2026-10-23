@@ -1,0 +1,26 @@
+{
+  "status": "SOURCE_AUDIT_ONLY_FOUR_KNOWN_ENTRYPOINTS_THREE_FAMILIES",
+  "corrections": [
+    "raw policytable wrong for registered path: ExecutorCatalog alwayscallsStrict evenwhenpreparedartifact Journaled/Relaxed; unchanged originaldurable behavior",
+    "raw RGput_compiled_ir+AcceptedArtifact fullconstruction search not in suppliedinventory regex; no exhaustiveASTproducerproof. Inventory supplied accepted_at_seq/issuance/publicproducerpatterns; knownentrypoint conclusions source-backed",
+    "singletransaction is Fjall db.batch Commit acrosskeyspaces; raw OwnedWriteBatch nomenclature checkactualtype, not independentlyguaranteedallIOErrrollback",
+    "AlwaysPresentSynthetic0 notjournalproducer; no claim allstrictcustomtraitstoresfailclosed",
+    "publicAcceptedArtifact fields/rawrecordwriters/userprovidedtraitstorescan forge representations; typedprivatecounter applies checkedissuance APIs only, notcryptographicauthority",
+    "defaultwithcontracts and defaultwrapper onefamily, registeredsecond, CLIthird; fourwaytest is executedobservedorder, not proofallinterleavings",
+    "audit candidate4df9laterfailedsource-length helper338; finalsplit+metrics+canonicalrequired beforeparentclosure"
+  ],
+  "known_producer_entrypoints": [
+    "admission::submit_artifact",
+    "admission::submit_artifact_with_contracts",
+    "ExecutorCatalog::submit_artifact",
+    "FjallJournal::commit_run_submission"
+  ],
+  "open_findings_in_checked_issuance_scope": [],
+  "not_claimed": [
+    "allv1",
+    "allbranches",
+    "powerloss",
+    "formalproof",
+    "exhaustiveexternalcallers"
+  ]
+}

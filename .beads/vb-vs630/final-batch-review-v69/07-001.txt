@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/journal/artifact_acceptance.rs
+1: //! Private artifact acceptance counter and issuance helpers.
+2: //!
+3: //! This module owns the artifact sequence counter stored in the
+4: //! `artifact_acceptance` metadata keyspace. It provides a single private
+5: //! helper, `issue_artifact`, that performs the entire RMW sequence:
+6: //! read counter, increment, stamp, rebind digest, encode record, stage
+7: //! both writes in one `fjall::OwnedWriteBatch`, and commit with policy-
+8: //! appropriate durability.
+9: //!
+10: //! All helpers here are private (`fn` not `pub fn`). No new public API is
+11: //! exposed through this module.
+12: 
+13: use std::num::NonZeroU64;
+14: 
+15: use crate::admission::AcceptedArtifact;
+16: use crate::admission::bind_artifact_digest;
+17: use crate::constants::MAGIC_COMPILED_ARTIFACT;
+18: use crate::constants::MAX_COMPILED_IR_BYTES;
+19: use crate::error::JournalError;
+20: use crate::journal::FjallJournal;
+21: use crate::journal::admission::verify_compiled_ir_record_digest;
+22: use crate::keys::compiled_ir_key;
+23: use crate::records::CompiledIrRecord;
+24: use crate::records::RecordKind;
+25: use crate::types::EventSeq;
+26: use vb_core::RuntimePolicy;
+27: 
+28: /// Private wrapper for issued artifact sequence numbers.
+29: ///
+30: /// Wraps `NonZeroU64` because issued sequences always start at 1.
+31: /// This type is not exported; only `EventSeq` appears in the public API.
+32: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+33: pub(crate) struct IssuedArtifactSequence(std::num::NonZeroU64);
+34: 
+35: impl IssuedArtifactSequence {
+36:     /// Creates a new issued sequence from a validated non-zero value.
+37:     /// The caller must have already incremented the counter and ensured
+38:     /// the value is strictly greater than zero.
+39:     #[inline]
+40:     fn new(value: u64) -> Result<Self, JournalError> {
+41:         let nz = NonZeroU64::new(value).ok_or(JournalError::SequenceOverflow)?;
+42:         Ok(Self(nz))
+43:     }
+44: 
+45:     /// Converts to the public EventSeq type for embedding in the artifact.
+46:     #[inline]
+47:     pub(crate) fn to_event_seq(self) -> EventSeq {
+48:         EventSeq::new(self.0.get())
+49:     }
+50: }
+51: 
+52: /// The literal key for the last-issued counter in the artifact_acceptance
+53: /// keyspace. The dedicated keyspace already isolates this key; no prefix
+54: /// is needed.
+55: pub(crate) const LAST_ISSUED_KEY: &[u8] = b"last_issued";
+56: 
+57: /// Reads the last issued artifact sequence from the metadata keyspace.
+58: ///
+59: /// Returns 0 if the counter key is absent (no artifacts issued yet).
+60: fn read_counter(journal: &FjallJournal) -> Result<u64, JournalError> {
+61:     match journal.artifact_acceptance.get(LAST_ISSUED_KEY)? {
+62:         Some(value) => decode_counter_value(&value),
+63:         None => Ok(0),
+64:     }
+65: }
+66: 
+67: /// Decodes a counter value from bytes.
+68: ///
+69: /// Uses safe fixed array TryFrom; no unchecked slicing or indexing.
+70: /// Value must be exactly 8 bytes (big-endian u64).
+71: fn decode_counter_value(value: &[u8]) -> Result<u64, JournalError> {
+72:     if value.len() != 8 {
+73:         return Err(JournalError::MalformedKeyspaceRow {
+74:             prefix: 0,
+75:             expected_len: 8,
+76:             actual_len: value.len(),
+77:         });
+78:     }
+79:     // Safe fixed array TryFrom (no unchecked indexing or copy_from_slice)
+80:     let bytes: [u8; 8] = value
+81:         .try_into()
+82:         .map_err(|_| JournalError::MalformedKeyspaceRow {
+83:             prefix: 0,
+84:             expected_len: 8,
+85:             actual_len: value.len(),
+86:         })?;
+87:     Ok(u64::from_be_bytes(bytes))
+88: }
+89: 
+90: /// Encodes a counter value to big-endian bytes.
+91: fn encode_counter_value(value: u64) -> [u8; 8] {
+92:     value.to_be_bytes()
+93: }
+94: 
+95: /// Increment the counter and prepare the stamped artifact.
+96: fn prepare_artifact(
+97:     last: u64,
+98:     artifact: AcceptedArtifact,
+99: ) -> Result<(u64, AcceptedArtifact), JournalError> {
+100:     let next = last.checked_add(1).ok_or(JournalError::SequenceOverflow)?;

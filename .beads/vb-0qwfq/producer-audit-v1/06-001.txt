@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs
+1: /// Performs the admission gate check for a submit.
+2: ///
+3: /// - Strict / Journaled: artifact must exist in the store.
+4: /// - Relaxed: always succeeds.
+5: ///
+6: /// Returns a `RunAdmission` on success or an `AdmissionError` on rejection.
+7: pub fn admit_run(
+8:     store: &dyn AcceptedArtifactStore,
+9:     policy: RuntimePolicy,
+10:     digest: WorkflowDigest,
+11:     run_id: RunId,
+12:     caps: CapabilitySet,
+13: ) -> Result<RunAdmission, AdmissionError> {
+14:     let admitted_digest = match policy {
+15:         RuntimePolicy::Strict | RuntimePolicy::Journaled => {
+16:             let artifact = store
+17:                 .load_accepted_artifact(digest)
+18:                 .map_err(map_artifact_envelope_error)?;
+19:             validate_accepted_artifact_envelope(store, &artifact).map_err(map_artifact_envelope_error)?;
+20:             verify_stored_artifact(store, &artifact, Some(policy)).map_err(
+21:                 |_| AdmissionError::ArtifactInvalidProofFlag {
+22:                     flag: "admission_policy",
+23:                 },
+24:             )?;
+25:             if artifact.digest != digest && artifact.source_digest != digest {
+26:                 return Err(AdmissionError::ArtifactDigestMismatch {
+27:                     requested: digest,
+28:                     found: artifact.digest,
+29:                 });
+30:             }
+31:             artifact.digest
+32:         }
+33:         RuntimePolicy::Relaxed => digest,
+34:         _ => {
+35:             return Err(AdmissionError::ArtifactInvalidProofFlag {
+36:                 flag: "runtime_policy",
+37:             });
+38:         }
+39:     };
+40:     Ok(RunAdmission::new(
+41:         admitted_digest,
+42:         run_id,
+43:         caps,
+44:         policy,
+45:     ))
+46: }
+47: 
+48: /// Performs full admission gate check with artifact validation before run creation.
+49: ///
+50: /// For `RuntimePolicy::Strict` and `RuntimePolicy::Journaled`:
+51: ///   - Loads and validates the accepted artifact from storage
+52: ///   - Checks that the artifact has all 15 gates passing and proof flags set
+53: ///   - Validates that granted capabilities cover the artifact's required capabilities
+54: ///
+55: /// For `RuntimePolicy::Relaxed`:
+56: ///   - Skips artifact loading and capability checking
+57: ///   - Returns a lightweight RunAdmission with no budget
+58: ///
+59: /// Returns `Ok(RunAdmission)` on success, or an `AdmissionError` on rejection.
+60: /// On error, no run frame is allocated, no run state is inserted, and no
+61: /// `RunAccepted` journal event is recorded.
+62: pub fn admit_artifact_run(
+63:     store: &dyn AcceptedArtifactStore,
+64:     policy: RuntimePolicy,
+65:     run_id: RunId,
+66:     artifact_digest: WorkflowDigest,
+67:     caps: CapabilitySet,
+68: ) -> Result<RunAdmission, AdmissionError> {
+69:     admit_artifact_run_with_certificate_floor(
+70:         store,
+71:         policy,
+72:         run_id,
+73:         artifact_digest,
+74:         caps,
+75:         EventSeq::ZERO,
+76:     )
+77: }
+78: 
+79: /// Performs full artifact admission with a caller-supplied certificate freshness floor.
+80: ///
+81: /// This preserves relaxed-mode behavior and rejects Strict/Journaled artifacts whose
+82: /// `accepted_at_seq` is below `required_at_least` after envelope validation.
+83: pub fn admit_artifact_run_with_certificate_floor(
+84:     store: &dyn AcceptedArtifactStore,
+85:     policy: RuntimePolicy,
+86:     run_id: RunId,
+87:     artifact_digest: WorkflowDigest,
+88:     caps: CapabilitySet,
+89:     required_at_least: EventSeq,
+90: ) -> Result<RunAdmission, AdmissionError> {
+91:     match policy {
+92:         RuntimePolicy::Strict | RuntimePolicy::Journaled => {
+93:             // Load and validate the full artifact.
+94:             let artifact = store
+95:                 .load_accepted_artifact(artifact_digest)
+96:                 .map_err(map_artifact_envelope_error)?;
+97:             validate_accepted_artifact_envelope(store, &artifact).map_err(map_artifact_envelope_error)?;
+98:             verify_stored_artifact(store, &artifact, Some(policy)).map_err(
+99:                 |_| AdmissionError::ArtifactInvalidProofFlag {
+100:                     flag: "admission_policy",

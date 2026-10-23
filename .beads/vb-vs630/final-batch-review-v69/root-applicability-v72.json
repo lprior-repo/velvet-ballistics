@@ -1,0 +1,13 @@
+{
+  "status": "APPROVED_TEST_ONLY_B1_B2_FIXED",
+  "corrections": [
+    "raw No limit permits any size is unsupported: onlynormal19bytecounter withNone and injected metadata overflow checked; legacyNone eventbytes uncounted",
+    "raw allsubsequent operations refers onlycounter+commit, not exhaustive everybatchputter",
+    "raw four overflow tests includes18/19finitebudget rejection, not an arithmetic overflow; threeactualarithmeticoverflowcases",
+    "drop/abort current-handle readback is no-publication evidence; no powerloss/durability guarantee",
+    "no executedmutants/fullcanonical/formalproof claim"
+  ],
+  "accepted": "actualB1 exact1rawcounterbytes+fullRunAcceptedseq0 eventvectorbothorders; actualB2 metadataunchanged exactBatchAbortedcommitrefusal+counterabsence;12tests",
+  "source": "4df9e4f196e3047a280cb2d1755488afd1bfd60b",
+  "open_findings": []
+}

@@ -1,0 +1,121 @@
+crates/workspace_tests/tests/vb_test_cli_storage_io_behavior.rs:127:        accepted_at_seq: EventSeq::ZERO,
+crates/workspace_tests/tests/vb_lp2v_admission_integration.rs:495:            accepted_at_seq: EventSeq::new(0),
+crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs:110:        accepted_at_seq: EventSeq::new(0),
+crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:261:    tampered.accepted_at_seq = EventSeq::new(4);
+crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:287:            accepted_at_seq: EventSeq::new(4),
+crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:294:        "admission rejected: artifact certificate stale for digest {:?}: accepted_at_seq {:?} < required_at_least {:?}",
+crates/workspace_tests/tests/vb_ko29_5_public_idempotency.rs:317:    tampered.accepted_at_seq = EventSeq::new(4);
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:102:        accepted_at_seq: EventSeq,
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:241:                accepted_at_seq: artifact.accepted_at_seq,
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:355:    assert_eq!(artifact.accepted_at_seq, CONTRACT_ACCEPTED_SEQ);
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:378:            seq: artifact.accepted_at_seq,
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:405:        seq: artifact.accepted_at_seq,
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:431:    assert_eq!(decoded.accepted_at_seq, artifact.accepted_at_seq);
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:432:    assert_eq!(decoded.accepted_at_seq, CONTRACT_ACCEPTED_SEQ);
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:635:    // When strict admission attempts to bind a sentinel accepted_at_seq before acknowledgement.
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:909:        prop_assert!(artifact.accepted_at_seq.get() >= 1,
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:910:            "accepted_at_seq must be non-sentinel");
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:959:        // Then: accepted_at_seq is non-zero (non-sentinel).
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:960:        prop_assert!(artifact.accepted_at_seq.get() >= 1,
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:961:            "strict admission must bind non-sentinel accepted_at_seq, got {}",
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:962:            artifact.accepted_at_seq.get());
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:969:            prop_assert_eq!(artifact.accepted_at_seq, *seq,
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:970:                "artifact.accepted_at_seq must equal RunAccepted.seq");
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:987:        // Strict must produce non-sentinel accepted_at_seq.
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:988:        prop_assert!(artifact.accepted_at_seq.get() != 0,
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:989:            "strict accepted_at_seq must not be sentinel (0)");
+crates/vb_storage/tests/vb_core_atomic_admission_red.rs:1248:        prop_assert_eq!(decoded.accepted_at_seq, artifact.accepted_at_seq);
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:245:fn accepted_artifact_submission_records_first_accepted_at_seq() -> Result<(), String> {
+crates/vb_storage/tests/accepted_artifact_red_phase.rs:248:    assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:254:    /// TEST: submit_artifact accepted_at_seq is valid EventSeq
+crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:256:    /// Contract §2.1 Postcondition (All): accepted_at_seq is a valid EventSeq.
+crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:258:    fn accepted_at_seq_is_valid_event_seq() -> Result<(), String> {
+crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:265:        // accepted_at_seq must be a valid EventSeq (non-null, properly constructed)
+crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:267:            result.accepted_at_seq.get(),
+crates/vb_storage/src/vb_2bok_durability_gate_tests.rs:269:            "accepted_at_seq should be the first issued sequence number (1)"
+crates/vb_storage/src/admission.rs:222:    pub accepted_at_seq: EventSeq,
+crates/vb_storage/src/admission.rs:341:pub fn submit_artifact(
+crates/vb_storage/src/admission.rs:351:pub fn submit_artifact_with_contracts(
+crates/vb_storage/src/admission.rs:364:    let stamped = crate::journal::artifact_acceptance::issue_next_artifact_sequence(
+crates/vb_storage/src/journal/tests.rs:62:        accepted_at_seq: EventSeq::new(0),
+crates/vb_storage/src/admission/verification.rs:45:        accepted_at_seq: EventSeq::new(0),
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:96:    if artifact.accepted_at_seq.get() != 1 {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:99:            artifact.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:132:    if artifact.accepted_at_seq.get() != 1 {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:135:            artifact.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:150:    expected.accepted_at_seq = EventSeq::new(1);
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:178:    if artifact2.accepted_at_seq.get() != 2 {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:181:            artifact2.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:215:    if artifact.accepted_at_seq.get() != 1 {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:218:            artifact.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:241:    if artifact1.accepted_at_seq.get() != u64::MAX {
+crates/vb_storage/src/admission/acceptance_sequence_failure_tests.rs:244:            artifact1.accepted_at_seq.get()
+crates/vb_storage/src/admission/tests.rs:470:    // accepted_at_seq should be 1 (first submission gets sequence 1).
+crates/vb_storage/src/admission/tests.rs:472:        artifact.accepted_at_seq.get(),
+crates/vb_storage/src/admission/tests.rs:474:        "accepted_at_seq must be 1"
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:48:        seqs.push(artifact.accepted_at_seq.get());
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:101:    if next.accepted_at_seq.get() != 9 {
+crates/vb_storage/src/admission/acceptance_sequence_concurrency_tests.rs:104:            next.accepted_at_seq.get()
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:47:        accepted.accepted_at_seq.get(),
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:55:        accepted.accepted_at_seq.get(),
+crates/vb_storage/src/admission/acceptance_sequence_tests.rs:130:        prepared.accepted_at_seq.get(),
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:6:use crate::journal::artifact_acceptance::{LAST_ISSUED_KEY, prepare_artifact_with_sequence};
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:35:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:54:    let (seq2, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:73:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:100:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:133:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:166:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:204:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:236:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:268:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:299:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:332:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_tests.rs:353:    let (seq, _) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+crates/vb_storage/src/batch/artifact_sequence_test_support.rs:20:/// Creates a minimal AcceptedArtifact fixture suitable for prepare_artifact_with_sequence.
+crates/vb_storage/src/journal/artifact_acceptance.rs:103:    stamped.accepted_at_seq = seq.to_event_seq();
+crates/vb_storage/src/journal/artifact_acceptance.rs:115:pub(crate) fn prepare_artifact_with_sequence(
+crates/vb_storage/src/journal/artifact_acceptance.rs:198:    let (seq, stamped) = prepare_artifact_with_sequence(journal, artifact)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:207:pub(crate) fn issue_next_artifact_sequence(
+crates/vb_storage/src/executor/issuance_boundary_tests.rs:95:    assert_eq!(artifact.accepted_at_seq.get(), u64::MAX);
+crates/vb_storage/src/inputs/submission.rs:161:    let (seq, stamped) = crate::journal::artifact_acceptance::prepare_artifact_with_sequence(
+crates/vb_storage/src/inputs/submission.rs:180:    pub fn commit_run_submission(
+crates/vb_storage/src/executor/packed.rs:48:    pub fn submit_artifact(
+crates/vb_storage/src/executor/packed.rs:57:        let stamped = crate::journal::artifact_acceptance::issue_next_artifact_sequence(
+crates/vb_storage/src/inputs/issuance_test_support.rs:125:    assert_eq!(decoded.accepted_at_seq.get(), expected_seq);
+crates/vb_storage/src/inputs/issuance_test_support.rs:151:/// and acceptance events. Returns the actual accepted_at_seq stamped
+crates/vb_storage/src/inputs/issuance_test_support.rs:215:    let actual_seq = decoded.accepted_at_seq.get();
+crates/vb_storage/src/inputs/issuance_tests.rs:2://! Verifies counter increment, accepted_at_seq stamping, digest rebinding,
+crates/vb_storage/src/inputs/issuance_tests.rs:10:/// All three CLI policies stamp accepted_at_seq=1 and advance the counter.
+crates/vb_storage/src/inputs/issuance_tests.rs:170:    assert_eq!(default_artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/inputs/issuance_tests.rs:178:    assert_eq!(default2.accepted_at_seq.get(), 3);
+crates/vb_storage/src/executor/issuance_tests.rs:24:        assert_eq!(artifact.accepted_at_seq.get(), 0);
+crates/vb_storage/src/executor/issuance_tests.rs:39:    assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:50:    assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:61:    assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:72:    assert_eq!(strict.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:74:    assert_eq!(journaled.accepted_at_seq.get(), 2);
+crates/vb_storage/src/executor/issuance_tests.rs:76:    assert_eq!(relaxed.accepted_at_seq.get(), 3);
+crates/vb_storage/src/executor/issuance_tests.rs:95:    assert_eq!(default_artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:97:    assert_eq!(catalog_artifact.accepted_at_seq.get(), 2);
+crates/vb_storage/src/executor/issuance_tests.rs:100:    assert_eq!(default_artifact2.accepted_at_seq.get(), 3);
+crates/vb_storage/src/executor/issuance_tests.rs:126:    assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:134:    assert_eq!(artifact2.accepted_at_seq.get(), 2);
+crates/vb_storage/src/executor/issuance_tests.rs:152:    assert_eq!(default1.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:156:    assert_eq!(catalog1.accepted_at_seq.get(), 2);
+crates/vb_storage/src/executor/issuance_tests.rs:168:    assert_eq!(default2.accepted_at_seq.get(), 4);
+crates/vb_storage/src/executor/issuance_tests.rs:184:    assert_eq!(run77_decoded.accepted_at_seq.get(), 3);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:39:    assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:70:    assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:84:    expected.accepted_at_seq = crate::EventSeq::new(1);
+crates/vb_storage/src/executor/issuance_failure_tests.rs:99:    assert_eq!(artifact2.accepted_at_seq.get(), 2);
+crates/vb_storage/src/inputs/issuance_boundary_tests.rs:194:    assert_eq!(reopened_decoded.accepted_at_seq.get(), 1);
+crates/vb_runtime/src/kani_engine_yaml_admission.rs:76:        accepted_at_seq: vb_storage::EventSeq::new(0),
+crates/vb_runtime/src/kani_capability_harnesses.rs:134:            accepted_at_seq: vb_storage::EventSeq::new(0),
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:82:/// `accepted_at_seq` is below `required_at_least` after envelope validation.
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:123:            if artifact.accepted_at_seq < required_at_least {
+crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:126:                    accepted_at_seq: artifact.accepted_at_seq,
+crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:186:        "admission rejected: artifact certificate stale for digest {digest:?}: accepted_at_seq {accepted_at_seq:?} < required_at_least {required_at_least:?}"
+crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:192:        accepted_at_seq: EventSeq,
+crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:67:        accepted_at_seq: vb_storage::types::EventSeq::new(0),
+crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs:69:                accepted_at_seq: vb_storage::types::EventSeq::new(0),

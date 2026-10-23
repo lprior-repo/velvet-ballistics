@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/admission/verification.rs
+1: //! Independent cold-path IR verifier. No compiler or source-language dependency.
+2: 
+3: use super::*;
+4: use vb_core::artifact::{
+5:     ArtifactEvidence, ArtifactVerificationEvidence, AssumptionId, ObligationClosure,
+6:     ObligationKind, VerificationLedgerEntry,
+7: };
+8: use vb_core::{CompiledWorkflow, RuntimePolicy, WorkflowDigest, WorkflowParts};
+9: 
+10: pub(crate) const EVIDENCE_VERSION: u16 = 3;
+11: 
+12: #[path = "verification/executor_profile.rs"]
+13: mod executor_profile;
+14: pub(crate) use executor_profile::ExecutorProfile;
+15: 
+16: /// Prepare a checked envelope without writing a journal or claiming a durable ack.
+17: /// External assumptions in the ledger remain assumptions, not executed evidence.
+18: pub fn prepare_compiled_artifact(
+19:     workflow: &CompiledWorkflow,
+20:     policy: RuntimePolicy,
+21:     contracts: &[ActionContract],
+22: ) -> Result<AcceptedArtifact, JournalError> {
+23:     prepare_with_profile(workflow, policy, contracts, ExecutorProfile::Legacy)
+24: }
+25: 
+26: pub(crate) fn prepare_with_profile(
+27:     workflow: &CompiledWorkflow,
+28:     policy: RuntimePolicy,
+29:     contracts: &[ActionContract],
+30:     profile: ExecutorProfile<'_>,
+31: ) -> Result<AcceptedArtifact, JournalError> {
+32:     let parts = checked_parts(workflow, policy, contracts, &profile)?;
+33:     let ir = postcard::to_allocvec(&parts).map_err(JournalError::PostcardEncodeFailed)?;
+34:     let evidence = build_evidence(&parts, &ir, policy, contracts)?;
+35:     let mut proof = VerificationProof::new(zero_workflow_digest(), 0, false);
+36:     proof.bounded_claimed = true;
+37:     proof.idempotency_verified_claimed = true;
+38:     proof.evidence = profile.wrap(evidence);
+39:     let mut artifact = AcceptedArtifact {
+40:         digest: zero_workflow_digest(),
+41:         source_digest: workflow.digest(),
+42:         policy_digest: compute_policy_digest(workflow)?,
+43:         ir,
+44:         verification: proof,
+45:         accepted_at_seq: EventSeq::new(0),
+46:         required_capabilities: required_capabilities_from_contracts(contracts)?,
+47:         action_contracts: contracts.to_vec().into_boxed_slice(),
+48:     };
+49:     bind_artifact_digest(&mut artifact)?;
+50:     Ok(artifact)
+51: }
+52: 
+53: /// Recompute checks and evidence from hostile artifact bytes before runtime use.
+54: /// Legacy claims require regeneration; a rehashed forged ledger is still rejected.
+55: pub fn verify_accepted_artifact(
+56:     artifact: &AcceptedArtifact,
+57: ) -> Result<CompiledWorkflow, JournalError> {
+58:     let len = u32::try_from(artifact.ir.len()).map_err(|_| JournalError::ArtifactMalformed)?;
+59:     if len > crate::constants::MAX_COMPILED_IR_BYTES {
+60:         return Err(JournalError::PayloadTooLarge {
+61:             len,
+62:             max: crate::constants::MAX_COMPILED_IR_BYTES,
+63:         });
+64:     }
+65:     let evidence = checked_evidence_schema(&artifact.verification.evidence)?;
+66:     if accepted_artifact_digest(artifact)? != artifact.digest
+67:         || artifact.verification.digest != artifact.digest
+68:     {
+69:         return Err(JournalError::ArtifactChecksumMismatch);
+70:     }
+71:     let (parts, trailing) = postcard::take_from_bytes::<WorkflowParts>(&artifact.ir)
+72:         .map_err(JournalError::PostcardDecodeFailed)?;
+73:     if !trailing.is_empty() {
+74:         return Err(JournalError::ArtifactMalformed);
+75:     }
+76:     let workflow =
+77:         CompiledWorkflow::try_from_parts(parts).map_err(JournalError::WorkflowReconstruction)?;
+78:     let expected = prepare_compiled_artifact(
+79:         &workflow,
+80:         evidence.admission_policy,
+81:         &artifact.action_contracts,
+82:     )?;
+83:     verify_expected_bindings(artifact, &expected)?;
+84:     Ok(workflow)
+85: }
+86: 
+87: /// Verify that a caller cannot upgrade a weaker artifact to a stronger policy.
+88: pub fn verify_accepted_artifact_for_policy(
+89:     artifact: &AcceptedArtifact,
+90:     policy: RuntimePolicy,
+91: ) -> Result<CompiledWorkflow, JournalError> {
+92:     let evidence = checked_evidence_schema(&artifact.verification.evidence)?;
+93:     if evidence.admission_policy != policy {
+94:         return Err(JournalError::ArtifactMalformed);
+95:     }
+96:     verify_accepted_artifact(artifact)
+97: }
+98: 
+99: fn checked_evidence_schema(
+100:     evidence: &ArtifactEvidence,

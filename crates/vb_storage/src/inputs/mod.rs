@@ -142,6 +142,8 @@ impl FjallJournal {
 }
 
 #[cfg(test)]
+mod issuance_binding_test_support;
+#[cfg(test)]
 mod issuance_boundary_tests;
 #[cfg(test)]
 mod issuance_failure_tests;

@@ -1,0 +1,73 @@
+ACTUAL SOURCE crates/vb_storage/src/admission/verification.rs
+201:         return Ok(ObligationClosure::RuntimeValidated { verifier_digest });
+202:     }
+203:     let declarations =
+204:         postcard::to_allocvec(contracts).map_err(JournalError::PostcardEncodeFailed)?;
+205:     Ok(ObligationClosure::ExternalAssumption {
+206:         assumption_id: AssumptionId::ExecutorHonorsActionContracts,
+207:         evidence_digest: digest(&declarations),
+208:     })
+209: }
+210: 
+211: fn obligation_ledger(
+212:     policy_digest: WorkflowDigest,
+213:     verifier: WorkflowDigest,
+214:     effect_safety: ObligationClosure,
+215: ) -> Result<[VerificationLedgerEntry; 10], JournalError> {
+216:     use ObligationKind::*;
+217:     let validated = ObligationClosure::RuntimeValidated {
+218:         verifier_digest: verifier,
+219:     };
+220:     let entry = |obligation, closure| VerificationLedgerEntry {
+221:         obligation,
+222:         closure,
+223:         policy_digest,
+224:     };
+225:     Ok([
+226:         entry(Determinism, validated),
+227:         entry(EffectSafety, effect_safety),
+228:         entry(CapabilityNonMinting, validated),
+229:         entry(Boundedness, validated),
+230:         entry(
+231:             ReplayEffectSeparation,
+232:             assumption(AssumptionId::RuntimeReplayEffectSeparation)?,
+233:         ),
+234:         entry(ArtifactValidity, validated),
+235:         entry(IdempotencyClassification, validated),
+236:         entry(
+237:             RecoveryClassification,
+238:             assumption(AssumptionId::RuntimeRecoverySemantics)?,
+239:         ),
+240:         entry(
+241:             TaintHandling,
+242:             assumption(AssumptionId::RuntimeTaintEnforcement)?,
+243:         ),
+244:         entry(PolicyBinding, validated),
+245:     ])
+246: }
+247: 
+248: fn assumption(assumption_id: AssumptionId) -> Result<ObligationClosure, JournalError> {
+249:     // Identifies this explicit declaration; it is not a verifier or test result.
+250:     let declaration = ("velvet-ballistics/external-assumption/v1", assumption_id);
+251:     let bytes = postcard::to_allocvec(&declaration).map_err(JournalError::PostcardEncodeFailed)?;
+252:     Ok(ObligationClosure::ExternalAssumption {
+253:         assumption_id,
+254:         evidence_digest: digest(&bytes),
+255:     })
+256: }
+257: 
+258: fn digest(bytes: &[u8]) -> WorkflowDigest {
+259:     WorkflowDigest::from_bytes(blake3::hash(bytes).into())
+260: }
+261: 
+262: fn verifier_digest() -> WorkflowDigest {
+263:     // Fingerprints verifier entrypoints, not a signed compiler/build identity.
+264:     let mut hasher = blake3::Hasher::new();
+265:     hasher.update(include_bytes!("verification.rs"));
+266:     hasher.update(include_bytes!("../../../vb_core/src/workflow/mod.rs"));
+267:     hasher.update(include_bytes!("../../../vb_core/src/budget.rs"));
+268:     hasher.update(include_bytes!("../../../vb_core/src/action/registry.rs"));
+269:     hasher.update(include_bytes!("../../../vb_validate/src/shared.rs"));
+270:     hasher.update(include_bytes!("../../../vb_validate/src/gates.rs"));
+271:     WorkflowDigest::from_bytes(hasher.finalize().into())
+272: }
