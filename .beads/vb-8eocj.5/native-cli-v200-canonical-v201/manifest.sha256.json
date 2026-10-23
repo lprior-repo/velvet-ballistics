@@ -1,8 +1,8 @@
 [
   {
     "path": "README.md",
-    "bytes": 766,
-    "sha256": "9bf5f554d7a6e96beb17162eb0601fce1fcea9db1de907c14aafa1ed35ed3f36"
+    "bytes": 1139,
+    "sha256": "a2ee6eea4cd374e4b3c4a4e216b9a3b1501abaa51213ed7f90d1d5422659d5af"
   },
   {
     "path": "ROOT_CLI_BINARY_V201.after.json",
@@ -76,8 +76,8 @@
   },
   {
     "path": "receipt.json",
-    "bytes": 1775,
-    "sha256": "df1b9c628b4cee323a238496849a00f26faf73307654abae655d07e2fcfe85d5"
+    "bytes": 2387,
+    "sha256": "b0593475c711844d3ad2b5f5c3a18f5839df0213a93d4efee0ba67ed4c4b12d7"
   },
   {
     "path": "systemd-oom-kill.txt",

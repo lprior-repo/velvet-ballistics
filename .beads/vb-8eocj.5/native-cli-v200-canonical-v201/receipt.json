@@ -17,7 +17,7 @@
   "generated_diff": ".evidence/verus/trust-scan.txt line ordering only (identical line multiset); retained patch; generated JJ child43d76c9d",
   "stale_moon_ci_report_excluded": true,
   "binary_sha256_unchanged": "d00ddb0d065d14be8c77029c89bcee8d6e76e9697e15183fdd07ffd70612e6dc",
-  "pending": "baseline Kani interrupted; subsequent tasks not accepted; full canonical gate and main landing still pending",
+  "pending": "Resolve missing hardened profile, stale benchmark evidence, interrupted baseline Kani, then successful canonical CI before main.",
   "limits": [
     "TSAN instrumented binary build is not runtime race freedom",
     "ASAN check/build not exhaustive memory safety",
@@ -28,5 +28,20 @@
     "test-integrity reported base HEAD",
     "cached/no-op tasks retained as such",
     "registered Verus/Repeat Kani results do not establish full F1 proof closure"
-  ]
+  ],
+  "additional_gate_failures": [
+    {
+      "task": "hardened-build",
+      "stderr_line": 357,
+      "observed": "error: profile `hardened` is not defined",
+      "verdict": "RED_MISSING_PROFILE"
+    },
+    {
+      "task": "benchmark-regression-policy",
+      "stderr_line": 462,
+      "observed": "benchmark evidence line1 stale versus measured commit e80b14470b9e16c67106aa42de912c5df49be461",
+      "verdict": "RED_STALE_EVIDENCE"
+    }
+  ],
+  "correction": "Earlier task-completion markers are not successful exit receipts. These2 stages are RED, notPASS. Raw original logs unchanged."
 }
