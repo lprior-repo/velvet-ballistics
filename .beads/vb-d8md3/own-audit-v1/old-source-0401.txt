@@ -1,0 +1,100 @@
+old-source:401:             action: ActionId::new(1),
+old-source:402:             attempt: 1,
+old-source:403:             idempotency_key: seq as u128,
+old-source:404:             capacity: 1,
+old-source:405:         }
+old-source:406:     }
+old-source:407: 
+old-source:408:     #[test]
+old-source:409:     fn bounded_action_queue_new_with_capacity_stores_capacity() {
+old-source:410:         let queue = BoundedActionCompletionQueue::new(10).unwrap();
+old-source:411:         assert_eq!(queue.capacity(), 10);
+old-source:412:     }
+old-source:413: 
+old-source:414:     #[test]
+old-source:415:     fn bounded_action_queue_new_is_empty() {
+old-source:416:         let queue = BoundedActionCompletionQueue::new(5).unwrap();
+old-source:417:         assert_eq!(queue.len(), 0);
+old-source:418:         assert!(queue.is_empty());
+old-source:419:     }
+old-source:420: 
+old-source:421:     #[test]
+old-source:422:     fn bounded_action_queue_new_with_zero_capacity_returns_error() {
+old-source:423:         let result = BoundedActionCompletionQueue::new(0);
+old-source:424:         assert!(matches!(
+old-source:425:             result,
+old-source:426:             Err(ActionQueueError::InvalidCapacity {
+old-source:427:                 requested: 0,
+old-source:428:                 reason: InvalidActionQueueCapacity::Zero,
+old-source:429:             })
+old-source:430:         ));
+old-source:431:     }
+old-source:432: 
+old-source:433:     #[test]
+old-source:434:     fn bounded_action_queue_new_with_max_capacity_succeeds() {
+old-source:435:         let queue =
+old-source:436:             BoundedActionCompletionQueue::new(MAX_ACTION_COMPLETION_QUEUE_CAPACITY).unwrap();
+old-source:437:         assert_eq!(queue.capacity(), MAX_ACTION_COMPLETION_QUEUE_CAPACITY);
+old-source:438:     }
+old-source:439: 
+old-source:440:     #[test]
+old-source:441:     fn bounded_action_queue_new_above_max_capacity_returns_error() {
+old-source:442:         let requested = MAX_ACTION_COMPLETION_QUEUE_CAPACITY + 1;
+old-source:443:         let result = BoundedActionCompletionQueue::new(requested);
+old-source:444:         assert!(matches!(
+old-source:445:             result,
+old-source:446:             Err(ActionQueueError::InvalidCapacity {
+old-source:447:                 requested: value,
+old-source:448:                 reason: InvalidActionQueueCapacity::AboveMaximum {
+old-source:449:                     maximum,
+old-source:450:                 },
+old-source:451:             }) if value == requested && maximum == MAX_ACTION_COMPLETION_QUEUE_CAPACITY
+old-source:452:         ));
+old-source:453:     }
+old-source:454: 
+old-source:455:     #[test]
+old-source:456:     fn bounded_action_queue_with_backpressure_rejects_zero_capacity() {
+old-source:457:         let result = BoundedActionCompletionQueue::with_backpressure(0);
+old-source:458:         assert!(matches!(
+old-source:459:             result,
+old-source:460:             Err(ActionQueueError::InvalidCapacity {
+old-source:461:                 requested: 0,
+old-source:462:                 reason: InvalidActionQueueCapacity::Zero,
+old-source:463:             })
+old-source:464:         ));
+old-source:465:     }
+old-source:466: 
+old-source:467:     #[test]
+old-source:468:     fn bounded_action_queue_with_backpressure_rejects_above_max_capacity() {
+old-source:469:         let requested = MAX_ACTION_COMPLETION_QUEUE_CAPACITY + 1;
+old-source:470:         let result = BoundedActionCompletionQueue::with_backpressure(requested);
+old-source:471:         assert!(matches!(
+old-source:472:             result,
+old-source:473:             Err(ActionQueueError::InvalidCapacity {
+old-source:474:                 requested: value,
+old-source:475:                 reason: InvalidActionQueueCapacity::AboveMaximum { maximum },
+old-source:476:             }) if value == requested && maximum == MAX_ACTION_COMPLETION_QUEUE_CAPACITY
+old-source:477:         ));
+old-source:478:     }
+old-source:479: 
+old-source:480:     #[test]
+old-source:481:     fn bounded_action_queue_preallocates_vecdeque_to_validated_capacity() {
+old-source:482:         let queue = BoundedActionCompletionQueue::new(13).unwrap();
+old-source:483:         let inner = queue.inner.lock().unwrap();
+old-source:484:         assert_eq!(inner.items.capacity(), 13);
+old-source:485:     }
+old-source:486: 
+old-source:487:     #[test]
+old-source:488:     fn bounded_action_queue_enqueue_single_item_succeeds() {
+old-source:489:         let queue = BoundedActionCompletionQueue::new(3).unwrap();
+old-source:490:         let ticket = make_ticket(0);
+old-source:491:         let result = queue.enqueue(ticket);
+old-source:492:         assert!(result.is_ok());
+old-source:493:     }
+old-source:494: 
+old-source:495:     #[test]
+old-source:496:     fn bounded_action_queue_enqueue_at_capacity_returns_queue_full_error() {
+old-source:497:         let queue = BoundedActionCompletionQueue::new(3).unwrap();
+old-source:498:         for i in 0..3 {
+old-source:499:             queue.enqueue(make_ticket(i)).unwrap();
+old-source:500:         }

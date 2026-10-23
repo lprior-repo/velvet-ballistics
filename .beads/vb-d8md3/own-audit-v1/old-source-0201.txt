@@ -1,0 +1,100 @@
+old-source:201:             Self {
+old-source:202:                 inner: std::sync::Mutex::new(Inner {
+old-source:203:                     items: VecDeque::with_capacity(capacity.get()),
+old-source:204:                 }),
+old-source:205:                 capacity,
+old-source:206:                 backpressure_tx: Some(tx),
+old-source:207:             },
+old-source:208:             rx,
+old-source:209:         ))
+old-source:210:     }
+old-source:211: 
+old-source:212:     /// Attempts to enqueue an action ticket.
+old-source:213:     ///
+old-source:214:     /// Returns `Ok(())` if the item was enqueued.
+old-source:215:     /// Returns `Err(ActionQueueError::QueueFull)` if the queue is at capacity.
+old-source:216:     ///
+old-source:217:     /// Emits a backpressure warning if the queue reaches or exceeds 80% capacity
+old-source:218:     /// after the enqueue.
+old-source:219:     pub fn enqueue(&self, ticket: ActionTicket) -> Result<(), ActionQueueError> {
+old-source:220:         let mut inner = match self.inner.lock() {
+old-source:221:             Ok(guard) => guard,
+old-source:222:             Err(poisoned) => poisoned.into_inner(),
+old-source:223:         };
+old-source:224:         if inner.items.len() >= self.capacity.get() {
+old-source:225:             return Err(ActionQueueError::QueueFull {
+old-source:226:                 capacity: self.capacity,
+old-source:227:             });
+old-source:228:         }
+old-source:229: 
+old-source:230:         inner.items.push_back(ticket);
+old-source:231: 
+old-source:232:         let depth = inner.items.len();
+old-source:233:         let threshold = backpressure_threshold(self.capacity);
+old-source:234:         if depth >= threshold
+old-source:235:             && let Some(ref tx) = self.backpressure_tx
+old-source:236:         {
+old-source:237:             match tx.try_send(BackpressureWarning {
+old-source:238:                 depth,
+old-source:239:                 capacity: self.capacity.get(),
+old-source:240:             }) {
+old-source:241:                 Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
+old-source:242:             }
+old-source:243:         }
+old-source:244: 
+old-source:245:         Ok(())
+old-source:246:     }
+old-source:247: 
+old-source:248:     /// Attempts to enqueue an action ticket, surfacing the backpressure
+old-source:249:     /// warning send outcome to the caller.
+old-source:250:     ///
+old-source:251:     /// Returns a tuple of:
+old-source:252:     /// 1. `Result<(), ActionQueueError>` — whether the ticket was enqueued
+old-source:253:     /// 2. `BackpressureWarningOutcome` — the result of any backpressure warning send
+old-source:254:     ///
+old-source:255:     /// If no backpressure channel is configured (`backpressure_tx` is `None`),
+old-source:256:     /// the outcome is always [`BackpressureWarningOutcome::Delivered`].
+old-source:257:     ///
+old-source:258:     /// This method is a superset of [`BoundedActionCompletionQueue::enqueue`]:
+old-source:259:     /// `enqueue` is equivalent to discarding the outcome from this method.
+old-source:260:     pub fn enqueue_with_backpressure_warning_outcome(
+old-source:261:         &self,
+old-source:262:         ticket: ActionTicket,
+old-source:263:     ) -> (Result<(), ActionQueueError>, BackpressureWarningOutcome) {
+old-source:264:         let mut inner = match self.inner.lock() {
+old-source:265:             Ok(guard) => guard,
+old-source:266:             Err(poisoned) => poisoned.into_inner(),
+old-source:267:         };
+old-source:268:         if inner.items.len() >= self.capacity.get() {
+old-source:269:             return (
+old-source:270:                 Err(ActionQueueError::QueueFull {
+old-source:271:                     capacity: self.capacity,
+old-source:272:                 }),
+old-source:273:                 BackpressureWarningOutcome::Delivered,
+old-source:274:             );
+old-source:275:         }
+old-source:276: 
+old-source:277:         inner.items.push_back(ticket);
+old-source:278: 
+old-source:279:         let depth = inner.items.len();
+old-source:280:         let threshold = backpressure_threshold(self.capacity);
+old-source:281:         let bp_outcome = if depth >= threshold {
+old-source:282:             match &self.backpressure_tx {
+old-source:283:                 Some(tx) => match tx.try_send(BackpressureWarning {
+old-source:284:                     depth,
+old-source:285:                     capacity: self.capacity.get(),
+old-source:286:                 }) {
+old-source:287:                     Ok(()) => BackpressureWarningOutcome::Delivered,
+old-source:288:                     Err(TrySendError::Full(_)) => BackpressureWarningOutcome::ChannelFull,
+old-source:289:                     Err(TrySendError::Disconnected(_)) => {
+old-source:290:                         BackpressureWarningOutcome::ChannelDisconnected
+old-source:291:                     }
+old-source:292:                 },
+old-source:293:                 None => BackpressureWarningOutcome::Delivered,
+old-source:294:             }
+old-source:295:         } else {
+old-source:296:             BackpressureWarningOutcome::Delivered
+old-source:297:         };
+old-source:298: 
+old-source:299:         (Ok(()), bp_outcome)
+old-source:300:     }

@@ -1,0 +1,100 @@
+old-source:101:     pub capacity: usize,
+old-source:102: }
+old-source:103: 
+old-source:104: /// Outcome of attempting to send a backpressure warning notification.
+old-source:105: ///
+old-source:106: /// Returned by [`BoundedActionCompletionQueue::enqueue_with_backpressure_warning_outcome`]
+old-source:107: /// so callers can determine whether the backpressure warning was actually
+old-source:108: /// delivered, the channel was full, or the receiver was disconnected.
+old-source:109: #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+old-source:110: #[non_exhaustive]
+old-source:111: pub enum BackpressureWarningOutcome {
+old-source:112:     /// The backpressure warning was delivered to the channel.
+old-source:113:     Delivered,
+old-source:114:     /// The notification channel is full; the warning was dropped.
+old-source:115:     ChannelFull,
+old-source:116:     /// The notification channel receiver was dropped; the warning was not delivered.
+old-source:117:     ChannelDisconnected,
+old-source:118: }
+old-source:119: 
+old-source:120: impl BoundedActionCompletionQueue {
+old-source:121:     /// Creates a new bounded queue with the given capacity.
+old-source:122:     ///
+old-source:123:     /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero
+old-source:124:     /// or exceeds [`MAX_ACTION_COMPLETION_QUEUE_CAPACITY`].
+old-source:125:     pub fn new(capacity: usize) -> Result<Self, ActionQueueError> {
+old-source:126:         let capacity = parse_capacity(capacity)?;
+old-source:127:         Ok(Self {
+old-source:128:             inner: std::sync::Mutex::new(Inner {
+old-source:129:                 items: VecDeque::with_capacity(capacity.get()),
+old-source:130:             }),
+old-source:131:             capacity,
+old-source:132:             backpressure_tx: None,
+old-source:133:         })
+old-source:134:     }
+old-source:135: 
+old-source:136:     /// Creates a new bounded queue with the given capacity, skipping capacity
+old-source:137:     /// validation.
+old-source:138:     ///
+old-source:139:     /// Use this constructor ONLY when the caller has verified that
+old-source:140:     /// `1 <= capacity <= MAX_ACTION_COMPLETION_QUEUE_CAPACITY`. Unlike
+old-source:141:     /// [`BoundedActionCompletionQueue::new`], this constructor does NOT
+old-source:142:     /// validate the input and is purely infallible (no Result, no panic).
+old-source:143:     /// The naming convention `new_infallible` makes the trust boundary
+old-source:144:     /// explicit at the call site.
+old-source:145:     ///
+old-source:146:     /// For runtime/derived capacity where the value is not statically known,
+old-source:147:     /// use the fallible [`BoundedActionCompletionQueue::new`] and propagate
+old-source:148:     /// the error.
+old-source:149:     pub fn new_infallible(capacity: usize) -> Self {
+old-source:150:         let capacity = ActionQueueCapacity::new_unchecked(capacity);
+old-source:151:         Self {
+old-source:152:             inner: std::sync::Mutex::new(Inner {
+old-source:153:                 items: VecDeque::with_capacity(capacity.get()),
+old-source:154:             }),
+old-source:155:             capacity,
+old-source:156:             backpressure_tx: None,
+old-source:157:         }
+old-source:158:     }
+old-source:159: 
+old-source:160:     /// Creates a new bounded queue with backpressure notification channel,
+old-source:161:     /// skipping capacity validation.
+old-source:162:     ///
+old-source:163:     /// Use this constructor ONLY when the caller has verified that
+old-source:164:     /// `1 <= capacity <= MAX_ACTION_COMPLETION_QUEUE_CAPACITY`. Unlike
+old-source:165:     /// [`BoundedActionCompletionQueue::with_backpressure`], this constructor
+old-source:166:     /// does NOT validate the input and is purely infallible (no Result, no
+old-source:167:     /// panic). The naming convention `with_backpressure_infallible` makes
+old-source:168:     /// the trust boundary explicit at the call site.
+old-source:169:     ///
+old-source:170:     /// Returns the queue together with the receiving end of the backpressure
+old-source:171:     /// notification channel. The sender is owned by the queue.
+old-source:172:     ///
+old-source:173:     /// For runtime/derived capacity where the value is not statically known,
+old-source:174:     /// use the fallible [`BoundedActionCompletionQueue::with_backpressure`]
+old-source:175:     /// and propagate the error.
+old-source:176:     pub fn with_backpressure_infallible(capacity: usize) -> (Self, Receiver<BackpressureWarning>) {
+old-source:177:         let capacity = ActionQueueCapacity::new_unchecked(capacity);
+old-source:178:         let (tx, rx) = std::sync::mpsc::sync_channel(capacity.get());
+old-source:179:         (
+old-source:180:             Self {
+old-source:181:                 inner: std::sync::Mutex::new(Inner {
+old-source:182:                     items: VecDeque::with_capacity(capacity.get()),
+old-source:183:                 }),
+old-source:184:                 capacity,
+old-source:185:                 backpressure_tx: Some(tx),
+old-source:186:             },
+old-source:187:             rx,
+old-source:188:         )
+old-source:189:     }
+old-source:190: 
+old-source:191:     /// Creates a new bounded queue with backpressure notification channel.
+old-source:192:     ///
+old-source:193:     /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero
+old-source:194:     /// or exceeds [`MAX_ACTION_COMPLETION_QUEUE_CAPACITY`].
+old-source:195:     pub fn with_backpressure(
+old-source:196:         capacity: usize,
+old-source:197:     ) -> Result<(Self, Receiver<BackpressureWarning>), ActionQueueError> {
+old-source:198:         let capacity = parse_capacity(capacity)?;
+old-source:199:         let (tx, rx) = std::sync::mpsc::sync_channel(capacity.get());
+old-source:200:         Ok((

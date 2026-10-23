@@ -1,0 +1,100 @@
+old-source:801:         // capacity * 8 is not a multiple of 10 (e.g. capacity=7 warns at 5, ~71%).
+old-source:802:         //
+old-source:803:         // For every c in `capacities`, the threshold must satisfy:
+old-source:804:         //   threshold(c) >= c * 4 / 5            (>= 80% in integer arithmetic)
+old-source:805:         //   threshold(c) >= ceil(c * 8 / 10)     (ceiling of 80%)
+old-source:806:         // and the minimum-1 clamp must hold for c = 1.
+old-source:807:         let capacities: &[usize] = &[1, 2, 3, 5, 7, 9, 10, 20, 100, 1_000];
+old-source:808:         for &c in capacities {
+old-source:809:             let threshold = backpressure_threshold(ActionQueueCapacity(c));
+old-source:810:             let floor_80pct = (c * 4) / 5;
+old-source:811:             let ceiling_80pct = (c * 8 + 9) / 10;
+old-source:812:             assert!(
+old-source:813:                 threshold >= floor_80pct,
+old-source:814:                 "threshold for capacity {c} must be >= 80% ({floor_80pct}); got {threshold}"
+old-source:815:             );
+old-source:816:             assert!(
+old-source:817:                 threshold >= ceiling_80pct,
+old-source:818:                 "threshold for capacity {c} must be >= ceil(80%) = {ceiling_80pct}; got {threshold}"
+old-source:819:             );
+old-source:820:         }
+old-source:821: 
+old-source:822:         // Minimum-1 clamp must still apply: with capacity = 1, floor(1 * 8 / 10) = 0
+old-source:823:         // but the queue must still warn at depth 1 (the queue itself).
+old-source:824:         assert_eq!(backpressure_threshold(ActionQueueCapacity(1)), 1);
+old-source:825: 
+old-source:826:         // Documented 80% on a capacity-100 queue must yield threshold == 80 exactly.
+old-source:827:         assert_eq!(backpressure_threshold(ActionQueueCapacity(100)), 80);
+old-source:828: 
+old-source:829:         // The original floor-division bug returned 5 for capacity = 7 (7 * 8 / 10 = 5).
+old-source:830:         // Ceiling division must return 6 (7 * 8 / 10 = 5.6 -> 6).
+old-source:831:         let threshold_7 = backpressure_threshold(ActionQueueCapacity(7));
+old-source:832:         assert!(
+old-source:833:             threshold_7 >= 6,
+old-source:834:             "capacity=7 must produce threshold >= 6 (ceiling of 80%); got {threshold_7}"
+old-source:835:         );
+old-source:836:     }
+old-source:837: 
+old-source:838:     // =============================================================================
+old-source:839:     // Group G: Backpressure Warning Outcome surfacing (VB-D8MD3)
+old-source:840:     // Scenario G1: enqueue_with_backpressure_warning_outcome returns Delivered when sent
+old-source:841:     // Scenario G2: enqueue_with_backpressure_warning_outcome returns Delivered without channel
+old-source:842:     // Scenario G3: enqueue_with_backpressure_warning_outcome returns Delivered below threshold
+old-source:843:     // Scenario G4: enqueue_with_backpressure_warning_outcome returns Delivered on queue full
+old-source:844:     // Scenario G5: enqueue_with_backpressure_warning_outcome returns ChannelFull when channel full
+old-source:845:     // Scenario G6: enqueue_with_backpressure_warning_outcome returns ChannelDisconnected
+old-source:846:     // =============================================================================
+old-source:847: 
+old-source:848:     #[test]
+old-source:849:     fn backpressure_outcome_delivered_when_warning_sent() {
+old-source:850:         let capacity = 10;
+old-source:851:         let (queue, rx) =
+old-source:852:             BoundedActionCompletionQueue::with_backpressure_infallible(capacity);
+old-source:853: 
+old-source:854:         for i in 0..7 {
+old-source:855:             let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+old-source:856:             assert_eq!(enqueue_result, Ok(()));
+old-source:857:             assert_eq!(
+old-source:858:                 bp_outcome,
+old-source:859:                 BackpressureWarningOutcome::Delivered,
+old-source:860:                 "below threshold ({i}/7), outcome should be Delivered"
+old-source:861:             );
+old-source:862:         }
+old-source:863: 
+old-source:864:         // 8th item (80%) — warning fires, must be Delivered
+old-source:865:         let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(7));
+old-source:866:         assert_eq!(enqueue_result, Ok(()));
+old-source:867:         assert_eq!(
+old-source:868:             bp_outcome,
+old-source:869:             BackpressureWarningOutcome::Delivered,
+old-source:870:             "80% capacity: warning must be delivered when receiver is live"
+old-source:871:         );
+old-source:872: 
+old-source:873:         // Verify the warning arrived on the channel
+old-source:874:         let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
+old-source:875:         assert_eq!(
+old-source:876:             warning,
+old-source:877:             Ok(BackpressureWarning { depth: 8, capacity: 10 }),
+old-source:878:             "warning must be present on channel when outcome is Delivered"
+old-source:879:         );
+old-source:880:     }
+old-source:881: 
+old-source:882:     #[test]
+old-source:883:     fn backpressure_outcome_delivered_without_channel() {
+old-source:884:         let queue = BoundedActionCompletionQueue::new_infallible(10);
+old-source:885: 
+old-source:886:         for i in 0..8 {
+old-source:887:             let (enqueue_result, bp_outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(i));
+old-source:888:             assert_eq!(enqueue_result, Ok(()));
+old-source:889:             assert_eq!(
+old-source:890:                 bp_outcome,
+old-source:891:                 BackpressureWarningOutcome::Delivered,
+old-source:892:                 "no channel configured: outcome must always be Delivered (depth={i})"
+old-source:893:             );
+old-source:894:         }
+old-source:895:     }
+old-source:896: 
+old-source:897:     #[test]
+old-source:898:     fn backpressure_outcome_delivered_below_threshold() {
+old-source:899:         let capacity = 10;
+old-source:900:         let (_queue, rx) =

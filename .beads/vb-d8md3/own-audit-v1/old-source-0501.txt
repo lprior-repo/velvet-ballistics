@@ -1,0 +1,100 @@
+old-source:501:         let result = queue.enqueue(make_ticket(100));
+old-source:502:         assert!(matches!(
+old-source:503:             result,
+old-source:504:             Err(ActionQueueError::QueueFull { capacity }) if capacity.get() == 3
+old-source:505:         ));
+old-source:506:     }
+old-source:507: 
+old-source:508:     #[test]
+old-source:509:     fn bounded_action_queue_dequeue_from_empty_returns_none() {
+old-source:510:         let queue = BoundedActionCompletionQueue::new(4).unwrap();
+old-source:511:         let result = queue.dequeue();
+old-source:512:         assert_eq!(result, None);
+old-source:513:     }
+old-source:514: 
+old-source:515:     #[test]
+old-source:516:     fn bounded_action_queue_dequeue_returns_fifo_order() {
+old-source:517:         let queue = BoundedActionCompletionQueue::new(3).unwrap();
+old-source:518:         queue.enqueue(make_ticket(0)).unwrap();
+old-source:519:         queue.enqueue(make_ticket(1)).unwrap();
+old-source:520:         queue.enqueue(make_ticket(2)).unwrap();
+old-source:521: 
+old-source:522:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(0));
+old-source:523:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(1));
+old-source:524:         assert_eq!(queue.dequeue().map(|t| t.seq.get()), Some(2));
+old-source:525:     }
+old-source:526: 
+old-source:527:     #[test]
+old-source:528:     fn bounded_action_queue_remaining_capacity_decrements_after_enqueue() {
+old-source:529:         let queue = BoundedActionCompletionQueue::new(8).unwrap();
+old-source:530:         assert_eq!(queue.remaining_capacity(), 8);
+old-source:531:         queue.enqueue(make_ticket(0)).unwrap();
+old-source:532:         assert_eq!(queue.remaining_capacity(), 7);
+old-source:533:     }
+old-source:534: 
+old-source:535:     #[test]
+old-source:536:     fn bounded_action_queue_remaining_capacity_increments_after_dequeue() {
+old-source:537:         let queue = BoundedActionCompletionQueue::new(8).unwrap();
+old-source:538:         queue.enqueue(make_ticket(0)).unwrap();
+old-source:539:         queue.enqueue(make_ticket(1)).unwrap();
+old-source:540:         assert_eq!(queue.remaining_capacity(), 6);
+old-source:541:         let _ = queue.dequeue();
+old-source:542:         assert_eq!(queue.remaining_capacity(), 7);
+old-source:543:     }
+old-source:544: 
+old-source:545:     #[test]
+old-source:546:     fn bounded_action_queue_invariant_len_plus_remaining_equals_capacity() {
+old-source:547:         let queue = BoundedActionCompletionQueue::new(7).unwrap();
+old-source:548:         assert_eq!(queue.len() + queue.remaining_capacity(), 7);
+old-source:549:         queue.enqueue(make_ticket(0)).unwrap();
+old-source:550:         assert_eq!(queue.len() + queue.remaining_capacity(), 7);
+old-source:551:         let _ = queue.dequeue();
+old-source:552:         assert_eq!(queue.len() + queue.remaining_capacity(), 7);
+old-source:553:     }
+old-source:554: 
+old-source:555:     // =============================================================================
+old-source:556:     // Group F: Action Queue Backpressure (POST-006, INV-005)
+old-source:557:     // Scenario F1: Queue full returns error — covered by
+old-source:558:     // bounded_action_queue_enqueue_at_capacity_returns_queue_full_error
+old-source:559:     // Scenario F2: 80% capacity triggers backpressure warning — tested below
+old-source:560:     // Scenario F3: 79% does not trigger backpressure — tested below
+old-source:561:     // Scenario F4: Invariant — len never exceeds capacity — tested below
+old-source:562:     // =============================================================================
+old-source:563: 
+old-source:564:     #[test]
+old-source:565:     fn action_queue_emits_backpressure_warning_at_80_percent_capacity() {
+old-source:566:         // Given: capacity=10, backpressure threshold = (10*8)/10 = 8 (80%)
+old-source:567:         let capacity = 10;
+old-source:568:         let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(capacity).unwrap();
+old-source:569: 
+old-source:570:         // Enqueue 7 items (70%) — no warning expected
+old-source:571:         for i in 0..7 {
+old-source:572:             queue.enqueue(make_ticket(i)).unwrap();
+old-source:573:         }
+old-source:574:         assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
+old-source:575: 
+old-source:576:         // Enqueue 8th item (80% exactly) — backpressure warning MUST fire
+old-source:577:         queue.enqueue(make_ticket(7)).unwrap();
+old-source:578: 
+old-source:579:         let warning = rx.recv_timeout(std::time::Duration::from_millis(100));
+old-source:580:         assert_eq!(
+old-source:581:             warning,
+old-source:582:             Ok(BackpressureWarning {
+old-source:583:                 depth: 8,
+old-source:584:                 capacity: 10
+old-source:585:             }),
+old-source:586:             "backpressure warning must fire at exactly 80% capacity (depth=8, cap=10)"
+old-source:587:         );
+old-source:588:     }
+old-source:589: 
+old-source:590:     #[test]
+old-source:591:     fn action_queue_emits_backpressure_warning_at_80_percent_capacity_var_20() {
+old-source:592:         // Given: capacity=20, backpressure threshold = (20*8)/10 = 16 (80%)
+old-source:593:         let capacity = 20;
+old-source:594:         let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(capacity).unwrap();
+old-source:595: 
+old-source:596:         // Enqueue 15 items (75%) — no warning expected
+old-source:597:         for i in 0..15 {
+old-source:598:             queue.enqueue(make_ticket(i)).unwrap();
+old-source:599:         }
+old-source:600:         assert_eq!(rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty));
