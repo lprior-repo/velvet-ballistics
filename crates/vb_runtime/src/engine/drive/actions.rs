@@ -12,6 +12,7 @@ use crate::engine::drive::recovery::DriveState;
 use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeEngineResult};
 use crate::primitives::collect::CollectStates;
 
+#[path = "reduce_evidence.rs"]
 mod reduce_evidence;
 
 /// Emits a `SlotWritten` evidence event for the just-finished step when

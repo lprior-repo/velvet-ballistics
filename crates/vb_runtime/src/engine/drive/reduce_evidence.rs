@@ -10,156 +10,90 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind};
 use crate::engine::drive::recovery::DriveState;
 use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeEngineResult};
 
-/// Maximum number of distinct slots a Reduce node can write.
-const MAX_REDUCE_SLOTS: usize = 3;
-
 /// Emit slot-written evidence for the Reduce branch that just executed.
-/// Returns Some(()) when Reduce-specific evidence was emitted (or the
-/// branch legitimately wrote no slots). Returns None when the node is
-/// not a Reduce control node and the caller should fall through to
-/// generic handling.
-pub fn reduce_evidence(
+/// Returns Some(()) when Reduce-specific evidence was emitted. Returns
+/// None when the node is not a Reduce control node.
+pub(super) fn reduce_evidence(
     run: &RunFrame,
     evidence: &mut EvidenceCollector,
     node: &CompiledNode,
     drive_state: &mut DriveState,
 ) -> RuntimeEngineResult<Option<()>> {
-    let slots = match reduce_branch_slots(run, node)? {
-        Some(slots) => slots,
-        None => return Ok(None),
-    };
-    emit_slots(run, evidence, drive_state, &slots)?;
-    Ok(Some(()))
-}
-
-/// Determine which slots were written by the executed Reduce branch.
-/// Returns None for non-Reduce nodes.
-fn reduce_branch_slots(
-    run: &RunFrame,
-    node: &CompiledNode,
-) -> RuntimeEngineResult<Option<SlotList>> {
-    let (body, done) = match &node.kind {
-        CompiledNodeKind::ReduceStart { body, done, .. }
-        | CompiledNodeKind::ReduceNext { body, done, .. } => (*body, *done),
+    let slots = match &node.kind {
+        CompiledNodeKind::ReduceStart {
+            input,
+            accumulator,
+            initial: _,
+            body,
+            done,
+        } => classify_reduce_start(run, node, *input, *accumulator, *body, *done),
+        CompiledNodeKind::ReduceNext {
+            iterator_slot,
+            body,
+            done,
+        } => classify_reduce_next(run, node, *iterator_slot, *body, *done),
         _ => return Ok(None),
     };
 
+    for (position, &slot) in slots.iter().enumerate() {
+        if slot.is_none() {
+            continue;
+        }
+        let earlier_has = slots
+            .iter()
+            .take(position)
+            .any(|prev| *prev == slot);
+        if earlier_has {
+            continue;
+        }
+        emit_if_some(run, evidence, drive_state, slot)?;
+    }
+
+    Ok(Some(()))
+}
+
+fn classify_reduce_start(
+    run: &RunFrame,
+    node: &CompiledNode,
+    input: SlotIdx,
+    accumulator: SlotIdx,
+    body: vb_core::ids::StepIdx,
+    done: vb_core::ids::StepIdx,
+) -> [Option<SlotIdx>; 3] {
     if run.pc() == done {
-        match &node.kind {
-            CompiledNodeKind::ReduceStart { accumulator, .. } => {
-                // Empty iterator: only accumulator written.
-                Ok(Some(singleton(*accumulator)))
-            }
-            CompiledNodeKind::ReduceNext { .. } => {
-                // Exhausted: no writes.
-                Ok(Some(SlotList::empty()))
-            }
-            _ => Ok(None),
-        }
+        [Some(accumulator), None, None]
     } else if run.pc() == body {
-        match &node.kind {
-            CompiledNodeKind::ReduceStart { input, accumulator, .. } => {
-                // Non-empty: accumulator + first item + iterator state.
-                let mut slots = SlotList::empty();
-                slots.push(*accumulator)?;
-                slots.push(*input)?;
-                if let Some(out) = node.output {
-                    slots.push(out)?;
-                }
-                Ok(Some(slots))
-            }
-            CompiledNodeKind::ReduceNext { iterator_slot, .. } => {
-                // Not exhausted: next item + advanced iterator state.
-                let mut slots = SlotList::empty();
-                if let Some(out) = node.output {
-                    slots.push(out)?;
-                }
-                slots.push(*iterator_slot)?;
-                Ok(Some(slots))
-            }
-            _ => Ok(None),
-        }
+        [Some(accumulator), Some(input), node.output]
     } else {
-        // PC is neither body nor done — unexpected. Fall through
-        // to generic handling so the gap is still recorded.
-        Ok(None)
+        [None, None, None]
     }
 }
 
-/// Bounded list of slots for deduplication. Uses a fixed array to
-/// avoid allocation.
-#[derive(Clone, Copy)]
-struct SlotList {
-    slots: [Option<SlotIdx>; MAX_REDUCE_SLOTS],
-    len: usize,
-}
-
-impl SlotList {
-    fn empty() -> Self {
-        Self {
-            slots: [None, None, None],
-            len: 0,
-        }
-    }
-
-    /// Add a slot if not already present.
-    fn push(&mut self, slot: SlotIdx) -> RuntimeEngineResult<()> {
-        if self.contains(slot) {
-            return Ok(());
-        }
-        if self.len >= MAX_REDUCE_SLOTS {
-            return Err(RuntimeEngineError::Core(vb_core::errors::EngineError::InternalInvariantViolation {
-                reason: "reduce evidence slot list overflow",
-            }));
-        }
-        self.slots[self.len] = Some(slot);
-        self.len += 1;
-        Ok(())
-    }
-
-    fn contains(&self, slot: SlotIdx) -> bool {
-        let mut i = 0;
-        while i < self.len {
-            if self.slots[i] == Some(slot) {
-                return true;
-            }
-            i += 1;
-        }
-        false
+fn classify_reduce_next(
+    run: &RunFrame,
+    node: &CompiledNode,
+    iterator_slot: SlotIdx,
+    body: vb_core::ids::StepIdx,
+    done: vb_core::ids::StepIdx,
+) -> [Option<SlotIdx>; 3] {
+    if run.pc() == done {
+        [None, None, None]
+    } else if run.pc() == body {
+        [node.output, Some(iterator_slot), None]
+    } else {
+        [None, None, None]
     }
 }
 
-fn singleton(slot: SlotIdx) -> SlotList {
-    let mut list = SlotList::empty();
-    let _ = list.push(slot);
-    list
-}
-
-fn emit_slots(
+fn emit_if_some(
     run: &RunFrame,
     evidence: &mut EvidenceCollector,
     drive_state: &mut DriveState,
-    slots: &SlotList,
+    slot: Option<SlotIdx>,
 ) -> RuntimeEngineResult<()> {
-    let mut i = 0;
-    while i < slots.len {
-        let slot = slots.slots[i].ok_or(RuntimeEngineError::Core(
-            vb_core::errors::EngineError::InternalInvariantViolation {
-                reason: "reduce evidence null slot",
-            },
-        ))?;
-        emit_one(run, evidence, drive_state, slot)?;
-        i += 1;
-    }
-    Ok(())
-}
-
-fn emit_one(
-    run: &RunFrame,
-    evidence: &mut EvidenceCollector,
-    drive_state: &mut DriveState,
-    slot: SlotIdx,
-) -> RuntimeEngineResult<()> {
+    let Some(slot) = slot else {
+        return Ok(());
+    };
     match run.read_slot(slot) {
         Ok(value) => {
             let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
