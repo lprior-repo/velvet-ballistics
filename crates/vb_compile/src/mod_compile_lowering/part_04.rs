@@ -139,7 +139,7 @@ pub(super) fn lower_canonical_repeat(
     )?;
     builder.push_node(CompiledNode {
         id: check,
-        output: None,
+        output: Some(attempt_slot),
         next: Some(body_step),
         error_slot: None,
         on_error: None,
