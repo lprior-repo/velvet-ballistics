@@ -56,7 +56,7 @@ fn preflight(
         let step = StepIdx::new(raw);
         let node = plan
             .node(step)
-            .ok_or_else(|| RuntimeEngineError::Core(EngineError::InvalidProgramCounter { step }))?;
+            .ok_or(RuntimeEngineError::Core(EngineError::InvalidProgramCounter { step }))?;
 
         reject_nested(&node.kind)?;
 
