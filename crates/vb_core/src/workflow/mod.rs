@@ -510,6 +510,14 @@ pub enum WorkflowError {
         /// The shared target step.
         target: StepIdx,
     },
+    /// ForEachNext branch body and done targets are the same step.
+    #[error("for_each_next node {step:?} aliases body and done at {target:?}")]
+    ForEachBranchTargetAlias {
+        /// The for_each_next node with the alias.
+        step: StepIdx,
+        /// The shared target step.
+        target: StepIdx,
+    },
     /// An inner loop exceeds its outer loop span.
     #[error("inner loop at {inner:?} exceeds outer loop done at {outer_done:?}")]
     ImproperLoopNesting {
@@ -1159,7 +1167,8 @@ fn validate_entry(entry: StepIdx, node_count: usize) -> Result<(), WorkflowError
 fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_node_common(node, parts)?;
     validate_node_kind(&node.kind, parts)?;
-    validate_reduce_branch_targets(node)
+    validate_reduce_branch_targets(node)?;
+    validate_for_each_next_targets(node)
 }
 
 fn validate_reduce_branch_targets(node: &CompiledNode) -> Result<(), WorkflowError> {
@@ -1169,6 +1178,18 @@ fn validate_reduce_branch_targets(node: &CompiledNode) -> Result<(), WorkflowErr
             if body == done =>
         {
             Err(WorkflowError::ReduceBranchTargetAlias {
+                step: node.id,
+                target: *body,
+            })
+        }
+        _ => Ok(()),
+    }
+}
+
+fn validate_for_each_next_targets(node: &CompiledNode) -> Result<(), WorkflowError> {
+    match &node.kind {
+        CompiledNodeKind::ForEachNext { body, done, .. } if body == done => {
+            Err(WorkflowError::ForEachBranchTargetAlias {
                 step: node.id,
                 target: *body,
             })

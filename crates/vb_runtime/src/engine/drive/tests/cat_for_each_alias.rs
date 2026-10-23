@@ -9,14 +9,13 @@ use vb_core::engine::StepBudget;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::CompiledNodeKind;
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, WorkflowError};
 
 fn checked<T, E: std::fmt::Debug>(result: Result<T, E>) -> Result<T, String> {
     result.map_err(|error| format!("{error:?}"))
 }
 
-#[test]
-fn forward_aliased_for_each_next_emits_actual_writes() -> Result<(), String> {
+fn fixture_parts() -> Result<CompiledWorkflow, String> {
     let nodes = vec![
         cn(
             0,
@@ -37,13 +36,18 @@ fn forward_aliased_for_each_next_emits_actual_writes() -> Result<(), String> {
             CompiledNodeKind::ForEachNext {
                 iterator_slot: SlotIdx::new(2),
                 body: StepIdx::new(2),
-                done: StepIdx::new(2),
+                done: StepIdx::new(3),
             },
         ),
         fin(2, 1),
         fin(3, 1),
     ];
-    let workflow = mkwfc(nodes, 3, vec![])?;
+    mkwfc(nodes, 3, vec![])
+}
+
+#[test]
+fn forward_distinct_for_each_next_emits_actual_writes() -> Result<(), String> {
+    let workflow = fixture_parts()?;
     let original = workflow.to_parts();
 
     let mut run = mkr(4, 3)?;
@@ -95,7 +99,7 @@ fn forward_aliased_for_each_next_emits_actual_writes() -> Result<(), String> {
     assert_eq!(checked(run.read_taint(SlotIdx::new(2)))?, Taint::Secret);
     assert_eq!(
         checked(store.list(iter_id))?,
-        &[SlotValue::I64(i64::from(source.get())), SlotValue::I64(2),]
+        &[SlotValue::I64(i64::from(source.get())), SlotValue::I64(2)]
     );
     assert_eq!(checked(store.list(source))?, payload.as_slice());
     let events = evidence.drain();
@@ -124,5 +128,54 @@ fn forward_aliased_for_each_next_emits_actual_writes() -> Result<(), String> {
         ]
     );
     assert_eq!(workflow.to_parts(), original);
+    Ok(())
+}
+
+#[test]
+fn for_each_next_body_done_alias_rejected_at_construction() -> Result<(), String> {
+    let mut parts = fixture_parts()?.to_parts();
+    let node = parts
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == StepIdx::new(1))
+        .ok_or("node 1 not found")?;
+    if let CompiledNodeKind::ForEachNext { body, done, .. } = &mut node.kind {
+        *body = StepIdx::new(2);
+        *done = StepIdx::new(2);
+    } else {
+        return Err("node 1 is not ForEachNext".into());
+    }
+    let result = CompiledWorkflow::try_from_parts(parts);
+    match result {
+        Err(WorkflowError::ForEachBranchTargetAlias { step, target }) => {
+            assert_eq!(step, StepIdx::new(1));
+            assert_eq!(target, StepIdx::new(2));
+        }
+        other => return Err(format!("expected ForEachBranchTargetAlias, got {other:?}")),
+    }
+    Ok(())
+}
+
+#[test]
+fn for_each_next_out_of_bounds_precedes_alias_check() -> Result<(), String> {
+    let mut parts = fixture_parts()?.to_parts();
+    let node = parts
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == StepIdx::new(1))
+        .ok_or("node 1 not found")?;
+    if let CompiledNodeKind::ForEachNext { body, done, .. } = &mut node.kind {
+        *body = StepIdx::new(9);
+        *done = StepIdx::new(9);
+    } else {
+        return Err("node 1 is not ForEachNext".into());
+    }
+    let result = CompiledWorkflow::try_from_parts(parts);
+    match result {
+        Err(WorkflowError::StepOutOfBounds { step }) => {
+            assert_eq!(step, StepIdx::new(9));
+        }
+        other => return Err(format!("expected StepOutOfBounds, got {other:?}")),
+    }
     Ok(())
 }
