@@ -1,6 +1,6 @@
 # vb-8eocj.6 — ForEach flat-body slice (incremental)
 Author: actual local5090 V222; assignee Lewis.
-Status: PROPOSED / NOT ACCEPTED (pending independent actual3090).
+Status: CONTRACT ACCEPTED for the bounded implementation only; implementation/tests/CODE/TEST review remain pending.
 Scope: direct declared list<any> inputs only; typed element schemas remain parent F1.
 
 ## CLOSED INPUT DOMAIN
@@ -98,3 +98,9 @@ PARENT F1 OPEN (NOT IN THIS SLICE)
 Root mechanically normalized local5090 V222 output and made its requested A=0 rejection explicit. Shared default resource/boundedness validation remains mandatory; a large explicit maximum does not bypass policy. Existing capability/idempotency policy remains in force for real Do acceptance, with a bounded no-retry fixture and precise undeclared-action/capability failure before effects. This adds no retry or recovery claim.
 
 Source-fixture migrations must retain original ownership/layout/error intent with valid bounded source, including intentional use of a legal variable such as entry. No hand-built IR replacement, manual PC resets, ignored tests, weaker assertions, or gate waivers. Implementation, behavioral tests, independent CODE review and independent TEST review are PENDING. Rust contract -> implementation -> tests -> CODE review -> TEST review; no Go-skill/full proof-planning stage.
+
+## Independent contract disposition
+
+Actual RTX3090 reviewed exact contract 9d8a38da79df032d72861822a83e262879072b57, SHA-256 ea4fc2a0b012cb51d7f18f3fb2853d7db85e3d9c13b81d67fb38f55dfbf4f984, via local11001/xhigh in152.387s. Verdict APPROVE_CONTRACT_ONLY with no blocking findings. The original report remains local at /home/lewis/Documents/Codex/2026-10-22/task/output/velvet-ballistics-review/foreach-contract-v222-local3090/review-report.txt; publication is not claimed. Approval does not establish implementation, native execution, proof closure, or F1 completion.
+
+Coordinator compatibility fence added after that model request: Any-only/finite-u32 eligibility applies only to the declaration actually selected by canonical ForEach. Do not globally reject typed, unbounded, or large-max list declarations used elsewhere merely while collecting cold metadata. Retain deferred ineligibility/overflow diagnostics or inspect selected declarations only; selected-loop overflow still rejects exactly. This qualification is not attributed to the earlier model packet.
