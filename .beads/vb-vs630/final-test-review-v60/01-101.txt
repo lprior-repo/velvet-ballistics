@@ -1,0 +1,31 @@
+ACTUAL SOURCE .beads/vb-vs630/contract.md
+101: 
+102: 1. Counter write method name/signature on `JournalWriteBatch` (e.g., `put_artifact_sequence(u64)`); must use existing limits/aborted pattern.
+103: 2. Checked clone approach: clone `RunSubmission` under lock and mutate clone, or bounded helper taking ownership of rebind scratch.
+104: 3. Artifact re-encoding: must re-encode stamped artifact after `bind_artifact_digest`.
+105: 
+106: ## Risks
+107: 
+108: | Risk | Mitigation |
+109: |------|------------|
+110: | Deadlock from lock re-acquisition | Factor out lock-free prepare helper |
+111: | Digest mismatch after stamping | Rebind all four dependent fields before encoding/staging |
+112: | Partial publication on failure | Single atomic batch; arbitrary commit IO errors may already have published the complete batch |
+113: | Uncertain acknowledgement after commit IO failure | Counter write in same batch |
+114: 
+115: ## Evidence Requirements
+116: - Source: modified `artifact_acceptance.rs`, `submission.rs`, `batch/types.rs` (or equivalent)
+117: - Compiled: crate builds with no warnings
+118: - Tests: behavioral tests for counter increment, digest rebinding, atomicity, mixed submissions
+119: 
+120: Contract-only; no Rust/test/proof code in this pass. No new public API. Default submission path unchanged.
+121: 
+122: ## Coordination acceptance bounds (v3)
+123: 
+124: - This accepts the bounded implementation contract only. No implementation, test execution or mathematical proof is accepted.
+125: - `RunSubmission::new` validates complete bindings before publication; private rebind scratch must preserve that validation and revalidate its final identities before staging. Never defer input binding or expose mutation publicly.
+126: - `RunAccepted`/`RunAdmission` are staged only for Journaled/Strict. Relaxed remains eventless. Duplicate-run rejection precedes issuance mutation.
+127: - Required behavior evidence includes all three policies, mixed default/catalog/CLI global ordering, typed retained inputs plus all four rebound digest fields, per-run event0/1 and workflow header unchanged, malformed7/9 bytes, overflow, duplicate, prevalidation/fault failures with exact unchanged state before retry, same-path close/reopen and bounded concurrent submissions.
+128: - Pure preparation remains zero. Existing default and registered helper durability must remain unchanged; registered child vb-ct9lz is still WIP.
+129: - Proposed batch counter staging and issuance preparation are crate private; do not bypass batch byte bounds/abort behavior, expose caller-selected sequence or reacquire an already-held journal lock.
+130: - Arbitrary commit/readback IO may already have published the whole batch. No universal rollback or power-loss proof is claimed.

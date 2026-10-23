@@ -1,0 +1,92 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/issuance_tests.rs
+101: 
+102:     let header = journal
+103:         .run_header(vb_core::RunId::new(100))?
+104:         .ok_or("header not found")?;
+105:     assert_eq!(header.compiled_digest, expected_workflow_digest);
+106:     Ok(())
+107: }
+108: 
+109: /// Per-run event sequences: RunAccepted at 0, RunAdmission at 1.
+110: #[test]
+111: fn cli_journaled_events_have_correct_sequences() -> TestResult {
+112:     let (_dir, journal) = open_test_journal()?;
+113:     let submission = make_submission(RuntimePolicy::Journaled, 1)?;
+114:     journal.commit_run_submission(&submission, RuntimePolicy::Journaled)?;
+115: 
+116:     let events = journal.events_for_run(vb_core::RunId::new(100))?;
+117:     assert_eq!(events.len(), 2);
+118: 
+119:     let first = events.first().ok_or("first event not found")?;
+120:     let second = events.get(1).ok_or("second event not found")?;
+121: 
+122:     match first {
+123:         crate::JournalEvent::RunAccepted { seq, .. } => {
+124:             assert_eq!(seq.get(), 0);
+125:         }
+126:         _ => return Err("expected RunAccepted as first event".into()),
+127:     }
+128: 
+129:     match second {
+130:         crate::JournalEvent::RunAdmission { seq, .. } => {
+131:             assert_eq!(seq.get(), 1);
+132:         }
+133:         _ => return Err("expected RunAdmission as second event".into()),
+134:     }
+135:     Ok(())
+136: }
+137: 
+138: /// Relaxed policy writes no acceptance events.
+139: #[test]
+140: fn cli_relaxed_writes_no_events() -> TestResult {
+141:     let (_dir, journal) = open_test_journal()?;
+142:     let submission = make_submission(RuntimePolicy::Relaxed, 1)?;
+143:     journal.commit_run_submission(&submission, RuntimePolicy::Relaxed)?;
+144: 
+145:     let events = journal.events_for_run(vb_core::RunId::new(100))?;
+146:     assert!(events.is_empty());
+147:     Ok(())
+148: }
+149: 
+150: /// Sequential CLI submissions increment the global counter.
+151: #[test]
+152: fn cli_sequential_submissions_increment_counter() -> TestResult {
+153:     let (_dir, journal) = open_test_journal()?;
+154:     let sub1 = make_submission(RuntimePolicy::Strict, 1)?;
+155:     let sub2 = make_submission_run200(RuntimePolicy::Journaled, 2)?;
+156:     journal.commit_run_submission(&sub1, RuntimePolicy::Strict)?;
+157:     journal.commit_run_submission(&sub2, RuntimePolicy::Journaled)?;
+158:     assert_eq!(read_counter(&journal)?, Some(2));
+159:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(100), 1)?;
+160:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(200), 2)?;
+161:     Ok(())
+162: }
+163: 
+164: /// Mixed default and CLI submissions share the same global counter.
+165: #[test]
+166: fn mixed_default_and_cli_submissions_share_counter() -> TestResult {
+167:     let (_dir, journal) = open_test_journal()?;
+168:     let workflow = super::tests::workflow()?;
+169:     let default_artifact = admission::submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)?;
+170:     assert_eq!(default_artifact.accepted_at_seq.get(), 1);
+171: 
+172:     let cli_submission = make_submission(RuntimePolicy::Strict, 99)?;
+173:     journal.commit_run_submission(&cli_submission, RuntimePolicy::Strict)?;
+174:     assert_eq!(read_counter(&journal)?, Some(2));
+175:     verify_cli_submission_artifact_seq(&journal, vb_core::RunId::new(100), 2)?;
+176: 
+177:     let default2 = admission::submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)?;
+178:     assert_eq!(default2.accepted_at_seq.get(), 3);
+179:     assert_eq!(read_counter(&journal)?, Some(3));
+180:     Ok(())
+181: }
+182: 
+183: /// Pure preparation (no commit) does not advance the counter.
+184: #[test]
+185: fn cli_pure_prepare_does_not_advance_counter() -> TestResult {
+186:     let (_dir, journal) = open_test_journal()?;
+187:     let _submission = make_submission(RuntimePolicy::Strict, 1)?;
+188:     assert_eq!(read_counter(&journal)?, None);
+189:     verify_empty_journal(&journal)?;
+190:     Ok(())
+191: }

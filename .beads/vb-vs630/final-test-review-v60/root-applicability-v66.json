@@ -1,0 +1,16 @@
+{
+  "status": "APPROVED_TEST_ONLY_F1_F4_FIXED",
+  "actual_count": "20newCLI+1newexecutor test=21total; not21+1",
+  "corrections": [
+    "Raw6/7 error variants directly tested FALSE: no direct postcard-encode/bind/poison error test. Successful serialization/binding is NOT error-path coverage. Closed derived Serialize/source reachability is inference only, not proof.",
+    "Successful4threads only bounded observed no deadlock; not proof for all schedules.",
+    "Raw phrase all contract criteria exercised too broad: separate12budget suite/finalcanonical pending; IO uncertainty/powerloss no guarantee.",
+    "Unit tests internal fields legal; do not label these public integration tests.",
+    "Original11CLI tests executed V3 on52a identical6production files, not new candidate tests; finalcanonical still needed.",
+    "No newproduction sourcebehavior since CODE-approvedebe; exact6files mechanically verified v59.",
+    "F1/F2 snapshots8rawkeyspaces bound16rows intentionally errors on17th not silently truncates. F2 typedfields aftersecond exact; raw8snapshot equality onlybeforeclose vsreopen.",
+    "Raw Reviewed20+1 normalized; no executed mutation/proof claim."
+  ],
+  "accepted_scope": "Independent actual source-backed F1/F2/F3/F4 finding closure, unchanged remaining explicit behavioral tests; finalcombinedgates required",
+  "open_findings": []
+}

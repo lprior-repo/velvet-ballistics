@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/issuance_test_support.rs
+201:         "run {run:?}: inputs source digest mismatch"
+202:     );
+203: 
+204:     // Compiled artifact and AcceptedArtifact decoding
+205:     let record = journal
+206:         .compiled_ir(inputs.artifact_digest())?
+207:         .ok_or(format!("compiled missing for run {run:?}"))?;
+208:     assert_eq!(
+209:         record.digest,
+210:         inputs.artifact_digest(),
+211:         "run {run:?}: record digest mismatch"
+212:     );
+213:     let decoded: crate::AcceptedArtifact =
+214:         postcard::from_bytes(&record.ir).map_err(|e| format!("run {run:?}: decode failed: {e}"))?;
+215:     let actual_seq = decoded.accepted_at_seq.get();
+216:     assert_eq!(
+217:         decoded.digest,
+218:         inputs.artifact_digest(),
+219:         "run {run:?}: artifact digest mismatch"
+220:     );
+221:     assert_eq!(
+222:         decoded.verification.digest,
+223:         inputs.artifact_digest(),
+224:         "run {run:?}: verification digest mismatch"
+225:     );
+226: 
+227:     // Actual admission verification API restores the exact workflow
+228:     let restored = crate::admission::verify_accepted_artifact(&decoded)
+229:         .map_err(|e| format!("run {run:?}: verify failed: {e}"))?;
+230:     assert_eq!(
+231:         &restored, &workflow,
+232:         "run {run:?}: restored workflow mismatch"
+233:     );
+234: 
+235:     // RunHeaderRecord: all fields
+236:     let header = journal
+237:         .run_header(run)?
+238:         .ok_or(format!("header missing for run {run:?}"))?;
+239:     assert_eq!(header.run, run, "run {run:?}: header run mismatch");
+240:     assert_eq!(
+241:         header.workflow_id,
+242:         vb_core::WorkflowId::new(0),
+243:         "run {run:?}: header workflow_id mismatch"
+244:     );
+245:     assert_eq!(header.status, 0, "run {run:?}: header status mismatch");
+246:     assert_eq!(
+247:         header.accepted_at_ms, 1000,
+248:         "run {run:?}: header accepted_at_ms mismatch"
+249:     );
+250:     assert_eq!(
+251:         header.compiled_digest, expected_workflow_digest,
+252:         "run {run:?}: header compiled_digest mismatch"
+253:     );
+254: 
+255:     // Status index row via actual key API
+256:     let status_key =
+257:         crate::keys::index_status_key(crate::types::IndexStatusState::Submitted, 1000, run)?;
+258:     let status_value = journal
+259:         .index_status
+260:         .get(&status_key)?
+261:         .ok_or(format!("run {run:?}: status index row missing"))?;
+262:     // put_status_index inserts Vec::<u8>::new() as the marker value
+263:     assert_eq!(
+264:         status_value.as_ref(),
+265:         b"",
+266:         "run {run:?}: status index value should be empty marker"
+267:     );
+268: 
+269:     // Workflow index row via actual key API
+270:     let workflow_key = crate::keys::index_workflow_key(vb_core::WorkflowId::new(0), run)?;
+271:     let workflow_value = journal
+272:         .index_workflow
+273:         .get(&workflow_key)?
+274:         .ok_or(format!("run {run:?}: workflow index row missing"))?;
+275:     // put_workflow_index inserts Vec::<u8>::new() as the marker value
+276:     assert_eq!(
+277:         workflow_value.as_ref(),
+278:         b"",
+279:         "run {run:?}: workflow index value should be empty marker"
+280:     );
+281: 
+282:     // Two acceptance events: RunAccepted (seq 0) and RunAdmission (seq 1)
+283:     let events = journal.events_for_run(run)?;
+284:     assert_eq!(events.len(), 2, "run {run:?}: expected 2 events");
+285: 
+286:     // Event 0: RunAccepted with run, seq 0, workflow digest
+287:     let event0 = events
+288:         .first()
+289:         .ok_or(format!("run {run:?}: first event missing"))?;
+290:     match event0 {
+291:         crate::JournalEvent::RunAccepted {
+292:             run: ev_run,
+293:             seq: ev_seq,
+294:             workflow: ev_workflow,
+295:         } => {
+296:             assert_eq!(*ev_run, run, "run {run:?}: event0 run mismatch");
+297:             assert_eq!(ev_seq.get(), 0, "run {run:?}: event0 seq mismatch");
+298:             assert_eq!(
+299:                 *ev_workflow, expected_workflow_digest,
+300:                 "run {run:?}: event0 workflow mismatch"
