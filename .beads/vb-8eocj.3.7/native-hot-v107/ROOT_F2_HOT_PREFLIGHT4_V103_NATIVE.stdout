@@ -1,0 +1,9 @@
+
+running 4 tests
+test engine::drive::tests::cat_loop_rearm::test_bad_states_reject_rearm ... ok
+test engine::drive::tests::cat_loop_rearm::test_full_succeeded_loop_rearms ... ok
+test engine::drive::tests::cat_loop_rearm::test_pc_and_latch_requirements ... ok
+test engine::drive::tests::cat_loop_rearm::test_pending_body_preserved ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 1994 filtered out; finished in 0.00s
+

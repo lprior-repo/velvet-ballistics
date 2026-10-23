@@ -1,0 +1,26 @@
+    Checking vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_core)
+    Checking vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_validate)
+    Checking vb_expr v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_expr)
+    Checking vb_yaml v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_yaml)
+    Checking vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_storage)
+    Checking vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile)
+    Checking vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_runtime)
+error: unnecessary closure used to substitute value for `Option::None`
+  --> crates/vb_runtime/src/engine/drive/loop_rearm.rs:57:20
+   |
+57 |           let node = plan
+   |  ____________________^
+58 | |             .node(step)
+59 | |             .ok_or_else(|| RuntimeEngineError::Core(EngineError::InvalidProgramCounter { step }))?;
+   | |_________________________________________________________________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_lazy_evaluations
+   = note: `-D clippy::unnecessary-lazy-evaluations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_lazy_evaluations)]`
+help: use `ok_or` instead
+   |
+59 -             .ok_or_else(|| RuntimeEngineError::Core(EngineError::InvalidProgramCounter { step }))?;
+59 +             .ok_or(RuntimeEngineError::Core(EngineError::InvalidProgramCounter { step }))?;
+   |
+
+error: could not compile `vb_runtime` (lib) due to 1 previous error

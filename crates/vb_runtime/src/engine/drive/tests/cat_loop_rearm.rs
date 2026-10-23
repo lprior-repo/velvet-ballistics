@@ -153,10 +153,16 @@ fn test_bad_states_reject_rearm() -> Result<(), String> {
 
         succeed(&mut run, 3)?;
 
+        let before = run.clone();
+        let source_before = wf.to_parts();
+
         expect_core_reason(
             loop_body_rearm(&wf, &mut run, StepIdx::new(3), StepIdx::new(1)),
             "loop body step not in rearmable state",
         )?;
+
+        assert_eq!(run, before);
+        assert_eq!(wf.to_parts(), source_before);
 
         assert_eq!(
             checked(run.step_state(StepIdx::new(1)))?,
