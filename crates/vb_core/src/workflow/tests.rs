@@ -1820,7 +1820,7 @@ fn phase46_rejects_backward_next() -> Result<(), String> {
 }
 
 #[test]
-fn phase46_accepts_jump_backward() -> Result<(), String> {
+fn phase46_rejects_jump_backward() -> Result<(), String> {
     let parts = phase46_parts_with_nodes(
         vec![
             CompiledNode {
@@ -1846,12 +1846,14 @@ fn phase46_accepts_jump_backward() -> Result<(), String> {
     );
     let result = CompiledWorkflow::try_from_parts(parts).map(|_| ());
     match result {
-        Err(WorkflowError::JumpCycle { step, target })
-            if step == StepIdx::new(1) && target == StepIdx::new(0) =>
+        Err(WorkflowError::BackwardEdge { from, to })
+            if from == StepIdx::new(1) && to == StepIdx::new(0) =>
         {
             Ok(())
         }
-        other => Err(format!("expected exact JumpCycle variant, got {other:?}")),
+        other => Err(format!(
+            "expected exact BackwardEdge variant, got {other:?}"
+        )),
     }
 }
 
