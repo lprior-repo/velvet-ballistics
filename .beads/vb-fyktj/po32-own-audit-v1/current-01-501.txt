@@ -1,0 +1,100 @@
+crates/vb_core/src/engine/signals.rs:501:                 "{:?}",
+crates/vb_core/src/engine/signals.rs:502:                 EngineSignal::Finished(SlotValue::Bool(true), Taint::DerivedFromSecret)
+crates/vb_core/src/engine/signals.rs:503:             )
+crates/vb_core/src/engine/signals.rs:504:             .contains("Finished")
+crates/vb_core/src/engine/signals.rs:505:         );
+crates/vb_core/src/engine/signals.rs:506:     }
+crates/vb_core/src/engine/signals.rs:507: 
+crates/vb_core/src/engine/signals.rs:508:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:509:     // Additional coverage: StepBudget saturating_sub behavior
+crates/vb_core/src/engine/signals.rs:510:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:511: 
+crates/vb_core/src/engine/signals.rs:512:     #[test]
+crates/vb_core/src/engine/signals.rs:513:     fn step_budget_try_take_saturating_sub() {
+crates/vb_core/src/engine/signals.rs:514:         let mut b = StepBudget::new(1);
+crates/vb_core/src/engine/signals.rs:515:         let result = b.try_take();
+crates/vb_core/src/engine/signals.rs:516:         assert_eq!(result, Ok(true));
+crates/vb_core/src/engine/signals.rs:517:         // Second take should return false, not error
+crates/vb_core/src/engine/signals.rs:518:         let result2 = b.try_take();
+crates/vb_core/src/engine/signals.rs:519:         assert_eq!(result2, Ok(false));
+crates/vb_core/src/engine/signals.rs:520:         assert_eq!(b.remaining(), 0);
+crates/vb_core/src/engine/signals.rs:521:     }
+crates/vb_core/src/engine/signals.rs:522: 
+crates/vb_core/src/engine/signals.rs:523:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:524:     // Additional coverage: EngineSignal equality
+crates/vb_core/src/engine/signals.rs:525:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:526: 
+crates/vb_core/src/engine/signals.rs:527:     #[test]
+crates/vb_core/src/engine/signals.rs:528:     fn engine_signal_equality() {
+crates/vb_core/src/engine/signals.rs:529:         let s1 = EngineSignal::Continue;
+crates/vb_core/src/engine/signals.rs:530:         let s2 = EngineSignal::Continue;
+crates/vb_core/src/engine/signals.rs:531:         assert_eq!(s1, s2);
+crates/vb_core/src/engine/signals.rs:532: 
+crates/vb_core/src/engine/signals.rs:533:         let f1 = EngineSignal::Finished(SlotValue::I64(42), Taint::Clean);
+crates/vb_core/src/engine/signals.rs:534:         let f2 = EngineSignal::Finished(SlotValue::I64(42), Taint::Clean);
+crates/vb_core/src/engine/signals.rs:535:         assert_eq!(f1, f2);
+crates/vb_core/src/engine/signals.rs:536: 
+crates/vb_core/src/engine/signals.rs:537:         let f3 = EngineSignal::Finished(SlotValue::I64(42), Taint::Secret);
+crates/vb_core/src/engine/signals.rs:538:         assert_ne!(f1, f3);
+crates/vb_core/src/engine/signals.rs:539:     }
+crates/vb_core/src/engine/signals.rs:540: 
+crates/vb_core/src/engine/signals.rs:541:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:542:     // Additional coverage: try_take overflow guard (defense-in-depth)
+crates/vb_core/src/engine/signals.rs:543:     // -------------------------------------------------------------------------
+crates/vb_core/src/engine/signals.rs:544: 
+crates/vb_core/src/engine/signals.rs:545:     #[test]
+crates/vb_core/src/engine/signals.rs:546:     fn try_take_defense_in_depth_overflow_check() {
+crates/vb_core/src/engine/signals.rs:547:         let mut b = StepBudget::new(MAX_STEP_BUDGET);
+crates/vb_core/src/engine/signals.rs:548:         // This should never happen through normal API usage, but verify it doesn't panic
+crates/vb_core/src/engine/signals.rs:549:         // We can't easily trigger the overflow condition, but we can verify the
+crates/vb_core/src/engine/signals.rs:550:         // guard path exists by checking the condition is checked
+crates/vb_core/src/engine/signals.rs:551:         let result = b.try_take();
+crates/vb_core/src/engine/signals.rs:552:         assert_eq!(result, Ok(true));
+crates/vb_core/src/engine/signals.rs:553:     }
+crates/vb_core/src/engine/signals.rs:554: }
+crates/vb_core/src/engine/signals.rs:555: 
+crates/vb_core/src/engine/signals.rs:556: // Verified by: OBL-VB-BUDGET-KANI-006 (overflow guard)
+crates/vb_core/src/engine/signals.rs:557: #[cfg(kani)]
+crates/vb_core/src/engine/signals.rs:558: mod kani_overflow_guard {
+crates/vb_core/src/engine/signals.rs:559:     use super::StepBudget;
+crates/vb_core/src/engine/signals.rs:560:     use crate::errors::EngineError;
+crates/vb_core/src/engine/signals.rs:561:     use crate::limits::MAX_STEP_BUDGET;
+crates/vb_core/src/engine/signals.rs:562: 
+crates/vb_core/src/engine/signals.rs:563:     #[kani::proof]
+crates/vb_core/src/engine/signals.rs:564:     #[kani::unwind(4)]
+crates/vb_core/src/engine/signals.rs:565:     fn step_budget_overflow_guard() {
+crates/vb_core/src/engine/signals.rs:566:         let remaining: u64 = kani::any();
+crates/vb_core/src/engine/signals.rs:567:         kani::assume(remaining > MAX_STEP_BUDGET);
+crates/vb_core/src/engine/signals.rs:568:         let mut budget = StepBudget { remaining };
+crates/vb_core/src/engine/signals.rs:569:         let result = budget.try_take();
+crates/vb_core/src/engine/signals.rs:570:         match result {
+crates/vb_core/src/engine/signals.rs:571:             Err(EngineError::StepCounterOverflow) => {
+crates/vb_core/src/engine/signals.rs:572:                 kani::assert(
+crates/vb_core/src/engine/signals.rs:573:                     budget.remaining() == remaining,
+crates/vb_core/src/engine/signals.rs:574:                     "remaining unchanged after overflow error",
+crates/vb_core/src/engine/signals.rs:575:                 );
+crates/vb_core/src/engine/signals.rs:576:             }
+crates/vb_core/src/engine/signals.rs:577:             Err(_) => {
+crates/vb_core/src/engine/signals.rs:578:                 kani::assert(
+crates/vb_core/src/engine/signals.rs:579:                     false,
+crates/vb_core/src/engine/signals.rs:580:                     "must return StepCounterOverflow when remaining > MAX",
+crates/vb_core/src/engine/signals.rs:581:                 );
+crates/vb_core/src/engine/signals.rs:582:             }
+crates/vb_core/src/engine/signals.rs:583:             Ok(_) => {
+crates/vb_core/src/engine/signals.rs:584:                 kani::assert(
+crates/vb_core/src/engine/signals.rs:585:                     false,
+crates/vb_core/src/engine/signals.rs:586:                     "must return StepCounterOverflow when remaining > MAX",
+crates/vb_core/src/engine/signals.rs:587:                 );
+crates/vb_core/src/engine/signals.rs:588:             }
+crates/vb_core/src/engine/signals.rs:589:         }
+crates/vb_core/src/engine/signals.rs:590:     }
+crates/vb_core/src/engine/signals.rs:591: 
+crates/vb_core/src/engine/signals.rs:592:     #[kani::proof]
+crates/vb_core/src/engine/signals.rs:593:     #[kani::unwind(4)]
+crates/vb_core/src/engine/signals.rs:594:     fn step_budget_no_overflow_for_valid_range() {
+crates/vb_core/src/engine/signals.rs:595:         let remaining: u64 = kani::any();
+crates/vb_core/src/engine/signals.rs:596:         kani::assume(remaining <= MAX_STEP_BUDGET);
+crates/vb_core/src/engine/signals.rs:597:         let mut budget = StepBudget { remaining };
+crates/vb_core/src/engine/signals.rs:598:         let result = budget.try_take();
+crates/vb_core/src/engine/signals.rs:599:         match result {
+crates/vb_core/src/engine/signals.rs:600:             Err(EngineError::StepCounterOverflow) => {

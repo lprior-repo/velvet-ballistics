@@ -1,0 +1,100 @@
+verification/verus/signals_invariant.rs:201:         spec_step_budget_invariant(final(budget).remaining as int),
+verification/verus/signals_invariant.rs:202: ;
+verification/verus/signals_invariant.rs:203: 
+verification/verus/signals_invariant.rs:204: /// Bridge contract: `production::StepBudget::remaining` returns the
+verification/verus/signals_invariant.rs:205: /// field.
+verification/verus/signals_invariant.rs:206: ///
+verification/verus/signals_invariant.rs:207: /// Mirrors the production body at
+verification/verus/signals_invariant.rs:208: /// `crates/vb_core/src/engine/signals.rs:64-66`.
+verification/verus/signals_invariant.rs:209: pub assume_specification[ production::StepBudget::remaining ](
+verification/verus/signals_invariant.rs:210:     budget: &production::StepBudget,
+verification/verus/signals_invariant.rs:211: ) -> (r: u64)
+verification/verus/signals_invariant.rs:212:     ensures
+verification/verus/signals_invariant.rs:213:         r as int == budget.remaining as int,
+verification/verus/signals_invariant.rs:214: ;
+verification/verus/signals_invariant.rs:215: 
+verification/verus/signals_invariant.rs:216: // =============================================================================
+verification/verus/signals_invariant.rs:217: // Spec-level proofs (exercising the production-anchored spec functions)
+verification/verus/signals_invariant.rs:218: // =============================================================================
+verification/verus/signals_invariant.rs:219: //
+verification/verus/signals_invariant.rs:220: // Each spec proof below discharges an INV-001 obligation by reasoning
+verification/verus/signals_invariant.rs:221: // over `spec_step_budget_invariant`, `spec_new`, and `spec_try_take`,
+verification/verus/signals_invariant.rs:222: // all of which are precisely aligned with the
+verification/verus/signals_invariant.rs:223: // `production::StepBudget::*` production contracts. The exec proofs
+verification/verus/signals_invariant.rs:224: // in the next section exercise the contract through actual
+verification/verus/signals_invariant.rs:225: // `production::StepBudget::*` calls, completing the production
+verification/verus/signals_invariant.rs:226: // binding.
+verification/verus/signals_invariant.rs:227: 
+verification/verus/signals_invariant.rs:228: /// proof_remaining_bounded: After construction, remaining is always in
+verification/verus/signals_invariant.rs:229: /// [0, MAX_STEP_BUDGET]. Discharged by the production-bound contract on
+verification/verus/signals_invariant.rs:230: /// `production::StepBudget::new` and the spec function `spec_new`.
+verification/verus/signals_invariant.rs:231: pub proof fn proof_remaining_bounded(initial: int)
+verification/verus/signals_invariant.rs:232:     requires
+verification/verus/signals_invariant.rs:233:         initial >= 0,
+verification/verus/signals_invariant.rs:234:     ensures
+verification/verus/signals_invariant.rs:235:         spec_step_budget_invariant(spec_new(initial)),
+verification/verus/signals_invariant.rs:236: {
+verification/verus/signals_invariant.rs:237:     let clamped = spec_new(initial);
+verification/verus/signals_invariant.rs:238:     assert(spec_step_budget_invariant(clamped));
+verification/verus/signals_invariant.rs:239: }
+verification/verus/signals_invariant.rs:240: 
+verification/verus/signals_invariant.rs:241: /// Invariant preservation lemma: if remaining satisfies the invariant
+verification/verus/signals_invariant.rs:242: /// before try_take, it also satisfies it after.
+verification/verus/signals_invariant.rs:243: pub proof fn proof_try_take_preserves_invariant(remaining: int)
+verification/verus/signals_invariant.rs:244:     requires
+verification/verus/signals_invariant.rs:245:         spec_step_budget_invariant(remaining),
+verification/verus/signals_invariant.rs:246:     ensures
+verification/verus/signals_invariant.rs:247:         spec_step_budget_invariant(spec_try_take(remaining).1),
+verification/verus/signals_invariant.rs:248: {
+verification/verus/signals_invariant.rs:249:     let (took, new_rem) = spec_try_take(remaining);
+verification/verus/signals_invariant.rs:250:     if remaining > 0 && remaining <= max_step_budget() {
+verification/verus/signals_invariant.rs:251:         assert(new_rem == remaining - 1);
+verification/verus/signals_invariant.rs:252:         assert(new_rem >= 0);
+verification/verus/signals_invariant.rs:253:         assert(new_rem <= max_step_budget());
+verification/verus/signals_invariant.rs:254:     } else if remaining == 0 {
+verification/verus/signals_invariant.rs:255:         assert(new_rem == 0);
+verification/verus/signals_invariant.rs:256:         assert(spec_step_budget_invariant(new_rem));
+verification/verus/signals_invariant.rs:257:     } else {
+verification/verus/signals_invariant.rs:258:         // remaining > MAX: excluded by precondition
+verification/verus/signals_invariant.rs:259:         assert(false);
+verification/verus/signals_invariant.rs:260:     }
+verification/verus/signals_invariant.rs:261: }
+verification/verus/signals_invariant.rs:262: 
+verification/verus/signals_invariant.rs:263: /// Lemma: MAX budget construction is valid.
+verification/verus/signals_invariant.rs:264: pub proof fn proof_max_budget_valid()
+verification/verus/signals_invariant.rs:265:     ensures
+verification/verus/signals_invariant.rs:266:         spec_step_budget_invariant(max_step_budget()),
+verification/verus/signals_invariant.rs:267: {
+verification/verus/signals_invariant.rs:268:     assert(spec_step_budget_invariant(max_step_budget()));
+verification/verus/signals_invariant.rs:269: }
+verification/verus/signals_invariant.rs:270: 
+verification/verus/signals_invariant.rs:271: /// Lemma: zero budget is valid.
+verification/verus/signals_invariant.rs:272: pub proof fn proof_zero_budget_valid()
+verification/verus/signals_invariant.rs:273:     ensures
+verification/verus/signals_invariant.rs:274:         spec_step_budget_invariant(0),
+verification/verus/signals_invariant.rs:275: {
+verification/verus/signals_invariant.rs:276:     assert(spec_step_budget_invariant(0));
+verification/verus/signals_invariant.rs:277: }
+verification/verus/signals_invariant.rs:278: 
+verification/verus/signals_invariant.rs:279: /// Invariant holds for boundary values.
+verification/verus/signals_invariant.rs:280: pub proof fn proof_boundary_values()
+verification/verus/signals_invariant.rs:281:     ensures
+verification/verus/signals_invariant.rs:282:         spec_step_budget_invariant(0),
+verification/verus/signals_invariant.rs:283:         spec_step_budget_invariant(max_step_budget()),
+verification/verus/signals_invariant.rs:284: {
+verification/verus/signals_invariant.rs:285:     assert(spec_step_budget_invariant(0));
+verification/verus/signals_invariant.rs:286:     assert(spec_step_budget_invariant(max_step_budget()));
+verification/verus/signals_invariant.rs:287: }
+verification/verus/signals_invariant.rs:288: 
+verification/verus/signals_invariant.rs:289: /// Lemma: try_take returns Ok(true) iff remaining > 0 (within invariant).
+verification/verus/signals_invariant.rs:290: pub proof fn proof_try_take_success_condition(remaining: int)
+verification/verus/signals_invariant.rs:291:     requires
+verification/verus/signals_invariant.rs:292:         spec_step_budget_invariant(remaining),
+verification/verus/signals_invariant.rs:293:     ensures
+verification/verus/signals_invariant.rs:294:         spec_try_take(remaining).0 == (remaining > 0),
+verification/verus/signals_invariant.rs:295: {
+verification/verus/signals_invariant.rs:296:     let (ok, _) = spec_try_take(remaining);
+verification/verus/signals_invariant.rs:297:     if remaining > 0 {
+verification/verus/signals_invariant.rs:298:         assert(ok == true);
+verification/verus/signals_invariant.rs:299:     } else {
+verification/verus/signals_invariant.rs:300:         assert(ok == false);

@@ -1,0 +1,100 @@
+crates/vb_core/src/engine/signals.rs:1: #![forbid(unsafe_code)]
+crates/vb_core/src/engine/signals.rs:2: //! Engine signal types and step budget.
+crates/vb_core/src/engine/signals.rs:3: 
+crates/vb_core/src/engine/signals.rs:4: use crate::errors::EngineError;
+crates/vb_core/src/engine/signals.rs:5: use crate::limits::MAX_STEP_BUDGET;
+crates/vb_core/src/engine/signals.rs:6: use crate::value::{SlotValue, Taint};
+crates/vb_core/src/engine/signals.rs:7: 
+crates/vb_core/src/engine/signals.rs:8: /// Bounded number of steps a caller may execute in one engine slice.
+crates/vb_core/src/engine/signals.rs:9: ///
+crates/vb_core/src/engine/signals.rs:10: /// The hard ceiling is [`MAX_STEP_BUDGET`]. Any value provided to [`StepBudget::new`]
+crates/vb_core/src/engine/signals.rs:11: /// that exceeds this ceiling is clamped, and [`StepBudget::try_take`] returns an
+crates/vb_core/src/engine/signals.rs:12: /// error if the internal counter somehow exceeds the ceiling.
+crates/vb_core/src/engine/signals.rs:13: #[derive(Debug, Clone)]
+crates/vb_core/src/engine/signals.rs:14: pub struct StepBudget {
+crates/vb_core/src/engine/signals.rs:15:     remaining: u64,
+crates/vb_core/src/engine/signals.rs:16: }
+crates/vb_core/src/engine/signals.rs:17: 
+crates/vb_core/src/engine/signals.rs:18: impl StepBudget {
+crates/vb_core/src/engine/signals.rs:19:     /// Largest bounded execution slice representable by the runtime.
+crates/vb_core/src/engine/signals.rs:20:     pub const MAX: Self = Self {
+crates/vb_core/src/engine/signals.rs:21:         remaining: MAX_STEP_BUDGET,
+crates/vb_core/src/engine/signals.rs:22:     };
+crates/vb_core/src/engine/signals.rs:23: 
+crates/vb_core/src/engine/signals.rs:24:     /// Creates a budget clamped to the hard ceiling. Zero is valid and
+crates/vb_core/src/engine/signals.rs:25:     /// executes no transitions.
+crates/vb_core/src/engine/signals.rs:26:     #[must_use]
+crates/vb_core/src/engine/signals.rs:27:     pub const fn new(value: u64) -> Self {
+crates/vb_core/src/engine/signals.rs:28:         Self {
+crates/vb_core/src/engine/signals.rs:29:             remaining: if value > MAX_STEP_BUDGET {
+crates/vb_core/src/engine/signals.rs:30:                 MAX_STEP_BUDGET
+crates/vb_core/src/engine/signals.rs:31:             } else {
+crates/vb_core/src/engine/signals.rs:32:                 value
+crates/vb_core/src/engine/signals.rs:33:             },
+crates/vb_core/src/engine/signals.rs:34:         }
+crates/vb_core/src/engine/signals.rs:35:     }
+crates/vb_core/src/engine/signals.rs:36: 
+crates/vb_core/src/engine/signals.rs:37:     /// Attempts to consume one transition from the budget.
+crates/vb_core/src/engine/signals.rs:38:     ///
+crates/vb_core/src/engine/signals.rs:39:     /// Returns `Ok(true)` when a transition was consumed, `Ok(false)` when the
+crates/vb_core/src/engine/signals.rs:40:     /// budget is exhausted, and an error if the remaining counter somehow
+crates/vb_core/src/engine/signals.rs:41:     /// exceeds the hard ceiling (a runtime invariant violation).
+crates/vb_core/src/engine/signals.rs:42:     ///
+crates/vb_core/src/engine/signals.rs:43:     /// # Invariant guarantee
+crates/vb_core/src/engine/signals.rs:44:     ///
+crates/vb_core/src/engine/signals.rs:45:     /// The `remaining > MAX_STEP_BUDGET` overflow check is kept as a defense-in-depth
+crates/vb_core/src/engine/signals.rs:46:     /// guard. The field is private and can only be set by [`Self::new`] (which clamps)
+crates/vb_core/src/engine/signals.rs:47:     /// or [`Self::MAX`] (which uses `MAX_STEP_BUDGET` directly), and `try_take` only
+crates/vb_core/src/engine/signals.rs:48:     /// ever decreases via `saturating_sub`. The check therefore cannot fire through
+crates/vb_core/src/engine/signals.rs:49:     /// normal API use, but guards against future modifications or memory corruption.
+crates/vb_core/src/engine/signals.rs:50:     pub fn try_take(&mut self) -> Result<bool, EngineError> {
+crates/vb_core/src/engine/signals.rs:51:         if self.remaining > MAX_STEP_BUDGET {
+crates/vb_core/src/engine/signals.rs:52:             return Err(EngineError::StepCounterOverflow);
+crates/vb_core/src/engine/signals.rs:53:         }
+crates/vb_core/src/engine/signals.rs:54:         if self.remaining == 0 {
+crates/vb_core/src/engine/signals.rs:55:             Ok(false)
+crates/vb_core/src/engine/signals.rs:56:         } else {
+crates/vb_core/src/engine/signals.rs:57:             self.remaining = self.remaining.saturating_sub(1);
+crates/vb_core/src/engine/signals.rs:58:             Ok(true)
+crates/vb_core/src/engine/signals.rs:59:         }
+crates/vb_core/src/engine/signals.rs:60:     }
+crates/vb_core/src/engine/signals.rs:61: 
+crates/vb_core/src/engine/signals.rs:62:     /// Remaining transitions.
+crates/vb_core/src/engine/signals.rs:63:     #[must_use]
+crates/vb_core/src/engine/signals.rs:64:     pub const fn remaining(&self) -> u64 {
+crates/vb_core/src/engine/signals.rs:65:         self.remaining
+crates/vb_core/src/engine/signals.rs:66:     }
+crates/vb_core/src/engine/signals.rs:67: 
+crates/vb_core/src/engine/signals.rs:68:     /// Environment variable name for bench latency budget.
+crates/vb_core/src/engine/signals.rs:69:     const BENCH_LATENCY_BUDGET_US: &'static str = "VB_BENCH_LATENCY_BUDGET_US";
+crates/vb_core/src/engine/signals.rs:70: 
+crates/vb_core/src/engine/signals.rs:71:     /// Default budget when env var is absent.
+crates/vb_core/src/engine/signals.rs:72:     const DEFAULT_BUDGET: u64 = MAX_STEP_BUDGET;
+crates/vb_core/src/engine/signals.rs:73: 
+crates/vb_core/src/engine/signals.rs:74:     /// Creates a budget from the VB_BENCH_LATENCY_BUDGET_US environment variable.
+crates/vb_core/src/engine/signals.rs:75:     ///
+crates/vb_core/src/engine/signals.rs:76:     /// - Returns `Ok(budget)` when env var is set and parses as u64.
+crates/vb_core/src/engine/signals.rs:77:     ///   Value is clamped to [`MAX_STEP_BUDGET`].
+crates/vb_core/src/engine/signals.rs:78:     /// - Returns `Err(EngineError::BudgetParse { reason })` when env var is set
+crates/vb_core/src/engine/signals.rs:79:     ///   but contains non-numeric content.
+crates/vb_core/src/engine/signals.rs:80:     /// - Returns `Ok(Self::new(Self::DEFAULT_BUDGET))` when env var is absent.
+crates/vb_core/src/engine/signals.rs:81:     pub fn from_env() -> Result<Self, EngineError> {
+crates/vb_core/src/engine/signals.rs:82:         match std::env::var(Self::BENCH_LATENCY_BUDGET_US) {
+crates/vb_core/src/engine/signals.rs:83:             Ok(raw) => {
+crates/vb_core/src/engine/signals.rs:84:                 let parsed = raw.parse::<u64>().map_err(|_| EngineError::BudgetParse {
+crates/vb_core/src/engine/signals.rs:85:                     reason: "invalid u64 value",
+crates/vb_core/src/engine/signals.rs:86:                 })?;
+crates/vb_core/src/engine/signals.rs:87:                 Ok(Self::new(parsed))
+crates/vb_core/src/engine/signals.rs:88:             }
+crates/vb_core/src/engine/signals.rs:89:             Err(std::env::VarError::NotPresent) => Ok(Self::new(Self::DEFAULT_BUDGET)),
+crates/vb_core/src/engine/signals.rs:90:             Err(_) => Err(EngineError::BudgetParse {
+crates/vb_core/src/engine/signals.rs:91:                 reason: "env var access error",
+crates/vb_core/src/engine/signals.rs:92:             }),
+crates/vb_core/src/engine/signals.rs:93:         }
+crates/vb_core/src/engine/signals.rs:94:     }
+crates/vb_core/src/engine/signals.rs:95: }
+crates/vb_core/src/engine/signals.rs:96: 
+crates/vb_core/src/engine/signals.rs:97: /// Outcome of one or more engine transitions.
+crates/vb_core/src/engine/signals.rs:98: #[derive(Debug, Clone, PartialEq, Eq)]
+crates/vb_core/src/engine/signals.rs:99: #[non_exhaustive]
+crates/vb_core/src/engine/signals.rs:100: pub enum EngineSignal {
