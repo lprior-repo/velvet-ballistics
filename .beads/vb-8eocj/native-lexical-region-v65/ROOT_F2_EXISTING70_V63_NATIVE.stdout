@@ -1,0 +1,90 @@
+
+running 27 tests
+test do_action::test_do_action_suspension_and_completion ... ok
+test negative::test_ambiguous_bare_name_error ... ok
+test negative::test_duplicate_output_name_error ... ok
+test negative::test_finish_expression_not_supported ... ok
+test negative::test_forward_reference_error ... ok
+test negative::test_invalid_action_id_negative ... ok
+test negative::test_invalid_action_id_too_large ... ok
+test negative::test_invalid_input_slot_negative ... ok
+test negative::test_scalar_type_error_bool_plus_i64 ... ok
+test negative::test_self_reference_error ... ok
+test negative::test_step_prefix_disambiguates_to_step ... ok
+test negative::test_undefined_name_reference_error ... ok
+test positive::test_arithmetic_through_prior_output_alias ... ok
+test positive::test_bool_set_to_finish ... ok
+test positive::test_f64_set_to_finish ... ok
+test positive::test_i64_set_unchanged_to_finish ... ok
+test positive::test_null_set_to_finish ... ok
+test positive::test_step_reference_by_id ... ok
+test positive::test_step_reference_qualified ... ok
+test positive::test_step_reference_steps_prefix ... ok
+test type_identity::test_bool_producer_step_id_producer ... ok
+test type_identity::test_direct_literal_bool_arithmetic ... ok
+test type_identity::test_numeric_producer_alias ... ok
+test type_identity::test_numeric_qualified_step_reference ... ok
+test type_identity::test_step_prefix_bool_producer ... ok
+test type_identity::test_steps_prefix_bool_producer ... ok
+test type_identity::test_transitive_copy_bool_arithmetic ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 16 tests
+test repeat_body_error_slot_mutated_to_counter ... ok
+test repeat_body_kind_error_handler ... ok
+test repeat_body_kind_retry_check ... ok
+test repeat_body_output_mutated_to_counter ... ok
+test repeat_check_error_slot_mutated_to_counter ... ok
+test repeat_check_next_done ... ok
+test repeat_check_next_none ... ok
+test repeat_counter_ask_resume_foreign_write ... ok
+test repeat_max1_executes_once ... ok
+test repeat_max3_executes_three_times ... ok
+test repeat_owner_error_slot_mutated_to_counter ... ok
+test test_collect_start_foreign_write ... ok
+test test_explicit_reservation_after_owner ... ok
+test test_explicit_reservation_before_owner ... ok
+test test_implicit_counter_writers ... ok
+test test_together_join_foreign_write ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 8 tests
+test ask_with_timeout_resumes ... ok
+test ask_without_timeout_resumes ... ok
+test choose_false_branch_executes ... ok
+test choose_true_branch_executes ... ok
+test collect_eleven_items_three_pages ... ok
+test collect_empty_list ... ok
+test collect_three_items ... ok
+test collect_total_item_limit_overflow_rejected ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 19 tests
+test declared_scalar_list_object_inputs_survive_repeat ... ok
+test declared_scalar_list_object_inputs_survive_together ... ok
+test for_each_empty_list_preserves_source_values ... ok
+test for_each_single_item_preserves_source_values ... ok
+test for_each_two_items_preserve_source_values ... ok
+test generated_composite_roles_do_not_alias_source_outputs ... ok
+test numeric_source_for_each_preserves_42_99_and_list_taint ... ok
+test numeric_source_reduce_preserves_42_99_and_list_taint ... ok
+test reduce_compiles_with_four_distinct_private_roles_and_no_nop ... ok
+test reduce_empty_list_preserves_source_values ... ok
+test reduce_single_item_preserves_source_values ... ok
+test reduce_two_items_preserve_source_values ... ok
+test repeat_finishes_with_prior_answer_42 ... ok
+test repeat_finishes_with_prior_sentinel_99 ... ok
+test sequential_repeat_together_preserve_prior_source_values ... ok
+test sequential_together_repeat_preserve_prior_source_values ... ok
+test together_entry_preserves_prior_source_values ... ok
+test together_finishes_with_prior_answer_42 ... ok
+test together_finishes_with_prior_sentinel_99 ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

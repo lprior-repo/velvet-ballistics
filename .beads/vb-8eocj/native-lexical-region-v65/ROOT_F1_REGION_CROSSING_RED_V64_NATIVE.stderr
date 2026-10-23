@@ -1,0 +1,5 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.26s
+     Running tests/vb_f1_repeat_counter_ownership.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f1_repeat_counter_ownership-3ebeae1116228062)
+Error: "region probe constructor: UnreachableNode { step: StepIdx(6) }"
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_f1_repeat_counter_ownership`

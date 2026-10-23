@@ -1,0 +1,58 @@
+
+running 27 tests
+test boolean_var_preserves_its_value ... ok
+test branch_bool_arithmetic_is_type_checked ... FAILED
+test branch_cannot_shadow_input_or_var_declarations ... FAILED
+test branch_local_names_cannot_escape ... FAILED
+test choose_body_reads_parent_declarations_and_shadows_without_leaking ... FAILED
+test choose_rejects_a_known_non_boolean_expression ... FAILED
+test declared_input_expression_preserves_derived_taint ... FAILED
+test declared_input_finish_uses_the_same_binding ... FAILED
+test declared_input_flows_through_real_do_completion ... FAILED
+test declared_input_is_available_before_finish ... FAILED
+test do_after_repeat_cannot_alias_private_counter_or_input ... FAILED
+test false_choose_does_not_execute_its_body ... FAILED
+test genuine_alias_and_step_id_ambiguity_is_rejected ... FAILED
+test ignored_body_controls_remain_rejected ... FAILED
+test input_boolean_arithmetic_is_rejected_statically ... FAILED
+test non_scalar_vars_are_not_faked_as_counts ... FAILED
+test null_var_preserves_its_value ... ok
+test numeric_choose_slot_with_known_integer_type_is_rejected ... FAILED
+test output_alias_cannot_forge_a_declaration_root ... ok
+test scalar_vars_execute_before_source_steps ... FAILED
+test selected_branch_do_completes_before_local_expression ... FAILED
+test sibling_branch_names_are_not_visible ... ok
+test two_differently_typed_inputs_resolve_to_their_own_ports ... FAILED
+test unknown_var_is_not_a_numeric_slot_error ... FAILED
+test unselected_branch_never_dispatches_do ... FAILED
+test vars_remain_namespaced_when_a_bare_alias_matches ... FAILED
+test wrong_var_type_is_rejected_statically ... ok
+
+failures:
+
+failures:
+    branch_bool_arithmetic_is_type_checked
+    branch_cannot_shadow_input_or_var_declarations
+    branch_local_names_cannot_escape
+    choose_body_reads_parent_declarations_and_shadows_without_leaking
+    choose_rejects_a_known_non_boolean_expression
+    declared_input_expression_preserves_derived_taint
+    declared_input_finish_uses_the_same_binding
+    declared_input_flows_through_real_do_completion
+    declared_input_is_available_before_finish
+    do_after_repeat_cannot_alias_private_counter_or_input
+    false_choose_does_not_execute_its_body
+    genuine_alias_and_step_id_ambiguity_is_rejected
+    ignored_body_controls_remain_rejected
+    input_boolean_arithmetic_is_rejected_statically
+    non_scalar_vars_are_not_faked_as_counts
+    numeric_choose_slot_with_known_integer_type_is_rejected
+    scalar_vars_execute_before_source_steps
+    selected_branch_do_completes_before_local_expression
+    two_differently_typed_inputs_resolve_to_their_own_ports
+    unknown_var_is_not_a_numeric_slot_error
+    unselected_branch_never_dispatches_do
+    vars_remain_namespaced_when_a_bare_alias_matches
+
+test result: FAILED. 5 passed; 22 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

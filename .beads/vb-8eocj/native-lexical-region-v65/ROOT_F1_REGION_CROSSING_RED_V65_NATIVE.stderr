@@ -1,0 +1,8 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.27s
+     Running tests/vb_f1_repeat_counter_ownership.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f1_repeat_counter_ownership-3ebeae1116228062)
+
+thread 'malformed_ir_loop_rearm_region_crossing_edge' (3889257) panicked at crates/workspace_tests/tests/vb_f1_repeat_counter_ownership.rs:816:5:
+expected region guard, got Err(Core(InternalInvariantViolation { reason: "invalid_state_transition" }))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_f1_repeat_counter_ownership`

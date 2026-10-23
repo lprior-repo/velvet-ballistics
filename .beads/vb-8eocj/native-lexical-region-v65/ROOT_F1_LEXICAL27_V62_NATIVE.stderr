@@ -1,0 +1,36 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_core)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_storage)
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_yaml)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_runtime)
+   Compiling vb_ipc v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_ipc)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile)
+   Compiling velvet-ballistics v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/velvet_ballistics)
+   Compiling xtask v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/xtask)
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.64s
+     Running tests/vb_f1_lexical_source_tests.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_f1_lexical_source_tests-1a072656c19613c8)
+Error: "wrong diagnostic: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "wrong diagnostic: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "wrong diagnostic: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "wrong diagnostic: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "wrong diagnostic: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "wrong diagnostic: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "wrong diagnostic: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "wrong diagnostic: CompileErrors([UnsupportedConstantValue { step: 0 }])"
+Error: "wrong diagnostic: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "wrong diagnostic: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+Error: "canonical compile failed: CompileErrors([CanonicalYaml { category: \"forbidden_feature\", message: \"YAML 1.1 ambiguous scalar rejected: n\" }])"
+error: test failed, to rerun pass `-p velvet-ballistics-workspace-tests --test vb_f1_lexical_source_tests`
