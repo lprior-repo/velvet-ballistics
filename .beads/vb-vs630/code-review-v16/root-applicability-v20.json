@@ -1,0 +1,28 @@
+{
+  "status": "narrow production CODE approval; no newtest/fullcanonical acceptance",
+  "candidate": "ebe0984326b7fd17603c977dbb9ee680b43522f4",
+  "source_sha256": {
+    ".beads/vb-vs630/contract.md": "cc3a92fec230e34cc3ceefe329660c30159af5a3bf0b65fc86fb1fb8a7147427",
+    "crates/vb_storage/src/journal/artifact_acceptance.rs": "25d03128bcfcb288bb8d8007a8918870a4555c444d66db9c1cc6868d57f888ff",
+    "crates/vb_storage/src/inputs/submission.rs": "c87f3c8d762806d17742154a51d8234f6e5d4471a5189dbada6260a9ec735f30",
+    "crates/vb_storage/src/batch/artifact_sequence.rs": "a1d375855d3f5d0165e1aa3c13232cf66415209a8a8a17c41e198db4d78df0c7",
+    "crates/vb_storage/src/batch/append_event.rs": "eb1f0ca8068e80d5a10fdac0e0a5f25914ba923781e7e723891f6f4a2c1b5da5",
+    "crates/vb_storage/src/batch/types.rs": "7dbbf6852a27a83ef013c05416e5b601061eaaf37f6d2a9654418dc720e56905",
+    "crates/vb_storage/src/batch/commit.rs": "6c33deec925114067a9df00a3deeeaaa2551f28de04ca79001f29e1500ed1701",
+    "crates/vb_storage/src/batch/inputs.rs": "af863b6110f32aa801ea177c09c5eb43591e8adc6441b834fcd84122211b4b4d",
+    "crates/vb_storage/src/batch/putters.rs": "97bf59cc24643f5ec6c5debc0638b0c6faee1f91c261a185da7963a62f0425d5",
+    "crates/vb_storage/src/batch/mod.rs": "f0ab2f42e520ba8f09b07e9b02607864107d4b5e96992963472c71a4ad93c103",
+    "crates/vb_storage/src/journal/admission.rs": "aadd843bf98fc60eb33b7b79f716998a6e85257293826cf95fb40addeb42d33c",
+    "crates/vb_storage/src/executor/packed.rs": "a85defdbf5703a620c5b23bde5f788f6d7c220cf017244e696c385ee1c3a7c78"
+  },
+  "all20plaintextpackets_read": true,
+  "raw_report_preserved": true,
+  "corrections": [
+    "Counter read and prepare_artifact_with_sequence perform I/O, not pure functions. Only arithmetic/rebinding computations are pure.",
+    "forbid unsafe is enforced by crate policy; not every changed module has individual attribute.",
+    "None skips combined event limit check and retains existing event-byte tracking semantics; checked_add is not universally performed on combined bytes in None branch. Metadata increment itself remains checked.",
+    "Legacy append_event body changed combined-budget arithmetic; not wholly unchanged logic. Existing oversized cold function is not new, scope still needs focused budget tests.",
+    "Line references and claimed logical counts in rawreport are not authoritative; source hashes/canonical gates control.",
+    "All contract acceptance criteria means production CODE scope only; new tests, independentTEST, metrics andcanonical remain pending."
+  ]
+}

@@ -1,0 +1,100 @@
+1: use super::{ExecutorCatalog, ExecutorError};
+2: use crate::admission::verification::{self, ExecutorProfile};
+3: use crate::{AcceptedArtifact, FjallJournal};
+4: use vb_core::action_pack::{ActionPack, PackedArtifactEvidence};
+5: use vb_core::artifact::ArtifactEvidence;
+6: use vb_core::{
+7:     ActionContract, ActionId, CompiledWorkflow, RuntimePolicy, SideEffect, WorkflowParts,
+8: };
+9: 
+10: const MAX_PACKS: usize = 64;
+11: 
+12: impl ExecutorCatalog {
+13:     /// Cold preparation checks registered executor authority and actual conformance.
+14:     pub fn prepare_artifact(
+15:         &self,
+16:         workflow: &CompiledWorkflow,
+17:         policy: RuntimePolicy,
+18:         contracts: &[ActionContract],
+19:         packs: &[ActionPack],
+20:     ) -> Result<AcceptedArtifact, ExecutorError> {
+21:         self.check_packs(contracts, packs)?;
+22:         Ok(verification::prepare_with_profile(
+23:             workflow,
+24:             policy,
+25:             contracts,
+26:             ExecutorProfile::Registered {
+27:                 catalog: self,
+28:                 packs,
+29:             },
+30:         )?)
+31:     }
+32: 
+33:     /// Verify hostile serialized pack metadata against this actual registered catalog.
+34:     pub fn verify_artifact(
+35:         &self,
+36:         artifact: &AcceptedArtifact,
+37:         policy: RuntimePolicy,
+38:     ) -> Result<CompiledWorkflow, ExecutorError> {
+39:         let packed = checked_envelope(artifact, policy)?;
+40:         let workflow = decode_workflow(artifact)?;
+41:         let expected =
+42:             self.prepare_artifact(&workflow, policy, &artifact.action_contracts, &packed.packs)?;
+43:         verification::verify_expected_bindings(artifact, &expected)?;
+44:         Ok(workflow)
+45:     }
+46: 
+47:     /// Persist exact checked metadata and verify its strict durable readback.
+48:     pub fn submit_artifact(
+49:         &self,
+50:         journal: &FjallJournal,
+51:         workflow: &CompiledWorkflow,
+52:         policy: RuntimePolicy,
+53:         contracts: &[ActionContract],
+54:         packs: &[ActionPack],
+55:     ) -> Result<AcceptedArtifact, ExecutorError> {
+56:         let artifact = self.prepare_artifact(workflow, policy, contracts, packs)?;
+57:         let stamped = crate::journal::artifact_acceptance::issue_next_artifact_sequence(
+58:             journal,
+59:             artifact,
+60:             RuntimePolicy::Strict,
+61:         )?;
+62:         let stored = journal
+63:             .compiled_ir(stamped.digest)?
+64:             .ok_or(ExecutorError::Corrupt)?;
+65:         let restored = postcard::from_bytes(&stored.ir)?;
+66:         self.verify_artifact(&restored, policy)?;
+67:         if stamped != restored {
+68:             return Err(ExecutorError::Corrupt);
+69:         }
+70:         Ok(stamped)
+71:     }
+72: 
+73:     pub(crate) fn check_packs(
+74:         &self,
+75:         contracts: &[ActionContract],
+76:         packs: &[ActionPack],
+77:     ) -> Result<(), ExecutorError> {
+78:         if packs.is_empty()
+79:             || packs.len() > MAX_PACKS
+80:             || !packs
+81:                 .windows(2)
+82:                 .all(|pair| matches!(pair, [a, b] if a.action < b.action))
+83:         {
+84:             return Err(ExecutorError::PackMismatch);
+85:         }
+86:         let expected = contracts
+87:             .iter()
+88:             .filter(|contract| contract.side_effect != SideEffect::None)
+89:             .count();
+90:         if expected != packs.len() {
+91:             return Err(ExecutorError::PackMismatch);
+92:         }
+93:         packs.iter().try_for_each(|pack| {
+94:             let contract = contracts
+95:                 .get(usize::from(pack.action.get()))
+96:                 .ok_or(ExecutorError::PackMismatch)?;
+97:             self.check_pack(contract, pack)
+98:         })
+99:     }
+100: 

@@ -1,0 +1,11 @@
+{
+  "bead": "vb-vs630",
+  "candidate": "ebe0984326b7fd17603c977dbb9ee680b43522f4",
+  "verdict": "APPROVED",
+  "findings": [],
+  "gates": {
+    "cargo_check_v12": "PASS",
+    "storage_tests_v13": "PASS_1658_0_skips",
+    "code_review_v16": "PASS"
+  }
+}

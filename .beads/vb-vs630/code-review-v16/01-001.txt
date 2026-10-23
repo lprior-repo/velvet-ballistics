@@ -1,0 +1,100 @@
+1: # Bead vb-vs630 Contract: CLI Submission Artifact Sequence Stamp
+2: 
+3: **Status:** contract
+4: **Domain:** durable execution engine, artifact acceptance, run admission, journal durability
+5: 
+6: ## Problem
+7: 
+8: CLI submission (`velvet-ballistics submit`) bypasses the global artifact acceptance sequence counter. `submit_artifact`/`submit_artifact_with_contracts` in `admission.rs` call `issue_next_artifact_sequence` which increments the counter and stamps `accepted_at_seq`. `commit_run_submission` in `inputs/submission.rs` does not — it leaves `accepted_at_seq` at its prepare-time sentinel value. Both paths must use the same monotonic counter for artifact acceptance ordering.
+9: 
+10: ## Goal
+11: 
+12: Stamp CLI `RunSubmission` artifacts with the same global `accepted_at_seq` counter used by default submissions, retaining the existing atomic multi-record publication boundary. Counter increment and artifact stamp occur under the existing submission `write_lock`, not as a separate transaction.
+13: 
+14: ## Current State
+15: 
+16: ### Default Path
+17: `submit_artifact_with_contracts` in `crates/vb_storage/src/admission.rs`:
+18: 1. `prepare_compiled_artifact` — validates, builds artifact with seq=0 sentinel
+19: 2. `issue_next_artifact_sequence` (in `journal/artifact_acceptance.rs`) — acquires write_lock, reads counter, increments, stamps seq, rebinds `artifact.digest` and `artifact.verification.digest` via `bind_artifact_digest`, encodes, stages counter+artifact in `fjall::OwnedWriteBatch`, commits with policy durability, returns stamped artifact
+20: 3. `verify_artifact_persisted` — readback verification
+21: 
+22: ### CLI Path
+23: `FjallJournal::commit_run_submission` in `crates/vb_storage/src/inputs/submission.rs`:
+24: 1. `submission.validate_policy(policy)` — BEFORE lock
+25: 2. Acquires `journal.write_lock`
+26: 3. Checks duplicate run (header/inputs/events exist) — BEFORE commit
+27: 4. `submission.commit(journal, policy)` — `RunSubmission::commit` takes `&self`, creates `JournalWriteBatch`, stages source/artifact/inputs/header/indexes/events, commits
+28: 5. Does NOT call `issue_next_artifact_sequence` — `accepted_at_seq` remains at prepare-time sentinel
+29: 
+30: ### Key Distinctions
+31: - **Global artifact counter** (`accepted_at_seq` on AcceptedArtifact) — this bead's target
+32: - **Per-run event sequence** (RunAccepted.seq=0, RunAdmission.seq=1) — unchanged
+33: - **Header `compiled_digest`** — workflow IR digest, not artifact acceptance digest, unchanged
+34: 
+35: ## Design: Factor Out Issuance Prepare
+36: 
+37: Factor counter-read + increment + stamp + rebind from `issue_artifact` into a crate-private lock-free helper. Both paths call this helper under their own lock.
+38: 
+39: ### Proposed Changes
+40: 
+41: 1. **New `pub(crate)` helper in `artifact_acceptance.rs`:**
+42:    `fn prepare_artifact_with_sequence(journal, artifact) -> Result<(u64, AcceptedArtifact), JournalError>` — reads counter, calls `prepare_artifact`, returns (next_counter, stamped_artifact). No lock.
+43: 
+44: 2. **`issue_artifact` wraps the helper:** acquires lock, calls helper, proceeds with encode/batch/commit (existing logic unchanged).
+45: 
+46: 3. **`commit_run_submission` uses the helper:** under existing lock, calls helper, rebinds `RunInputsRecord.artifact_digest` and `RunAdmission.artifact_digest`, stages counter write in submission batch via a new crate-private `JournalWriteBatch` method, re-encodes stamped artifact, commits.
+47: 
+48: ### Digest Rebinding Cascade
+49: After stamping, artifact digest changes. Four fields must be consistent:
+50: 1. `AcceptedArtifact.digest` — set by `bind_artifact_digest`
+51: 2. `AcceptedArtifact.verification.digest` — set by `bind_artifact_digest`
+52: 3. `RunInputsRecord.artifact_digest` — must be updated
+53: 4. `RunAdmission` event `artifact_digest` — must be updated
+54: 
+55: ### Batching Constraint
+56: `JournalWriteBatch.inner` is `pub(super)` — accessible only within the batch module. `inputs/submission.rs` cannot access `inner` directly. Proposed: add crate-private counter staging method to `JournalWriteBatch` using existing byte-limit/aborted patterns.
+57: 
+58: ### Borrowing Constraint
+59: `commit_run_submission` takes `&RunSubmission` and `RunSubmission::commit` takes `&self`. To stamp the artifact, an owned checked clone/rebind scratch is needed under the lock (or bounded helper), since `submission.artifact` cannot be moved out of a borrowed reference. The clone rebinds `artifact.digest` in the private copy while retaining all input/workflow/source/policy fields.
+60: 
+61: ### No Lock Re-acquisition
+62: `issue_next_artifact_sequence` acquires its own lock. Calling it from within `commit_run_submission` (which already holds the lock) would deadlock. The factored helper must be lock-free.
+63: 
+64: ## Acceptance Criteria
+65: 
+66: ### Functional
+67: 1. Every successful CLI submission publishes exactly one next counter value; uncertain commit IO may have published despite Err.
+68: 2. CLI submission stamps `accepted_at_seq` with the new counter value.
+69: 3. Stamped artifact digest is rebound and propagated to `RunInputsRecord.artifact_digest` and `RunAdmission.artifact_digest`.
+70: 4. Counter write and all run admission records committed in single atomic batch.
+71: 5. Per-run event sequences (RunAccepted.seq=0, RunAdmission.seq=1) unchanged.
+72: 6. `RunHeaderRecord.compiled_digest` remains workflow IR digest.
+73: 7. Default/API path (`submit_artifact`) continues identically.
+74: 8. No deadlock: submission path does not call locked `issue_next_artifact_sequence`.
+75: 
+76: ### Durability
+77: 1. Policy durability (Strict/Journaled/Relaxed) applied to combined batch.
+78: 2. Strict mode uses SyncAll durability.
+79: 3. Atomic publication: no partial multi-record state. On commit Err, Fjall batch may already have committed (IO uncertainty) — Err does not guarantee no-commit.
+80: 
+81: ### Error Handling (Exact Actual Errors)
+82: 1. Malformed counter row: `JournalError::MalformedKeyspaceRow { prefix: 0, expected_len: 8, actual_len: <actual> }`
+83: 2. Sequence overflow: `JournalError::SequenceOverflow`
+84: 3. Write lock poisoned: `JournalError::WriteLockPoisoned`
+85: 4. Duplicate run: `JournalError::RunAlreadyExists`
+86: 5. Fjall IO errors: `JournalError::Fjall(...)`
+87: 6. Postcard encoding: `JournalError::PostcardEncodeFailed`
+88: 7. Digest binding failures: actual `bind_artifact_digest` errors propagate; `JournalError::PayloadDigestMismatch` only for binding identity failures, not all failures
+89: 
+90: ### Precommit vs Postcommit Errors
+91: - Precommit (no mutation, safe to retry): validation, overflow, malformed, injected precommit test hooks
+92: - Postcommit (uncertain IO ack boundary): Fjall IO during/after commit — counter may have advanced even if Err returned
+93: 
+94: ### Policy Acceptance
+95: All three policies accepted: Relaxed, Journaled, Strict. Relaxed writes NO acceptance events. Journaled/Strict write events at seq 0/1.
+96: 
+97: ### Mixed Submission Ordering
+98: Counter increments monotonically across mixed default and CLI submissions. Duplicate-run rejected before counter publication.
+99: 
+100: ## Open Design Questions
