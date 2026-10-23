@@ -549,7 +549,7 @@ pub fn collect_next(
         cursor,
         ..state
     })?;
-    jump_to_body(run, body)
+    jump_to(run, body)
 }
 
 fn accept_empty_collect_page(

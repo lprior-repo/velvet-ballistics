@@ -8,8 +8,8 @@ use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
 use super::helpers::{
-    build_iterator_state, decode_iterator_state, empty_list, expect_list, jump_to, jump_to_body,
-    jump_to_next, require_output,
+    build_iterator_state, decode_iterator_state, empty_list, expect_list, jump_to, jump_to_next,
+    require_output,
 };
 
 /// Executes ForEachStart: validates input list, binds first item, and writes
@@ -94,7 +94,7 @@ pub fn for_each_next(
     let next_state = build_iterator_state(source_id, next_cursor)?;
     let next_state_id = store.insert_list(next_state)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)?;
-    jump_to_body(run, body)
+    jump_to(run, body)
 }
 
 /// Executes ForEachJoin: materializes ordered loop results to the output slot.

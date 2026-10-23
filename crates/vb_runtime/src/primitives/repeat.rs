@@ -112,7 +112,7 @@ pub fn repeat_check(
     } else {
         // Attempts remain -- loop back to the body entry point.
         let body_entry = next.ok_or(EngineError::MissingNextStep { step })?;
-        jump_to_body(run, body_entry)
+        jump_to(run, body_entry)
     }
 }
 

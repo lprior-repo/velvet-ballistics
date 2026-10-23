@@ -10,8 +10,7 @@ use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
 use super::helpers::{
-    build_iterator_state, decode_iterator_state, expect_list, jump_to, jump_to_body, jump_to_next,
-    require_output,
+    build_iterator_state, decode_iterator_state, expect_list, jump_to, jump_to_next, require_output,
 };
 
 fn get_initial_value(plan: &CompiledWorkflow, initial: ConstIdx) -> Result<SlotValue, EngineError> {
@@ -124,7 +123,7 @@ pub fn reduce_next(
         next_cursor,
         iter_taint,
     )?;
-    jump_to_body(run, body)
+    jump_to(run, body)
 }
 
 /// Executes ReduceFinish: writes the final accumulator to output.

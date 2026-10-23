@@ -116,7 +116,15 @@ fn run_drive_loop(
             granted,
             state_run_attempt,
         )?;
-        finish_drive_step(run, evidence, collect_states, step, &signal, drive_state)?;
+        finish_drive_step(
+            plan,
+            run,
+            evidence,
+            collect_states,
+            step,
+            &signal,
+            drive_state,
+        )?;
         match signal {
             RuntimeSignal::Continue => {}
             other => return Ok(other),

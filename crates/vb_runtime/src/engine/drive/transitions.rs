@@ -56,13 +56,11 @@ pub(super) fn loop_body_target(node: &CompiledNode) -> Option<StepIdx> {
     }
 }
 
-/// After normal success state and evidence commit, re-arms the
-/// ForEachNext/ReduceNext control node for the next iteration when
-/// the drive successfully jumped back to its declared body. Owner
-/// checks: (a) run.pc() must equal the declared body target, (b) the
-/// body step index must be less than the captured control step index
-/// to confirm this control node legitimately owns the target.
+/// After normal success and evidence commit, rearm the validated owned body
+/// only when the latch takes its backward body edge. The helper checks the
+/// complete region before resetting any succeeded body or latch state.
 pub(super) fn owned_continuation_rearm(
+    plan: &CompiledWorkflow,
     run: &mut RunFrame,
     step: DriveStep<'_>,
 ) -> RuntimeEngineResult<()> {
@@ -75,15 +73,14 @@ pub(super) fn owned_continuation_rearm(
     if body >= step.pc {
         return Ok(());
     }
-    run.mark_pending(step.pc)
-        .map_err(RuntimeEngineError::Core)?;
-    Ok(())
+    super::loop_rearm::loop_body_rearm(plan, run, step.pc, body)
 }
 
 /// Emits slot evidence for the just-finished step, then commits the
 /// matching run-frame step state (Succeeded for success-class signals,
 /// Waiting/Asking/etc for suspension signals).
 pub(super) fn finish_drive_step(
+    plan: &CompiledWorkflow,
     run: &mut RunFrame,
     evidence: &mut EvidenceCollector,
     collect_states: &CollectStates,
@@ -107,7 +104,7 @@ pub(super) fn finish_drive_step(
         evidence
             .push_step_succeeded(step.pc, step.node.output)
             .map_err(RuntimeEngineError::Core)?;
-        owned_continuation_rearm(run, step)?;
+        owned_continuation_rearm(plan, run, step)?;
     } else {
         // AwaitingWait/AwaitingAsk/AwaitingAction/StepBudgetExhausted:
         // no StepSucceeded event, but slot evidence above is still valid
