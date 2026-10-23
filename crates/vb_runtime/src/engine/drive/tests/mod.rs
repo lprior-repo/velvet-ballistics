@@ -14,3 +14,5 @@ mod cat_evidence;
 mod cat_extras;
 mod cat_regression;
 mod common;
+
+mod cat_reduce_equal_target;
