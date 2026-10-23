@@ -338,55 +338,7 @@ fn compile_workflow_enforces_scoped_body_width_contracts() -> Result<(), String>
 
         if case_name == "repeat with two steps in body" {
             let workflow = compile_yaml(&yaml)?;
-            let parts = workflow.to_parts();
-            let node_names = node_kind_names(parts.nodes.as_ref());
-            let expected = [
-                "RepeatStart",
-                "SetConst",
-                "SetConst",
-                "RepeatCheck",
-                "RepeatFinish",
-                "Finish",
-            ];
-
-            if node_names.len() != expected.len() {
-                return Err(format!(
-                    "expected {} nodes, got {}",
-                    expected.len(),
-                    node_names.len()
-                ));
-            }
-            for (i, (actual, exp)) in node_names.iter().zip(expected.iter()).enumerate() {
-                if actual != exp {
-                    return Err(format!(
-                        "node {} kind mismatch: expected {}, got {}",
-                        i, exp, actual
-                    ));
-                }
-            }
-
-            assert_dense_node_ids(&workflow, case_name)?;
-
-            let node1 = workflow.node(StepIdx::new(1)).ok_or("missing node 1")?;
-            let node2 = workflow.node(StepIdx::new(2)).ok_or("missing node 2")?;
-            let node3 = workflow.node(StepIdx::new(3)).ok_or("missing node 3")?;
-
-            let first_output = node1.output.ok_or("missing first output")?;
-            let second_output = node2.output.ok_or("missing second output")?;
-            assert_ne!(first_output, second_output);
-
-            assert_eq!(node1.next, Some(StepIdx::new(2)));
-            assert_eq!(node2.next, Some(StepIdx::new(3)));
-            assert_eq!(node3.next, Some(StepIdx::new(1)));
-
-            match &node3.kind {
-                CompiledNodeKind::RepeatCheck { done, .. } => {
-                    assert_eq!(*done, StepIdx::new(4));
-                }
-                _ => {
-                    return Err("node 3 is not RepeatCheck".to_string());
-                }
-            }
+            assert_two_set_repeat_contract(&workflow)?;
         } else {
             let errors = compile_yaml_error(&yaml)?;
             let err = first_compile_error(&errors)?;
@@ -414,6 +366,94 @@ fn compile_workflow_enforces_scoped_body_width_contracts() -> Result<(), String>
         return Err(format!("expected 3 negative cases, got {}", neg_count));
     }
 
+    Ok(())
+}
+
+fn assert_two_set_repeat_contract(workflow: &CompiledWorkflow) -> Result<(), String> {
+    let parts = workflow.to_parts();
+    if parts.slot_count != 4 {
+        return Err(format!("slot_count: expected 4, got {}", parts.slot_count));
+    }
+    if parts.entry != StepIdx::new(0) {
+        return Err(format!("entry: expected 0, got {}", parts.entry));
+    }
+    if parts.nodes.len() != 6 {
+        return Err(format!("nodes: expected 6, got {}", parts.nodes.len()));
+    }
+    if parts.constants.len() != 2 {
+        return Err(format!(
+            "constants: expected 2, got {}",
+            parts.constants.len()
+        ));
+    }
+    assert_dense_node_ids(workflow, "two_set_repeat")?;
+    assert_set_const_node(&parts.nodes, &parts.constants, 1, Some(2), Some(2), 0, 1)?;
+    assert_set_const_node(&parts.nodes, &parts.constants, 2, Some(3), Some(3), 1, 2)?;
+    let n1 = node_at(&parts.nodes, 1)?;
+    let n2 = node_at(&parts.nodes, 2)?;
+    if n1.output == n2.output {
+        return Err("set nodes must have distinct outputs".to_string());
+    }
+    assert_finish_node(&parts.nodes, 5, 0)?;
+    for node in &parts.nodes {
+        if node.error_slot.is_some() {
+            return Err(format!("node {} has error_slot", node.id));
+        }
+        if node.on_error.is_some() {
+            return Err(format!("node {} has on_error", node.id));
+        }
+    }
+    assert_two_set_repeat_control(&parts.nodes)?;
+    Ok(())
+}
+
+fn assert_two_set_repeat_control(nodes: &[CompiledNode]) -> Result<(), String> {
+    let specs = [
+        (
+            0u16,
+            CompiledNodeKind::RepeatStart {
+                max_attempts: 3,
+                body: StepIdx::new(1),
+                done: StepIdx::new(4),
+            },
+            Some(1u16),
+            None,
+        ),
+        (
+            3u16,
+            CompiledNodeKind::RepeatCheck {
+                attempt_slot: SlotIdx::new(1),
+                done: StepIdx::new(4),
+            },
+            Some(1u16),
+            Some(1u16),
+        ),
+        (
+            4u16,
+            CompiledNodeKind::RepeatFinish {
+                result: SlotIdx::new(3),
+            },
+            Some(3u16),
+            Some(5u16),
+        ),
+    ];
+    for (id, kind, output, next) in specs {
+        let actual = node_at(nodes, id)?;
+        let expected = CompiledNode {
+            id: StepIdx::new(id),
+            kind,
+            output: output.map(SlotIdx::new),
+            next: next.map(StepIdx::new),
+            error_slot: None,
+            on_error: None,
+        };
+        if actual != &expected {
+            return Err(format!(
+                "node {} mismatch: actual={:?} expected={:?}",
+                id, actual, expected
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -2053,6 +2093,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
     assert_eq!(node5.next, Some(StepIdx::new(6)));
 
     let node1 = node_at(nodes, 1)?;
+    assert_eq!(node1.output, None);
     match &node1.kind {
         CompiledNodeKind::TogetherBranch {
             branch,
@@ -2069,6 +2110,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
     }
 
     let node3 = node_at(nodes, 3)?;
+    assert_eq!(node3.output, Some(SlotIdx::new(2)));
     match &node3.kind {
         CompiledNodeKind::TogetherBranch {
             branch,

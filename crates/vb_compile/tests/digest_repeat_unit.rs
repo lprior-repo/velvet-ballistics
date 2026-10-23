@@ -112,7 +112,7 @@ fn test_repeat_max_attempts_changes_digest_compile_source() {
 /// PO-009: Explicit test: repeat(3, bodyA) vs repeat(3, bodyB) produce
 /// different WorkflowDigest values when inner Set step values differ.
 ///
-/// Both bodies contain a single Set step (required by lowering validation),
+/// Each body contains Set steps for this fixture,
 /// but with different output/value fields.
 /// Non-vacuous: asserts inequality.
 #[test]
@@ -218,7 +218,7 @@ fn test_repeat_max_attempts_two_differs_from_max() {
 }
 
 // =========================================================================
-// PO-009b: Multi-step body rejection test
+// PO-009b: Multi-step body compilation acceptance test
 // =========================================================================
 
 /// PO-009 extended: flat multi-step Repeat preserves ordered values, edges,
@@ -226,8 +226,6 @@ fn test_repeat_max_attempts_two_differs_from_max() {
 #[test]
 fn test_repeat_multi_step_body_compiles_and_changes_digest()
 -> Result<(), Box<dyn std::error::Error>> {
-    use vb_core::{CompiledNodeKind, ConstValue, SlotIdx, StepIdx};
-
     let steps_multi = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a\n          set:\n            output: out1\n            value: \"10\"\n        - id: b\n          set:\n            output: out2\n            value: \"20\"\n        - id: c\n          set:\n            output: out3\n            value: \"30\"\n  - id: done\n    finish:\n      result: 0\n";
 
     let workflow = compile_workflow_from_steps(steps_multi)?;
@@ -236,6 +234,28 @@ fn test_repeat_multi_step_body_compiles_and_changes_digest()
     let source_workflow = compile_source_from_steps(steps_multi)?;
     assert_eq!(workflow.to_parts(), source_workflow.to_parts());
 
+    check_repeat_start(&workflow)?;
+    check_set_a(&workflow)?;
+    check_set_b(&workflow)?;
+    check_set_c(&workflow)?;
+    check_set_links_and_outputs(&workflow)?;
+    check_repeat_check(&workflow)?;
+    check_repeat_finish_and_terminal(&workflow)?;
+
+    let variant = steps_multi.replace("\"30\"", "\"31\"");
+    let workflow_variant = compile_workflow_from_steps(&variant)?;
+    assert_ne!(workflow.digest(), workflow_variant.digest());
+
+    let workflow_again = compile_workflow_from_steps(steps_multi)?;
+    assert_eq!(workflow.digest(), workflow_again.digest());
+
+    Ok(())
+}
+
+fn check_repeat_start(
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{CompiledNodeKind, StepIdx};
     let start = workflow
         .node(StepIdx::new(0))
         .ok_or("missing RepeatStart at 0")?;
@@ -251,11 +271,12 @@ fn test_repeat_multi_step_body_compiles_and_changes_digest()
         }
         other => return Err(format!("expected RepeatStart at 0, got {:?}", other).into()),
     }
+    Ok(())
+}
 
+fn check_set_a(workflow: &vb_core::CompiledWorkflow) -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{CompiledNodeKind, ConstValue, StepIdx};
     let set_a = workflow.node(StepIdx::new(1)).ok_or("missing Set at 1")?;
-    let set_b = workflow.node(StepIdx::new(2)).ok_or("missing Set at 2")?;
-    let set_c = workflow.node(StepIdx::new(3)).ok_or("missing Set at 3")?;
-
     match &set_a.kind {
         CompiledNodeKind::SetConst { value, .. } => {
             let const_val = workflow
@@ -268,7 +289,12 @@ fn test_repeat_multi_step_body_compiles_and_changes_digest()
         }
         other => return Err(format!("expected SetConst at 1, got {:?}", other).into()),
     }
+    Ok(())
+}
 
+fn check_set_b(workflow: &vb_core::CompiledWorkflow) -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{CompiledNodeKind, ConstValue, StepIdx};
+    let set_b = workflow.node(StepIdx::new(2)).ok_or("missing Set at 2")?;
     match &set_b.kind {
         CompiledNodeKind::SetConst { value, .. } => {
             let const_val = workflow
@@ -281,7 +307,12 @@ fn test_repeat_multi_step_body_compiles_and_changes_digest()
         }
         other => return Err(format!("expected SetConst at 2, got {:?}", other).into()),
     }
+    Ok(())
+}
 
+fn check_set_c(workflow: &vb_core::CompiledWorkflow) -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{CompiledNodeKind, ConstValue, StepIdx};
+    let set_c = workflow.node(StepIdx::new(3)).ok_or("missing Set at 3")?;
     match &set_c.kind {
         CompiledNodeKind::SetConst { value, .. } => {
             let const_val = workflow
@@ -294,6 +325,16 @@ fn test_repeat_multi_step_body_compiles_and_changes_digest()
         }
         other => return Err(format!("expected SetConst at 3, got {:?}", other).into()),
     }
+    Ok(())
+}
+
+fn check_set_links_and_outputs(
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::StepIdx;
+    let set_a = workflow.node(StepIdx::new(1)).ok_or("missing Set at 1")?;
+    let set_b = workflow.node(StepIdx::new(2)).ok_or("missing Set at 2")?;
+    let set_c = workflow.node(StepIdx::new(3)).ok_or("missing Set at 3")?;
 
     assert_eq!(set_a.next, Some(StepIdx::new(2)));
     assert_eq!(set_b.next, Some(StepIdx::new(3)));
@@ -305,7 +346,16 @@ fn test_repeat_multi_step_body_compiles_and_changes_digest()
     assert_ne!(set_a.output, set_b.output);
     assert_ne!(set_b.output, set_c.output);
     assert_ne!(set_a.output, set_c.output);
+    Ok(())
+}
 
+fn check_repeat_check(
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{CompiledNodeKind, StepIdx};
+    let start = workflow
+        .node(StepIdx::new(0))
+        .ok_or("missing RepeatStart at 0")?;
     let check = workflow
         .node(StepIdx::new(4))
         .ok_or("missing RepeatCheck at 4")?;
@@ -318,7 +368,14 @@ fn test_repeat_multi_step_body_compiles_and_changes_digest()
         }
         other => return Err(format!("expected RepeatCheck at 4, got {:?}", other).into()),
     }
+    Ok(())
+}
 
+fn check_repeat_finish_and_terminal(
+    workflow: &vb_core::CompiledWorkflow,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{CompiledNodeKind, SlotIdx, StepIdx};
+    let set_c = workflow.node(StepIdx::new(3)).ok_or("missing Set at 3")?;
     let repeat_finish = workflow
         .node(StepIdx::new(5))
         .ok_or("missing RepeatFinish at 5")?;
@@ -341,14 +398,6 @@ fn test_repeat_multi_step_body_compiles_and_changes_digest()
         other => return Err(format!("expected Finish at 6, got {:?}", other).into()),
     }
     assert_eq!(terminal.next, None);
-
-    let variant = steps_multi.replace("\"30\"", "\"31\"");
-    let workflow_variant = compile_workflow_from_steps(&variant)?;
-    assert_ne!(workflow.digest(), workflow_variant.digest());
-
-    let workflow_again = compile_workflow_from_steps(steps_multi)?;
-    assert_eq!(workflow.digest(), workflow_again.digest());
-
     Ok(())
 }
 
