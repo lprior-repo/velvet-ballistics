@@ -1,0 +1,12 @@
+{
+  "status": "FAILED_not_accepted",
+  "outer_seconds": 656.401,
+  "inner_test_limit_seconds": 600,
+  "actual_nextest_seconds_before_termination": 464.89,
+  "tests_passed": 14486,
+  "tests_sigterm": 19,
+  "existing_skipped": 27,
+  "failure_class": "inner existing10m timeout; rawlogs retain19SIGTERM; no new source fix accepted from timeout",
+  "retry": "same frozen source, sameinner10m/defaultnextest32/taskargs; alreadycompiled testbinaries warm",
+  "source_unchanged": true
+}

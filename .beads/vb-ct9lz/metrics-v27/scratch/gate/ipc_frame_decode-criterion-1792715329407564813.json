@@ -1,0 +1,25 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4",
+  "argv": [
+    "/usr/bin/env",
+    "CRITERION_HOME=/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/criterion-home/criterion-ipc_frame_decode",
+    "LC_ALL=C",
+    "/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/target/release/deps/velvet_ballistics-13e6b9b80f8ebadb",
+    "ipc_frame_decode",
+    "--bench",
+    "--sample-size",
+    "10",
+    "--warm-up-time",
+    "1",
+    "--measurement-time",
+    "1"
+  ],
+  "exit_code": 0,
+  "seconds": 2.815,
+  "timeout_seconds": 600,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/vb-ct9lz-metrics-v27/scratch/gate/ipc_frame_decode-criterion-1792715329407564813"
+}
