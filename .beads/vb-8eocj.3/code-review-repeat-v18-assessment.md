@@ -1,0 +1,5 @@
+# Review not accepted: false findings and missing adversarial evidence
+
+Preserve local5090 raw review unchanged. Its claimed missing zero max decode guard is false: production repeat.rs already rejects max_attempts==0 in decode_repeat_state. Suggested current_attempt>=max_attempts replacement would reject the valid exhausted state and must NOT be applied. The demand for explicit body<done duplicates transitive order checks, not a proven defect.
+
+The review also claims manual body-writer counter reset is prevented because repeat_attempt only reads; that does not establish absence of an arbitrary body writer alias. Dedicated malformed-IR validation probe remains pending. Long validate helper cannot be waved away as no style violation; applicable master/source constraints must be assessed independently. Therefore this report does NOT close CODE review or establish replay correctness. No production fix is authorized by these false findings. Preserve open scope and obtain source-bound independent review/probes.
