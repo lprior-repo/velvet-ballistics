@@ -1,0 +1,136 @@
+   Compiling velvet-ballistics-workspace-tests v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/workspace_tests)
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:16:1
+   |
+16 | pub struct CompiledSecretRequirement {
+   | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider restricting its visibility: `pub(crate)`
+   |
+   = help: or consider exporting it for use by other crates
+   = note: requested on the command line with `-D unreachable-pub`
+
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:24:5
+   |
+24 |     pub const fn new(alias: SymbolId, requirement: SymbolId) -> Self {
+   |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:30:5
+   |
+30 |     pub const fn alias(self) -> SymbolId {
+   |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:38:5
+   |
+38 |     pub const fn requirement(self) -> SymbolId {
+   |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:49:1
+   |
+49 | pub struct WorkflowSourceMetadata {
+   | ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: consider restricting its visibility: `pub(crate)`
+   |
+   = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:62:5
+   |
+62 |       pub fn try_new(
+   |       ^--
+   |       |
+   |  _____help: consider restricting its visibility: `pub(crate)`
+   | |
+63 | |         symbols: Box<[Box<str>]>,
+64 | |         secret_requirements: Box<[CompiledSecretRequirement]>,
+65 | |     ) -> Result<Self, SourceMetadataError> {
+   | |__________________________________________^
+
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:84:5
+   |
+84 |     pub fn empty() -> Self {
+   |     ---^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+  --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:95:5
+   |
+95 |     pub fn symbols(&self) -> &[Box<str>] {
+   |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:101:5
+    |
+101 |     pub fn symbol(&self, id: SymbolId) -> Option<&str> {
+    |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:108:5
+    |
+108 |     pub const fn symbols_count(&self) -> u32 {
+    |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:114:5
+    |
+114 |     pub const fn symbol_bytes(&self) -> u64 {
+    |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:120:5
+    |
+120 |     pub fn secret_requirements(&self) -> &[CompiledSecretRequirement] {
+    |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:125:5
+    |
+125 |     pub fn validate_symbols_count(&self, declared: u32) -> Result<(), SourceMetadataError> {
+    |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     help: consider restricting its visibility: `pub(crate)`
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:138:1
+    |
+138 | pub enum SecretNameRole {
+    | ---^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(crate)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: unreachable `pub` item
+   --> crates/workspace_tests/tests/../../vb_core/src/workflow/source_metadata.rs:147:1
+    |
+147 | pub enum SourceMetadataError {
+    | ---^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | help: consider restricting its visibility: `pub(crate)`
+    |
+    = help: or consider exporting it for use by other crates
+
+error: could not compile `velvet-ballistics-workspace-tests` (test "vb_f1_source_metadata_tests") due to 15 previous errors

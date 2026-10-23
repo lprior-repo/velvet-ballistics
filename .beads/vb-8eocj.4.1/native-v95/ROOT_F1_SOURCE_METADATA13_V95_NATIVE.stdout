@@ -1,0 +1,18 @@
+
+running 13 tests
+test source_metadata::tests::alias_and_requirement_may_share_one_nonempty_payload ... ok
+test source_metadata::tests::both_binding_sides_are_checked_for_bounds_and_empty_names ... ok
+test source_metadata::tests::declared_count_must_match_payload_count ... ok
+test source_metadata::tests::duplicate_and_descending_aliases_are_rejected ... ok
+test source_metadata::tests::duplicate_payloads_report_original_identifiers ... ok
+test source_metadata::tests::empty_metadata_has_no_resolvable_identifiers ... ok
+test source_metadata::tests::existing_outer_arena_count_boundary_is_accepted ... ok
+test source_metadata::tests::impossible_requirement_count_is_rejected_before_traversal ... ok
+test source_metadata::tests::no_one_mebibyte_aggregate_ceiling_is_introduced ... ok
+test source_metadata::tests::oversized_table_is_rejected_before_duplicate_validation ... ok
+test source_metadata::tests::source_alias_and_requirement_target_are_both_retained ... ok
+test source_metadata::tests::symbol_limit_counts_utf8_bytes ... ok
+test source_metadata::tests::validation_preserves_identifier_order_and_exact_bytes ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+

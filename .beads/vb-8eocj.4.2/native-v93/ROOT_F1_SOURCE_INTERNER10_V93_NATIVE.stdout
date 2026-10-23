@@ -1,0 +1,15 @@
+
+running 10 tests
+test source_symbols::tests::byte_total_uses_checked_measurement_without_an_aggregate_ceiling ... ok
+test source_symbols::tests::checked_count_boundary_matches_existing_runtime_limit ... ok
+test source_symbols::tests::empty_table_finishes_without_a_placeholder_symbol ... ok
+test source_symbols::tests::exact_symbol_byte_boundary_is_accepted ... ok
+test source_symbols::tests::exact_unicode_bytes_are_interned_without_normalization ... ok
+test source_symbols::tests::first_definition_order_is_stable_and_duplicates_share_an_id ... ok
+test source_symbols::tests::fresh_hash_tables_produce_identical_payload_order ... ok
+test source_symbols::tests::full_table_rejects_new_text_but_still_resolves_existing_text ... ok
+test source_symbols::tests::oversize_addition_is_atomic_and_does_not_consume_an_id ... ok
+test source_symbols::tests::unicode_limit_counts_bytes_not_characters ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
+

@@ -1,0 +1,3881 @@
+{
+  "base": "b612001890c4b1d69ad20945899eed8d1c533e3f",
+  "counts": {
+    "literal": 571,
+    "return signature": 70,
+    "trait impl": 1,
+    "struct declaration": 3
+  },
+  "sites": [
+    {
+      "path": ".beads/vb-hz9v8/evidence/durable_retry_stale_probe_raw_red.rs",
+      "line": 64,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-qi37.16.2/durable_resume_red_phase.rs",
+      "line": 600,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-qi37.16.2/durable_resume_red_phase.rs",
+      "line": 637,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-qi37.16.3/red-phase/durable_retry_red_phase_tests.rs",
+      "line": 71,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-qi37.16.3/red-phase/durable_retry_red_phase_tests.rs",
+      "line": 131,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-qi37.16.3/red-phase/durable_retry_red_phase_tests.rs",
+      "line": 257,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-qi37.16.3/red-phase/durable_retry_red_phase_tests.rs",
+      "line": 395,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-qi37.16.3/red-phase/durable_retry_red_phase_tests.rs",
+      "line": 607,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-qi37.16.3/red-phase/durable_retry_red_phase_tests.rs",
+      "line": 666,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-rcizj/evidence/baseline.rs",
+      "line": 134,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-rcizj/evidence/baseline.rs",
+      "line": 174,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-rcizj/evidence/baseline.rs",
+      "line": 235,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": ".beads/vb-tf5lr/evidence/durable_retry_stale_probe.rs",
+      "line": 64,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_compile/src/kani_foreach_parity.rs",
+      "line": 49,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_compile/src/kani_foreach_parity.rs",
+      "line": 105,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_compile/src/kani_foreach_parity.rs",
+      "line": 436,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_compile/src/mod_compile_lowering/part_01.rs",
+      "line": 62,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs",
+      "line": 23,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_compile/src/mod_compile_lowering/part_08.rs",
+      "line": 150,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_compile/tests/vb_xi2f_error_variant_proptest.rs",
+      "line": 25,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_compile/tests/vb_xi2f_error_variant_proptest.rs",
+      "line": 37,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_compile/tests/vb_xi2f_error_variant_proptest.rs",
+      "line": 155,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_compile/tests/vb_xi2f_error_variant_proptest.rs",
+      "line": 203,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/budget/tests.rs",
+      "line": 3850,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/budget_vb_8mdp_7_prop_tests.rs",
+      "line": 240,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/choose.rs",
+      "line": 290,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/error_routing.rs",
+      "line": 183,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/error_routing.rs",
+      "line": 184,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/error_routing.rs",
+      "line": 243,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/error_routing.rs",
+      "line": 244,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/error_routing.rs",
+      "line": 352,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/expr_eval/accessors.rs",
+      "line": 225,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/expr_eval/core.rs",
+      "line": 158,
+      "kind": "literal",
+      "symbols_count": "10"
+    },
+    {
+      "path": "crates/vb_core/src/engine/expr_eval/core.rs",
+      "line": 320,
+      "kind": "literal",
+      "symbols_count": "10"
+    },
+    {
+      "path": "crates/vb_core/src/engine/expr_eval/ops.rs",
+      "line": 231,
+      "kind": "literal",
+      "symbols_count": "10"
+    },
+    {
+      "path": "crates/vb_core/src/engine/expr_eval/ops_text_list.rs",
+      "line": 358,
+      "kind": "literal",
+      "symbols_count": "10"
+    },
+    {
+      "path": "crates/vb_core/src/engine/expr_eval/tests.rs",
+      "line": 29,
+      "kind": "literal",
+      "symbols_count": "10"
+    },
+    {
+      "path": "crates/vb_core/src/engine/expr_eval/tests.rs",
+      "line": 1564,
+      "kind": "literal",
+      "symbols_count": "10"
+    },
+    {
+      "path": "crates/vb_core/src/engine/node_helpers.rs",
+      "line": 99,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/run_loop.rs",
+      "line": 57,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/run_loop.rs",
+      "line": 170,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/test_support.rs",
+      "line": 35,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/test_support.rs",
+      "line": 143,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/test_support.rs",
+      "line": 167,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/test_support.rs",
+      "line": 199,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/tests_action_resume.rs",
+      "line": 281,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/tests_basic.rs",
+      "line": 47,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/tests_basic.rs",
+      "line": 108,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/tests_basic.rs",
+      "line": 181,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/tests_state.rs",
+      "line": 15,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/tests_state.rs",
+      "line": 118,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/tests_value_nodes.rs",
+      "line": 25,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/tests_value_nodes.rs",
+      "line": 68,
+      "kind": "literal",
+      "symbols_count": "2"
+    },
+    {
+      "path": "crates/vb_core/src/engine/step/tests_value_nodes.rs",
+      "line": 129,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_accessor.rs",
+      "line": 279,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_basic.rs",
+      "line": 293,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_basic.rs",
+      "line": 294,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_basic.rs",
+      "line": 359,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_basic.rs",
+      "line": 390,
+      "kind": "literal",
+      "symbols_count": "3"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_budget.rs",
+      "line": 31,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_choose.rs",
+      "line": 281,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_choose.rs",
+      "line": 358,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs",
+      "line": 42,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs",
+      "line": 1291,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_error_routing_behavior.rs",
+      "line": 1378,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_eval.rs",
+      "line": 85,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_eval.rs",
+      "line": 136,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_eval.rs",
+      "line": 184,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_eval.rs",
+      "line": 234,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_object_list_behavior.rs",
+      "line": 644,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_object_list_behavior.rs",
+      "line": 719,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_object_list_behavior.rs",
+      "line": 895,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_object_list_behavior.rs",
+      "line": 1003,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_object_list_behavior.rs",
+      "line": 1042,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_run_loop_behavior.rs",
+      "line": 40,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_run_loop_behavior.rs",
+      "line": 80,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_run_loop_behavior.rs",
+      "line": 108,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_run_loop_behavior.rs",
+      "line": 149,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_run_loop_behavior.rs",
+      "line": 177,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_run_loop_behavior.rs",
+      "line": 236,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_run_loop_behavior.rs",
+      "line": 254,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 46,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 47,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 91,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 142,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 196,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 257,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 310,
+      "kind": "literal",
+      "symbols_count": "2"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 375,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 440,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 479,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 557,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 594,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 632,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 670,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 733,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 799,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 900,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1008,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1221,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1278,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1347,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1655,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1715,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1750,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1822,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1926,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_step_behavior.rs",
+      "line": 1980,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+      "line": 309,
+      "kind": "literal",
+      "symbols_count": "10"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+      "line": 676,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+      "line": 941,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+      "line": 1243,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+      "line": 1341,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_taint_propagation.rs",
+      "line": 1825,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 51,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 88,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 142,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 236,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 275,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 313,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 357,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 413,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 466,
+      "kind": "literal",
+      "symbols_count": "3"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 564,
+      "kind": "literal",
+      "symbols_count": "3"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 639,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 737,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 935,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/tests/integration_workflow.rs",
+      "line": 975,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 387,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 388,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 452,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 463,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 479,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 504,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 651,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 682,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 706,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 741,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 772,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 798,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 829,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 856,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 887,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 914,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 944,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 974,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1001,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1028,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1057,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1086,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1113,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1141,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1169,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1199,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1232,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1277,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate.rs",
+      "line": 1340,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 15,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 16,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 78,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 89,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 105,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 130,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 277,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 308,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 332,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 367,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 398,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 424,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 455,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 482,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 513,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 540,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 570,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 600,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 627,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 654,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 683,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 712,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 739,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 767,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 795,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 823,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 856,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 901,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests.rs",
+      "line": 964,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 58,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 59,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 76,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 77,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 150,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 284,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 495,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 522,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 549,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 582,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 612,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 638,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 660,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 682,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 713,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 741,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 768,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 796,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 824,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 851,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 876,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 911,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 928,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 945,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 965,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 987,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1059,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1093,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1119,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1153,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1177,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1233,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1264,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1281,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1325,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1326,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1372,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1414,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1478,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_behavior_tests.rs",
+      "line": 1572,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_tests.rs",
+      "line": 22,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/engine/validate/tests/red_phase_tests.rs",
+      "line": 23,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 53,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 160,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 234,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 297,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 444,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "crates/vb_core/src/kani_workflow_arbitrary.rs",
+      "line": 351,
+      "kind": "trait impl",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/replay/kani_harnesses.rs",
+      "line": 22,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/replay/ops/tests.rs",
+      "line": 25,
+      "kind": "literal",
+      "symbols_count": "1"
+    },
+    {
+      "path": "crates/vb_core/src/replay/step_tests.rs",
+      "line": 22,
+      "kind": "literal",
+      "symbols_count": "1"
+    },
+    {
+      "path": "crates/vb_core/src/replay/step_tests.rs",
+      "line": 48,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/replay/tests.rs",
+      "line": 41,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/mod.rs",
+      "line": 191,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/mod.rs",
+      "line": 192,
+      "kind": "literal",
+      "symbols_count": "self.symbols_count"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/mod.rs",
+      "line": 337,
+      "kind": "struct declaration",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/proptest_collect_budget.rs",
+      "line": 53,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/proptest_collect_budget.rs",
+      "line": 58,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/proptest_collect_traversal.rs",
+      "line": 24,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/proptest_collect_traversal.rs",
+      "line": 29,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 504,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 513,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 514,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 560,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 561,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 587,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 632,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 664,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 699,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 740,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 781,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 820,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 835,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 850,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 852,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 932,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 956,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 988,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 1127,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 1153,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 1356,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 1687,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 1689,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 1905,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 1973,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2076,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2176,
+      "kind": "literal",
+      "symbols_count": "43"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2214,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2250,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2302,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2354,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2388,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2422,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2458,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2516,
+      "kind": "literal",
+      "symbols_count": "3"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2557,
+      "kind": "literal",
+      "symbols_count": "3"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2596,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2641,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2690,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2729,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2764,
+      "kind": "literal",
+      "symbols_count": "5"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2798,
+      "kind": "literal",
+      "symbols_count": "5"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2831,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2916,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 2969,
+      "kind": "literal",
+      "symbols_count": "2"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 3013,
+      "kind": "literal",
+      "symbols_count": "2"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 3049,
+      "kind": "literal",
+      "symbols_count": "42"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 3095,
+      "kind": "literal",
+      "symbols_count": "10"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 3153,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4242,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4263,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4280,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4284,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4342,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4343,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4406,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4434,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4531,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4577,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4646,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4697,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4742,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 4770,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 5165,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 5167,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 5236,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/src/workflow/tests.rs",
+      "line": 5261,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/resource_contract_type_integrity.rs",
+      "line": 81,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/resource_contract_type_integrity.rs",
+      "line": 129,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/resource_contract_validation.rs",
+      "line": 47,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/resource_contract_validation.rs",
+      "line": 48,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/resource_contract_validation.rs",
+      "line": 74,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/resource_contract_validation.rs",
+      "line": 81,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/resource_contract_validation.rs",
+      "line": 88,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/resource_contract_validation.rs",
+      "line": 98,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 497,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 498,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 598,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 719,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 825,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 925,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 1122,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 1170,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 1171,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 1825,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 1847,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section36_mandatory_coverage.rs",
+      "line": 2278,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section38_behavioral_properties.rs",
+      "line": 25,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section38_behavioral_properties.rs",
+      "line": 225,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/section38_behavioral_properties.rs",
+      "line": 226,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/section38_behavioral_properties.rs",
+      "line": 273,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/vb_5m8w_step_budget_suspension.rs",
+      "line": 13,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/vb_8eocj_budget_depth.rs",
+      "line": 668,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/vb_8eocj_budget_depth.rs",
+      "line": 669,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/vb_qi37_2_5_boundedness_adversarial.rs",
+      "line": 47,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_core/tests/vb_qi37_2_5_boundedness_adversarial.rs",
+      "line": 85,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_core/tests/vb_qi37_2_5_boundedness_adversarial.rs",
+      "line": 86,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_ipc/src/server/trace.rs",
+      "line": 200,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/admission/evidence_test_support.rs",
+      "line": 93,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/admission/tests.rs",
+      "line": 21,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/engine/drive/tests/cat_branch.rs",
+      "line": 133,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/engine/drive/tests/common.rs",
+      "line": 176,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/engine/execute_tests.rs",
+      "line": 53,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/engine/tests.rs",
+      "line": 838,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/engine/tests.rs",
+      "line": 1042,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/engine/tests.rs",
+      "line": 1114,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/engine/tests.rs",
+      "line": 1192,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/engine/tests.rs",
+      "line": 1649,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/engine/tests.rs",
+      "line": 2166,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/journal/tests/chunk_001.rs",
+      "line": 30,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/primitives/reduce/tests.rs",
+      "line": 14,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/primitives/reentry_tests.rs",
+      "line": 308,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/primitives/reentry_tests.rs",
+      "line": 1211,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/primitives/reentry_tests.rs",
+      "line": 1275,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/run_checkpoint_tests.rs",
+      "line": 26,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/shutdown_fixtures.rs",
+      "line": 21,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime/shutdown_fixtures.rs",
+      "line": 128,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime_tests.rs",
+      "line": 96,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime_tests.rs",
+      "line": 136,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime_tests.rs",
+      "line": 337,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime_tests.rs",
+      "line": 397,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime_tests.rs",
+      "line": 760,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/runtime_tests.rs",
+      "line": 3037,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 45,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 84,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 115,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 177,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 243,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 299,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 638,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 706,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 813,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 899,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 1035,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 1152,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 1189,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 1502,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/helpers/tests.rs",
+      "line": 1762,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/impl_tests/chunk_001.rs",
+      "line": 31,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/action_recovery_tests.rs",
+      "line": 117,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs",
+      "line": 53,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs",
+      "line": 115,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs",
+      "line": 154,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs",
+      "line": 216,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs",
+      "line": 265,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_001.rs",
+      "line": 305,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_002.rs",
+      "line": 53,
+      "kind": "literal",
+      "symbols_count": "2"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_002.rs",
+      "line": 200,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_008.rs",
+      "line": 20,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/chunk_008.rs",
+      "line": 65,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs",
+      "line": 51,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs",
+      "line": 102,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs",
+      "line": 143,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs",
+      "line": 337,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/lifecycle_tests/contract_validation_tests.rs",
+      "line": 431,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_001.rs",
+      "line": 62,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_001.rs",
+      "line": 124,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_002.rs",
+      "line": 194,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_002.rs",
+      "line": 243,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_003.rs",
+      "line": 53,
+      "kind": "literal",
+      "symbols_count": "2"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_012.rs",
+      "line": 298,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_013.rs",
+      "line": 54,
+      "kind": "literal",
+      "symbols_count": "2"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_017.rs",
+      "line": 108,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/chunk_029.rs",
+      "line": 371,
+      "kind": "literal",
+      "symbols_count": "1"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/submission_parity.rs",
+      "line": 134,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/tick_shard_tests.rs",
+      "line": 46,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/tick_shard_tests.rs",
+      "line": 88,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/shard/tests/tick_shard_tests.rs",
+      "line": 128,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs",
+      "line": 74,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/verification/kani/kani_engine_signals.rs",
+      "line": 30,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs",
+      "line": 75,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_runtime/src/verification/kani/kani_resume_state_machine.rs",
+      "line": 79,
+      "kind": "literal",
+      "symbols_count": "u32::from(kani::any::<u8>() % 4)"
+    },
+    {
+      "path": "crates/vb_runtime/src/verification/proptest/proptest_attempt_fence.rs",
+      "line": 103,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/src/verification/proptest/sxkz6_proptest.rs",
+      "line": 49,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durability_matrix_integration.rs",
+      "line": 81,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durability_matrix_integration.rs",
+      "line": 111,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durability_matrix_integration.rs",
+      "line": 160,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durability_matrix_integration.rs",
+      "line": 230,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durable_resume_red_phase.rs",
+      "line": 680,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durable_retry_boundary.rs",
+      "line": 67,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durable_retry_execution.rs",
+      "line": 67,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durable_retry_red_phase.rs",
+      "line": 73,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durable_retry_red_phase.rs",
+      "line": 136,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durable_retry_red_phase.rs",
+      "line": 181,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durable_retry_red_phase.rs",
+      "line": 247,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/durable_retry_run_attempt_authority.rs",
+      "line": 72,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/policy_pin_durable_recovery.rs",
+      "line": 69,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/proptest/ps_006_property.rs",
+      "line": 26,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/proptest/ps_006_property.rs",
+      "line": 55,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/slot_validation_test.rs",
+      "line": 67,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/support/verified_artifact.rs",
+      "line": 93,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/ticket_authority_matrix.rs",
+      "line": 69,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_4qog3_independent_review.rs",
+      "line": 65,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_5m8w_step_budget_suspension_runtime.rs",
+      "line": 21,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_5m8w_step_budget_suspension_runtime.rs",
+      "line": 48,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs",
+      "line": 134,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs",
+      "line": 175,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_jggy_lifecycle_tests.rs",
+      "line": 237,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_jggy_property_tests.rs",
+      "line": 55,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_qi37_12_2_resume_error_propagation.rs",
+      "line": 746,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_qi37_12_2_resume_error_propagation.rs",
+      "line": 785,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_runtime/tests/vb_r4fm9_event_generation.rs",
+      "line": 64,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/admission/tests.rs",
+      "line": 201,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/executor/issuance_test_support.rs",
+      "line": 85,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_storage/src/executor/issuance_test_support.rs",
+      "line": 86,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/inputs/tests.rs",
+      "line": 9,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/kani_admission.rs",
+      "line": 30,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/proptests.rs",
+      "line": 602,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/proptests.rs",
+      "line": 619,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_storage/src/proptests.rs",
+      "line": 671,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/proptests.rs",
+      "line": 729,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/proptests.rs",
+      "line": 748,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_storage/src/proptests.rs",
+      "line": 821,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/proptests.rs",
+      "line": 891,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/recovery/tests.rs",
+      "line": 31,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_storage/src/recovery/tests.rs",
+      "line": 32,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/recovery/tests.rs",
+      "line": 687,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/src/vb_2bok_durability_gate_tests.rs",
+      "line": 45,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/tests/accepted_artifact_red_phase.rs",
+      "line": 20,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/tests/accepted_artifact_red_phase.rs",
+      "line": 303,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/tests/vb_core_atomic_admission_red.rs",
+      "line": 156,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/tests/vb_core_atomic_admission_red.rs",
+      "line": 840,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_storage/tests/vb_core_atomic_admission_red.rs",
+      "line": 862,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_validate/benches/capability_schema.rs",
+      "line": 10,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/benches/capability_schema.rs",
+      "line": 11,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_validate/src/gate_08_accessor/tests.rs",
+      "line": 10,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/src/gate_08_accessor/tests.rs",
+      "line": 11,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_validate/src/gate_08_accessor/tests.rs",
+      "line": 49,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/src/gate_tests.rs",
+      "line": 15,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/src/gate_tests.rs",
+      "line": 16,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_validate/src/red_phase_proptest.rs",
+      "line": 21,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/src/red_phase_proptest.rs",
+      "line": 22,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_validate/src/shared/tests.rs",
+      "line": 10,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/src/shared/tests.rs",
+      "line": 11,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_validate/src/test_helpers.rs",
+      "line": 9,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/src/test_helpers.rs",
+      "line": 10,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_validate/src/verification/gate_08_verus_proof.rs",
+      "line": 146,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/src/verification/gate_08_verus_proof.rs",
+      "line": 147,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_validate/src/verification/kani_gate_08_accessor.rs",
+      "line": 183,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/src/verification/kani_gate_08_accessor.rs",
+      "line": 184,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_validate/src/verification/kani_gate_08_structural.rs",
+      "line": 35,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/tests/capability_contract_schema.rs",
+      "line": 14,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/tests/capability_contract_schema.rs",
+      "line": 41,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_validate/tests/gate_08_accessor_parity.rs",
+      "line": 35,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/tests/gate_08_accessor_parity.rs",
+      "line": 36,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_validate/tests/gate_08_accessor_parity.rs",
+      "line": 53,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/tests/idempotency_contract_red.rs",
+      "line": 75,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/tests/idempotency_contract_red.rs",
+      "line": 76,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/vb_validate/tests/red_phase_validation.rs",
+      "line": 17,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/vb_validate/tests/red_phase_validation.rs",
+      "line": 18,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/vb_validate/tests/red_phase_validation.rs",
+      "line": 252,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/src/run_compiled_input_tests.rs",
+      "line": 23,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs",
+      "line": 52,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs",
+      "line": 104,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/admission_evidence_integration/chunk_001.rs",
+      "line": 154,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs",
+      "line": 86,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/admission_evidence_integration/chunk_004.rs",
+      "line": 122,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cli_integration.rs",
+      "line": 29,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cli_integration.rs",
+      "line": 40,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cli_integration.rs",
+      "line": 64,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cli_integration.rs",
+      "line": 65,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cross_crate_adversarial.rs",
+      "line": 18,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cross_crate_adversarial.rs",
+      "line": 19,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cross_crate_adversarial.rs",
+      "line": 317,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cross_crate_adversarial.rs",
+      "line": 440,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/cross_crate_adversarial.rs",
+      "line": 1406,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/durable_retry_cli.rs",
+      "line": 64,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/durable_retry_cli.rs",
+      "line": 104,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/ir_artifact_admission.rs",
+      "line": 38,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/ir_artifact_admission.rs",
+      "line": 39,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/velvet_ballistics/tests/lifecycle_integration.rs",
+      "line": 57,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/action_queuing.rs",
+      "line": 47,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/cold_start.rs",
+      "line": 65,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/ir_traversal.rs",
+      "line": 53,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/ir_traversal.rs",
+      "line": 141,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/ir_traversal.rs",
+      "line": 204,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/memory_footprint.rs",
+      "line": 71,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/snapshot_restore.rs",
+      "line": 60,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/snapshot_save.rs",
+      "line": 62,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/vb-qi37-7-3-validation.rs",
+      "line": 20,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/workspace_tests/benches/vb-qi37-7-3-validation.rs",
+      "line": 21,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/workspace_tests/benches/velvet_ballistics.rs",
+      "line": 959,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/velvet_ballistics.rs",
+      "line": 982,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/velvet_ballistics.rs",
+      "line": 1256,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/velvet_ballistics.rs",
+      "line": 1478,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/velvet_ballistics.rs",
+      "line": 1593,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/benches/velvet_ballistics.rs",
+      "line": 1738,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/cancel_kill_lattice_tests.rs",
+      "line": 68,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/integration_storage_runtime_validate_pipeline.rs",
+      "line": 49,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/integration_validate_policy_enforcement.rs",
+      "line": 27,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/workspace_tests/tests/integration_validate_policy_enforcement.rs",
+      "line": 28,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/workspace_tests/tests/raii_introspection_registry_tests.rs",
+      "line": 73,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_fjall_pending_action_recovery.rs",
+      "line": 181,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/runtime_input_schema_kinds.rs",
+      "line": 22,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/slot_written_ordering_integration_tests.rs",
+      "line": 51,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_79ffw_ticket_authority_probe.rs",
+      "line": 63,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_7x0ol_probe_registered_executor.rs",
+      "line": 56,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_8mdp_7_resource_admission_props.rs",
+      "line": 47,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c1s0_orchestration_runtime_tests.rs",
+      "line": 76,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_corrupt_marker.rs",
+      "line": 54,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_emergency_reopen/fixtures.rs",
+      "line": 39,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_historical_replay/fixtures.rs",
+      "line": 39,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_c4hzw_legacy_admission/legacy_workflow.rs",
+      "line": 21,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs",
+      "line": 448,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_ko29_5_fixture/mod.rs",
+      "line": 59,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs",
+      "line": 361,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_lp2v_admission_proptests.rs",
+      "line": 31,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_lp2v_admission_proptests.rs",
+      "line": 315,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_policy_dispatch_fail_closed/fixtures.rs",
+      "line": 51,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs",
+      "line": 137,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_qi37_4_2_strict_runtime_admission.rs",
+      "line": 179,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_ssei_verification_admission_acceptance.rs",
+      "line": 71,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_cli_storage_io_behavior.rs",
+      "line": 85,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+      "line": 104,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+      "line": 158,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+      "line": 209,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+      "line": 250,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+      "line": 443,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+      "line": 484,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+      "line": 679,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+      "line": 752,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_admission_trigger_behavior.rs",
+      "line": 1143,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 47,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 89,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 141,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 202,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 486,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 538,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 576,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 614,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 660,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 698,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 753,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 853,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 889,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1074,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1108,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1153,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1197,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1243,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1302,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1350,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1381,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1430,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1474,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_workflow_slot_behavior.rs",
+      "line": 1545,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_yaml_chain_behavior.rs",
+      "line": 497,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_yaml_chain_behavior.rs",
+      "line": 546,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_yaml_chain_behavior.rs",
+      "line": 616,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_core_yaml_chain_behavior.rs",
+      "line": 742,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_runtime_ipc_resource_behavior.rs",
+      "line": 75,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_runtime_ipc_resource_behavior.rs",
+      "line": 105,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_runtime_ipc_resource_behavior.rs",
+      "line": 146,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_runtime_lifecycle_state_behavior.rs",
+      "line": 71,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs",
+      "line": 33,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_validate_policy_enforce_behavior.rs",
+      "line": 34,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_validate_yaml_parsing_behavior.rs",
+      "line": 33,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_test_validate_yaml_parsing_behavior.rs",
+      "line": 34,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+      "line": 72,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/fuzz_targets/fuzz_retry_normalize_ticket.rs",
+      "line": 72,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/fuzz_targets/fuzz_retry_postcard_codec.rs",
+      "line": 131,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/fuzz_targets/fuzz_retry_postcard_codec_flux.rs",
+      "line": 153,
+      "kind": "struct declaration",
+      "symbols_count": null
+    },
+    {
+      "path": "fuzz/fuzz_targets/fuzz_retry_record_attempt.rs",
+      "line": 75,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/fuzz_targets/fuzz_retry_validate_completion.rs",
+      "line": 69,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/src/expression_target.rs",
+      "line": 63,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/src/expression_target.rs",
+      "line": 146,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/src/journal_target/admission.rs",
+      "line": 37,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "fuzz/src/journal_target/admission.rs",
+      "line": 51,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "fuzz/src/journal_target/admission.rs",
+      "line": 97,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "fuzz/src/journal_target/admission.rs",
+      "line": 98,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/src/journal_target/readback.rs",
+      "line": 84,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "fuzz/src/journal_target/readback.rs",
+      "line": 107,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "fuzz/src/journal_target/readback.rs",
+      "line": 108,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/src/validation_target/capability.rs",
+      "line": 54,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "fuzz/src/validation_target/capability.rs",
+      "line": 81,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/src/validation_target/verifier.rs",
+      "line": 198,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/src/workflow_target/accessor.rs",
+      "line": 19,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/src/workflow_target/budget.rs",
+      "line": 47,
+      "kind": "return signature",
+      "symbols_count": null
+    },
+    {
+      "path": "fuzz/src/workflow_target/budget.rs",
+      "line": 48,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/tests/proptest_digest_coherence.rs",
+      "line": 72,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "fuzz/tests/proptest_digest_coherence.rs",
+      "line": 102,
+      "kind": "literal",
+      "symbols_count": "(shorthand or struct update)"
+    },
+    {
+      "path": "kani/gate_07_stack.rs",
+      "line": 26,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_07_stack.rs",
+      "line": 74,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_09_slots.rs",
+      "line": 35,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_09_slots.rs",
+      "line": 76,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_09_slots.rs",
+      "line": 121,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_10_node.rs",
+      "line": 63,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_10_node.rs",
+      "line": 133,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_10_node.rs",
+      "line": 203,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_10_node.rs",
+      "line": 272,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_11_loop.rs",
+      "line": 62,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/gate_11_loop.rs",
+      "line": 140,
+      "kind": "literal",
+      "symbols_count": "0"
+    },
+    {
+      "path": "kani/vb-qi37.14.1/step_once_bounds_harness.rs",
+      "line": 41,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "kani/vb-qi37.14.1/step_once_error_harness.rs",
+      "line": 33,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "kani/vb-qi37.14.1/step_once_pc_bounds_harness.rs",
+      "line": 18,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "kani/vb-qi37.14.1/step_once_slot_init_harness.rs",
+      "line": 20,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "kani/vb-qi37.14.1/step_once_state_mapping_harness.rs",
+      "line": 35,
+      "kind": "literal",
+      "symbols_count": "parts.symbols_count"
+    },
+    {
+      "path": "verification/verus/production_inner/try_from_parts_production.rs",
+      "line": 385,
+      "kind": "struct declaration",
+      "symbols_count": null
+    },
+    {
+      "path": "verification/verus/production_inner/vb_xi2f_compile_source_production.rs",
+      "line": 717,
+      "kind": "literal",
+      "symbols_count": "0"
+    }
+  ]
+}
