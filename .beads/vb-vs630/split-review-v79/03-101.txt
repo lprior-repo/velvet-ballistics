@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/issuance_boundary_tests.rs
+101:         other => return Err(format!("expected SequenceOverflow, got: {other:?}").into()),
+102:     }
+103:     // Verify prior successful run's artifacts are preserved and counter is at MAX
+104:     assert_eq!(
+105:         journal.run_inputs(RunId::new(100))?.as_ref(),
+106:         Some(&first_inputs)
+107:     );
+108:     assert_eq!(
+109:         journal.compiled_ir(first_artifact.digest)?.as_ref(),
+110:         Some(&first_artifact)
+111:     );
+112:     assert!(journal.run_inputs(RunId::new(200))?.is_none());
+113:     assert!(journal.run_header(RunId::new(200))?.is_none());
+114:     Ok(())
+115: }
+116: 
+117: /// Journal closed and reopened on same path preserves counter and all
+118: /// typed submission records; next submission advances counter correctly.
+119: #[test]
+120: fn cli_same_path_reopen_preserves_state_and_advances() -> TestResult {
+121:     let dir = tempfile::tempdir()?;
+122:     let mut journal = FjallJournal::open(dir.path(), None)?;
+123:     let submission = make_submission(RuntimePolicy::Strict, 77)?;
+124:     journal.commit_run_submission(&submission, RuntimePolicy::Strict)?;
+125: 
+126:     let expected_input_digest = compute_input_digest(&[(SlotIdx::new(0), SlotValue::I64(77))])?;
+127:     let expected_workflow_digest = super::tests::workflow()?.digest();
+128: 
+129:     // Read back the retained state before dropping
+130:     let inputs = journal
+131:         .run_inputs(vb_core::RunId::new(100))?
+132:         .ok_or("inputs not found before close")?;
+133:     assert_eq!(inputs.input_digest(), expected_input_digest);
+134:     assert_eq!(inputs.workflow_digest(), expected_workflow_digest);
+135:     let compiled = journal
+136:         .compiled_ir(inputs.artifact_digest())?
+137:         .ok_or("compiled not found before close")?;
+138:     let source = journal
+139:         .workflow_source(inputs.source_digest())?
+140:         .ok_or("source not found before close")?;
+141:     let header = journal
+142:         .run_header(vb_core::RunId::new(100))?
+143:         .ok_or("header not found before close")?;
+144:     let events = journal.events_for_run(vb_core::RunId::new(100))?;
+145:     let before_snapshot = snapshot_journal(&journal)?;
+146: 
+147:     journal.close()?;
+148:     drop(journal);
+149: 
+150:     // Reopen the same path
+151:     let mut journal = FjallJournal::open(dir.path(), None)?;
+152:     assert_eq!(read_counter(&journal)?, Some(1));
+153: 
+154:     // Full journal state unchanged after reopen: all typed records and index rows identical
+155:     let after_reopen_snapshot = snapshot_journal(&journal)?;
+156:     assert_eq!(after_reopen_snapshot, before_snapshot);
+157: 
+158:     // Old field-level assertions still hold
+159:     let reopened_inputs = journal
+160:         .run_inputs(vb_core::RunId::new(100))?
+161:         .ok_or("inputs not found after reopen")?;
+162:     assert_eq!(reopened_inputs.input_digest(), inputs.input_digest());
+163:     assert_eq!(reopened_inputs.workflow_digest(), inputs.workflow_digest());
+164:     assert_eq!(reopened_inputs.artifact_digest(), inputs.artifact_digest());
+165:     assert_eq!(
+166:         reopened_inputs.inputs(),
+167:         &[(SlotIdx::new(0), SlotValue::I64(77))]
+168:     );
+169: 
+170:     let reopened_compiled = journal
+171:         .compiled_ir(reopened_inputs.artifact_digest())?
+172:         .ok_or("compiled not found after reopen")?;
+173:     assert_eq!(reopened_compiled.ir, compiled.ir);
+174: 
+175:     let reopened_source = journal
+176:         .workflow_source(reopened_inputs.source_digest())?
+177:         .ok_or("source not found after reopen")?;
+178:     assert_eq!(reopened_source.source, source.source);
+179: 
+180:     let reopened_header = journal
+181:         .run_header(vb_core::RunId::new(100))?
+182:         .ok_or("header not found after reopen")?;
+183:     assert_eq!(reopened_header.compiled_digest, header.compiled_digest);
+184: 
+185:     let reopened_events = journal.events_for_run(vb_core::RunId::new(100))?;
+186:     assert_eq!(reopened_events.len(), events.len());
+187: 
+188:     // Verify old retained artifact still passes verification after reopen
+189:     let reopened_decoded: crate::AcceptedArtifact = postcard::from_bytes(&reopened_compiled.ir)?;
+190:     assert_eq!(reopened_decoded.digest, reopened_inputs.artifact_digest());
+191:     assert_eq!(
+192:         reopened_decoded.verification.digest,
+193:         reopened_inputs.artifact_digest()
+194:     );
+195:     assert_eq!(reopened_decoded.accepted_at_seq.get(), 1);
+196: 
+197:     // Verify the retained record itself
+198:     let accepted_event = reopened_events
+199:         .iter()
+200:         .find(|e| matches!(e, crate::JournalEvent::RunAdmission { .. }));

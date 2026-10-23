@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/mod.rs
+1: #![forbid(unsafe_code)]
+2: //! Artifact-bound typed inputs retained at the run submission boundary.
+3: 
+4: mod digest;
+5: mod submission;
+6: mod validation;
+7: 
+8: use crate::constants::{MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES};
+9: use crate::{FjallJournal, JournalError, RecordKind, codec::EnforceKindParity};
+10: pub use digest::{RunInputBinding, RunPolicyPin, compute_input_digest};
+11: pub use submission::RunSubmission;
+12: use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest};
+13: 
+14: /// Immutable input mapping and its run, artifact, workflow and source identities.
+15: #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+16: pub struct RunInputsRecord {
+17:     run: RunId,
+18:     artifact_digest: WorkflowDigest,
+19:     workflow_digest: WorkflowDigest,
+20:     source_digest: WorkflowDigest,
+21:     input_digest: WorkflowDigest,
+22:     inputs: Box<[(SlotIdx, SlotValue)]>,
+23: }
+24: 
+25: impl RunInputsRecord {
+26:     /// Constrains typed input mappings against the numeric workflow schema.
+27:     pub fn new(
+28:         run: RunId,
+29:         artifact_digest: WorkflowDigest,
+30:         source_digest: WorkflowDigest,
+31:         workflow: &CompiledWorkflow,
+32:         inputs: Box<[(SlotIdx, SlotValue)]>,
+33:     ) -> Result<Self, JournalError> {
+34:         crate::keys::run_header_key(run)?;
+35:         validation::validate_inputs(workflow, &inputs)?;
+36:         Ok(Self {
+37:             run,
+38:             artifact_digest,
+39:             workflow_digest: workflow.digest(),
+40:             source_digest,
+41:             input_digest: compute_input_digest(&inputs)?,
+42:             inputs,
+43:         })
+44:     }
+45: 
+46:     /// Run owning this mapping.
+47:     pub const fn run(&self) -> RunId {
+48:         self.run
+49:     }
+50:     /// Content-addressed accepted artifact.
+51:     pub const fn artifact_digest(&self) -> WorkflowDigest {
+52:         self.artifact_digest
+53:     }
+54:     /// Digest of the compiled numeric workflow.
+55:     pub const fn workflow_digest(&self) -> WorkflowDigest {
+56:         self.workflow_digest
+57:     }
+58:     /// BLAKE3 of original source bytes, for cold diagnostics only.
+59:     pub const fn source_digest(&self) -> WorkflowDigest {
+60:         self.source_digest
+61:     }
+62:     /// Canonical digest of the retained typed mapping.
+63:     pub const fn input_digest(&self) -> WorkflowDigest {
+64:         self.input_digest
+65:     }
+66:     /// Original validated typed values in supplied mapping order.
+67:     pub fn inputs(&self) -> &[(SlotIdx, SlotValue)] {
+68:         &self.inputs
+69:     }
+70: 
+71:     /// Checks the normative admission receipt before using retained inputs for recovery.
+72:     pub fn validate_admission(&self, event: &crate::JournalEvent) -> Result<(), JournalError> {
+73:         match event {
+74:             crate::JournalEvent::RunAdmission {
+75:                 run,
+76:                 artifact_digest,
+77:                 input_digest: RunInputBinding::Digest(input_digest),
+78:                 ..
+79:             } if *run == self.run
+80:                 && *artifact_digest == self.artifact_digest
+81:                 && *input_digest == self.input_digest =>
+82:             {
+83:                 Ok(())
+84:             }
+85:             _ => Err(JournalError::PayloadDigestMismatch),
+86:         }
+87:     }
+88: 
+89:     /// Revalidates retained input state against its bound executable workflow.
+90:     pub fn validate_workflow(&self, workflow: &CompiledWorkflow) -> Result<(), JournalError> {
+91:         if self.workflow_digest != workflow.digest()
+92:             || compute_input_digest(&self.inputs)? != self.input_digest
+93:         {
+94:             return Err(JournalError::PayloadDigestMismatch);
+95:         }
+96:         validation::validate_inputs(workflow, &self.inputs)
+97:     }
+98: }
+99: 
+100: impl EnforceKindParity for RunInputsRecord {

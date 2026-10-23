@@ -1,0 +1,17 @@
+{
+  "scope": "module split delta only; production logic and all assertions unchanged",
+  "candidate": "c9604f41a300e099a7bbd3a902bbc237faf5d3e4",
+  "exact_function_text_equal": true,
+  "function_sha256": "da735a6196d74db32f79d4eea5706d786dcb86d8b24eeed72e5e4b30d1a6a30d",
+  "assert_eq_occurrences": 25,
+  "new_helper_lines": 196,
+  "old_helper_lines": 147,
+  "actual_v77_test_summary": "1679 passed; 0 skipped; tests 1.524s; do not use reviewer 3.545s as test duration",
+  "raw_review_corrections": [
+    "Raw assertion counts internally inconsistent (24 header versus 25 enumerated); exact body identity is authoritative here.",
+    "Raw five boundary tests enumerates six; no exhaustive allpaths claim.",
+    "No new source-length exemption or governance change; existing canonical source-length policy applied.",
+    "Raw all error paths/branches counts not used as acceptance; same actual authored body and cfg(test) wiring verified."
+  ],
+  "no_formal_mutation_execution_claim": true
+}

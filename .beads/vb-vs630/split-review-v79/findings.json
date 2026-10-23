@@ -1,0 +1,18 @@
+{
+  "review_id": "vb-vs630/split-review-v79",
+  "candidate": "c9604f41a300e099a7bbd3a902bbc237faf5d3e4",
+  "status": "APPROVED",
+  "findings": [],
+  "metrics": {
+    "function_lines": 190,
+    "assertions_preserved": 24,
+    "error_paths_preserved": 4,
+    "match_branches_preserved": 4,
+    "tests_executed": 1679,
+    "tests_skipped": 0,
+    "source_length_violations": 0,
+    "byte_identity": true,
+    "cfg_test_declared": true,
+    "unused_imports_new_module": 0
+  }
+}

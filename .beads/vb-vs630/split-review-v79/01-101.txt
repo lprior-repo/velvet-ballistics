@@ -1,0 +1,97 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/issuance_binding_test_support.rs
+101:         "run {run:?}: header workflow_id mismatch"
+102:     );
+103:     assert_eq!(header.status, 0, "run {run:?}: header status mismatch");
+104:     assert_eq!(
+105:         header.accepted_at_ms, 1000,
+106:         "run {run:?}: header accepted_at_ms mismatch"
+107:     );
+108:     assert_eq!(
+109:         header.compiled_digest, expected_workflow_digest,
+110:         "run {run:?}: header compiled_digest mismatch"
+111:     );
+112: 
+113:     // Status index row via actual key API
+114:     let status_key =
+115:         crate::keys::index_status_key(crate::types::IndexStatusState::Submitted, 1000, run)?;
+116:     let status_value = journal
+117:         .index_status
+118:         .get(&status_key)?
+119:         .ok_or(format!("run {run:?}: status index row missing"))?;
+120:     // put_status_index inserts Vec::<u8>::new() as the marker value
+121:     assert_eq!(
+122:         status_value.as_ref(),
+123:         b"",
+124:         "run {run:?}: status index value should be empty marker"
+125:     );
+126: 
+127:     // Workflow index row via actual key API
+128:     let workflow_key = crate::keys::index_workflow_key(vb_core::WorkflowId::new(0), run)?;
+129:     let workflow_value = journal
+130:         .index_workflow
+131:         .get(&workflow_key)?
+132:         .ok_or(format!("run {run:?}: workflow index row missing"))?;
+133:     // put_workflow_index inserts Vec::<u8>::new() as the marker value
+134:     assert_eq!(
+135:         workflow_value.as_ref(),
+136:         b"",
+137:         "run {run:?}: workflow index value should be empty marker"
+138:     );
+139: 
+140:     // Two acceptance events: RunAccepted (seq 0) and RunAdmission (seq 1)
+141:     let events = journal.events_for_run(run)?;
+142:     assert_eq!(events.len(), 2, "run {run:?}: expected 2 events");
+143: 
+144:     // Event 0: RunAccepted with run, seq 0, workflow digest
+145:     let event0 = events
+146:         .first()
+147:         .ok_or(format!("run {run:?}: first event missing"))?;
+148:     match event0 {
+149:         crate::JournalEvent::RunAccepted {
+150:             run: ev_run,
+151:             seq: ev_seq,
+152:             workflow: ev_workflow,
+153:         } => {
+154:             assert_eq!(*ev_run, run, "run {run:?}: event0 run mismatch");
+155:             assert_eq!(ev_seq.get(), 0, "run {run:?}: event0 seq mismatch");
+156:             assert_eq!(
+157:                 *ev_workflow, expected_workflow_digest,
+158:                 "run {run:?}: event0 workflow mismatch"
+159:             );
+160:         }
+161:         other => return Err(format!("run {run:?}: event0 is {other:?}").into()),
+162:     }
+163: 
+164:     // Event 1: RunAdmission with all expected fields
+165:     let event1 = events
+166:         .get(1)
+167:         .ok_or(format!("run {run:?}: second event missing"))?;
+168:     match event1 {
+169:         crate::JournalEvent::RunAdmission {
+170:             run: ev_run,
+171:             seq: ev_seq,
+172:             artifact_digest: ev_artifact,
+173:             input_digest: ev_input_digest,
+174:             ..
+175:         } => {
+176:             assert_eq!(*ev_run, run, "run {run:?}: event1 run mismatch");
+177:             assert_eq!(ev_seq.get(), 1, "run {run:?}: event1 seq mismatch");
+178:             assert_eq!(
+179:                 *ev_artifact,
+180:                 inputs.artifact_digest(),
+181:                 "run {run:?}: event1 artifact digest mismatch"
+182:             );
+183:             if let crate::RunInputBinding::Digest(ev_digest) = ev_input_digest {
+184:                 assert_eq!(
+185:                     *ev_digest, expected_input_digest,
+186:                     "run {run:?}: event1 input digest mismatch"
+187:                 );
+188:             } else {
+189:                 return Err(format!("run {run:?}: event1 input digest not Digest").into());
+190:             }
+191:         }
+192:         other => return Err(format!("run {run:?}: event1 is {other:?}").into()),
+193:     }
+194: 
+195:     Ok(actual_seq)
+196: }

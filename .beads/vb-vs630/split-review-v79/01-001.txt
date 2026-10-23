@@ -1,0 +1,101 @@
+ACTUAL SOURCE crates/vb_storage/src/inputs/issuance_binding_test_support.rs
+1: //! Binding verification test support for CLI run submission issuance.
+2: //! Validates typed inputs, digests, indices, artifact, and acceptance events.
+3: 
+4: use crate::FjallJournal;
+5: use vb_core::{RunId, SlotIdx, SlotValue};
+6: 
+7: /// Full binding verification for a CLI submission.
+8: /// Validates exact typed inputs, digests, header, indices, artifact,
+9: /// and acceptance events. Returns the actual accepted_at_seq stamped
+10: /// on the artifact for the caller to collect.
+11: pub(super) fn verify_concurrent_submission_binding(
+12:     journal: &FjallJournal,
+13:     run: RunId,
+14:     value: i64,
+15: ) -> Result<u64, Box<dyn std::error::Error>> {
+16:     let workflow = super::tests::workflow()?;
+17:     let expected_input_digest =
+18:         super::compute_input_digest(&[(SlotIdx::new(0), SlotValue::I64(value))])?;
+19:     let expected_workflow_digest = workflow.digest();
+20: 
+21:     // Inputs record: typed values and digests
+22:     let inputs = journal
+23:         .run_inputs(run)?
+24:         .ok_or(format!("inputs missing for run {run:?}"))?;
+25:     assert_eq!(
+26:         inputs.inputs(),
+27:         &[(SlotIdx::new(0), SlotValue::I64(value))],
+28:         "run {run:?}: typed input values mismatch"
+29:     );
+30:     assert_eq!(
+31:         inputs.input_digest(),
+32:         expected_input_digest,
+33:         "run {run:?}: input digest mismatch"
+34:     );
+35:     assert_eq!(
+36:         inputs.workflow_digest(),
+37:         expected_workflow_digest,
+38:         "run {run:?}: workflow digest mismatch"
+39:     );
+40: 
+41:     // Workflow source: exact hash and bytes
+42:     let source = journal
+43:         .workflow_source(inputs.source_digest())?
+44:         .ok_or(format!("source missing for run {run:?}"))?;
+45:     let expected_source_bytes = b"cli source fixture".to_vec();
+46:     assert_eq!(
+47:         source.source, expected_source_bytes,
+48:         "run {run:?}: source bytes mismatch"
+49:     );
+50:     let expected_source_digest =
+51:         vb_core::WorkflowDigest::from_bytes(blake3::hash(&expected_source_bytes).into());
+52:     assert_eq!(
+53:         source.digest, expected_source_digest,
+54:         "run {run:?}: source digest mismatch"
+55:     );
+56:     assert_eq!(
+57:         inputs.source_digest(),
+58:         expected_source_digest,
+59:         "run {run:?}: inputs source digest mismatch"
+60:     );
+61: 
+62:     // Compiled artifact and AcceptedArtifact decoding
+63:     let record = journal
+64:         .compiled_ir(inputs.artifact_digest())?
+65:         .ok_or(format!("compiled missing for run {run:?}"))?;
+66:     assert_eq!(
+67:         record.digest,
+68:         inputs.artifact_digest(),
+69:         "run {run:?}: record digest mismatch"
+70:     );
+71:     let decoded: crate::AcceptedArtifact =
+72:         postcard::from_bytes(&record.ir).map_err(|e| format!("run {run:?}: decode failed: {e}"))?;
+73:     let actual_seq = decoded.accepted_at_seq.get();
+74:     assert_eq!(
+75:         decoded.digest,
+76:         inputs.artifact_digest(),
+77:         "run {run:?}: artifact digest mismatch"
+78:     );
+79:     assert_eq!(
+80:         decoded.verification.digest,
+81:         inputs.artifact_digest(),
+82:         "run {run:?}: verification digest mismatch"
+83:     );
+84: 
+85:     // Actual admission verification API restores the exact workflow
+86:     let restored = crate::admission::verify_accepted_artifact(&decoded)
+87:         .map_err(|e| format!("run {run:?}: verify failed: {e}"))?;
+88:     assert_eq!(
+89:         &restored, &workflow,
+90:         "run {run:?}: restored workflow mismatch"
+91:     );
+92: 
+93:     // RunHeaderRecord: all fields
+94:     let header = journal
+95:         .run_header(run)?
+96:         .ok_or(format!("header missing for run {run:?}"))?;
+97:     assert_eq!(header.run, run, "run {run:?}: header run mismatch");
+98:     assert_eq!(
+99:         header.workflow_id,
+100:         vb_core::WorkflowId::new(0),
