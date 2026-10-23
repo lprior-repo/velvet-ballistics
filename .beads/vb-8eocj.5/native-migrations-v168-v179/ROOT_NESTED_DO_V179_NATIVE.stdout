@@ -1,0 +1,11 @@
+
+running 6 tests
+test nested_do_in_collect_body_lowers_to_final_ir ... ok
+test nested_do_in_for_each_body_lowers_to_final_ir ... ok
+test nested_do_in_reduce_body_lowers_to_final_ir ... ok
+test nested_do_in_repeat_body_lowers_to_final_ir ... ok
+test nested_do_in_together_branch_lowers_to_final_ir ... ok
+test nested_do_with_invalid_input_slot_returns_error ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

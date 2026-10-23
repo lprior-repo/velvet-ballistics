@@ -1,0 +1,13 @@
+fn assert_node(nodes: &[vb_core::CompiledNode], id: u16, kind: vb_core::CompiledNodeKind, output: Option<vb_core::SlotIdx>, next: Option<vb_core::StepIdx>, error_slot: Option<vb_core::SlotIdx>, on_error: Option<vb_core::StepIdx>) -> Result<(), String> {
+    let actual = nodes.get(usize::from(id)).ok_or_else(|| format!("node {} not found", id))?;
+    let expected = vb_core::CompiledNode {
+        id: vb_core::StepIdx::new(id),
+        kind,
+        output,
+        next,
+        error_slot,
+        on_error,
+    };
+    assert_eq!(*actual, expected);
+    Ok(())
+}

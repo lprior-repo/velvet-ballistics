@@ -1,0 +1,25 @@
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile)
+error: unused imports: `CompiledNodeKind` and `StepIdx`
+ --> crates/vb_compile/tests/vb_xi2f_nested_do_lowering.rs:7:15
+  |
+7 | use vb_core::{CompiledNodeKind, CompiledWorkflow, StepIdx};
+  |               ^^^^^^^^^^^^^^^^                    ^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error[E0308]: mismatched types
+   --> crates/vb_compile/tests/vb_xi2f_nested_do_lowering.rs:363:23
+    |
+363 |             branches: vec![vb_core::StepIdx::new(1), vb_core::StepIdx::new(3)],
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<[StepIdx]>`, found `Vec<StepIdx>`
+    |
+    = note: expected struct `Box<[StepIdx]>`
+               found struct `Vec<StepIdx>`
+help: call `Into::into` on this expression to convert `Vec<StepIdx>` into `Box<[StepIdx]>`
+    |
+363 |             branches: vec![vb_core::StepIdx::new(1), vb_core::StepIdx::new(3)].into(),
+    |                                                                               +++++++
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `vb_compile` (test "vb_xi2f_nested_do_lowering") due to 2 previous errors

@@ -1,0 +1,116 @@
+fn assert_repeat_raw_allocation_contract() -> Result<(), String> {
+    let cases = [
+        (0u16, 0u16, 1u16, 2u16),
+        (65533u16, 65533u16, 65534u16, 65535u16),
+    ];
+
+    for (prefix, counter, result, count) in cases {
+        let mut builder = SlotCompiler::new();
+        builder.reserve_slots(prefix).map_err(|e| e.to_string())?;
+
+        let nodes = lower_repeat(StepIdx::MAX, 1, StepIdx::MAX, StepIdx::MAX, &mut builder)
+            .map_err(|e| e.to_string())?;
+
+        if nodes.len() != 3 {
+            return Err(format!("expected 3 nodes, got {}", nodes.len()));
+        }
+
+        let [start, attempt, finish] = nodes.as_slice() else {
+            return Err("nodes slice mismatch".to_string());
+        };
+
+        if start.id != StepIdx::MAX || attempt.id != StepIdx::MAX || finish.id != StepIdx::MAX {
+            return Err("node IDs not all MAX".to_string());
+        }
+
+        for node in [start, attempt, finish] {
+            if node.next.is_some() || node.error_slot.is_some() || node.on_error.is_some() {
+                return Err("unexpected next/error_slot/on_error".to_string());
+            }
+        }
+
+        if start.output != Some(SlotIdx::new(counter)) {
+            return Err("start output mismatch".to_string());
+        }
+        if attempt.output != None {
+            return Err("attempt output should be None".to_string());
+        }
+        if finish.output != Some(SlotIdx::new(result)) {
+            return Err("finish output mismatch".to_string());
+        }
+
+        if start.kind != CompiledNodeKind::Start {
+            max_attempts: 1,
+            body: StepIdx::MAX,
+            done: StepIdx::MAX,
+        } {
+            return Err("start kind mismatch".to_string());
+        }
+        if attempt.kind != CompiledNodeKind::Attempt {
+            attempt_slot: SlotIdx::new(counter),
+            body: StepIdx::MAX,
+            done: StepIdx::MAX,
+        } {
+            return Err("attempt kind mismatch".to_string());
+        }
+        if finish.kind != CompiledNodeKind::Finish {
+            result: SlotIdx::new(counter),
+        } {
+            return Err("finish kind mismatch".to_string());
+        }
+
+        if prefix == 0 {
+            let ir_result = lower_steps_to_ir(
+                nodes,
+                vec![],
+                vec![],
+                vec![],
+                count,
+                0,
+                "raw-repeat-max-id",
+                vb_core::WorkflowDigest::from_bytes([0; 32]),
+            );
+
+            match ir_result {
+                Err(errors) => {
+                    if errors != vb_compile::CompileErrors(vec![
+                        CompileError::Workflow(WorkflowError::NodeIdMismatch {
+                            expected: StepIdx::new(0),
+                            actual: StepIdx::MAX,
+                        }),
+                    ]) {
+                        return Err(format!("unexpected errors: {:?}", errors));
+                    }
+                }
+                Ok(_) => {
+                    return Err("expected error from lower_steps_to_ir".to_string());
+                }
+            }
+        }
+    }
+
+    for prefix in [65534u16, 65535u16] {
+        let mut builder = SlotCompiler::new();
+        builder.reserve_slots(prefix).map_err(|e| e.to_string())?;
+
+        let result = lower_repeat(StepIdx::MAX, 1, StepIdx::MAX, StepIdx::MAX, &mut builder);
+
+        match result {
+            Err(e) => {
+                if !matches!(e, CompileError::SlotIndexOutOfRange { value: 65535 }) {
+                    return Err(format!("unexpected error: {:?}", e));
+                }
+            }
+            Ok(_) => {
+                return Err(format!("expected error for prefix {}", prefix));
+            }
+        }
+
+        let final_count = builder.slot_count().map_err(|e| e.to_string())?;
+        if final_count != 65535 {
+            return Err(format!("expected 65535 slots, got {}", final_count));
+        }
+    }
+
+    Ok(())
+}

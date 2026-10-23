@@ -1,0 +1,52 @@
+
+running 47 tests
+test e2e_diagnostic_fields_exposed_in_rejection ... ok
+test e2e_workflow_error_budget_policy_exceeded_contains_detail ... ok
+test integration_action_together_parallel_exceeded ... ok
+test integration_budget_compute_collect_small_limit ... ok
+test integration_budget_compute_empty_workflow_error ... ok
+test integration_budget_compute_nop_chain ... ok
+test integration_budget_compute_repeat_small_attempts ... ok
+test integration_budget_compute_single_do_node ... ok
+test integration_budget_compute_single_finish_node ... ok
+test integration_budget_compute_single_nop ... ok
+test integration_budget_compute_together_small_branches ... ok
+test integration_budget_error_fanout_exceeded_display ... ok
+test integration_budget_error_parallel_exceeded_display ... ok
+test integration_budget_error_total_steps_exceeded_display ... ok
+test integration_budget_returns_fanout_exceeded_when_fanout_crosses_limit ... ok
+test integration_budget_returns_total_steps_exceeded_when_steps_cross_limit ... ok
+test integration_collect_large_limit_tracks_gather_items ... ok
+test integration_collect_overflow_returns_total_steps_exceeded ... ok
+test integration_collect_with_minimum_limit ... ok
+test integration_default_policy_accepts_large_workflow ... ok
+test integration_default_policy_accepts_moderate_workflow ... ok
+test integration_nested_loops_returns_nesting_depth_exceeded ... ok
+test integration_policy_accepts_workflow_within_limits ... ok
+test integration_policy_checks_fanout_before_parallel ... ok
+test integration_policy_checks_total_steps_before_fanout ... ok
+test integration_policy_rejects_at_exact_fanout_boundary ... ok
+test integration_policy_rejects_at_exact_total_steps_boundary ... ok
+test integration_policy_rejects_at_nesting_depth_boundary ... ok
+test integration_policy_returns_action_tickets_exceeded_when_action_tickets_cross_limit ... ok
+test integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit ... ok
+test integration_policy_returns_parallel_exceeded_when_parallel_crosses_limit ... ok
+test integration_policy_returns_result_bytes_exceeded_when_result_bytes_cross_limit ... ok
+test integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit ... ok
+test integration_policy_returns_steps_executable_exceeded_when_executable_steps_cross_limit ... ok
+test integration_policy_returns_total_slots_exceeded_when_slots_cross_limit ... ok
+test integration_policy_validate_order_is_deterministic ... ok
+test integration_policy_validates_nesting_depth ... ok
+test integration_policy_validates_result_bytes ... ok
+test integration_policy_validates_steps_executable ... ok
+test integration_policy_validates_total_slots ... ok
+test integration_repeat_large_attempts_tracks_repeat_attempts ... ok
+test integration_repeat_overflow_returns_total_steps_exceeded ... ok
+test integration_repeat_with_minimum_attempts ... ok
+test integration_result_size_returns_result_bytes_exceeded ... ok
+test integration_together_large_branches_tracks_fanout ... ok
+test integration_together_overflow_returns_fanout_exceeded ... ok
+test integration_together_with_minimum_branches ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
