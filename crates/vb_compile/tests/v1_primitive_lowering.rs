@@ -1853,11 +1853,11 @@ fn assert_exact_primitive_shape(
 ) -> Result<(), String> {
     let parts = workflow.to_parts();
     match case_name {
-        "for_each" => assert_exact_for_each(parts.nodes.as_ref()),
-        "together" => assert_exact_together(parts.nodes.as_ref()),
-        "collect" => assert_exact_collect(parts.nodes.as_ref()),
-        "reduce" => assert_exact_reduce(parts.nodes.as_ref()),
-        "repeat" => assert_exact_repeat(parts.nodes.as_ref()),
+        "for_each" => assert_exact_for_each(parts.nodes.as_ref(), parts.constants.as_ref()),
+        "together" => assert_exact_together(parts.nodes.as_ref(), parts.constants.as_ref()),
+        "collect" => assert_exact_collect(parts.nodes.as_ref(), parts.constants.as_ref()),
+        "reduce" => assert_exact_reduce(parts.nodes.as_ref(), parts.constants.as_ref()),
+        "repeat" => assert_exact_repeat(parts.nodes.as_ref(), parts.constants.as_ref()),
         "wait" => assert_exact_wait_event(parts.nodes.as_ref()),
         "ask" => assert_exact_ask(parts.nodes.as_ref()),
         other => Err(format!("unknown primitive shape case {other}")),
@@ -1870,10 +1870,12 @@ fn node_at(nodes: &[CompiledNode], index: usize) -> Result<&CompiledNode, String
         .ok_or_else(|| format!("missing node at index {index}"))
 }
 
-fn assert_exact_for_each(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 0, 1)?;
+fn assert_exact_for_each(nodes: &[CompiledNode], constants: &[ConstValue]) -> Result<(), String> {
+    assert_set_const_node(nodes, constants, 1, Some(3), Some(2), 0, 1)?;
     assert_finish_node(nodes, 3, 0)?;
-    match &node_at(nodes, 0)?.kind {
+
+    let node0 = node_at(nodes, 0)?;
+    match &node0.kind {
         CompiledNodeKind::ForEachStart {
             input,
             item_slot,
@@ -1883,12 +1885,16 @@ fn assert_exact_for_each(nodes: &[CompiledNode]) -> Result<(), String> {
         } => {
             assert_eq!(
                 (input.get(), item_slot.get(), *limit, body.get(), done.get()),
-                (0, 1, 2, 1, 3)
+                (0, 2, 2, 1, 3)
             );
         }
         other => return Err(format!("expected ForEachStart, got {other:?}")),
     }
-    match &node_at(nodes, 2)?.kind {
+    assert_eq!(node0.output, Some(SlotIdx::new(1)));
+    assert_eq!(node0.next, None);
+
+    let node2 = node_at(nodes, 2)?;
+    match &node2.kind {
         CompiledNodeKind::ForEachNext {
             iterator_slot,
             body,
@@ -1898,31 +1904,43 @@ fn assert_exact_for_each(nodes: &[CompiledNode]) -> Result<(), String> {
         }
         other => return Err(format!("expected ForEachNext, got {other:?}")),
     }
+    assert_eq!(node2.output, Some(SlotIdx::new(2)));
+
     Ok(())
 }
 
-fn assert_exact_together(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 2, Some(1), None, 0, 1)?;
-    assert_set_const_node(nodes, &[], 4, Some(3), None, 1, 2)?;
+fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Result<(), String> {
+    assert_set_const_node(nodes, constants, 2, Some(2), Some(3), 0, 1)?;
+    assert_set_const_node(nodes, constants, 4, Some(2), Some(5), 1, 2)?;
     assert_finish_node(nodes, 6, 0)?;
-    match &node_at(nodes, 0)?.kind {
+
+    let node0 = node_at(nodes, 0)?;
+    match &node0.kind {
         CompiledNodeKind::TogetherStart { branches, join } => {
-            let actual: Vec<u16> = branches.iter().map(|branch| branch.get()).collect();
+            let actual: Vec<u16> = branches.iter().map(|b| b.get()).collect();
             assert_eq!(actual, [1, 3]);
             assert_eq!(join.get(), 5);
         }
         other => return Err(format!("expected TogetherStart, got {other:?}")),
     }
-    match &node_at(nodes, 5)?.kind {
+    assert_eq!(node0.output, Some(SlotIdx::new(1)));
+    assert_eq!(node0.next, None);
+
+    let node5 = node_at(nodes, 5)?;
+    match &node5.kind {
         CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,
         } => {
-            assert_eq!((*branch_count, accumulator.get()), (2, 0));
+            assert_eq!((*branch_count, accumulator.get()), (2, 1));
         }
         other => return Err(format!("expected TogetherJoin, got {other:?}")),
     }
-    match &node_at(nodes, 1)?.kind {
+    assert_eq!(node5.output, Some(SlotIdx::new(2)));
+    assert_eq!(node5.next, Some(StepIdx::new(6)));
+
+    let node1 = node_at(nodes, 1)?;
+    match &node1.kind {
         CompiledNodeKind::TogetherBranch {
             branch,
             entry,
@@ -1931,12 +1949,14 @@ fn assert_exact_together(nodes: &[CompiledNode]) -> Result<(), String> {
         } => {
             assert_eq!(
                 (*branch, entry.get(), join.get(), accumulator.get()),
-                (0, 2, 5, 0)
+                (0, 2, 5, 1)
             );
         }
         other => return Err(format!("expected first TogetherBranch, got {other:?}")),
     }
-    match &node_at(nodes, 3)?.kind {
+
+    let node3 = node_at(nodes, 3)?;
+    match &node3.kind {
         CompiledNodeKind::TogetherBranch {
             branch,
             entry,
@@ -1945,18 +1965,21 @@ fn assert_exact_together(nodes: &[CompiledNode]) -> Result<(), String> {
         } => {
             assert_eq!(
                 (*branch, entry.get(), join.get(), accumulator.get()),
-                (1, 4, 5, 0)
+                (1, 4, 5, 1)
             );
         }
         other => return Err(format!("expected second TogetherBranch, got {other:?}")),
     }
+
     Ok(())
 }
 
-fn assert_exact_collect(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 0, 7)?;
+fn assert_exact_collect(nodes: &[CompiledNode], constants: &[ConstValue]) -> Result<(), String> {
+    assert_set_const_node(nodes, constants, 1, Some(2), Some(2), 0, 7)?;
     assert_finish_node(nodes, 4, 0)?;
-    match &node_at(nodes, 0)?.kind {
+
+    let node0 = node_at(nodes, 0)?;
+    match &node0.kind {
         CompiledNodeKind::CollectStart {
             source,
             limit,
@@ -1966,32 +1989,56 @@ fn assert_exact_collect(nodes: &[CompiledNode]) -> Result<(), String> {
         } => {
             assert_eq!(
                 (source.get(), *limit, *page_size, body.get(), done.get()),
-                (0, 3, 5, 1, 3)
+                (0, 15, 5, 1, 3)
             );
         }
         other => return Err(format!("expected CollectStart, got {other:?}")),
     }
-    match &node_at(nodes, 2)?.kind {
-        CompiledNodeKind::CollectPage {
+    assert_eq!(node0.output, Some(SlotIdx::new(1)));
+    assert_eq!(node0.next, None);
+
+    let node2 = node_at(nodes, 2)?;
+    match &node2.kind {
+        CompiledNodeKind::CollectNext {
             collector_slot,
             body,
             done,
         } => {
-            assert_eq!((collector_slot.get(), body.get(), done.get()), (0, 1, 3));
+            assert_eq!((collector_slot.get(), body.get(), done.get()), (1, 1, 3));
         }
-        other => return Err(format!("expected CollectPage, got {other:?}")),
+        other => return Err(format!("expected CollectNext, got {other:?}")),
     }
-    match &node_at(nodes, 3)?.kind {
-        CompiledNodeKind::CollectFinish { collector_slot } => assert_eq!(collector_slot.get(), 0),
+
+    let node3 = node_at(nodes, 3)?;
+    match &node3.kind {
+        CompiledNodeKind::CollectFinish { collector_slot } => {
+            assert_eq!(collector_slot.get(), 1);
+        }
         other => return Err(format!("expected CollectFinish, got {other:?}")),
     }
+    assert_eq!(node3.output, Some(SlotIdx::new(2)));
+    assert_eq!(node3.next, Some(StepIdx::new(4)));
+
     Ok(())
 }
 
-fn assert_exact_reduce(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 1, 1)?;
-    assert_finish_node(nodes, 4, 0)?;
-    match &node_at(nodes, 0)?.kind {
+fn assert_exact_reduce(nodes: &[CompiledNode], constants: &[ConstValue]) -> Result<(), String> {
+    assert_eq!(constants.get(0), Some(&ConstValue::I64(10)));
+    assert_set_const_node(nodes, constants, 2, Some(4), Some(3), 1, 1)?;
+    assert_finish_node(nodes, 5, 0)?;
+
+    let node0 = node_at(nodes, 0)?;
+    match &node0.kind {
+        CompiledNodeKind::Copy { source } => {
+            assert_eq!(source.get(), 0);
+        }
+        other => return Err(format!("expected Copy, got {other:?}")),
+    }
+    assert_eq!(node0.output, Some(SlotIdx::new(1)));
+    assert_eq!(node0.next, Some(StepIdx::new(1)));
+
+    let node1 = node_at(nodes, 1)?;
+    match &node1.kind {
         CompiledNodeKind::ReduceStart {
             input,
             accumulator,
@@ -2007,12 +2054,15 @@ fn assert_exact_reduce(nodes: &[CompiledNode]) -> Result<(), String> {
                     body.get(),
                     done.get()
                 ),
-                (0, 1, 0, 1, 3)
+                (1, 4, 0, 2, 4)
             );
         }
         other => return Err(format!("expected ReduceStart, got {other:?}")),
     }
-    match &node_at(nodes, 2)?.kind {
+    assert_eq!(node1.output, Some(SlotIdx::new(3)));
+
+    let node3 = node_at(nodes, 3)?;
+    match &node3.kind {
         CompiledNodeKind::ReduceNext {
             iterator_slot,
             accumulator,
@@ -2026,22 +2076,32 @@ fn assert_exact_reduce(nodes: &[CompiledNode]) -> Result<(), String> {
                     body.get(),
                     done.get()
                 ),
-                (1, 1, 1, 3)
+                (3, 4, 2, 4)
             );
         }
         other => return Err(format!("expected ReduceNext, got {other:?}")),
     }
-    match &node_at(nodes, 3)?.kind {
-        CompiledNodeKind::ReduceFinish { accumulator } => assert_eq!(accumulator.get(), 1),
+    assert_eq!(node3.output, Some(SlotIdx::new(2)));
+
+    let node4 = node_at(nodes, 4)?;
+    match &node4.kind {
+        CompiledNodeKind::ReduceFinish { accumulator } => {
+            assert_eq!(accumulator.get(), 4);
+        }
         other => return Err(format!("expected ReduceFinish, got {other:?}")),
     }
+    assert_eq!(node4.output, Some(SlotIdx::new(4)));
+    assert_eq!(node4.next, Some(StepIdx::new(5)));
+
     Ok(())
 }
 
-fn assert_exact_repeat(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 0, 1)?;
+fn assert_exact_repeat(nodes: &[CompiledNode], constants: &[ConstValue]) -> Result<(), String> {
+    assert_set_const_node(nodes, constants, 1, Some(2), Some(2), 0, 1)?;
     assert_finish_node(nodes, 4, 0)?;
-    match &node_at(nodes, 0)?.kind {
+
+    let node0 = node_at(nodes, 0)?;
+    match &node0.kind {
         CompiledNodeKind::RepeatStart {
             max_attempts,
             body,
@@ -2051,20 +2111,29 @@ fn assert_exact_repeat(nodes: &[CompiledNode]) -> Result<(), String> {
         }
         other => return Err(format!("expected RepeatStart, got {other:?}")),
     }
-    match &node_at(nodes, 2)?.kind {
-        CompiledNodeKind::RepeatAttempt {
-            attempt_slot,
-            body,
-            done,
-        } => {
-            assert_eq!((attempt_slot.get(), body.get(), done.get()), (1, 1, 3));
+    assert_eq!(node0.output, Some(SlotIdx::new(1)));
+    assert_eq!(node0.next, None);
+
+    let node2 = node_at(nodes, 2)?;
+    match &node2.kind {
+        CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
+            assert_eq!((attempt_slot.get(), done.get()), (1, 3));
         }
-        other => return Err(format!("expected RepeatAttempt, got {other:?}")),
+        other => return Err(format!("expected RepeatCheck, got {other:?}")),
     }
-    match &node_at(nodes, 3)?.kind {
-        CompiledNodeKind::RepeatFinish { result } => assert_eq!(result.get(), 1),
+    assert_eq!(node2.output, Some(SlotIdx::new(1)));
+    assert_eq!(node2.next, Some(StepIdx::new(1)));
+
+    let node3 = node_at(nodes, 3)?;
+    match &node3.kind {
+        CompiledNodeKind::RepeatFinish { result } => {
+            assert_eq!(result.get(), 2);
+        }
         other => return Err(format!("expected RepeatFinish, got {other:?}")),
     }
+    assert_eq!(node3.output, Some(SlotIdx::new(2)));
+    assert_eq!(node3.next, Some(StepIdx::new(4)));
+
     Ok(())
 }
 
@@ -2464,8 +2533,8 @@ fn compile_workflow_choose_two_branches_with_otherwise() -> Result<(), String> {
     let kinds = node_kind_names(workflow.to_parts().nodes.as_ref());
     assert_eq!(
         kinds,
-        vec!["SetConst", "ChooseSlot", "Finish"],
-        "two-branch choose must compile to SetConst, ChooseSlot, Finish"
+        vec!["EvalExpr", "ChooseSlot", "Finish"],
+        "boolean setup and two-branch choose must compile to EvalExpr, ChooseSlot, Finish"
     );
     Ok(())
 }
