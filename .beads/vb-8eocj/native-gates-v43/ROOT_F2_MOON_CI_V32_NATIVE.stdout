@@ -1,0 +1,188 @@
+▮▮▮▮ Loading changed files
+Base revision: e0621af96a6d1c5d1453b174bc11da4858b5b322
+Head revision: 784d6f67227f8f8b3490eb5062855b24a1530a59
+Affected by changes: all
+Changed files:
+	.beads/vb-8eocj.3.2/native-counter-reset-pre-fix-v21/vb_f1_repeat_counter_reset_probe.rs
+	.beads/vb-8eocj.3.3/contract-v22.md
+	.beads/vb-8eocj.3.3/contract.md
+	.beads/vb-8eocj.3.3/native-v27/assessment.md
+	.beads/vb-8eocj.3.3/native-v27/combined46.json
+	.beads/vb-8eocj.3.3/native-v27/combined46.stderr
+	.beads/vb-8eocj.3.3/native-v27/combined46.stdout
+	.beads/vb-8eocj.3.3/native-v27/original-probe.json
+	.beads/vb-8eocj.3.3/native-v27/original-probe.stderr
+	.beads/vb-8eocj.3.3/native-v27/original-probe.stdout
+	.beads/vb-8eocj.3.4/contract.md
+	crates/vb_core/src/workflow/mod.rs
+	crates/vb_core/src/workflow/repeat_counter_ownership.rs
+	crates/vb_runtime/src/engine/drive/reduce_evidence.rs
+	crates/vb_runtime/src/primitives/reduce.rs
+	crates/workspace_tests/tests/vb_f1_repeat_counter_ownership.rs
+▮▮▮▮ Building action graph
+Action count: 38
+Requested targets: 53
+	velvet-ballistics:fuzz-tsan
+	velvet-ballistics:fuzz-regress
+	velvet-ballistics:beads-server-mode
+	velvet-ballistics:contracts
+	velvet-ballistics:verify-kani-vb-validate
+	velvet-ballistics:verify-production-inner-drift
+	velvet-ballistics:verify-standard
+	velvet-ballistics:verify-verus-all
+	velvet-ballistics:panic-surface
+	velvet-ballistics:verify-verus
+	velvet-ballistics:verify-verus-production-binding
+	velvet-ballistics:verify-kani
+	velvet-ballistics:bench-build
+	velvet-ballistics:test-determinism
+	velvet-ballistics:workspace-assertions
+	velvet-ballistics:test
+	velvet-ballistics:benchmark-regression-policy
+	velvet-ballistics:nightly-feature-gate
+	velvet-ballistics:doc-test
+	velvet-ballistics:hardened-build
+	velvet-ballistics:nightly-feature-cargo-probe
+	velvet-ballistics:verify-all
+	velvet-ballistics:fuzz-smoke
+	velvet-ballistics:hot-cold-forbidden-apis
+	velvet-ballistics:test-integrity
+	velvet-ballistics:supply-chain
+	velvet-ballistics:verify-deep
+	velvet-ballistics:verify-loom
+	velvet-ballistics:verify-fast
+	velvet-ballistics:quick
+	velvet-ballistics:doc
+	velvet-ballistics:mutants-smoke
+	velvet-ballistics:sanitizer-address-check
+	velvet-ballistics:verify-proof
+	velvet-ballistics:agent-cli-contract
+	velvet-ballistics:ci
+	velvet-ballistics:coverage
+	velvet-ballistics:unsafe-audit
+	velvet-ballistics:benchmark-proof
+	velvet-ballistics:check-stepstate-matrix
+	velvet-ballistics:fmt
+	velvet-ballistics:fuzz-proptest
+	velvet-ballistics:verify-tlc
+	velvet-ballistics:check
+	velvet-ballistics:source-length
+	velvet-ballistics:miri
+	velvet-ballistics:ignored-fallible-results
+	velvet-ballistics:kani-baseline
+	velvet-ballistics:blocker-closure-evidence
+	velvet-ballistics:lint-src
+	velvet-ballistics:feature-powerset
+	velvet-ballistics:banned-token-gates
+	velvet-ballistics:kani-baseline-heavy
+Resolved targets: 31
+	velvet-ballistics:test-integrity
+	velvet-ballistics:fuzz-regress
+	velvet-ballistics:doc
+	velvet-ballistics:lint-src
+	velvet-ballistics:coverage
+	velvet-ballistics:banned-token-gates
+	velvet-ballistics:fuzz-smoke
+	velvet-ballistics:verify-kani
+	velvet-ballistics:hardened-build
+	velvet-ballistics:nightly-feature-gate
+	velvet-ballistics:fuzz-proptest
+	velvet-ballistics:hot-cold-forbidden-apis
+	velvet-ballistics:source-length
+	velvet-ballistics:fuzz-tsan
+	velvet-ballistics:doc-test
+	velvet-ballistics:panic-surface
+	velvet-ballistics:miri
+	velvet-ballistics:unsafe-audit
+	velvet-ballistics:verify-verus
+	velvet-ballistics:kani-baseline-heavy
+	velvet-ballistics:sanitizer-address-check
+	velvet-ballistics:check
+	velvet-ballistics:fmt
+	velvet-ballistics:test
+	velvet-ballistics:verify-kani-vb-validate
+	velvet-ballistics:feature-powerset
+	velvet-ballistics:ignored-fallible-results
+	velvet-ballistics:kani-baseline
+	velvet-ballistics:bench-build
+	velvet-ballistics:verify-loom
+	velvet-ballistics:ci
+▮▮▮▮ Tracking affected tasks
+	velvet-ballistics:kani-baseline-heavy affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:fuzz-regress affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:panic-surface affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:verify-verus affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:verify-kani affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:bench-build affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:hardened-build affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:test affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:doc-test affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:nightly-feature-gate affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:fuzz-smoke affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:hot-cold-forbidden-apis affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:test-integrity affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:verify-loom affected by file crates/vb_runtime/src/engine/drive/reduce_evidence.rs
+	velvet-ballistics:doc affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:sanitizer-address-check affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:ci affected by file .beads/vb-8eocj.3.3/native-v27/combined46.stdout
+	velvet-ballistics:coverage affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:unsafe-audit affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:fmt affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:fuzz-proptest affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:fuzz-tsan affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:check affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:source-length affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:verify-kani-vb-validate affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:ignored-fallible-results affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:kani-baseline affected by file .beads/vb-8eocj.3.3/native-v27/combined46.stdout
+	velvet-ballistics:miri affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:lint-src affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:feature-powerset affected by file crates/vb_core/src/workflow/mod.rs
+	velvet-ballistics:banned-token-gates affected by file crates/vb_core/src/workflow/mod.rs
+▮▮▮▮ Executing action pipeline
+▮▮▮▮ velvet-ballistics:fuzz-regress (35d257b4)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (413ecbd2)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 30s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 30s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 60s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 60s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 90s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 90s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 120s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 120s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 150s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 150s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 180s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 180s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 210s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 210s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 240s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 240s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 270s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 270s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 300s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 300s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 330s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 330s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 360s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 360s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 390s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 390s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 420s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 420s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 450s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 450s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 480s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 480s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 510s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 510s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 540s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 540s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (running for 570s)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (running for 570s)
+▮▮▮▮ velvet-ballistics:fuzz-regress (9m 59s 189ms, 35d257b4)
+▮▮▮▮ velvet-ballistics:fuzz-tsan (9m 59s 189ms, 413ecbd2)
+
+Tasks: 1 skipped
+ Time: 9m 59s 729ms (interrupted)
+

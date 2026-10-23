@@ -1,0 +1,62 @@
+[
+  {
+    "file": "ROOT_F2_EXPANDED68_V43_NATIVE.json",
+    "sha256": "0496ade220c34c0072c7a199f5a443cffe20395b1d9698583aacd6cf0d3b6225",
+    "bytes": 857
+  },
+  {
+    "file": "ROOT_F2_EXPANDED68_V43_NATIVE.stdout",
+    "sha256": "039223e17421d5b67ef37d23cdfbb3f3c1ab5f2bb8405b063ab5c2559c02317b",
+    "bytes": 4057
+  },
+  {
+    "file": "ROOT_F2_EXPANDED68_V43_NATIVE.stderr",
+    "sha256": "84cab2f2d8aab282ef36283222ea035d49fed325a75893f9546a965eed686039",
+    "bytes": 1295
+  },
+  {
+    "file": "ROOT_F2_COMPILE_LIB_V41_NATIVE.json",
+    "sha256": "03f25196ec5cd9788aa5319a24f46ac8e3a8b15f1c1240b50e133888ab8d8940",
+    "bytes": 642
+  },
+  {
+    "file": "ROOT_F2_COMPILE_LIB_V41_NATIVE.stdout",
+    "sha256": "a6217d631769e6100bfc0ab541ccadcbb46714fa1346526b3fa592b9aa091cc1",
+    "bytes": 42229
+  },
+  {
+    "file": "ROOT_F2_COMPILE_LIB_V41_NATIVE.stderr",
+    "sha256": "ca05ae5643fe75b46f4e58b86705feca42321eda1ce24cb7bdf91f81cc146277",
+    "bytes": 960
+  },
+  {
+    "file": "ROOT_F2_COLLECT_RUNTIME_V38_NATIVE.json",
+    "sha256": "72c19e261a8aeb674474b0688055d7d94940d85a9d7b20ea75cea4ba1054ed0b",
+    "bytes": 662
+  },
+  {
+    "file": "ROOT_F2_COLLECT_RUNTIME_V38_NATIVE.stdout",
+    "sha256": "407586a34d43b3b9840d6e014172c7f84a54172f95f6423c36264e9aefd468f5",
+    "bytes": 16639
+  },
+  {
+    "file": "ROOT_F2_COLLECT_RUNTIME_V38_NATIVE.stderr",
+    "sha256": "ab0ccf61e8a9a06483026c207940e70e8a37ff92432f2375e4f7e2042cd84f50",
+    "bytes": 2502
+  },
+  {
+    "file": "ROOT_F2_MOON_CI_V32_NATIVE.json",
+    "sha256": "9ed45ef15f553d18524993d7ab6488953dac8053320142ce2d6ecb2eb3dfd5fb",
+    "bytes": 667
+  },
+  {
+    "file": "ROOT_F2_MOON_CI_V32_NATIVE.stdout",
+    "sha256": "5f95989410ba7d9e828909b7a1fc988a7f289ae080acae3d38580edb7c362880",
+    "bytes": 9253
+  },
+  {
+    "file": "ROOT_F2_MOON_CI_V32_NATIVE.stderr",
+    "sha256": "45ad7062d3fb5b612b5dfec59811191dd16b4e1364b6830ac39850f15e1486aa",
+    "bytes": 327
+  }
+]

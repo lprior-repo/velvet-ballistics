@@ -1,0 +1,44 @@
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_core)
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_validate)
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_storage)
+   Compiling vb_runtime v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_runtime)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 13.07s
+     Running unittests src/lib.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_runtime-e41f7eef45fa4cdf)
+
+thread 'primitives::collect::tests::collect_next_cursor_at_item_count_goes_to_done' (3805210) panicked at crates/vb_runtime/src/primitives/collect/tests.rs:2687:5:
+assertion `left == right` failed
+  left: Ok(Continue)
+ right: Err(InvalidCompiledWorkflow { reason: "collect pagination state missing" })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'primitives::collect::tests::collect_next_writes_empty_page_and_removes_state_after_last_item' (3805227) panicked at crates/vb_runtime/src/primitives/collect/tests.rs:3085:5:
+assertion `left == right` failed
+  left: Ok(Continue)
+ right: Err(InvalidCompiledWorkflow { reason: "collect pagination state missing" })
+Error: "first cycle should reach done"
+
+thread 'primitives::collect::tests::collect_start_exact_page_limit_finishes_without_active_pagination_state' (3805266) panicked at crates/vb_runtime/src/primitives/collect/tests.rs:3180:5:
+assertion `left == right` failed
+  left: StepIdx(1)
+ right: StepIdx(2)
+
+thread 'primitives::collect::tests::collect_start_page_size_at_limit_boundary' (3805275) panicked at crates/vb_runtime/src/primitives/collect/tests.rs:1245:5:
+assertion `left == right` failed
+  left: StepIdx(1)
+ right: StepIdx(2)
+Error: "expected pc=StepIdx(2), got StepIdx(1)"
+
+thread 'primitives::reentry_tests::proptest_reentry::prop4_collect_pagination_reentry' (3805331) panicked at crates/vb_runtime/src/primitives/reentry_tests.rs:1553:5:
+Test failed: assertion failed: `(left == right)` 
+  left: `StepIdx(1)`, 
+ right: `StepIdx(2)`: single-page collect should route to done at crates/vb_runtime/src/primitives/reentry_tests.rs:1592.
+minimal failing input: items = [
+    I64(
+        0,
+    ),
+], page_size = 1
+	successes: 0
+	local rejects: 0
+	global rejects: 0
+
+error: test failed, to rerun pass `-p vb_runtime --lib`

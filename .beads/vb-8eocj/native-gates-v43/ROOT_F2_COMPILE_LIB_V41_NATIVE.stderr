@@ -1,0 +1,10 @@
+   Compiling vb_expr v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_expr)
+   Compiling vb_yaml v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_yaml)
+   Compiling vb_compile v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_compile)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.22s
+     Running unittests src/lib.rs (/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target/debug/deps/vb_compile-29caff632f696b8f)
+
+thread 'tests::error_variant_tests::test_many_branch_together_produces_deterministic_digest' (3811378) panicked at crates/vb_compile/src/tests/error_variant_tests.rs:1786:51:
+many-branch compile: CompileErrors([Workflow(BudgetPolicyExceeded { detail: "max_nesting_depth" })])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: test failed, to rerun pass `-p vb_compile --lib`
