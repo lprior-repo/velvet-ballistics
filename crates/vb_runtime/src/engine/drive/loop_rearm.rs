@@ -107,10 +107,10 @@ pub(super) fn validate_activation(
         None => Ok(()),
     }?;
 
-    if let Some(body) = super::transitions::loop_body_target(node) {
-        if body < node.id {
-            check_region(plan, node.id, body)?;
-        }
+    if let Some(body) = super::transitions::loop_body_target(node)
+        && body < node.id
+    {
+        check_region(plan, node.id, body)?;
     }
 
     Ok(())
