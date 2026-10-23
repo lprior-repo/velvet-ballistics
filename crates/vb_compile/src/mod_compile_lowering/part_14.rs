@@ -8,6 +8,7 @@ use vb_core::{
 #[path = "canonical_branch_body.rs"]
 mod canonical_branch_body;
 use canonical_branch_body::emit_scoped_branch_body;
+pub(super) use canonical_branch_body::emit_scoped_flat_body;
 #[path = "canonical_choose_conditions.rs"]
 mod canonical_choose_conditions;
 use canonical_choose_conditions::choose_node;

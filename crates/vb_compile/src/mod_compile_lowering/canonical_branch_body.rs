@@ -1,4 +1,4 @@
-//! Flat branch-local lexical bodies. Bindings never escape the selected branch.
+//! Flat scoped lexical bodies. Bindings never escape their branch or loop body.
 
 use super::*;
 use std::collections::{HashMap, HashSet};
@@ -12,24 +12,42 @@ pub(super) fn emit_scoped_branch_body(
     scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<usize, CompileErrors> {
+    let _last_output = emit_scoped_flat_body(body, start, common_next, scope, builder, "choose")?;
+    Ok(body.len())
+}
+
+/// Emit one node per flat Set/Do step and return the final body's value slot.
+pub(in crate::mod_compile_lowering) fn emit_scoped_flat_body(
+    body: &[crate::StepAst],
+    start: StepIdx,
+    common_next: StepIdx,
+    scope: CanonicalScope<'_>,
+    builder: &mut SlotCompiler,
+    primitive: &'static str,
+) -> Result<Option<SlotIdx>, CompileErrors> {
     let mut local = BranchBindings::new(scope);
+    let mut result = None;
     for (index, step) in body.iter().enumerate() {
         reject_body_controls(step, index)?;
-        let id = body_id(start, index)?;
+        let id = body_id(start, index, primitive)?;
         let next_index = index.checked_add(1).ok_or_else(|| index_error(index))?;
         let next = if next_index == body.len() {
             common_next
         } else {
-            body_id(start, next_index)?
+            body_id(start, next_index, primitive)?
         };
-        local.lower(step, id, next, builder)?;
+        result = Some(local.lower(step, id, next, builder)?);
     }
-    Ok(body.len())
+    Ok(result)
 }
 
-fn body_id(start: StepIdx, index: usize) -> Result<StepIdx, CompileErrors> {
+fn body_id(
+    start: StepIdx,
+    index: usize,
+    primitive: &'static str,
+) -> Result<StepIdx, CompileErrors> {
     let offset = u16::try_from(index).map_err(|_| index_error(index))?;
-    checked_step_offset(start, offset, "choose", "body").map_err(|e| CompileErrors(vec![e]))
+    checked_step_offset(start, offset, primitive, "body").map_err(|e| CompileErrors(vec![e]))
 }
 
 fn index_error(value: usize) -> CompileErrors {
@@ -76,7 +94,7 @@ impl BranchBindings {
         id: StepIdx,
         next: StepIdx,
         builder: &mut SlotCompiler,
-    ) -> Result<(), CompileErrors> {
+    ) -> Result<SlotIdx, CompileErrors> {
         if !self.local_steps.insert(step.id.clone()) {
             return Err(CompileErrors(vec![CompileError::DuplicateStepId {
                 id: step.id.clone().into(),
@@ -103,7 +121,7 @@ impl BranchBindings {
             }
         }
         self.steps.insert(step.id.clone(), slot);
-        Ok(())
+        Ok(slot)
     }
 
     fn lower_set(

@@ -94,72 +94,9 @@ pub(super) fn lower_canonical_aggregate(
     Ok(())
 }
 
-pub(super) fn lower_canonical_repeat(
-    index: usize,
-    id: StepIdx,
-    max_attempts: u16,
-    body: &[crate::StepAst],
-    next: Option<StepIdx>,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    if max_attempts == 0 {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "repeat.max_attempts",
-            expected: "non-empty primitive field",
-        }]));
-    }
-    let body_step =
-        checked_step_offset(id, 1, "repeat", "body").map_err(|e| CompileErrors(vec![e]))?;
-    let check =
-        checked_step_offset(id, 2, "repeat", "check").map_err(|e| CompileErrors(vec![e]))?;
-    let done = checked_step_offset(id, 3, "repeat", "done").map_err(|e| CompileErrors(vec![e]))?;
-    let attempt_slot = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    let body_result = builder.allocate_slot().map_err(|e| CompileErrors(vec![e]))?;
-    builder.push_node(CompiledNode {
-        id,
-        output: Some(attempt_slot),
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::RepeatStart {
-            max_attempts,
-            body: body_step,
-            done,
-        },
-    });
-    emit_single_body_set(
-        body,
-        body_step,
-        index,
-        body_result,
-        Some(check),
-        builder,
-        false,
-    )?;
-    builder.push_node(CompiledNode {
-        id: check,
-        output: Some(attempt_slot),
-        next: Some(body_step),
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::RepeatCheck {
-            attempt_slot,
-            done,
-        },
-    });
-    builder.push_node(CompiledNode {
-        id: done,
-        output: Some(body_result),
-        next,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::RepeatFinish {
-            result: body_result,
-        },
-    });
-    Ok(())
-}
+#[path = "canonical_repeat.rs"]
+mod canonical_repeat;
+pub(super) use canonical_repeat::lower_canonical_repeat;
 
 pub(super) fn lower_canonical_wait(
     index: usize,

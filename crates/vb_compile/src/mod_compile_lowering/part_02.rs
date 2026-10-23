@@ -123,7 +123,19 @@ pub(super) fn lower_canonical_step(
             ..
         } => lower_canonical_aggregate(index, id, input, initial, body, next, builder),
         crate::StepPrimitive::Repeat { max_attempts, body } => {
-            lower_canonical_repeat(index, id, *max_attempts, body, next, builder)
+            lower_canonical_repeat(
+                index,
+                id,
+                *max_attempts,
+                body,
+                next,
+                CanonicalScope {
+                    outputs,
+                    step_outputs,
+                    slot_types,
+                },
+                builder,
+            )
         }
         crate::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
             index,
