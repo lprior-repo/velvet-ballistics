@@ -1,0 +1,23 @@
+{
+  "scope": "Actual production lower_repeat allocation and raw node contract only; not whole F1 or canonical CI.",
+  "candidate": "dd823160331dfac4280289541de419563cf0521f",
+  "source_sha256": "a2ae67c6aeddbb0c7f667f4fcddd5e9ba46bfc3d59c2893b2f5c7644907921e2",
+  "exit_code": 0,
+  "seconds": 806.705,
+  "checks_failed": 0,
+  "checks_total": 562,
+  "checks_unreachable": 15,
+  "covers_satisfied": 12,
+  "covers_total": 12,
+  "proof_harnesses_passed": 1,
+  "source_unchanged": true,
+  "post_run_commit": "ffbe2db185c6826b04f76c327503060775fc4b3c",
+  "post_run_empty_commit_reason": "Fetching published review bookmarks made prior candidate immutable; JJ created empty child. No source files changed.",
+  "limits": [
+    "Unwind12 unchanged. No stubs/assume narrowing or manual verification disabling flags added.",
+    "Kani automatically emitted its default backend flags; raw invocation and native logs preserved.",
+    "V187360second timeout remains NO VERDICT in prior receipt3de0bcfb.",
+    "Independent actual3090 reports imported only artifact subtrees; no stale source cherry-pick.",
+    "Cloud review summaries retain relayed provenance, not original report provenance."
+  ]
+}

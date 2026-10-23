@@ -1,0 +1,30 @@
+{
+  "base": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+  "candidate": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+  "all_retained_control_function_bytes_identical": {
+    "symbolic_non_max_step_raw": true,
+    "expected_successor": true,
+    "symbolic_step": true,
+    "symbolic_slot": true,
+    "symbolic_timeout": true,
+    "assert_ask_nodes": true,
+    "assert_ask_start": true,
+    "assert_ask_resume": true,
+    "lower_ask_accepts_non_max_id_and_uses_id_plus_one_resume": true,
+    "lower_ask_rejects_max_id_without_overflow": true,
+    "lower_choose_fanout_bound": true,
+    "lower_choose_live_api_has_fanout_check": true
+  },
+  "removed_functions": [
+    "assert_repeat_attempt",
+    "assert_repeat_finish",
+    "assert_repeat_nodes",
+    "assert_repeat_start",
+    "lower_repeat_accepts_non_max_id_and_uses_id_plus_one_slot",
+    "lower_repeat_rejects_max_id_without_overflow",
+    "max_step_plus_one"
+  ],
+  "review_worktree_matches_candidate": true,
+  "new_module_sha256": "7456585bf853754ff2bc2d4467b6aa391f434943181ac79890fcfb609c813a29",
+  "no_cargo_or_proof_execution": true
+}

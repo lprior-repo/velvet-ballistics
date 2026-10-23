@@ -1,0 +1,9 @@
+{
+  "assertions_preserved": true,
+  "covers_preserved": true,
+  "assertion_count": 37,
+  "cover_count": 12,
+  "old_any_calls": 5,
+  "new_any_calls": 5,
+  "only_change": "localV194 extraction plus coordinator verbatim cover extraction/reserve-result inline canonicalization"
+}

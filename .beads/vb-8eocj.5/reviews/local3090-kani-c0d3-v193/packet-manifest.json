@@ -1,0 +1,13 @@
+{
+  "base": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+  "candidate": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+  "workspace": "/home/lewis/src/isoloated/vb-8eocj-repeat-kani-review-local3090-v193",
+  "diff_sha256": "d3c8e31c8d1081ca9a4c2d02d30e8564c9d84e5a7dc6a5af95cc8a16cb86230d",
+  "files": {
+    "crates/vb_compile/src/kani_lower_repeat.rs": "7456585bf853754ff2bc2d4467b6aa391f434943181ac79890fcfb609c813a29",
+    "crates/vb_compile/src/kani_lower_control.rs": "562b5c6d6240999af27e8e4617ebf47327675c939dc40c13145b0fe1e90dc579",
+    "crates/vb_compile/src/mod_compile_lowering/part_07.rs": "2ce5d4c0a46fe7c1974c48297dd966de78b3209ed78dd4adbef3b35e99867915",
+    "crates/vb_compile/src/mod_compile_lowering/part_08.rs": "36764036778eda6202452762e21d1d4d50135873d8a63500819e4ce94f36ee00"
+  },
+  "prompt_bytes": 54005
+}

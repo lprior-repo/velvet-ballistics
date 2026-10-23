@@ -1,0 +1,32 @@
+{
+  "candidate": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+  "base": "446511bc53310f4daad640cb66cdeaf61b995eeb",
+  "reviewer": "actual local RTX3090 qwen3.8-27b-uncensored; RTX5090 authored candidate",
+  "source_oracle_disposition": "SCOPED_STATIC_LOGIC_APPROVAL",
+  "full_u16_independent_symbols": [
+    "prefix",
+    "max_attempts",
+    "id",
+    "body",
+    "done"
+  ],
+  "no_assume_narrowing": true,
+  "allocation_cases": {
+    "0..65533": "two allocations succeed; counter=prefix, finish output=prefix+1, final count=prefix+2",
+    "65534": "first allocation succeeds, second fails SlotIndexOutOfRange value65535, final count65535",
+    "65535": "first allocation fails same exact error, final count65535"
+  },
+  "all_raw_node_fields_checked": true,
+  "retained_control_functions_byte_identical": 12,
+  "unwind12": "UNCHANGED; formal adequacy UNPROVEN. Rejected model claims of adequacy from call-frame depth or supposed opaque standard-library loops. No proof execution performed here.",
+  "reviewability": "BLOCKING REQUIRED REPAIR: main proof96..204=109physical lines. Preserve domains/productioncall/assertions/branches when extracting helpers. Reject model invented80line/nonblocking classification; independent cloud CODE requires repair.",
+  "formal_status": "V187 exit124/360.101sec timeout; NO VERDICT. Listing/codegen is not proof.",
+  "limits": [
+    "raw lower_repeat API only; no admitted workflow/source/runtime/replay claim",
+    "heap allocation/OOM behavior not newly proved",
+    "no Cargo/build/Kani executed; no source edits",
+    "existing disabled kani_lower_control module remains disabled; new cfg(kani) module separate"
+  ],
+  "source_unchanged": true,
+  "setup": "Git-only creation auto-review rejected/notexecuted; documented JJ-native colocatedclone approved/succeeded, Git/JJ roots match dedicated path."
+}

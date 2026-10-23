@@ -1,0 +1,38 @@
+{
+  "assert_start_node": {
+    "start_line": 10,
+    "physical_lines": 32
+  },
+  "assert_attempt_node": {
+    "start_line": 43,
+    "physical_lines": 25
+  },
+  "assert_finish_node": {
+    "start_line": 69,
+    "physical_lines": 24
+  },
+  "lower_repeat_allocates_fresh_slots_for_symbolic_prefix": {
+    "start_line": 96,
+    "physical_lines": 21
+  },
+  "verify_success_slot_count": {
+    "start_line": 118,
+    "physical_lines": 16
+  },
+  "verify_success_nodes": {
+    "start_line": 135,
+    "physical_lines": 24
+  },
+  "verify_success_path": {
+    "start_line": 160,
+    "physical_lines": 14
+  },
+  "verify_failure_path": {
+    "start_line": 175,
+    "physical_lines": 18
+  },
+  "cover_repeat_inputs": {
+    "start_line": 194,
+    "physical_lines": 26
+  }
+}

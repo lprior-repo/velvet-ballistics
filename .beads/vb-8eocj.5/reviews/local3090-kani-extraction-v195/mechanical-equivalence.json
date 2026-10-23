@@ -1,0 +1,16 @@
+{
+  "base": "c0d3e4ccf68f7299fb1aaddfa7bfaa865ea9284b",
+  "candidate": "dd823160331dfac4280289541de419563cf0521f",
+  "assertions": 37,
+  "assertion_token_multiset_identical_after_reserve_result_inlining": true,
+  "covers": 12,
+  "cover_tokens_order_identical": true,
+  "independent_any_calls": 5,
+  "assumes": 0,
+  "unwind12_unchanged": true,
+  "three_raw_field_helpers_byte_identical": true,
+  "workspace_rust_source_matches_candidate": true,
+  "file_sha256": "040153ccdce94db8e8a47dfe9faead4a3d9c8c1f69d8a4e4d3cb1f2017450eb4",
+  "diff_sha256": "c978b03eaa1bb217cf00557fcebb3e3559cbb9e2f1bd32862aeb047518ca87b0",
+  "proof_execution": "NOT RUN BY REVIEWER; V196 owned by Master"
+}
