@@ -221,29 +221,135 @@ fn test_repeat_max_attempts_two_differs_from_max() {
 // PO-009b: Multi-step body rejection test
 // =========================================================================
 
-/// PO-009 extended: Multi-step Repeat body must be rejected by lowering
-/// with StepFieldShape error (exactly one set step required).
-///
-/// The compiler validates that Repeat body has exactly one Set step.
-/// Multi-step bodies are rejected at lowering time.
+/// PO-009 extended: flat multi-step Repeat preserves ordered values, edges,
+/// public API parity, digest sensitivity and deterministic recompilation.
 #[test]
-fn test_repeat_multi_step_body_rejected() {
+fn test_repeat_multi_step_body_compiles_and_changes_digest()
+-> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{CompiledNodeKind, ConstValue, SlotIdx, StepIdx};
+
     let steps_multi = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: a\n          set:\n            output: out1\n            value: \"10\"\n        - id: b\n          set:\n            output: out2\n            value: \"20\"\n        - id: c\n          set:\n            output: out3\n            value: \"30\"\n  - id: done\n    finish:\n      result: 0\n";
 
-    let errors = compile_workflow_errors_from_steps(steps_multi)
-        .expect("multi-step repeat body must be rejected by lowering validation");
-    let first = first_compile_error(&errors).expect("compile error list must be non-empty");
-    match first {
-        CompileError::StepFieldShape {
-            step,
-            field,
-            expected,
-        } => assert_eq!(
-            (*step, *field, *expected),
-            (0, "steps", "exactly one set step")
-        ),
-        other => panic!("expected StepFieldShape for multi-step repeat body, got {other:?}"),
+    let workflow = compile_workflow_from_steps(steps_multi)?;
+    assert_eq!(workflow.node_count(), 7);
+
+    let source_workflow = compile_source_from_steps(steps_multi)?;
+    assert_eq!(workflow.to_parts(), source_workflow.to_parts());
+
+    let start = workflow
+        .node(StepIdx::new(0))
+        .ok_or("missing RepeatStart at 0")?;
+    match &start.kind {
+        CompiledNodeKind::RepeatStart {
+            max_attempts,
+            body,
+            done,
+        } => {
+            assert_eq!(*max_attempts, 3);
+            assert_eq!(*body, StepIdx::new(1));
+            assert_eq!(*done, StepIdx::new(5));
+        }
+        other => return Err(format!("expected RepeatStart at 0, got {:?}", other).into()),
     }
+
+    let set_a = workflow.node(StepIdx::new(1)).ok_or("missing Set at 1")?;
+    let set_b = workflow.node(StepIdx::new(2)).ok_or("missing Set at 2")?;
+    let set_c = workflow.node(StepIdx::new(3)).ok_or("missing Set at 3")?;
+
+    match &set_a.kind {
+        CompiledNodeKind::SetConst { value, .. } => {
+            let const_val = workflow
+                .constant(*value)
+                .ok_or("missing constant for set_a")?;
+            match const_val {
+                ConstValue::I64(10) => {}
+                other => return Err(format!("expected I64(10) for set_a, got {:?}", other).into()),
+            }
+        }
+        other => return Err(format!("expected SetConst at 1, got {:?}", other).into()),
+    }
+
+    match &set_b.kind {
+        CompiledNodeKind::SetConst { value, .. } => {
+            let const_val = workflow
+                .constant(*value)
+                .ok_or("missing constant for set_b")?;
+            match const_val {
+                ConstValue::I64(20) => {}
+                other => return Err(format!("expected I64(20) for set_b, got {:?}", other).into()),
+            }
+        }
+        other => return Err(format!("expected SetConst at 2, got {:?}", other).into()),
+    }
+
+    match &set_c.kind {
+        CompiledNodeKind::SetConst { value, .. } => {
+            let const_val = workflow
+                .constant(*value)
+                .ok_or("missing constant for set_c")?;
+            match const_val {
+                ConstValue::I64(30) => {}
+                other => return Err(format!("expected I64(30) for set_c, got {:?}", other).into()),
+            }
+        }
+        other => return Err(format!("expected SetConst at 3, got {:?}", other).into()),
+    }
+
+    assert_eq!(set_a.next, Some(StepIdx::new(2)));
+    assert_eq!(set_b.next, Some(StepIdx::new(3)));
+    assert_eq!(set_c.next, Some(StepIdx::new(4)));
+
+    assert!(set_a.output.is_some());
+    assert!(set_b.output.is_some());
+    assert!(set_c.output.is_some());
+    assert_ne!(set_a.output, set_b.output);
+    assert_ne!(set_b.output, set_c.output);
+    assert_ne!(set_a.output, set_c.output);
+
+    let check = workflow
+        .node(StepIdx::new(4))
+        .ok_or("missing RepeatCheck at 4")?;
+    assert_eq!(check.next, Some(StepIdx::new(1)));
+    assert_eq!(check.output, start.output);
+    match &check.kind {
+        CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
+            assert_eq!(*attempt_slot, start.output.ok_or("missing start output")?);
+            assert_eq!(*done, StepIdx::new(5));
+        }
+        other => return Err(format!("expected RepeatCheck at 4, got {:?}", other).into()),
+    }
+
+    let repeat_finish = workflow
+        .node(StepIdx::new(5))
+        .ok_or("missing RepeatFinish at 5")?;
+    match &repeat_finish.kind {
+        CompiledNodeKind::RepeatFinish { result } => {
+            assert_eq!(*result, set_c.output.ok_or("missing set_c output")?);
+            assert_eq!(repeat_finish.output, set_c.output);
+        }
+        other => return Err(format!("expected RepeatFinish at 5, got {:?}", other).into()),
+    }
+    assert_eq!(repeat_finish.next, Some(StepIdx::new(6)));
+
+    let terminal = workflow
+        .node(StepIdx::new(6))
+        .ok_or("missing Finish at 6")?;
+    match &terminal.kind {
+        CompiledNodeKind::Finish { result } => {
+            assert_eq!(*result, SlotIdx::new(0));
+        }
+        other => return Err(format!("expected Finish at 6, got {:?}", other).into()),
+    }
+    assert_eq!(terminal.next, None);
+
+    let variant = steps_multi.replace("\"30\"", "\"31\"");
+    let workflow_variant = compile_workflow_from_steps(&variant)?;
+    assert_ne!(workflow.digest(), workflow_variant.digest());
+
+    let workflow_again = compile_workflow_from_steps(steps_multi)?;
+    assert_eq!(workflow.digest(), workflow_again.digest());
+
+    Ok(())
 }
 
 // =========================================================================
@@ -317,8 +423,8 @@ fn test_repeat_different_set_output_changes_digest() {
 // =========================================================================
 
 /// PO-008 / B-007: Repeat with empty body (body: []) is rejected at
-/// lowering with StepFieldShape because `emit_single_body_set` requires
-/// at least one Set step.
+/// lowering with StepFieldShape because the repeat body must contain
+/// at least one Set or Do step.
 #[test]
 fn test_repeat_empty_body_rejected_with_step_field_shape() {
     let steps_empty = "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps: []\n  - id: done\n    finish:\n      result: 0\n";
@@ -333,7 +439,7 @@ fn test_repeat_empty_body_rejected_with_step_field_shape() {
             expected,
         } => assert_eq!(
             (*step, *field, *expected),
-            (0, "steps", "exactly one set step")
+            (0, "steps", "at least one set or do step")
         ),
         other => panic!("expected StepFieldShape for empty repeat body, got {other:?}"),
     }

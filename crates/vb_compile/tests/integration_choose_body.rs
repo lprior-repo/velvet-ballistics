@@ -22,7 +22,7 @@ steps:
   - id: setup
     set:
       output: result
-      value: "1"
+      value: "true"
   - id: pick
     choose:
       branches:
