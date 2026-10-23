@@ -1,0 +1,68 @@
+#![forbid(unsafe_code)]
+
+use crate::FjallJournal;
+use crate::admission::{AcceptedArtifact, prepare_compiled_artifact};
+use vb_core::RuntimePolicy;
+use vb_core::{
+    CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, InputSlotKind, SlotIdx,
+    StepIdx, WorkflowDigest, WorkflowParts,
+};
+
+/// Creates a new temporary journal and returns its path and handle.
+pub(super) fn open_test_journal()
+-> Result<(tempfile::TempDir, FjallJournal), Box<dyn std::error::Error>> {
+    let path = tempfile::TempDir::new().map_err(|e| format!("failed to create temp dir: {}", e))?;
+    let journal = FjallJournal::open(path.path(), None)
+        .map_err(|e| format!("failed to open journal: {}", e))?;
+    Ok((path, journal))
+}
+
+/// Creates a minimal AcceptedArtifact fixture suitable for prepare_artifact_with_sequence.
+/// Uses actual CompiledWorkflow::try_from_parts with a valid WorkflowParts input fixture.
+pub(super) fn minimal_artifact() -> Result<AcceptedArtifact, Box<dyn std::error::Error>> {
+    let mut parts = WorkflowParts {
+        name: "retained_input".into(),
+        digest: WorkflowDigest::from_bytes([0; 32]),
+        semantic_source_identity: None,
+        input_slots: Box::from([
+            CompiledInputSlot {
+                slot: SlotIdx::new(0),
+                kind: InputSlotKind::I64,
+            },
+            CompiledInputSlot {
+                slot: SlotIdx::new(1),
+                kind: InputSlotKind::I64,
+            },
+        ]),
+        nodes: Box::from([CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        }]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: vb_core::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    parts.digest = WorkflowDigest::from_bytes(
+        blake3::hash(
+            &postcard::to_allocvec(&parts)
+                .map_err(|e| format!("failed to serialize workflow parts: {}", e))?,
+        )
+        .into(),
+    );
+    let workflow = CompiledWorkflow::try_from_parts(parts)
+        .map_err(|e| format!("CompiledWorkflow::try_from_parts failed: {}", e))?;
+    let artifact = prepare_compiled_artifact(&workflow, RuntimePolicy::Relaxed, &[])
+        .map_err(|e| format!("prepare_compiled_artifact failed: {}", e))?;
+    Ok(artifact)
+}

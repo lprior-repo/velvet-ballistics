@@ -1,0 +1,52 @@
+1: use super::*;
+2: use vb_core::{
+3:     CompiledInputSlot, CompiledNode, CompiledNodeKind, InputSlotKind, StepIdx, WorkflowParts,
+4: };
+5: 
+6: type TestResult = Result<(), Box<dyn std::error::Error>>;
+7: 
+8: pub(super) fn workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+9:     let mut parts = WorkflowParts {
+10:         name: "retained_input".into(),
+11:         digest: WorkflowDigest::from_bytes([0; 32]),
+12:         semantic_source_identity: None,
+13:         input_slots: Box::from([
+14:             CompiledInputSlot {
+15:                 slot: SlotIdx::new(0),
+16:                 kind: InputSlotKind::I64,
+17:             },
+18:             CompiledInputSlot {
+19:                 slot: SlotIdx::new(1),
+20:                 kind: InputSlotKind::I64,
+21:             },
+22:         ]),
+23:         nodes: Box::from([CompiledNode {
+24:             id: StepIdx::new(0),
+25:             output: None,
+26:             next: None,
+27:             on_error: None,
+28:             error_slot: None,
+29:             kind: CompiledNodeKind::Finish {
+30:                 result: SlotIdx::new(0),
+31:             },
+32:         }]),
+33:         expressions: Box::new([]),
+34:         accessors: Box::new([]),
+35:         constants: Box::new([]),
+36:         slot_count: 3,
+37:         symbols_count: 0,
+38:         entry: StepIdx::new(0),
+39:         resource_contract: vb_core::ResourceContract::DEFAULT,
+40:         step_names: Box::new([]),
+41:     };
+42:     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+43:     Ok(CompiledWorkflow::try_from_parts(parts)?)
+44: }
+45: 
+46: fn record(
+47:     workflow: &CompiledWorkflow,
+48:     inputs: Box<[(SlotIdx, SlotValue)]>,
+49: ) -> Result<RunInputsRecord, JournalError> {
+50:     RunInputsRecord::new(
+51:         RunId::new(7),
+52:         WorkflowDigest::from_bytes([1; 32]),

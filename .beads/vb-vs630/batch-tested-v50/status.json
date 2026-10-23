@@ -1,0 +1,10 @@
+{
+  "status": "WIP12focusednewbatchtestsPASS0.013s;1658filteredskipsNOTallstorageclaim; independentTESTandcombinedintegrationpending",
+  "production_unchanged": "ebe0984326b7fd17603c977dbb9ee680b43522f4 (onlycfgtestmoduledeclarations inbatchmod)",
+  "source_sha256": {
+    "crates/vb_storage/src/batch/artifact_sequence_test_support.rs": "4febe703fa8324cbaac7120aadea4ee471055e2b32a7d047e60fc85589d2ce93",
+    "crates/vb_storage/src/batch/artifact_sequence_tests.rs": "5a06ae83f8369f1f9e19dcda41f8742e7ddbdb93b434345f3a1a24446d92d763"
+  },
+  "initial_native_scope_rejection": "v22 attemptednewcompile_check.rs source outsideallow, scopewatchterminatedownedprocess. Helperneverexecuted, exactrejectedcontents retained batch-rejected-v22/compile_check.rs.txt and removedfromsource.",
+  "source_length": "batchtestfile333lines iscoldtest_in_src; master sourcegate testclass1500, notproduction300; no allfunctions<=25claim"
+}

@@ -1,0 +1,100 @@
+1: #![forbid(unsafe_code)]
+2: use crate::batch::JournalWriteBatch;
+3: use crate::events::JournalEvent;
+4: use crate::journal::artifact_acceptance::{
+5:     IssuedArtifactSequence, LAST_ISSUED_KEY, prepare_artifact_with_sequence,
+6: };
+7: use crate::keys::run_event_key;
+8: use crate::types::{EventSeq, RunId};
+9: use crate::JournalError;
+10: use vb_core::WorkflowDigest;
+11: 
+12: use super::artifact_sequence_test_support::{minimal_artifact, test_journal};
+13: 
+14: fn make_accepted_event(run: RunId, seq: EventSeq) -> JournalEvent {
+15:     JournalEvent::RunAccepted {
+16:         run,
+17:         seq,
+18:         workflow: WorkflowDigest::from_bytes([0; 32]),
+19:     }
+20: }
+21: 
+22: fn encode_event_length(event: &JournalEvent) -> Result<u64, Box<dyn std::error::Error>> {
+23:     let value = crate::codec::encode_record(
+24:         crate::constants::MAGIC_JOURNAL_EVENT,
+25:         event.record_kind(),
+26:         event.seq().get(),
+27:         event,
+28:         crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+29:     )
+30:     .map_err(|e| format!("encode_record failed: {}", e))?;
+31:     Ok(u64::try_from(value.len())
+32:         .map_err(|_| "value.len() exceeds u64")?)
+33: }
+34: 
+35: #[test]
+36: fn put_counter_over_budget_fails_immediately() -> Result<(), Box<dyn std::error::Error>> {
+37:     test_journal()?;
+38:     let (_path, journal) = open_test_journal()?;
+39:     let artifact = minimal_artifact()?;
+40:     let (seq, _stamped) = prepare_artifact_with_sequence(&journal, artifact)
+41:         .map_err(|e| format!("prepare_artifact_with_sequence failed: {}", e))?;
+42: 
+43:     let mut batch = JournalWriteBatch::new(&journal);
+44:     batch.byte_limit = Some(18);
+45: 
+46:     let result = batch.put_artifact_sequence(seq);
+47:     let error = result.map_err(|e| format!("expected error, got Ok: {:?}", e))?;
+48: 
+49:     match error {
+50:         JournalError::JournalBatchBytesExceeded { attempted, limit } => {
+51:             if attempted != 19 || limit != 18 {
+52:                 return Err(format!(
+53:                     "expected attempted=19, limit=18; got attempted={}, limit={}",
+54:                     attempted, limit
+55:                 )
+56:                 .into());
+57:             }
+58:         }
+59:         other => {
+60:             return Err(format!("expected JournalBatchBytesExceeded, got {:?}", other).into());
+61:         }
+62:     }
+63: 
+64:     if !batch.is_aborted() {
+65:         return Err("expected batch to be aborted".into());
+66:     }
+67:     if batch.staged_event_bytes() != 0 {
+68:         return Err("expected staged_event_bytes to be 0".into());
+69:     }
+70:     if batch.staged_metadata_bytes != 0 {
+71:         return Err("expected staged_metadata_bytes to be 0".into());
+72:     }
+73:     if batch.len() != 0 {
+74:         return Err(format!("expected batch len to be 0, got {}", batch.len()).into());
+75:     }
+76: 
+77:     let (seq2, _stamped2) = prepare_artifact_with_sequence(&journal, minimal_artifact()?)
+78:         .map_err(|e| format!("second prepare failed: {}", e))?;
+79:     let subsequent = batch.put_artifact_sequence(seq2);
+80:     match subsequent {
+81:         Err(JournalError::BatchAborted) => {}
+82:         other => {
+83:             return Err(format!(
+84:                 "expected BatchAborted on subsequent put, got {:?}",
+85:                 other
+86:             )
+87:             .into());
+88:         }
+89:     }
+90: 
+91:     let commit_result = batch.commit();
+92:     match commit_result {
+93:         Err(JournalError::BatchAborted) => {}
+94:         other => {
+95:             return Err(format!(
+96:                 "expected BatchAborted on commit, got {:?}",
+97:                 other
+98:             )
+99:             .into());
+100:         }

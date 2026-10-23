@@ -1,0 +1,42 @@
+1: #![forbid(unsafe_code)]
+2: use std::collections::HashMap;
+3: 
+4: use crate::admission::{AcceptedArtifact, bind_artifact_digest};
+5: use crate::types::EventSeq;
+6: use crate::FjallJournal;
+7: use vb_core::WorkflowDigest;
+8: 
+9: type TestResult = Result<(), Box<dyn std::error::Error>>;
+10: 
+11: /// Creates a new temporary journal for testing.
+12: pub(super) fn test_journal() -> TestResult {
+13:     let path = tempfile::TempDir::new()
+14:         .ok_or("failed to create temp dir")?;
+15:     let _ = FjallJournal::open(path.path(), None)
+16:         .ok_or("failed to open journal")?;
+17:     Ok(())
+18: }
+19: 
+20: /// Creates a minimal AcceptedArtifact fixture suitable for prepare_artifact_with_sequence.
+21: /// All fields are set to valid minimal values; the digest is bound by
+22: /// bind_artifact_digest after construction.
+23: pub(super) fn minimal_artifact() -> TestResult {
+24:     let proof = crate::admission::VerificationProof::new(
+25:         WorkflowDigest::from_bytes([0u8; 32]),
+26:         0,
+27:         false,
+28:     );
+29:     let mut artifact = AcceptedArtifact {
+30:         digest: WorkflowDigest::from_bytes([0u8; 32]),
+31:         source_digest: WorkflowDigest::from_bytes([1u8; 32]),
+32:         policy_digest: WorkflowDigest::from_bytes([2u8; 32]),
+33:         ir: Vec::new(),
+34:         verification: proof,
+35:         accepted_at_seq: EventSeq::new(0),
+36:         required_capabilities: Box::new([]),
+37:         action_contracts: Box::new([]),
+38:     };
+39:     bind_artifact_digest(&mut artifact)
+40:         .map_err(|e| format!("failed to bind artifact digest: {}", e))?;
+41:     Ok(artifact)
+42: }
