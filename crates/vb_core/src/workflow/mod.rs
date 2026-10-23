@@ -1716,7 +1716,13 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
         })?);
 
         if let Some(next) = node.next {
-            validate_forward_target(next, index, current_id)?;
+            if matches!(node.kind, CompiledNodeKind::RepeatCheck { .. })
+                && next.as_usize() <= index
+            {
+                validate_repeat_check_back_edge(parts, index, node, next)?;
+            } else {
+                validate_forward_target(next, index, current_id)?;
+            }
         }
 
         if let Some(handler) = node.on_error {
@@ -1824,6 +1830,108 @@ fn validate_choose_expr_edges(
 
 fn validate_loop_done_only(done: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
     validate_forward_target(done, ci, cid)
+}
+
+/// Validates that a RepeatCheck node's backward next-edge is legitimate:
+/// the nearest active enclosing loop start must be a RepeatStart that
+/// matches this check's attempt slot, done target, and body target.
+fn validate_repeat_check_back_edge(
+    parts: &WorkflowParts,
+    check_index: usize,
+    check: &CompiledNode,
+    back_target: StepIdx,
+) -> Result<(), WorkflowError> {
+    let check_attempt = match &check.kind {
+        CompiledNodeKind::RepeatCheck { attempt_slot, .. } => *attempt_slot,
+        _ => unreachable!("validate_repeat_check_back_edge called on non-RepeatCheck"),
+    };
+    let check_done = match &check.kind {
+        CompiledNodeKind::RepeatCheck { done, .. } => *done,
+        _ => unreachable!("validate_repeat_check_back_edge called on non-RepeatCheck"),
+    };
+
+    let nearest_owner = find_nearest_loop_owner(parts, check_index, back_target);
+
+    let Some((owner_index, owner)) = nearest_owner else {
+        return Err(WorkflowError::BackwardEdge {
+            from: check.id,
+            to: back_target,
+        });
+    };
+
+    // Owner must be RepeatStart with matching attempt slot and done target.
+    let owner_attempt = owner.output;
+    let owner_next = owner.next;
+    let owner_done = match &owner.kind {
+        CompiledNodeKind::RepeatStart { done, .. } => Some(*done),
+        _ => None,
+    };
+
+    let owner_is_repeat = matches!(owner.kind, CompiledNodeKind::RepeatStart { .. });
+    let attempt_matches = owner_attempt == Some(check_attempt);
+    let done_matches = owner_done == Some(check_done);
+    let body_matches = owner_next == Some(back_target);
+    let index_order = owner_index < check_index
+        && back_target.as_usize() > owner_index
+        && back_target.as_usize() < check_index
+        && check_done.as_usize() > check_index;
+
+    if owner_is_repeat
+        && attempt_matches
+        && done_matches
+        && body_matches
+        && index_order
+    {
+        Ok(())
+    } else {
+        Err(WorkflowError::BackwardEdge {
+            from: check.id,
+            to: back_target,
+        })
+    }
+}
+
+/// Finds the nearest active enclosing loop owner for a given step.
+/// Active means the loop span extends beyond the check index.
+fn find_nearest_loop_owner(
+    parts: &WorkflowParts,
+    check_index: usize,
+    back_target: StepIdx,
+) -> Option<(usize, &CompiledNode)> {
+    for (i, node) in parts.nodes.iter().take(check_index).enumerate().rev() {
+        let is_loop_start = matches!(
+            node.kind,
+            CompiledNodeKind::ForEachStart { .. }
+                | CompiledNodeKind::CollectStart { .. }
+                | CompiledNodeKind::ReduceStart { .. }
+                | CompiledNodeKind::RepeatStart { .. }
+        );
+        if !is_loop_start {
+            continue;
+        }
+        // Check if this loop encloses the back_target (the body step).
+        let loop_body = match &node.kind {
+            CompiledNodeKind::ForEachStart { body, .. }
+            | CompiledNodeKind::CollectStart { body, .. }
+            | CompiledNodeKind::ReduceStart { body, .. }
+            | CompiledNodeKind::RepeatStart { body, .. } => *body,
+            _ => unreachable!(),
+        };
+        if loop_body == back_target {
+            // Check that the loop is active (extends beyond check index).
+            let loop_done = match &node.kind {
+                CompiledNodeKind::ForEachStart { done, .. }
+                | CompiledNodeKind::CollectStart { done, .. }
+                | CompiledNodeKind::ReduceStart { done, .. }
+                | CompiledNodeKind::RepeatStart { done, .. } => done.as_usize(),
+                _ => unreachable!(),
+            };
+            if loop_done > check_index {
+                return Some((i, node));
+            }
+        }
+    }
+    None
 }
 
 /// Validates that both `body` and `done` edges of a `*Start` loop node point
