@@ -1,0 +1,62 @@
+[
+  {
+    "file": "ROOT_F2_REDUCE_NEXT2_V88_NATIVE.json",
+    "sha256": "9e8124fcac15ce4c99c0be7b34ee4e22bd62804c2008a9a5083455efc1c5481f"
+  },
+  {
+    "file": "ROOT_F2_REDUCE_NEXT2_V88_NATIVE.stdout",
+    "sha256": "2f2f212f2c9260d227a3ba6a346bec4f3792a8502230a5d3da5417d21c708fbb"
+  },
+  {
+    "file": "ROOT_F2_REDUCE_NEXT2_V88_NATIVE.stderr",
+    "sha256": "6d4c803e85bf73762fc8049dfe8a414a8822b41da2372eb8c18fb1e2eb87a90a"
+  },
+  {
+    "file": "ROOT_F2_REDUCE_NEXT2_V88_NATIVE.source-before.json",
+    "sha256": "641e7a24f60c1976ee3e537e9ac881d85949d417358b1518e59bd0ddf6922b71"
+  },
+  {
+    "file": "ROOT_F2_REDUCE_NEXT2_V88_NATIVE.source-after.json",
+    "sha256": "755ca48f8d1ff47ce65c1376d144ffb09de476f2f60b7fbdde8c5c26ef209391"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V88_NATIVE.json",
+    "sha256": "70afd7c5d1aeb6244c41f6482e2a45f79f4f07d0981a116a05d5cf569e5ca2cc"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V88_NATIVE.stdout",
+    "sha256": "107f2d25b26c61015c1887b3a22a5b1811647bd5f9f783b01599c29f1c609f25"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V88_NATIVE.stderr",
+    "sha256": "1a6ae0de36eb3e7beb5de7b7ab31cbe9312e11d1babe81a8fdb0aba5f2fd67d9"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V88_NATIVE.source-before.json",
+    "sha256": "a6301f2b8000fb6e66bf7d4853718dda0bcfd50ee4eacab600803787a9666b17"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V88_NATIVE.source-after.json",
+    "sha256": "99817da6afa93349fff5829b18e491d4cc1bc8ea492425e283a3f5267ed07d5c"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V92_NATIVE.json",
+    "sha256": "6c2173e5df552bf89bd92b78c22cedf60cbab2853408b41c70dec1d6c9f1d97f"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V92_NATIVE.stdout",
+    "sha256": "4d061654836515a8aadab35199388aa3643b9d76ee13013ff2749a9777cc4925"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V92_NATIVE.stderr",
+    "sha256": "0b66177fe54d3aa8467c790a521d02efb97b603929a91ce4d72b75f358d653fa"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V92_NATIVE.source-before.json",
+    "sha256": "7b0baec796e858310303fefc02f4242aa11a67287f5417d3e829cc3f3ba13671"
+  },
+  {
+    "file": "ROOT_F1_SOURCE100_V92_NATIVE.source-after.json",
+    "sha256": "bd0bc60294fbd2154e86d38ff5a4ec419dd3796c3e0c887bb12dd2c0f16438ae"
+  }
+]
