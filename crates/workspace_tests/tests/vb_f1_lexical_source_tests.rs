@@ -90,7 +90,7 @@ fn rejects(source: &str, predicate: impl Fn(&CompileError) -> bool) -> Result<()
 #[test]
 fn declared_input_is_available_before_finish() -> Result<(), String> {
     execute(
-        &scalar_source("inputs: {n: number}\n", "$input.n + 2"),
+        &scalar_source("inputs: {'n': number}\n", "$input.n + 2"),
         Some(SlotValue::I64(40)),
         SlotValue::I64(42),
     )?;
@@ -100,7 +100,7 @@ fn declared_input_is_available_before_finish() -> Result<(), String> {
 #[test]
 fn input_boolean_arithmetic_is_rejected_statically() -> Result<(), String> {
     rejects(
-        &scalar_source("inputs: {n: boolean}\n", "$input.n + 2"),
+        &scalar_source("inputs: {'n': boolean}\n", "$input.n + 2"),
         |e| {
             matches!(
                 e,
@@ -118,7 +118,7 @@ fn input_boolean_arithmetic_is_rejected_statically() -> Result<(), String> {
 fn declared_input_finish_uses_the_same_binding() -> Result<(), String> {
     execute(
         &source(
-            "inputs: {n: number}\n",
+            "inputs: {'n': number}\n",
             "  - id: done\n    finish: {result: '$input.n'}\n",
         ),
         Some(SlotValue::I64(40)),
@@ -131,7 +131,7 @@ fn declared_input_finish_uses_the_same_binding() -> Result<(), String> {
 fn scalar_vars_execute_before_source_steps() -> Result<(), String> {
     execute(
         &scalar_source(
-            "vars: {n: 40, enabled: true, absent: null}\n",
+            "vars: {'n': 40, enabled: true, absent: null}\n",
             "$vars.n + 2",
         ),
         None,
@@ -162,8 +162,12 @@ fn null_var_preserves_its_value() -> Result<(), String> {
 
 #[test]
 fn vars_remain_namespaced_when_a_bare_alias_matches() -> Result<(), String> {
-    let steps = "  - id: first\n    set: {output: n, value: '1'}\n  - id: calculate\n    set: {output: answer, value: '$vars.n + $n'}\n  - id: done\n    finish: {result: answer}\n";
-    execute(&source("vars: {n: 40}\n", steps), None, SlotValue::I64(41))?;
+    let steps = "  - id: first\n    set: {output: 'n', value: '1'}\n  - id: calculate\n    set: {output: answer, value: '$vars.n + $n'}\n  - id: done\n    finish: {result: answer}\n";
+    execute(
+        &source("vars: {'n': 40}\n", steps),
+        None,
+        SlotValue::I64(41),
+    )?;
     Ok(())
 }
 
@@ -186,7 +190,7 @@ fn wrong_var_type_is_rejected_statically() -> Result<(), String> {
 
 #[test]
 fn unknown_var_is_not_a_numeric_slot_error() -> Result<(), String> {
-    rejects(&scalar_source("vars: {n: 1}\n", "$vars.missing"), |e| {
+    rejects(&scalar_source("vars: {'n': 1}\n", "$vars.missing"), |e| {
         matches!(
             e,
             CompileError::UnknownReferenceName {
@@ -200,7 +204,7 @@ fn unknown_var_is_not_a_numeric_slot_error() -> Result<(), String> {
 #[test]
 fn non_scalar_vars_are_not_faked_as_counts() -> Result<(), String> {
     rejects(&scalar_source("vars: {text: hello}\n", "1"), |e| {
-        matches!(e, CompileError::ExpressionLoweringUnsupported { .. })
+        matches!(e, CompileError::UnsupportedConstantValue { step: 0 })
     })
 }
 
@@ -208,12 +212,12 @@ fn choose_source(condition: &str, body: &str, finish: &str) -> String {
     source(
         "inputs: {enabled: boolean}\nvars: {amount: 11}\n",
         &format!(
-            "  - id: first\n    set: {{output: n, value: '40'}}\n  - id: branch\n    choose:\n      branches:\n        - when: \"{condition}\"\n          steps:\n{body}      otherwise: done\n  - id: done\n    finish: {{result: '{finish}'}}\n"
+            "  - id: first\n    set: {{output: 'n', value: '40'}}\n  - id: branch\n    choose:\n      branches:\n        - when: \"{condition}\"\n          steps:\n{body}      otherwise: done\n  - id: done\n    finish: {{result: '{finish}'}}\n"
         ),
     )
 }
 
-const TWO_STEP_BODY: &str = "            - id: first\n              set: {output: n, value: '$vars.amount'}\n            - id: second\n              set: {output: local, value: '$n + 31'}\n";
+const TWO_STEP_BODY: &str = "            - id: first\n              set: {output: 'n', value: '$vars.amount'}\n            - id: second\n              set: {output: local, value: '$n + 31'}\n";
 
 #[test]
 fn choose_body_reads_parent_declarations_and_shadows_without_leaking() -> Result<(), String> {
@@ -456,14 +460,14 @@ fn execute_action(
 
 #[test]
 fn declared_input_flows_through_real_do_completion() -> Result<(), String> {
-    execute_action(&source("inputs: {n: number}\n",
+    execute_action(&source("inputs: {'n': number}\n",
         "  - id: invoke\n    do: {action: '7', input: '$input.n'}\n  - id: done\n    finish: {result: '$invoke'}\n"), ExpectedActionFinish::ActionOutput).map(|_| ())
 }
 
 #[test]
 fn do_after_repeat_cannot_alias_private_counter_or_input() -> Result<(), String> {
     let text = source(
-        "inputs: {n: number}\n",
+        "inputs: {'n': number}\n",
         "  - id: retry\n    repeat:\n      max_attempts: 2\n      steps:\n        - id: body\n          set: {output: ignored, value: '8'}\n  - id: invoke\n    do: {action: '7', input: '$input.n'}\n  - id: done\n    finish: {result: '$invoke'}\n",
     );
     let workflow = compile(&text)?;
@@ -551,7 +555,7 @@ fn numeric_choose_slot_with_known_integer_type_is_rejected() -> Result<(), Strin
 
 fn action_branch_source(condition: &str) -> String {
     source(
-        "inputs: {n: number}\n",
+        "inputs: {'n': number}\n",
         &format!(
             "  - id: branch\n    choose:\n      branches:\n        - when: '{condition}'\n          steps:\n            - id: invoke\n              do: {{action: '7', input: '$input.n'}}\n            - id: copy\n              set: {{output: local, value: '$step.invoke + 1'}}\n      otherwise: done\n  - id: done\n    finish: {{result: '$input.n'}}\n"
         ),
@@ -617,7 +621,7 @@ fn sibling_branch_names_are_not_visible() -> Result<(), String> {
 fn genuine_alias_and_step_id_ambiguity_is_rejected() -> Result<(), String> {
     let text = source(
         "",
-        "  - id: n\n    set: {output: left, value: '1'}\n  - id: second\n    set: {output: n, value: '2'}\n  - id: copy\n    set: {output: answer, value: '$n'}\n  - id: done\n    finish: {result: answer}\n",
+        "  - id: 'n'\n    set: {output: left, value: '1'}\n  - id: second\n    set: {output: 'n', value: '2'}\n  - id: copy\n    set: {output: answer, value: '$n'}\n  - id: done\n    finish: {result: answer}\n",
     );
     rejects(
         &text,
@@ -647,7 +651,7 @@ fn drive_frame(
 #[test]
 fn two_differently_typed_inputs_resolve_to_their_own_ports() -> Result<(), String> {
     let workflow = compile(&scalar_source(
-        "inputs: {enabled: boolean, n: number}\n",
+        "inputs: {enabled: boolean, 'n': number}\n",
         "$input.enabled and $input.n > 0",
     ))?;
     let original = workflow.to_parts();
@@ -688,7 +692,7 @@ fn two_differently_typed_inputs_resolve_to_their_own_ports() -> Result<(), Strin
 #[test]
 fn declared_input_expression_preserves_derived_taint() -> Result<(), String> {
     let text = source(
-        "inputs: {n: number}\n",
+        "inputs: {'n': number}\n",
         "  - id: calculate\n    set: {output: derived, value: '$input.n + 2'}\n  - id: public\n    set: {output: clean, value: '99'}\n  - id: done\n    finish: {result: clean}\n",
     );
     let workflow = compile(&text)?;
