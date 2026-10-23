@@ -1,0 +1,546 @@
+   Compiling libc v0.2.186
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.228
+   Compiling scopeguard v1.2.0
+   Compiling getrandom v0.3.4
+   Compiling once_cell v1.21.4
+   Compiling num-traits v0.2.19
+   Compiling lock_api v0.4.14
+   Compiling linux-raw-sys v0.12.1
+   Compiling serde v1.0.228
+   Compiling equivalent v1.0.2
+   Compiling bitflags v2.11.1
+   Compiling rustix v1.1.4
+   Compiling getrandom v0.4.2
+   Compiling crossbeam-utils v0.8.21
+   Compiling zerocopy v0.8.48
+   Compiling fastrand v2.4.1
+   Compiling tempfile v3.27.0
+   Compiling thiserror v2.0.18
+   Compiling rand_core v0.9.5
+   Compiling spin v0.9.8
+   Compiling crossbeam-epoch v0.9.20
+   Compiling hashbrown v0.17.1
+   Compiling xxhash-rust v0.8.15
+   Compiling byteorder-lite v0.1.0
+   Compiling iana-time-zone v0.1.65
+   Compiling smallvec v1.15.1
+   Compiling byteorder v1.5.0
+   Compiling hashbrown v0.16.1
+   Compiling twox-hash v2.1.2
+   Compiling log v0.4.29
+   Compiling compare v0.0.6
+   Compiling interval-heap v0.0.5
+   Compiling sfa v1.0.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling lz4_flex v0.13.1
+   Compiling quick_cache v0.6.22
+   Compiling hash32 v0.2.1
+   Compiling parking_lot_core v0.9.12
+   Compiling chrono v0.4.44
+   Compiling indexmap v2.14.0
+   Compiling crossbeam-skiplist v0.1.3
+   Compiling bytes v1.11.1
+   Compiling enum_dispatch v0.3.13
+   Compiling wait-timeout v0.2.1
+   Compiling rustc-hash v2.1.2
+   Compiling stable_deref_trait v1.2.1
+   Compiling self_cell v1.2.2
+   Compiling bit-vec v0.8.0
+   Compiling varint-rs v2.2.0
+   Compiling byteview v0.10.1
+   Compiling quick-error v1.2.3
+   Compiling fnv v1.0.7
+   Compiling hashbrown v0.14.5
+   Compiling rusty-fork v0.3.1
+   Compiling lsm-tree v3.1.4
+   Compiling dashmap v6.2.1
+   Compiling bit-set v0.8.0
+   Compiling heapless v0.7.17
+   Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/crates/vb_core)
+   Compiling rand_chacha v0.9.0
+   Compiling flume v0.12.0
+   Compiling rand v0.9.4
+   Compiling rand_xorshift v0.4.0
+   Compiling cobs v0.3.0
+   Compiling unarray v0.1.4
+   Compiling regex-syntax v0.8.10
+   Compiling arrayref v0.3.9
+   Compiling constant_time_eq v0.4.2
+   Compiling cpufeatures v0.3.0
+   Compiling arrayvec v0.7.6
+   Compiling blake3 v1.8.5
+   Compiling postcard v1.1.3
+   Compiling fjall v3.1.4
+   Compiling proptest v1.11.0
+   Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/crates/vb_validate)
+   Compiling crc32c v0.6.8
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/crates/vb_storage)
+error: unused imports: `ActionPackDigest`, `ActionPack`, `ExecutorIdentity`, `ExecutorVersionDigest`, `IdempotencyClass`, `ManifestDigest`, `ReceiptSchemaDigest`, `RecoveryClass`, and `TimeoutPolicy`
+ --> crates/vb_storage/src/executor/issuance_test_support.rs:8:5
+  |
+8 |     ActionPack, ActionPackDigest, CapabilityScopeSpec, ExecutorIdentity, ExecutorVersionDigest,
+  |     ^^^^^^^^^^  ^^^^^^^^^^^^^^^^                       ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^
+9 |     IdempotencyClass, ManifestDigest, ReceiptSchemaDigest, RecoveryClass, TimeoutPolicy,
+  |     ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused import: `ExecutorError`
+ --> crates/vb_storage/src/executor/issuance_tests.rs:6:40
+  |
+6 | use crate::executor::{ExecutorCatalog, ExecutorError};
+  |                                        ^^^^^^^^^^^^^
+
+error: use of deprecated method `tempfile::TempDir::into_path`: use TempDir::keep()
+  --> crates/vb_storage/src/executor/issuance_test_support.rs:22:20
+   |
+22 |     let path = dir.into_path();
+   |                    ^^^^^^^^^
+   |
+   = note: `-D deprecated` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(deprecated)]`
+
+error[E0560]: struct `CapabilityScopeSpec` has no field named `grants`
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:150:9
+    |
+150 |         grants: Box::new([vb_core::Capability::new(
+    |         ^^^^^^ `CapabilityScopeSpec` does not have this field
+    |
+    = note: available fields are: `namespace`, `key`
+
+error[E0560]: struct `CapabilityScopeSpec` has no field named `denies`
+   --> crates/vb_storage/src/executor/issuance_test_support.rs:154:9
+    |
+154 |         denies: Box::new([]),
+    |         ^^^^^^ `CapabilityScopeSpec` does not have this field
+    |
+    = note: available fields are: `namespace`, `key`
+
+error[E0277]: can't compare `u8` with `str`
+    --> crates/vb_storage/src/executor/issuance_failure_tests.rs:127:23
+     |
+ 127 |         })) if prefix == "0" && expected_len == 8 && actual_len == 7 => {}
+     |                       ^^ no implementation for `u8 == str`
+     |
+help: the trait `PartialEq<str>` is not implemented for `u8`
+      but trait `PartialEq<u8>` is implemented for it
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1875:13
+     |
+1875 |               impl const PartialEq for $t {
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1897 | /     partial_eq_impl! {
+1898 | |         bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
+1899 | |     }
+     | |_____- in this macro invocation
+     = help: for that trait implementation, expected `u8`, found `str`
+     = note: required for `&u8` to implement `PartialEq<&str>`
+     = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: can't compare `&usize` with `{integer}`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:127:46
+    |
+127 |         })) if prefix == "0" && expected_len == 8 && actual_len == 7 => {}
+    |                                              ^^ no implementation for `&usize == {integer}`
+    |
+    = help: the trait `PartialEq<{integer}>` is not implemented for `&usize`
+help: consider dereferencing here
+    |
+127 |         })) if prefix == "0" && *expected_len == 8 && actual_len == 7 => {}
+    |                                 +
+
+error[E0277]: can't compare `&usize` with `{integer}`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:127:65
+    |
+127 |         })) if prefix == "0" && expected_len == 8 && actual_len == 7 => {}
+    |                                                                 ^^ no implementation for `&usize == {integer}`
+    |
+    = help: the trait `PartialEq<{integer}>` is not implemented for `&usize`
+help: consider dereferencing here
+    |
+127 |         })) if prefix == "0" && expected_len == 8 && *actual_len == 7 => {}
+    |                                                      +
+
+error[E0277]: can't compare `u8` with `str`
+    --> crates/vb_storage/src/executor/issuance_failure_tests.rs:174:23
+     |
+ 174 |         })) if prefix == "0" && expected_len == 8 && actual_len == 9 => {}
+     |                       ^^ no implementation for `u8 == str`
+     |
+help: the trait `PartialEq<str>` is not implemented for `u8`
+      but trait `PartialEq<u8>` is implemented for it
+    --> /home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1875:13
+     |
+1875 |               impl const PartialEq for $t {
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1897 | /     partial_eq_impl! {
+1898 | |         bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
+1899 | |     }
+     | |_____- in this macro invocation
+     = help: for that trait implementation, expected `u8`, found `str`
+     = note: required for `&u8` to implement `PartialEq<&str>`
+     = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: can't compare `&usize` with `{integer}`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:174:46
+    |
+174 |         })) if prefix == "0" && expected_len == 8 && actual_len == 9 => {}
+    |                                              ^^ no implementation for `&usize == {integer}`
+    |
+    = help: the trait `PartialEq<{integer}>` is not implemented for `&usize`
+help: consider dereferencing here
+    |
+174 |         })) if prefix == "0" && *expected_len == 8 && actual_len == 9 => {}
+    |                                 +
+
+error[E0277]: can't compare `&usize` with `{integer}`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:174:65
+    |
+174 |         })) if prefix == "0" && expected_len == 8 && actual_len == 9 => {}
+    |                                                                 ^^ no implementation for `&usize == {integer}`
+    |
+    = help: the trait `PartialEq<{integer}>` is not implemented for `&usize`
+help: consider dereferencing here
+    |
+174 |         })) if prefix == "0" && expected_len == 8 && *actual_len == 9 => {}
+    |                                                      +
+
+error: unused variable: `scope`
+  --> crates/vb_storage/src/executor/issuance_tests.rs:18:9
+   |
+18 |     let scope = register_scope();
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_scope`
+   |
+   = note: `-D unused-variables` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_variables)]`
+
+error[E0382]: use of moved value: `contract`
+   --> crates/vb_storage/src/executor/issuance_tests.rs:140:11
+    |
+120 |     let contract = action_contract()?;
+    |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+129 |         &[contract],
+    |           -------- value moved here
+...
+140 |         &[contract],
+    |           ^^^^^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+129 |         &[contract.clone()],
+    |                   ++++++++
+
+error[E0382]: use of moved value: `pack`
+   --> crates/vb_storage/src/executor/issuance_tests.rs:141:11
+    |
+122 |     let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+    |         ---- move occurs because `pack` has type `ActionPack`, which does not implement the `Copy` trait
+...
+130 |         &[pack],
+    |           ---- value moved here
+...
+141 |         &[pack],
+    |           ^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+130 |         &[pack.clone()],
+    |               ++++++++
+
+error[E0382]: use of moved value: `contract`
+   --> crates/vb_storage/src/executor/issuance_tests.rs:151:11
+    |
+120 |     let contract = action_contract()?;
+    |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+140 |         &[contract],
+    |           -------- value moved here
+...
+151 |         &[contract],
+    |           ^^^^^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+140 |         &[contract.clone()],
+    |                   ++++++++
+
+error[E0382]: use of moved value: `pack`
+   --> crates/vb_storage/src/executor/issuance_tests.rs:152:11
+    |
+122 |     let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+    |         ---- move occurs because `pack` has type `ActionPack`, which does not implement the `Copy` trait
+...
+141 |         &[pack],
+    |           ---- value moved here
+...
+152 |         &[pack],
+    |           ^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+141 |         &[pack.clone()],
+    |               ++++++++
+
+error[E0382]: use of moved value: `contract`
+   --> crates/vb_storage/src/executor/issuance_tests.rs:198:11
+    |
+177 |     let contract = action_contract()?;
+    |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+186 |         &[contract],
+    |           -------- value moved here
+...
+198 |         &[contract],
+    |           ^^^^^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+186 |         &[contract.clone()],
+    |                   ++++++++
+
+error[E0382]: use of moved value: `pack`
+   --> crates/vb_storage/src/executor/issuance_tests.rs:199:11
+    |
+179 |     let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+    |         ---- move occurs because `pack` has type `ActionPack`, which does not implement the `Copy` trait
+...
+187 |         &[pack],
+    |           ---- value moved here
+...
+199 |         &[pack],
+    |           ^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+187 |         &[pack.clone()],
+    |               ++++++++
+
+error[E0382]: use of moved value: `contract`
+   --> crates/vb_storage/src/executor/issuance_tests.rs:206:11
+    |
+177 |     let contract = action_contract()?;
+    |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+198 |         &[contract],
+    |           -------- value moved here
+...
+206 |         &[contract],
+    |           ^^^^^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+198 |         &[contract.clone()],
+    |                   ++++++++
+
+error[E0382]: use of moved value: `pack`
+   --> crates/vb_storage/src/executor/issuance_tests.rs:207:11
+    |
+179 |     let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+    |         ---- move occurs because `pack` has type `ActionPack`, which does not implement the `Copy` trait
+...
+199 |         &[pack],
+    |           ---- value moved here
+...
+207 |         &[pack],
+    |           ^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+199 |         &[pack.clone()],
+    |               ++++++++
+
+error[E0382]: use of moved value: `contract`
+   --> crates/vb_storage/src/executor/issuance_tests.rs:250:11
+    |
+232 |     let contract = action_contract()?;
+    |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+241 |         &[contract],
+    |           -------- value moved here
+...
+250 |         &[contract],
+    |           ^^^^^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+241 |         &[contract.clone()],
+    |                   ++++++++
+
+error[E0382]: use of moved value: `contract`
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:48:11
+   |
+22 |     let contract = action_contract()?;
+   |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+32 |         &[contract],
+   |           -------- value moved here
+...
+48 |         &[contract],
+   |           ^^^^^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+32 |         &[contract.clone()],
+   |                   ++++++++
+
+error[E0382]: use of moved value: `pack`
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:49:11
+   |
+24 |     let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+   |         ---- move occurs because `pack` has type `ActionPack`, which does not implement the `Copy` trait
+...
+33 |         &[pack],
+   |           ---- value moved here
+...
+49 |         &[pack],
+   |           ^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+33 |         &[pack.clone()],
+   |               ++++++++
+
+error[E0382]: use of moved value: `contract`
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:93:11
+   |
+63 |     let contract = action_contract()?;
+   |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+73 |         &[contract],
+   |           -------- value moved here
+...
+93 |         &[contract],
+   |           ^^^^^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+73 |         &[contract.clone()],
+   |                   ++++++++
+
+error[E0382]: use of moved value: `pack`
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:94:11
+   |
+65 |     let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+   |         ---- move occurs because `pack` has type `ActionPack`, which does not implement the `Copy` trait
+...
+74 |         &[pack],
+   |           ---- value moved here
+...
+94 |         &[pack],
+   |           ^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+74 |         &[pack.clone()],
+   |               ++++++++
+
+error[E0382]: use of moved value: `contract`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:244:11
+    |
+221 |     let contract = action_contract()?;
+    |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+231 |         &[contract],
+    |           -------- value moved here
+...
+244 |         &[contract],
+    |           ^^^^^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+231 |         &[contract.clone()],
+    |                   ++++++++
+
+error[E0382]: use of moved value: `pack`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:245:11
+    |
+223 |     let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+    |         ---- move occurs because `pack` has type `ActionPack`, which does not implement the `Copy` trait
+...
+232 |         &[pack],
+    |           ---- value moved here
+...
+245 |         &[pack],
+    |           ^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+232 |         &[pack.clone()],
+    |               ++++++++
+
+error[E0382]: use of moved value: `contract`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:278:11
+    |
+265 |     let contract = action_contract()?;
+    |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+269 |     let expected = catalog.prepare_artifact(&workflow, RuntimePolicy::Strict, &[contract], &[pack])?;
+    |                                                                                 -------- value moved here
+...
+278 |         &[contract],
+    |           ^^^^^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+269 |     let expected = catalog.prepare_artifact(&workflow, RuntimePolicy::Strict, &[contract.clone()], &[pack])?;
+    |                                                                                         ++++++++
+
+error[E0382]: use of moved value: `pack`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:279:11
+    |
+267 |     let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+    |         ---- move occurs because `pack` has type `ActionPack`, which does not implement the `Copy` trait
+268 |
+269 |     let expected = catalog.prepare_artifact(&workflow, RuntimePolicy::Strict, &[contract], &[pack])?;
+    |                                                                                              ---- value moved here
+...
+279 |         &[pack],
+    |           ^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+269 |     let expected = catalog.prepare_artifact(&workflow, RuntimePolicy::Strict, &[contract], &[pack.clone()])?;
+    |                                                                                                  ++++++++
+
+error[E0382]: use of moved value: `contract`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:294:11
+    |
+265 |     let contract = action_contract()?;
+    |         -------- move occurs because `contract` has type `vb_core::ActionContract`, which does not implement the `Copy` trait
+...
+278 |         &[contract],
+    |           -------- value moved here
+...
+294 |         &[contract],
+    |           ^^^^^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+278 |         &[contract.clone()],
+    |                   ++++++++
+
+error[E0382]: use of moved value: `pack`
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:295:11
+    |
+267 |     let pack = catalog.register_pack(&contract, scope, vb_core::action_pack::RecoveryClass::Blocked)?;
+    |         ---- move occurs because `pack` has type `ActionPack`, which does not implement the `Copy` trait
+...
+279 |         &[pack],
+    |           ---- value moved here
+...
+295 |         &[pack],
+    |           ^^^^ value used here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+279 |         &[pack.clone()],
+    |               ++++++++
+
+Some errors have detailed explanations: E0277, E0382, E0560.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `vb_storage` (lib test) due to 31 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

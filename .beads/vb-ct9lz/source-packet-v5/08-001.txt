@@ -1,0 +1,51 @@
+crates/vb_storage/src/executor/error.rs:1: use thiserror::Error;
+crates/vb_storage/src/executor/error.rs:2: 
+crates/vb_storage/src/executor/error.rs:3: /// Typed failures preserve uncertain I/O outcomes for receipt reconciliation.
+crates/vb_storage/src/executor/error.rs:4: #[derive(Debug, Error)]
+crates/vb_storage/src/executor/error.rs:5: pub enum ExecutorError {
+crates/vb_storage/src/executor/error.rs:6:     /// Storage engine failure; an atomic commit may already have happened.
+crates/vb_storage/src/executor/error.rs:7:     #[error("executor storage: {0}")]
+crates/vb_storage/src/executor/error.rs:8:     Storage(#[from] fjall::Error),
+crates/vb_storage/src/executor/error.rs:9:     /// Scratch or production filesystem operation failed.
+crates/vb_storage/src/executor/error.rs:10:     #[error("executor filesystem: {0}")]
+crates/vb_storage/src/executor/error.rs:11:     Io(#[from] std::io::Error),
+crates/vb_storage/src/executor/error.rs:12:     /// Wire encoding or decoding failed.
+crates/vb_storage/src/executor/error.rs:13:     #[error("executor codec: {0}")]
+crates/vb_storage/src/executor/error.rs:14:     Codec(#[from] postcard::Error),
+crates/vb_storage/src/executor/error.rs:15:     /// Artifact verifier failed.
+crates/vb_storage/src/executor/error.rs:16:     #[error("artifact verification: {0}")]
+crates/vb_storage/src/executor/error.rs:17:     Artifact(#[from] crate::JournalError),
+crates/vb_storage/src/executor/error.rs:18:     /// Registered identity, ABI, scope, timeout, schema or classification disagrees.
+crates/vb_storage/src/executor/error.rs:19:     #[error("unsupported or mismatched action pack")]
+crates/vb_storage/src/executor/error.rs:20:     PackMismatch,
+crates/vb_storage/src/executor/error.rs:21:     /// Raw packed evidence cannot establish a trusted catalog.
+crates/vb_storage/src/executor/error.rs:22:     #[error("registered executor catalog required")]
+crates/vb_storage/src/executor/error.rs:23:     CatalogRequired,
+crates/vb_storage/src/executor/error.rs:24:     /// A persisted logical ticket has another input, resource or pack.
+crates/vb_storage/src/executor/error.rs:25:     #[error("durable receipt conflict")]
+crates/vb_storage/src/executor/error.rs:26:     ReceiptConflict,
+crates/vb_storage/src/executor/error.rs:27:     /// The bounded store cannot accept a new logical ticket.
+crates/vb_storage/src/executor/error.rs:28:     #[error("durable receipt capacity exhausted")]
+crates/vb_storage/src/executor/error.rs:29:     Capacity,
+crates/vb_storage/src/executor/error.rs:30:     /// Grant does not match the exact artifact/run/action/ticket/resource.
+crates/vb_storage/src/executor/error.rs:31:     #[error("execution authority mismatch")]
+crates/vb_storage/src/executor/error.rs:32:     Unauthorized,
+crates/vb_storage/src/executor/error.rs:33:     /// Ticket key or attempt bounds are invalid.
+crates/vb_storage/src/executor/error.rs:34:     #[error("invalid action ticket")]
+crates/vb_storage/src/executor/error.rs:35:     InvalidTicket,
+crates/vb_storage/src/executor/error.rs:36:     /// Adapter accepts only one I64 value within its byte bound.
+crates/vb_storage/src/executor/error.rs:37:     #[error("invalid register input")]
+crates/vb_storage/src/executor/error.rs:38:     InvalidInput,
+crates/vb_storage/src/executor/error.rs:39:     /// Existing metadata or receipt is inconsistent.
+crates/vb_storage/src/executor/error.rs:40:     #[error("executor store is corrupt or incompatible")]
+crates/vb_storage/src/executor/error.rs:41:     Corrupt,
+crates/vb_storage/src/executor/error.rs:42:     /// Concrete duplicate/conflict/reopen observations failed their contract.
+crates/vb_storage/src/executor/error.rs:43:     #[error("registered executor conformance failed")]
+crates/vb_storage/src/executor/error.rs:44:     Conformance,
+crates/vb_storage/src/executor/error.rs:45:     /// Deadline expired; reconcile a receipt before attempting another effect.
+crates/vb_storage/src/executor/error.rs:46:     #[error("executor deadline expired; receipt reconciliation required")]
+crates/vb_storage/src/executor/error.rs:47:     Timeout,
+crates/vb_storage/src/executor/error.rs:48:     /// Recovery requires an existing receipt and never executes an effect.
+crates/vb_storage/src/executor/error.rs:49:     #[error("no durable receipt; execution is blocked")]
+crates/vb_storage/src/executor/error.rs:50:     ReceiptMissing,
+crates/vb_storage/src/executor/error.rs:51: }

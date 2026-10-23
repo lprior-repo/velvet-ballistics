@@ -1,0 +1,100 @@
+crates/vb_storage/src/executor/issuance_test_support.rs:1: //! Test support for executor issuance tests.
+crates/vb_storage/src/executor/issuance_test_support.rs:2: //! Provides fixture construction, catalog, journal, and artifact helpers.
+crates/vb_storage/src/executor/issuance_test_support.rs:3: 
+crates/vb_storage/src/executor/issuance_test_support.rs:4: use crate::FjallJournal;
+crates/vb_storage/src/executor/issuance_test_support.rs:5: use crate::{AcceptedArtifact, admission};
+crates/vb_storage/src/executor/issuance_test_support.rs:6: use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+crates/vb_storage/src/executor/issuance_test_support.rs:7: use vb_core::action_pack::{ActionPack, CapabilityScopeSpec, RecoveryClass};
+crates/vb_storage/src/executor/issuance_test_support.rs:8: use vb_core::value::ConstValue;
+crates/vb_storage/src/executor/issuance_test_support.rs:9: use vb_core::workflow::{ResourceContract, WorkflowParts};
+crates/vb_storage/src/executor/issuance_test_support.rs:10: use vb_core::{
+crates/vb_storage/src/executor/issuance_test_support.rs:11:     Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx,
+crates/vb_storage/src/executor/issuance_test_support.rs:12:     StepIdx, WorkflowDigest,
+crates/vb_storage/src/executor/issuance_test_support.rs:13: };
+crates/vb_storage/src/executor/issuance_test_support.rs:14: 
+crates/vb_storage/src/executor/issuance_test_support.rs:15: type BoxError = Box<dyn std::error::Error>;
+crates/vb_storage/src/executor/issuance_test_support.rs:16: 
+crates/vb_storage/src/executor/issuance_test_support.rs:17: pub(super) type TestResult = Result<(), BoxError>;
+crates/vb_storage/src/executor/issuance_test_support.rs:18: 
+crates/vb_storage/src/executor/issuance_test_support.rs:19: /// Open a fresh test journal in a temporary directory.
+crates/vb_storage/src/executor/issuance_test_support.rs:20: pub(super) fn open_test_journal() -> Result<(tempfile::TempDir, FjallJournal), BoxError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:21:     let dir = tempfile::tempdir()?;
+crates/vb_storage/src/executor/issuance_test_support.rs:22:     let journal = FjallJournal::open(dir.path(), None)?;
+crates/vb_storage/src/executor/issuance_test_support.rs:23:     Ok((dir, journal))
+crates/vb_storage/src/executor/issuance_test_support.rs:24: }
+crates/vb_storage/src/executor/issuance_test_support.rs:25: 
+crates/vb_storage/src/executor/issuance_test_support.rs:26: /// Build a minimal compiled workflow with no actions.
+crates/vb_storage/src/executor/issuance_test_support.rs:27: pub(super) fn minimal_workflow() -> Result<CompiledWorkflow, BoxError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:28:     let mut parts = parts_from("test_minimal");
+crates/vb_storage/src/executor/issuance_test_support.rs:29:     parts.constants = Box::new([ConstValue::I64(42)]);
+crates/vb_storage/src/executor/issuance_test_support.rs:30:     parts.slot_count = 1;
+crates/vb_storage/src/executor/issuance_test_support.rs:31:     canonicalize_parts(&mut parts)?;
+crates/vb_storage/src/executor/issuance_test_support.rs:32:     Ok(CompiledWorkflow::try_from_parts(parts)?)
+crates/vb_storage/src/executor/issuance_test_support.rs:33: }
+crates/vb_storage/src/executor/issuance_test_support.rs:34: 
+crates/vb_storage/src/executor/issuance_test_support.rs:35: /// Build a compiled workflow containing one action invocation.
+crates/vb_storage/src/executor/issuance_test_support.rs:36: pub(super) fn action_workflow() -> Result<CompiledWorkflow, BoxError> {
+crates/vb_storage/src/executor/issuance_test_support.rs:37:     let mut parts = parts_from("test_action");
+crates/vb_storage/src/executor/issuance_test_support.rs:38:     parts.nodes = Box::new([set_node(), action_node(), finish_node(2, 1)]);
+crates/vb_storage/src/executor/issuance_test_support.rs:39:     parts.constants = Box::new([ConstValue::I64(42)]);
+crates/vb_storage/src/executor/issuance_test_support.rs:40:     parts.slot_count = 2;
+crates/vb_storage/src/executor/issuance_test_support.rs:41:     canonicalize_parts(&mut parts)?;
+crates/vb_storage/src/executor/issuance_test_support.rs:42:     Ok(CompiledWorkflow::try_from_parts(parts)?)
+crates/vb_storage/src/executor/issuance_test_support.rs:43: }
+crates/vb_storage/src/executor/issuance_test_support.rs:44: 
+crates/vb_storage/src/executor/issuance_test_support.rs:45: fn set_node() -> CompiledNode {
+crates/vb_storage/src/executor/issuance_test_support.rs:46:     CompiledNode {
+crates/vb_storage/src/executor/issuance_test_support.rs:47:         id: StepIdx::new(0),
+crates/vb_storage/src/executor/issuance_test_support.rs:48:         output: Some(SlotIdx::new(0)),
+crates/vb_storage/src/executor/issuance_test_support.rs:49:         next: Some(StepIdx::new(1)),
+crates/vb_storage/src/executor/issuance_test_support.rs:50:         on_error: None,
+crates/vb_storage/src/executor/issuance_test_support.rs:51:         error_slot: None,
+crates/vb_storage/src/executor/issuance_test_support.rs:52:         kind: CompiledNodeKind::SetConst {
+crates/vb_storage/src/executor/issuance_test_support.rs:53:             value: ConstIdx::new(0),
+crates/vb_storage/src/executor/issuance_test_support.rs:54:         },
+crates/vb_storage/src/executor/issuance_test_support.rs:55:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:56: }
+crates/vb_storage/src/executor/issuance_test_support.rs:57: 
+crates/vb_storage/src/executor/issuance_test_support.rs:58: fn action_node() -> CompiledNode {
+crates/vb_storage/src/executor/issuance_test_support.rs:59:     CompiledNode {
+crates/vb_storage/src/executor/issuance_test_support.rs:60:         id: StepIdx::new(1),
+crates/vb_storage/src/executor/issuance_test_support.rs:61:         output: Some(SlotIdx::new(1)),
+crates/vb_storage/src/executor/issuance_test_support.rs:62:         next: Some(StepIdx::new(2)),
+crates/vb_storage/src/executor/issuance_test_support.rs:63:         on_error: None,
+crates/vb_storage/src/executor/issuance_test_support.rs:64:         error_slot: None,
+crates/vb_storage/src/executor/issuance_test_support.rs:65:         kind: CompiledNodeKind::Do {
+crates/vb_storage/src/executor/issuance_test_support.rs:66:             action: vb_core::ActionId::new(0),
+crates/vb_storage/src/executor/issuance_test_support.rs:67:             input: SlotIdx::new(0),
+crates/vb_storage/src/executor/issuance_test_support.rs:68:         },
+crates/vb_storage/src/executor/issuance_test_support.rs:69:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:70: }
+crates/vb_storage/src/executor/issuance_test_support.rs:71: 
+crates/vb_storage/src/executor/issuance_test_support.rs:72: fn finish_node(id: u16, result: u16) -> CompiledNode {
+crates/vb_storage/src/executor/issuance_test_support.rs:73:     CompiledNode {
+crates/vb_storage/src/executor/issuance_test_support.rs:74:         id: StepIdx::new(id),
+crates/vb_storage/src/executor/issuance_test_support.rs:75:         output: None,
+crates/vb_storage/src/executor/issuance_test_support.rs:76:         next: None,
+crates/vb_storage/src/executor/issuance_test_support.rs:77:         on_error: None,
+crates/vb_storage/src/executor/issuance_test_support.rs:78:         error_slot: None,
+crates/vb_storage/src/executor/issuance_test_support.rs:79:         kind: CompiledNodeKind::Finish {
+crates/vb_storage/src/executor/issuance_test_support.rs:80:             result: SlotIdx::new(result),
+crates/vb_storage/src/executor/issuance_test_support.rs:81:         },
+crates/vb_storage/src/executor/issuance_test_support.rs:82:     }
+crates/vb_storage/src/executor/issuance_test_support.rs:83: }
+crates/vb_storage/src/executor/issuance_test_support.rs:84: 
+crates/vb_storage/src/executor/issuance_test_support.rs:85: fn parts_from(name: &'static str) -> WorkflowParts {
+crates/vb_storage/src/executor/issuance_test_support.rs:86:     WorkflowParts {
+crates/vb_storage/src/executor/issuance_test_support.rs:87:         semantic_source_identity: None,
+crates/vb_storage/src/executor/issuance_test_support.rs:88:         name: Box::<str>::from(name),
+crates/vb_storage/src/executor/issuance_test_support.rs:89:         input_slots: Box::new([]),
+crates/vb_storage/src/executor/issuance_test_support.rs:90:         digest: WorkflowDigest::from_bytes([0u8; 32]),
+crates/vb_storage/src/executor/issuance_test_support.rs:91:         nodes: Box::new([set_node(), finish_node(1, 0)]),
+crates/vb_storage/src/executor/issuance_test_support.rs:92:         expressions: Box::new([]),
+crates/vb_storage/src/executor/issuance_test_support.rs:93:         accessors: Box::new([]),
+crates/vb_storage/src/executor/issuance_test_support.rs:94:         constants: Box::new([]),
+crates/vb_storage/src/executor/issuance_test_support.rs:95:         slot_count: 0,
+crates/vb_storage/src/executor/issuance_test_support.rs:96:         symbols_count: 0,
+crates/vb_storage/src/executor/issuance_test_support.rs:97:         entry: StepIdx::new(0),
+crates/vb_storage/src/executor/issuance_test_support.rs:98:         resource_contract: ResourceContract::DEFAULT,
+crates/vb_storage/src/executor/issuance_test_support.rs:99:         step_names: Box::new([]),
+crates/vb_storage/src/executor/issuance_test_support.rs:100:     }

@@ -1,0 +1,272 @@
+   Compiling vb_storage v0.1.0 (/home/lewis/src/isoloated/vb-ct9lz-impl-local5090-v4/crates/vb_storage)
+error[E0425]: cannot find type `ActionContract` in this scope
+  --> crates/vb_storage/src/executor/issuance_tests.rs:10:30
+   |
+10 | fn contract_slice(contract: &ActionContract) -> &[ActionContract] {
+   |                              ^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: struct `crate::admission::tests::ActionContract` exists but is inaccessible
+help: consider importing this struct
+   |
+ 5 + use vb_core::ActionContract;
+   |
+
+error[E0425]: cannot find type `ActionContract` in this scope
+  --> crates/vb_storage/src/executor/issuance_tests.rs:10:51
+   |
+10 | fn contract_slice(contract: &ActionContract) -> &[ActionContract] {
+   |                                                   ^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: struct `crate::admission::tests::ActionContract` exists but is inaccessible
+help: consider importing this struct
+   |
+ 5 + use vb_core::ActionContract;
+   |
+
+error[E0425]: cannot find type `ActionPack` in this scope
+  --> crates/vb_storage/src/executor/issuance_tests.rs:14:22
+   |
+14 | fn pack_slice(pack: &ActionPack) -> &[ActionPack] {
+   |                      ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 5 + use vb_core::action_pack::ActionPack;
+   |
+
+error[E0425]: cannot find type `ActionPack` in this scope
+  --> crates/vb_storage/src/executor/issuance_tests.rs:14:39
+   |
+14 | fn pack_slice(pack: &ActionPack) -> &[ActionPack] {
+   |                                       ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 5 + use vb_core::action_pack::ActionPack;
+   |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+  --> crates/vb_storage/src/executor/issuance_tests.rs:26:56
+   |
+26 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+   |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+   |
+help: consider importing this enum
+   |
+ 5 + use vb_core::action_pack::RecoveryClass;
+   |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+  --> crates/vb_storage/src/executor/issuance_tests.rs:51:56
+   |
+51 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+   |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+   |
+help: consider importing this enum
+   |
+ 5 + use vb_core::action_pack::RecoveryClass;
+   |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+  --> crates/vb_storage/src/executor/issuance_tests.rs:76:56
+   |
+76 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+   |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+   |
+help: consider importing this enum
+   |
+ 5 + use vb_core::action_pack::RecoveryClass;
+   |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/vb_storage/src/executor/issuance_tests.rs:101:56
+    |
+101 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+    |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+  5 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/vb_storage/src/executor/issuance_tests.rs:126:56
+    |
+126 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+    |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+  5 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/vb_storage/src/executor/issuance_tests.rs:175:56
+    |
+175 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+    |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+  5 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/vb_storage/src/executor/issuance_tests.rs:225:56
+    |
+225 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+    |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+  5 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0425]: cannot find type `ActionContract` in this scope
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:10:30
+   |
+10 | fn contract_slice(contract: &ActionContract) -> &[ActionContract] {
+   |                              ^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: struct `crate::admission::tests::ActionContract` exists but is inaccessible
+help: consider importing this struct
+   |
+ 5 + use vb_core::ActionContract;
+   |
+
+error[E0425]: cannot find type `ActionContract` in this scope
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:10:51
+   |
+10 | fn contract_slice(contract: &ActionContract) -> &[ActionContract] {
+   |                                                   ^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: struct `crate::admission::tests::ActionContract` exists but is inaccessible
+help: consider importing this struct
+   |
+ 5 + use vb_core::ActionContract;
+   |
+
+error[E0425]: cannot find type `ActionPack` in this scope
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:14:22
+   |
+14 | fn pack_slice(pack: &ActionPack) -> &[ActionPack] {
+   |                      ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 5 + use vb_core::action_pack::ActionPack;
+   |
+
+error[E0425]: cannot find type `ActionPack` in this scope
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:14:39
+   |
+14 | fn pack_slice(pack: &ActionPack) -> &[ActionPack] {
+   |                                       ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+ 5 + use vb_core::action_pack::ActionPack;
+   |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:26:56
+   |
+26 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+   |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+   |
+help: consider importing this enum
+   |
+ 5 + use vb_core::action_pack::RecoveryClass;
+   |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+  --> crates/vb_storage/src/executor/issuance_failure_tests.rs:67:56
+   |
+67 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+   |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+   |
+help: consider importing this enum
+   |
+ 5 + use vb_core::action_pack::RecoveryClass;
+   |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:110:56
+    |
+110 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+    |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+  5 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:157:56
+    |
+157 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+    |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+  5 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:194:56
+    |
+194 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+    |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+  5 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:224:56
+    |
+224 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+    |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+  5 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error[E0433]: cannot find type `RecoveryClass` in this scope
+   --> crates/vb_storage/src/executor/issuance_failure_tests.rs:267:56
+    |
+267 |     let pack = catalog.register_pack(&contract, scope, RecoveryClass::Blocked)?;
+    |                                                        ^^^^^^^^^^^^^ use of undeclared type `RecoveryClass`
+    |
+help: consider importing this enum
+    |
+  5 + use vb_core::action_pack::RecoveryClass;
+    |
+
+error: unused imports: `ActionPack` and `RecoveryClass`
+ --> crates/vb_storage/src/executor/issuance_test_support.rs:7:28
+  |
+7 | use vb_core::action_pack::{ActionPack, CapabilityScopeSpec, RecoveryClass};
+  |                            ^^^^^^^^^^                       ^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: unused import: `AcceptedArtifact`
+ --> crates/vb_storage/src/executor/issuance_tests.rs:7:24
+  |
+7 | use crate::{admission, AcceptedArtifact, FjallJournal};
+  |                        ^^^^^^^^^^^^^^^^
+
+error: unused import: `FjallJournal`
+ --> crates/vb_storage/src/executor/issuance_failure_tests.rs:7:13
+  |
+7 | use crate::{FjallJournal, JournalError};
+  |             ^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `vb_storage` (lib test) due to 25 previous errors
+error: command `/home/lewis/.rustup/toolchains/nightly-2026-04-28-x86_64-unknown-linux-gnu/bin/cargo test --no-run --message-format json-render-diagnostics --package vb_storage --lib --all-features --locked` exited with code 101

@@ -1,0 +1,97 @@
+crates/vb_storage/src/journal/artifact_acceptance.rs:101:     let seq = IssuedArtifactSequence::new(next)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:102:     let mut stamped = artifact;
+crates/vb_storage/src/journal/artifact_acceptance.rs:103:     stamped.accepted_at_seq = seq.to_event_seq();
+crates/vb_storage/src/journal/artifact_acceptance.rs:104:     bind_artifact_digest(&mut stamped)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:105:     Ok((next, stamped))
+crates/vb_storage/src/journal/artifact_acceptance.rs:106: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:107: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:108: /// Encode the stamped artifact into a compiled IR record and envelope.
+crates/vb_storage/src/journal/artifact_acceptance.rs:109: fn encode_record(stamped: &AcceptedArtifact) -> Result<(CompiledIrRecord, Vec<u8>), JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:110:     let ir = postcard::to_allocvec(stamped).map_err(JournalError::PostcardEncodeFailed)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:111:     let record = CompiledIrRecord {
+crates/vb_storage/src/journal/artifact_acceptance.rs:112:         digest: stamped.digest,
+crates/vb_storage/src/journal/artifact_acceptance.rs:113:         ir,
+crates/vb_storage/src/journal/artifact_acceptance.rs:114:     };
+crates/vb_storage/src/journal/artifact_acceptance.rs:115:     verify_compiled_ir_record_digest(&record)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:116:     let encoded = crate::codec::encode_record(
+crates/vb_storage/src/journal/artifact_acceptance.rs:117:         MAGIC_COMPILED_ARTIFACT,
+crates/vb_storage/src/journal/artifact_acceptance.rs:118:         RecordKind::CompiledIr,
+crates/vb_storage/src/journal/artifact_acceptance.rs:119:         0,
+crates/vb_storage/src/journal/artifact_acceptance.rs:120:         &record,
+crates/vb_storage/src/journal/artifact_acceptance.rs:121:         MAX_COMPILED_IR_BYTES,
+crates/vb_storage/src/journal/artifact_acceptance.rs:122:     )?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:123:     Ok((record, encoded))
+crates/vb_storage/src/journal/artifact_acceptance.rs:124: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:125: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:126: /// Build the raw OwnedWriteBatch with counter and artifact writes.
+crates/vb_storage/src/journal/artifact_acceptance.rs:127: fn build_batch(
+crates/vb_storage/src/journal/artifact_acceptance.rs:128:     journal: &FjallJournal,
+crates/vb_storage/src/journal/artifact_acceptance.rs:129:     next: u64,
+crates/vb_storage/src/journal/artifact_acceptance.rs:130:     stamped: &AcceptedArtifact,
+crates/vb_storage/src/journal/artifact_acceptance.rs:131:     encoded: &[u8],
+crates/vb_storage/src/journal/artifact_acceptance.rs:132: ) -> Result<fjall::OwnedWriteBatch, JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:133:     let mut batch = journal.database.batch();
+crates/vb_storage/src/journal/artifact_acceptance.rs:134:     let counter_value = encode_counter_value(next);
+crates/vb_storage/src/journal/artifact_acceptance.rs:135:     batch.insert(
+crates/vb_storage/src/journal/artifact_acceptance.rs:136:         &journal.artifact_acceptance,
+crates/vb_storage/src/journal/artifact_acceptance.rs:137:         LAST_ISSUED_KEY,
+crates/vb_storage/src/journal/artifact_acceptance.rs:138:         counter_value.as_ref(),
+crates/vb_storage/src/journal/artifact_acceptance.rs:139:     );
+crates/vb_storage/src/journal/artifact_acceptance.rs:140:     let artifact_key = compiled_ir_key(stamped.digest.as_bytes())?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:141:     batch.insert(&journal.compiled_ir, artifact_key, encoded);
+crates/vb_storage/src/journal/artifact_acceptance.rs:142:     Ok(batch)
+crates/vb_storage/src/journal/artifact_acceptance.rs:143: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:144: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:145: /// Apply policy durability and commit the batch.
+crates/vb_storage/src/journal/artifact_acceptance.rs:146: fn commit_batch(
+crates/vb_storage/src/journal/artifact_acceptance.rs:147:     _journal: &FjallJournal,
+crates/vb_storage/src/journal/artifact_acceptance.rs:148:     mut batch: fjall::OwnedWriteBatch,
+crates/vb_storage/src/journal/artifact_acceptance.rs:149:     policy: RuntimePolicy,
+crates/vb_storage/src/journal/artifact_acceptance.rs:150: ) -> Result<(), JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:151:     if policy == RuntimePolicy::Strict {
+crates/vb_storage/src/journal/artifact_acceptance.rs:152:         #[cfg(test)]
+crates/vb_storage/src/journal/artifact_acceptance.rs:153:         if _journal.consume_persist_failure_for_test() {
+crates/vb_storage/src/journal/artifact_acceptance.rs:154:             return Err(JournalError::StrictDurabilityFailed);
+crates/vb_storage/src/journal/artifact_acceptance.rs:155:         }
+crates/vb_storage/src/journal/artifact_acceptance.rs:156:         batch = batch.durability(Some(fjall::PersistMode::SyncAll));
+crates/vb_storage/src/journal/artifact_acceptance.rs:157:     }
+crates/vb_storage/src/journal/artifact_acceptance.rs:158:     #[cfg(test)]
+crates/vb_storage/src/journal/artifact_acceptance.rs:159:     if _journal.consume_batch_commit_failure_for_test() {
+crates/vb_storage/src/journal/artifact_acceptance.rs:160:         return Err(JournalError::Fjall(fjall::Error::Io(std::io::Error::new(
+crates/vb_storage/src/journal/artifact_acceptance.rs:161:             std::io::ErrorKind::Other,
+crates/vb_storage/src/journal/artifact_acceptance.rs:162:             "injected batch commit failure (test hook)",
+crates/vb_storage/src/journal/artifact_acceptance.rs:163:         ))));
+crates/vb_storage/src/journal/artifact_acceptance.rs:164:     }
+crates/vb_storage/src/journal/artifact_acceptance.rs:165:     batch.commit()?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:166:     Ok(())
+crates/vb_storage/src/journal/artifact_acceptance.rs:167: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:168: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:169: /// Atomically issues the next artifact sequence and persists the
+crates/vb_storage/src/journal/artifact_acceptance.rs:170: /// stamped artifact in a single `fjall::OwnedWriteBatch`.
+crates/vb_storage/src/journal/artifact_acceptance.rs:171: fn issue_artifact(
+crates/vb_storage/src/journal/artifact_acceptance.rs:172:     journal: &FjallJournal,
+crates/vb_storage/src/journal/artifact_acceptance.rs:173:     artifact: AcceptedArtifact,
+crates/vb_storage/src/journal/artifact_acceptance.rs:174:     policy: RuntimePolicy,
+crates/vb_storage/src/journal/artifact_acceptance.rs:175: ) -> Result<AcceptedArtifact, JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:176:     let _write_guard = journal
+crates/vb_storage/src/journal/artifact_acceptance.rs:177:         .write_lock
+crates/vb_storage/src/journal/artifact_acceptance.rs:178:         .lock()
+crates/vb_storage/src/journal/artifact_acceptance.rs:179:         .map_err(|_| JournalError::WriteLockPoisoned)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:180: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:181:     let last = read_counter(journal)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:182:     let (next, stamped) = prepare_artifact(last, artifact)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:183:     let (_record, encoded) = encode_record(&stamped)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:184:     let batch = build_batch(journal, next, &stamped, &encoded)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:185:     commit_batch(journal, batch, policy)?;
+crates/vb_storage/src/journal/artifact_acceptance.rs:186: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:187:     Ok(stamped)
+crates/vb_storage/src/journal/artifact_acceptance.rs:188: }
+crates/vb_storage/src/journal/artifact_acceptance.rs:189: 
+crates/vb_storage/src/journal/artifact_acceptance.rs:190: /// Exposes the private issuance helper to admission.rs via pub(crate).
+crates/vb_storage/src/journal/artifact_acceptance.rs:191: pub(crate) fn issue_next_artifact_sequence(
+crates/vb_storage/src/journal/artifact_acceptance.rs:192:     journal: &FjallJournal,
+crates/vb_storage/src/journal/artifact_acceptance.rs:193:     artifact: AcceptedArtifact,
+crates/vb_storage/src/journal/artifact_acceptance.rs:194:     policy: RuntimePolicy,
+crates/vb_storage/src/journal/artifact_acceptance.rs:195: ) -> Result<AcceptedArtifact, JournalError> {
+crates/vb_storage/src/journal/artifact_acceptance.rs:196:     issue_artifact(journal, artifact, policy)
+crates/vb_storage/src/journal/artifact_acceptance.rs:197: }

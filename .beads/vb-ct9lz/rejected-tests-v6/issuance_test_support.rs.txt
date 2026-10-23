@@ -1,0 +1,212 @@
+//! Test support for executor issuance tests.
+//! Provides fixture construction, catalog, journal, and artifact helpers.
+
+use crate::FjallJournal;
+use crate::{admission, AcceptedArtifact};
+use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+use vb_core::action_pack::{ActionPack, CapabilityScopeSpec, RecoveryClass};
+use vb_core::value::ConstValue;
+use vb_core::workflow::{ResourceContract, WorkflowParts};
+use vb_core::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx,
+    WorkflowDigest,
+};
+use std::path::Path;
+
+/// Owned temporary journal directory and open journal handle.
+pub struct TestJournal {
+    pub dir: tempfile::TempDir,
+    pub journal: FjallJournal,
+}
+
+impl TestJournal {
+    /// Open a fresh journal in a unique temporary directory.
+    pub fn open() -> Result<Self, Box<dyn std::error::Error>> {
+        let dir = tempfile::tempdir()?;
+        let journal = FjallJournal::open(dir.path(), None)?;
+        Ok(Self { dir, journal })
+    }
+
+    /// Return the directory path for reopening after dropping the journal.
+    pub fn path(&self) -> &Path {
+        self.dir.path()
+    }
+}
+
+/// Builds a minimal compiled workflow with no actions for admission testing.
+pub fn minimal_workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    let mut parts = parts_from("test_minimal");
+    parts.constants = Box::new([ConstValue::I64(42)]);
+    parts.slot_count = 1;
+    let hash_bytes = postcard::to_allocvec(&parts)?;
+    let computed = blake3::hash(&hash_bytes);
+    parts.digest = WorkflowDigest::from_bytes(computed.into());
+    CompiledWorkflow::try_from_parts(parts)
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+}
+
+/// Builds a compiled workflow containing one action invocation.
+pub fn action_workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    let mut parts = parts_from("test_action");
+    parts.nodes = Box::new([
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+        },
+    ]);
+    parts.constants = Box::new([ConstValue::I64(42)]);
+    parts.slot_count = 2;
+    let hash_bytes = postcard::to_allocvec(&parts)?;
+    let computed = blake3::hash(&hash_bytes);
+    parts.digest = WorkflowDigest::from_bytes(computed.into());
+    CompiledWorkflow::try_from_parts(parts)
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+}
+
+fn parts_from(name: &'static str) -> WorkflowParts {
+    WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::<str>::from(name),
+        input_slots: Box::new([]),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        nodes: Box::new([
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 0,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    }
+}
+
+/// Builds an action contract for a register action.
+pub fn action_contract() -> Result<ActionContract, Box<dyn std::error::Error>> {
+    Ok(ActionContract {
+        id: vb_core::ActionId::new(0),
+        name: ActionName::new("test_register")?,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 64,
+        max_output_bytes: 64,
+        timeout_ms: 1000,
+        idempotency: Idempotency::IdempotentExternal,
+        side_effect: SideEffect::Writes,
+        retry_safety: RetrySafety::KeyRequired,
+        required_capabilities: Box::new([]),
+    })
+}
+
+/// Builds a capability scope spec for register write.
+pub fn register_scope() -> CapabilityScopeSpec {
+    CapabilityScopeSpec {
+        namespace: 15,
+        key: 29,
+    }
+}
+
+/// Reads the raw artifact acceptance counter from the journal.
+/// Returns None if the counter key is absent.
+pub fn read_counter(
+    journal: &FjallJournal,
+) -> Result<Option<u64>, Box<dyn std::error::Error>> {
+    let raw = journal.artifact_acceptance.get(b"last_issued")?;
+    match raw {
+        None => Ok(None),
+        Some(slice) => {
+            let bytes = slice.as_ref();
+            if bytes.len() != 8 {
+                return Err(format!("counter has wrong length: {}", bytes.len()).into());
+            }
+            let arr: [u8; 8] = bytes
+                .try_into()
+                .map_err(|_| "counter slice conversion failed".to_string())?;
+            Ok(Some(u64::from_be_bytes(arr)))
+        }
+    }
+}
+
+/// Writes a raw counter value to the journal for fault injection.
+pub fn write_counter(
+    journal: &FjallJournal,
+    value: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    journal
+        .artifact_acceptance
+        .insert(b"last_issued", &value.to_be_bytes())?;
+    Ok(())
+}
+
+/// Verifies that a persisted artifact can be read back and matches expectations.
+pub fn verify_artifact_readback(
+    journal: &FjallJournal,
+    digest: vb_core::WorkflowDigest,
+    expected: &AcceptedArtifact,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let record = journal
+        .compiled_ir(digest)?
+        .ok_or("artifact record not found")?;
+    if record.digest != digest {
+        return Err("record digest does not match expected".into());
+    }
+    let decoded: AcceptedArtifact = postcard::from_bytes(&record.ir)?;
+    if admission::accepted_artifact_digest(&decoded)? != decoded.digest {
+        return Err("decoded artifact digest is inconsistent".into());
+    }
+    if decoded.verification.digest != decoded.digest {
+        return Err("verification.digest mismatch".into());
+    }
+    if decoded != *expected {
+        return Err("decoded artifact does not match expected".into());
+    }
+    Ok(())
+}

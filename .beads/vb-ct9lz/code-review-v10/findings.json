@@ -1,0 +1,14 @@
+{
+  "bead": "vb-ct9lz",
+  "review": "code-review-v10",
+  "candidate": "e774f70c7b506e07cba5f8028922f9d1455d3255",
+  "base": "15857211",
+  "files_reviewed": [
+    "crates/vb_storage/src/executor/packed.rs",
+    "crates/vb_storage/src/journal/artifact_acceptance.rs",
+    "crates/vb_storage/src/admission/verification.rs",
+    "crates/vb_storage/src/admission/verification/executor_profile.rs",
+    "crates/vb_storage/src/executor/error.rs"
+  ],
+  "findings": []
+}

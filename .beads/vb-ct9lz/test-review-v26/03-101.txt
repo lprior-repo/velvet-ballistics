@@ -1,0 +1,40 @@
+crates/vb_storage/src/executor/issuance_tests.rs:101:     verify_artifact_readback(&journal, default_artifact.digest, &default_artifact)?;
+crates/vb_storage/src/executor/issuance_tests.rs:102:     verify_artifact_readback(&journal, default_artifact2.digest, &default_artifact2)?;
+crates/vb_storage/src/executor/issuance_tests.rs:103:     fixture.check(&journal, &catalog_artifact, RuntimePolicy::Relaxed)?;
+crates/vb_storage/src/executor/issuance_tests.rs:104:     assert_eq!(
+crates/vb_storage/src/executor/issuance_tests.rs:105:         crate::admission::verify_accepted_artifact(&default_artifact)?,
+crates/vb_storage/src/executor/issuance_tests.rs:106:         default_workflow
+crates/vb_storage/src/executor/issuance_tests.rs:107:     );
+crates/vb_storage/src/executor/issuance_tests.rs:108:     assert_eq!(
+crates/vb_storage/src/executor/issuance_tests.rs:109:         crate::admission::verify_accepted_artifact(&default_artifact2)?,
+crates/vb_storage/src/executor/issuance_tests.rs:110:         default_workflow
+crates/vb_storage/src/executor/issuance_tests.rs:111:     );
+crates/vb_storage/src/executor/issuance_tests.rs:112:     assert_ne!(default_artifact.digest, catalog_artifact.digest);
+crates/vb_storage/src/executor/issuance_tests.rs:113:     assert_ne!(catalog_artifact.digest, default_artifact2.digest);
+crates/vb_storage/src/executor/issuance_tests.rs:114:     assert_ne!(default_artifact.digest, default_artifact2.digest);
+crates/vb_storage/src/executor/issuance_tests.rs:115:     assert_eq!(read_counter(&journal)?, Some(3));
+crates/vb_storage/src/executor/issuance_tests.rs:116:     Ok(())
+crates/vb_storage/src/executor/issuance_tests.rs:117: }
+crates/vb_storage/src/executor/issuance_tests.rs:118: 
+crates/vb_storage/src/executor/issuance_tests.rs:119: // Case 5: Journal reopened on same path preserves state.
+crates/vb_storage/src/executor/issuance_tests.rs:120: #[test]
+crates/vb_storage/src/executor/issuance_tests.rs:121: fn journal_reopen_preserves_sequence() -> TestResult {
+crates/vb_storage/src/executor/issuance_tests.rs:122:     use crate::FjallJournal;
+crates/vb_storage/src/executor/issuance_tests.rs:123:     let fixture = PackedFixture::new()?;
+crates/vb_storage/src/executor/issuance_tests.rs:124:     let (dir, journal) = open_test_journal()?;
+crates/vb_storage/src/executor/issuance_tests.rs:125:     let artifact = fixture.submit(&journal, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_tests.rs:126:     assert_eq!(artifact.accepted_at_seq.get(), 1);
+crates/vb_storage/src/executor/issuance_tests.rs:127:     fixture.check(&journal, &artifact, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_tests.rs:128:     assert_eq!(read_counter(&journal)?, Some(1));
+crates/vb_storage/src/executor/issuance_tests.rs:129:     drop(journal);
+crates/vb_storage/src/executor/issuance_tests.rs:130:     let journal2 = FjallJournal::open(dir.path(), None)?;
+crates/vb_storage/src/executor/issuance_tests.rs:131:     fixture.check(&journal2, &artifact, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_tests.rs:132:     assert_eq!(read_counter(&journal2)?, Some(1));
+crates/vb_storage/src/executor/issuance_tests.rs:133:     let artifact2 = fixture.submit(&journal2, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_tests.rs:134:     assert_eq!(artifact2.accepted_at_seq.get(), 2);
+crates/vb_storage/src/executor/issuance_tests.rs:135:     fixture.check(&journal2, &artifact2, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_tests.rs:136:     fixture.check(&journal2, &artifact, RuntimePolicy::Strict)?;
+crates/vb_storage/src/executor/issuance_tests.rs:137:     assert_ne!(artifact2.digest, artifact.digest);
+crates/vb_storage/src/executor/issuance_tests.rs:138:     assert_eq!(read_counter(&journal2)?, Some(2));
+crates/vb_storage/src/executor/issuance_tests.rs:139:     Ok(())
+crates/vb_storage/src/executor/issuance_tests.rs:140: }

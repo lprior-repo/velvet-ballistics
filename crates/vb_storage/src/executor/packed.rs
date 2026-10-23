@@ -1,6 +1,6 @@
 use super::{ExecutorCatalog, ExecutorError};
 use crate::admission::verification::{self, ExecutorProfile};
-use crate::{AcceptedArtifact, CompiledIrRecord, FjallJournal};
+use crate::{AcceptedArtifact, FjallJournal};
 use vb_core::action_pack::{ActionPack, PackedArtifactEvidence};
 use vb_core::artifact::ArtifactEvidence;
 use vb_core::{
@@ -54,20 +54,20 @@ impl ExecutorCatalog {
         packs: &[ActionPack],
     ) -> Result<AcceptedArtifact, ExecutorError> {
         let artifact = self.prepare_artifact(workflow, policy, contracts, packs)?;
-        journal.put_compiled_ir(&CompiledIrRecord {
-            digest: artifact.digest,
-            ir: postcard::to_allocvec(&artifact)?,
-        })?;
-        journal.persist_strict()?;
+        let stamped = crate::journal::artifact_acceptance::issue_next_artifact_sequence(
+            journal,
+            artifact,
+            RuntimePolicy::Strict,
+        )?;
         let stored = journal
-            .compiled_ir(artifact.digest)?
+            .compiled_ir(stamped.digest)?
             .ok_or(ExecutorError::Corrupt)?;
         let restored = postcard::from_bytes(&stored.ir)?;
         self.verify_artifact(&restored, policy)?;
-        if artifact != restored {
+        if stamped != restored {
             return Err(ExecutorError::Corrupt);
         }
-        Ok(artifact)
+        Ok(stamped)
     }
 
     pub(crate) fn check_packs(

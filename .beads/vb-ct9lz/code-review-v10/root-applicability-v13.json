@@ -1,0 +1,17 @@
+{
+  "status": "narrow production CODE approval; tests WIP and final gates pending",
+  "candidate": "e774f70c7b506e07cba5f8028922f9d1455d3255",
+  "native_model": "local-3090-llama/qwen3.8-27b-uncensored",
+  "fresh_context": true,
+  "source_packets": "All9 plaintext packets read successfully plus exact production patch; actual raw native retained",
+  "review_template": "Concise report does not follow full skill template, no invented tracker State/owner approvals accepted",
+  "scope": "packed.rs import+submission body only; four unchanged supporting source files read",
+  "production_sha256": "a85defdbf5703a620c5b23bde5f788f6d7c220cf017244e696c385ee1c3a7c78",
+  "evidence": "actual production cargo check passed7.222s, NOT test pass or broad acceptance",
+  "limits": [
+    "No test suite approval",
+    "No execution/reopen/powerloss/allinterleaving proof",
+    "No speedup claim",
+    "Existing public API preserved perusercontract"
+  ]
+}
