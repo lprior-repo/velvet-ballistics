@@ -1893,6 +1893,15 @@ fn push_loop_span(
         return Ok(());
     };
 
+    // Retire finished spans BEFORE the nesting comparison so that
+    // sequential loops are not rejected as improperly nested.
+    while spans
+        .last()
+        .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
+    {
+        spans.pop();
+    }
+
     match spans.last().copied() {
         Some((_outer_start, outer_done)) if done_idx > outer_done => {
             return Err(WorkflowError::ImproperLoopNesting {
@@ -1909,13 +1918,6 @@ fn push_loop_span(
             });
         }
         _ => {}
-    }
-
-    while spans
-        .last()
-        .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
-    {
-        spans.pop();
     }
 
     spans.push((ci, done_idx));

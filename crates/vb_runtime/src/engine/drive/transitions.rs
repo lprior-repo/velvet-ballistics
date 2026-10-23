@@ -5,7 +5,7 @@
 use vb_core::engine::{EngineError, StepBudget};
 use vb_core::frame::RunFrame;
 use vb_core::ids::StepIdx;
-use vb_core::workflow::{CompiledNode, CompiledWorkflow};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
 use crate::engine::drive::recovery::DriveState;
 use crate::engine::drive::timers::try_consume_step_budget;
@@ -44,6 +44,39 @@ pub(super) fn begin_drive_step<'a>(
     Ok(Some(DriveStep { pc, node }))
 }
 
+/// Extracts the body step index from an owning-loop control node, or
+/// `None` for non-loop or join/finish nodes that cannot rearm.
+pub(super) fn loop_body_target(node: &CompiledNode) -> Option<StepIdx> {
+    match node.kind {
+        CompiledNodeKind::ForEachNext { body, .. }
+        | CompiledNodeKind::ReduceNext { body, .. } => Some(body),
+        _ => None,
+    }
+}
+
+/// After normal success state and evidence commit, re-arms the
+/// ForEachNext/ReduceNext control node for the next iteration when
+/// the drive successfully jumped back to its declared body. Owner
+/// checks: (a) run.pc() must equal the declared body target, (b) the
+/// body step index must be less than the captured control step index
+/// to confirm this control node legitimately owns the target.
+pub(super) fn owned_continuation_rearm(
+    run: &mut RunFrame,
+    step: DriveStep<'_>,
+) -> RuntimeEngineResult<()> {
+    let Some(body) = loop_body_target(step.node) else {
+        return Ok(());
+    };
+    if run.pc() != body {
+        return Ok(());
+    }
+    if body >= step.pc {
+        return Ok(());
+    }
+    run.mark_pending(step.pc).map_err(RuntimeEngineError::Core)?;
+    Ok(())
+}
+
 /// Emits slot evidence for the just-finished step, then commits the
 /// matching run-frame step state (Succeeded for success-class signals,
 /// Waiting/Asking/etc for suspension signals).
@@ -71,6 +104,7 @@ pub(super) fn finish_drive_step(
         evidence
             .push_step_succeeded(step.pc, step.node.output)
             .map_err(RuntimeEngineError::Core)?;
+        owned_continuation_rearm(run, step)?;
     } else {
         // AwaitingWait/AwaitingAsk/AwaitingAction/StepBudgetExhausted:
         // no StepSucceeded event, but slot evidence above is still valid
