@@ -1,0 +1,29 @@
+[ WARN 2026-10-23 09:55:47.184] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+ velvet-ballistics:verify-kani-vb-validate |     Blocking waiting for file lock on package cache
+ velvet-ballistics:verify-kani-vb-validate |     Blocking waiting for file lock on package cache
+ velvet-ballistics:verify-kani-vb-validate |    Compiling proc-macro2 v1.0.106
+ velvet-ballistics:verify-kani-vb-validate |    Compiling quote v1.0.45
+ velvet-ballistics:verify-kani-vb-validate |    Compiling unicode-ident v1.0.24
+ velvet-ballistics:verify-kani-vb-validate |    Compiling serde_core v1.0.228
+ velvet-ballistics:verify-kani-vb-validate |    Compiling syn v2.0.117
+ velvet-ballistics:verify-kani-vb-validate |    Compiling serde v1.0.228
+ velvet-ballistics:verify-kani-vb-validate |    Compiling autocfg v1.5.1
+ velvet-ballistics:verify-kani-vb-validate |    Compiling serde_derive v1.0.228
+ velvet-ballistics:verify-kani-vb-validate |    Compiling num-traits v0.2.19
+ velvet-ballistics:verify-kani-vb-validate |    Compiling thiserror v2.0.18
+ velvet-ballistics:verify-kani-vb-validate |    Compiling thiserror-impl v2.0.18
+ velvet-ballistics:verify-kani-vb-validate |    Compiling iana-time-zone v0.1.65
+ velvet-ballistics:verify-kani-vb-validate |    Compiling hashbrown v0.17.1
+ velvet-ballistics:verify-kani-vb-validate |    Compiling equivalent v1.0.2
+ velvet-ballistics:verify-kani-vb-validate |    Compiling indexmap v2.14.0
+ velvet-ballistics:verify-kani-vb-validate |    Compiling chrono v0.4.44
+ velvet-ballistics:verify-kani-vb-validate |    Compiling bytes v1.11.1
+ velvet-ballistics:verify-kani-vb-validate |    Compiling vb_core v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_core)
+ velvet-ballistics:verify-kani-vb-validate |    Compiling vb_validate v0.1.0 (/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090/crates/vb_validate)
+ velvet-ballistics:verify-kani-vb-validate |     Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.43s
+[ WARN 2026-10-23 10:00:10.630] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:00:16.050] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+           velvet-ballistics:panic-surface | ViolationFound: production panic/assert macro surface is non-empty
+[ WARN 10:00:20.180] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:00:46.773] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 
+[ WARN 10:00:47.162] moon_task_hasher::task_hasher  Attempted to hash input crates/velvet_ballistics/tests/fixtures/fixtures but it does not exist, skipping 

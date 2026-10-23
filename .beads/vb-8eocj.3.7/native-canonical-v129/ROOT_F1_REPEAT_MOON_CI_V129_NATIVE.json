@@ -1,0 +1,27 @@
+{
+  "cwd": "/home/lewis/src/isoloated/vb-8eocj-fleet-v22-counter-tests-3090",
+  "argv": [
+    "env",
+    "CARGO_TARGET_DIR=/home/lewis/src/isoloated/vb-qz2yn-integration-local5090-v12/target",
+    "RUSTC_WRAPPER=",
+    "CARGO_BUILD_JOBS=2",
+    "RUST_TEST_THREADS=1",
+    "NEXTEST_TEST_THREADS=2",
+    "moon",
+    "ci",
+    "--base",
+    "d0645504a432552301d43094859e1261318a1bef",
+    "--head",
+    "c2b0298d3071f535a828654fa273d97bb9647f1e",
+    "--concurrency",
+    "2"
+  ],
+  "exit_code": 1,
+  "seconds": 410.974,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "env_overrides": {
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "log_prefix": "/home/lewis/.cache/velvet-integration-preserved-20261022/ROOT_F1_REPEAT_MOON_CI_V129_NATIVE"
+}

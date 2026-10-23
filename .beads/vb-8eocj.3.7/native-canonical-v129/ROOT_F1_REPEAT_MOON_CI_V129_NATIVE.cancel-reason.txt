@@ -1,0 +1,1 @@
+Coordinator deliberately stopped this own frozen Moon run after observed panic-surface exit2 on three test-only support.rs assertions. Preserve exact RED; repair file placement and rerun canonical CI. No timeout/pass credit.
