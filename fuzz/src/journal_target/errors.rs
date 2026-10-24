@@ -35,6 +35,7 @@ pub(super) fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::PostcardDecodeFailed(_)
         | JournalError::InvalidEvent
         | JournalError::ArtifactMalformed
+        | JournalError::OwnedInputs(_)
         | JournalError::WorkflowReconstruction(_)
         | JournalError::CompiledIrReadback(_)
         | JournalError::AdmissionAllocationFailed(_)

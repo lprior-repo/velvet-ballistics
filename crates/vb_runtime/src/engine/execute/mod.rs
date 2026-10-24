@@ -20,3 +20,4 @@ mod handlers_suspend;
 mod signals;
 
 pub use dispatch::execute_node_full;
+pub(crate) use dispatch::{NodeDispatchContext, execute_node_deferred};

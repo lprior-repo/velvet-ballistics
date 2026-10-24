@@ -1645,66 +1645,20 @@ fn const_value_discriminant(value: &vb_core::value::ConstValue) -> u8 {
 // Gate 15: Determinism proof
 // ---------------------------------------------------------------------------
 
-/// Validates that every path between two non-deterministic nodes consists only
-/// of deterministic nodes, ensuring that the workflow can be faithfully
-/// replayed from journal evidence.
+/// Validates that every suspension point (Do/Ask node) has a valid resume
+/// target: either terminal (next == None) or a forward node index within
+/// bounds. This is a bounded structural check using actual IR guarantees
+/// (node index bounds and forward progression) without claiming durability
+/// or replay proof.
 ///
-/// Gate 15 (determinism): non-deterministic nodes (Do/Action, Ask) are
-/// suspension points. All deterministic nodes (SetConst, Copy, EvalExpr,
-/// BuildObject, BuildList, Finish, Nop) can be replayed from journal evidence.
-/// This gate checks that between any two non-deterministic nodes on a control
-/// flow path, there are only deterministic nodes. A consecutive pair of
-/// non-deterministic nodes without an intervening deterministic-only region is
-/// flagged as an error because the second node's effects cannot be separated
-/// from the first's non-determinism in the journal.
-///
-/// Simplified: for each node, if it is non-deterministic, check that its `next`
-/// target (if any) is either deterministic or a valid suspension join. Two
-/// non-deterministic nodes may not be directly chained (node A's next = node B
-/// where both are non-deterministic).
+/// Gate 15 (suspension resume): Do/Ask nodes are suspension points whose
+/// completion events/tickets create separate boundaries. Adjacent suspension
+/// points are valid — each suspends independently, receives its own completion
+/// event, and resumes at its own target. The check validates that resume
+/// targets are well-formed: within node count bounds and strictly forward
+/// (no self or backward unmarked loop escape).
 pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationResult<()> {
-    let node_count = parts.nodes.len();
-
-    for (node_index, node) in parts.nodes.iter().enumerate() {
-        if !is_non_deterministic(&node.kind) {
-            continue;
-        }
-
-        // Walk the `next` chain from this node. If we encounter another
-        // non-deterministic node without any intervening deterministic-only
-        // nodes, that is a violation. In practice, we check the immediate `next`
-        // edge: if a non-deterministic node's `next` points to another
-        // non-deterministic node, that is a direct chain violation.
-        match node.next {
-            Some(next_step) if next_step.as_usize() < node_count => {
-                match parts.nodes.get(next_step.as_usize()) {
-                    Some(next_node) if is_non_deterministic(&next_node.kind) => {
-                        return Err(ValidationError::NonDeterministicPath {
-                            from_node: node_index,
-                            to_node: next_step.as_usize(),
-                        });
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-
-        // Also check branch targets for Choose/ChooseSlot nodes. Choose nodes
-        // are deterministic (they evaluate expressions/slots), so they are not
-        // flagged here. But we check the Do and Ask node's own edges above.
-    }
-
-    Ok(())
-}
-
-/// Returns true if the node kind is non-deterministic (requires external input
-/// that cannot be replayed from journal evidence alone).
-fn is_non_deterministic(kind: &CompiledNodeKind) -> bool {
-    matches!(
-        kind,
-        CompiledNodeKind::Do { .. } | CompiledNodeKind::Ask { .. }
-    )
+    crate::gate_15_resume::validate_resume_targets(parts)
 }
 
 // ---------------------------------------------------------------------------

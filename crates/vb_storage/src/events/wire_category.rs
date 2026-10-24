@@ -9,10 +9,13 @@ pub(super) enum JournalRecordCategory {
     Action,
     WaitAsk,
     Policy,
+    Continuation,
 }
 
 pub(super) fn journal_record_category(kind: RecordKind) -> Option<JournalRecordCategory> {
-    if is_run_record(kind) {
+    if kind == RecordKind::RunContinuation {
+        Some(JournalRecordCategory::Continuation)
+    } else if is_run_record(kind) {
         Some(JournalRecordCategory::Run)
     } else if is_step_record(kind) {
         Some(JournalRecordCategory::Step)

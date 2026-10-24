@@ -7683,8 +7683,15 @@ mod tests {
                     "emergency_deny_marker_unsupported_version"
                 }
                 JournalError::EmergencyDenyMarkerMalformed => "emergency_deny_marker_malformed",
+                JournalError::OwnedInputs(_) => "owned_inputs",
             }
         }
+        assert_eq!(
+            _exhaustive_match(&JournalError::OwnedInputs(
+                crate::OwnedInputError::IdentityMismatch,
+            )),
+            "owned_inputs"
+        );
         let _ = _exhaustive_match;
     }
 }

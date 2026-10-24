@@ -1,4 +1,10 @@
 #![forbid(unsafe_code)]
+#[path = "vb_vt2f_direct_runtime_api_acceptance/source_ask.rs"]
+mod source_ask;
+#[path = "vb_vt2f_direct_runtime_api_acceptance/source_layout.rs"]
+mod source_layout;
+#[path = "vb_vt2f_direct_runtime_api_acceptance/source_wait.rs"]
+mod source_wait;
 
 use std::num::NonZeroUsize;
 use std::sync::Arc;

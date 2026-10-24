@@ -1587,14 +1587,7 @@ mod proptest_reentry {
             }
 
             let ps = page_size as usize;
-            if ps >= items.len() {
-                // Single page consumes all items -> collect_start routes to done
-                prop_assert_eq!(run.pc(), done,
-                    "single-page collect should route to done");
-                return Ok(());
-            }
-
-            // Multi-page: PC should be at body for first page
+            // Non-empty list always routes to body first, retaining state.
             prop_assert_eq!(run.pc(), body);
 
             let body_step = StepIdx::new(1);

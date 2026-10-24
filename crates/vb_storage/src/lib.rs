@@ -17,6 +17,11 @@
 // Submodules
 // ============================================================================
 
+mod owned_writer;
+pub use owned_writer::{
+    MAX_OWNED_WRITERS, OwnedWriterError, OwnedWriterLease, OwnedWriterQuarantine,
+};
+
 pub mod admission;
 pub mod artifacts;
 pub mod batch;
@@ -26,6 +31,12 @@ pub mod codec;
 #[cfg(miri)]
 pub mod codec_miri_tests;
 pub mod constants;
+pub mod continuation_carrier;
+pub use continuation_carrier::{
+    BoundedContinuationRecord, CarrierError, CarrierUsage, ComponentAllowance,
+    ContinuationCarrierBudget, ContinuationCarrierHeader, OwnedContinuationCarrier,
+    OwnedContinuationCarrierView, decode_owned_continuation, encode_owned_continuation,
+};
 pub mod error;
 pub mod events;
 pub mod executor;
@@ -251,4 +262,7 @@ pub use admission::{
     submit_artifact, submit_artifact_with_contracts,
 };
 
-pub use inputs::{RunInputBinding, RunInputsRecord, RunPolicyPin, RunSubmission};
+pub use inputs::{
+    OwnedInputError, OwnedRunInputsRecordV1, RetainedRunInputs, RunInputBinding, RunInputsRecord,
+    RunPolicyPin, RunSubmission,
+};

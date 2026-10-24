@@ -11,7 +11,7 @@ use vb_core::workflow::CompiledWorkflow;
 use crate::engine::drive::actions::compute_max_parallel_in_flight;
 use crate::engine::drive::recovery::DriveState;
 use crate::engine::drive::transitions::{begin_drive_step, finish_drive_step};
-use crate::engine::execute::execute_node_full;
+use crate::engine::execute::{NodeDispatchContext, execute_node_deferred};
 use crate::engine::types::{
     EvidenceCollector, RetryPolicy, RuntimeEngineError, RuntimeEngineResult, RuntimeSignal,
 };
@@ -105,18 +105,27 @@ fn run_drive_loop(
         let Some(step) = begin_drive_step(plan, run, budget, evidence)? else {
             return Ok(RuntimeSignal::StepBudgetExhausted);
         };
-        let signal = execute_node_full(
+        let ctx = NodeDispatchContext {
             plan,
             run,
             store,
-            step.node,
+            node: step.node,
             contracts,
             retry_policy,
             collect_states,
             granted,
             state_run_attempt,
+        };
+        let signal = execute_node_deferred(ctx)?;
+        finish_drive_step(
+            plan,
+            run,
+            evidence,
+            collect_states,
+            step,
+            &signal,
+            drive_state,
         )?;
-        finish_drive_step(run, evidence, collect_states, step, &signal, drive_state)?;
         match signal {
             RuntimeSignal::Continue => {}
             other => return Ok(other),

@@ -1,4 +1,8 @@
 impl RuntimeJournal for QueuedStorageRuntimeJournal {
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(self.profile)
+    }
+
     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
         Err(RuntimeError::UnsupportedOperation {
             operation: "unsequenced_storage_journal_append",

@@ -11,8 +11,16 @@ use crate::value::{SlotValue, Taint};
 use bytes::Bytes;
 use indexmap::IndexMap;
 
+pub mod transport;
+pub use transport::ValueStoreCheckpointViewV1;
+pub use transport::{
+    CheckpointShape, CheckpointTransportBudget, CheckpointTransportError, CheckpointWireCursor,
+    TransportUsage, preflight_checkpoint,
+};
+
 mod checkpoint;
 pub use checkpoint::ValueStoreCheckpointV1;
+pub(crate) use checkpoint::{validate_checkpoint, validate_value_reference};
 
 /// Deterministic object field stored in insertion order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

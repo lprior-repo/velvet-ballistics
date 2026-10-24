@@ -254,9 +254,9 @@ mod cycle_detection_and_backward_edges {
         let result = validate_compiled_workflow(&parts);
         assert_eq!(
             result,
-            Err(WorkflowError::JumpCycle {
-                step: StepIdx::new(1),
-                target: StepIdx::new(0),
+            Err(WorkflowError::BackwardEdge {
+                from: StepIdx::new(1),
+                to: StepIdx::new(0),
             })
         );
     }

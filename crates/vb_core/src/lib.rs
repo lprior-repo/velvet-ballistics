@@ -26,6 +26,7 @@ pub mod ids;
 pub mod limits;
 pub mod policy;
 pub mod replay;
+pub mod root_bundle;
 pub mod shard;
 pub mod span;
 pub mod time;

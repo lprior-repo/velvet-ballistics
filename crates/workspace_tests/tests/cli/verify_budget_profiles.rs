@@ -85,6 +85,11 @@ fn overflow_fixture_all_profiles() -> Result<(), Box<dyn std::error::Error>> {
 name: budget_overflow
 when:
   manual: {}
+inputs:
+  items:
+    is: list
+    of: any
+    max: 4294967295
 steps:
   - id: seed
     save:
@@ -92,17 +97,17 @@ steps:
       value: '1'
   - id: loop
     for_each:
-      variable: item
-      input: '0'
-      at_once: 4294967295
+      variable: entry
+      input: $input.items
+      at_once: 1
       steps:
         - id: body
           save:
-            output: item
+            output: seen
             value: '1'
   - id: done
     finish:
-      result: 1
+      result: seeded
 "#;
 
     let dir = tempfile::tempdir()?;

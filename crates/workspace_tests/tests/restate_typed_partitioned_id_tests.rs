@@ -2,7 +2,12 @@
 
 use proptest::prelude::*;
 use vb_core::{ActionId, RunId, SeqNo, StepIdx, WorkflowId};
-use vb_storage::{JournalError, codec::decode_record_header, keys, types::EventSeq};
+use vb_storage::{
+    JournalError, RecordKind,
+    codec::{decode_record_header, encode_record_header, validate_record_kind_family},
+    keys,
+    types::EventSeq,
+};
 
 fn header_with_kind(kind: u16) -> [u8; vb_storage::constants::RECORD_HEADER_BYTES] {
     let mut header = [0_u8; vb_storage::constants::RECORD_HEADER_BYTES];
@@ -16,7 +21,7 @@ fn header_with_kind(kind: u16) -> [u8; vb_storage::constants::RECORD_HEADER_BYTE
 }
 
 fn unknown_kind(kind: u16) -> bool {
-    !matches!(kind, 1 | 2 | 3 | 10..=29 | 30 | 31 | 32 | 40 | 50)
+    !matches!(kind, 1..=4 | 10..=43 | 50)
 }
 
 proptest! {
@@ -29,25 +34,45 @@ proptest! {
         step in any::<u16>(),
         kind in any::<u16>(),
     ) {
-        let header = keys::run_header_key(RunId::new(run))?;
-        prop_assert_eq!(header[0], vb_storage::constants::PREFIX_RUN_HEADER);
-        prop_assert_eq!(&header[1..9], &run.to_be_bytes());
+        if run == 0 {
+            match keys::run_header_key(RunId::new(0)) {
+                Err(JournalError::InvalidRunId { run: found }) => prop_assert_eq!(found, RunId::new(0)),
+                other => prop_assert!(false, "unexpected {other:?}"),
+            }
+            match keys::run_event_key(RunId::new(0), EventSeq::new(seq)) {
+                Err(JournalError::InvalidRunId { run: found }) => prop_assert_eq!(found, RunId::new(0)),
+                other => prop_assert!(false, "unexpected {other:?}"),
+            }
+            match keys::index_workflow_key(WorkflowId::new(workflow), RunId::new(0)) {
+                Err(JournalError::InvalidRunId { run: found }) => prop_assert_eq!(found, RunId::new(0)),
+                other => prop_assert!(false, "unexpected {other:?}"),
+            }
+            match keys::index_action_key(ActionId::new(action), RunId::new(0), StepIdx::new(step)) {
+                Err(JournalError::InvalidRunId { run: found }) => prop_assert_eq!(found, RunId::new(0)),
+                other => prop_assert!(false, "unexpected {other:?}"),
+            }
+        } else {
+            let header = keys::run_header_key(RunId::new(run))?;
+            prop_assert_eq!(header[0], vb_storage::constants::PREFIX_RUN_HEADER);
+            prop_assert_eq!(&header[1..9], &run.to_be_bytes());
 
-        let event = keys::run_event_key(RunId::new(run), EventSeq::new(seq))?;
-        prop_assert_eq!(event[0], vb_storage::constants::PREFIX_RUN_EVENT);
-        prop_assert_eq!(&event[1..9], &run.to_be_bytes());
-        prop_assert_eq!(&event[9..17], &seq.to_be_bytes());
+            let event = keys::run_event_key(RunId::new(run), EventSeq::new(seq))?;
+            prop_assert_eq!(event[0], vb_storage::constants::PREFIX_RUN_EVENT);
+            prop_assert_eq!(&event[1..9], &run.to_be_bytes());
+            prop_assert_eq!(&event[9..17], &seq.to_be_bytes());
 
-        let workflow_key = keys::index_workflow_key(WorkflowId::new(workflow), RunId::new(run))?;
-        prop_assert_eq!(workflow_key[0], vb_storage::constants::PREFIX_INDEX_WORKFLOW);
-        prop_assert_eq!(&workflow_key[1..5], &workflow.to_be_bytes());
-        prop_assert_eq!(&workflow_key[5..13], &run.to_be_bytes());
+            let workflow_key = keys::index_workflow_key(WorkflowId::new(workflow), RunId::new(run))?;
+            prop_assert_eq!(workflow_key[0], vb_storage::constants::PREFIX_INDEX_WORKFLOW);
+            prop_assert_eq!(&workflow_key[1..5], &workflow.to_be_bytes());
+            prop_assert_eq!(&workflow_key[5..13], &run.to_be_bytes());
 
-        let action_key = keys::index_action_key(ActionId::new(action), RunId::new(run), StepIdx::new(step))?;
-        prop_assert_eq!(action_key[0], vb_storage::constants::PREFIX_INDEX_ACTION);
-        prop_assert_eq!(&action_key[1..3], &action.to_be_bytes());
-        prop_assert_eq!(&action_key[3..11], &run.to_be_bytes());
-        prop_assert_eq!(&action_key[11..13], &step.to_be_bytes());
+            let action_key = keys::index_action_key(ActionId::new(action), RunId::new(run), StepIdx::new(step))?;
+            prop_assert_eq!(action_key[0], vb_storage::constants::PREFIX_INDEX_ACTION);
+            prop_assert_eq!(&action_key[1..3], &action.to_be_bytes());
+            prop_assert_eq!(&action_key[3..11], &run.to_be_bytes());
+            prop_assert_eq!(&action_key[11..13], &step.to_be_bytes());
+        }
+
 
         prop_assert_eq!(SeqNo::new(seq).checked_add(1).map(SeqNo::get), seq.checked_add(1));
 
@@ -97,5 +122,59 @@ fn explicit_edges_and_stable_record_kinds_hold() -> Result<(), JournalError> {
     assert_eq!(vb_storage::records::RecordKind::ActionAbandoned.id(), 32);
     assert_eq!(vb_storage::records::RecordKind::Blob.id(), 40);
     assert_eq!(vb_storage::records::RecordKind::IndexUpdate.id(), 50);
+    assert_eq!(vb_storage::records::RecordKind::RunInputs.id(), 4);
+    assert_eq!(vb_storage::records::RecordKind::StepSucceeded.id(), 33);
+    assert_eq!(
+        vb_storage::records::RecordKind::ActionScheduledTicket.id(),
+        34
+    );
+    assert_eq!(
+        vb_storage::records::RecordKind::ActionCompletedEnvelope.id(),
+        35
+    );
+    assert_eq!(vb_storage::records::RecordKind::RunAdmissionBound.id(), 36);
+    assert_eq!(vb_storage::records::RecordKind::RetryCheckpoint.id(), 37);
+    assert_eq!(vb_storage::records::RecordKind::PolicyDecision.id(), 38);
+    assert_eq!(vb_storage::records::RecordKind::RunAdmissionPinned.id(), 39);
+    assert_eq!(
+        vb_storage::records::RecordKind::RunAdmissionBoundPinned.id(),
+        41
+    );
+    Ok(())
+}
+
+#[test]
+fn owned_inputs_kind42_is_known_and_index_only() -> Result<(), JournalError> {
+    let kind = RecordKind::RunOwnedInputs;
+    assert_eq!(kind.id(), 42);
+    assert_eq!(RecordKind::from_id(42), Some(kind));
+    assert!(!unknown_kind(42));
+    assert!(!kind.is_journal_event());
+    let index_magic = vb_storage::constants::MAGIC_INDEX_RECORD;
+    let journal_magic = vb_storage::constants::MAGIC_JOURNAL_EVENT;
+    assert!(kind.belongs_to_magic(index_magic));
+    assert!(!kind.belongs_to_magic(journal_magic));
+    validate_record_kind_family(index_magic, 42)?;
+    let header = encode_record_header(
+        index_magic,
+        kind,
+        7,
+        &[],
+        vb_storage::constants::MAX_RUN_INPUT_BYTES,
+    )?;
+    let decoded = decode_record_header(
+        &header,
+        index_magic,
+        vb_storage::constants::MAX_RUN_INPUT_BYTES,
+    )?;
+    assert_eq!(decoded.record_kind, 42);
+    assert!(matches!(
+        validate_record_kind_family(journal_magic, 42),
+        Err(JournalError::RecordKindFamilyMismatch { magic, kind: 42 }) if magic == journal_magic
+    ));
+    assert!(matches!(
+        encode_record_header(journal_magic, kind, 7, &[], 0),
+        Err(JournalError::RecordKindFamilyMismatch { magic, kind: 42 }) if magic == journal_magic
+    ));
     Ok(())
 }

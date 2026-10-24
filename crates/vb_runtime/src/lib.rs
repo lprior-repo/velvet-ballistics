@@ -90,6 +90,7 @@ pub mod retry;
 pub mod run_checkpoint;
 #[cfg(test)]
 mod run_checkpoint_tests;
+pub mod run_continuation;
 pub mod runtime;
 pub mod shard;
 pub mod taint;

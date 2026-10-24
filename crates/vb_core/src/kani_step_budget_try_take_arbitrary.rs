@@ -73,39 +73,19 @@ fn checked_step_state(frame: &RunFrame, step: StepIdx) -> StepState {
     }
 }
 
-/// PO-009: zero-budget production budget transition preserves generated actual run frames.
-#[kani::proof]
-#[kani::unwind(12)]
-fn kani_step_budget_try_take_arbitrary() {
-    let workflow: WorkflowShape = kani::any();
-    let shape = FrameShape {
-        run_id: RunId::new(kani::any()),
-        first_step: StepIdx::new(workflow.entry_raw),
-        step_count: workflow.node_count,
-        slot_count: workflow.slot_count,
-    };
-    let clamped_tick_budget = StepBudget::new(workflow.resource_tick_budget);
-    let clamped_max_steps = StepBudget::new(workflow.resource_max_steps);
-
-    let run = match RunFrame::new(
-        shape.run_id,
-        shape.first_step,
-        shape.step_count,
-        shape.slot_count,
-    ) {
-        Ok(value) => value,
-        Err(_) => {
-            kani::assert(false, "generated run frame shape must be valid");
-            return;
-        }
-    };
+fn verify_budget_and_frame(
+    run: &RunFrame,
+    first_step: StepIdx,
+    clamped_tick_budget: StepBudget,
+    clamped_max_steps: StepBudget,
+) {
     let before_pc = run.pc();
     let before_executed = run.executed();
     let before_step_count = run.step_count();
     let before_slot_count = run.slot_count();
     let before_max_parallel = run.max_parallel_in_flight();
     let before_parallel = run.parallel_in_flight();
-    let before_first_step = checked_step_state(&run, shape.first_step);
+    let before_first_step = checked_step_state(run, first_step);
 
     let mut budget = StepBudget::new(0);
     let result = budget.try_take();
@@ -142,7 +122,133 @@ fn kani_step_budget_try_take_arbitrary() {
         "actual parallel accounting is preserved",
     );
     kani::assert(
-        checked_step_state(&run, shape.first_step) == before_first_step,
+        checked_step_state(run, first_step) == before_first_step,
         "actual entry step state is preserved",
     );
+}
+
+/// PO-009: zero-budget production budget transition preserves generated actual run frames.
+#[kani::proof]
+#[kani::unwind(12)]
+fn kani_step_budget_try_take_arbitrary() {
+    let workflow: WorkflowShape = kani::any();
+    let shape = FrameShape {
+        run_id: RunId::new(kani::any()),
+        first_step: StepIdx::new(workflow.entry_raw),
+        step_count: workflow.node_count,
+        slot_count: workflow.slot_count,
+    };
+    let clamped_tick_budget = StepBudget::new(workflow.resource_tick_budget);
+    let clamped_max_steps = StepBudget::new(workflow.resource_max_steps);
+
+    let run = match RunFrame::new(
+        shape.run_id,
+        shape.first_step,
+        shape.step_count,
+        shape.slot_count,
+    ) {
+        Ok(value) => value,
+        Err(_) => {
+            kani::assert(false, "generated run frame shape must be valid");
+            return;
+        }
+    };
+
+    verify_budget_and_frame(
+        &run,
+        shape.first_step,
+        clamped_tick_budget,
+        clamped_max_steps,
+    );
+}
+
+fn partition<const NODE: u16, const ENTRY: u16, const SLOTS: u16>() {
+    let workflow: WorkflowShape = kani::any();
+    kani::assume(workflow.node_count == NODE);
+    kani::assume(workflow.entry_raw == ENTRY);
+    kani::assume(workflow.slot_count == SLOTS);
+
+    let shape = FrameShape {
+        run_id: RunId::new(kani::any()),
+        first_step: StepIdx::new(ENTRY),
+        step_count: NODE,
+        slot_count: SLOTS,
+    };
+
+    let clamped_tick_budget = StepBudget::new(workflow.resource_tick_budget);
+    let clamped_max_steps = StepBudget::new(workflow.resource_max_steps);
+
+    let run = match RunFrame::new(
+        shape.run_id,
+        shape.first_step,
+        shape.step_count,
+        shape.slot_count,
+    ) {
+        Ok(value) => value,
+        Err(_) => {
+            kani::assert(false, "generated run frame shape must be valid");
+            return;
+        }
+    };
+
+    verify_budget_and_frame(
+        &run,
+        shape.first_step,
+        clamped_tick_budget,
+        clamped_max_steps,
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn partition_1_0_0() {
+    partition::<1, 0, 0>();
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn partition_1_0_1() {
+    partition::<1, 0, 1>();
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn partition_1_0_2() {
+    partition::<1, 0, 2>();
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn partition_2_0_0() {
+    partition::<2, 0, 0>();
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn partition_2_0_1() {
+    partition::<2, 0, 1>();
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn partition_2_0_2() {
+    partition::<2, 0, 2>();
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn partition_2_1_0() {
+    partition::<2, 1, 0>();
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn partition_2_1_1() {
+    partition::<2, 1, 1>();
+}
+
+#[kani::proof]
+#[kani::unwind(12)]
+fn partition_2_1_2() {
+    partition::<2, 1, 2>();
 }

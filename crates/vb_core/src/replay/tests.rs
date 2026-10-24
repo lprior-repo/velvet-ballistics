@@ -1011,7 +1011,7 @@ fn collect_source_frame(
                     limit: 4,
                     page_size: 1,
                     body: StepIdx::new(1),
-                    done: StepIdx::new(2),
+                    done: StepIdx::new(3),
                 },
                 output: Some(SlotIdx::new(1)),
                 next: None,
@@ -1020,26 +1020,34 @@ fn collect_source_frame(
                 id: StepIdx::new(1),
                 on_error: None,
                 error_slot: None,
+                kind: CompiledNodeKind::Nop,
+                output: None,
+                next: Some(StepIdx::new(2)),
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                on_error: None,
+                error_slot: None,
                 kind: CompiledNodeKind::CollectNext {
                     collector_slot: SlotIdx::new(1),
                     body: StepIdx::new(1),
-                    done: StepIdx::new(2),
+                    done: StepIdx::new(3),
                 },
                 output: None,
                 next: None,
             },
             CompiledNode {
-                id: StepIdx::new(2),
+                id: StepIdx::new(3),
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::CollectFinish {
                     collector_slot: SlotIdx::new(1),
                 },
                 output: Some(SlotIdx::new(2)),
-                next: Some(StepIdx::new(3)),
+                next: Some(StepIdx::new(4)),
             },
             CompiledNode {
-                id: StepIdx::new(3),
+                id: StepIdx::new(4),
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::Finish {
@@ -1124,9 +1132,9 @@ fn replay_collect_pages_with_taint() -> Result<ReplayCollectPages, CoreError> {
             step: StepIdx::new(0),
         })?;
     let next = plan
-        .node(StepIdx::new(1))
+        .node(StepIdx::new(2))
         .ok_or(CoreError::InvalidProgramCounter {
-            step: StepIdx::new(1),
+            step: StepIdx::new(2),
         })?;
 
     super::step::replay_step_with_collect(start, &mut run, &mut store, &plan, &mut states)
@@ -1179,9 +1187,9 @@ fn replay_collect_next_without_hydrated_state() -> Result<Result<(), ReplayError
             step: StepIdx::new(0),
         })?;
     let next = plan
-        .node(StepIdx::new(1))
+        .node(StepIdx::new(2))
         .ok_or(CoreError::InvalidProgramCounter {
-            step: StepIdx::new(1),
+            step: StepIdx::new(2),
         })?;
 
     super::step::replay_step_with_collect(start, &mut run, &mut store, &plan, &mut states)
@@ -1383,12 +1391,35 @@ fn replay_collect_page_finish_and_empty_next_paths() -> Result<(), CoreError> {
     replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(2))?;
     replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(1))?;
     replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(2))?;
-    replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(2))?;
+    let prior_pc = run.pc();
+    let prior_collector = *run.read_slot(SlotIdx::new(1))?;
+    assert_eq!(prior_pc, StepIdx::new(3));
+    let next = plan
+        .node(StepIdx::new(2))
+        .ok_or(CoreError::InvalidProgramCounter {
+            step: StepIdx::new(2),
+        })?;
+    let rejected =
+        super::step::replay_step_with_collect(next, &mut run, &mut store, &plan, &mut states);
+    assert!(matches!(
+        rejected,
+        Err(ReplayError::Internal {
+            reason: "collect pagination state missing during replay",
+        })
+    ));
+    assert_eq!(run.pc(), prior_pc);
+    assert_eq!(*run.read_slot(SlotIdx::new(1))?, prior_collector);
     replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(3))?;
 
     assert_eq!(run.pc(), StepIdx::new(4));
     assert_eq!(run.read_taint(SlotIdx::new(2))?, Taint::Secret);
-    assert_eq!(&*current_page_values(&run, &store)?, &[]);
+    assert_eq!(
+        &*current_page_values(&run, &store)?,
+        &[SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]
+    );
+    assert_eq!(*run.read_slot(SlotIdx::new(1))?, SlotValue::List(source));
+    assert_eq!(*run.read_slot(SlotIdx::new(2))?, SlotValue::List(source));
+    assert_eq!(run.read_taint(SlotIdx::new(1))?, Taint::Secret);
     Ok(())
 }
 
@@ -2050,9 +2081,9 @@ fn replay_collect_next_rejects_changed_source_length() -> Result<(), CoreError> 
     }
 
     let node = plan
-        .node(StepIdx::new(1))
+        .node(StepIdx::new(2))
         .ok_or(CoreError::InvalidProgramCounter {
-            step: StepIdx::new(1),
+            step: StepIdx::new(2),
         })?;
     match super::step::replay_step_with_collect(
         node,

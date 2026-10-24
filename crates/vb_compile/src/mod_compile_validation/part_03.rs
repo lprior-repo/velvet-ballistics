@@ -197,7 +197,7 @@ pub(super) fn validate_canonical_phase_zero_step_shape(
     index: usize,
     last_step: usize,
 ) -> Result<(), CompileError> {
-    let StepSpec { primitive, body } = step_spec(step, index)?;
+    let StepSpec { primitive, body } = canonical_step_spec(step, index)?;
     match primitive {
         StepPrimitive::Run | StepPrimitive::Do => {
             validate_run_shape(body, index, last_step, primitive.as_str())

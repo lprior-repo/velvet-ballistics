@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
-//! Kani harnesses for `lower_repeat` and `lower_ask` id+1 control lowering.
+//! Kani harnesses for `lower_ask` resume IDs and bounded Choose lowering.
 //! Bead: vb-onsk; scope: current public `vb_compile` APIs.
 
-use crate::{CompileError, SlotCompiler, lower_ask, lower_choose, lower_repeat};
+use crate::{CompileError, SlotCompiler, lower_ask, lower_choose};
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
 
 const MAX_NON_OVERFLOWING_STEP_RAW: u16 = 65_534;
@@ -28,16 +28,6 @@ fn expected_successor(raw: u16) -> u16 {
     }
 }
 
-fn max_step_plus_one() -> usize {
-    match usize::from(u16::MAX).checked_add(1) {
-        Some(value) => value,
-        None => {
-            kani::assert(false, "usize must represent u16::MAX + 1 on this target");
-            0
-        }
-    }
-}
-
 fn symbolic_step() -> StepIdx {
     StepIdx::new(kani::any::<u16>())
 }
@@ -51,81 +41,6 @@ fn symbolic_timeout() -> Option<SlotIdx> {
         Some(symbolic_slot())
     } else {
         None
-    }
-}
-
-fn assert_repeat_nodes(
-    nodes: &[CompiledNode],
-    id: StepIdx,
-    max_attempts: u16,
-    body: StepIdx,
-    done: StepIdx,
-    expected_slot: SlotIdx,
-) {
-    match nodes {
-        [start, attempt, finish] => {
-            assert_repeat_start(start, id, max_attempts, body, done);
-            assert_repeat_attempt(attempt, body, done, expected_slot);
-            assert_repeat_finish(finish, done, expected_slot);
-        }
-        _ => kani::assert(false, "lower_repeat must emit exactly three nodes"),
-    }
-}
-
-fn assert_repeat_start(
-    node: &CompiledNode,
-    id: StepIdx,
-    max_attempts: u16,
-    body: StepIdx,
-    done: StepIdx,
-) {
-    kani::assert(node.id == id, "RepeatStart id must equal input id");
-    match node.kind {
-        CompiledNodeKind::RepeatStart {
-            max_attempts: actual,
-            body: actual_body,
-            done: actual_done,
-        } => {
-            kani::assert(actual == max_attempts, "RepeatStart max_attempts preserved");
-            kani::assert(actual_body == body, "RepeatStart body preserved");
-            kani::assert(actual_done == done, "RepeatStart done preserved");
-        }
-        _ => kani::assert(false, "first repeat node must be RepeatStart"),
-    }
-}
-
-fn assert_repeat_attempt(
-    node: &CompiledNode,
-    body: StepIdx,
-    done: StepIdx,
-    expected_slot: SlotIdx,
-) {
-    kani::assert(node.id == body, "RepeatAttempt id must equal body step");
-    kani::assert(
-        node.output == Some(expected_slot),
-        "RepeatAttempt output id + 1",
-    );
-    match node.kind {
-        CompiledNodeKind::RepeatAttempt {
-            attempt_slot,
-            body: actual_body,
-            done: actual_done,
-        } => {
-            kani::assert(attempt_slot == expected_slot, "RepeatAttempt slot id + 1");
-            kani::assert(actual_body == body, "RepeatAttempt body preserved");
-            kani::assert(actual_done == done, "RepeatAttempt done preserved");
-        }
-        _ => kani::assert(false, "second repeat node must be RepeatAttempt"),
-    }
-}
-
-fn assert_repeat_finish(node: &CompiledNode, done: StepIdx, expected_slot: SlotIdx) {
-    kani::assert(node.id == done, "RepeatFinish id must equal done step");
-    match node.kind {
-        CompiledNodeKind::RepeatFinish { result } => {
-            kani::assert(result == expected_slot, "RepeatFinish result id + 1");
-        }
-        _ => kani::assert(false, "third repeat node must be RepeatFinish"),
     }
 }
 
@@ -174,54 +89,6 @@ fn assert_ask_resume(node: &CompiledNode, expected_resume: StepIdx, answer: Slot
         } => kani::assert(actual_answer == answer, "AskResume answer preserved"),
         _ => kani::assert(false, "second ask node must be AskResume"),
     }
-}
-
-#[kani::proof]
-#[kani::unwind(12)]
-fn lower_repeat_accepts_non_max_id_and_uses_id_plus_one_slot() {
-    let id_raw = symbolic_non_max_step_raw();
-    let successor_raw = expected_successor(id_raw);
-    let id = StepIdx::new(id_raw);
-    let expected_slot = SlotIdx::new(successor_raw);
-    let max_attempts: u16 = kani::any();
-    let body = symbolic_step();
-    let done = symbolic_step();
-
-    kani::cover!(max_attempts == 0, "repeat max_attempts includes zero");
-    kani::cover!(max_attempts == u16::MAX, "repeat max_attempts includes max");
-    kani::cover!(body == id, "repeat body may alias start id");
-    kani::cover!(done == body, "repeat done may alias body");
-
-    let mut builder = SlotCompiler::new();
-    match lower_repeat(id, max_attempts, body, done, &mut builder) {
-        Ok(nodes) => {
-            assert_repeat_nodes(&nodes, id, max_attempts, body, done, expected_slot);
-            std::mem::forget(nodes);
-        }
-        Err(_) => kani::assert(false, "lower_repeat must accept non-max step ids"),
-    }
-    std::mem::forget(builder);
-}
-
-#[kani::proof]
-#[kani::unwind(12)]
-fn lower_repeat_rejects_max_id_without_overflow() {
-    let max_attempts: u16 = kani::any();
-    let body = symbolic_step();
-    let done = symbolic_step();
-    let mut builder = SlotCompiler::new();
-
-    match lower_repeat(StepIdx::MAX, max_attempts, body, done, &mut builder) {
-        Ok(nodes) => {
-            std::mem::forget(nodes);
-            kani::assert(false, "lower_repeat must reject max step id");
-        }
-        Err(CompileError::StepIndexOutOfRange { value }) => {
-            kani::assert(value == max_step_plus_one(), "repeat reports id + 1");
-        }
-        Err(_) => kani::assert(false, "lower_repeat must reject with limit error"),
-    }
-    std::mem::forget(builder);
 }
 
 #[kani::proof]

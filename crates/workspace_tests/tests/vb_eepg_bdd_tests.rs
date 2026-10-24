@@ -476,13 +476,13 @@ mod unknown_record_kind_rejection {
 
     #[test]
     fn is_known_record_kind_returns_true_for_valid_kinds() {
-        // Given: kind values that are in the known set {1, 2, 3, 10-29, 30, 31-32, 33-37, 38, 39, 40, 41, 50}
+        // Given: kind values that are in the known set {1, 2, 3, 10-29, 30, 31-32, 33-37, 38, 39, 40, 41, 42, 50}
         // We test through decode_record_header which calls is_known_record_kind internally.
         // Note: Some kinds will fail with RecordKindFamilyMismatch because they don't
         // match MAGIC_JOURNAL_EVENT, but they should NOT fail with UnknownRecordKind.
         let valid_kinds: Vec<u16> = vec![
             1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-            29, 30, 31, 32, 38, 39, 40, 41, 50,
+            29, 30, 31, 32, 38, 39, 40, 41, 42, 43, 50,
         ];
         for &kind in &valid_kinds {
             let mut header = make_header_with_kind(kind);
@@ -509,11 +509,11 @@ mod unknown_record_kind_rejection {
     #[test]
     fn is_known_record_kind_returns_false_for_invalid_kinds() {
         // Given: kind values that are truly unknown (not in from_id).
-        // Known kinds: 1,2,3,4,10-29,30,31-37,38,39,40,41,50
+        // Known kinds: 1,2,3,4,10-29,30,31-37,38,39,40,41,42,43,50
         // 36 (RunAdmissionBound), 37 (RetryCheckpoint), 38 (PolicyDecision),
         // 39 (RunAdmissionPinned), and 41 (RunAdmissionBoundPinned) are journal-event kinds.
         let truly_unknown_kinds: Vec<u16> = vec![
-            0, 5, 6, 7, 8, 9, 42, 43, 44, 45, 46, 47, 48, 49, 51, 52, 100, 255, 65535,
+            0, 5, 6, 7, 8, 9, 44, 45, 46, 47, 48, 49, 51, 52, 100, 255, 65535,
         ];
         for &kind in &truly_unknown_kinds {
             let mut header = make_header_with_kind(kind);

@@ -138,6 +138,8 @@ pub enum CompileError {
     UnknownReferenceName { kind: &'static str, reference: Box<str>, name: Box<str> },
     #[error("unsupported accessor reference in {reference}: {root}.{path}")]
     UnsupportedAccessorReference { reference: Box<str>, root: Box<str>, path: Box<str> },
+    #[error("possibly skipped action output referenced at slot {slot:?} by {consumer}")]
+    PossiblySkippedReference { slot: vb_core::SlotIdx, consumer: &'static str },
     #[error("step {step} branch target {target} is not a declared step")]
     UnknownStepTarget { step: usize, target: usize },
     #[error("step {step} otherwise label '{label}' is not a declared step")]

@@ -5,7 +5,7 @@
 use vb_core::engine::{EngineError, StepBudget};
 use vb_core::frame::RunFrame;
 use vb_core::ids::StepIdx;
-use vb_core::workflow::{CompiledNode, CompiledWorkflow};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
 use crate::engine::drive::recovery::DriveState;
 use crate::engine::drive::timers::try_consume_step_budget;
@@ -37,6 +37,7 @@ pub(super) fn begin_drive_step<'a>(
     let node = plan
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
+    super::loop_rearm::validate_activation(plan, node)?;
     evidence
         .push_step_started(pc)
         .map_err(RuntimeEngineError::Core)?;
@@ -44,10 +45,43 @@ pub(super) fn begin_drive_step<'a>(
     Ok(Some(DriveStep { pc, node }))
 }
 
+/// Extracts the body step index from an owning-loop control node, or
+/// `None` for non-loop or join/finish nodes that cannot rearm.
+pub(super) fn loop_body_target(node: &CompiledNode) -> Option<StepIdx> {
+    match node.kind {
+        CompiledNodeKind::ForEachNext { body, .. }
+        | CompiledNodeKind::ReduceNext { body, .. }
+        | CompiledNodeKind::CollectNext { body, .. } => Some(body),
+        CompiledNodeKind::RepeatCheck { .. } => node.next,
+        _ => None,
+    }
+}
+
+/// After normal success and evidence commit, rearm the validated owned body
+/// only when the latch takes its backward body edge. The helper checks the
+/// complete region before resetting any succeeded body or latch state.
+pub(super) fn owned_continuation_rearm(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    step: DriveStep<'_>,
+) -> RuntimeEngineResult<()> {
+    let Some(body) = loop_body_target(step.node) else {
+        return Ok(());
+    };
+    if run.pc() != body {
+        return Ok(());
+    }
+    if body >= step.pc {
+        return Ok(());
+    }
+    super::loop_rearm::loop_body_rearm(plan, run, step.pc, body)
+}
+
 /// Emits slot evidence for the just-finished step, then commits the
 /// matching run-frame step state (Succeeded for success-class signals,
 /// Waiting/Asking/etc for suspension signals).
 pub(super) fn finish_drive_step(
+    plan: &CompiledWorkflow,
     run: &mut RunFrame,
     evidence: &mut EvidenceCollector,
     collect_states: &CollectStates,
@@ -71,6 +105,7 @@ pub(super) fn finish_drive_step(
         evidence
             .push_step_succeeded(step.pc, step.node.output)
             .map_err(RuntimeEngineError::Core)?;
+        owned_continuation_rearm(plan, run, step)?;
     } else {
         // AwaitingWait/AwaitingAsk/AwaitingAction/StepBudgetExhausted:
         // no StepSucceeded event, but slot evidence above is still valid

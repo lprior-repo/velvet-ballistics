@@ -18,6 +18,7 @@ use crate::shard::{
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
+mod owned_activation;
 mod shutdown;
 pub use shutdown::{ShutdownFailure, ShutdownPhase, ShutdownReport};
 

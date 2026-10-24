@@ -30,12 +30,16 @@ pub struct CompiledWorkflow {
     resource_contract: ResourceContract,
     step_names: Box<[Box<str>]>,
     input_slots: Box<[CompiledInputSlot]>,
+    loop_regions: Box<[Option<CompiledLoopRegion>]>,
+    nested_activation_entries: Box<[bool]>,
 }
 
 impl CompiledWorkflow {
     /// Creates a compiled workflow after validating all numeric references.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
+        let loop_regions = loop_regions::validate(&parts)?;
+        let nested_activation_entries = loop_regions::nested_activation_map(&parts, &loop_regions)?;
         validate_budget(&parts)?;
         validate_input_slots(&parts)?;
         Ok(Self {
@@ -52,6 +56,8 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
+            loop_regions,
+            nested_activation_entries,
         })
     }
 
@@ -75,6 +81,8 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
+            loop_regions: Vec::new().into_boxed_slice(),
+            nested_activation_entries: Box::new([]),
         }
     }
 
@@ -96,6 +104,8 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
+            loop_regions: Vec::new().into_boxed_slice(),
+            nested_activation_entries: Box::new([]),
         }
     }
 
@@ -184,6 +194,28 @@ impl CompiledWorkflow {
     #[must_use]
     pub fn input_slots(&self) -> &[CompiledInputSlot] {
         self.input_slots.as_ref()
+    }
+
+    /// Returns the compiled loop region for a control step, if any.
+    ///
+    /// The cold constructor validates ownership and edge closure; this checked
+    /// lookup returns its immutable body/control/done region for runtime use. Returns `None` for non-loop steps or when the cache
+    /// was not populated (unchecked constructors).
+    #[must_use]
+    pub fn loop_region(&self, control: StepIdx) -> Option<&CompiledLoopRegion> {
+        self.loop_regions
+            .get(control.as_usize())
+            .and_then(Option::as_ref)
+    }
+
+    /// Returns whether a step is a nested activation entry point.
+    ///
+    /// Returns `None` for out-of-range indices or when the cache was not
+    /// populated (unchecked constructors). `true` marks an unsupported nested Start or a step in its
+    /// validated inclusive body/control interval.
+    #[must_use]
+    pub fn nested_activation_blocked(&self, step: StepIdx) -> Option<bool> {
+        self.nested_activation_entries.get(step.as_usize()).copied()
     }
 
     /// Converts back to the serializable parts representation for artifact emission.
@@ -392,6 +424,16 @@ pub enum PathSegment {
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WorkflowError {
+    /// A step wrote to a repeat counter owned by a different step.
+    #[error("step {writer:?} wrote to repeat counter slot {slot:?} owned by step {owner:?}")]
+    RepeatCounterForeignWrite {
+        /// Owner RepeatStart step.
+        owner: StepIdx,
+        /// Foreign writing step.
+        writer: StepIdx,
+        /// Reserved counter slot.
+        slot: SlotIdx,
+    },
     /// The compiler emitted no nodes.
     #[error("compiled workflow must contain at least one node")]
     EmptyNodes,
@@ -458,6 +500,23 @@ pub enum WorkflowError {
         from: StepIdx,
         /// Target step of the backward edge.
         to: StepIdx,
+    },
+
+    /// Reduce branch body and done targets are the same step.
+    #[error("reduce node {step:?} aliases body and done at {target:?}")]
+    ReduceBranchTargetAlias {
+        /// The reduce node with the alias.
+        step: StepIdx,
+        /// The shared target step.
+        target: StepIdx,
+    },
+    /// ForEachNext branch body and done targets are the same step.
+    #[error("for_each_next node {step:?} aliases body and done at {target:?}")]
+    ForEachBranchTargetAlias {
+        /// The for_each_next node with the alias.
+        step: StepIdx,
+        /// The shared target step.
+        target: StepIdx,
     },
     /// An inner loop exceeds its outer loop span.
     #[error("inner loop at {inner:?} exceeds outer loop done at {outer_done:?}")]
@@ -545,6 +604,30 @@ pub enum WorkflowError {
         prev_slot: SlotIdx,
         /// The out-of-order slot index.
         curr_slot: SlotIdx,
+    },
+    /// A loop control step has no matching loop body or done target.
+    #[error("loop control step {control:?} is unpaired")]
+    LoopRegionUnpaired {
+        /// The unpaired loop control step.
+        control: StepIdx,
+    },
+    /// Loop regions cross each other, violating proper nesting.
+    #[error("loop region at {control:?} crosses from {from:?} to {to:?}")]
+    LoopRegionCrossing {
+        /// The loop control step with the crossing region.
+        control: StepIdx,
+        /// The start of the crossing region.
+        from: StepIdx,
+        /// The end of the crossing region.
+        to: StepIdx,
+    },
+    /// A loop control step references an unsupported node kind.
+    #[error("loop control step {control:?} references unsupported step {step:?}")]
+    LoopRegionUnsupported {
+        /// The loop control step.
+        control: StepIdx,
+        /// The unsupported referenced step.
+        step: StepIdx,
     },
 }
 
@@ -847,6 +930,11 @@ pub enum CompiledNodeKind {
     },
 }
 
+mod repeat_counter_ownership;
+
+mod loop_regions;
+pub use loop_regions::CompiledLoopRegion;
+
 fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     if parts.nodes.is_empty() {
         return Err(WorkflowError::EmptyNodes);
@@ -864,6 +952,7 @@ fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_build_object_symbols(&parts.nodes, parts.symbols_count)?;
     validate_reachability(parts)?;
     validate_forward_edges(parts)?;
+    repeat_counter_ownership::validate(parts)?;
     // RE-001: reject nested `TogetherStart`. Walked inline here (the
     // helper lives in `crate::engine::validate` to avoid an
     // engine->workflow dependency cycle) so `try_from_parts` rejects
@@ -1077,7 +1166,36 @@ fn validate_entry(entry: StepIdx, node_count: usize) -> Result<(), WorkflowError
 
 fn validate_node(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
     validate_node_common(node, parts)?;
-    validate_node_kind(&node.kind, parts)
+    validate_node_kind(&node.kind, parts)?;
+    validate_reduce_branch_targets(node)?;
+    validate_for_each_next_targets(node)
+}
+
+fn validate_reduce_branch_targets(node: &CompiledNode) -> Result<(), WorkflowError> {
+    match &node.kind {
+        CompiledNodeKind::ReduceStart { body, done, .. }
+        | CompiledNodeKind::ReduceNext { body, done, .. }
+            if body == done =>
+        {
+            Err(WorkflowError::ReduceBranchTargetAlias {
+                step: node.id,
+                target: *body,
+            })
+        }
+        _ => Ok(()),
+    }
+}
+
+fn validate_for_each_next_targets(node: &CompiledNode) -> Result<(), WorkflowError> {
+    match &node.kind {
+        CompiledNodeKind::ForEachNext { body, done, .. } if body == done => {
+            Err(WorkflowError::ForEachBranchTargetAlias {
+                step: node.id,
+                target: *body,
+            })
+        }
+        _ => Ok(()),
+    }
 }
 
 fn validate_node_common(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
@@ -1716,7 +1834,12 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
         })?);
 
         if let Some(next) = node.next {
-            validate_forward_target(next, index, current_id)?;
+            if matches!(node.kind, CompiledNodeKind::RepeatCheck { .. }) && next.as_usize() <= index
+            {
+                repeat_check_validate::validate(parts, index, node, next)?;
+            } else {
+                validate_forward_target(next, index, current_id)?;
+            }
         }
 
         if let Some(handler) = node.on_error {
@@ -1753,8 +1876,8 @@ fn validate_kind_edges(
         | CompiledNodeKind::WaitEvent { .. }
         | CompiledNodeKind::Ask { .. }
         | CompiledNodeKind::AskResume { .. }
-        | CompiledNodeKind::Finish { .. }
-        | CompiledNodeKind::Jump { .. } => Ok(()),
+        | CompiledNodeKind::Finish { .. } => Ok(()),
+        CompiledNodeKind::Jump { target } => validate_forward_target(*target, ci, cid),
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
@@ -1826,6 +1949,128 @@ fn validate_loop_done_only(done: StepIdx, ci: usize, cid: StepIdx) -> Result<(),
     validate_forward_target(done, ci, cid)
 }
 
+/// Validates RepeatCheck backward next-edges against RepeatStart loop owners.
+/// RepeatCheck.next must target the owning RepeatStart's body step, and the
+/// check must match the owner's attempt slot and done target.
+mod repeat_check_validate {
+    use super::{CompiledNode, CompiledNodeKind, StepIdx, WorkflowError, WorkflowParts};
+
+    /// Finds the nearest active enclosing structured start.
+    /// Active means the structured start's done/join target extends beyond check_index.
+    fn nearest_active_owner(
+        parts: &WorkflowParts,
+        check_index: usize,
+    ) -> Option<(usize, &CompiledNode)> {
+        for (i, node) in parts.nodes.iter().take(check_index).enumerate().rev() {
+            let end_target = match &node.kind {
+                CompiledNodeKind::ForEachStart { done, .. }
+                | CompiledNodeKind::CollectStart { done, .. }
+                | CompiledNodeKind::ReduceStart { done, .. }
+                | CompiledNodeKind::RepeatStart { done, .. } => *done,
+                CompiledNodeKind::TogetherStart { join, .. } => *join,
+                _ => continue,
+            };
+            if end_target.as_usize() > check_index {
+                return Some((i, node));
+            }
+        }
+        None
+    }
+
+    pub(super) fn validate(
+        parts: &WorkflowParts,
+        check_index: usize,
+        check: &CompiledNode,
+        back_target: StepIdx,
+    ) -> Result<(), WorkflowError> {
+        let Some((owner_index, owner)) = nearest_active_owner(parts, check_index) else {
+            return Err(WorkflowError::BackwardEdge {
+                from: check.id,
+                to: back_target,
+            });
+        };
+        if !matches!(owner.kind, CompiledNodeKind::RepeatStart { .. }) {
+            return Err(WorkflowError::BackwardEdge {
+                from: check.id,
+                to: back_target,
+            });
+        }
+        let owner_body = match &owner.kind {
+            CompiledNodeKind::RepeatStart { body, .. } => *body,
+            _ => {
+                return Err(WorkflowError::BackwardEdge {
+                    from: check.id,
+                    to: back_target,
+                });
+            }
+        };
+        let owner_done = match &owner.kind {
+            CompiledNodeKind::RepeatStart { done, .. } => *done,
+            _ => {
+                return Err(WorkflowError::BackwardEdge {
+                    from: check.id,
+                    to: back_target,
+                });
+            }
+        };
+        let check_attempt = match &check.kind {
+            CompiledNodeKind::RepeatCheck { attempt_slot, .. } => *attempt_slot,
+            _ => {
+                return Err(WorkflowError::BackwardEdge {
+                    from: check.id,
+                    to: back_target,
+                });
+            }
+        };
+        let check_done = match &check.kind {
+            CompiledNodeKind::RepeatCheck { done, .. } => *done,
+            _ => {
+                return Err(WorkflowError::BackwardEdge {
+                    from: check.id,
+                    to: back_target,
+                });
+            }
+        };
+        if owner.output != Some(check_attempt) {
+            return Err(WorkflowError::BackwardEdge {
+                from: check.id,
+                to: back_target,
+            });
+        }
+        if owner_body != back_target {
+            return Err(WorkflowError::BackwardEdge {
+                from: check.id,
+                to: back_target,
+            });
+        }
+        if owner_done != check_done {
+            return Err(WorkflowError::BackwardEdge {
+                from: check.id,
+                to: back_target,
+            });
+        }
+        if owner_index >= check_index {
+            return Err(WorkflowError::BackwardEdge {
+                from: check.id,
+                to: back_target,
+            });
+        }
+        if owner_body.as_usize() >= check_index {
+            return Err(WorkflowError::BackwardEdge {
+                from: check.id,
+                to: back_target,
+            });
+        }
+        if check_index >= owner_done.as_usize() {
+            return Err(WorkflowError::BackwardEdge {
+                from: check.id,
+                to: back_target,
+            });
+        }
+        Ok(())
+    }
+}
+
 /// Validates that both `body` and `done` edges of a `*Start` loop node point
 /// strictly forward from the current node. `body` here is the entry into the
 /// loop body (a forward edge); only `*Next` carries the back-edge in its
@@ -1893,6 +2138,15 @@ fn push_loop_span(
         return Ok(());
     };
 
+    // Retire finished spans BEFORE the nesting comparison so that
+    // sequential loops are not rejected as improperly nested.
+    while spans
+        .last()
+        .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
+    {
+        spans.pop();
+    }
+
     match spans.last().copied() {
         Some((_outer_start, outer_done)) if done_idx > outer_done => {
             return Err(WorkflowError::ImproperLoopNesting {
@@ -1909,13 +2163,6 @@ fn push_loop_span(
             });
         }
         _ => {}
-    }
-
-    while spans
-        .last()
-        .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
-    {
-        spans.pop();
     }
 
     spans.push((ci, done_idx));

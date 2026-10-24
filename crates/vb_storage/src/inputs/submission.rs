@@ -1,4 +1,5 @@
-use super::RunInputsRecord;
+use super::owned::SubmissionInputs;
+use super::{OwnedRunInputsRecordV1, RunInputsRecord};
 use crate::{
     AcceptedArtifact, CompiledIrRecord, EventSeq, FjallJournal, JournalError, JournalEvent,
     RunHeaderRecord, WorkflowSourceRecord,
@@ -9,7 +10,7 @@ use vb_core::RuntimePolicy;
 pub struct RunSubmission {
     source: WorkflowSourceRecord,
     artifact: AcceptedArtifact,
-    inputs: RunInputsRecord,
+    inputs: SubmissionInputs,
     header: RunHeaderRecord,
 }
 
@@ -24,7 +25,24 @@ impl RunSubmission {
         let submission = Self {
             source,
             artifact,
-            inputs,
+            inputs: SubmissionInputs::Scalar(inputs),
+            header,
+        };
+        submission.validate_binding()?;
+        Ok(submission)
+    }
+
+    /// Prepares complete owned retained inputs for the same atomic submission path.
+    pub fn owned(
+        source: WorkflowSourceRecord,
+        artifact: AcceptedArtifact,
+        inputs: OwnedRunInputsRecordV1,
+        header: RunHeaderRecord,
+    ) -> Result<Self, JournalError> {
+        let submission = Self {
+            source,
+            artifact,
+            inputs: SubmissionInputs::Owned(inputs),
             header,
         };
         submission.validate_binding()?;
@@ -89,7 +107,7 @@ impl RunSubmission {
             digest: self.artifact.digest,
             ir,
         })?;
-        batch.put_run_inputs(&self.inputs)?;
+        self.inputs.stage(batch)?;
         batch.put_run_header(&self.header)?;
         batch.put_workflow_index(self.header.workflow_id, self.header.run)?;
         batch.put_status_index(
@@ -146,7 +164,9 @@ impl FjallJournal {
             .lock()
             .map_err(|_| JournalError::WriteLockPoisoned)?;
         if self.run_header(submission.header.run)?.is_some()
-            || self.run_inputs(submission.header.run)?.is_some()
+            || self
+                .run_inputs
+                .contains_key(crate::keys::run_header_key(submission.header.run)?)?
             || !self.events_for_run(submission.header.run)?.is_empty()
         {
             return Err(JournalError::RunAlreadyExists);

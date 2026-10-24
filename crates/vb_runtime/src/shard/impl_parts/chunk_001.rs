@@ -76,6 +76,7 @@ impl Shard {
         }
         match &cmd {
             ShardCommand::Submit { .. }
+            | ShardCommand::ActivateOwnedSubmission { .. }
             | ShardCommand::SubmitPrePersisted { .. }
             | ShardCommand::SubmitWithInputs { .. }
             | ShardCommand::SubmitWithContracts { .. }
@@ -680,6 +681,9 @@ impl Shard {
         };
 
         match cmd {
+            ShardCommand::ActivateOwnedSubmission { run, expected_source_digest } => {
+                self.handle_owned_activation(run, expected_source_digest)?;
+            }
             ShardCommand::Submit {
                 run,
                 workflow,

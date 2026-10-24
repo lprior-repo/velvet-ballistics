@@ -133,6 +133,7 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::MigrationRequired { .. }
         | JournalError::MalformedKeyspaceRow { .. }
         | JournalError::ArtifactMalformed
+        | JournalError::OwnedInputs(_)
         | JournalError::WorkflowReconstruction(_)
         | JournalError::CompiledIrReadback(_)
         | JournalError::AdmissionAllocationFailed(_)

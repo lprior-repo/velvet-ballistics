@@ -1050,6 +1050,7 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
         .iter()
         .fold(ReplaySummary::default(), |mut summary, event| {
             match event {
+                JournalEvent::RunContinuation { .. } => {}
                 JournalEvent::RunAccepted { .. } => {
                     summary.accepted = summary.accepted.saturating_add(1);
                 }

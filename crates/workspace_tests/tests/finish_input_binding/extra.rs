@@ -64,22 +64,61 @@ fn test_no_finish_compile_fallback() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn test_unsupported_nonfinish_consumer() -> Result<(), Box<dyn std::error::Error>> {
+fn test_input_expression_save_preserves_value_and_secret() -> Result<(), Box<dyn std::error::Error>>
+{
     let yaml = "version: velvet-ballistics/v1\nname: input_finish\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: save\n    save:\n      output: saved\n      value: '$input.count'\n  - id: done\n    finish:\n      result: saved\n";
-    let parsed = parse_workflow_source(yaml)?;
-    match compile_source(&parsed) {
-        Err(errors) => {
-            assert_eq!(
-                errors,
-                CompileErrors(vec![CompileError::StepFieldShape {
-                    step: 0,
-                    field: "set.value",
-                    expected: "integer string"
-                }])
-            );
+
+    let workflow = compile(yaml)?;
+
+    assert_eq!(
+        workflow.input_slots(),
+        &[CompiledInputSlot {
+            slot: SlotIdx::new(1),
+            kind: InputSlotKind::I64,
+        }]
+    );
+
+    assert_eq!(workflow.node_count(), 2);
+
+    let node0 = workflow
+        .node(vb_core::StepIdx::new(0))
+        .ok_or("node 0 missing")?;
+    match &node0.kind {
+        CompiledNodeKind::EvalExpr { expr } => {
+            assert_eq!(*expr, vb_core::ExprIdx::new(0));
         }
-        Ok(_) => return Err("expected StepFieldShape".into()),
+        _ => return Err("node 0 should be EvalExpr".into()),
     }
+    assert_eq!(node0.output, Some(SlotIdx::new(0)));
+    assert_eq!(node0.next, Some(vb_core::StepIdx::new(1)));
+
+    let expr = workflow
+        .expression(vb_core::ExprIdx::new(0))
+        .ok_or("expr 0 missing")?;
+    assert_eq!(
+        expr.ops.as_ref(),
+        &[vb_core::ExprOp::LoadSlot(SlotIdx::new(1))]
+    );
+
+    let node1 = workflow
+        .node(vb_core::StepIdx::new(1))
+        .ok_or("node 1 missing")?;
+    match &node1.kind {
+        CompiledNodeKind::Finish { result } => {
+            assert_eq!(*result, SlotIdx::new(0));
+        }
+        _ => return Err("node 1 should be Finish".into()),
+    }
+    assert_eq!(node1.next, None);
+
+    for value in [i64::MIN, -1, 0, 42, i64::MAX] {
+        let signal = run(&workflow, &[value])?;
+        assert_eq!(
+            signal,
+            EngineSignal::Finished(SlotValue::I64(value), Taint::Secret)
+        );
+    }
+
     Ok(())
 }
 

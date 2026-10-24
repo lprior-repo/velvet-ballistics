@@ -23,6 +23,7 @@ impl JournalEvent {
     #[must_use]
     pub const fn run_id(&self) -> RunId {
         match self {
+            Self::RunContinuation { carrier } => carrier.header().run(),
             Self::RunAccepted { run, .. }
             | Self::RunAdmission { run, .. }
             | Self::RetryCheckpoint { run, .. }
@@ -60,6 +61,7 @@ impl JournalEvent {
     #[must_use]
     pub const fn seq(&self) -> crate::EventSeq {
         match self {
+            Self::RunContinuation { carrier } => carrier.header().own_seq(),
             Self::RunAccepted { seq, .. }
             | Self::RunAdmission { seq, .. }
             | Self::RetryCheckpoint { seq, .. }
@@ -94,6 +96,7 @@ impl JournalEvent {
     #[must_use]
     pub const fn record_kind(&self) -> RecordKind {
         match self {
+            Self::RunContinuation { carrier: _ } => RecordKind::RunContinuation,
             Self::RunAccepted { .. } => RecordKind::RunAccepted,
             Self::RunAdmission {
                 input_digest: crate::RunInputBinding::LegacyUnbound,
@@ -189,6 +192,7 @@ impl JournalEvent {
     #[must_use]
     pub const fn attempt(&self) -> Option<u16> {
         match self {
+            Self::RunContinuation { carrier } => Some(carrier.header().actual_attempt()),
             Self::ActionScheduled { attempt, .. }
             | Self::ActionCompletedEvent { attempt, .. }
             | Self::ActionFailedEvent { attempt, .. }
@@ -240,6 +244,7 @@ impl JournalEvent {
         }
         // Attempt numbers must be non-zero when present (zero is ambiguous)
         match self {
+            Self::RunContinuation { carrier: _ } => true,
             Self::ActionScheduled { attempt, .. }
             | Self::ActionCompletedEvent { attempt, .. }
             | Self::ActionFailedEvent { attempt, .. }

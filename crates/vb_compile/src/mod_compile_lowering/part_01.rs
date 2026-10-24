@@ -12,10 +12,18 @@ use vb_core::{
     ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
     StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
+use vb_expr::expr_typecheck::ExprType;
 
 #[path = "finish_inputs.rs"]
 mod finish_inputs;
-use finish_inputs::prepare_finish_input_slots;
+pub(crate) use finish_inputs::canonical_finish_slot_with_step_outputs;
+#[path = "for_each_inputs.rs"]
+mod for_each_inputs;
+pub(in crate::mod_compile_lowering) use for_each_inputs::ForEachInputs;
+#[path = "source_declarations.rs"]
+mod source_declarations;
+use super::source_slot_reservation::reserve_source_slots;
+use source_declarations::prepare_source_declarations;
 
 /// Compile the canonical cold YAML authoring AST into numeric runtime IR.
 pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, CompileErrors> {
@@ -27,21 +35,26 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
         .len()
         .checked_sub(1)
         .ok_or(CompileErrors(vec![CompileError::EmptySteps]))?;
-    let layout = canonical_layout(steps).map_err(|e| CompileErrors(vec![e]))?;
     let mut builder = SlotCompiler::new();
+    reserve_source_slots(source, &mut builder).map_err(|e| CompileErrors(vec![e]))?;
     let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
-    let mut step_names =
-        canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
-    let mut inputs_allocated = false;
+    let mut step_outputs: HashMap<String, SlotIdx> = HashMap::new();
+    let mut slot_types: HashMap<SlotIdx, ExprType> = HashMap::new();
+    let mut for_each_inputs = ForEachInputs::new();
+    let mut step_names = prepare_source_declarations(
+        source,
+        &mut outputs,
+        &mut slot_types,
+        &mut builder,
+        &mut for_each_inputs,
+    )
+    .map_err(|e| CompileErrors(vec![e]))?;
+    let layout =
+        canonical_layout(steps, builder.nodes.len()).map_err(|e| CompileErrors(vec![e]))?;
+    step_names.extend(canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?);
     for (index, step) in steps.iter().enumerate() {
         let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
         let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
-        if index == last
-            && let crate::StepPrimitive::Finish { result } = &step.primitive
-        {
-            prepare_finish_input_slots(source, result, &mut outputs, &mut builder)?;
-            inputs_allocated = true;
-        }
         lower_canonical_step(
             step,
             index,
@@ -49,13 +62,16 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
             id,
             next,
             &mut outputs,
+            &mut step_outputs,
             &mut step_names,
+            &mut slot_types,
+            &for_each_inputs,
             &mut builder,
         )?;
     }
-    if !inputs_allocated {
-        allocate_input_slots(source.inputs(), &mut builder).map_err(|e| CompileErrors(vec![e]))?;
-    }
+    super::skipped_outputs::PossiblySkippedOutputs::from_source(source)
+        .and_then(|outputs| outputs.validate(&builder))
+        .map_err(|error| CompileErrors(vec![error]))?;
     let mut parts = WorkflowParts {
         name: Box::from(source.name()),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
@@ -78,36 +94,6 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
 
-/// Allocate declared input slots after all steps are lowered.
-///
-/// Reads the base slot count from the builder, checked-adds the declaration
-/// index for each input field in source order, creates the `SlotIdx`, calls
-/// `record_slot` and `record_input_slot`.  Source names are intentionally
-/// excluded from the emitted IR.
-pub(super) fn allocate_input_slots(
-    inputs: &[InputField],
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileError> {
-    let base = builder.slot_count()?;
-    for (declaration_index, input) in inputs.iter().enumerate() {
-        let declaration_index = u16::try_from(declaration_index)
-            .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
-        let base_usize = usize::from(base);
-        let declaration_usize = usize::from(declaration_index);
-        let slot_index_usize = base_usize
-            .checked_add(declaration_usize)
-            .ok_or(CompileError::SlotIndexOutOfRange { value: i64::MAX })?;
-        let slot = SlotIdx::new(
-            u16::try_from(slot_index_usize)
-                .map_err(|_| CompileError::SlotIndexOutOfRange { value: i64::MAX })?,
-        );
-        builder.record_slot(slot);
-        let kind = kind_from_input_schema(&input.value)?;
-        builder.record_input_slot(slot, kind);
-    }
-    Ok(())
-}
-
 #[path = "input_schema.rs"]
 mod input_schema;
 use input_schema::kind_from_input_schema;
@@ -120,11 +106,12 @@ pub(super) struct CanonicalStepLayout {
 
 pub(super) fn canonical_layout(
     steps: &[crate::StepAst],
+    prefix: usize,
 ) -> Result<Vec<CanonicalStepLayout>, CompileError> {
     let mut layout = Vec::with_capacity(steps.len());
-    let mut cursor = 0usize;
+    let mut cursor = prefix;
     for step in steps {
-        let width = canonical_step_width(&step.primitive)?;
+        let width = canonical_step_width_with_condition(step)?;
         layout.push(CanonicalStepLayout {
             start: step_idx(cursor)?,
             width,
@@ -145,13 +132,23 @@ pub(super) fn canonical_step_width(
         | crate::StepPrimitive::Wait { .. } => Ok(1),
         crate::StepPrimitive::Ask { .. } => Ok(2),
         crate::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
-        crate::StepPrimitive::Collect { body, .. }
-        | crate::StepPrimitive::Aggregate { body, .. }
-        | crate::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
+        crate::StepPrimitive::Collect { body, .. } | crate::StepPrimitive::Repeat { body, .. } => {
+            body_width(body, 3)
+        }
+        crate::StepPrimitive::Aggregate { body, .. } => body_width(body, 4),
         crate::StepPrimitive::Together { branches } => together_width(branches),
         crate::StepPrimitive::Choose { branches, .. } => choose_width(branches),
         _ => Ok(1),
     }
+}
+
+pub(super) fn canonical_step_width_with_condition(
+    step: &crate::StepAst,
+) -> Result<usize, CompileError> {
+    if step.condition.is_some() && matches!(step.primitive, crate::StepPrimitive::Do { .. }) {
+        return Ok(2);
+    }
+    canonical_step_width(&step.primitive)
 }
 
 pub(super) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usize, CompileError> {
@@ -165,9 +162,6 @@ pub(super) fn body_width(body: &[crate::StepAst], overhead: usize) -> Result<usi
 }
 
 pub(super) fn choose_width(branches: &[crate::ChooseBranch]) -> Result<usize, CompileError> {
-    // ChooseSlot node itself (1) + sum of body widths across all branches.
-    // body_width uses canonical_body_step_width, so each step contributes 1
-    // (Set or Do) and unsupported primitives produce Err.
     let mut width = 1usize;
     for branch in branches {
         width = width

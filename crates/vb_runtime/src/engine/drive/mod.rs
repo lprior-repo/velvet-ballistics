@@ -14,6 +14,7 @@
 //!   signal classification.
 
 pub(crate) mod actions;
+mod loop_rearm;
 pub(crate) mod loop_step;
 pub(crate) mod recovery;
 pub(crate) mod timers;

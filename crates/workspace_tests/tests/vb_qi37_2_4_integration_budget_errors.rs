@@ -48,6 +48,9 @@ use vb_core::{
     workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError},
 };
 
+#[path = "vb_qi37_2_4_integration_budget_errors/depth_fixtures_tests.rs"]
+mod depth_fixtures_tests;
+
 // ============================================================================
 // Test Fixtures
 // ============================================================================
@@ -442,110 +445,12 @@ fn integration_policy_returns_total_slots_exceeded_when_slots_cross_limit() {
 // NestingDepthExceeded
 // ---------------------------------------------------------------------------
 
-/// I2: NestingDepthExceeded via nested ForEach loops
-/// Note: Nesting depth tracking requires proper traversal through ForEachJoin nodes.
-/// This test documents the current behavior - if nesting depth is not properly
-/// tracked through nested loops, this test may return Ok(()) instead of the error.
+/// Depth 10 exceeds reject limit 5; expect NestingDepthExceeded.
 #[test]
-fn integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit() {
-    // Build a workflow with ForEachStart/ForEachJoin pairs that increase depth
-    // Using a chain: ForEachStart(body)->ForEachJoin -> ForEachStart(body)->ForEachJoin -> ... -> Finish
-    // This creates nesting depth = 1 per ForEachStart level
-    let depth: u16 = 10;
-    let mut nodes: Vec<CompiledNode> = Vec::new();
-    let mut current_idx: u16 = 0;
-
-    for level in 0..depth {
-        let body_idx = current_idx + 1;
-        let join_idx = current_idx + 2;
-
-        // ForEachStart
-        nodes.push(CompiledNode {
-            id: StepIdx::new(current_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ForEachStart {
-                input: SlotIdx::new(level),
-                item_slot: SlotIdx::new(level + 100),
-                limit: 2,
-                body: StepIdx::new(body_idx),
-                done: StepIdx::new(join_idx),
-            },
-        });
-
-        // Body node (Nop)
-        nodes.push(CompiledNode {
-            id: StepIdx::new(body_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        });
-
-        // ForEachJoin - continues to next ForEachStart or Finish
-        let next_target = if level < depth - 1 {
-            StepIdx::new(join_idx + 1) // Next ForEachStart
-        } else {
-            StepIdx::new(join_idx + 1) // Finish
-        };
-        nodes.push(CompiledNode {
-            id: StepIdx::new(join_idx),
-            output: Some(SlotIdx::new(level + 200)),
-            next: Some(next_target),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ForEachJoin {
-                output: SlotIdx::new(level + 200),
-            },
-        });
-
-        current_idx = join_idx + 1;
-    }
-
-    // Add Finish node
-    nodes.push(CompiledNode {
-        id: StepIdx::new(current_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    });
-
-    let contract = test_contract(current_idx + 10, current_idx + 10);
-    let entry = StepIdx::new(0);
-
-    let budget =
-        WholeWorkflowBudget::compute(&nodes, entry, &contract).expect("budget should compute");
-
-    // Policy with tight nesting depth of 5
-    let policy = tight_policy(1_000_000, 65_535, 64, 5);
-
-    let result = policy.validate(&budget);
-
-    // The nesting depth should be tracked as we traverse through ForEachStart nodes
-    // Note: If the budget computation doesn't properly track depth through ForEachJoin,
-    // max_nesting_depth might be 0 or 1 instead of the expected depth
-    match result {
-        Err(BudgetError::NestingDepthExceeded { actual, limit }) => {
-            // Depth is tracked - verify it exceeds the limit
-            assert!(actual > 5, "actual depth {} should exceed 5", actual);
-            assert_eq!(limit, 5, "limit should be 5");
-        }
-        Ok(()) => {
-            // Depth is NOT properly tracked - this is a GAP in the implementation
-            // The workflow structure is correct but depth isn't being accumulated
-            panic!(
-                "NestingDepthExceeded expected but validation passed. Depth tracking may not work through ForEachJoin chains."
-            );
-        }
-        other => panic!("Expected NestingDepthExceeded or Ok(()), got {:?}", other),
-    }
+fn integration_policy_returns_nesting_depth_exceeded_when_depth_crosses_limit()
+-> Result<(), Box<dyn std::error::Error>> {
+    depth_fixtures_tests::assert_depth_case(10, 5)?;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -1050,95 +955,12 @@ fn integration_together_overflow_returns_fanout_exceeded() {
 // NestingDepthExceeded via nested loops
 // ---------------------------------------------------------------------------
 
-/// I13: Deeply nested loops cause NestingDepthExceeded
-/// Note: Tests nesting depth tracking through ForEachStart/ForEachJoin chains.
+/// Depth 10 exceeds reject limit 5; expect NestingDepthExceeded.
 #[test]
-fn integration_nested_loops_returns_nesting_depth_exceeded() {
-    // Build nested ForEachStart/ForEachJoin pairs
-    let depth: u16 = 10;
-    let mut nodes: Vec<CompiledNode> = Vec::new();
-    let mut current_idx: u16 = 0;
-
-    for level in 0..depth {
-        let body_idx = current_idx + 1;
-        let join_idx = current_idx + 2;
-
-        nodes.push(CompiledNode {
-            id: StepIdx::new(current_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ForEachStart {
-                input: SlotIdx::new(level),
-                item_slot: SlotIdx::new(level + 100),
-                limit: 2,
-                body: StepIdx::new(body_idx),
-                done: StepIdx::new(join_idx),
-            },
-        });
-
-        nodes.push(CompiledNode {
-            id: StepIdx::new(body_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        });
-
-        let next_target = if level < depth - 1 {
-            StepIdx::new(join_idx + 1)
-        } else {
-            StepIdx::new(join_idx + 1)
-        };
-        nodes.push(CompiledNode {
-            id: StepIdx::new(join_idx),
-            output: Some(SlotIdx::new(level + 200)),
-            next: Some(next_target),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ForEachJoin {
-                output: SlotIdx::new(level + 200),
-            },
-        });
-
-        current_idx = join_idx + 1;
-    }
-
-    nodes.push(CompiledNode {
-        id: StepIdx::new(current_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    });
-
-    let contract = test_contract(current_idx + 10, current_idx + 10);
-    let entry = StepIdx::new(0);
-
-    let budget =
-        WholeWorkflowBudget::compute(&nodes, entry, &contract).expect("budget should compute");
-
-    let policy = tight_policy(1_000_000, 65_535, 64, 5);
-
-    let result = policy.validate(&budget);
-
-    match result {
-        Err(BudgetError::NestingDepthExceeded { actual, limit }) => {
-            assert!(actual > 5, "actual depth {} should exceed 5", actual);
-            assert_eq!(limit, 5, "limit should be 5");
-        }
-        Ok(()) => {
-            panic!(
-                "NestingDepthExceeded expected but validation passed. Depth tracking may not work through ForEachJoin chains."
-            );
-        }
-        other => panic!("Expected NestingDepthExceeded or Ok(()), got {:?}", other),
-    }
+fn integration_nested_loops_returns_nesting_depth_exceeded()
+-> Result<(), Box<dyn std::error::Error>> {
+    depth_fixtures_tests::assert_depth_case(10, 5)?;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -1581,91 +1403,12 @@ fn integration_policy_rejects_at_exact_fanout_boundary() {
     );
 }
 
-/// Tests that BoundednessPolicy::validate rejects at nesting depth boundary
+/// Depth 5 exceeds reject limit 4; expect NestingDepthExceeded at boundary.
 #[test]
-fn integration_policy_rejects_at_nesting_depth_boundary() {
-    let depth: u16 = 5;
-    let mut nodes: Vec<CompiledNode> = Vec::new();
-    let mut current_idx: u16 = 0;
-
-    for level in 0..depth {
-        let body_idx = current_idx + 1;
-        let join_idx = current_idx + 2;
-
-        nodes.push(CompiledNode {
-            id: StepIdx::new(current_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ForEachStart {
-                input: SlotIdx::new(level),
-                item_slot: SlotIdx::new(level + 100),
-                limit: 2,
-                body: StepIdx::new(body_idx),
-                done: StepIdx::new(join_idx),
-            },
-        });
-
-        nodes.push(CompiledNode {
-            id: StepIdx::new(body_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        });
-
-        let next_target = if level < depth - 1 {
-            StepIdx::new(join_idx + 1)
-        } else {
-            StepIdx::new(join_idx + 1)
-        };
-        nodes.push(CompiledNode {
-            id: StepIdx::new(join_idx),
-            output: Some(SlotIdx::new(level + 200)),
-            next: Some(next_target),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ForEachJoin {
-                output: SlotIdx::new(level + 200),
-            },
-        });
-
-        current_idx = join_idx + 1;
-    }
-
-    nodes.push(CompiledNode {
-        id: StepIdx::new(current_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    });
-
-    let contract = test_contract(current_idx + 1, current_idx + 1);
-    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
-        .expect("nested workflow should compute");
-
-    // Policy at exact depth
-    let policy = tight_policy(1_000_000, 65_535, 64, depth);
-
-    let result = policy.validate(&budget);
-    assert!(
-        result.is_ok(),
-        "workflow at exact depth boundary should pass"
-    );
-
-    // Now test one under
-    let policy_under = tight_policy(1_000_000, 65_535, 64, depth - 1);
-    let result_under = policy_under.validate(&budget);
-    match result_under {
-        Err(BudgetError::NestingDepthExceeded { .. }) => {}
-        other => panic!("Expected NestingDepthExceeded, got {:?}", other),
-    }
+fn integration_policy_rejects_at_nesting_depth_boundary() -> Result<(), Box<dyn std::error::Error>>
+{
+    depth_fixtures_tests::assert_depth_case(5, 4)?;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -2074,86 +1817,11 @@ fn integration_policy_validates_total_slots() {
     }
 }
 
-/// Tests that policy validates nesting_depth correctly
+/// Depth 3 exceeds reject limit 2; expect NestingDepthExceeded.
 #[test]
-fn integration_policy_validates_nesting_depth() {
-    let depth: u16 = 3;
-    let mut nodes: Vec<CompiledNode> = Vec::new();
-    let mut current_idx: u16 = 0;
-
-    for level in 0..depth {
-        let body_idx = current_idx + 1;
-        let join_idx = current_idx + 2;
-
-        nodes.push(CompiledNode {
-            id: StepIdx::new(current_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ForEachStart {
-                input: SlotIdx::new(level),
-                item_slot: SlotIdx::new(level + 100),
-                limit: 2,
-                body: StepIdx::new(body_idx),
-                done: StepIdx::new(join_idx),
-            },
-        });
-
-        nodes.push(CompiledNode {
-            id: StepIdx::new(body_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        });
-
-        let next_target = if level < depth - 1 {
-            StepIdx::new(join_idx + 1)
-        } else {
-            StepIdx::new(join_idx + 1)
-        };
-        nodes.push(CompiledNode {
-            id: StepIdx::new(join_idx),
-            output: Some(SlotIdx::new(level + 200)),
-            next: Some(next_target),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ForEachJoin {
-                output: SlotIdx::new(level + 200),
-            },
-        });
-
-        current_idx = join_idx + 1;
-    }
-
-    nodes.push(CompiledNode {
-        id: StepIdx::new(current_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    });
-
-    let contract = test_contract(current_idx + 1, current_idx + 1);
-    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
-        .expect("nested workflow should compute");
-
-    // High depth limit should pass
-    let policy = tight_policy(1_000_000, 65_535, 64, 10);
-    assert!(policy.validate(&budget).is_ok());
-
-    // Low depth limit should fail
-    let tight_policy = tight_policy(1_000_000, 65_535, 64, 2);
-    let result = tight_policy.validate(&budget);
-    match result {
-        Err(BudgetError::NestingDepthExceeded { .. }) => {}
-        other => panic!("Expected NestingDepthExceeded, got {:?}", other),
-    }
+fn integration_policy_validates_nesting_depth() -> Result<(), Box<dyn std::error::Error>> {
+    depth_fixtures_tests::assert_depth_case(3, 2)?;
+    Ok(())
 }
 
 /// Tests steps_executable boundary

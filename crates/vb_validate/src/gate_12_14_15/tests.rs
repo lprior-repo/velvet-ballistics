@@ -210,19 +210,16 @@ fn gate_15_accepts_do_followed_by_deterministic() {
 }
 
 #[test]
-fn gate_15_rejects_do_followed_by_do() {
+fn gate_15_accepts_adjacent_do_nodes() {
     let parts = make_parts(
         vec![do_node(0, 1, 0), do_node(1, 2, 0), finish_node(2, 0)],
         1,
     );
-    assert!(matches!(
-        validate_gate_15_determinism_proof(&parts),
-        Err(ValidationError::NonDeterministicPath { .. })
-    ));
+    assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
 }
 
 #[test]
-fn gate_15_rejects_ask_followed_by_do() {
+fn gate_15_accepts_ask_followed_by_do() {
     let ask_node = CompiledNode {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
@@ -235,10 +232,7 @@ fn gate_15_rejects_ask_followed_by_do() {
         },
     };
     let parts = make_parts(vec![ask_node, do_node(1, 1, 0), finish_node(2, 0)], 1);
-    assert!(matches!(
-        validate_gate_15_determinism_proof(&parts),
-        Err(ValidationError::NonDeterministicPath { .. })
-    ));
+    assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
 }
 
 #[test]
@@ -265,8 +259,7 @@ fn gate_15_accepts_nop_workflow() {
 }
 
 #[test]
-fn gate_15_accepts_do_followed_by_nop_then_do() {
-    // Do -> Nop -> Do is OK because the Nop separates them
+fn gate_15_accepts_do_nop_do_sequence() {
     let parts = make_parts(
         vec![
             do_node(0, 1, 0),

@@ -63,9 +63,6 @@ pub(crate) fn validate_canonical_compile_scope(
             });
         }
     }
-    if !source.vars().is_empty() {
-        errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "vars" });
-    }
     if !source.secrets().is_empty() {
         errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "secrets" });
     }
@@ -89,10 +86,15 @@ pub(crate) fn validate_canonical_compile_scope(
             });
         }
         if step.condition.is_some() {
-            errors.push(CompileError::UnsupportedStepControlField {
-                step: index,
-                field: Box::from("if"),
-            });
+            match &step.primitive {
+                crate::StepPrimitive::Do { .. } => {}
+                _ => {
+                    errors.push(CompileError::UnsupportedStepControlField {
+                        step: index,
+                        field: Box::from("if"),
+                    });
+                }
+            }
         }
         if step.with.is_some() {
             errors.push(CompileError::UnsupportedStepControlField {

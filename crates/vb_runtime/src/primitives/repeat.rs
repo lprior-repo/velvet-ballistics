@@ -91,7 +91,7 @@ pub fn repeat_attempt(
 /// Executes RepeatCheck: increments attempt counter, writes it back.
 /// If `current_attempt >= max_attempts`, jumps to `done` (RepeatFinish).
 /// Otherwise jumps to `next` (which points back to the loop body entry).
-pub fn repeat_check(
+pub(crate) fn repeat_check_with_policy<P: super::body_entry::BodyEntryPolicy>(
     run: &mut RunFrame,
     attempt_slot: SlotIdx,
     done: StepIdx,
@@ -112,8 +112,19 @@ pub fn repeat_check(
     } else {
         // Attempts remain -- loop back to the body entry point.
         let body_entry = next.ok_or(EngineError::MissingNextStep { step })?;
-        jump_to_body(run, body_entry)
+        P::jump(run, body_entry)
     }
+}
+
+/// Legacy entry-only state reset; this API does not validate a complete region.
+pub fn repeat_check(
+    run: &mut RunFrame,
+    attempt_slot: SlotIdx,
+    done: StepIdx,
+    next: Option<StepIdx>,
+    step: StepIdx,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    repeat_check_with_policy::<super::body_entry::LegacyEntry>(run, attempt_slot, done, next, step)
 }
 
 /// Executes RepeatFinish: writes the result value and advances.

@@ -1076,29 +1076,48 @@ fn execute_collect_page_errors_on_uninitialized_collector() {
 // =====================================================================
 
 #[test]
-fn execute_collect_next_errors_on_uninitialized_collector() {
-    // 2-node: body=0 (backward to self), done=1 (forward)
-    let node0 = CompiledNode {
+fn execute_collect_next_errors_on_uninitialized_collector() -> Result<(), String> {
+    let start = CompiledNode {
         id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::CollectStart {
+            source: SlotIdx::new(1),
+            limit: 2,
+            page_size: 1,
+            body: StepIdx::new(1),
+            done: StepIdx::new(3),
+        },
+    };
+    let node1 = nop_forward(1, 2);
+    let node2 = CompiledNode {
+        id: StepIdx::new(2),
         output: None,
         next: None,
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::CollectNext {
             collector_slot: SlotIdx::new(0),
-            body: StepIdx::new(0),
-            done: StepIdx::new(1),
+            body: StepIdx::new(1),
+            done: StepIdx::new(3),
         },
     };
-    let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 8);
+    let node3 = finish_node(3, 0);
+    let wf = make_workflow_with_constants(
+        vec![start, node1, node2, node3],
+        8,
+        Box::from([vb_core::value::ConstValue::I64(42)]),
+    );
     let mut run = make_run(8, 4);
+    run.set_pc(StepIdx::new(2))
+        .map_err(|error| format!("{error:?}"))?;
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
-    let n = match wf.node(StepIdx::ZERO) {
-        Some(n) => n,
-        None => return,
-    };
+    let n = wf
+        .node(StepIdx::new(2))
+        .ok_or("missing CollectNext node 2".to_string())?;
     let result = execute_node_full(
         &wf,
         &mut run,
@@ -1114,11 +1133,12 @@ fn execute_collect_next_errors_on_uninitialized_collector() {
         matches!(
             result,
             Err(RuntimeEngineError::Core(
-                vb_core::EngineError::SlotUninitialized { .. }
-            ))
+                vb_core::EngineError::SlotUninitialized { slot }
+            )) if slot == SlotIdx::new(0)
         ),
         "expected error for uninitialized collector, got {result:?}"
     );
+    Ok(())
 }
 
 // =====================================================================
@@ -1226,9 +1246,24 @@ fn execute_reduce_start_errors_on_uninitialized_input() {
 // =====================================================================
 
 #[test]
-fn execute_reduce_next_errors_on_uninitialized_iterator() {
-    let node0 = CompiledNode {
+fn execute_reduce_next_errors_on_uninitialized_iterator() -> Result<(), String> {
+    let start = CompiledNode {
         id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::ReduceStart {
+            input: SlotIdx::new(2),
+            accumulator: SlotIdx::new(1),
+            initial: ConstIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(3),
+        },
+    };
+    let node1 = nop_forward(1, 2);
+    let node2 = CompiledNode {
+        id: StepIdx::new(2),
         output: None,
         next: None,
         on_error: None,
@@ -1236,19 +1271,24 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() {
         kind: CompiledNodeKind::ReduceNext {
             iterator_slot: SlotIdx::new(0),
             accumulator: SlotIdx::new(1),
-            body: StepIdx::new(0),
-            done: StepIdx::new(1),
+            body: StepIdx::new(1),
+            done: StepIdx::new(3),
         },
     };
-    let node1 = finish_node(1, 0);
-    let wf = make_workflow(vec![node0, node1], 8);
+    let node3 = finish_node(3, 0);
+    let wf = make_workflow_with_constants(
+        vec![start, node1, node2, node3],
+        8,
+        Box::from([vb_core::value::ConstValue::I64(42)]),
+    );
     let mut run = make_run(8, 4);
+    run.set_pc(StepIdx::new(2))
+        .map_err(|error| format!("{error:?}"))?;
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
-    let n = match wf.node(StepIdx::ZERO) {
-        Some(n) => n,
-        None => return,
-    };
+    let n = wf
+        .node(StepIdx::new(2))
+        .ok_or("missing ReduceNext node 2".to_string())?;
     let result = execute_node_full(
         &wf,
         &mut run,
@@ -1264,11 +1304,12 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() {
         matches!(
             result,
             Err(RuntimeEngineError::Core(
-                vb_core::EngineError::SlotUninitialized { .. }
-            ))
+                vb_core::EngineError::SlotUninitialized { slot }
+            )) if slot == SlotIdx::new(0)
         ),
         "expected error for uninitialized iterator, got {result:?}"
     );
+    Ok(())
 }
 
 // =====================================================================
@@ -1326,7 +1367,7 @@ fn execute_reduce_finish_errors_on_missing_next_step() {
 // =====================================================================
 
 #[test]
-fn execute_repeat_start_single_attempt_no_panic() {
+fn execute_repeat_start_single_attempt_no_panic() -> Result<(), String> {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
         next: None,
@@ -1339,35 +1380,34 @@ fn execute_repeat_start_single_attempt_no_panic() {
             done: StepIdx::new(2),
         },
     };
-    let node1 = finish_node(1, 0);
-    let node2 = finish_node(2, 0);
+    let mut node1 = finish_node(1, 0);
+    node1.output = None;
+    let mut node2 = finish_node(2, 0);
+    node2.output = None;
     let wf = make_workflow(vec![node0, node1, node2], 8);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
     let mut cs = CollectStates::new();
-    let n = match wf.node(StepIdx::ZERO) {
-        Some(n) => n,
-        None => return,
-    };
-    // This catch_unwind match is a panic-safety guard, not a fallible-result
-    // assertion. It verifies that execute_node_full itself does not panic;
-    // the inner RuntimeEngineResult is intentionally not asserted here.
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let _ = execute_node_full(
-            &wf,
-            &mut run,
-            &mut store,
-            n,
-            &[],
-            RetryPolicy::NEVER,
-            &mut cs,
-            &CapabilitySet::empty(),
-            1,
-        );
-    }));
-    if let Err(payload) = result {
-        std::panic::resume_unwind(payload);
-    }
+    let n = wf.node(StepIdx::ZERO).ok_or("missing repeat start")?;
+    let result = execute_node_full(
+        &wf,
+        &mut run,
+        &mut store,
+        n,
+        &[],
+        RetryPolicy::NEVER,
+        &mut cs,
+        &CapabilitySet::empty(),
+        1,
+    );
+    assert_eq!(result, Ok(RuntimeSignal::Continue));
+    assert_eq!(run.pc(), StepIdx::new(1));
+    assert_eq!(
+        run.read_slot(SlotIdx::new(0)),
+        Ok(&SlotValue::I64(4294967296))
+    );
+    assert_eq!(run.read_taint(SlotIdx::new(0)), Ok(Taint::Clean));
+    Ok(())
 }
 
 // =====================================================================

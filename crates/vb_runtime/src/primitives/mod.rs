@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Iteration and compound primitive handlers.
 
+pub(crate) mod body_entry;
 pub mod collect;
 pub mod for_each;
 pub(crate) mod helpers;

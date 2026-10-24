@@ -53,6 +53,9 @@ where
     S: Serializer,
 {
     match journal_record_category(event.record_kind()) {
+        Some(JournalRecordCategory::Continuation) => Err(serde::ser::Error::custom(
+            "bounded carrier context required",
+        )),
         Some(JournalRecordCategory::Run) => run::serialize(event, serializer),
         Some(JournalRecordCategory::Step) => step::serialize(event, serializer),
         Some(JournalRecordCategory::Action) => action::serialize(event, serializer),

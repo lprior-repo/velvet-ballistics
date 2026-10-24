@@ -101,11 +101,27 @@ fn from_str_rejects_gap_between_e010b_and_e0201() {
 }
 
 #[test]
-fn from_str_rejects_gap_between_e0204_and_e0301() {
+fn from_str_accepts_e0205_possibly_skipped_reference() {
+    let result = DiagnosticCode::from_str("E0205");
+    assert_eq!(result, Ok(DiagnosticCode::new(0x0205)));
+    let code = DiagnosticCode::new(0x0205);
+    assert_eq!(format!("{code}"), "E0205");
     assert_eq!(
-        DiagnosticCode::from_str("E0205"),
-        Err(DiagnosticCodeParseError::UnsupportedCode)
+        code.symbolic_code().map(|symbol| symbol.as_str()),
+        Some("POSSIBLY_SKIPPED_REFERENCE")
     );
+}
+
+#[test]
+fn from_str_rejects_gap_between_e0205_and_e0301() {
+    for code in 0x0206_u16..=0x0300_u16 {
+        let input = format!("E{code:04X}");
+        assert_eq!(
+            DiagnosticCode::from_str(&input),
+            Err(DiagnosticCodeParseError::UnsupportedCode),
+            "from_str({input}) should reject unregistered code 0x{code:04X}"
+        );
+    }
 }
 
 #[test]

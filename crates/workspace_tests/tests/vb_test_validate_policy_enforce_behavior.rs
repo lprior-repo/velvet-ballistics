@@ -1014,9 +1014,9 @@ fn gate_14_policy_rule_accepts_slot_consistent_type() {
 // Policy Rule Evaluation Behavior: Gate 15 - Determinism Proof
 // ---------------------------------------------------------------------------
 
-/// Policy rule: consecutive non-deterministic nodes are not allowed.
+/// Policy rule: consecutive Do nodes with forward bounded resume are valid.
 #[test]
-fn gate_15_policy_rule_rejects_consecutive_nondeterministic_nodes() {
+fn gate_15_policy_rule_accepts_consecutive_do_nodes() {
     // Given two consecutive Do nodes (both non-deterministic)
     let nodes = vec![
         CompiledNode {
@@ -1052,21 +1052,12 @@ fn gate_15_policy_rule_rejects_consecutive_nondeterministic_nodes() {
     );
 
     // When validation runs
-    let result = validate(&parts);
-
-    // Then enforcement reports exact non-deterministic path error
-    assert!(matches!(
-        result,
-        Err(ValidationError::NonDeterministicPath {
-            from_node: 0,
-            to_node: 1,
-        })
-    ));
+    assert_eq!(validate(&parts), Ok(()));
 }
 
-/// Policy rule: Ask nodes cannot be consecutively chained.
+/// Policy rule: consecutive Ask nodes with forward bounded resume are valid.
 #[test]
-fn gate_15_policy_rule_rejects_consecutive_ask_nodes() {
+fn gate_15_policy_rule_accepts_consecutive_ask_nodes() {
     // Given two consecutive Ask nodes
     let nodes = vec![
         CompiledNode {
@@ -1095,16 +1086,7 @@ fn gate_15_policy_rule_rejects_consecutive_ask_nodes() {
     let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new());
 
     // When validation runs
-    let result = validate(&parts);
-
-    // Then enforcement reports exact non-deterministic path error
-    assert!(matches!(
-        result,
-        Err(ValidationError::NonDeterministicPath {
-            from_node: 0,
-            to_node: 1,
-        })
-    ));
+    assert_eq!(validate(&parts), Ok(()));
 }
 
 /// Policy rule: Do followed by deterministic node is valid.
@@ -1478,4 +1460,83 @@ fn exact_violation_non_deterministic_path_has_both_nodes() {
     let msg = err.to_string();
     assert!(msg.contains("2"));
     assert!(msg.contains("5"));
+}
+
+#[test]
+fn gate_15_suspension_resume_targets_rejected() {
+    // Gate 11 (LoopBodyStepOutOfRange) runs before Gate 15 and catches
+    // out-of-range next targets first. Only in-range targets (0, 1) reach
+    // Gate 15's NodeKindConstraintViolation check.
+    let cases = [
+        (0_u16, 0_u16),
+        (0_u16, 2_u16),
+        (0_u16, u16::MAX),
+        (1_u16, 0_u16),
+    ];
+
+    for &ask in &[false, true] {
+        for &(source, target) in &cases {
+            let nodes: Vec<CompiledNode> = (0_u16..2_u16)
+                .map(|i| {
+                    if i == source {
+                        let kind = if ask {
+                            CompiledNodeKind::Ask {
+                                prompt: SlotIdx::new(0),
+                                timeout_slot: None,
+                            }
+                        } else {
+                            CompiledNodeKind::Do {
+                                action: ActionId::new(1),
+                                input: SlotIdx::new(0),
+                            }
+                        };
+                        CompiledNode {
+                            id: StepIdx::new(i),
+                            output: None,
+                            next: Some(StepIdx::new(target)),
+                            on_error: None,
+                            error_slot: None,
+                            kind,
+                        }
+                    } else {
+                        CompiledNode {
+                            id: StepIdx::new(i),
+                            output: None,
+                            next: None,
+                            on_error: None,
+                            error_slot: None,
+                            kind: CompiledNodeKind::Nop,
+                        }
+                    }
+                })
+                .collect();
+
+            let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new());
+
+            if target >= 2 {
+                // Gate 11 intercepts out-of-range targets before Gate 15
+                assert_eq!(
+                    validate(&parts),
+                    Err(ValidationError::LoopBodyStepOutOfRange {
+                        step: usize::from(target),
+                        node_count: 2,
+                        source_node: usize::from(source),
+                        label: "next".to_string(),
+                    })
+                );
+            } else {
+                // In-range targets reach Gate 15
+                assert_eq!(
+                    validate(&parts),
+                    Err(ValidationError::NodeKindConstraintViolation {
+                        node_index: usize::from(source),
+                        detail: format!(
+                            "suspension resume target {} must be forward and below node_count 2",
+                            target
+                        ),
+                    })
+                );
+            }
+        }
+    }
 }

@@ -53,6 +53,9 @@ where
     A: de::VariantAccess<'de>,
 {
     match journal_record_category(kind) {
+        Some(JournalRecordCategory::Continuation) => {
+            Err(de::Error::custom("bounded carrier context required"))
+        }
         Some(JournalRecordCategory::Run) => run::deserialize(kind, variant),
         Some(JournalRecordCategory::Step) => step::deserialize(kind, variant),
         Some(JournalRecordCategory::Action) => action::deserialize(kind, variant),
@@ -77,6 +80,9 @@ pub(crate) fn decode_journal_event_payload_for_envelope<'payload>(
     envelope: &RecordEnvelope,
     payload: &'payload [u8],
 ) -> Result<(JournalEvent, &'payload [u8]), JournalError> {
+    if envelope.record_kind == RecordKind::RunContinuation.id() {
+        return Err(JournalError::InvalidEvent);
+    }
     match postcard::take_from_bytes::<JournalEvent>(payload) {
         Ok((event, remainder)) if event.record_kind().id() == envelope.record_kind => {
             Ok((event, remainder))
