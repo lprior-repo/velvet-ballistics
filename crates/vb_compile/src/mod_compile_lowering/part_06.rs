@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#[cfg(test)]
 pub(crate) use super::part_14::emit_choose_branch_body;
 use super::*;
 use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_error};
@@ -136,10 +137,7 @@ pub fn lower_together(
 
 /// Allocates a fresh accumulator slot for the together primitive.
 pub(super) fn alloc_accumulator_slot(builder: &mut SlotCompiler) -> Result<SlotIdx, CompileError> {
-    let next = builder.slot_count()?;
-    let slot = SlotIdx::new(next);
-    builder.record_slot(slot);
-    Ok(slot)
+    builder.allocate_slot()
 }
 
 /// Lowers a `collect` (gather) primitive into collection IR nodes.

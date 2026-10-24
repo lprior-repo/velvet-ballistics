@@ -130,7 +130,7 @@ impl JournalError {
             Self::PostcardDecodeFailed(_) => Self::POSTCARD_DECODE_FAILED_CODE,
             Self::PostcardEncodeFailed(_) => Self::POSTCARD_ENCODE_FAILED_CODE,
             Self::InvalidEvent => Self::INVALID_EVENT_CODE,
-            Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
+            Self::ArtifactMalformed | Self::OwnedInputs(_) => Self::ARTIFACT_MALFORMED_CODE,
             Self::ArtifactValidation(_) | Self::ArtifactActionRegistry(_) => {
                 Self::ARTIFACT_MALFORMED_CODE
             }
@@ -228,7 +228,7 @@ impl JournalError {
             Self::PostcardDecodeFailed(_) => "POSTCARD_DECODE_FAILED",
             Self::PostcardEncodeFailed(_) => "ARTIFACT_POSTCARD_ENCODE_FAILED",
             Self::InvalidEvent => "INVALID_JOURNAL_EVENT",
-            Self::ArtifactMalformed => "ARTIFACT_MALFORMED",
+            Self::ArtifactMalformed | Self::OwnedInputs(_) => "ARTIFACT_MALFORMED",
             Self::ArtifactValidation(_) | Self::ArtifactActionRegistry(_) => "ARTIFACT_MALFORMED",
             // vb-l9jqs: typed variants preserve inner source while reporting
             // the same symbolic code as the collapsed bucket they replaced.

@@ -1192,6 +1192,12 @@ mod tests {
         ) -> crate::recovery::types::RecoveryResult<bool> {
             use crate::JournalEvent;
             match event {
+                JournalEvent::RunContinuation { .. } => Err(
+                    crate::recovery::types::RecoveryError::UnsupportedFrameSeed {
+                        run: event.run_id(),
+                        reason: String::from("owned-continuation-needs-authoritative-recovery"),
+                    },
+                ),
                 JournalEvent::ActionScheduled { .. } => Ok(true),
                 JournalEvent::ActionScheduledTicket { .. } => Ok(true),
                 JournalEvent::ActionCompletedEvent { .. } => Ok(true),

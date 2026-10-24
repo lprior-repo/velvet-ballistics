@@ -1,0 +1,887 @@
+#![forbid(unsafe_code)]
+//! Budget-only structural regressions for vb-8eocj.3.6.
+//! These exercise the public IR budget walker; the unchanged compiler ten-branch
+//! oracle separately covers source compilation and deterministic artifact identity.
+
+use vb_core::budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError};
+use vb_core::{ConstIdx, SlotIdx, StepIdx};
+
+type TestResult<T = ()> = Result<T, String>;
+
+fn step(value: usize) -> TestResult<StepIdx> {
+    u16::try_from(value)
+        .map(StepIdx::new)
+        .map_err(|error| format!("test step out of range: {error}"))
+}
+
+fn offset(base: usize, amount: usize) -> TestResult<StepIdx> {
+    step(base.checked_add(amount).ok_or("test step overflow")?)
+}
+
+fn node(id: StepIdx, kind: CompiledNodeKind, next: Option<StepIdx>) -> CompiledNode {
+    CompiledNode {
+        id,
+        kind,
+        next,
+        output: None,
+        error_slot: None,
+        on_error: None,
+    }
+}
+
+fn finish(nodes: &mut Vec<CompiledNode>) -> TestResult {
+    nodes.push(node(
+        step(nodes.len())?,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+        None,
+    ));
+    Ok(())
+}
+
+fn budget(nodes: &[CompiledNode]) -> TestResult<WholeWorkflowBudget> {
+    WholeWorkflowBudget::compute(nodes, StepIdx::new(0), &ResourceContract::DEFAULT)
+        .map_err(|error| format!("budget computation failed: {error:?}"))
+}
+
+fn append_together(nodes: &mut Vec<CompiledNode>, count: u16) -> TestResult {
+    let base = nodes.len();
+    let branch_width = usize::from(count)
+        .checked_mul(2)
+        .ok_or("test width overflow")?;
+    let join = offset(
+        base,
+        branch_width.checked_add(1).ok_or("test join overflow")?,
+    )?;
+    let mut branches = Vec::new();
+    for index in 0..usize::from(count) {
+        let relative = index
+            .checked_mul(2)
+            .and_then(|n| n.checked_add(1))
+            .ok_or("test branch overflow")?;
+        branches.push(offset(base, relative)?);
+    }
+    nodes.push(node(
+        step(base)?,
+        CompiledNodeKind::TogetherStart {
+            branches: branches.into_boxed_slice(),
+            join,
+        },
+        None,
+    ));
+    for branch in 0..count {
+        let header = step(nodes.len())?;
+        let entry = offset(nodes.len(), 1)?;
+        let next = offset(nodes.len(), 2)?;
+        nodes.push(node(
+            header,
+            CompiledNodeKind::TogetherBranch {
+                branch,
+                entry,
+                join,
+                accumulator: SlotIdx::new(0),
+            },
+            None,
+        ));
+        nodes.push(node(entry, CompiledNodeKind::Nop, Some(next)));
+    }
+    let next = offset(nodes.len(), 1)?;
+    nodes.push(node(
+        join,
+        CompiledNodeKind::TogetherJoin {
+            branch_count: count,
+            accumulator: SlotIdx::new(0),
+        },
+        Some(next),
+    ));
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+enum LoopKind {
+    ForEach,
+    CollectPage,
+    CollectNext,
+    Reduce,
+    RepeatAttempt,
+    RepeatCheck,
+}
+
+fn loop_nodes(
+    kind: LoopKind,
+    body: StepIdx,
+    done: StepIdx,
+) -> (CompiledNodeKind, CompiledNodeKind) {
+    let slot = SlotIdx::new(0);
+    match kind {
+        LoopKind::ForEach => (
+            CompiledNodeKind::ForEachStart {
+                input: slot,
+                item_slot: SlotIdx::new(1),
+                limit: 1,
+                body,
+                done,
+            },
+            CompiledNodeKind::ForEachNext {
+                iterator_slot: slot,
+                body,
+                done,
+            },
+        ),
+        LoopKind::CollectPage | LoopKind::CollectNext => (
+            CompiledNodeKind::CollectStart {
+                source: slot,
+                limit: 1,
+                page_size: 1,
+                body,
+                done,
+            },
+            match kind {
+                LoopKind::CollectPage => CompiledNodeKind::CollectPage {
+                    collector_slot: slot,
+                    body,
+                    done,
+                },
+                _ => CompiledNodeKind::CollectNext {
+                    collector_slot: slot,
+                    body,
+                    done,
+                },
+            },
+        ),
+        LoopKind::Reduce => (
+            CompiledNodeKind::ReduceStart {
+                input: slot,
+                accumulator: SlotIdx::new(1),
+                initial: ConstIdx::new(0),
+                body,
+                done,
+            },
+            CompiledNodeKind::ReduceNext {
+                iterator_slot: slot,
+                accumulator: SlotIdx::new(1),
+                body,
+                done,
+            },
+        ),
+        LoopKind::RepeatAttempt | LoopKind::RepeatCheck => (
+            CompiledNodeKind::RepeatStart {
+                max_attempts: 1,
+                body,
+                done,
+            },
+            match kind {
+                LoopKind::RepeatAttempt => CompiledNodeKind::RepeatAttempt {
+                    attempt_slot: slot,
+                    body,
+                    done,
+                },
+                _ => CompiledNodeKind::RepeatCheck {
+                    attempt_slot: slot,
+                    done,
+                },
+            },
+        ),
+    }
+}
+
+fn append_loop(nodes: &mut Vec<CompiledNode>, kind: LoopKind) -> TestResult {
+    let base = nodes.len();
+    let body = offset(base, 1)?;
+    let advance = offset(base, 2)?;
+    let done = offset(base, 3)?;
+    let (start_kind, next_kind) = loop_nodes(kind, body, done);
+    nodes.push(node(step(base)?, start_kind, None));
+    nodes.push(node(body, CompiledNodeKind::Nop, Some(advance)));
+    let next = matches!(kind, LoopKind::RepeatCheck).then_some(body);
+    nodes.push(node(advance, next_kind, next));
+    nodes.push(node(done, CompiledNodeKind::Nop, Some(offset(base, 4)?)));
+    Ok(())
+}
+
+const LOOP_KINDS: [LoopKind; 6] = [
+    LoopKind::ForEach,
+    LoopKind::CollectPage,
+    LoopKind::CollectNext,
+    LoopKind::Reduce,
+    LoopKind::RepeatAttempt,
+    LoopKind::RepeatCheck,
+];
+
+#[test]
+fn ten_sibling_branches_have_one_scope_and_ten_way_fanout() -> TestResult {
+    let mut nodes = Vec::new();
+    append_together(&mut nodes, 10)?;
+    finish(&mut nodes)?;
+    let actual = budget(&nodes)?;
+    assert_eq!(actual.max_nesting_depth, 1);
+    assert_eq!(actual.max_fanout, 10);
+    assert_eq!(actual.max_together_branches, 10);
+    assert_eq!(actual.max_parallel_in_flight, 10);
+    assert_eq!(actual.max_total_steps, 23);
+    assert_eq!(BoundednessPolicy::DEFAULT.validate(&actual), Ok(()));
+    Ok(())
+}
+
+#[test]
+fn ten_sequential_together_groups_do_not_accumulate_depth() -> TestResult {
+    let mut nodes = Vec::new();
+    for _ in 0..10 {
+        append_together(&mut nodes, 2)?;
+    }
+    finish(&mut nodes)?;
+    let actual = budget(&nodes)?;
+    assert_eq!(actual.max_nesting_depth, 1);
+    assert_eq!(actual.max_total_steps, 61);
+    assert_eq!(BoundednessPolicy::DEFAULT.validate(&actual), Ok(()));
+    Ok(())
+}
+
+#[test]
+fn sequential_loop_and_together_scopes_reset_in_both_orders() -> TestResult {
+    for kind in LOOP_KINDS {
+        for loop_first in [true, false] {
+            let mut nodes = Vec::new();
+            if loop_first {
+                append_loop(&mut nodes, kind)?;
+            }
+            append_together(&mut nodes, 10)?;
+            if !loop_first {
+                append_loop(&mut nodes, kind)?;
+            }
+            finish(&mut nodes)?;
+            assert_eq!(budget(&nodes)?.max_nesting_depth, 1);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn loop_continuation_headers_do_not_add_nesting() -> TestResult {
+    for kind in LOOP_KINDS {
+        let mut nodes = Vec::new();
+        append_loop(&mut nodes, kind)?;
+        finish(&mut nodes)?;
+        assert_eq!(budget(&nodes)?.max_nesting_depth, 1);
+    }
+    Ok(())
+}
+
+#[test]
+fn loops_nested_inside_together_remain_two_scopes() -> TestResult {
+    for kind in LOOP_KINDS {
+        let mut nodes = vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
+                branches: vec![StepIdx::new(1)].into_boxed_slice(),
+                join: StepIdx::new(5),
+            },
+            None,
+        )];
+        append_loop(&mut nodes, kind)?;
+        nodes.push(node(
+            StepIdx::new(5),
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 1,
+                accumulator: SlotIdx::new(0),
+            },
+            Some(StepIdx::new(6)),
+        ));
+        finish(&mut nodes)?;
+        assert_eq!(budget(&nodes)?.max_nesting_depth, 2);
+    }
+    Ok(())
+}
+
+#[test]
+fn together_nested_inside_loops_remains_two_scopes() -> TestResult {
+    for kind in LOOP_KINDS {
+        let (start, advance) = loop_nodes(kind, StepIdx::new(1), StepIdx::new(8));
+        let mut nodes = vec![node(StepIdx::new(0), start, None)];
+        append_together(&mut nodes, 2)?;
+        nodes.push(node(
+            StepIdx::new(7),
+            advance,
+            matches!(kind, LoopKind::RepeatCheck).then_some(StepIdx::new(1)),
+        ));
+        nodes.push(node(
+            StepIdx::new(8),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(9)),
+        ));
+        finish(&mut nodes)?;
+        assert_eq!(budget(&nodes)?.max_nesting_depth, 2);
+    }
+    Ok(())
+}
+
+#[test]
+fn deeper_revisit_preserves_nesting_without_double_counting_timers() -> TestResult {
+    for deeper_first in [false, true] {
+        let (first, second) = if deeper_first { (2, 4) } else { (4, 2) };
+        let slot = SlotIdx::new(0);
+        let mut nodes = vec![
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::ChooseSlot {
+                    branches: vec![vb_core::workflow::SlotBranch {
+                        condition: slot,
+                        target: StepIdx::new(first),
+                    }]
+                    .into_boxed_slice(),
+                    otherwise: Some(StepIdx::new(second)),
+                },
+                None,
+            ),
+            node(StepIdx::new(1), CompiledNodeKind::Nop, None),
+            node(
+                StepIdx::new(2),
+                CompiledNodeKind::TogetherStart {
+                    branches: vec![StepIdx::new(4)].into_boxed_slice(),
+                    join: StepIdx::new(8),
+                },
+                None,
+            ),
+            node(StepIdx::new(3), CompiledNodeKind::Nop, None),
+            node(
+                StepIdx::new(4),
+                CompiledNodeKind::TogetherStart {
+                    branches: vec![StepIdx::new(5)].into_boxed_slice(),
+                    join: StepIdx::new(7),
+                },
+                None,
+            ),
+            node(
+                StepIdx::new(5),
+                CompiledNodeKind::WaitUntil {
+                    deadline_slot: slot,
+                },
+                Some(StepIdx::new(6)),
+            ),
+            node(
+                StepIdx::new(6),
+                CompiledNodeKind::Nop,
+                Some(StepIdx::new(7)),
+            ),
+            node(
+                StepIdx::new(7),
+                CompiledNodeKind::TogetherJoin {
+                    branch_count: 1,
+                    accumulator: slot,
+                },
+                Some(StepIdx::new(8)),
+            ),
+            node(
+                StepIdx::new(8),
+                CompiledNodeKind::TogetherJoin {
+                    branch_count: 1,
+                    accumulator: slot,
+                },
+                Some(StepIdx::new(9)),
+            ),
+        ];
+        finish(&mut nodes)?;
+        let actual = budget(&nodes)?;
+        assert_eq!(actual.max_nesting_depth, 2);
+        assert_eq!(actual.max_timer_entries, 1);
+    }
+    Ok(())
+}
+
+fn nested_together_nodes(depth: u16) -> TestResult<Vec<CompiledNode>> {
+    let mut nodes = Vec::new();
+    let total = usize::from(depth)
+        .checked_mul(2)
+        .ok_or("test nesting overflow")?;
+    for level in 0..usize::from(depth) {
+        let join = step(total.checked_sub(level).ok_or("test exit underflow")?)?;
+        nodes.push(node(
+            step(level)?,
+            CompiledNodeKind::TogetherStart {
+                branches: vec![offset(level, 1)?].into_boxed_slice(),
+                join,
+            },
+            None,
+        ));
+    }
+    nodes.push(node(
+        step(nodes.len())?,
+        CompiledNodeKind::Nop,
+        Some(offset(nodes.len(), 1)?),
+    ));
+    for _ in 0..depth {
+        let id = step(nodes.len())?;
+        nodes.push(node(
+            id,
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 1,
+                accumulator: SlotIdx::new(0),
+            },
+            Some(offset(nodes.len(), 1)?),
+        ));
+    }
+    finish(&mut nodes)?;
+    Ok(nodes)
+}
+
+#[test]
+fn genuine_nested_together_at_policy_boundary_is_accepted() -> TestResult {
+    let actual = budget(&nested_together_nodes(8)?)?;
+    assert_eq!(actual.max_nesting_depth, 8);
+    assert_eq!(BoundednessPolicy::DEFAULT.validate(&actual), Ok(()));
+    Ok(())
+}
+
+#[test]
+fn genuine_nested_together_above_policy_boundary_is_rejected() -> TestResult {
+    let actual = budget(&nested_together_nodes(9)?)?;
+    assert_eq!(actual.max_nesting_depth, 9);
+    assert_eq!(
+        BoundednessPolicy::DEFAULT.validate(&actual),
+        Err(BudgetError::NestingDepthExceeded {
+            actual: 9,
+            limit: 8
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn joining_first_sibling_does_not_erase_later_nested_scope() -> TestResult {
+    let slot = SlotIdx::new(0);
+    let mut nodes = vec![
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
+                branches: vec![StepIdx::new(1), StepIdx::new(3)].into_boxed_slice(),
+                join: StepIdx::new(8),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(2),
+                join: StepIdx::new(8),
+                accumulator: slot,
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(8)),
+        ),
+        node(
+            StepIdx::new(3),
+            CompiledNodeKind::TogetherBranch {
+                branch: 1,
+                entry: StepIdx::new(4),
+                join: StepIdx::new(8),
+                accumulator: slot,
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(4),
+            CompiledNodeKind::TogetherStart {
+                branches: vec![StepIdx::new(5)].into_boxed_slice(),
+                join: StepIdx::new(7),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(5),
+            CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(6),
+                join: StepIdx::new(7),
+                accumulator: slot,
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(6),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(7)),
+        ),
+        node(
+            StepIdx::new(7),
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 1,
+                accumulator: slot,
+            },
+            Some(StepIdx::new(8)),
+        ),
+        node(
+            StepIdx::new(8),
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 2,
+                accumulator: slot,
+            },
+            Some(StepIdx::new(9)),
+        ),
+    ];
+    finish(&mut nodes)?;
+    assert_eq!(budget(&nodes)?.max_nesting_depth, 2);
+    Ok(())
+}
+
+#[test]
+fn nested_owners_with_shared_exit_restore_outermost_parent() -> TestResult {
+    let mut nodes = vec![
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
+                branches: vec![StepIdx::new(1)].into_boxed_slice(),
+                join: StepIdx::new(3),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::TogetherStart {
+                branches: vec![StepIdx::new(2)].into_boxed_slice(),
+                join: StepIdx::new(3),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(3)),
+        ),
+        node(
+            StepIdx::new(3),
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 1,
+                accumulator: SlotIdx::new(0),
+            },
+            Some(StepIdx::new(4)),
+        ),
+    ];
+    append_together(&mut nodes, 10)?;
+    finish(&mut nodes)?;
+    assert_eq!(budget(&nodes)?.max_nesting_depth, 2);
+    Ok(())
+}
+
+#[test]
+fn fanout_policy_limit_is_not_relaxed() -> TestResult {
+    for count in [64, 65] {
+        let mut nodes = Vec::new();
+        append_together(&mut nodes, count)?;
+        finish(&mut nodes)?;
+        let actual = budget(&nodes)?;
+        assert_eq!(actual.max_nesting_depth, 1);
+        let expected = if count == 64 {
+            Ok(())
+        } else {
+            Err(BudgetError::FanoutExceeded {
+                actual: count,
+                limit: 64,
+            })
+        };
+        assert_eq!(BoundednessPolicy::DEFAULT.validate(&actual), expected);
+    }
+    Ok(())
+}
+
+#[test]
+fn unrepresentable_fanout_preserves_typed_overflow() -> TestResult {
+    let count = usize::from(u16::MAX)
+        .checked_add(1)
+        .ok_or("test fanout overflow")?;
+    let nodes = vec![
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
+                branches: vec![StepIdx::new(1); count].into_boxed_slice(),
+                join: StepIdx::new(2),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(2)),
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+        ),
+    ];
+    assert!(matches!(
+        WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &ResourceContract::DEFAULT),
+        Err(WorkflowError::StepCountOverflow { actual: 65_536 })
+    ));
+    Ok(())
+}
+
+#[test]
+fn excessive_loop_steps_preserve_typed_overflow() {
+    let nodes = vec![
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: u32::MAX,
+                body: StepIdx::new(1),
+                done: StepIdx::new(3),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(2)),
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::ForEachNext {
+                iterator_slot: SlotIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(3),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(3),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+        ),
+    ];
+    assert!(
+        matches!(WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &ResourceContract::DEFAULT), Err(WorkflowError::StepCountOverflow { actual }) if actual > u64::from(u32::MAX))
+    );
+}
+
+fn workflow_parts(nodes: Vec<CompiledNode>) -> vb_core::WorkflowParts {
+    vb_core::WorkflowParts {
+        name: "budget-owner-depth".into(),
+        digest: vb_core::WorkflowDigest::from_bytes([0x36; 32]),
+        semantic_source_identity: None,
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 8,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+        input_slots: Box::new([]),
+    }
+}
+
+fn shared_body_owner_nodes(short_owner_first: bool) -> Vec<CompiledNode> {
+    let (first, second) = if short_owner_first { (2, 1) } else { (1, 2) };
+    vec![
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::ChooseSlot {
+                branches: vec![vb_core::SlotBranch {
+                    condition: SlotIdx::new(0),
+                    target: StepIdx::new(first),
+                }]
+                .into_boxed_slice(),
+                otherwise: Some(StepIdx::new(second)),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(1),
+                item_slot: SlotIdx::new(2),
+                limit: 1,
+                body: StepIdx::new(3),
+                done: StepIdx::new(12),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(3),
+                item_slot: SlotIdx::new(4),
+                limit: 1,
+                body: StepIdx::new(3),
+                done: StepIdx::new(6),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(3),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(4)),
+        ),
+        node(
+            StepIdx::new(4),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(5)),
+        ),
+        node(
+            StepIdx::new(5),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(6)),
+        ),
+        node(
+            StepIdx::new(6),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(7)),
+        ),
+        node(
+            StepIdx::new(7),
+            CompiledNodeKind::TogetherStart {
+                branches: vec![StepIdx::new(8)].into_boxed_slice(),
+                join: StepIdx::new(11),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(8),
+            CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(9),
+                join: StepIdx::new(11),
+                accumulator: SlotIdx::new(5),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(9),
+            CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::new(6),
+            },
+            Some(StepIdx::new(10)),
+        ),
+        node(
+            StepIdx::new(10),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(11)),
+        ),
+        node(
+            StepIdx::new(11),
+            CompiledNodeKind::TogetherJoin {
+                branch_count: 1,
+                accumulator: SlotIdx::new(5),
+            },
+            Some(StepIdx::new(12)),
+        ),
+        node(
+            StepIdx::new(12),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(7),
+            },
+            None,
+        ),
+    ]
+}
+
+#[test]
+fn shared_body_with_different_owner_exits_is_order_independent() -> TestResult {
+    for short_owner_first in [true, false] {
+        let nodes = shared_body_owner_nodes(short_owner_first);
+        let actual = budget(&nodes)?;
+        assert_eq!(actual.max_nesting_depth, 2);
+        assert_eq!(actual.max_for_each_iterations, 2);
+        assert_eq!(actual.max_timer_entries, 1);
+        let workflow = vb_core::CompiledWorkflow::try_from_parts(workflow_parts(nodes))
+            .map_err(|error| format!("valid shared-body constructor rejected: {error:?}"))?;
+        assert_eq!(workflow.entry(), StepIdx::new(0));
+    }
+    Ok(())
+}
+
+#[test]
+fn genuinely_nested_loop_constructor_preserves_depth_policy() -> TestResult {
+    for depth in [8, 9] {
+        let mut nodes = nested_together_nodes(depth)?;
+        for candidate in &mut nodes {
+            candidate.kind = match &candidate.kind {
+                CompiledNodeKind::TogetherStart { branches, join } => {
+                    CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 1,
+                        body: *branches.first().ok_or("missing nested body")?,
+                        done: *join,
+                    }
+                }
+                CompiledNodeKind::TogetherJoin { .. } => CompiledNodeKind::ForEachJoin {
+                    output: SlotIdx::new(1),
+                },
+                kind => kind.clone(),
+            };
+        }
+        assert_eq!(budget(&nodes)?.max_nesting_depth, depth);
+        let result = vb_core::CompiledWorkflow::try_from_parts(workflow_parts(nodes));
+        if depth == 8 {
+            assert!(result.is_ok(), "depth 8 constructor failed: {result:?}");
+        } else {
+            assert!(matches!(
+                result,
+                Err(WorkflowError::BudgetPolicyExceeded {
+                    detail: "max_nesting_depth"
+                })
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn unreachable_owners_do_not_affect_structural_depth() -> TestResult {
+    let mut nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+        None,
+    )];
+    append_together(&mut nodes, 10)?;
+    finish(&mut nodes)?;
+    let actual = budget(&nodes)?;
+    assert_eq!(actual.max_nesting_depth, 0);
+    assert_eq!(actual.max_fanout, 0);
+    Ok(())
+}
+
+#[test]
+fn backward_scope_exit_keeps_typed_rejection() {
+    let nodes = vec![
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::TogetherStart {
+                branches: vec![StepIdx::new(2)].into_boxed_slice(),
+                join: StepIdx::new(0),
+            },
+            None,
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+        ),
+    ];
+    assert!(
+        matches!(WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &ResourceContract::DEFAULT), Err(WorkflowError::BackwardEdge { from, to }) if from == StepIdx::new(1) && to == StepIdx::new(0))
+    );
+}

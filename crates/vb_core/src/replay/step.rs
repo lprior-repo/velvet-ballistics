@@ -275,7 +275,8 @@ fn replay_collect_next(
         });
     }
     if state.cursor >= state.item_count {
-        write_empty_collect_page(run, store, collector_slot, state.taint)?;
+        run.write_slot_with_taint(collector_slot, SlotValue::List(state.source), state.taint)
+            .map_err(engine_to_replay_err)?;
         states.remove(collector_slot);
         return replay_jump(run, done);
     }

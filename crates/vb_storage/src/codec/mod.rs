@@ -64,6 +64,9 @@ pub fn encode_record<T: Serialize>(
     payload: &T,
     max_payload_len: u32,
 ) -> Result<Vec<u8>, JournalError> {
+    if kind == RecordKind::RunContinuation {
+        return Err(JournalError::InvalidEvent);
+    }
     validate_record_kind_family(magic, kind.id())?;
     let payload_bytes = postcard::to_allocvec(payload).map_err(JournalError::Encode)?;
     let payload_len = self::payload::payload_len_u32(payload_bytes.len(), max_payload_len)?;
@@ -87,6 +90,10 @@ pub fn decode_record<T>(
 where
     T: DeserializeOwned + EnforceKindParity,
 {
+    let header = decode_record_header(bytes, expected_magic, max_payload_len)?;
+    if header.record_kind == RecordKind::RunContinuation.id() {
+        return Err(JournalError::InvalidEvent);
+    }
     let (envelope, payload) =
         self::payload::decode_record_payload(bytes, expected_magic, max_payload_len)?;
     let (value, remainder) = T::decode_payload(&envelope, payload)?;

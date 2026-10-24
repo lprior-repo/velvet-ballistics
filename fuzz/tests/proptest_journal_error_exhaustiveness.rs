@@ -94,6 +94,7 @@ fn assert_known_journal_error(error: JournalError) -> Result<(), TestCaseError> 
         | JournalError::MigrationRequired { .. }
         | JournalError::MalformedKeyspaceRow { .. }
         | JournalError::ArtifactMalformed
+        | JournalError::OwnedInputs(_)
         | JournalError::WorkflowReconstruction(_)
         | JournalError::CompiledIrReadback(_)
         | JournalError::AdmissionAllocationFailed(_)

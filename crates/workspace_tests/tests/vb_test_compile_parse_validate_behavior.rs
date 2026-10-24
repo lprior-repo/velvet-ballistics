@@ -754,7 +754,7 @@ steps:
   - id: flag
     set:
       output: flag_value
-      value: "1"
+      value: "true"
   - id: route
     choose:
       branches:

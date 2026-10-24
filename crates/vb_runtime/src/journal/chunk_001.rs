@@ -280,6 +280,12 @@ impl RuntimeJournalEvent {
 
 /// Append-only port used by runtime shards for lifecycle journaling.
 pub trait RuntimeJournal: Send + Sync {
+    /// Actual append durability, when explicitly exposed by the adapter.
+    /// Unknown/default adapters carry no strict activation authority.
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        None
+    }
+
     /// Explicit trusted startup catalog; raw serialized reports cannot create this value.
     fn executor_catalog(&self) -> Option<Arc<vb_storage::executor::ExecutorCatalog>> {
         None

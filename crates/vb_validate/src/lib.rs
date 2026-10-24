@@ -34,6 +34,7 @@ pub use validation_errors::{ValidationError, ValidationResult};
 // ============================================================================
 pub mod control_flow;
 pub mod diagnostic;
+mod gate_15_resume;
 pub mod gates;
 pub mod idempotency_contract;
 pub mod references;

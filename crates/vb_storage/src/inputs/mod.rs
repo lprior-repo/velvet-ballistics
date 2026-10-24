@@ -2,12 +2,14 @@
 //! Artifact-bound typed inputs retained at the run submission boundary.
 
 mod digest;
+mod owned;
 mod submission;
 mod validation;
 
 use crate::constants::{MAGIC_INDEX_RECORD, MAX_RUN_INPUT_BYTES};
 use crate::{FjallJournal, JournalError, RecordKind, codec::EnforceKindParity};
 pub use digest::{RunInputBinding, RunPolicyPin, compute_input_digest};
+pub use owned::{OwnedInputError, OwnedRunInputsRecordV1, RetainedRunInputs};
 pub use submission::RunSubmission;
 use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest};
 

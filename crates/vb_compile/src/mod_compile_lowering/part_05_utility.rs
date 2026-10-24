@@ -2,7 +2,7 @@
 
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use std::collections::HashMap;
-use vb_core::{SlotIdx, StepIdx};
+use vb_core::SlotIdx;
 
 pub(in crate::mod_compile_lowering) fn parse_i64_field(
     value: &str,
@@ -50,16 +50,6 @@ pub(in crate::mod_compile_lowering) fn optional_slot_from_text(
     match text {
         Some(value) => slot_from_text(value, step, field).map(Some),
         None => Ok(None),
-    }
-}
-
-pub(in crate::mod_compile_lowering) trait StepIdxSlotExt {
-    fn to_slot(self) -> SlotIdx;
-}
-
-impl StepIdxSlotExt for StepIdx {
-    fn to_slot(self) -> SlotIdx {
-        SlotIdx::new(self.get())
     }
 }
 

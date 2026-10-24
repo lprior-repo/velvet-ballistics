@@ -100,33 +100,7 @@ fn const_value_discriminant(value: &vb_core::value::ConstValue) -> u8 {
 }
 
 pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationResult<()> {
-    let node_count = parts.nodes.len();
-    for (node_index, node) in parts.nodes.iter().enumerate() {
-        if !is_non_deterministic(&node.kind) {
-            continue;
-        }
-        if let Some(next_step) = node.next {
-            let nu = next_step.as_usize();
-            if nu < node_count {
-                if let Some(next_node) = parts.nodes.get(nu) {
-                    if is_non_deterministic(&next_node.kind) {
-                        return Err(ValidationError::NonDeterministicPath {
-                            from_node: node_index,
-                            to_node: nu,
-                        });
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-fn is_non_deterministic(kind: &CompiledNodeKind) -> bool {
-    matches!(
-        kind,
-        CompiledNodeKind::Do { .. } | CompiledNodeKind::Ask { .. }
-    )
+    crate::gate_15_resume::validate_resume_targets(parts)
 }
 
 #[cfg(test)]

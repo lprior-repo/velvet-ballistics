@@ -15,7 +15,7 @@ fn choose_workflow_yaml(branch_body_counts: &[u8]) -> String {
         String::from("version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n");
 
     // Setup step: create an output that the finish step can reference
-    yaml.push_str("  - id: setup\n    set:\n      output: result\n      value: \"0\"\n");
+    yaml.push_str("  - id: setup\n    set:\n      output: result\n      value: \"true\"\n");
 
     // Choose step
     yaml.push_str("  - id: pick\n    choose:\n      branches:\n");

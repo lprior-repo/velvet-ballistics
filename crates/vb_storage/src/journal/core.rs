@@ -26,7 +26,6 @@ pub struct EventReplayLimit {
 impl EventReplayLimit {
     /// Conservative default for operator-facing replay collection.
     pub const DEFAULT: Self = Self { max_events: 65_536 };
-
     /// Creates a replay limit; returns `None` when the limit is zero.
     #[must_use]
     pub const fn new(max_events: usize) -> Option<Self> {
@@ -36,7 +35,6 @@ impl EventReplayLimit {
             Some(Self { max_events })
         }
     }
-
     /// Returns the maximum number of events that may be collected.
     #[must_use]
     pub const fn max_events(self) -> usize {
@@ -72,6 +70,7 @@ pub struct FjallJournal {
     // SAFETY: write_lock is used in append_unfsynced() for poison detection.
     // The lock guard is acquired and dropped, never read directly.
     pub(crate) write_lock: Mutex<()>,
+    pub(crate) owned_writers: crate::owned_writer::OwnedWriterRegistry,
     pub(crate) _process_lock: ProcessLock,
 }
 impl FjallJournal {
@@ -153,6 +152,7 @@ impl FjallJournal {
             #[cfg(test)]
             fail_next_batch_commit: AtomicBool::new(false),
             write_lock: Mutex::new(()),
+            owned_writers: crate::owned_writer::OwnedWriterRegistry::new(),
             _process_lock,
         })
     }

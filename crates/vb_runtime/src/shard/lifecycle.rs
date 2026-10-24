@@ -3,6 +3,8 @@
 
 #[path = "lifecycle/execution_binding.rs"]
 mod execution_binding;
+#[path = "lifecycle/owned_activation.rs"]
+pub(crate) mod owned_activation;
 #[path = "lifecycle/recovered_admission.rs"]
 mod recovered_admission;
 #[path = "lifecycle/registered_completion.rs"]

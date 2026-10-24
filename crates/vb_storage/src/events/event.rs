@@ -371,4 +371,9 @@ pub enum JournalEvent {
         /// Attempt number (1-based).
         attempt: u16,
     },
+    /// Cold opaque continuation carrier, never context-free Serde or replay authority.
+    RunContinuation {
+        /// Validated scalar identity and shared immutable complete component.
+        carrier: crate::OwnedContinuationCarrier,
+    },
 }

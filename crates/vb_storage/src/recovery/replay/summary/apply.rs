@@ -22,6 +22,7 @@ pub(super) use envelope::ActionCompletionEnvelopeApply;
 /// Applies an event's effects to a runtime summary.
 pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &JournalEvent) {
     match event {
+        JournalEvent::RunContinuation { .. } => {}
         JournalEvent::RunAccepted { workflow, .. } => {
             summary.workflow = Some(*workflow);
         }

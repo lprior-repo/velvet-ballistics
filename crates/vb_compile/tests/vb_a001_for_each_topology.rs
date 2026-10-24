@@ -13,25 +13,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 // Corpus YAML for the for_each workflow under vb-a001
 // ---------------------------------------------------------------------------
 
-const FOREACH_YAML: &str = "version: velvet-ballistics/v1
-name: fuzz_foreach
-when:
-  manual: {}
-steps:
-  - id: loop
-    for_each:
-      variable: item
-      input: \"0\"
-      at_once: 2
-      steps:
-        - id: capture
-          set:
-            output: seen
-            value: \"1\"
-  - id: done
-    finish:
-      result: 0
-";
+const FOREACH_YAML: &str = "version: velvet-ballistics/v1\nname: fuzz_foreach\nwhen:\n  manual: {}\ninputs:\n  items:\n    is: list\n    of: any\n    max: 2\nsteps:\n  - id: loop\n    for_each:\n      variable: entry\n      input: \"$input.items\"\n      at_once: 1\n      steps:\n        - id: capture\n          set:\n            output: seen\n            value: \"1\"\n  - id: done\n    finish:\n      result: $input.items\n";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -178,7 +160,7 @@ fn vb_a001_body_setconst_next_points_to_foreachnext() -> Result<(), Box<dyn std:
 fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn std::error::Error>> {
     let foreach_start = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
+        output: Some(SlotIdx::new(2)),
         next: None,
         error_slot: None,
         on_error: None,
@@ -201,12 +183,12 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
 
     let foreach_next = CompiledNode {
         id: StepIdx::new(2),
-        output: None,
+        output: Some(SlotIdx::new(1)),
         next: None,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::ForEachNext {
-            iterator_slot: SlotIdx::new(1),
+            iterator_slot: SlotIdx::new(2),
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
@@ -228,7 +210,7 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
         vec![],
         vec![],
         vec![vb_core::value::ConstValue::I64(1)],
-        2,
+        3,
         0,
         "vb-a001-connected",
         WorkflowDigest::from_bytes([1; 32]),
@@ -333,15 +315,50 @@ fn vb_a001_all_compile_apis_agree_on_foreach_topology() -> Result<(), Box<dyn st
     Ok(())
 }
 
-/// TEST-006: slot count for for_each is exactly 2 (input + item).
+/// TEST-006: input, iterator, item and body output have distinct slots.
 #[test]
-fn vb_a001_for_each_slot_count_is_two() -> Result<(), Box<dyn std::error::Error>> {
+fn vb_a001_for_each_slots_have_distinct_roles() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = compile_yaml(FOREACH_YAML)?;
-    assert_eq!(
-        workflow.to_parts().slot_count,
-        2,
-        "for_each must allocate exactly 2 slots (input + item)"
-    );
+    assert_eq!(workflow.to_parts().slot_count, 4);
+
+    let start = workflow.node(StepIdx::new(0)).ok_or("missing start")?;
+    let body = workflow.node(StepIdx::new(1)).ok_or("missing body")?;
+    let next = workflow.node(StepIdx::new(2)).ok_or("missing next")?;
+
+    let (actual_input, actual_item_slot) = match &start.kind {
+        CompiledNodeKind::ForEachStart {
+            input, item_slot, ..
+        } => (*input, *item_slot),
+        _ => return Err("expected ForEachStart".into()),
+    };
+    assert_eq!(actual_input, SlotIdx::new(0));
+    assert_eq!(actual_item_slot, SlotIdx::new(2));
+
+    let start_output = start.output.ok_or("missing start output")?;
+    assert_eq!(start_output, SlotIdx::new(1));
+
+    let body_output = body.output.ok_or("missing body output")?;
+    assert_eq!(body_output, SlotIdx::new(3));
+
+    let actual_iterator_slot = match &next.kind {
+        CompiledNodeKind::ForEachNext { iterator_slot, .. } => *iterator_slot,
+        _ => return Err("expected ForEachNext".into()),
+    };
+    assert_eq!(actual_iterator_slot, SlotIdx::new(1));
+
+    let next_output = next.output.ok_or("missing next output")?;
+    assert_eq!(next_output, SlotIdx::new(2));
+
+    assert_eq!(next_output, actual_item_slot);
+    assert_eq!(actual_iterator_slot, start_output);
+
+    let mut slots = std::collections::BTreeSet::new();
+    slots.insert(actual_input);
+    slots.insert(start_output);
+    slots.insert(actual_item_slot);
+    slots.insert(body_output);
+    assert_eq!(slots.len(), 4);
+
     Ok(())
 }
 

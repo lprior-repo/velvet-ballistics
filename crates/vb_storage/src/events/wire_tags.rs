@@ -61,4 +61,5 @@ pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "RunAnswered",
     "AskTimedOutEvent",
     "PolicyDecisionEvent",
+    "RunContinuation",
 ];

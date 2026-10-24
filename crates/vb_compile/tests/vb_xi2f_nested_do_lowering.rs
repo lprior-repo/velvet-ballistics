@@ -4,7 +4,7 @@
 //! (repeat, collect, for_each, reduce) are correctly lowered to final IR.
 
 use vb_compile::{CompileError, CompileErrors, compile_workflow};
-use vb_core::{CompiledNodeKind, CompiledWorkflow, StepIdx};
+use vb_core::CompiledWorkflow;
 
 const HEADER: &str =
     "version: velvet-ballistics/v1\nname: nested_do_lowering\nwhen:\n  manual: {}\nsteps:\n";
@@ -17,73 +17,68 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
     );
     let workflow = compile_yaml(&yaml)?;
     let parts = workflow.to_parts();
-
-    // The expected structure:
-    // 0 = RepeatStart { max_attempts: 3, body: 1, done: 3 }
-    // 1 = Do { action: test_action, input: 0 } (the body step)
-    // 2 = RepeatAttempt { attempt_slot: 1, body: 1, done: 3 }
-    // 3 = RepeatFinish { result: 1 }
-    // 4 = Finish { result: 0 }
-
-    assert_eq!(
-        parts.nodes.len(),
-        5,
-        "repeat with do body should produce 5 nodes"
-    );
-    assert_eq!(parts.entry, StepIdx::new(0), "entry must be dense zero");
-
-    // Verify RepeatStart at node 0
-    match &parts.nodes[0].kind {
-        CompiledNodeKind::RepeatStart {
-            max_attempts,
-            body,
-            done,
-        } => {
-            assert_eq!(*max_attempts, 3, "RepeatStart max_attempts");
-            assert_eq!(body.get(), 1, "RepeatStart body");
-            assert_eq!(done.get(), 3, "RepeatStart done");
-        }
-        other => return Err(format!("expected RepeatStart at node 0, got {other:?}")),
-    }
-
-    // Verify Do at node 1
-    match &parts.nodes[1].kind {
-        CompiledNodeKind::Do { action, input } => {
-            assert_eq!(action.get(), 0, "Do action id"); // First registered action
-            assert_eq!(input.get(), 0, "Do input slot");
-        }
-        other => return Err(format!("expected Do at node 1, got {other:?}")),
-    }
-
-    // Verify RepeatAttempt at node 2
-    match &parts.nodes[2].kind {
-        CompiledNodeKind::RepeatAttempt {
-            attempt_slot,
-            body,
-            done,
-        } => {
-            assert_eq!(attempt_slot.get(), 1, "RepeatAttempt attempt_slot");
-            assert_eq!(body.get(), 1, "RepeatAttempt body");
-            assert_eq!(done.get(), 3, "RepeatAttempt done");
-        }
-        other => return Err(format!("expected RepeatAttempt at node 2, got {other:?}")),
-    }
-
-    // Verify RepeatFinish at node 3
-    match &parts.nodes[3].kind {
-        CompiledNodeKind::RepeatFinish { result } => {
-            assert_eq!(result.get(), 1, "RepeatFinish result");
-        }
-        other => return Err(format!("expected RepeatFinish at node 3, got {other:?}")),
-    }
-
-    // Verify Finish at node 4
-    match &parts.nodes[4].kind {
-        CompiledNodeKind::Finish { result } => {
-            assert_eq!(result.get(), 0, "Finish result slot");
-        }
-        other => return Err(format!("expected Finish at node 4, got {other:?}")),
-    }
+    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
+    assert_eq!(parts.slot_count, 3);
+    assert_eq!(parts.nodes.len(), 5);
+    assert_node(
+        &parts.nodes,
+        0,
+        vb_core::CompiledNodeKind::RepeatStart {
+            max_attempts: 3,
+            body: vb_core::StepIdx::new(1),
+            done: vb_core::StepIdx::new(3),
+        },
+        Some(vb_core::SlotIdx::new(1)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        1,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(0),
+            input: vb_core::SlotIdx::new(0),
+        },
+        Some(vb_core::SlotIdx::new(2)),
+        Some(vb_core::StepIdx::new(2)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        2,
+        vb_core::CompiledNodeKind::RepeatCheck {
+            attempt_slot: vb_core::SlotIdx::new(1),
+            done: vb_core::StepIdx::new(3),
+        },
+        Some(vb_core::SlotIdx::new(1)),
+        Some(vb_core::StepIdx::new(1)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        3,
+        vb_core::CompiledNodeKind::RepeatFinish {
+            result: vb_core::SlotIdx::new(2),
+        },
+        Some(vb_core::SlotIdx::new(2)),
+        Some(vb_core::StepIdx::new(4)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        4,
+        vb_core::CompiledNodeKind::Finish {
+            result: vb_core::SlotIdx::new(0),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
 
     Ok(())
 }
@@ -92,65 +87,75 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
 #[test]
 fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
     let yaml = workflow_yaml(
-        "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      pages: 3\n      items: 5\n      steps:\n        - id: process\n          do:\n            action: \"0\"\n            input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
+        "  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"0\"\n      pages: 3\n      items: 5\n      steps:\n        - id: process\n          do:\n            action: \"0\"\n            input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
     );
     let workflow = compile_yaml(&yaml)?;
     let parts = workflow.to_parts();
-
-    // Expected structure:
-    // 0 = CollectStart { source: 0, body: 1, done: 3 }
-    // 1 = Do { action: process_page, input: 1 }
-    // 2 = CollectPage { collector_slot: 0, body: 1, done: 3 }
-    // 3 = CollectFinish { collector_slot: 0 }
-    // 4 = Finish { result: 0 }
-
-    assert_eq!(
-        parts.nodes.len(),
-        5,
-        "collect with do body should produce 5 nodes"
-    );
-
-    // Verify CollectStart at node 0
-    match &parts.nodes[0].kind {
-        CompiledNodeKind::CollectStart {
-            source, body, done, ..
-        } => {
-            assert_eq!(source.get(), 0, "CollectStart source");
-            assert_eq!(body.get(), 1, "CollectStart body");
-            assert_eq!(done.get(), 3, "CollectStart done");
-        }
-        other => return Err(format!("expected CollectStart at node 0, got {other:?}")),
-    }
-
-    // Verify Do at node 1
-    match &parts.nodes[1].kind {
-        CompiledNodeKind::Do { action: _, input } => {
-            assert_eq!(input.get(), 1, "Do input slot");
-        }
-        other => return Err(format!("expected Do at node 1, got {other:?}")),
-    }
-
-    // Verify CollectPage at node 2
-    match &parts.nodes[2].kind {
-        CompiledNodeKind::CollectPage {
-            collector_slot,
-            body,
-            done,
-        } => {
-            assert_eq!(collector_slot.get(), 0, "CollectPage collector_slot");
-            assert_eq!(body.get(), 1, "CollectPage body");
-            assert_eq!(done.get(), 3, "CollectPage done");
-        }
-        other => return Err(format!("expected CollectPage at node 2, got {other:?}")),
-    }
-
-    // Verify CollectFinish at node 3
-    match &parts.nodes[3].kind {
-        CompiledNodeKind::CollectFinish { collector_slot } => {
-            assert_eq!(collector_slot.get(), 0, "CollectFinish collector_slot");
-        }
-        other => return Err(format!("expected CollectFinish at node 3, got {other:?}")),
-    }
+    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
+    assert_eq!(parts.slot_count, 5);
+    assert_eq!(parts.nodes.len(), 5);
+    assert_node(
+        &parts.nodes,
+        0,
+        vb_core::CompiledNodeKind::CollectStart {
+            source: vb_core::SlotIdx::new(0),
+            limit: 15,
+            page_size: 5,
+            body: vb_core::StepIdx::new(1),
+            done: vb_core::StepIdx::new(3),
+        },
+        Some(vb_core::SlotIdx::new(2)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        1,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(0),
+            input: vb_core::SlotIdx::new(1),
+        },
+        Some(vb_core::SlotIdx::new(4)),
+        Some(vb_core::StepIdx::new(2)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        2,
+        vb_core::CompiledNodeKind::CollectNext {
+            collector_slot: vb_core::SlotIdx::new(2),
+            body: vb_core::StepIdx::new(1),
+            done: vb_core::StepIdx::new(3),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        3,
+        vb_core::CompiledNodeKind::CollectFinish {
+            collector_slot: vb_core::SlotIdx::new(2),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(4)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        4,
+        vb_core::CompiledNodeKind::Finish {
+            result: vb_core::SlotIdx::new(0),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
 
     Ok(())
 }
@@ -159,63 +164,64 @@ fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
 #[test]
 fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
     let yaml = workflow_yaml(
-        "  - id: loop\n    for_each:\n      variable: item\n      input: \"0\"\n      at_once: 2\n      steps:\n        - id: process\n          do:\n            action: \"0\"\n            input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
+        "  - id: loop\n    for_each:\n      variable: entry\n      input: \"$input.items\"\n      at_once: 1\n      steps:\n        - id: process\n          do:\n            action: \"0\"\n            input: \"$input.payload\"\n  - id: done\n    finish:\n      result: $input.items\n",
     );
     let workflow = compile_yaml(&yaml)?;
     let parts = workflow.to_parts();
-
-    // Expected structure:
-    // 0 = ForEachStart { input: 0, item_slot: 1, body: 1, done: 3 }
-    // 1 = Do { action: 0, input: 1 } (body step)
-    // 2 = ForEachNext { iterator_slot: 1, body: 1, done: 3 }
-    // 3 = Finish { result: 0 }
-
-    assert_eq!(
-        parts.nodes.len(),
-        4,
-        "for_each with do body should produce 4 nodes"
-    );
-
-    // Verify ForEachStart at node 0
-    match &parts.nodes[0].kind {
-        CompiledNodeKind::ForEachStart {
-            input,
-            item_slot,
-            body,
-            done,
-            ..
-        } => {
-            assert_eq!(input.get(), 0, "ForEachStart input");
-            assert_eq!(item_slot.get(), 1, "ForEachStart item_slot");
-            assert_eq!(body.get(), 1, "ForEachStart body");
-            assert_eq!(done.get(), 3, "ForEachStart done");
-        }
-        other => return Err(format!("expected ForEachStart at node 0, got {other:?}")),
-    }
-
-    // Verify Do at node 1 (body step)
-    match &parts.nodes[1].kind {
-        CompiledNodeKind::Do { action, input } => {
-            let _ = action; // suppress unused warning in test
-            assert_eq!(action.get(), 0, "Do action id");
-            assert_eq!(input.get(), 1, "Do input slot");
-        }
-        other => return Err(format!("expected Do at node 1, got {other:?}")),
-    }
-
-    // Verify ForEachNext at node 2
-    match &parts.nodes[2].kind {
-        CompiledNodeKind::ForEachNext {
-            iterator_slot,
-            body,
-            done,
-        } => {
-            assert_eq!(iterator_slot.get(), 1, "ForEachNext iterator_slot");
-            assert_eq!(body.get(), 1, "ForEachNext body");
-            assert_eq!(done.get(), 3, "ForEachNext done");
-        }
-        other => return Err(format!("expected ForEachNext at node 2, got {other:?}")),
-    }
+    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
+    assert_eq!(parts.slot_count, 5);
+    assert_eq!(parts.nodes.len(), 4);
+    assert_node(
+        &parts.nodes,
+        0,
+        vb_core::CompiledNodeKind::ForEachStart {
+            input: vb_core::SlotIdx::new(0),
+            item_slot: vb_core::SlotIdx::new(3),
+            limit: 2,
+            body: vb_core::StepIdx::new(1),
+            done: vb_core::StepIdx::new(3),
+        },
+        Some(vb_core::SlotIdx::new(2)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        1,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(0),
+            input: vb_core::SlotIdx::new(1),
+        },
+        Some(vb_core::SlotIdx::new(4)),
+        Some(vb_core::StepIdx::new(2)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        2,
+        vb_core::CompiledNodeKind::ForEachNext {
+            iterator_slot: vb_core::SlotIdx::new(2),
+            body: vb_core::StepIdx::new(1),
+            done: vb_core::StepIdx::new(3),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        3,
+        vb_core::CompiledNodeKind::Finish {
+            result: vb_core::SlotIdx::new(0),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
 
     Ok(())
 }
@@ -228,68 +234,84 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
     );
     let workflow = compile_yaml(&yaml)?;
     let parts = workflow.to_parts();
-
-    // Expected structure:
-    // 0 = ReduceStart { input: 0, accumulator: 1, initial: const, body: 1, done: 3 }
-    // 1 = Do { action: add_one, input: 1 }
-    // 2 = ReduceNext { iterator_slot: 1, accumulator: 1, body: 1, done: 3 }
-    // 3 = ReduceFinish { accumulator: 1 }
-    // 4 = Finish { result: 0 }
-
-    assert_eq!(
-        parts.nodes.len(),
+    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
+    assert_eq!(parts.slot_count, 6);
+    assert_eq!(parts.nodes.len(), 6);
+    assert_eq!(parts.constants.get(0), Some(&vb_core::ConstValue::I64(10)));
+    assert_node(
+        &parts.nodes,
+        0,
+        vb_core::CompiledNodeKind::Copy {
+            source: vb_core::SlotIdx::new(0),
+        },
+        Some(vb_core::SlotIdx::new(2)),
+        Some(vb_core::StepIdx::new(1)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        1,
+        vb_core::CompiledNodeKind::ReduceStart {
+            input: vb_core::SlotIdx::new(2),
+            accumulator: vb_core::SlotIdx::new(5),
+            initial: vb_core::ConstIdx::new(0),
+            body: vb_core::StepIdx::new(2),
+            done: vb_core::StepIdx::new(4),
+        },
+        Some(vb_core::SlotIdx::new(4)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        2,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(0),
+            input: vb_core::SlotIdx::new(1),
+        },
+        Some(vb_core::SlotIdx::new(5)),
+        Some(vb_core::StepIdx::new(3)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        3,
+        vb_core::CompiledNodeKind::ReduceNext {
+            iterator_slot: vb_core::SlotIdx::new(4),
+            accumulator: vb_core::SlotIdx::new(5),
+            body: vb_core::StepIdx::new(2),
+            done: vb_core::StepIdx::new(4),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        4,
+        vb_core::CompiledNodeKind::ReduceFinish {
+            accumulator: vb_core::SlotIdx::new(5),
+        },
+        Some(vb_core::SlotIdx::new(5)),
+        Some(vb_core::StepIdx::new(5)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
         5,
-        "reduce with do body should produce 5 nodes"
-    );
-
-    // Verify ReduceStart at node 0
-    match &parts.nodes[0].kind {
-        CompiledNodeKind::ReduceStart {
-            input,
-            accumulator,
-            body,
-            done,
-            ..
-        } => {
-            assert_eq!(input.get(), 0, "ReduceStart input");
-            assert_eq!(accumulator.get(), 1, "ReduceStart accumulator");
-            assert_eq!(body.get(), 1, "ReduceStart body");
-            assert_eq!(done.get(), 3, "ReduceStart done");
-        }
-        other => return Err(format!("expected ReduceStart at node 0, got {other:?}")),
-    }
-
-    // Verify Do at node 1
-    match &parts.nodes[1].kind {
-        CompiledNodeKind::Do { action: _, input } => {
-            assert_eq!(input.get(), 1, "Do input slot");
-        }
-        other => return Err(format!("expected Do at node 1, got {other:?}")),
-    }
-
-    // Verify ReduceNext at node 2
-    match &parts.nodes[2].kind {
-        CompiledNodeKind::ReduceNext {
-            iterator_slot,
-            accumulator,
-            body,
-            done,
-        } => {
-            assert_eq!(iterator_slot.get(), 1, "ReduceNext iterator_slot");
-            assert_eq!(accumulator.get(), 1, "ReduceNext accumulator");
-            assert_eq!(body.get(), 1, "ReduceNext body");
-            assert_eq!(done.get(), 3, "ReduceNext done");
-        }
-        other => return Err(format!("expected ReduceNext at node 2, got {other:?}")),
-    }
-
-    // Verify ReduceFinish at node 3
-    match &parts.nodes[3].kind {
-        CompiledNodeKind::ReduceFinish { accumulator } => {
-            assert_eq!(accumulator.get(), 1, "ReduceFinish accumulator");
-        }
-        other => return Err(format!("expected ReduceFinish at node 3, got {other:?}")),
-    }
+        vb_core::CompiledNodeKind::Finish {
+            result: vb_core::SlotIdx::new(0),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
 
     Ok(())
 }
@@ -331,97 +353,96 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
     );
     let workflow = compile_yaml(&yaml)?;
     let parts = workflow.to_parts();
-
-    // Expected structure:
-    // 0 = TogetherStart { branches: [1, 3], join: 5 }
-    // 1 = TogetherBranch { branch: 0, entry: 2, join: 5 }
-    // 2 = Do { action: left_action, input: 0 }
-    // 3 = TogetherBranch { branch: 1, entry: 4, join: 5 }
-    // 4 = Do { action: right_action, input: 1 }
-    // 5 = TogetherJoin { branch_count: 2, accumulator: 0 }
-    // 6 = Finish { result: 0 }
-
-    assert_eq!(
-        parts.nodes.len(),
-        7,
-        "together with do branches should produce 7 nodes"
-    );
-
-    // Verify TogetherStart at node 0
-    match &parts.nodes[0].kind {
-        CompiledNodeKind::TogetherStart { branches, join } => {
-            let actual: Vec<u16> = branches.iter().map(|b| b.get()).collect();
-            assert_eq!(actual, [1, 3], "TogetherStart branches");
-            assert_eq!(join.get(), 5, "TogetherStart join");
-        }
-        other => return Err(format!("expected TogetherStart at node 0, got {other:?}")),
-    }
-
-    // Verify first TogetherBranch at node 1
-    match &parts.nodes[1].kind {
-        CompiledNodeKind::TogetherBranch {
-            branch,
-            entry,
-            join,
-            ..
-        } => {
-            assert_eq!(*branch, 0, "first TogetherBranch branch index");
-            assert_eq!(entry.get(), 2, "first TogetherBranch entry");
-            assert_eq!(join.get(), 5, "first TogetherBranch join");
-        }
-        other => {
-            return Err(format!(
-                "expected first TogetherBranch at node 1, got {other:?}"
-            ));
-        }
-    }
-
-    // Verify Do at node 2 (left action)
-    match &parts.nodes[2].kind {
-        CompiledNodeKind::Do { action: _, input } => {
-            assert_eq!(input.get(), 0, "left Do input slot");
-        }
-        other => return Err(format!("expected left Do at node 2, got {other:?}")),
-    }
-
-    // Verify second TogetherBranch at node 3
-    match &parts.nodes[3].kind {
-        CompiledNodeKind::TogetherBranch {
-            branch,
-            entry,
-            join,
-            ..
-        } => {
-            assert_eq!(*branch, 1, "second TogetherBranch branch index");
-            assert_eq!(entry.get(), 4, "second TogetherBranch entry");
-            assert_eq!(join.get(), 5, "second TogetherBranch join");
-        }
-        other => {
-            return Err(format!(
-                "expected second TogetherBranch at node 3, got {other:?}"
-            ));
-        }
-    }
-
-    // Verify Do at node 4 (right action)
-    match &parts.nodes[4].kind {
-        CompiledNodeKind::Do { action: _, input } => {
-            assert_eq!(input.get(), 1, "right Do input slot");
-        }
-        other => return Err(format!("expected right Do at node 4, got {other:?}")),
-    }
-
-    // Verify TogetherJoin at node 5
-    match &parts.nodes[5].kind {
-        CompiledNodeKind::TogetherJoin {
-            branch_count,
-            accumulator,
-        } => {
-            assert_eq!(*branch_count, 2, "TogetherJoin branch_count");
-            assert_eq!(accumulator.get(), 0, "TogetherJoin accumulator");
-        }
-        other => return Err(format!("expected TogetherJoin at node 5, got {other:?}")),
-    }
+    assert_eq!(parts.entry, vb_core::StepIdx::new(0));
+    assert_eq!(parts.slot_count, 4);
+    assert_eq!(parts.nodes.len(), 7);
+    assert_node(
+        &parts.nodes,
+        0,
+        vb_core::CompiledNodeKind::TogetherStart {
+            branches: vec![vb_core::StepIdx::new(1), vb_core::StepIdx::new(3)].into_boxed_slice(),
+            join: vb_core::StepIdx::new(5),
+        },
+        Some(vb_core::SlotIdx::new(2)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        1,
+        vb_core::CompiledNodeKind::TogetherBranch {
+            branch: 0,
+            accumulator: vb_core::SlotIdx::new(2),
+            entry: vb_core::StepIdx::new(2),
+            join: vb_core::StepIdx::new(5),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        2,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(0),
+            input: vb_core::SlotIdx::new(0),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(3)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        3,
+        vb_core::CompiledNodeKind::TogetherBranch {
+            branch: 1,
+            accumulator: vb_core::SlotIdx::new(2),
+            entry: vb_core::StepIdx::new(4),
+            join: vb_core::StepIdx::new(5),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        None,
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        4,
+        vb_core::CompiledNodeKind::Do {
+            action: vb_core::ActionId::new(1),
+            input: vb_core::SlotIdx::new(1),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(5)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        5,
+        vb_core::CompiledNodeKind::TogetherJoin {
+            branch_count: 2,
+            accumulator: vb_core::SlotIdx::new(2),
+        },
+        Some(vb_core::SlotIdx::new(3)),
+        Some(vb_core::StepIdx::new(6)),
+        None,
+        None,
+    )?;
+    assert_node(
+        &parts.nodes,
+        6,
+        vb_core::CompiledNodeKind::Finish {
+            result: vb_core::SlotIdx::new(0),
+        },
+        None,
+        None,
+        None,
+        None,
+    )?;
 
     Ok(())
 }
@@ -448,7 +469,39 @@ fn format_compile_errors(errors: &CompileErrors) -> String {
 }
 
 fn workflow_yaml(steps: &str) -> String {
-    let mut yaml = String::from(HEADER);
+    let header = if steps.contains("$input.items") {
+        HEADER.replace(
+            "steps:\n",
+            "inputs:\n  items: {is: list, of: any, max: 2}\n  payload: {is: number}\nsteps:\n",
+        )
+    } else {
+        HEADER.to_string()
+    };
+    let mut yaml = header;
     yaml.push_str(steps);
     yaml
+}
+
+fn assert_node(
+    nodes: &[vb_core::CompiledNode],
+    id: u16,
+    kind: vb_core::CompiledNodeKind,
+    output: Option<vb_core::SlotIdx>,
+    next: Option<vb_core::StepIdx>,
+    error_slot: Option<vb_core::SlotIdx>,
+    on_error: Option<vb_core::StepIdx>,
+) -> Result<(), String> {
+    let actual = nodes
+        .get(usize::from(id))
+        .ok_or_else(|| format!("node {} not found", id))?;
+    let expected = vb_core::CompiledNode {
+        id: vb_core::StepIdx::new(id),
+        kind,
+        output,
+        next,
+        error_slot,
+        on_error,
+    };
+    assert_eq!(*actual, expected);
+    Ok(())
 }

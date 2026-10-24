@@ -208,6 +208,12 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         category: CodeCategory::Reference,
         deprecated: false,
     },
+    CodeEntry {
+        symbolic: "POSSIBLY_SKIPPED_REFERENCE",
+        numeric: 0x0205,
+        category: CodeCategory::Reference,
+        deprecated: false,
+    },
     // ---- ControlFlow: E03xx (0x0301–0x0309) ----
     CodeEntry {
         symbolic: "INVALID_THEN_TARGET",

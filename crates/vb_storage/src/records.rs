@@ -223,6 +223,10 @@ pub enum RecordKind {
     RunAdmissionPinned = 39,
     /// Admission receipt carrying input digest and actual policy identity pin.
     RunAdmissionBoundPinned = 41,
+    /// Complete versioned owned inputs; appended to preserve old Serde ordinals.
+    RunOwnedInputs = 42,
+    /// Bounded cold continuation carrier; appended to preserve every old ordinal.
+    RunContinuation = 43,
 }
 
 impl RecordKind {
@@ -265,6 +269,8 @@ impl RecordKind {
             Self::RetryCheckpoint => 37,
             Self::RunAdmissionPinned => 39,
             Self::RunAdmissionBoundPinned => 41,
+            Self::RunOwnedInputs => 42,
+            Self::RunContinuation => 43,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -309,6 +315,8 @@ impl RecordKind {
             37 => Some(Self::RetryCheckpoint),
             39 => Some(Self::RunAdmissionPinned),
             41 => Some(Self::RunAdmissionBoundPinned),
+            42 => Some(Self::RunOwnedInputs),
+            43 => Some(Self::RunContinuation),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -348,11 +356,13 @@ impl RecordKind {
             | Self::ActionScheduledTicket
             | Self::ActionCompletedEnvelope
             | Self::RetryCheckpoint
-            | Self::PolicyDecision => true,
+            | Self::PolicyDecision
+            | Self::RunContinuation => true,
             Self::WorkflowSource
             | Self::CompiledIr
             | Self::RunHeader
             | Self::RunInputs
+            | Self::RunOwnedInputs
             | Self::Snapshot
             | Self::Blob
             | Self::IndexUpdate => false,
@@ -369,7 +379,10 @@ impl RecordKind {
             crate::constants::MAGIC_SNAPSHOT => matches!(self, Self::Snapshot),
             crate::constants::MAGIC_BLOB => matches!(self, Self::Blob),
             crate::constants::MAGIC_INDEX_RECORD => {
-                matches!(self, Self::RunHeader | Self::RunInputs | Self::IndexUpdate)
+                matches!(
+                    self,
+                    Self::RunHeader | Self::RunInputs | Self::RunOwnedInputs | Self::IndexUpdate
+                )
             }
             _ => false,
         }

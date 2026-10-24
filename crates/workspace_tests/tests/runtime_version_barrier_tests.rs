@@ -186,7 +186,7 @@ fn missing_artifact_rejected_under_strict_policy() {
 
 #[test]
 fn unsupported_step_primitive_rejected_at_compile() {
-    let yaml = b"version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      steps:\n        - id: inner\n          collect:\n            variable: inner_page\n            source: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
+    let yaml = b"version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"0\"\n      pages: 1\n      items: 1\n      steps:\n        - id: inner\n          collect:\n            variable: inner_page\n            source: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
     let result = vb_compile::YamlCompiler::default().compile(yaml);
     assert!(matches!(result, Err(errors) if matches!(
         errors.first(), Some(vb_compile::CompileError::UnsupportedStepPrimitive { .. })

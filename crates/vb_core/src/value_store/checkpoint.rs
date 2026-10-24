@@ -68,7 +68,7 @@ impl ValueStore {
     }
 }
 
-fn validate_checkpoint(checkpoint: &ValueStoreCheckpointV1) -> CoreResult<()> {
+pub(crate) fn validate_checkpoint(checkpoint: &ValueStoreCheckpointV1) -> CoreResult<()> {
     if checkpoint.lists.len() != checkpoint.list_taints.len() {
         return Err(invalid_checkpoint("list_taint_count_mismatch"));
     }
@@ -103,7 +103,7 @@ fn validate_checkpoint(checkpoint: &ValueStoreCheckpointV1) -> CoreResult<()> {
     Ok(())
 }
 
-fn validate_value_reference(
+pub(crate) fn validate_value_reference(
     value: SlotValue,
     checkpoint: &ValueStoreCheckpointV1,
 ) -> CoreResult<()> {

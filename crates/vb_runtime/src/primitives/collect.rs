@@ -63,6 +63,11 @@ struct CollectPageLineage {
 }
 
 impl CollectStates {
+    /// Cold transport may borrow an empty terminal table without cloning it.
+    pub(crate) fn transport_tables_empty(&self) -> bool {
+        self.entries.is_empty() && self.lineages.is_empty()
+    }
+
     /// Create an empty state table.
     pub fn new() -> Self {
         Self::default()
@@ -494,13 +499,9 @@ fn finish_collect_start_page(
     current_page: ListId,
     time_limit_ms: Option<u64>,
     body: StepIdx,
-    done: StepIdx,
+    _done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let cursor = checked_add_usize(0, plan.page_len, "collect cursor overflow")?;
-    if cursor >= plan.item_count {
-        states.remove(run.run_id(), plan.collector);
-        return jump_to(run, done);
-    }
     upsert_started_collect(run, states, plan, current_page, cursor, time_limit_ms)?;
     jump_to(run, body)
 }
@@ -529,7 +530,7 @@ fn upsert_started_collect(
 
 /// Executes CollectNext by advancing the bounded pagination cursor.
 #[allow(clippy::too_many_arguments)]
-pub fn collect_next(
+pub(crate) fn collect_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     run: &mut RunFrame,
     store: &mut ValueStore,
     states: &mut CollectStates,
@@ -544,7 +545,7 @@ pub fn collect_next(
     }
     let plan = build_collect_next_plan(run, store, states, collector_slot, current_id)?;
     let Some((state, page, page_len)) = plan else {
-        return write_terminal_collect_page(run, store, states, collector_slot, done);
+        return finish_collect_terminal(run, states, collector_slot, done);
     };
     let current_page = write_collected_page(run, store, collector_slot, page)?;
     let cursor = checked_add_usize(state.cursor, page_len, "collect cursor overflow")?;
@@ -553,7 +554,26 @@ pub fn collect_next(
         cursor,
         ..state
     })?;
-    jump_to_body(run, body)
+    P::jump(run, body)
+}
+
+/// Legacy entry-only state reset; this API does not validate a complete region.
+pub fn collect_next(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    states: &mut CollectStates,
+    collector_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    collect_next_with_policy::<super::body_entry::LegacyEntry>(
+        run,
+        store,
+        states,
+        collector_slot,
+        body,
+        done,
+    )
 }
 
 fn accept_empty_collect_page(
@@ -609,15 +629,19 @@ fn validate_cursor_in_source(
     Ok(())
 }
 
-fn write_terminal_collect_page(
+fn finish_collect_terminal(
     run: &mut RunFrame,
-    store: &mut ValueStore,
     states: &mut CollectStates,
     collector_slot: SlotIdx,
     done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let empty_page = Vec::<SlotValue>::new().into_boxed_slice();
-    let _page_id = write_collected_page(run, store, collector_slot, empty_page)?;
+    let state = states.capture_state(run.run_id(), collector_slot).ok_or(
+        EngineError::InternalInvariantViolation {
+            reason: "collect terminal without pagination state",
+        },
+    )?;
+    let taint = run.read_taint(collector_slot)?;
+    run.write_slot_with_taint(collector_slot, SlotValue::List(state.source), taint)?;
     states.remove(run.run_id(), collector_slot);
     jump_to(run, done)
 }
@@ -728,9 +752,8 @@ fn write_collected_page(
     collector: SlotIdx,
     items: Box<[SlotValue]>,
 ) -> Result<ListId, EngineError> {
-    let page_id = store.insert_list(items)?;
-    run.write_slot(collector, SlotValue::List(page_id))?;
-    Ok(page_id)
+    let taint = run.read_taint(collector)?;
+    write_collected_page_with_taint(run, store, collector, items, taint)
 }
 
 fn write_collected_page_with_taint(

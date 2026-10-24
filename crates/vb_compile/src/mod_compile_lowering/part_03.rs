@@ -12,6 +12,12 @@ use vb_core::{
     WorkflowError, WorkflowParts,
 };
 
+#[derive(Clone, Copy)]
+pub(super) struct TogetherSlots {
+    accumulator: SlotIdx,
+    result: SlotIdx,
+}
+
 pub(super) fn lower_canonical_parallel(
     index: usize,
     id: StepIdx,
@@ -19,8 +25,16 @@ pub(super) fn lower_canonical_parallel(
     next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let accumulator = SlotIdx::new(0);
-    builder.record_slot(accumulator);
+    let accumulator = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let result = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let slots = TogetherSlots {
+        accumulator,
+        result,
+    };
     let join_offset = together_join_offset(branches).map_err(|e| CompileErrors(vec![e]))?;
     let join = checked_step_offset(id, join_offset, "parallel", "join")
         .map_err(|e| CompileErrors(vec![e]))?;
@@ -64,10 +78,10 @@ pub(super) fn lower_canonical_parallel(
             join,
         },
     });
-    emit_together_branches(id, branches, join, accumulator, index, builder)?;
+    emit_together_branches(id, branches, join, slots, index, builder)?;
     builder.push_node(CompiledNode {
         id: join,
-        output: Some(accumulator),
+        output: Some(result),
         next,
         error_slot: None,
         on_error: None,
@@ -93,7 +107,7 @@ pub(super) fn emit_together_branches(
     base: StepIdx,
     branches: &[crate::TogetherBranch],
     join: StepIdx,
-    accumulator: SlotIdx,
+    slots: TogetherSlots,
     diagnostic_step: usize,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
@@ -120,28 +134,6 @@ pub(super) fn emit_together_branches(
                 limit: usize::from(u16::MAX),
             }])
         })?;
-        builder.push_node(CompiledNode {
-            id: branch_id,
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
-            kind: CompiledNodeKind::TogetherBranch {
-                branch: branch_number,
-                entry,
-                join,
-                accumulator,
-            },
-        });
-        emit_single_body_set(
-            &branch.steps,
-            entry,
-            diagnostic_step,
-            branch_id.to_slot(),
-            None,
-            builder,
-            true,
-        )?;
         let width =
             u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
                 .map_err(|_| {
@@ -149,125 +141,61 @@ pub(super) fn emit_together_branches(
                         value: branch_index,
                     }])
                 })?;
-        cursor = cursor.checked_add(width).ok_or_else(|| {
+        let following_offset = cursor.checked_add(width).ok_or_else(|| {
             CompileErrors(vec![CompileError::StepIndexOutOfRange {
                 value: branch_index,
             }])
         })?;
+        let following = checked_step_offset(base, following_offset, "parallel", "next")
+            .map_err(|e| CompileErrors(vec![e]))?;
+        builder.push_node(CompiledNode {
+            id: branch_id,
+            output: if branch_number == 0 {
+                None
+            } else {
+                Some(slots.result)
+            },
+            next: None,
+            error_slot: None,
+            on_error: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: branch_number,
+                entry,
+                join,
+                accumulator: slots.accumulator,
+            },
+        });
+        emit_single_body_set(
+            &branch.steps,
+            entry,
+            diagnostic_step,
+            slots.result,
+            Some(following),
+            builder,
+            true,
+        )?;
+        cursor = following_offset;
     }
     Ok(())
 }
 
-pub(super) struct CollectLowering<'a> {
-    pub(super) source: &'a str,
-    pub(super) pages: Option<u32>,
-    pub(super) items: Option<u32>,
-    pub(super) body: &'a [crate::StepAst],
-    pub(super) next: Option<StepIdx>,
-}
-
-/// Lower a canonical collect primitive into 4 compiled nodes.
-///
-/// # GOD RULE 2 Contract (Verus model binding)
-///
-/// The mathematical contract for this function is proved by the Verus model at
-/// `verification/verus/collect_lowering.rs` (L1-L6) and the spec block at the
-/// end of this file. In summary, when the starting `id` satisfies
-/// `id + 3 <= u16::MAX` (65535):
-///
-/// - **L1 (strict monotonicity):** `body_step < page < done`.
-/// - **L2 (4 distinct IDs):** All four node IDs (`id`, `id+1`, `id+2`, `id+3`)
-///   are within `u16` bounds.
-/// - **L3 (consecutive IDs):** The offsets are exactly `+1` from each
-///   predecessor.
-/// - **L4 (max valid start):** The maximum starting `id` is `u16::MAX - 3`
-///   (= 65532).
-/// - **L5 (default safety):** `pages.unwrap_or(1)` and `items.unwrap_or(1)`
-///   always produce a value `>= 1`.
-/// - **L6 (full emission chain):** All of the above hold simultaneously.
-///
-/// The production function cannot carry Verus `requires`/`ensures` annotations
-/// directly because it uses external crate types (`vb_core::StepIdx`,
-/// `vb_core::CompiledNode`, `CompileErrors`, `SlotCompiler`) and mutable state
-/// (`&mut SlotCompiler`) that Verus cannot track. Instead, the mathematical
-/// contract is proved in the spec block below and in the standalone Verus
-/// artifacts.
-pub(super) fn lower_canonical_collect(
-    index: usize,
-    id: StepIdx,
-    collect: CollectLowering<'_>,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    let source = slot_from_text(collect.source, index, "collect.source")?;
-    // Offset 1: id + 1 (body), proved <= u16::MAX when id + 3 <= u16::MAX
-    let body_step =
-        checked_step_offset(id, 1, "collect", "body").map_err(|e| CompileErrors(vec![e]))?;
-    // Offset 2: id + 2 (page), proved < done (L1 strict monotonicity)
-    let page = checked_step_offset(id, 2, "collect", "page").map_err(|e| CompileErrors(vec![e]))?;
-    // Offset 3: id + 3 (done), proved = id + 3 (L3 consecutive IDs)
-    let done = checked_step_offset(id, 3, "collect", "done").map_err(|e| CompileErrors(vec![e]))?;
-    builder.record_slot(source);
-    builder.push_node(CompiledNode {
-        id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::CollectStart {
-            source,
-            limit: collect.pages.unwrap_or(1),
-            page_size: collect.items.unwrap_or(1),
-            body: body_step,
-            done,
-        },
-    });
-    emit_single_body_set(
-        collect.body,
-        body_step,
-        index,
-        SlotIdx::new(1),
-        Some(page),
-        builder,
-        false,
-    )?;
-    builder.push_node(CompiledNode {
-        id: page,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::CollectPage {
-            collector_slot: source,
-            body: body_step,
-            done,
-        },
-    });
-    builder.push_node(CompiledNode {
-        id: done,
-        output: None,
-        next: collect.next,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::CollectFinish {
-            collector_slot: source,
-        },
-    });
-    Ok(())
-}
+// Historical N=1 collect lowering migrated to bounded_collect in part_02.
+// .9.1 requires rebinding before full CI. Not generalized closure.
 
 // ─────────────────────────────────────────────────────────────────
 // GOD RULE 2 Verus Spec Block
 //
-// Binding: mathematical contract for lower_canonical_collect (above).
-//   Proves the same L1-L6 properties as the standalone Verus model at
-//   verification/verus/collect_lowering.rs.
+// Historical N=1 binding: mathematical contract for the now-legacy
+// collect lowering that lived in this file. Proves L1-L6 properties
+// matching verification/verus/collect_lowering.rs.
 //
 // This block is conditionally compiled by Verus via #[cfg(verus_keep_ghost)].
 // Regular Rust builds (cargo check / cargo build) skip it entirely.
 // Verus sees this block and verifies the lemmas.
 //
-// The production exec fn lower_canonical_collect CANNOT be annotated with
-// Verus requires/ensures directly because:
+// The old production fn lower_canonical_collect (now migrated to
+// part_02's bounded_collect) CANNOT be annotated with Verus
+// requires/ensures directly because:
 //   (a) External crate types (vb_core::StepIdx, SlotCompiler, CompileErrors)
 //       are not Verus-tracked.
 //   (b) Mutable state through &mut SlotCompiler is not Verus-compatible.
@@ -275,7 +203,7 @@ pub(super) fn lower_canonical_collect(
 //   (d) Callees like emit_single_body_set use external types.
 //
 // Instead, this spec block proves the pure mathematical contract that the
-// production function's offset arithmetic must satisfy. The binding:
+// offset arithmetic must satisfy. The binding:
 //   - Production: checked_step_offset(id, 1) → StepIdx::checked_add(1)
 //   - Spec model:  spec_checked_step_offset(id, 1) → Ok(id + 1) when valid
 //   - Both use u16 arithmetic with MAX = 65535.

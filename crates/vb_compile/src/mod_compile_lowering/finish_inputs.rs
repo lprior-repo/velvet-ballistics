@@ -1,27 +1,17 @@
+use super::canonical_finish_slot;
+use super::resolve_slot_reference;
 use super::*;
 
-pub(super) fn prepare_finish_input_slots(
-    source: &crate::WorkflowSource,
+/// Finish uses the same declaration and prior-output environment as expressions.
+pub(crate) fn canonical_finish_slot_with_step_outputs(
     result: &crate::ScalarValue,
-    outputs: &mut std::collections::HashMap<String, vb_core::SlotIdx>,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    if !matches!(result, crate::ScalarValue::String(name) if name.starts_with("$input.")) {
-        let internal = canonical_finish_slot(result, outputs)?;
-        builder.record_slot(internal);
-    }
-
-    allocate_input_slots(source.inputs(), builder).map_err(|e| CompileErrors(vec![e]))?;
-
-    for (input, port) in source.inputs().iter().zip(builder.input_slots.iter()) {
-        let name = format!("$input.{}", input.key);
-        if outputs.contains_key(&name) {
-            return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                name: name.into_boxed_str(),
-            }]));
+    outputs: &HashMap<String, SlotIdx>,
+    step_outputs: &HashMap<String, SlotIdx>,
+) -> Result<SlotIdx, CompileErrors> {
+    match result {
+        crate::ScalarValue::String(name) if name.starts_with('$') => {
+            resolve_slot_reference(name, outputs, step_outputs).map_err(|e| CompileErrors(vec![e]))
         }
-        outputs.insert(name, port.slot);
+        _ => canonical_finish_slot(result, outputs),
     }
-
-    Ok(())
 }

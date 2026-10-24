@@ -489,6 +489,10 @@ impl RuntimeJournal for StorageRuntimeJournal {
         self.journal.probe_health().map_err(RuntimeError::from)
     }
 
+    fn durability_profile(&self) -> Option<vb_storage::DurabilityProfile> {
+        Some(self.profile)
+    }
+
     fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
         Some(self.journal.clone())
     }

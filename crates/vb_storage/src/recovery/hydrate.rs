@@ -222,6 +222,7 @@ pub fn hydrate_run_frame(
     tail_events: &[JournalEvent],
     run_id: RunId,
 ) -> RecoveryResult<vb_core::RunFrame> {
+    reject_owned_continuation_events(tail_events)?;
     validate_snapshot_recovery_inputs(snapshot, tail_events, run_id)?;
     reject_if_cannot_resume(snapshot, tail_events, run_id)?;
     let snapshot_slots =
@@ -553,6 +554,7 @@ pub fn hydrate_run_frame_from_events(
         return Err(RecoveryError::NoRecoveryData { run: run_id });
     }
 
+    reject_owned_continuation_events(events)?;
     let seed = crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(events)?;
     ensure_nonzero_step_count(seed.step_count)?;
     let cannot_resume = seed.cannot_resume_state();
@@ -790,6 +792,10 @@ fn apply_action_completed_envelope_event(
 // belt-and-braces for the dispatcher's `_ =>` arm).
 fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
     match event {
+        JournalEvent::RunContinuation { .. } => Err(RecoveryError::UnsupportedFrameSeed {
+            run: event.run_id(),
+            reason: String::from("owned-continuation-needs-authoritative-recovery"),
+        }),
         JournalEvent::StepStarted { .. }
         | JournalEvent::StepSucceeded { .. }
         | JournalEvent::StepFailed { .. }
@@ -878,4 +884,18 @@ fn check_action_abi_digest_against_expected(
 
 const fn zero_workflow_digest() -> WorkflowDigest {
     WorkflowDigest::from_bytes([0; 32])
+}
+
+// A cold carrier cannot authorize either legacy hydration route. Check metadata
+// only, before either route can inspect/mutate a frame or reinterpret its prefix.
+fn reject_owned_continuation_events(events: &[JournalEvent]) -> RecoveryResult<()> {
+    for event in events {
+        if matches!(event, JournalEvent::RunContinuation { .. }) {
+            return Err(RecoveryError::UnsupportedFrameSeed {
+                run: event.run_id(),
+                reason: String::from("owned-continuation-needs-authoritative-recovery"),
+            });
+        }
+    }
+    Ok(())
 }

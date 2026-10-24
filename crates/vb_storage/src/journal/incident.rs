@@ -191,7 +191,10 @@ pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleS
 /// Policy decision events are neutral facts and do not affect lifecycle.
 #[inline]
 fn is_lifecycle_affecting(event: &JournalEvent) -> bool {
-    !matches!(event, JournalEvent::PolicyDecisionEvent { .. })
+    !matches!(
+        event,
+        JournalEvent::PolicyDecisionEvent { .. } | JournalEvent::RunContinuation { .. }
+    )
 }
 
 /// Map a single `JournalEvent` to the lifecycle state implied by that event.
@@ -201,6 +204,7 @@ fn is_lifecycle_affecting(event: &JournalEvent) -> bool {
 #[must_use]
 pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
     match event {
+        JournalEvent::RunContinuation { .. } => LifecycleState::Active,
         JournalEvent::RunAccepted { .. } => LifecycleState::Active,
         JournalEvent::RunAdmission { .. } => LifecycleState::Active,
         JournalEvent::RetryCheckpoint { .. } => LifecycleState::Active,

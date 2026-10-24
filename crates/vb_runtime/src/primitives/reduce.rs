@@ -3,15 +3,61 @@
 
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{ConstIdx, SlotIdx, StepIdx};
+use vb_core::ids::{ConstIdx, ListId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
+use vb_core::value::Taint;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
 use super::helpers::{
-    build_iterator_state, decode_iterator_state, expect_list, jump_to, jump_to_body, jump_to_next,
-    require_output,
+    build_iterator_state, decode_iterator_state, expect_list, jump_to, jump_to_next, require_output,
 };
+
+fn get_initial_value(plan: &CompiledWorkflow, initial: ConstIdx) -> Result<SlotValue, EngineError> {
+    plan.constant(initial)
+        .copied()
+        .ok_or(EngineError::ConstOutOfBounds { index: initial })?
+        .to_slot_value()
+}
+
+fn get_first_item(items: &[SlotValue]) -> Result<SlotValue, EngineError> {
+    items
+        .first()
+        .copied()
+        .ok_or(EngineError::InternalInvariantViolation {
+            reason: "reduce items checked nonempty",
+        })
+}
+
+fn write_iterator_state(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    slot: SlotIdx,
+    list_id: ListId,
+    cursor: usize,
+    taint: Taint,
+) -> Result<(), EngineError> {
+    let state = build_iterator_state(list_id, cursor)?;
+    let state_id = store.insert_list(state)?;
+    run.write_slot_with_taint(slot, SlotValue::List(state_id), taint)
+}
+
+fn get_item_at(source: &[SlotValue], cursor: usize) -> Result<SlotValue, EngineError> {
+    source
+        .get(cursor)
+        .copied()
+        .ok_or(EngineError::InternalInvariantViolation {
+            reason: "reduce cursor bounds-checked above",
+        })
+}
+
+fn advance_cursor(cursor: usize) -> Result<usize, EngineError> {
+    cursor
+        .checked_add(1)
+        .ok_or(EngineError::InternalInvariantViolation {
+            reason: "reduce cursor overflow",
+        })
+}
 
 /// Executes ReduceStart: initializes accumulator from constant pool,
 /// reads input list, binds first item, writes remaining tail to
@@ -28,11 +74,7 @@ pub fn reduce_start(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let init_value = plan
-        .constant(initial)
-        .copied()
-        .ok_or(EngineError::ConstOutOfBounds { index: initial })?
-        .to_slot_value()?;
+    let init_value = get_initial_value(plan, initial)?;
     run.write_slot(accumulator, init_value)?;
     let list_id = expect_list(*run.read_slot(input)?)?;
     let input_taint = run.read_taint(input)?;
@@ -41,22 +83,15 @@ pub fn reduce_start(
         return jump_to(run, done);
     }
     let iter_output = require_output(output, run.pc())?;
-    let first = items
-        .first()
-        .copied()
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "reduce items checked nonempty",
-        })?;
+    let first = get_first_item(items)?;
     run.write_slot_with_taint(input, first, input_taint)?;
-    let state = build_iterator_state(list_id, 1)?;
-    let state_id = store.insert_list(state)?;
-    run.write_slot_with_taint(iter_output, SlotValue::List(state_id), input_taint)?;
+    write_iterator_state(run, store, iter_output, list_id, 1, input_taint)?;
     jump_to(run, body)
 }
 
 /// Executes ReduceNext: advances iterator, binds next item to
 /// iterator slot, or exits when all items consumed.
-pub fn reduce_next(
+pub(crate) fn reduce_next_with_policy<P: super::body_entry::BodyEntryPolicy>(
     run: &mut RunFrame,
     store: &mut ValueStore,
     iterator_slot: SlotIdx,
@@ -77,22 +112,39 @@ pub fn reduce_next(
         return jump_to(run, done);
     }
     let item_output = require_output(output, run.pc())?;
-    let item = source
-        .get(cursor)
-        .copied()
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "reduce cursor bounds-checked above",
-        })?;
+    let item = get_item_at(source, cursor)?;
     run.write_slot_with_taint(item_output, item, iter_taint)?;
-    let next_cursor = cursor
-        .checked_add(1)
-        .ok_or(EngineError::InternalInvariantViolation {
-            reason: "reduce cursor overflow",
-        })?;
-    let next_state = build_iterator_state(source_id, next_cursor)?;
-    let next_state_id = store.insert_list(next_state)?;
-    run.write_slot_with_taint(iterator_slot, SlotValue::List(next_state_id), iter_taint)?;
-    jump_to_body(run, body)
+    let next_cursor = advance_cursor(cursor)?;
+    write_iterator_state(
+        run,
+        store,
+        iterator_slot,
+        source_id,
+        next_cursor,
+        iter_taint,
+    )?;
+    P::jump(run, body)
+}
+
+/// Legacy entry-only state reset; this API does not validate a complete region.
+pub fn reduce_next(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    iterator_slot: SlotIdx,
+    actual_accumulator: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+    output: Option<SlotIdx>,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    reduce_next_with_policy::<super::body_entry::LegacyEntry>(
+        run,
+        store,
+        iterator_slot,
+        actual_accumulator,
+        body,
+        done,
+        output,
+    )
 }
 
 /// Executes ReduceFinish: writes the final accumulator to output.

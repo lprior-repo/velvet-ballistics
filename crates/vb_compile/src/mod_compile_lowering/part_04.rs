@@ -4,6 +4,10 @@ use crate::mod_compile_errors::{CompileError, CompileErrors, non_string_key_erro
 use crate::mod_compile_validation::{
     reject_unsupported_for_each_fields, validate_canonical_compile_scope,
 };
+
+#[path = "canonical_suspension_fields.rs"]
+mod canonical_suspension_fields;
+use canonical_suspension_fields::{resolve_optional_suspension_slot, resolve_suspension_slot};
 use saphyr::Yaml;
 use std::collections::HashMap;
 use vb_core::{
@@ -22,27 +26,47 @@ pub(super) fn lower_canonical_aggregate(
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let input = slot_from_text(input, index, "aggregate.input")?;
-    let accumulator = SlotIdx::new(1);
+    builder.record_slot(input);
+    let initial_input = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let next_item = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let iterator_slot = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let accumulator = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
     let initial = parse_i64_field(initial, index, "aggregate.initial")?;
     let initial = builder
         .push_constant(ConstValue::I64(initial))
         .map_err(|e| CompileErrors(vec![e]))?;
+    let start =
+        checked_step_offset(id, 1, "aggregate", "start").map_err(|e| CompileErrors(vec![e]))?;
     let body_step =
-        checked_step_offset(id, 1, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
+        checked_step_offset(id, 2, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
     let next_step =
-        checked_step_offset(id, 2, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
+        checked_step_offset(id, 3, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
     let done =
-        checked_step_offset(id, 3, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
-    builder.record_slot(input);
-    builder.record_slot(accumulator);
+        checked_step_offset(id, 4, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
-        output: None,
+        output: Some(initial_input),
+        next: Some(start),
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::Copy { source: input },
+    });
+    builder.push_node(CompiledNode {
+        id: start,
+        output: Some(iterator_slot),
         next: None,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::ReduceStart {
-            input,
+            input: initial_input,
             accumulator,
             initial,
             body: body_step,
@@ -60,12 +84,12 @@ pub(super) fn lower_canonical_aggregate(
     )?;
     builder.push_node(CompiledNode {
         id: next_step,
-        output: None,
+        output: Some(next_item),
         next: None,
         error_slot: None,
         on_error: None,
         kind: CompiledNodeKind::ReduceNext {
-            iterator_slot: accumulator,
+            iterator_slot,
             accumulator,
             body: body_step,
             done,
@@ -73,7 +97,7 @@ pub(super) fn lower_canonical_aggregate(
     });
     builder.push_node(CompiledNode {
         id: done,
-        output: None,
+        output: Some(accumulator),
         next,
         error_slot: None,
         on_error: None,
@@ -82,73 +106,9 @@ pub(super) fn lower_canonical_aggregate(
     Ok(())
 }
 
-pub(super) fn lower_canonical_repeat(
-    index: usize,
-    id: StepIdx,
-    max_attempts: u16,
-    body: &[crate::StepAst],
-    next: Option<StepIdx>,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    if max_attempts == 0 {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "repeat.max_attempts",
-            expected: "non-empty primitive field",
-        }]));
-    }
-    let body_step =
-        checked_step_offset(id, 1, "repeat", "body").map_err(|e| CompileErrors(vec![e]))?;
-    let attempt =
-        checked_step_offset(id, 2, "repeat", "attempt").map_err(|e| CompileErrors(vec![e]))?;
-    let done = checked_step_offset(id, 3, "repeat", "done").map_err(|e| CompileErrors(vec![e]))?;
-    let attempt_slot = SlotIdx::new(1);
-    builder.record_slot(attempt_slot);
-    builder.push_node(CompiledNode {
-        id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::RepeatStart {
-            max_attempts,
-            body: body_step,
-            done,
-        },
-    });
-    emit_single_body_set(
-        body,
-        body_step,
-        index,
-        SlotIdx::new(1),
-        Some(attempt),
-        builder,
-        false,
-    )?;
-    builder.push_node(CompiledNode {
-        id: attempt,
-        output: Some(attempt_slot),
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::RepeatAttempt {
-            attempt_slot,
-            body: body_step,
-            done,
-        },
-    });
-    builder.push_node(CompiledNode {
-        id: done,
-        output: None,
-        next,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::RepeatFinish {
-            result: attempt_slot,
-        },
-    });
-    Ok(())
-}
+#[path = "canonical_repeat.rs"]
+mod canonical_repeat;
+pub(super) use canonical_repeat::lower_canonical_repeat;
 
 pub(super) fn lower_canonical_wait(
     index: usize,
@@ -156,16 +116,18 @@ pub(super) fn lower_canonical_wait(
     event: Option<&str>,
     timeout: Option<&str>,
     next: Option<StepIdx>,
+    scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
     let mut node = match (event, timeout) {
         (Some(event_text), timeout_text) => {
-            let event = slot_from_text(event_text, index, "wait.event")?;
-            let timeout = optional_slot_from_text(timeout_text, index, "wait.timeout")?;
+            let event = resolve_suspension_slot(event_text, index, "wait.event", scope)?;
+            let timeout =
+                resolve_optional_suspension_slot(timeout_text, index, "wait.timeout", scope)?;
             lower_wait(id, WaitKind::Event { event, timeout }, builder)
         }
         (None, Some(timeout_text)) => {
-            let deadline = slot_from_text(timeout_text, index, "wait.timeout")?;
+            let deadline = resolve_suspension_slot(timeout_text, index, "wait.timeout", scope)?;
             lower_wait(id, WaitKind::Until { deadline }, builder)
         }
         (None, None) => {
@@ -187,11 +149,18 @@ pub(super) fn lower_canonical_ask(
     prompt: &str,
     timeout: Option<&str>,
     next: Option<StepIdx>,
+    scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let prompt = slot_from_text(prompt, index, "ask.prompt")?;
-    let timeout = optional_slot_from_text(timeout, index, "ask.timeout")?;
-    let answer = SlotIdx::new(2);
+    let prompt = resolve_suspension_slot(prompt, index, "ask.prompt", scope)?;
+    let timeout = resolve_optional_suspension_slot(timeout, index, "ask.timeout", scope)?;
+    builder.record_slot(prompt);
+    if let Some(timeout_slot) = timeout {
+        builder.record_slot(timeout_slot);
+    }
+    let answer = builder
+        .allocate_slot()
+        .map_err(|e| CompileErrors(vec![e]))?;
     let mut nodes =
         lower_ask(id, prompt, answer, timeout, builder).map_err(|e| CompileErrors(vec![e]))?;
     let resume = nodes
@@ -273,10 +242,11 @@ pub(super) fn emit_single_body_set(
             })?;
             let input_slot = SlotIdx::new(input_idx);
             builder.record_slot(input_slot);
+            builder.record_slot(slot);
             // Construct Do node directly to avoid double-borrow of builder
             builder.push_node(CompiledNode {
                 id,
-                output: None,
+                output: Some(slot),
                 next,
                 error_slot: None,
                 on_error: None,

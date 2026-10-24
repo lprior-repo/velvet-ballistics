@@ -135,6 +135,8 @@ pub enum JournalError {
     InputTooLarge { len: u32, max: u32 },
     #[error("runtime input schema mismatch")]
     InputSchemaMismatch,
+    #[error("owned input record rejected: {0}")]
+    OwnedInputs(#[from] crate::OwnedInputError),
     #[error("runtime capability denied")]
     CapabilityDenied,
     #[error("runtime secret unavailable")]

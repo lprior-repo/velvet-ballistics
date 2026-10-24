@@ -14,3 +14,15 @@ mod cat_evidence;
 mod cat_extras;
 mod cat_regression;
 mod common;
+
+mod cat_reduce_equal_target;
+
+mod cat_reduce_next_evidence;
+
+mod cat_loop_rearm;
+
+mod cat_owned_rearm;
+
+mod cat_nested_activation;
+
+mod cat_for_each_alias;

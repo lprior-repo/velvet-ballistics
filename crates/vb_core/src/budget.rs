@@ -16,7 +16,7 @@ pub struct WholeWorkflowBudget {
     pub max_total_slots: u64,
     /// Maximum concurrent branches (fanout).
     pub max_fanout: u16,
-    /// Maximum loop nesting depth.
+    /// Conservative structural nesting bound over reachable owners.
     pub max_nesting_depth: u16,
     /// Maximum executable step count per workflow admission.
     pub max_steps_executable: u32,
@@ -96,7 +96,6 @@ impl WholeWorkflowBudget {
             let max_total_steps = count_total_steps(nodes, entry, node_count)?;
 
             let mut max_fanout: u16 = 0;
-            let mut max_nesting_depth: u16 = 0;
             let mut max_action_tickets: u32 = 0;
             let mut max_parallel_in_flight: u16 = 0;
             let mut max_gather_pages: u32 = 0;
@@ -105,15 +104,13 @@ impl WholeWorkflowBudget {
             let mut max_together_branches: u16 = 0;
             let mut max_repeat_attempts: u16 = 0;
             let mut max_timer_entries: u32 = 0;
-            compute_fanout_and_depth(
+            compute_reachable_metrics(
                 nodes,
                 entry,
                 &mut visited,
                 &mut in_path,
                 node_count,
-                0,
                 &mut max_fanout,
-                &mut max_nesting_depth,
                 &mut max_action_tickets,
                 &mut max_parallel_in_flight,
                 &mut max_gather_pages,
@@ -124,6 +121,7 @@ impl WholeWorkflowBudget {
                 &mut max_timer_entries,
             )?;
 
+            let max_nesting_depth = compute_structural_depth(nodes, &visited)?;
             let max_total_slots = u64::from(contract.max_slots);
 
             // Phase 0 executes at most one step per runtime tick, so steps bound time.
@@ -188,6 +186,10 @@ pub(crate) enum BudgetTraversalError {
         step: StepIdx,
         target: StepIdx,
     },
+    BackwardScopeExit {
+        from: StepIdx,
+        to: StepIdx,
+    },
 }
 
 impl From<BudgetTraversalError> for WorkflowError {
@@ -200,6 +202,7 @@ impl From<BudgetTraversalError> for WorkflowError {
             }
             BudgetTraversalError::DepthOverflow { depth } => Self::DepthOverflow { depth },
             BudgetTraversalError::JumpCycle { step, target } => Self::JumpCycle { step, target },
+            BudgetTraversalError::BackwardScopeExit { from, to } => Self::BackwardEdge { from, to },
         }
     }
 }
@@ -1329,34 +1332,14 @@ impl From<BudgetTraversalError> for BudgetError {
 ///    infinite recursion from back-edges.
 /// 2. **Worst-case multiplication**: Loop body counts are multiplied by the
 ///    declared iteration limits and summed with non-loop node counts.
+mod conditional_counter;
+
 fn count_total_steps(
     nodes: &[crate::workflow::CompiledNode],
     entry: StepIdx,
     node_count: usize,
 ) -> Result<u64, BudgetTraversalError> {
-    let mut visited: Vec<bool> = vec![false; node_count];
-    let mut jump_edges: Vec<(u16, u16)> = bounded_tracking_vec(node_count);
-    let mut in_path: Vec<u16> = bounded_tracking_vec(node_count);
-    let mut total: u64 = 0;
-
-    let mut stack: Vec<StepIdx> = Vec::new();
-    stack.push(entry);
-
-    while let Some(current) = stack.pop() {
-        let current_u16 = current.get();
-        remove_tracked_step(&mut in_path, current_u16);
-        total = visit_node_for_total_steps(
-            nodes,
-            current,
-            node_count,
-            &mut visited,
-            &mut jump_edges,
-            &mut in_path,
-            total,
-            &mut stack,
-        )?;
-    }
-    Ok(total)
+    conditional_counter::count(nodes, entry, node_count)
 }
 
 fn find_node_position(
@@ -1407,6 +1390,7 @@ fn visit_node_for_total_steps(
     in_path: &mut Vec<u16>,
     mut total: u64,
     stack: &mut Vec<StepIdx>,
+    cache: &std::collections::HashMap<StepIdx, u64>,
 ) -> Result<u64, BudgetTraversalError> {
     let idx = find_node_position(nodes, current, node_count)?;
     if visited.get(idx).copied() == Some(true) {
@@ -1504,13 +1488,13 @@ fn visit_node_for_total_steps(
             branches,
             otherwise,
         } => {
-            total = add_conditional_max_steps(nodes, branches, *otherwise, node_count, total)?;
+            total = add_conditional_max_steps(branches, *otherwise, total, cache)?;
         }
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
         } => {
-            total = add_conditional_slot_max_steps(nodes, branches, *otherwise, node_count, total)?;
+            total = add_conditional_slot_max_steps(branches, *otherwise, total, cache)?;
         }
         _ => {
             push_successor_targets(&node.kind, stack);
@@ -1531,36 +1515,52 @@ fn map_loop_body_budget_error(error: BudgetError) -> BudgetTraversalError {
 }
 
 fn add_conditional_max_steps(
-    nodes: &[crate::workflow::CompiledNode],
     branches: &[crate::workflow::ExprBranch],
     otherwise: Option<StepIdx>,
-    node_count: usize,
     total: u64,
+    cache: &std::collections::HashMap<StepIdx, u64>,
 ) -> Result<u64, BudgetTraversalError> {
     let mut max_branch = match otherwise {
-        Some(target) => count_total_steps(nodes, target, node_count)?,
+        Some(target) => cache
+            .get(&target)
+            .copied()
+            .ok_or(BudgetTraversalError::StepOutOfBounds { step: target })?,
         None => 0,
     };
     for branch in branches {
-        let branch_steps = count_total_steps(nodes, branch.target, node_count)?;
+        let branch_steps =
+            cache
+                .get(&branch.target)
+                .copied()
+                .ok_or(BudgetTraversalError::StepOutOfBounds {
+                    step: branch.target,
+                })?;
         max_branch = max_branch.max(branch_steps);
     }
     checked_step_add(total, max_branch)
 }
 
 fn add_conditional_slot_max_steps(
-    nodes: &[crate::workflow::CompiledNode],
     branches: &[crate::workflow::SlotBranch],
     otherwise: Option<StepIdx>,
-    node_count: usize,
     total: u64,
+    cache: &std::collections::HashMap<StepIdx, u64>,
 ) -> Result<u64, BudgetTraversalError> {
     let mut max_branch = match otherwise {
-        Some(target) => count_total_steps(nodes, target, node_count)?,
+        Some(target) => cache
+            .get(&target)
+            .copied()
+            .ok_or(BudgetTraversalError::StepOutOfBounds { step: target })?,
         None => 0,
     };
     for branch in branches {
-        let branch_steps = count_total_steps(nodes, branch.target, node_count)?;
+        let branch_steps =
+            cache
+                .get(&branch.target)
+                .copied()
+                .ok_or(BudgetTraversalError::StepOutOfBounds {
+                    step: branch.target,
+                })?;
         max_branch = max_branch.max(branch_steps);
     }
     checked_step_add(total, max_branch)
@@ -1626,30 +1626,15 @@ fn push_done_continuation(
 /// Counts the worst-case total steps in a loop body region: all nodes reachable
 /// from `body` that are not at or past `done` (the loop exit). Nested loop
 /// headers within the body are recursively multiplied by their iteration limits.
+mod region_counter;
+
 fn count_body_region_nodes(
     nodes: &[crate::workflow::CompiledNode],
     body: StepIdx,
     done: StepIdx,
     node_count: usize,
 ) -> Result<u64, BudgetError> {
-    let mut region_visited: Vec<bool> = vec![false; node_count];
-    let mut stack: Vec<StepIdx> = Vec::new();
-    stack.push(body);
-
-    let mut count: u64 = 0;
-    while let Some(current) = stack.pop() {
-        count = visit_body_region_node(
-            nodes,
-            current,
-            done,
-            node_count,
-            &mut region_visited,
-            &mut stack,
-            count,
-        )?;
-    }
-    let body_span = done.get().saturating_sub(body.get()).saturating_sub(1);
-    Ok(count.max(u64::from(body_span)))
+    region_counter::count(nodes, body, done, node_count)
 }
 
 /// Visits a single node in a body region during step counting.
@@ -1662,6 +1647,7 @@ fn visit_body_region_node(
     region_visited: &mut [bool],
     stack: &mut Vec<StepIdx>,
     mut count: u64,
+    cache: &std::collections::HashMap<(StepIdx, StepIdx), u64>,
 ) -> Result<u64, BudgetError> {
     if current == done {
         return Ok(count);
@@ -1690,13 +1676,12 @@ fn visit_body_region_node(
         } => {
             if *body != current {
                 count = count_nested_for_region(
-                    nodes,
                     *body,
                     *done,
                     u64::from(*limit).max(1),
-                    node_count,
                     count,
                     stack,
+                    cache,
                 )?;
             }
         }
@@ -1705,13 +1690,12 @@ fn visit_body_region_node(
         } => {
             if *body != current {
                 count = count_nested_for_region(
-                    nodes,
                     *body,
                     *done,
                     u64::from(*limit).max(1),
-                    node_count,
                     count,
                     stack,
+                    cache,
                 )?;
             }
         }
@@ -1726,8 +1710,7 @@ fn visit_body_region_node(
                 }
             };
             if *body != current {
-                count =
-                    count_nested_for_region(nodes, *body, *done, iter, node_count, count, stack)?;
+                count = count_nested_for_region(*body, *done, iter, count, stack, cache)?;
             }
         }
         CompiledNodeKind::RepeatStart {
@@ -1738,13 +1721,12 @@ fn visit_body_region_node(
         } => {
             if *body != current {
                 count = count_nested_for_region(
-                    nodes,
                     *body,
                     *done,
                     u64::from(*max_attempts).max(1),
-                    node_count,
                     count,
                     stack,
+                    cache,
                 )?;
             }
         }
@@ -1762,15 +1744,20 @@ fn visit_body_region_node(
 #[inline]
 #[allow(clippy::too_many_arguments)]
 fn count_nested_for_region(
-    nodes: &[crate::workflow::CompiledNode],
     body: StepIdx,
     done: StepIdx,
     iter_count: u64,
-    node_count: usize,
     count: u64,
     stack: &mut Vec<StepIdx>,
+    cache: &std::collections::HashMap<(StepIdx, StepIdx), u64>,
 ) -> Result<u64, BudgetError> {
-    let body_count = count_body_region_nodes(nodes, body, done, node_count)?;
+    let body_count = cache
+        .get(&(body, done))
+        .copied()
+        .ok_or(BudgetError::TotalStepsExceeded {
+            actual: u64::MAX,
+            limit: u64::MAX,
+        })?;
     stack.push(done);
     let product = body_count
         .checked_mul(iter_count)
@@ -1971,17 +1958,20 @@ fn insert_tracked_jump_edge(
     Ok(true)
 }
 
-/// Computes max fanout and max nesting depth via a DFS walk.
+enum ReachableVisit {
+    Enter(StepIdx),
+    Exit(u16),
+}
+
+/// Computes once-only resource metrics and reachability via a DFS walk.
 #[allow(clippy::too_many_arguments)]
-fn compute_fanout_and_depth(
+fn compute_reachable_metrics(
     nodes: &[crate::workflow::CompiledNode],
     current: StepIdx,
     visited: &mut [bool],
     in_path: &mut Vec<u16>,
     node_count: usize,
-    current_depth: u16,
     max_fanout: &mut u16,
-    max_nesting_depth: &mut u16,
     max_action_tickets: &mut u32,
     max_parallel_in_flight: &mut u16,
     max_gather_pages: &mut u32,
@@ -1991,76 +1981,129 @@ fn compute_fanout_and_depth(
     max_repeat_attempts: &mut u16,
     max_timer_entries: &mut u32,
 ) -> Result<(), BudgetTraversalError> {
-    let idx = find_node_position(nodes, current, node_count)?;
-    if visited.get(idx).copied() == Some(true) {
-        return Ok(());
+    // vb-8eocj.7.2.1 Explicit DFS event stack preserves the original recursive
+    // in-path set semantics so jump cycle detection and backtracking remain
+    // identical while the stack grows linearly with node count.
+    let mut stack: Vec<ReachableVisit> = Vec::new();
+    stack.push(ReachableVisit::Enter(current));
+
+    while let Some(event) = stack.pop() {
+        match event {
+            ReachableVisit::Enter(step) => {
+                let idx = find_node_position(nodes, step, node_count)?;
+                if visited.get(idx).copied() == Some(true) {
+                    continue;
+                }
+                let Some(flag) = visited.get_mut(idx) else {
+                    return Err(BudgetTraversalError::StepOutOfBounds { step });
+                };
+                *flag = true;
+
+                let node = node_at_position(nodes, idx, step)?;
+                let step_u16 = step.get();
+                insert_tracked_step(in_path, step_u16, node_count)?;
+
+                if let CompiledNodeKind::Jump { target } = &node.kind {
+                    let target_u16 = target.get();
+                    if tracked_steps_contain(in_path, target_u16) {
+                        remove_tracked_step(in_path, step_u16);
+                        return Err(BudgetTraversalError::JumpCycle {
+                            step,
+                            target: *target,
+                        });
+                    }
+                }
+
+                update_fanout(&node.kind, max_fanout)?;
+                update_workflow_metrics(
+                    &node.kind,
+                    max_action_tickets,
+                    max_parallel_in_flight,
+                    max_gather_pages,
+                    max_gather_items,
+                    max_for_each_iterations,
+                    max_together_branches,
+                    max_repeat_attempts,
+                    max_timer_entries,
+                )?;
+
+                let mut targets: Vec<StepIdx> = Vec::new();
+                push_successor_targets(&node.kind, &mut targets);
+                if let Some(next) = node.next {
+                    targets.push(next);
+                }
+
+                stack.push(ReachableVisit::Exit(step_u16));
+                for target in targets.iter().rev() {
+                    if find_node_position(nodes, *target, node_count).is_ok() {
+                        stack.push(ReachableVisit::Enter(*target));
+                    }
+                }
+            }
+            ReachableVisit::Exit(step_u16) => {
+                remove_tracked_step(in_path, step_u16);
+            }
+        }
     }
-    let Some(flag) = visited.get_mut(idx) else {
-        return Err(BudgetTraversalError::StepOutOfBounds { step: current });
-    };
-    *flag = true;
 
-    let node = node_at_position(nodes, idx, current)?;
+    Ok(())
+}
 
-    let current_u16 = current.get();
-    insert_tracked_step(in_path, current_u16, node_count)?;
+/// Cold structural upper bound for vb-8eocj.3.6, independent of DFS order.
+/// Reachable owner spans are half-open: an exit retires before a start there.
+/// Alternate-entry IR can conservatively overlap mutually exclusive owners;
+/// canonical source scopes have their exact lexical nesting depth.
+fn compute_structural_depth(
+    nodes: &[crate::workflow::CompiledNode],
+    visited: &[bool],
+) -> Result<u16, BudgetTraversalError> {
+    let mut owners = reachable_nesting_owners(nodes, visited)?;
+    owners.sort_unstable_by_key(|(node, _)| node.id);
+    let mut active_exits = bounded_tracking_vec(owners.len());
+    let mut max_depth = 0;
+    for (node, exit) in owners {
+        active_exits.retain(|end| *end > node.id);
+        let depth = u16::try_from(active_exits.len())
+            .map_err(|_| BudgetTraversalError::DepthOverflow { depth: u16::MAX })?;
+        compute_child_depth(&node.kind, depth, &mut max_depth)?;
+        active_exits.push(exit);
+    }
+    Ok(max_depth)
+}
 
-    if let CompiledNodeKind::Jump { target } = &node.kind {
-        let target_u16 = target.get();
-        if tracked_steps_contain(in_path, target_u16) {
-            remove_tracked_step(in_path, current_u16);
-            return Err(BudgetTraversalError::JumpCycle {
-                step: current,
-                target: *target,
+fn reachable_nesting_owners<'a>(
+    nodes: &'a [crate::workflow::CompiledNode],
+    visited: &[bool],
+) -> Result<Vec<(&'a crate::workflow::CompiledNode, StepIdx)>, BudgetTraversalError> {
+    let mut owners = bounded_tracking_vec(nodes.len());
+    for (index, node) in nodes.iter().enumerate() {
+        if visited.get(index).copied() != Some(true) {
+            continue;
+        }
+        let Some(exit) = nesting_scope_exit(&node.kind) else {
+            continue;
+        };
+        find_node_position(nodes, exit, nodes.len())?;
+        if exit <= node.id {
+            return Err(BudgetTraversalError::BackwardScopeExit {
+                from: node.id,
+                to: exit,
             });
         }
+        owners.push((node, exit));
     }
+    Ok(owners)
+}
 
-    let child_depth = compute_child_depth(&node.kind, current_depth, max_nesting_depth)?;
-    update_fanout(&node.kind, max_fanout)?;
-    update_workflow_metrics(
-        &node.kind,
-        max_action_tickets,
-        max_parallel_in_flight,
-        max_gather_pages,
-        max_gather_items,
-        max_for_each_iterations,
-        max_together_branches,
-        max_repeat_attempts,
-        max_timer_entries,
-    )?;
-
-    let mut targets: Vec<StepIdx> = Vec::new();
-    push_successor_targets(&node.kind, &mut targets);
-    if let Some(next) = node.next {
-        targets.push(next);
+fn nesting_scope_exit(kind: &CompiledNodeKind) -> Option<StepIdx> {
+    match kind {
+        CompiledNodeKind::ForEachStart { done, .. }
+        | CompiledNodeKind::CollectStart { done, .. }
+        | CompiledNodeKind::ReduceStart { done, .. }
+        | CompiledNodeKind::RepeatStart { done, .. } => Some(*done),
+        CompiledNodeKind::TogetherStart { join, .. } => Some(*join),
+        _ => None,
     }
-
-    for target in targets {
-        if find_node_position(nodes, target, node_count).is_ok() {
-            compute_fanout_and_depth(
-                nodes,
-                target,
-                visited,
-                in_path,
-                node_count,
-                child_depth,
-                max_fanout,
-                max_nesting_depth,
-                max_action_tickets,
-                max_parallel_in_flight,
-                max_gather_pages,
-                max_gather_items,
-                max_for_each_iterations,
-                max_together_branches,
-                max_repeat_attempts,
-                max_timer_entries,
-            )?;
-        }
-    }
-
-    remove_tracked_step(in_path, current_u16);
-    Ok(())
 }
 
 fn compute_child_depth(
@@ -2070,16 +2113,10 @@ fn compute_child_depth(
 ) -> Result<u16, BudgetTraversalError> {
     match kind {
         CompiledNodeKind::ForEachStart { .. }
-        | CompiledNodeKind::ForEachNext { .. }
         | CompiledNodeKind::CollectStart { .. }
-        | CompiledNodeKind::CollectPage { .. }
-        | CompiledNodeKind::CollectNext { .. }
         | CompiledNodeKind::ReduceStart { .. }
-        | CompiledNodeKind::ReduceNext { .. }
         | CompiledNodeKind::RepeatStart { .. }
-        | CompiledNodeKind::RepeatAttempt { .. }
-        | CompiledNodeKind::TogetherStart { .. }
-        | CompiledNodeKind::TogetherBranch { .. } => {
+        | CompiledNodeKind::TogetherStart { .. } => {
             let new_depth =
                 current_depth
                     .checked_add(1)

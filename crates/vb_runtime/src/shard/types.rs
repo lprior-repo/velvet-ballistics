@@ -59,6 +59,13 @@ impl PendingTimer {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ShardCommand {
+    /// Activate one pristine strict submission by independently checked identities.
+    ActivateOwnedSubmission {
+        /// Durable run whose same-journal owned receipt must be revalidated.
+        run: RunId,
+        /// Expected digest of authored source bytes, not the compiled workflow.
+        expected_source_digest: WorkflowDigest,
+    },
     /// Submit a new run for execution.
     Submit {
         /// Run identifier chosen by the caller.

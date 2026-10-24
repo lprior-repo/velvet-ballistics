@@ -17,10 +17,14 @@
 #![forbid(unsafe_code)]
 
 use super::SlotCompiler;
-use super::part_03::{CollectLowering, lower_canonical_collect};
+use super::part_02::{
+    CanonicalScope,
+    bounded_collect::{CollectLowering, lower_bounded_collect as lower_canonical_collect},
+};
 use super::part_04::emit_single_body_set;
 use crate::{StepAst, StepPrimitive};
 use proptest::prelude::*;
+use std::collections::HashMap;
 use vb_core::ids::{SlotIdx, StepIdx};
 
 // ─────────────────────────────────────────────────────────────────
@@ -116,12 +120,21 @@ proptest! {
         let mut builder = SlotCompiler::new();
 
         // This should not hang or panic
+        let outputs = HashMap::new();
+        let step_outputs = HashMap::new();
+        let slot_types = HashMap::new();
         let collect = CollectLowering {
             source: &input.source,
+            variable: "batch",
             pages: input.pages,
             items: input.items,
             body: &input.body,
             next: None,
+            scope: CanonicalScope {
+                outputs: &outputs,
+                step_outputs: &step_outputs,
+                slot_types: &slot_types,
+            },
         };
         let result = lower_canonical_collect(0, id, collect, &mut builder);
 
@@ -145,12 +158,21 @@ proptest! {
 
         let mut builder = SlotCompiler::new();
 
+        let outputs = HashMap::new();
+        let step_outputs = HashMap::new();
+        let slot_types = HashMap::new();
         let collect = CollectLowering {
             source: &input.source,
+            variable: "batch",
             pages: input.pages,
             items: input.items,
             body: &input.body,
             next: None,
+            scope: CanonicalScope {
+                outputs: &outputs,
+                step_outputs: &step_outputs,
+                slot_types: &slot_types,
+            },
         };
         let result = lower_canonical_collect(0, StepIdx::new(id), collect, &mut builder);
 
@@ -174,8 +196,8 @@ proptest! {
                 "node 1 is SetConst"
             );
             prop_assert!(
-                matches!(&nodes[2].kind, vb_core::CompiledNodeKind::CollectPage { .. }),
-                "node 2 is CollectPage"
+                matches!(&nodes[2].kind, vb_core::CompiledNodeKind::CollectNext { .. }),
+                "node 2 is CollectNext"
             );
             prop_assert!(
                 matches!(&nodes[3].kind, vb_core::CompiledNodeKind::CollectFinish { .. }),
