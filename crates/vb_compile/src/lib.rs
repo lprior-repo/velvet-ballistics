@@ -193,3 +193,4 @@ pub fn load_fixture_source(text: &str) -> YamlResult<WorkflowSource> {
 pub fn reject_forbidden_yaml_features(events: &[YamlEvent]) -> YamlResult<()> {
     vb_yaml::reject_forbidden_yaml_features(events)
 }
+mod tests_target_identity;
