@@ -268,3 +268,14 @@ The standard delivery flow for Rust beads in this repository is:
 This is the user's explicit delivery flow. Do not invoke the Go-skill or full proof-planning stage unless explicitly requested. Local 5090/3090 instances target at least 98% of coding effort; Sol is reserved for minimal coordination and escalation.
 
 The master architectural acceptance criteria and GOD RULES for formal harnesses remain in force; this flow does not waive or weaken those gates.
+
+## Interactive Session Management
+
+When using `write_stdin` or other interactive session tools:
+
+- **Validate session ID before write**: Confirm the session ID is current and active before calling `write_stdin`.
+- **Handle `Unknown process id` errors**: If a write returns `Unknown process id N`, do not retry with the same ID. Instead, either start a new session or abort the interactive sequence.
+- **Bound retry loops**: Do not call `write_stdin` more than 3 times in a row against the same session without observing new output or a state change. Livelock is a bug, not a retry opportunity.
+- **Prefer `exec_command` for one-shots**: For non-interactive commands that do not require sustained input, use `exec_command` with a bounded `yield_time_ms` rather than opening an interactive session.
+
+Observed failure mode: local models repeatedly calling `write_stdin` against stale or invalid session IDs (e.g., `Unknown process id 4`), running for minutes without productive work. This counts as livelock, not development.
