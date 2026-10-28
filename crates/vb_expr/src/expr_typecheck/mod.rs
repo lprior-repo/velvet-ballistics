@@ -1,9 +1,10 @@
 #![forbid(unsafe_code)]
 //! Compile-time type inference for expression ASTs.
 
-use crate::parser::{ExprAst, ExprHelper, ExprLiteral};
+use crate::parser::{ExprAst, ExprHelper, ExprLiteral, helper_arity, helper_name};
 use crate::{ExprError, ExprResult};
 
+mod helper_typecheck;
 pub mod tests;
 
 /// Inferred expression type.
@@ -152,21 +153,23 @@ fn typecheck_helper(
     args: &[ExprAst],
     ctx: &TypeContext,
 ) -> ExprResult<ExprType> {
-    let _arg_types: Vec<ExprType> = args
+    let expected = helper_arity(helper);
+    if args.len() != expected {
+        return Err(ExprError::HelperArityMismatch {
+            helper: helper_name(helper).into(),
+            expected,
+            actual: args.len(),
+        });
+    }
+
+    let arg_types = args
         .iter()
         .map(|a| typecheck_expr(a, ctx))
         .collect::<ExprResult<Vec<_>>>()?;
-    match helper {
-        ExprHelper::Contains
-        | ExprHelper::StartsWith
-        | ExprHelper::EndsWith
-        | ExprHelper::Has
-        | ExprHelper::Exists
-        | ExprHelper::Empty => Ok(ExprType::Bool),
-        ExprHelper::Length | ExprHelper::Sum | ExprHelper::Count => Ok(ExprType::I64),
-        ExprHelper::Append | ExprHelper::AppendIf | ExprHelper::Unique => Ok(ExprType::List),
-        ExprHelper::Merge => Ok(ExprType::Object),
-    }
+
+    helper_typecheck::check_helper_positions(helper, &arg_types)?;
+
+    Ok(helper_typecheck::helper_return_type(helper))
 }
 
 fn is_numeric(ty: ExprType) -> bool {
@@ -215,7 +218,7 @@ fn expect_numeric_pair(left: ExprType, right: ExprType) -> ExprResult<()> {
     }
 }
 
-fn type_name(ty: ExprType) -> String {
+pub(super) fn type_name(ty: ExprType) -> String {
     match ty {
         ExprType::Null => "null".into(),
         ExprType::Bool => "boolean".into(),

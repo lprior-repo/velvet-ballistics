@@ -2,6 +2,8 @@
 //! BDD typecheck tests.
 
 mod adversarial;
+#[cfg(test)]
+mod helper_argument_types;
 
 #[allow(unused_imports)]
 use crate::ExprError;
@@ -511,10 +513,17 @@ fn typecheck_expr_propagates_type_error_from_helper_arg() -> crate::ExprResult<(
 }
 
 #[test]
-fn typecheck_expr_allows_helper_with_mismatched_arg_types_at_typecheck_level()
--> crate::ExprResult<()> {
-    let ty = check("sum(true)")?;
-    assert_eq!(ty, ExprType::I64);
+fn typecheck_expr_rejects_sum_boolean_with_exact_mismatch() -> crate::ExprResult<()> {
+    let tokens = lex_expr("sum(true)")?;
+    let ast = parse_expr(&tokens)?;
+    let result = typecheck_expr(&ast, &TypeContext::new());
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for sum(true)".into(),
+        });
+    };
+    assert_eq!(expected, "list");
+    assert_eq!(found, "boolean");
     Ok(())
 }
 
