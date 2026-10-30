@@ -1,2 +1,0 @@
-[verus] verus --crate-type=lib verification/verus/resource_budget.rs
-verification results:: 30 verified, 0 errors
