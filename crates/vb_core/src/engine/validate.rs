@@ -3,8 +3,7 @@
 
 use crate::ids::StepIdx;
 use crate::workflow::{
-    CompiledNodeKind, CompiledWorkflow, ContractResource, ExprBranch, SlotBranch, WorkflowError,
-    WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ExprBranch, SlotBranch, WorkflowError, WorkflowParts,
 };
 
 /// Validates compiled workflow IR integrity.
@@ -14,94 +13,13 @@ pub fn validate_compiled_workflow(parts: &WorkflowParts) -> Result<(), WorkflowE
 }
 
 /// Validates resource contract bounds against hard limits.
+///
+/// Bounds-only pre-check: delegates to the canonical
+/// [`crate::workflow::check_resource_contract_limits`] implementation shared
+/// with admission (`CompiledWorkflow::try_from_parts`). Actual-usage
+/// (`Exceeded`) checks are admission-only and intentionally absent here.
 pub fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowError> {
-    let contract = parts.resource_contract;
-    if usize::from(contract.max_steps) > crate::limits::MAX_STEPS_PER_WORKFLOW {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::Steps,
-        });
-    }
-    if usize::from(contract.max_slots) > crate::limits::MAX_SLOTS_PER_WORKFLOW {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::Slots,
-        });
-    }
-    if usize::from(contract.max_constants) > crate::limits::MAX_CONSTANTS {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::Constants,
-        });
-    }
-    if usize::from(contract.max_accessors) > crate::limits::MAX_ACCESSORS {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::Accessors,
-        });
-    }
-    if usize::from(contract.max_expressions) > crate::limits::MAX_EXPRESSIONS {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::Expressions,
-        });
-    }
-    if contract.max_expr_stack > crate::limits::MAX_EXPRESSION_STACK {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::ExprStack,
-        });
-    }
-    if contract.max_step_budget_per_tick > crate::limits::MAX_STEP_BUDGET {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::StepBudgetPerTick,
-        });
-    }
-    if contract.max_transitions_per_tick > crate::limits::MAX_STEP_BUDGET {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::TransitionsPerTick,
-        });
-    }
-    if contract.max_input_bytes > crate::limits::MAX_INPUT_BYTES {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::InputBytes,
-        });
-    }
-    if contract.max_output_bytes > crate::limits::MAX_OUTPUT_BYTES {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::OutputBytes,
-        });
-    }
-    if contract.max_blob_bytes > crate::limits::MAX_BLOB_BYTES {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::BlobBytes,
-        });
-    }
-    if contract.max_ipc_payload_bytes > crate::limits::MAX_IPC_PAYLOAD_BYTES {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::IpcPayloadBytes,
-        });
-    }
-    if u32::from(contract.max_retry_attempts) > u32::from(crate::limits::MAX_RETRY_ATTEMPTS) {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::RetryAttempts,
-        });
-    }
-    if u32::from(contract.max_fanout) > u32::from(crate::limits::MAX_FANOUT) {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::Fanout,
-        });
-    }
-    if contract.max_collect_items > crate::limits::MAX_COLLECT_ITEMS {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::CollectItems,
-        });
-    }
-    if contract.max_queue_depth > crate::limits::MAX_QUEUE_DEPTH {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::QueueDepth,
-        });
-    }
-    if contract.max_journal_batch_bytes > crate::limits::MAX_JOURNAL_BATCH_BYTES {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: ContractResource::JournalBatchBytes,
-        });
-    }
-    Ok(())
+    crate::workflow::check_resource_contract_limits(&parts.resource_contract)
 }
 
 /// Validates that all node indices are within the node array bounds.
@@ -375,14 +293,15 @@ fn validate_two_step_targets(
 #[cfg(test)]
 mod tests {
     use super::{
-        ContractResource, validate_compiled_workflow, validate_node_bounds,
-        validate_resource_contract, validate_transition_target,
+        validate_compiled_workflow, validate_node_bounds, validate_resource_contract,
+        validate_transition_target,
     };
     use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::ConstValue;
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, ErrorRouting, ExprBranch, NodeContinuation, NodeOutput,
-        NodeRouting, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
+        CompiledNode, CompiledNodeKind, ContractResource, ErrorRouting, ExprBranch,
+        NodeContinuation, NodeOutput, NodeRouting, ResourceContract, SlotBranch, WorkflowError,
+        WorkflowParts,
     };
 
     fn valid_parts() -> WorkflowParts {
@@ -1420,4 +1339,6 @@ mod tests {
     // RED PHASE: additional resource contract tests
     mod red_phase_behavior_tests;
     mod red_phase_tests;
+    // vb-x46ae: differential proof for the unified resource-contract validator.
+    mod differential_contract_tests;
 }
