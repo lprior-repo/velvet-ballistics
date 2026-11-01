@@ -11,6 +11,7 @@
 #![forbid(unsafe_code)]
 
 pub mod kani_determinism;
+pub mod kani_diagnostic_arbitrary;
 pub mod kani_diagnostic_constructor;
 pub mod kani_from_str_compat;
 pub mod kani_is_supported_code;
