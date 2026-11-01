@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 
 use crate::mod_compile_errors::CompileErrors;
-use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
+use vb_core::workflow::node;
 use vb_core::{
     AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
     ConstValue, ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
@@ -47,15 +47,7 @@ pub fn lower_set(
     value: ConstIdx,
     next: Option<StepIdx>,
 ) -> CompiledNode {
-    CompiledNode {
-        id,
-        output: NodeOutput::Slot(output),
-        routing: NodeRouting {
-            next: next.into(),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst { value },
-    }
+    node(id, CompiledNodeKind::SetConst { value }, Some(output), next)
 }
 
 /// Lowers a `do` (action) primitive into a `Do` node.
@@ -68,13 +60,5 @@ pub fn lower_do(
     builder: &mut SlotCompiler,
 ) -> CompiledNode {
     builder.record_slot(input);
-    CompiledNode {
-        id,
-        output: output.into(),
-        routing: NodeRouting {
-            next: next.into(),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do { action, input },
-    }
+    node(id, CompiledNodeKind::Do { action, input }, output, next)
 }

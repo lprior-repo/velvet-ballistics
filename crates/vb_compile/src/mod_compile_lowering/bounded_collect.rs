@@ -1,12 +1,10 @@
 use super::super::part_14::emit_scoped_flat_body;
 use super::super::{SlotCompiler, checked_step_offset, slot_from_text};
-use super::{
-    CanonicalScope, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
-    resolve_slot_reference, validate_output_alias,
-};
+use super::{CanonicalScope, resolve_slot_reference, validate_output_alias};
 use crate::mod_compile_validation::validate_public_name;
 use crate::{CompileError, CompileErrors};
-use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
+use vb_core::workflow::node;
+use vb_core::{CompiledNodeKind, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
 
 pub(in crate::mod_compile_lowering) struct CollectLowering<'a> {
@@ -179,21 +177,18 @@ fn plan_build(
 }
 
 fn emit_start(id: StepIdx, plan: &CollectPlan, builder: &mut SlotCompiler) {
-    builder.push_node(CompiledNode {
+    builder.push_node(node(
         id,
-        output: NodeOutput::Slot(plan.collector_slot),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::CollectStart {
+        CompiledNodeKind::CollectStart {
             source: plan.source,
             limit: plan.limit,
             page_size: plan.page_size,
             body: plan.body_step,
             done: plan.done,
         },
-    });
+        Some(plan.collector_slot),
+        None,
+    ));
 }
 
 fn emit_body(
@@ -222,33 +217,27 @@ fn emit_body(
 }
 
 fn emit_next(plan: &CollectPlan, builder: &mut SlotCompiler) {
-    builder.push_node(CompiledNode {
-        id: plan.advance,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::CollectNext {
+    builder.push_node(node(
+        plan.advance,
+        CompiledNodeKind::CollectNext {
             collector_slot: plan.collector_slot,
             body: plan.body_step,
             done: plan.done,
         },
-    });
+        None,
+        None,
+    ));
 }
 
 fn emit_finish(next: Option<StepIdx>, plan: &CollectPlan, builder: &mut SlotCompiler) {
-    builder.push_node(CompiledNode {
-        id: plan.done,
-        output: NodeOutput::Slot(plan.finish_slot),
-        routing: NodeRouting {
-            next: next.into(),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::CollectFinish {
+    builder.push_node(node(
+        plan.done,
+        CompiledNodeKind::CollectFinish {
             collector_slot: plan.collector_slot,
         },
-    });
+        Some(plan.finish_slot),
+        next,
+    ));
 }
 
 pub(in crate::mod_compile_lowering) fn lower_bounded_collect(

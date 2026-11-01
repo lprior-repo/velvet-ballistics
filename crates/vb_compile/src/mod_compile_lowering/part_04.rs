@@ -51,30 +51,24 @@ pub(super) fn lower_canonical_aggregate(
         checked_step_offset(id, 3, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
     let done =
         checked_step_offset(id, 4, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
-    builder.push_node(CompiledNode {
+    builder.push_node(node(
         id,
-        output: NodeOutput::Slot(initial_input),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(start),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Copy { source: input },
-    });
-    builder.push_node(CompiledNode {
-        id: start,
-        output: NodeOutput::Slot(iterator_slot),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ReduceStart {
+        CompiledNodeKind::Copy { source: input },
+        Some(initial_input),
+        Some(start),
+    ));
+    builder.push_node(node(
+        start,
+        CompiledNodeKind::ReduceStart {
             input: initial_input,
             accumulator,
             initial,
             body: body_step,
             done,
         },
-    });
+        Some(iterator_slot),
+        None,
+    ));
     emit_single_body_set(
         body,
         body_step,
@@ -84,29 +78,23 @@ pub(super) fn lower_canonical_aggregate(
         builder,
         false,
     )?;
-    builder.push_node(CompiledNode {
-        id: next_step,
-        output: NodeOutput::Slot(next_item),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ReduceNext {
+    builder.push_node(node(
+        next_step,
+        CompiledNodeKind::ReduceNext {
             iterator_slot,
             accumulator,
             body: body_step,
             done,
         },
-    });
-    builder.push_node(CompiledNode {
-        id: done,
-        output: NodeOutput::Slot(accumulator),
-        routing: NodeRouting {
-            next: next.into(),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ReduceFinish { accumulator },
-    });
+        Some(next_item),
+        None,
+    ));
+    builder.push_node(node(
+        done,
+        CompiledNodeKind::ReduceFinish { accumulator },
+        Some(accumulator),
+        next,
+    ));
     Ok(())
 }
 
@@ -248,18 +236,15 @@ pub(super) fn emit_single_body_set(
             builder.record_slot(input_slot);
             builder.record_slot(slot);
             // Construct Do node directly to avoid double-borrow of builder
-            builder.push_node(CompiledNode {
+            builder.push_node(node(
                 id,
-                output: NodeOutput::Slot(slot),
-                routing: NodeRouting {
-                    next: next.into(),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Do {
+                CompiledNodeKind::Do {
                     action: vb_core::ActionId::new(action_id),
                     input: input_slot,
                 },
-            });
+                Some(slot),
+                next,
+            ));
             Ok(())
         }
         other => Err(CompileErrors(vec![
@@ -274,3 +259,4 @@ pub(super) fn emit_single_body_set(
 #[path = "body_constants.rs"]
 mod body_constants;
 pub(super) use body_constants::body_constant_index;
+use vb_core::workflow::node;

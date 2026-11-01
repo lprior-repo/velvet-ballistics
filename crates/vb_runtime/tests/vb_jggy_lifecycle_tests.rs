@@ -26,10 +26,7 @@ use vb_core::action::{
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 
 use vb_runtime::RuntimeError;
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
@@ -121,18 +118,15 @@ fn submit_with_inputs_and_contracts(
 }
 
 fn suspended_workflow() -> Option<CompiledWorkflow> {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::ZERO),
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("suspended"),
@@ -152,30 +146,24 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
 }
 
 fn suspended_workflow_2step() -> Option<CompiledWorkflow> {
-    let node0 = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    let node0 = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
         },
-    };
-    let node1 = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let node1 = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Do {
             action: ActionId::new(1),
             input: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::ZERO),
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("suspended_2step"),
@@ -195,53 +183,41 @@ fn suspended_workflow_2step() -> Option<CompiledWorkflow> {
 }
 
 fn retry_workflow() -> Option<CompiledWorkflow> {
-    let set_policy = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    let set_policy = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
-    let action = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(2)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
+    let action = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
         },
-    };
-    let retry = CompiledNode {
-        id: StepIdx::new(2),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::RetryCheck {
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(2)),
+    );
+    let retry = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(1),
             body: StepIdx::new(1),
             exhausted: StepIdx::new(3),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(3),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        None,
+        None,
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(3),
+        CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("retry"),

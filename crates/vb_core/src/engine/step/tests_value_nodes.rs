@@ -5,8 +5,8 @@ use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp, ExprProgram,
-    NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
+    WorkflowParts, node,
 };
 
 #[test]
@@ -28,17 +28,14 @@ fn step_once_eval_expr_writes_result_to_output_slot() -> Result<(), String> {
         name: Box::<str>::from("eval_step_test"),
         digest: WorkflowDigest::from_bytes([0x66; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::EvalExpr {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
-            },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
             finish_node(StepIdx::new(1), SlotIdx::new(0)),
         ]
         .into_boxed_slice(),
@@ -73,17 +70,14 @@ fn step_once_build_object_writes_object_to_output_slot() -> Result<(), String> {
         digest: WorkflowDigest::from_bytes([0x77; 32]),
         nodes: vec![
             set_const_node(StepIdx::new(0), SlotIdx::new(0), StepIdx::new(1)),
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildObject {
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::BuildObject {
                     fields: vec![(SymbolId::new(1), SlotIdx::new(0))].into_boxed_slice(),
                 },
-            },
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
             finish_node(StepIdx::new(2), SlotIdx::new(1)),
         ]
         .into_boxed_slice(),
@@ -135,17 +129,14 @@ fn step_once_build_list_writes_list_to_output_slot() -> Result<(), String> {
         digest: WorkflowDigest::from_bytes([0x88; 32]),
         nodes: vec![
             set_const_node(StepIdx::new(0), SlotIdx::new(0), StepIdx::new(1)),
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildList {
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::BuildList {
                     items: vec![SlotIdx::new(0)].into_boxed_slice(),
                 },
-            },
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
             finish_node(StepIdx::new(2), SlotIdx::new(1)),
         ]
         .into_boxed_slice(),
@@ -190,27 +181,16 @@ fn step_once_build_list_writes_list_to_output_slot() -> Result<(), String> {
 }
 
 fn set_const_node(id: StepIdx, output: SlotIdx, next: StepIdx) -> CompiledNode {
-    CompiledNode {
+    node(
         id,
-        output: NodeOutput::Slot(output),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(next),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    }
+        Some(output),
+        Some(next),
+    )
 }
 
 fn finish_node(id: StepIdx, result: SlotIdx) -> CompiledNode {
-    CompiledNode {
-        id,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish { result },
-    }
+    node(id, CompiledNodeKind::Finish { result }, None, None)
 }

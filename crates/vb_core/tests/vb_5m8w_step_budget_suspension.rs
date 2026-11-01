@@ -7,10 +7,7 @@ use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::limits::MAX_STEP_BUDGET;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, WorkflowParts, node};
 
 fn workflow_with_const_then_finish(value: ConstValue) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
@@ -19,28 +16,22 @@ fn workflow_with_const_then_finish(value: ConstValue) -> Result<CompiledWorkflow
         name: Box::<str>::from("vb_5m8w_step_budget_suspension"),
         digest: WorkflowDigest::from_bytes([0x5d; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                Some(SlotIdx::new(0)),
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),

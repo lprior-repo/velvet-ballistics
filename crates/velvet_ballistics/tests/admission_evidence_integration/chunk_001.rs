@@ -8,7 +8,7 @@ use vb_core::action::{
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
+use vb_core::workflow::{ CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract, WorkflowParts};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,28 +26,8 @@ macro_rules! fail_assert {
 
 /// Creates a simple two-node workflow: SetConst(42) -> Finish(result=slot0).
 fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-        };
-    let node1 = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-        };
+    let node0 = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
+    let node1 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("set_finish"),
@@ -79,29 +59,8 @@ fn compile_set_const_finish(name: &str) -> Option<CompiledWorkflow> {
 
 /// Creates a workflow with a Do node requiring action 7.
 fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(7),
-            input: SlotIdx::new(0),
-        },
-        };
-    let node1 = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(1),
-        },
-        };
+    let node0 = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::Do { action: ActionId::new(7), input: SlotIdx::new(0), }, Some(SlotIdx::new(1)), Some(StepIdx::new(1)));
+    let node1 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("do_action"),
@@ -132,28 +91,8 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
     ]))
     .ok()?;
 
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::EvalExpr {
-            expr: ExprIdx::new(0),
-        },
-        };
-    let node1 = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(1),
-        },
-        };
+    let node0 = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::EvalExpr { expr: ExprIdx::new(0), }, Some(SlotIdx::new(1)), Some(StepIdx::new(1)));
+    let node1 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("taint_expr"),

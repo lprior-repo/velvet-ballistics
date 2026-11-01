@@ -6,8 +6,8 @@
 
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, PathSegment, ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,
+    node,
 };
 use vb_validate::shared::{ValidationPipeline, validate};
 
@@ -21,17 +21,14 @@ fn make_parts(slot_count: u16, symbols_count: u32) -> WorkflowParts {
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: Box::new([CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        nodes: Box::new([node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]),
+            None,
+            None,
+        )]),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([]),
@@ -45,35 +42,28 @@ fn make_parts(slot_count: u16, symbols_count: u32) -> WorkflowParts {
 
 #[allow(dead_code)]
 fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: (if index == 0 {
-                Some(StepIdx::new(1))
-            } else {
-                None
-            })
-            .into(),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    node(
+        StepIdx::new(index),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(result_slot),
         },
-    }
+        None,
+        if index == 0 {
+            Some(StepIdx::new(1))
+        } else {
+            None
+        },
+    )
 }
 
 #[allow(dead_code)]
 fn nop_node(index: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(index.saturating_add(1))),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    }
+    node(
+        StepIdx::new(index),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(index.saturating_add(1))),
+    )
 }
 
 fn accessor(root: u16, path: Vec<PathSegment>) -> AccessorProgram {
@@ -259,15 +249,12 @@ fn pipeline_validate_rejects_slot_reference_out_of_range() {
         input_slots: Box::new([]),
         name: Box::from("test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: Box::new([CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(99)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        }]),
+        nodes: Box::new([node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            Some(SlotIdx::new(99)),
+            None,
+        )]),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([]),

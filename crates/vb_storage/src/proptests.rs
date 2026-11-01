@@ -572,37 +572,28 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
         value::ConstValue,
-        workflow::{
-            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
-            NodeRouting, ResourceContract,
-        },
+        workflow::{CompiledNodeKind, ResourceContract},
     };
 
     let temp_dir = tempfile::tempdir()?;
     let journal = FjallJournal::open(temp_dir.path(), None)?;
 
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     // Build parts with digest zeroed, compute correct digest, then set it.
     let parts_zeroed = WorkflowParts {
         semantic_source_identity: None,
@@ -646,37 +637,28 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
         value::ConstValue,
-        workflow::{
-            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
-            NodeRouting, ResourceContract,
-        },
+        workflow::{CompiledNodeKind, ResourceContract},
     };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     // Build a workflow with a wrong digest that won't match the content hash.
     let parts = WorkflowParts {
         semantic_source_identity: None,
@@ -713,34 +695,25 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
         value::ConstValue,
-        workflow::{
-            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
-            NodeRouting, ResourceContract,
-        },
+        workflow::{CompiledNodeKind, ResourceContract},
     };
 
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts_zeroed = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("submit_test"),
@@ -806,38 +779,29 @@ fn submit_artifact_checksum_mismatch_rejected() {
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
         value::ConstValue,
-        workflow::{
-            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
-            NodeRouting, ResourceContract,
-        },
+        workflow::{CompiledNodeKind, ResourceContract},
     };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
     // Build a workflow with a wrong digest.
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("mismatch_test"),
@@ -872,10 +836,7 @@ fn submit_artifact_stale_digest_rejected() {
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowParts,
         value::ConstValue,
-        workflow::{
-            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
-            NodeRouting, ResourceContract,
-        },
+        workflow::{CompiledNodeKind, ResourceContract},
     };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -891,28 +852,22 @@ fn submit_artifact_stale_digest_rejected() {
 
     // Now try to submit a different workflow claiming the same digest.
     // Build a different workflow.
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("different_workflow"),

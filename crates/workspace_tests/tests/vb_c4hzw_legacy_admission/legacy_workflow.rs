@@ -1,20 +1,16 @@
 use blake3::Hasher;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 
 fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: (output.map(SlotIdx::new)).into(),
-        routing: NodeRouting {
-            next: (next.map(StepIdx::new)).into(),
-            error: ErrorRouting::None,
-        },
+    vb_core::workflow::node(
+        StepIdx::new(id),
         kind,
-    }
+        output.map(SlotIdx::new),
+        next.map(StepIdx::new),
+    )
 }
 
 /// Workflow with genuine Ask step (slot 0), AskResume (slot 1),

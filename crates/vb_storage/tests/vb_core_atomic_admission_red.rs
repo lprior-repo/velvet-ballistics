@@ -5,12 +5,10 @@ use std::path::{Path, PathBuf};
 
 use proptest::prelude::*;
 use vb_core::value::ConstValue;
-use vb_core::workflow::{
-    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{ResourceContract, WorkflowParts, node};
 use vb_core::{
-    ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RunId, RuntimePolicy,
-    SlotIdx, StepIdx, WorkflowDigest, WorkflowId,
+    ActionId, CompiledNodeKind, CompiledWorkflow, ConstIdx, RunId, RuntimePolicy, SlotIdx, StepIdx,
+    WorkflowDigest, WorkflowId,
 };
 use vb_storage::admission::{AcceptedArtifact, submit_artifact};
 use vb_storage::{
@@ -160,28 +158,22 @@ fn minimal_workflow() -> Result<CompiledWorkflow, String> {
         name: Box::<str>::from("atomic.admission.contract"),
         digest: WorkflowDigest::from_bytes([0_u8; 32]),
         nodes: Box::new([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -826,17 +818,14 @@ fn arb_minimal_workflow() -> impl Strategy<Value = CompiledWorkflow> {
                 } else {
                     None
                 };
-                nodes.push(CompiledNode {
-                    id: StepIdx::new(i_u16),
-                    output: NodeOutput::Slot(SlotIdx::new(0)),
-                    routing: NodeRouting {
-                        next: next.into(),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Finish {
+                nodes.push(node(
+                    StepIdx::new(i_u16),
+                    CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
-                });
+                    Some(SlotIdx::new(0)),
+                    next,
+                ));
             }
             let constants: Vec<ConstValue> = (0..constant_count as usize)
                 .map(|i| ConstValue::I64(i as i64 * 100))
@@ -868,17 +857,14 @@ fn arb_minimal_workflow() -> impl Strategy<Value = CompiledWorkflow> {
                     semantic_source_identity: None,
                     name: Box::<str>::from("proptest_fallback"),
                     digest: WorkflowDigest::from_bytes([0u8; 32]),
-                    nodes: Box::new([CompiledNode {
-                        id: StepIdx::new(0),
-                        output: NodeOutput::Slot(SlotIdx::new(0)),
-                        routing: NodeRouting {
-                            next: NodeContinuation::End,
-                            error: ErrorRouting::None,
-                        },
-                        kind: CompiledNodeKind::Finish {
+                    nodes: Box::new([node(
+                        StepIdx::new(0),
+                        CompiledNodeKind::Finish {
                             result: SlotIdx::new(0),
                         },
-                    }]),
+                        Some(SlotIdx::new(0)),
+                        None,
+                    )]),
                     expressions: Box::new([]),
                     accessors: Box::new([]),
                     constants: Box::new([ConstValue::I64(42)]),

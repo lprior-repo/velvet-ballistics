@@ -19,8 +19,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 
 use crate::RuntimeError;
@@ -90,18 +89,15 @@ fn arb_hostile_ticket() -> impl Strategy<Value = ActionTicket> {
 
 /// Builds a minimal RunState with a Do-node workflow for step_count steps.
 fn make_do_run_state(step_count: u16) -> RunState {
-    let do_node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    let do_node = node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: vb_core::ids::SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("proptest_do_wf"),

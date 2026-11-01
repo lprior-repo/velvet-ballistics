@@ -14,7 +14,7 @@
 #![forbid(unsafe_code)]
 
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
+use vb_core::workflow::{ CompiledNodeKind, CompiledWorkflow, WorkflowParts, node,};
 
 // ─────────────────────────────────────────────────────────────────
 // Collect traversal helper
@@ -31,56 +31,10 @@ fn make_collect_workflow(start_id: u16, limit: u32, page_size: u32) -> WorkflowP
         name: "test_collect".to_string(),
         digest: vb_core::ids::WorkflowDigest::new(&[]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(start_id),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::CollectStart {
-                    source: source_slot,
-                    limit,
-                    page_size,
-                    body: body_step,
-                    done: done_step,
-                },
-                },
-            CompiledNode {
-                id: body_step,
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
-                    value: vb_core::ids::ConstIdx::new(0),
-                },
-                },
-            CompiledNode {
-                id: StepIdx::new(start_id + 2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::CollectPage {
-                    collector_slot: source_slot,
-                    body: body_step,
-                    done: done_step,
-                },
-                },
-            CompiledNode {
-                id: done_step,
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::CollectFinish {
-                    collector_slot: source_slot,
-                },
-                },
+            node(StepIdx::new(start_id), CompiledNodeKind::CollectStart { source: source_slot, limit, page_size, body: body_step, done: done_step, }, None, None),
+            node(body_step, CompiledNodeKind::SetConst { value: vb_core::ids::ConstIdx::new(0), }, Some(SlotIdx::new(1)), None),
+            node(StepIdx::new(start_id + 2), CompiledNodeKind::CollectPage { collector_slot: source_slot, body: body_step, done: done_step, }, None, None),
+            node(done_step, CompiledNodeKind::CollectFinish { collector_slot: source_slot, }, None, None),
         ],
         expressions: vec![],
         accessors: vec![],

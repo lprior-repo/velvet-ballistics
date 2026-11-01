@@ -22,6 +22,7 @@
 //!   arbitrary WorkflowParts (including those with ForEachStart/ForEachNext nodes).
 
 use vb_core::workflow::SecretResultPolicy;
+use vb_core::workflow::node;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
     SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
@@ -50,59 +51,47 @@ use vb_core::{
 fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> WorkflowParts {
     let mut nodes: Vec<CompiledNode> = Vec::with_capacity(4);
 
-    nodes.push(CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachStart {
+    nodes.push(node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 4,
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    });
+        None,
+        None,
+    ));
 
-    nodes.push(CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(2)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    nodes.push(node(
+        StepIdx::new(1),
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    });
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(2)),
+    ));
 
-    nodes.push(CompiledNode {
-        id: StepIdx::new(2),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachNext {
+    nodes.push(node(
+        StepIdx::new(2),
+        CompiledNodeKind::ForEachNext {
             iterator_slot: SlotIdx::new(1),
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    });
+        None,
+        None,
+    ));
 
-    nodes.push(CompiledNode {
-        id: StepIdx::new(3),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(3),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(2),
         },
-    });
+        None,
+        None,
+    ));
 
     let constants: Vec<ConstValue> = vec![ConstValue::I64(0)];
     let step_names: Vec<Box<str>> = vec!["step_0".into()];

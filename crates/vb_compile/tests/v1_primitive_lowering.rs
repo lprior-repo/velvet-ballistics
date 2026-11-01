@@ -3,7 +3,7 @@ use vb_compile::{
     CompileError, CompileErrors, YamlCompiler, compile_source, compile_workflow, lower_choose,
     lower_steps_to_ir, lower_together,
 };
-use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
+use vb_core::workflow::{NodeContinuation, NodeOutput, node};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, SlotBranch, SlotIdx, StepIdx,
     WorkflowError,
@@ -447,15 +447,12 @@ fn assert_two_set_repeat_control(nodes: &[CompiledNode]) -> Result<(), String> {
     ];
     for (id, kind, output, next) in specs {
         let actual = node_at(nodes, usize::from(id))?;
-        let expected = CompiledNode {
-            id: StepIdx::new(id),
-            output: (output.map(SlotIdx::new)).into(),
-            routing: NodeRouting {
-                next: (next.map(StepIdx::new)).into(),
-                error: ErrorRouting::None,
-            },
+        let expected = node(
+            StepIdx::new(id),
             kind,
-        };
+            output.map(SlotIdx::new),
+            next.map(StepIdx::new),
+        );
         if actual != &expected {
             return Err(format!(
                 "node {} mismatch: actual={:?} expected={:?}",
@@ -888,17 +885,14 @@ fn public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_va
     }
 
     match lower_steps_to_ir(
-        vec![CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        vec![node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
                 result: vb_core::SlotIdx::new(0),
             },
-        }],
+            None,
+            None,
+        )],
         Vec::new(),
         Vec::new(),
         Vec::new(),

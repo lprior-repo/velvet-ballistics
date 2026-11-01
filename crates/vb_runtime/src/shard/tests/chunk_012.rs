@@ -252,53 +252,10 @@ fn runtime_error_active_run_capacity_zero_has_diagnostic_code() {
 ///   [2] RetryCheck(policy_slot=slot1, body=step1, exhausted=step3)
 ///   [3] Finish(result=slot0)
 fn do_with_retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let set_policy = CompiledNode {
-        id: vb_core::ids::StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-        };
-    let action = CompiledNode {
-        id: vb_core::ids::StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(2)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::new(0),
-        },
-        };
-    let retry_check = CompiledNode {
-        id: vb_core::ids::StepIdx::new(2),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::RetryCheck {
-            policy_slot: SlotIdx::new(1),
-            body: vb_core::ids::StepIdx::new(1),
-            exhausted: vb_core::ids::StepIdx::new(3),
-        },
-        };
-    let finish = CompiledNode {
-        id: vb_core::ids::StepIdx::new(3),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-        };
+    let set_policy = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
+    let action = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(0), }, Some(SlotIdx::new(0)), Some(vb_core::ids::StepIdx::new(2)));
+    let retry_check = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::RetryCheck { policy_slot: SlotIdx::new(1), body: vb_core::ids::StepIdx::new(1), exhausted: vb_core::ids::StepIdx::new(3), }, None, None);
+    let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(3), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("do_with_retry"),

@@ -10,10 +10,7 @@
 
 use vb_core::action::ActionContract;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
-    ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_validate::ValidationError;
 use vb_validate::schema::{
     FieldValue, StepDoc, WorkflowDoc, validate_ids, validate_single_primitive,
@@ -52,17 +49,14 @@ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
 }
 
 fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    vb_core::workflow::node(
+        StepIdx::new(index),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(result_slot),
         },
-    }
+        None,
+        None,
+    )
 }
 
 fn valid_workflow_doc() -> WorkflowDoc {
@@ -991,15 +985,12 @@ fn validation_pipeline_validate_accepts_valid_parts() {
 #[test]
 fn validation_pipeline_validate_rejects_out_of_range_slot_reference() {
     // Given a WorkflowParts with slot_count=1 but slot=99 in output
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(99)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     // When validate is called
     let result = validate(&parts);
@@ -1013,15 +1004,12 @@ fn validation_pipeline_validate_rejects_out_of_range_slot_reference() {
 #[test]
 fn validation_pipeline_short_circuits_on_first_error() {
     // Given a WorkflowParts that would fail gate 9 (slot ref)
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(99)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     // When validate is called with default pipeline
     let result = ValidationPipeline::default().validate(&parts);
@@ -1035,15 +1023,12 @@ fn validation_pipeline_short_circuits_on_first_error() {
 #[test]
 fn validation_pipeline_selective_gates_skip_disabled() {
     // Given a WorkflowParts that would fail gate 9
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(99)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     // When validate is called with gate 9 disabled
     let pipeline = ValidationPipeline {

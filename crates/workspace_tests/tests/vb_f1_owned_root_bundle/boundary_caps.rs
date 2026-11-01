@@ -3,22 +3,11 @@ use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::root_bundle::{OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStoreCheckpointV1;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 
 #[test]
 fn zero_slot_workflow_cap_mismatch() -> TestResult<()> {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("zero-slot-test"),

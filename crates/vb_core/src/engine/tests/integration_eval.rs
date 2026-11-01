@@ -6,8 +6,7 @@ use crate::frame::StepState;
 use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp, ExprProgram,
-    NodeContinuation, NodeOutput, NodeRouting, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, WorkflowParts, node,
 };
 
 use crate::engine::{
@@ -88,17 +87,14 @@ fn eval_expr_division_by_zero_returns_division_by_zero_error() -> Result<(), Str
         input_slots: Box::new([]),
         name: Box::<str>::from("div_zero"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::EvalExpr {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: vec![expression].into_boxed_slice(),
         accessors: Box::new([]),
@@ -140,17 +136,14 @@ fn eval_expr_integer_overflow_returns_invalid_compiled_workflow() -> Result<(), 
         input_slots: Box::new([]),
         name: Box::<str>::from("int_overflow"),
         digest: WorkflowDigest::from_bytes([0x22; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::EvalExpr {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: vec![expression].into_boxed_slice(),
         accessors: Box::new([]),
@@ -189,17 +182,14 @@ fn eval_expr_not_on_non_bool_returns_type_mismatch() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("not_on_int"),
         digest: WorkflowDigest::from_bytes([0x33; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::EvalExpr {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: vec![expression].into_boxed_slice(),
         accessors: Box::new([]),
@@ -241,28 +231,22 @@ fn eval_add_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
         name: Box::<str>::from("eval_add"),
         digest: WorkflowDigest::from_bytes([7; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::EvalExpr {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: vec![expression].into_boxed_slice(),

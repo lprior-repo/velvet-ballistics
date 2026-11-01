@@ -1,12 +1,10 @@
 //! Allocate declarations before lowering any source expression or scratch state.
 
-use super::{
-    ErrorRouting, ForEachInputs, NodeContinuation, NodeOutput, NodeRouting, SlotCompiler,
-    kind_from_input_schema, step_idx,
-};
+use super::{ForEachInputs, SlotCompiler, kind_from_input_schema, step_idx};
 use crate::{AuthorValue, CompileError, WorkflowSource};
 use std::collections::HashMap;
-use vb_core::{CompiledNode, CompiledNodeKind, ConstValue, InputSlotKind, SlotIdx};
+use vb_core::workflow::node;
+use vb_core::{CompiledNodeKind, ConstValue, InputSlotKind, SlotIdx};
 use vb_expr::expr_typecheck::ExprType;
 
 pub(super) fn prepare_source_declarations(
@@ -58,15 +56,12 @@ fn emit_variable(
         .checked_add(1)
         .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
     let constant = builder.push_constant(value)?;
-    builder.push_node(CompiledNode {
-        id: step_idx(index)?,
-        output: NodeOutput::Slot(slot),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(step_idx(next)?),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst { value: constant },
-    });
+    builder.push_node(node(
+        step_idx(index)?,
+        CompiledNodeKind::SetConst { value: constant },
+        Some(slot),
+        Some(step_idx(next)?),
+    ));
     Ok(())
 }
 

@@ -93,29 +93,8 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
     let artifact_digest = vb_core::ids::WorkflowDigest::from_bytes([43u8; 32]);
     assert_ne!(artifact_digest, workflow_digest);
 
-    let do_node = vb_core::workflow::CompiledNode {
-        id: vb_core::ids::StepIdx::ZERO,
-        output: NodeOutput::Slot(vb_core::ids::SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: vb_core::workflow::CompiledNodeKind::Do {
-            action: vb_core::ids::ActionId::new(0),
-            input: vb_core::ids::SlotIdx::new(0),
-        },
-        };
-    let finish_node = vb_core::workflow::CompiledNode {
-        id: vb_core::ids::StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: vb_core::workflow::CompiledNodeKind::Finish {
-            result: vb_core::ids::SlotIdx::new(1),
-        },
-        };
+    let do_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, vb_core::workflow::CompiledNodeKind::Do { action: vb_core::ids::ActionId::new(0), input: vb_core::ids::SlotIdx::new(0), }, Some(vb_core::ids::SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(1)));
+    let finish_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), vb_core::workflow::CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::new(1), }, None, None);
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("recovery-test"),

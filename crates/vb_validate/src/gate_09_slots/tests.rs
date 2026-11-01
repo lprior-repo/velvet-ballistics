@@ -1,9 +1,7 @@
 #[cfg(test)]
 use super::*;
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
-};
+use vb_core::workflow::CompiledNodeKind;
 
 use super::super::test_helpers::{finish_node, make_parts, nop_node};
 
@@ -17,71 +15,59 @@ fn accepts_valid_finish_node() {
 
 #[test]
 fn accepts_valid_copy_node() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Copy {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
     let parts = make_parts(vec![node, finish_node(1, 0)], 2);
     assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
 }
 
 #[test]
 fn accepts_valid_build_object() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(2)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::BuildObject {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::BuildObject {
             fields: Box::new([
                 (SymbolId::new(1), SlotIdx::new(0)),
                 (SymbolId::new(2), SlotIdx::new(1)),
             ]),
         },
-    };
+        Some(SlotIdx::new(2)),
+        None,
+    );
     let parts = make_parts(vec![node], 3);
     assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
 }
 
 #[test]
 fn accepts_valid_build_list() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(2)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::BuildList {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::BuildList {
             items: Box::new([SlotIdx::new(0), SlotIdx::new(1)]),
         },
-    };
+        Some(SlotIdx::new(2)),
+        None,
+    );
     let parts = make_parts(vec![node], 3);
     assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
 }
 
 #[test]
 fn accepts_valid_set_const() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
 }
@@ -106,15 +92,12 @@ fn accepts_nop_node() {
 
 #[test]
 fn rejects_output_slot_out_of_range() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(99)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     assert!(matches!(
         validate_gate_09_slot_references(&parts),
@@ -124,17 +107,14 @@ fn rejects_output_slot_out_of_range() {
 
 #[test]
 fn rejects_copy_source_out_of_range() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Copy {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(50),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     assert!(matches!(
         validate_gate_09_slot_references(&parts),
@@ -157,17 +137,14 @@ fn rejects_expr_load_slot_out_of_range() {
 
 #[test]
 fn rejects_build_object_slot_out_of_range() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::BuildObject {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::BuildObject {
             fields: Box::new([(SymbolId::new(1), SlotIdx::new(99))]),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     assert!(matches!(
         validate_gate_09_slot_references(&parts),
@@ -177,17 +154,14 @@ fn rejects_build_object_slot_out_of_range() {
 
 #[test]
 fn rejects_build_list_slot_out_of_range() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::BuildList {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::BuildList {
             items: Box::new([SlotIdx::new(50)]),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     assert!(matches!(
         validate_gate_09_slot_references(&parts),
@@ -197,18 +171,15 @@ fn rejects_build_list_slot_out_of_range() {
 
 #[test]
 fn rejects_do_input_out_of_range() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Do {
             action: vb_core::ids::ActionId::new(1),
             input: SlotIdx::new(99),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     assert!(matches!(
         validate_gate_09_slot_references(&parts),
@@ -222,18 +193,14 @@ fn rejects_node_error_slot_out_of_range() {
     // Previously gate 09 only validated `node.output`, leaving `node.error_slot`
     // unchecked even though it is a slot reference written before routing to the
     // error handler.
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::Handler {
-                handler: StepIdx::new(0),
-                error_slot: Some(SlotIdx::new(99)),
-            },
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node_with_handler(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        None,
+        None,
+        StepIdx::new(0),
+        Some(SlotIdx::new(99)),
+    );
     let parts = make_parts(vec![node], 1);
     assert!(matches!(
         validate_gate_09_slot_references(&parts),
@@ -243,33 +210,26 @@ fn rejects_node_error_slot_out_of_range() {
 
 #[test]
 fn accepts_node_error_slot_in_range() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::Handler {
-                handler: StepIdx::new(1),
-                error_slot: Some(SlotIdx::new(0)),
-            },
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node_with_handler(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(1)),
+        StepIdx::new(1),
+        Some(SlotIdx::new(0)),
+    );
     let parts = make_parts(vec![node, nop_node(1)], 1);
     assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
 }
 
 #[test]
 fn accepts_node_error_slot_none() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(1)),
+    );
     let parts = make_parts(vec![node, nop_node(1)], 1);
     assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
 }

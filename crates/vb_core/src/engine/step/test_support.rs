@@ -7,8 +7,8 @@ use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
 use crate::value::{SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeOutput, NodeRouting,
+    ResourceContract, WorkflowParts, node,
 };
 
 pub(super) fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
@@ -39,26 +39,20 @@ pub(super) fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         name: Box::<str>::from("nop_finish"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -256,15 +250,12 @@ fn do_node(
 }
 
 fn finish_node(id: StepIdx) -> CompiledNode {
-    CompiledNode {
+    node(
         id,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }
+        None,
+        None,
+    )
 }

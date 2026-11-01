@@ -6,6 +6,7 @@ use crate::mod_compile_validation::{
 };
 use saphyr::Yaml;
 use std::collections::HashMap;
+use vb_core::workflow::node;
 use vb_core::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
     ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
@@ -46,14 +47,9 @@ pub(super) fn compile_slot_choose(
     builder: &mut WorkflowBuilder,
 ) -> Result<CompiledNode, CompileError> {
     builder.record_slot(condition);
-    Ok(CompiledNode {
+    Ok(node(
         id,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ChooseSlot {
+        CompiledNodeKind::ChooseSlot {
             branches: vec![SlotBranch {
                 condition,
                 target: on_true,
@@ -61,7 +57,9 @@ pub(super) fn compile_slot_choose(
             .into_boxed_slice(),
             otherwise: Some(on_false),
         },
-    })
+        None,
+        None,
+    ))
 }
 
 #[allow(dead_code)]
@@ -76,15 +74,12 @@ pub(super) fn compile_literal_choose(
     let output = slot_idx_for_step(index)?;
     let constant = builder.push_constant(ConstValue::Bool(value))?;
     builder.record_slot(output);
-    Ok(CompiledNode {
+    Ok(node(
         id,
-        output: NodeOutput::Slot(output),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(if value { on_true } else { on_false }),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst { value: constant },
-    })
+        CompiledNodeKind::SetConst { value: constant },
+        Some(output),
+        Some(if value { on_true } else { on_false }),
+    ))
 }
 
 #[allow(dead_code)]
@@ -143,30 +138,24 @@ pub(super) fn compile_parallel(
     let accumulator = alloc_workflow_slot(builder)?;
     let join = checked_step_offset(id, 1, "parallel", "join")?;
     Ok(vec![
-        CompiledNode {
+        node(
             id,
-            output: NodeOutput::Slot(accumulator),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::TogetherStart {
+            CompiledNodeKind::TogetherStart {
                 branches: branches.into_boxed_slice(),
                 join,
             },
-        },
-        CompiledNode {
-            id: join,
-            output: NodeOutput::Slot(accumulator),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::TogetherJoin {
+            Some(accumulator),
+            None,
+        ),
+        node(
+            join,
+            CompiledNodeKind::TogetherJoin {
                 branch_count,
                 accumulator,
             },
-        },
+            Some(accumulator),
+            None,
+        ),
     ])
 }
 

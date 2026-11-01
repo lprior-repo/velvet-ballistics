@@ -79,10 +79,7 @@ mod tests {
     use super::*;
     use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::{ConstValue, SlotValue, Taint};
-    use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation,
-        NodeOutput, NodeRouting, WorkflowParts,
-    };
+    use crate::workflow::{CompiledNodeKind, CompiledWorkflow, NodeContinuation, WorkflowParts};
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -107,28 +104,22 @@ mod tests {
             name: Box::<str>::from("node_helpers_test"),
             digest: WorkflowDigest::from_bytes([0xAA; 32]),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: NodeOutput::Slot(SlotIdx::new(0)),
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(1)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::SetConst {
+                crate::workflow::node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Finish {
+                    Some(SlotIdx::new(0)),
+                    Some(StepIdx::new(1)),
+                ),
+                crate::workflow::node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
-                },
+                    None,
+                    None,
+                ),
             ]
             .into_boxed_slice(),
             expressions: Box::new([]),
@@ -169,15 +160,12 @@ mod tests {
     #[test]
     fn jump_to_next_advances_to_next_step() -> Result<(), String> {
         let mut run = test_frame(3, 1)?;
-        let node = CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        };
+        let node = crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(1)),
+        );
         let result =
             jump_to_next(&mut run, node.routing.next, node.id).map_err(|e| e.to_string())?;
         ensure_equal(result, EngineSignal::Continue)?;
@@ -237,17 +225,14 @@ mod tests {
     fn set_const_writes_constant_to_output_slot() -> Result<(), String> {
         let plan = minimal_plan_with_const(ConstValue::I64(99))?;
         let mut run = test_frame(2, 1)?;
-        let node = CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        let node = crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        };
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(1)),
+        );
         let result =
             set_const(&plan, &mut run, &node, ConstIdx::new(0)).map_err(|e| e.to_string())?;
         ensure_equal(result, EngineSignal::Continue)?;
@@ -261,17 +246,14 @@ mod tests {
     fn set_const_rejects_out_of_bounds_constant() -> Result<(), String> {
         let plan = minimal_plan_with_const(ConstValue::I64(1))?;
         let mut run = test_frame(2, 1)?;
-        let node = CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        let node = crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(5),
             },
-        };
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(1)),
+        );
         let result = set_const(&plan, &mut run, &node, ConstIdx::new(5));
         match result {
             Err(EngineError::ConstOutOfBounds { index }) if index == ConstIdx::new(5) => Ok(()),
@@ -290,17 +272,14 @@ mod tests {
             Taint::DerivedFromSecret,
         )
         .map_err(|e| e.to_string())?;
-        let node = CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(1)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Copy {
+        let node = crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
-        };
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(1)),
+        );
         let result = copy_slot(&mut run, &node, SlotIdx::new(0)).map_err(|e| e.to_string())?;
         ensure_equal(result, EngineSignal::Continue)?;
         ensure_equal(
@@ -316,17 +295,14 @@ mod tests {
     #[test]
     fn copy_slot_rejects_uninitialized_source() -> Result<(), String> {
         let mut run = test_frame(3, 3)?;
-        let node = CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(1)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Copy {
+        let node = crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Copy {
                 source: SlotIdx::new(2),
             },
-        };
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(1)),
+        );
         let result = copy_slot(&mut run, &node, SlotIdx::new(2));
         match result {
             Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(2) => Ok(()),

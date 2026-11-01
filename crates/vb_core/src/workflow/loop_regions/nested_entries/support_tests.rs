@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use crate::workflow::CompiledWorkflow;
-pub(super) use crate::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
+pub(super) use crate::workflow::{ErrorRouting, NodeContinuation, NodeOutput, node};
 pub(super) use crate::{
     CompiledNode, CompiledNodeKind, ConstIdx, ConstValue, ResourceContract, SlotIdx, StepIdx,
     WorkflowDigest, WorkflowParts,
@@ -55,19 +55,16 @@ fn linear_nodes(count: u16) -> TestResult<Vec<CompiledNode>> {
     for id in 0..count {
         let next = id.checked_add(1).ok_or("test step overflow")?;
         let terminal = next == count;
-        nodes.push(CompiledNode {
-            id: step(id),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: ((!terminal).then_some(step(next))).into(),
-                error: ErrorRouting::None,
-            },
-            kind: if terminal {
+        nodes.push(node(
+            step(id),
+            if terminal {
                 CompiledNodeKind::Finish { result: slot(0) }
             } else {
                 CompiledNodeKind::Nop
             },
-        });
+            None,
+            (!terminal).then_some(step(next)),
+        ));
     }
     Ok(nodes)
 }

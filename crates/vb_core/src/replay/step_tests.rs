@@ -8,8 +8,8 @@ use crate::replay::{ReplayError, SuspensionKind, step::ReplayAction};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, ExprOp, ExprProgram, NodeContinuation,
-    NodeOutput, NodeRouting, ResourceContract, SlotBranch, WorkflowParts, check_expr_stack_bound,
+    CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, ResourceContract, SlotBranch,
+    WorkflowParts, check_expr_stack_bound,
 };
 
 use super::replay_step;
@@ -86,26 +86,20 @@ fn replay_err_to_core(e: ReplayError) -> CoreError {
 fn replay_nop_advances_to_next() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(0)],
         vec![],
@@ -148,15 +142,12 @@ fn replay_nop_advances_to_next() -> Result<(), CoreError> {
 #[test]
 fn replay_nop_missing_next_returns_error() -> Result<(), CoreError> {
     let plan = make_plan(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        }],
+        vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )],
         vec![],
         vec![],
     )?;
@@ -190,28 +181,22 @@ fn replay_nop_missing_next_returns_error() -> Result<(), CoreError> {
 fn replay_set_const_writes_slot() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(42)],
         vec![],
@@ -241,28 +226,22 @@ fn replay_set_const_writes_slot() -> Result<(), CoreError> {
 fn replay_set_const_bool() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::Bool(true)],
         vec![],
@@ -292,28 +271,22 @@ fn replay_set_const_bool() -> Result<(), CoreError> {
 fn replay_set_const_null() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::Null],
         vec![],
@@ -343,28 +316,22 @@ fn replay_set_const_null() -> Result<(), CoreError> {
 fn replay_set_const_missing_output_returns_error() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(1)],
         vec![],
@@ -402,39 +369,30 @@ fn replay_set_const_missing_output_returns_error() -> Result<(), CoreError> {
 fn replay_copy_transfers_value_and_taint() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Copy {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(100)],
         vec![],
@@ -477,39 +435,30 @@ fn replay_copy_transfers_value_and_taint() -> Result<(), CoreError> {
 fn replay_copy_clean_source_has_clean_taint() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Copy {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(1)],
         vec![],
@@ -546,28 +495,22 @@ fn replay_copy_clean_source_has_clean_taint() -> Result<(), CoreError> {
 fn replay_copy_uninitialized_source_returns_error() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Copy {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Copy {
                     source: SlotIdx::new(3),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -598,39 +541,30 @@ fn replay_copy_uninitialized_source_returns_error() -> Result<(), CoreError> {
 fn replay_copy_missing_output_returns_error() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Copy {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(1)],
         vec![],
@@ -678,50 +612,38 @@ fn replay_eval_expr_computes_result() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Slot(SlotIdx::new(2)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(3)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::EvalExpr {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(2)),
+                Some(StepIdx::new(3)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(2),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(30), ConstValue::I64(12)],
         vec![expr],
@@ -768,39 +690,30 @@ fn replay_build_object_creates_handle() -> Result<(), CoreError> {
     let field_sym = SymbolId::new(0);
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildObject {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::BuildObject {
                     fields: vec![(field_sym, SlotIdx::new(0))].into(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(42)],
         vec![],
@@ -850,28 +763,22 @@ fn replay_build_object_creates_handle() -> Result<(), CoreError> {
 fn replay_build_object_empty_fields() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildObject {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::BuildObject {
                     fields: vec![].into(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -912,28 +819,22 @@ fn replay_build_object_uninitialized_field_returns_error() -> Result<(), CoreErr
     let field_sym = SymbolId::new(0);
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildObject {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::BuildObject {
                     fields: vec![(field_sym, SlotIdx::new(5))].into(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -965,39 +866,30 @@ fn replay_build_object_propagates_taint() -> Result<(), CoreError> {
     let field_sym = SymbolId::new(0);
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildObject {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::BuildObject {
                     fields: vec![(field_sym, SlotIdx::new(0))].into(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(1)],
         vec![],
@@ -1037,50 +929,38 @@ fn replay_build_object_propagates_taint() -> Result<(), CoreError> {
 fn replay_build_list_creates_handle() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Slot(SlotIdx::new(2)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(3)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildList {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::BuildList {
                     items: vec![SlotIdx::new(0), SlotIdx::new(1)].into(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(2)),
+                Some(StepIdx::new(3)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(2),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(10), ConstValue::I64(20)],
         vec![],
@@ -1139,28 +1019,22 @@ fn replay_build_list_creates_handle() -> Result<(), CoreError> {
 fn replay_build_list_empty_items() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildList {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::BuildList {
                     items: vec![].into(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -1200,28 +1074,22 @@ fn replay_build_list_empty_items() -> Result<(), CoreError> {
 fn replay_build_list_uninitialized_item_returns_error() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildList {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::BuildList {
                     items: vec![SlotIdx::new(5)].into(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -1252,39 +1120,30 @@ fn replay_build_list_uninitialized_item_returns_error() -> Result<(), CoreError>
 fn replay_build_list_propagates_taint() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildList {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::BuildList {
                     items: vec![SlotIdx::new(0)].into(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(7)],
         vec![],
@@ -1324,28 +1183,22 @@ fn replay_build_list_propagates_taint() -> Result<(), CoreError> {
 fn replay_finish_returns_finished_action() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(99)],
         vec![],
@@ -1389,17 +1242,14 @@ fn replay_finish_returns_finished_action() -> Result<(), CoreError> {
 #[test]
 fn replay_finish_uninitialized_result_returns_error() -> Result<(), CoreError> {
     let plan = make_plan(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(5),
             },
-        }],
+            None,
+            None,
+        )],
         vec![],
         vec![],
     )?;
@@ -1431,28 +1281,22 @@ fn replay_finish_uninitialized_result_returns_error() -> Result<(), CoreError> {
 fn replay_jump_advances_pc_to_target() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Jump {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Jump {
                     target: StepIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(0)],
         vec![],
@@ -1494,28 +1338,22 @@ fn ce_004_replay_jump_out_of_bounds_yields_typed_step_not_found() -> Result<(), 
     // not collapse to the generic `Internal` variant.
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Jump {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Jump {
                     target: StepIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(0)],
         vec![],
@@ -1547,18 +1385,15 @@ fn ce_004_replay_jump_out_of_bounds_yields_typed_step_not_found() -> Result<(), 
 #[test]
 fn replay_do_suspends() -> Result<(), CoreError> {
     let plan = make_plan(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
             },
-        }],
+            None,
+            None,
+        )],
         vec![],
         vec![],
     )?;
@@ -1593,18 +1428,15 @@ fn replay_do_suspends() -> Result<(), CoreError> {
 #[test]
 fn replay_ask_suspends() -> Result<(), CoreError> {
     let plan = make_plan(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Ask {
+        vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
                 timeout_slot: None,
             },
-        }],
+            None,
+            None,
+        )],
         vec![],
         vec![],
     )?;
@@ -1639,17 +1471,14 @@ fn replay_ask_suspends() -> Result<(), CoreError> {
 #[test]
 fn replay_wait_until_suspends() -> Result<(), CoreError> {
     let plan = make_plan(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::WaitUntil {
+        vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::WaitUntil {
                 deadline_slot: SlotIdx::new(0),
             },
-        }],
+            None,
+            None,
+        )],
         vec![],
         vec![],
     )?;
@@ -1684,18 +1513,15 @@ fn replay_wait_until_suspends() -> Result<(), CoreError> {
 #[test]
 fn replay_wait_event_suspends() -> Result<(), CoreError> {
     let plan = make_plan(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::WaitEvent {
+        vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::WaitEvent {
                 event: SlotIdx::new(0),
                 timeout_slot: None,
             },
-        }],
+            None,
+            None,
+        )],
         vec![],
         vec![],
     )?;
@@ -1733,25 +1559,17 @@ fn replay_wait_event_suspends() -> Result<(), CoreError> {
 fn replay_choose_slot_true_branch_taken() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::ChooseSlot {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::ChooseSlot {
                     branches: vec![SlotBranch {
                         condition: SlotIdx::new(0),
                         target: StepIdx::new(2),
@@ -1759,29 +1577,25 @@ fn replay_choose_slot_true_branch_taken() -> Result<(), CoreError> {
                     .into(),
                     otherwise: Some(StepIdx::new(3)),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::Bool(true)],
         vec![],
@@ -1821,25 +1635,17 @@ fn replay_choose_slot_true_branch_taken() -> Result<(), CoreError> {
 fn replay_choose_slot_false_falls_to_otherwise() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::ChooseSlot {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::ChooseSlot {
                     branches: vec![SlotBranch {
                         condition: SlotIdx::new(0),
                         target: StepIdx::new(2),
@@ -1847,29 +1653,25 @@ fn replay_choose_slot_false_falls_to_otherwise() -> Result<(), CoreError> {
                     .into(),
                     otherwise: Some(StepIdx::new(3)),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::Bool(false)],
         vec![],
@@ -1911,44 +1713,32 @@ fn replay_choose_slot_false_falls_to_otherwise() -> Result<(), CoreError> {
 fn replay_multi_step_executed_counter() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(3)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(3)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(0)],
         vec![],
@@ -2004,50 +1794,38 @@ fn replay_build_object_multiple_fields_preserves_order() -> Result<(), CoreError
     let sym_b = SymbolId::new(1);
     let plan = make_plan_with_symbols(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Slot(SlotIdx::new(2)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(3)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::BuildObject {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::BuildObject {
                     fields: vec![(sym_a, SlotIdx::new(0)), (sym_b, SlotIdx::new(1))].into(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(2)),
+                Some(StepIdx::new(3)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(2),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![ConstValue::I64(10), ConstValue::I64(20)],
         vec![],
@@ -2111,37 +1889,18 @@ fn replay_build_object_multiple_fields_preserves_order() -> Result<(), CoreError
 fn replay_collect_next_reports_missing_source_list() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::CollectNext {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::CollectNext {
                     collector_slot: SlotIdx::new(0),
                     body: StepIdx::new(1),
                     done: StepIdx::new(2),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
+                None,
+                None,
+            ),
+            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
+            crate::workflow::node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
         ],
         vec![],
         vec![],
@@ -2191,17 +1950,14 @@ fn replay_collect_next_reports_missing_source_list() -> Result<(), CoreError> {
 
 #[test]
 fn replay_copy_reports_source_slot_failures() -> Result<(), CoreError> {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Copy {
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(7),
         },
-    };
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
     let mut run = RunFrame::new(RunId::new(92), StepIdx::new(0), 2, 1)?;
     match super::replay_copy(&mut run, &node, SlotIdx::new(7)) {
         Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(7) => {}
@@ -2221,17 +1977,14 @@ fn replay_copy_reports_source_slot_failures() -> Result<(), CoreError> {
 
 #[test]
 fn replay_build_object_reports_field_slot_failures() -> Result<(), CoreError> {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::BuildObject {
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::BuildObject {
             fields: vec![].into(),
         },
-    };
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(93), StepIdx::new(0), 2, 1)?;
     let fields = [(SymbolId::new(0), SlotIdx::new(7))];
@@ -2254,17 +2007,14 @@ fn replay_build_object_reports_field_slot_failures() -> Result<(), CoreError> {
 
 #[test]
 fn replay_build_list_reports_item_slot_failures() -> Result<(), CoreError> {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::BuildList {
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::BuildList {
             items: vec![].into(),
         },
-    };
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
     let mut store = ValueStore::new();
     let mut run = RunFrame::new(RunId::new(94), StepIdx::new(0), 2, 1)?;
     match super::replay_build_list(&mut run, &mut store, &node, &[SlotIdx::new(7)]) {

@@ -3,12 +3,10 @@
 //! Bead: vb-xi2f.35 — P1: digest covers resource contract semantics.
 
 use vb_core::ids::ConstIdx;
-use vb_core::workflow::{
-    ContractResource, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, SecretResultPolicy,
-};
+use vb_core::workflow::{ContractResource, SecretResultPolicy, node};
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ExprOp, ExprProgram,
-    ResourceContract, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ConstValue, ExprOp, ExprProgram, ResourceContract, StepIdx,
+    WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 // ---------------------------------------------------------------------------
@@ -53,16 +51,7 @@ fn nop_parts(contract: ResourceContract) -> WorkflowParts {
         input_slots: Box::new([]),
         name: Box::<str>::from("validation_test"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: vec![ConstValue::Null].into_boxed_slice(),

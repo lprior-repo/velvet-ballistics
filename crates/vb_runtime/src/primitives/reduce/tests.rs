@@ -3,8 +3,7 @@ use crate::test_harness::{iterator_state_in_slot, list_in_slot};
 use vb_core::value::{ConstValue, SlotValue};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 
 fn fresh_frame() -> RunFrame {
@@ -16,16 +15,7 @@ fn minimal_workflow_with_constant(cv: ConstValue) -> CompiledWorkflow {
         semantic_source_identity: None,
         name: Box::from("reduce_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([5; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: vec![cv].into_boxed_slice(),

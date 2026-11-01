@@ -9,8 +9,7 @@ use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::{PolicyDigest, RuntimePolicy};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 use vb_runtime::shard::ShardConfig;
 
@@ -38,15 +37,12 @@ pub(crate) fn node(
     next: Option<u16>,
     kind: CompiledNodeKind,
 ) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: (output.map(SlotIdx::new)).into(),
-        routing: NodeRouting {
-            next: (next.map(StepIdx::new)).into(),
-            error: ErrorRouting::None,
-        },
+    vb_core::workflow::node(
+        StepIdx::new(id),
         kind,
-    }
+        output.map(SlotIdx::new),
+        next.map(StepIdx::new),
+    )
 }
 
 pub(crate) fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {

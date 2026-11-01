@@ -7,7 +7,6 @@
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use serde::Serialize;
 use std::hint::black_box;
-use vb_core::CompiledNode;
 use vb_core::CompiledNodeKind;
 use vb_core::CompiledWorkflow;
 use vb_core::ResourceContract;
@@ -16,6 +15,7 @@ use vb_core::WorkflowDigest;
 use vb_core::WorkflowParts;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, StepIdx};
+use vb_core::workflow::node;
 use vb_runtime::primitives::collect::CollectStates;
 use vb_runtime::shard::helpers::snapshot_from_state;
 use vb_runtime::shard::types::RunState;
@@ -49,17 +49,14 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
 
 /// Simple 1-step workflow for testing.
 fn simple_workflow() -> CompiledWorkflow {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }];
+        None,
+        None,
+    )];
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

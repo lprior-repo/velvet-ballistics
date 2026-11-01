@@ -3,9 +3,7 @@
 use super::*;
 use crate::ValidationError;
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
-};
+use vb_core::workflow::{CompiledNodeKind, node};
 
 use super::super::test_helpers::{finish_node, make_parts, nop_node};
 
@@ -26,34 +24,28 @@ fn accepts_single_node_workflow() {
 #[test]
 fn accepts_valid_for_each() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ForEachStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
                 limit: 10,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ForEachNext {
+            None,
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::ForEachNext {
                 iterator_slot: SlotIdx::new(0),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
-        },
+            None,
+            None,
+        ),
         finish_node(2, 0),
     ];
     let parts = make_parts(nodes, 2);
@@ -63,18 +55,15 @@ fn accepts_valid_for_each() {
 #[test]
 fn accepts_valid_together() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::TogetherStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
                 branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
                 join: StepIdx::new(3),
             },
-        },
+            None,
+            Some(StepIdx::new(1)),
+        ),
         nop_node(1),
         nop_node(2),
         finish_node(3, 0),
@@ -86,18 +75,15 @@ fn accepts_valid_together() {
 #[test]
 fn accepts_together_with_empty_branches() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::TogetherStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
                 branches: Box::new([]),
                 join: StepIdx::new(1),
             },
-        },
+            None,
+            None,
+        ),
         finish_node(1, 0),
     ];
     let parts = make_parts(nodes, 1);
@@ -107,44 +93,35 @@ fn accepts_together_with_empty_branches() {
 #[test]
 fn accepts_valid_repeat() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::RepeatStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::RepeatStart {
                 max_attempts: 3,
                 body: StepIdx::new(1),
                 done: StepIdx::new(3),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(2)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::RepeatAttempt {
+            None,
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::RepeatAttempt {
                 attempt_slot: SlotIdx::new(0),
                 body: StepIdx::new(1),
                 done: StepIdx::new(3),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::RepeatCheck {
+            None,
+            Some(StepIdx::new(2)),
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::RepeatCheck {
                 attempt_slot: SlotIdx::new(0),
                 done: StepIdx::new(3),
             },
-        },
+            None,
+            None,
+        ),
         finish_node(3, 0),
     ];
     let parts = make_parts(nodes, 1);
@@ -154,34 +131,28 @@ fn accepts_valid_repeat() {
 #[test]
 fn accepts_valid_collect() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::CollectStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
                 limit: 100,
                 page_size: 10,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::CollectPage {
+            None,
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::CollectPage {
                 collector_slot: SlotIdx::new(0),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
-        },
+            None,
+            None,
+        ),
         finish_node(2, 0),
     ];
     let parts = make_parts(nodes, 1);
@@ -191,35 +162,29 @@ fn accepts_valid_collect() {
 #[test]
 fn accepts_valid_reduce() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ReduceStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::ReduceStart {
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 initial: ConstIdx::new(0),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ReduceNext {
+            None,
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::ReduceNext {
                 iterator_slot: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
-        },
+            None,
+            None,
+        ),
         finish_node(2, 0),
     ];
     let parts = make_parts(nodes, 2);
@@ -229,19 +194,16 @@ fn accepts_valid_reduce() {
 #[test]
 fn accepts_error_handler_with_valid_steps() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ErrorHandler {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(1),
                 handler: StepIdx::new(2),
                 error_slot: None,
             },
-        },
+            None,
+            None,
+        ),
         nop_node(1),
         finish_node(2, 0),
     ];
@@ -253,21 +215,18 @@ fn accepts_error_handler_with_valid_steps() {
 
 #[test]
 fn rejects_for_each_body_out_of_range() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachStart {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 10,
             body: StepIdx::new(99),
             done: StepIdx::new(2),
         },
-    }];
+        None,
+        None,
+    )];
     let parts = make_parts(nodes, 2);
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),
@@ -277,21 +236,18 @@ fn rejects_for_each_body_out_of_range() {
 
 #[test]
 fn rejects_for_each_done_out_of_range() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachStart {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 10,
             body: StepIdx::new(1),
             done: StepIdx::new(99),
         },
-    }];
+        None,
+        None,
+    )];
     let parts = make_parts(nodes, 2);
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),
@@ -301,18 +257,15 @@ fn rejects_for_each_done_out_of_range() {
 
 #[test]
 fn rejects_together_branch_out_of_range() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::TogetherStart {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherStart {
             branches: Box::new([StepIdx::new(99)]),
             join: StepIdx::new(1),
         },
-    }];
+        None,
+        None,
+    )];
     let parts = make_parts(nodes, 1);
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),
@@ -322,21 +275,18 @@ fn rejects_together_branch_out_of_range() {
 
 #[test]
 fn rejects_loop_body_not_after_start() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachStart {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 10,
             body: StepIdx::new(0),
             done: StepIdx::new(1),
         },
-    }];
+        None,
+        None,
+    )];
     let parts = make_parts(nodes, 2);
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),
@@ -346,21 +296,18 @@ fn rejects_loop_body_not_after_start() {
 
 #[test]
 fn rejects_done_before_body() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachStart {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 10,
             body: StepIdx::new(2),
             done: StepIdx::new(1),
         },
-    }];
+        None,
+        None,
+    )];
     let parts = make_parts(nodes, 2);
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),
@@ -370,18 +317,15 @@ fn rejects_done_before_body() {
 
 #[test]
 fn rejects_together_branch_before_start() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(2),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::TogetherStart {
+    let nodes = vec![node(
+        StepIdx::new(2),
+        CompiledNodeKind::TogetherStart {
             branches: Box::new([StepIdx::new(0)]),
             join: StepIdx::new(3),
         },
-    }];
+        None,
+        None,
+    )];
     let parts = make_parts(nodes, 1);
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),
@@ -391,18 +335,15 @@ fn rejects_together_branch_before_start() {
 
 #[test]
 fn rejects_together_join_before_branch() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::TogetherStart {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherStart {
             branches: Box::new([StepIdx::new(2)]),
             join: StepIdx::new(1),
         },
-    }];
+        None,
+        None,
+    )];
     let parts = make_parts(nodes, 3);
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),
@@ -412,19 +353,16 @@ fn rejects_together_join_before_branch() {
 
 #[test]
 fn rejects_retry_check_body_out_of_range() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::RetryCheck {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(99),
             exhausted: StepIdx::new(1),
         },
-    }];
+        None,
+        None,
+    )];
     let parts = make_parts(nodes, 1);
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),
@@ -434,19 +372,16 @@ fn rejects_retry_check_body_out_of_range() {
 
 #[test]
 fn rejects_error_handler_body_out_of_range() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ErrorHandler {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(99),
             handler: StepIdx::new(1),
             error_slot: None,
         },
-    }];
+        None,
+        None,
+    )];
     let parts = make_parts(nodes, 1);
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),

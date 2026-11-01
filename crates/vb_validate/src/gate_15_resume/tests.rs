@@ -2,19 +2,12 @@ use crate::gate_12_14_15::validate_gate_15_determinism_proof;
 use crate::gates::validate_gate_15_determinism_proof as public_validate;
 use crate::test_helpers::{copy_node, finish_node, make_parts, nop_node};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, NodeOutput, NodeRouting, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 
 fn node(index: u16, next: Option<u16>, ask: bool) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: (next.map(StepIdx::new)).into(),
-            error: ErrorRouting::None,
-        },
-        kind: if ask {
+    vb_core::workflow::node(
+        StepIdx::new(index),
+        if ask {
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
                 timeout_slot: None,
@@ -25,7 +18,9 @@ fn node(index: u16, next: Option<u16>, ask: bool) -> CompiledNode {
                 input: SlotIdx::new(0),
             }
         },
-    }
+        Some(SlotIdx::new(0)),
+        next.map(StepIdx::new),
+    )
 }
 
 fn validators() -> [fn(&WorkflowParts) -> crate::ValidationResult<()>; 3] {

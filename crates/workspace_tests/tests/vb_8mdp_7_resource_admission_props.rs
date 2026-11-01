@@ -18,8 +18,7 @@ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::SlotValue;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_runtime::RuntimeError;
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
@@ -34,18 +33,15 @@ fn test_digest() -> WorkflowDigest {
 
 fn do_workflow() -> CompiledWorkflow {
     let digest = test_digest();
-    let nodes: Box<[CompiledNode]> = Box::new([CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    let nodes: Box<[CompiledNode]> = Box::new([node(
+        StepIdx::new(0),
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
         },
-    }]);
+        Some(SlotIdx::new(0)),
+        None,
+    )]);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

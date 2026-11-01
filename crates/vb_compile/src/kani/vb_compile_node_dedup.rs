@@ -16,6 +16,7 @@ use crate::lower_steps_to_ir;
 use vb_core::{
     CompiledNode, CompiledNodeKind, ResourceContract, SlotIdx, StepIdx, WorkflowDigest,
 };
+use vb_core::workflow::{node};
 
 /// INV-007-NODEDUP-001: StepIdx uniqueness invariant.
 ///
@@ -30,39 +31,9 @@ fn node_id_uniqueness() {
     // Test 1: unique StepIdx nodes — should compile successfully
     // ----------------------------------------------------------------
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
-                action: vb_core::ActionId::new(1),
-                input: SlotIdx::new(0),
-            },
-            },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Slot(SlotIdx::new(1)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(2)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
-                action: vb_core::ActionId::new(2),
-                input: SlotIdx::new(1),
-            },
-            },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(2) },
-            },
+        node(StepIdx::new(0), CompiledNodeKind::Do { action: vb_core::ActionId::new(1), input: SlotIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1))),
+        node(StepIdx::new(1), CompiledNodeKind::Do { action: vb_core::ActionId::new(2), input: SlotIdx::new(1), }, Some(SlotIdx::new(1)), Some(StepIdx::new(2))),
+        node(StepIdx::new(2), CompiledNodeKind::Finish { result: SlotIdx::new(2) }, None, None),
     ];
 
     let result = lower_steps_to_ir(
@@ -83,41 +54,11 @@ fn node_id_uniqueness() {
     // Test 2: duplicate StepIdx — must be rejected
     // ----------------------------------------------------------------
     let dup_nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
-                action: vb_core::ActionId::new(1),
-                input: SlotIdx::new(0),
-            },
-            },
+        node(StepIdx::new(0), CompiledNodeKind::Do { action: vb_core::ActionId::new(1), input: SlotIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1))),
         // Duplicate StepIdx = 1
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Slot(SlotIdx::new(1)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(2)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
-                action: vb_core::ActionId::new(2),
-                input: SlotIdx::new(1),
-            },
-            },
+        node(StepIdx::new(1), CompiledNodeKind::Do { action: vb_core::ActionId::new(2), input: SlotIdx::new(1), }, Some(SlotIdx::new(1)), Some(StepIdx::new(2))),
         // DUPLICATE: also StepIdx = 1
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(2) },
-            },
+        node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(2) }, None, None),
     ];
 
     let dup_result = lower_steps_to_ir(
@@ -145,19 +86,7 @@ fn node_id_uniqueness() {
 fn step_idx_ordering_preserved() {
     // Create a workflow with 5 nodes in order 0..4
     let ordered_nodes: Vec<CompiledNode> = (0..5)
-        .map(|i| CompiledNode {
-            id: StepIdx::new(i),
-            output: NodeOutput::Slot(SlotIdx::new(i)),
-            routing: NodeRouting {
-                next: (if i < 4 {
-                Some(StepIdx::new(i + 1))
-            } else {
-                None
-            }).into(),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(i) },
-            })
+        .map(|i| node(StepIdx::new(i), CompiledNodeKind::Finish { result: SlotIdx::new(i) }, Some(SlotIdx::new(i)), if i < 4 { Some(StepIdx::new(i + 1)) } else { None }))
         .collect();
 
     let result = lower_steps_to_ir(

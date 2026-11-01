@@ -1,5 +1,5 @@
 use super::*;
-use vb_core::{ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx};
+use vb_core::{ActionId, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx};
 
 pub(super) fn action_workflow(actions: &[ActionId]) -> Result<CompiledWorkflow, String> {
     let mut parts = minimal_workflow()?.to_parts();
@@ -9,39 +9,30 @@ pub(super) fn action_workflow(actions: &[ActionId]) -> Result<CompiledWorkflow, 
         let id = u16::try_from(nodes.len()).map_err(|e| e.to_string())?;
         let next = id.checked_add(1).ok_or("fixture step overflow")?;
         let after = next.checked_add(1).ok_or("fixture step overflow")?;
-        nodes.push(CompiledNode {
-            id: StepIdx::new(id),
-            output: NodeOutput::Slot(SlotIdx::new(1)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(next)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        nodes.push(node(
+            StepIdx::new(id),
+            CompiledNodeKind::Do {
                 action: *action,
                 input: SlotIdx::new(0),
             },
-        });
-        nodes.push(CompiledNode {
-            id: StepIdx::new(next),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(after)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        });
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(next)),
+        ));
+        nodes.push(node(
+            StepIdx::new(next),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(after)),
+        ));
     }
-    nodes.push(CompiledNode {
-        id: StepIdx::new(u16::try_from(nodes.len()).map_err(|e| e.to_string())?),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(u16::try_from(nodes.len()).map_err(|e| e.to_string())?),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
     parts.nodes = nodes.into_boxed_slice();
     parts.slot_count = 2;
     parts.digest = zero_workflow_digest();
@@ -68,6 +59,7 @@ pub(super) fn assert_declarations(
     actions: &[ActionId],
 ) -> Result<(), String> {
     use vb_core::artifact::{ArtifactEvidence, AssumptionId, ObligationClosure, ObligationKind};
+
     assert_eq!(
         artifact
             .action_contracts

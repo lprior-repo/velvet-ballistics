@@ -15,10 +15,7 @@
 
 use crate::{ValidationError, gates::validate_gate_08_accessor_path_segments};
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, PathSegment, WorkflowParts,
-};
+use vb_core::workflow::{AccessorProgram, CompiledNodeKind, PathSegment, WorkflowParts, node};
 
 /// Harness 1: Arbitrary WorkflowParts with bounded valid accessors always passes Gate 8.
 ///
@@ -284,24 +281,18 @@ fn kani_gate_08_expressions_with_accessor_refs() {
 
     let mut parts: WorkflowParts = kani::any();
     parts.nodes = Box::new([
-        CompiledNode {
-            id: step0,
-            output: NodeOutput::Slot(slot0),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(step1),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::EvalExpr { expr: expr_idx },
-        },
-        CompiledNode {
-            id: step1,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish { result: slot0 },
-        },
+        node(
+            step0,
+            CompiledNodeKind::EvalExpr { expr: expr_idx },
+            Some(slot0),
+            Some(step1),
+        ),
+        node(
+            step1,
+            CompiledNodeKind::Finish { result: slot0 },
+            None,
+            None,
+        ),
     ]);
     parts.expressions = Box::new([vb_core::workflow::ExprProgram {
         ops: Box::new([
@@ -365,17 +356,14 @@ fn kani_gate_08_mixed_accessor_paths() {
     );
 
     let mut parts: WorkflowParts = kani::any();
-    parts.nodes = Box::new([CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    parts.nodes = Box::new([node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    }]);
+        None,
+        None,
+    )]);
     parts.expressions = Box::new([]);
     parts.accessors = Box::new([
         AccessorProgram {
@@ -459,24 +447,18 @@ fn kani_gate_08_constants_with_symbols() {
 
     let mut parts: WorkflowParts = kani::any();
     parts.nodes = Box::new([
-        CompiledNode {
-            id: step0,
-            output: NodeOutput::Slot(slot0),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst { value: const_idx },
-        },
-        CompiledNode {
-            id: step1,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish { result: slot0 },
-        },
+        node(
+            step0,
+            CompiledNodeKind::SetConst { value: const_idx },
+            Some(slot0),
+            None,
+        ),
+        node(
+            step1,
+            CompiledNodeKind::Finish { result: slot0 },
+            None,
+            None,
+        ),
     ]);
     parts.expressions = Box::new([]);
     parts.accessors = Box::new([AccessorProgram {
@@ -533,17 +515,14 @@ fn kani_gate_08_many_accessors_varied_depths() {
     );
 
     let mut parts: WorkflowParts = kani::any();
-    parts.nodes = Box::new([CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    parts.nodes = Box::new([node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    }]);
+        None,
+        None,
+    )]);
     parts.expressions = Box::new([]);
     parts.accessors = Box::new([
         AccessorProgram {

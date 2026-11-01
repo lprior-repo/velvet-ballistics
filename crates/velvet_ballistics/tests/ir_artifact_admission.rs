@@ -7,34 +7,28 @@ use std::process::Output;
 use vb_core::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, ExprOp, ExprProgram,
-    NodeContinuation, NodeOutput, NodeRouting, PathSegment, ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
+    ResourceContract, WorkflowParts, node,
 };
 
 fn finish_node(step: u16, result: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(step),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    node(
+        StepIdx::new(step),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(result),
         },
-    }
+        None,
+        None,
+    )
 }
 
 fn nop_node(step: u16, next: Option<u16>) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(step),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: (next.map(StepIdx::new)).into(),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    }
+    node(
+        StepIdx::new(step),
+        CompiledNodeKind::Nop,
+        None,
+        next.map(StepIdx::new),
+    )
 }
 
 fn base_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
@@ -252,17 +246,14 @@ fn run_compiled_rejects_handcrafted_backward_edge_ir() {
 #[test]
 fn run_compiled_rejects_handcrafted_bad_constant_reference_ir() {
     let mut parts = base_parts(Box::from([
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Slot(SlotIdx::ZERO),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        node(
+            StepIdx::ZERO,
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
         finish_node(1, 0),
     ]));
     parts.constants = Box::from([]);
@@ -283,17 +274,14 @@ fn run_compiled_rejects_handcrafted_bad_accessor_reference_ir() {
         Err(_) => std::process::abort(),
     };
     let mut parts = base_parts(Box::from([
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Slot(SlotIdx::ZERO),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::EvalExpr {
+        node(
+            StepIdx::ZERO,
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
-        },
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
         finish_node(1, 0),
     ]));
     parts.expressions = Box::from([expression]);
@@ -334,17 +322,14 @@ fn must_tempdir() -> tempfile::TempDir {
 #[test]
 fn run_compiled_rejects_handcrafted_bad_build_object_symbol_ir() {
     let mut parts = base_parts(Box::from([
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Slot(SlotIdx::ZERO),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::BuildObject {
+        node(
+            StepIdx::ZERO,
+            CompiledNodeKind::BuildObject {
                 fields: Box::from([(SymbolId::new(0), SlotIdx::ZERO)]),
             },
-        },
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
         finish_node(1, 0),
     ]));
     parts.symbols_count = 0;
