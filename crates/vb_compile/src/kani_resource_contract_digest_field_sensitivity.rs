@@ -18,7 +18,7 @@
 #![forbid(unsafe_code)]
 
 use vb_core::contract_encoding::encode_contract_bytes;
-use vb_core::workflow::ResourceContract;
+use vb_core::workflow::{ResourceContract, SecretResultPolicy};
 
 fn base_contract() -> ResourceContract {
     ResourceContract {
@@ -39,7 +39,7 @@ fn base_contract() -> ResourceContract {
         max_collect_items: 16,
         max_queue_depth: 16,
         max_journal_batch_bytes: 128,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     }
 }
 
@@ -186,10 +186,10 @@ fn prove_single_field_changes_digest() {
 #[kani::unwind(2)]
 fn prove_secret_results_changes_digest() {
     let mut contract_true = base_contract();
-    contract_true.allows_secret_results = true;
+    contract_true.allows_secret_results = SecretResultPolicy::Allow;
 
     let mut contract_false = base_contract();
-    contract_false.allows_secret_results = false;
+    contract_false.allows_secret_results = SecretResultPolicy::Deny;
 
     assert_ne!(
         contract_true.allows_secret_results, contract_false.allows_secret_results,

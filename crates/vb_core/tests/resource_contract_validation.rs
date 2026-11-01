@@ -3,7 +3,7 @@
 //! Bead: vb-xi2f.35 — P1: digest covers resource contract semantics.
 
 use vb_core::ids::ConstIdx;
-use vb_core::workflow::ContractResource;
+use vb_core::workflow::{ContractResource, SecretResultPolicy};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ExprOp, ExprProgram,
     ResourceContract, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
@@ -40,7 +40,7 @@ fn contract(
         max_collect_items: 1,
         max_queue_depth: 1,
         max_journal_batch_bytes: 256,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     }
 }
 
@@ -565,13 +565,13 @@ fn validation_accepts_when_actual_and_declared_are_both_zero() {
 #[test]
 fn resource_contract_preserves_allows_secret_results_field() {
     let mut c = contract(10, 10, 10, 10, 10, 10);
-    c.allows_secret_results = true;
+    c.allows_secret_results = SecretResultPolicy::Allow;
     let parts = nop_parts(c);
     let workflow = CompiledWorkflow::try_from_parts(parts)
         .expect("valid contract with allows_secret_results=true");
     assert_eq!(
         workflow.resource_contract().allows_secret_results,
-        true,
+        SecretResultPolicy::Allow,
         "allows_secret_results must be preserved through try_from_parts"
     );
 }
@@ -579,13 +579,13 @@ fn resource_contract_preserves_allows_secret_results_field() {
 #[test]
 fn resource_contract_preserves_allows_secret_results_false() {
     let mut c = contract(10, 10, 10, 10, 10, 10);
-    c.allows_secret_results = false;
+    c.allows_secret_results = SecretResultPolicy::Deny;
     let parts = nop_parts(c);
     let workflow = CompiledWorkflow::try_from_parts(parts)
         .expect("valid contract with allows_secret_results=false");
     assert_eq!(
         workflow.resource_contract().allows_secret_results,
-        false,
+        SecretResultPolicy::Deny,
         "allows_secret_results=false must be preserved through try_from_parts"
     );
 }

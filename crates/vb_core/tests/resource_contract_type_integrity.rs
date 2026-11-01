@@ -6,6 +6,7 @@
 //! max_transitions_per_tick and allows_secret_results.
 
 use vb_core::ResourceContract;
+use vb_core::workflow::SecretResultPolicy;
 
 // ---------------------------------------------------------------------------
 // B1: Canonical type has exactly 17 fields
@@ -39,7 +40,7 @@ fn resource_contract_canonical_type_has_17_fields() {
         max_collect_items: 1,
         max_queue_depth: 1,
         max_journal_batch_bytes: 1,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     // Verify field values reflect what we set
@@ -60,7 +61,7 @@ fn resource_contract_canonical_type_has_17_fields() {
     assert_eq!(c.max_collect_items, 1);
     assert_eq!(c.max_queue_depth, 1);
     assert_eq!(c.max_journal_batch_bytes, 1);
-    assert_eq!(c.allows_secret_results, false);
+    assert_eq!(c.allows_secret_results, SecretResultPolicy::Deny);
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +77,7 @@ fn compiled_workflow_accepts_17_field_resource_contract() {
 
     let mut c = ResourceContract::DEFAULT;
     c.max_transitions_per_tick = 100;
-    c.allows_secret_results = true;
+    c.allows_secret_results = SecretResultPolicy::Allow;
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
@@ -105,7 +106,10 @@ fn compiled_workflow_accepts_17_field_resource_contract() {
     let workflow = CompiledWorkflow::try_from_parts(parts)
         .expect("CompiledWorkflow::try_from_parts must accept 17-field ResourceContract");
     assert_eq!(workflow.resource_contract().max_transitions_per_tick, 100);
-    assert_eq!(workflow.resource_contract().allows_secret_results, true);
+    assert_eq!(
+        workflow.resource_contract().allows_secret_results,
+        SecretResultPolicy::Allow
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -124,7 +128,7 @@ fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
     c.max_slots = 7;
     c.max_step_budget_per_tick = 999;
     c.max_transitions_per_tick = 888;
-    c.allows_secret_results = true;
+    c.allows_secret_results = SecretResultPolicy::Allow;
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
@@ -165,7 +169,8 @@ fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
         "max_transitions_per_tick roundtrip"
     );
     assert_eq!(
-        returned.allows_secret_results, true,
+        returned.allows_secret_results,
+        SecretResultPolicy::Allow,
         "allows_secret_results roundtrip"
     );
     // Spot-check a few more fields to ensure full roundtrip
@@ -217,7 +222,8 @@ fn resource_contract_default_has_reasonable_values() {
     );
     // allows_secret_results defaults to false (conservative)
     assert_eq!(
-        c.allows_secret_results, false,
+        c.allows_secret_results,
+        SecretResultPolicy::Deny,
         "DEFAULT must be conservative: allows_secret_results=false"
     );
 }

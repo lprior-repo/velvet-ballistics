@@ -21,6 +21,7 @@
 //! - KANI-003 and KANI-004 exercise `CompiledWorkflow::try_from_parts` over
 //!   arbitrary WorkflowParts (including those with ForEachStart/ForEachNext nodes).
 
+use vb_core::workflow::SecretResultPolicy;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
     SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
@@ -131,7 +132,7 @@ fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> W
             max_collect_items: 100,
             max_queue_depth: 1000,
             max_journal_batch_bytes: 65536,
-            allows_secret_results: false,
+            allows_secret_results: SecretResultPolicy::Deny,
         },
         step_names: step_names.into_boxed_slice(),
     }
@@ -462,7 +463,7 @@ fn foreach_rejects_malformed_ir() {
                 max_collect_items: 100,
                 max_queue_depth: 16,
                 max_journal_batch_bytes: 65536,
-                allows_secret_results: false,
+                allows_secret_results: SecretResultPolicy::Deny,
             },
             step_names: Box::new([]),
         };

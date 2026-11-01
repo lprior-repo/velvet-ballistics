@@ -15,7 +15,7 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-use vb_core::workflow::ResourceContract;
+use vb_core::workflow::{ResourceContract, SecretResultPolicy};
 
 fn representative_source() -> crate::ast::WorkflowSource {
     let yaml = "version: velvet-ballistics/v1\nname: dual_path_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
@@ -69,7 +69,7 @@ fn prove_dual_path_digest_equivalence_non_default() {
         max_collect_items: 16,
         max_queue_depth: 16,
         max_journal_batch_bytes: 128,
-        allows_secret_results: true,
+        allows_secret_results: SecretResultPolicy::Allow,
     };
 
     let digest_direct = crate::mod_compile_lowering::canonical_digest(&source, contract);

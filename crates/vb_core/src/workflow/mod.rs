@@ -12,7 +12,7 @@ use crate::limits::{
     MAX_STEPS_PER_WORKFLOW,
 };
 use crate::value::ConstValue;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 /// Immutable compiled workflow.
@@ -283,7 +283,7 @@ pub struct ResourceContract {
     /// Maximum journal batch bytes.
     pub max_journal_batch_bytes: u32,
     /// Whether secret-tainted results are allowed in answer payloads.
-    pub allows_secret_results: bool,
+    pub allows_secret_results: SecretResultPolicy,
 }
 
 /// Resource dimension named by contract validation failures.
@@ -375,6 +375,50 @@ impl core::fmt::Display for ContractResource {
     }
 }
 
+/// Policy deciding whether secret-tainted results may appear in answers.
+///
+/// Replaces a bare boolean so call sites name the decision. The encoding is
+/// frozen: it serializes exactly as the legacy boolean (`Allow` as `true`,
+/// `Deny` as `false`) so canonical digests and artifact bytes are unchanged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SecretResultPolicy {
+    /// Secret-tainted results are allowed in answer payloads.
+    Allow,
+    /// Secret-tainted results are rejected from answer payloads.
+    Deny,
+}
+
+impl SecretResultPolicy {
+    /// Whether secret-tainted results are allowed in answer payloads.
+    #[must_use]
+    pub const fn allows(self) -> bool {
+        match self {
+            Self::Allow => true,
+            Self::Deny => false,
+        }
+    }
+}
+
+impl Serialize for SecretResultPolicy {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_bool(self.allows())
+    }
+}
+
+impl<'de> Deserialize<'de> for SecretResultPolicy {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let allowed = bool::deserialize(deserializer)?;
+        Ok(if allowed { Self::Allow } else { Self::Deny })
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for SecretResultPolicy {
+    fn any() -> Self {
+        if kani::any() { Self::Allow } else { Self::Deny }
+    }
+}
+
 impl ResourceContract {
     /// Conservative default used until policy profiles become user-configurable.
     pub const DEFAULT: Self = Self {
@@ -395,7 +439,7 @@ impl ResourceContract {
         max_collect_items: 1_024,
         max_queue_depth: 1_024,
         max_journal_batch_bytes: 1_048_576,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 }
 

@@ -6,7 +6,7 @@
 )]
 use crate::admission::*;
 use crate::error::JournalError;
-use vb_core::workflow::ResourceContract;
+use vb_core::workflow::{ResourceContract, SecretResultPolicy};
 #[path = "evidence_test_support.rs"]
 mod evidence_test_support;
 use evidence_test_support::{action_workflow, assert_checked, assert_declarations};
@@ -1017,7 +1017,7 @@ fn policy_buffer_fits_canonical_resource_contract() {
         max_collect_items: u32::MAX,
         max_queue_depth: u32::MAX,
         max_journal_batch_bytes: u32::MAX,
-        allows_secret_results: true,
+        allows_secret_results: SecretResultPolicy::Allow,
     };
 
     let bound = resource_contract_policy_bytes_bound();
