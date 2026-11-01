@@ -957,7 +957,15 @@ impl From<Option<SlotIdx>> for NodeOutput {
 }
 
 /// Failure routing for a node.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// The serialized form is the legacy `(on_error, error_slot)` option pair,
+/// not the enum discriminant: `None` encodes as two absent options and
+/// `Handler` as two present values. This keeps postcard bytes identical to
+/// the pre-enum layout so existing artifacts and digests keep verifying.
+/// Reads are lenient in exactly one case: a legacy present-slot-without-handler
+/// pair decodes to `None`, matching the old runtime, which failed the run
+/// without touching the slot when no handler was configured.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorRouting {
     /// No error handler; failures fail the run.
     None,
@@ -968,6 +976,32 @@ pub enum ErrorRouting {
         /// Slot receiving failure information before routing.
         error_slot: Option<SlotIdx>,
     },
+}
+
+impl Serialize for ErrorRouting {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match *self {
+            Self::None => (None::<StepIdx>, None::<SlotIdx>).serialize(serializer),
+            Self::Handler {
+                handler,
+                error_slot,
+            } => (Some(handler), error_slot).serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ErrorRouting {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let (handler, error_slot) =
+            <(Option<StepIdx>, Option<SlotIdx>)>::deserialize(deserializer)?;
+        Ok(match handler {
+            Some(handler) => Self::Handler {
+                handler,
+                error_slot,
+            },
+            None => Self::None,
+        })
+    }
 }
 
 impl ErrorRouting {

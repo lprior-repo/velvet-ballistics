@@ -7,6 +7,7 @@ use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, cr
 use std::hint::black_box;
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 use vb_core::{
     ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx,
     ExprOp, ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget,

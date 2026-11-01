@@ -38,8 +38,50 @@ fn continuation_step_encodes_as_one_followed_by_step() {
 }
 
 #[test]
-fn error_none_encodes_as_zero() {
-    assert_eq!(encode(&ErrorRouting::None), vec![0x00]);
+fn error_none_matches_legacy_absent_pair() {
+    let legacy: Vec<u8> = [encode(&None::<StepIdx>), encode(&None::<SlotIdx>)].concat();
+    assert_eq!(encode(&ErrorRouting::None), legacy);
+    assert_eq!(legacy, vec![0x00, 0x00]);
+}
+
+#[test]
+fn error_handler_variants_match_legacy_pairs() {
+    assert_eq!(
+        encode(&ErrorRouting::Handler {
+            handler: StepIdx::new(3),
+            error_slot: None,
+        }),
+        vec![0x01, 0x03, 0x00]
+    );
+}
+
+#[test]
+fn legacy_slot_without_handler_decodes_to_none() -> Result<(), String> {
+    let legacy: Vec<u8> = [encode(&None::<StepIdx>), encode(&Some(SlotIdx::new(4)))].concat();
+    let decoded: ErrorRouting =
+        postcard::from_bytes(&legacy).map_err(|error| format!("decode: {error:?}"))?;
+    assert_eq!(decoded, ErrorRouting::None);
+    Ok(())
+}
+
+#[test]
+fn error_routing_roundtrip_preserves_value() -> Result<(), String> {
+    for routing in [
+        ErrorRouting::None,
+        ErrorRouting::Handler {
+            handler: StepIdx::new(3),
+            error_slot: None,
+        },
+        ErrorRouting::Handler {
+            handler: StepIdx::new(3),
+            error_slot: Some(SlotIdx::new(4)),
+        },
+    ] {
+        let decoded: ErrorRouting = postcard::from_bytes(&encode(&routing))
+            .map_err(|error| format!("decode: {error:?}"))?;
+        assert_eq!(decoded, routing);
+    }
+    Ok(())
 }
 
 #[test]
@@ -54,7 +96,7 @@ fn error_handler_encodes_handler_then_error_slot() {
 }
 
 #[test]
-fn empty_routing_node_encodes_as_five_zero_bytes() {
+fn empty_routing_node_matches_legacy_layout() {
     let node = CompiledNode {
         id: StepIdx::new(0),
         output: NodeOutput::Discard,
@@ -64,7 +106,7 @@ fn empty_routing_node_encodes_as_five_zero_bytes() {
         },
         kind: CompiledNodeKind::Nop,
     };
-    assert_eq!(encode(&node), vec![0x00, 0x00, 0x00, 0x00, 0x00]);
+    assert_eq!(encode(&node), vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
 }
 
 #[test]
