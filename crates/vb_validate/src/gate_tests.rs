@@ -2,64 +2,11 @@
 //! Tests for plan verifier gates.
 
 use crate::ValidationError;
+use crate::test_helpers::{copy_node, finish_node, make_parts, nop_node};
 use vb_core::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNodeKind, ExprOp, ExprProgram, PathSegment, ResourceContract,
 };
-
-// ---------------------------------------------------------------------------
-// Helper constructors
-// ---------------------------------------------------------------------------
-
-fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
-    WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from("test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([]),
-        slot_count,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        step_names: Box::new([]),
-        resource_contract: ResourceContract::DEFAULT,
-    }
-}
-
-fn nop_node(index: u16) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(index),
-        CompiledNodeKind::Nop,
-        None,
-        Some(StepIdx::new(index.saturating_add(1))),
-    )
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(index),
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-        None,
-        None,
-    )
-}
-
-fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(index),
-        CompiledNodeKind::Copy {
-            source: SlotIdx::new(source),
-        },
-        Some(SlotIdx::new(output)),
-        Some(StepIdx::new(index.saturating_add(1))),
-    )
-}
 
 // ---------------------------------------------------------------------------
 // Gate 7 tests

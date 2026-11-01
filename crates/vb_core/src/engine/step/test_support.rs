@@ -249,7 +249,7 @@ fn do_node(
     }
 }
 
-fn finish_node(id: StepIdx) -> CompiledNode {
+pub(super) fn finish_node(id: StepIdx) -> CompiledNode {
     node(
         id,
         CompiledNodeKind::Finish {

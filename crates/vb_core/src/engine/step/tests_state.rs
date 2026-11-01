@@ -1,14 +1,12 @@
 use super::step_once;
-use super::test_support::{ensure_equal, nop_then_finish_workflow, test_frame};
+use super::test_support::{ensure_equal, finish_node, nop_then_finish_workflow, test_frame};
 use super::tests_basic::{ask_workflow, wait_workflow};
 use crate::EngineSignal;
 use crate::frame::StepState;
 use crate::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue};
 use crate::value_store::ValueStore;
-use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
-};
+use crate::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node};
 
 #[test]
 fn step_once_error_handler_jumps_to_body() -> Result<(), String> {
@@ -138,15 +136,4 @@ fn single_do_workflow(name: &str, digest: [u8; 32]) -> Result<CompiledWorkflow, 
         step_names: Box::new([]),
     })
     .map_err(|e| e.to_string())
-}
-
-fn finish_node(id: StepIdx) -> CompiledNode {
-    node(
-        id,
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-        None,
-        None,
-    )
 }
