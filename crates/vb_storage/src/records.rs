@@ -228,7 +228,7 @@ pub enum RecordKind {
     /// Bounded cold continuation carrier; appended to preserve every old ordinal.
     RunContinuation = 43,
     /// Journaled §77.17 compatibility decision; appended, no old ordinal moved.
-    CompatibilityDecision = 44,
+    CompatibilityDecision = 45,
 }
 
 impl RecordKind {
@@ -273,7 +273,7 @@ impl RecordKind {
             Self::RunAdmissionBoundPinned => 41,
             Self::RunOwnedInputs => 42,
             Self::RunContinuation => 43,
-            Self::CompatibilityDecision => 44,
+            Self::CompatibilityDecision => 45,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -320,7 +320,7 @@ impl RecordKind {
             41 => Some(Self::RunAdmissionBoundPinned),
             42 => Some(Self::RunOwnedInputs),
             43 => Some(Self::RunContinuation),
-            44 => Some(Self::CompatibilityDecision),
+            45 => Some(Self::CompatibilityDecision),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
