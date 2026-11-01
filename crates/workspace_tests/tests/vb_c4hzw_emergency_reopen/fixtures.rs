@@ -6,8 +6,7 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeRouting, ResourceContract,
-    WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 use vb_runtime::shard::ShardConfig;
 

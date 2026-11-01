@@ -300,7 +300,7 @@ mod tests {
     use crate::value::ConstValue;
     use crate::workflow::{
         CompiledNodeKind, ContractResource, ExprBranch, ResourceContract, SlotBranch,
-        WorkflowError, WorkflowParts, node, node_with_handler,
+        WorkflowError, WorkflowParts, node,
     };
 
     fn valid_parts() -> WorkflowParts {

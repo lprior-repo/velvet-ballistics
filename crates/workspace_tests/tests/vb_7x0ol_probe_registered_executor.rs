@@ -17,8 +17,7 @@ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::{DecisionCode, PolicyDigest, PolicyRule, RuntimePolicy};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeRouting, ResourceContract,
-    WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::Runtime;

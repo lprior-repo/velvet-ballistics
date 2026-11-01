@@ -12,7 +12,6 @@
 
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
-use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 use vb_core::workflow::node;
 use vb_core::{
     CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract, RunId, SlotIdx,
