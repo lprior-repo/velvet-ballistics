@@ -6,8 +6,9 @@ use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_P
 use crate::value::ConstValue;
 use crate::workflow::{
     AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-    CoreError, ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract,
-    SlotBranch, WorkflowError, WorkflowParts, check_expr_stack_bound, validate_budget_result,
+    ContractResource, CoreError, ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment,
+    ResourceContract, SlotBranch, WorkflowError, WorkflowParts, check_expr_stack_bound,
+    validate_budget_result,
 };
 use std::fmt::Debug;
 
@@ -97,12 +98,15 @@ fn workflow_parts_accept_resource_contract_at_exact_usage_bounds() -> Result<(),
 
 #[test]
 fn workflow_parts_reject_nodes_exceeding_resource_contract() -> Result<(), String> {
-    expect_resource_error(resource_contract(0, 0, 1, 0, 0), "max_steps")
+    expect_resource_error(resource_contract(0, 0, 1, 0, 0), ContractResource::Steps)
 }
 
 #[test]
 fn workflow_parts_reject_constants_exceeding_resource_contract() -> Result<(), String> {
-    expect_resource_error(resource_contract(1, 0, 0, 0, 0), "max_constants")
+    expect_resource_error(
+        resource_contract(1, 0, 0, 0, 0),
+        ContractResource::Constants,
+    )
 }
 
 #[test]
@@ -112,7 +116,7 @@ fn workflow_parts_reject_slot_count_exceeding_resource_contract() -> Result<(), 
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_slots",
+            resource: ContractResource::Slots,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -129,7 +133,7 @@ fn workflow_parts_reject_expressions_exceeding_resource_contract() -> Result<(),
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_expressions",
+            resource: ContractResource::Expressions,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -147,7 +151,7 @@ fn workflow_parts_reject_expression_stack_exceeding_resource_contract() -> Resul
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_expr_stack",
+            resource: ContractResource::ExprStack,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -166,7 +170,7 @@ fn workflow_parts_reject_hard_limit_exceeding_contract() -> Result<(), String> {
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expressions",
+            resource: ContractResource::Expressions,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -185,7 +189,7 @@ fn workflow_parts_reject_accessors_hard_limit_exceeding_contract() -> Result<(),
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_accessors",
+            resource: ContractResource::Accessors,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -204,7 +208,7 @@ fn workflow_parts_reject_expression_stack_hard_limit_exceeding_contract() -> Res
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expr_stack",
+            resource: ContractResource::ExprStack,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -401,7 +405,7 @@ fn workflow_parts_reject_build_list_over_item_limit() -> Result<(), String> {
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "list_items",
+            resource: ContractResource::ListItems,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -445,7 +449,7 @@ fn workflow_parts_reject_build_object_over_field_limit() -> Result<(), String> {
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "object_fields",
+            resource: ContractResource::ObjectFields,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -536,7 +540,10 @@ fn construction_parts_with_symbols(
     }
 }
 
-fn expect_resource_error(contract: ResourceContract, resource: &'static str) -> Result<(), String> {
+fn expect_resource_error(
+    contract: ResourceContract,
+    resource: ContractResource,
+) -> Result<(), String> {
     let parts = finish_const_parts_with(contract, Box::new([]));
 
     match CompiledWorkflow::try_from_parts(parts) {
@@ -1379,7 +1386,7 @@ fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded() ->
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_steps",
+            resource: ContractResource::Steps,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -1508,7 +1515,7 @@ fn workflow_together_join_zero_branch_count_returns_resource_exceeded() -> Resul
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "branch_count",
+            resource: ContractResource::BranchCount,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -1554,7 +1561,7 @@ fn workflow_repeat_start_zero_max_attempts_returns_resource_exceeded() -> Result
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_retry_attempts",
+            resource: ContractResource::RetryAttempts,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -4106,6 +4113,75 @@ fn workflow_error_budget_policy_exceeded_display() {
 }
 
 #[test]
+fn budget_dimension_names_are_frozen() {
+    let cases = [
+        (BudgetDimension::TotalSteps, "max_total_steps"),
+        (BudgetDimension::TotalSlots, "max_total_slots"),
+        (BudgetDimension::Fanout, "max_fanout"),
+        (BudgetDimension::NestingDepth, "max_nesting_depth"),
+        (BudgetDimension::Parallel, "max_parallel_in_flight"),
+        (BudgetDimension::ActionTickets, "max_action_tickets"),
+        (BudgetDimension::RunTime, "max_run_time_seconds"),
+        (BudgetDimension::ResultBytes, "max_result_bytes"),
+        (BudgetDimension::StepsExecutable, "max_steps_executable"),
+        (BudgetDimension::TimerEntries, "max_timer_entries"),
+        (BudgetDimension::TraceEvents, "max_trace_events"),
+        (
+            BudgetDimension::JournalBatchBytes,
+            "max_journal_batch_bytes",
+        ),
+        (BudgetDimension::QueueDepth, "max_queue_depth"),
+        (BudgetDimension::IpcPayloadBytes, "max_ipc_payload_bytes"),
+        (BudgetDimension::BlobBytes, "max_blob_bytes"),
+        (BudgetDimension::InputBytes, "max_input_bytes"),
+    ];
+    for (dimension, name) in cases {
+        assert_eq!(dimension.as_str(), name);
+        assert_eq!(dimension.to_string(), name);
+    }
+}
+
+#[test]
+fn contract_resource_names_are_frozen() {
+    let cases = [
+        (ContractResource::Steps, "max_steps"),
+        (ContractResource::Slots, "max_slots"),
+        (ContractResource::Constants, "max_constants"),
+        (ContractResource::Accessors, "max_accessors"),
+        (ContractResource::Expressions, "max_expressions"),
+        (ContractResource::ExprStack, "max_expr_stack"),
+        (
+            ContractResource::StepBudgetPerTick,
+            "max_step_budget_per_tick",
+        ),
+        (
+            ContractResource::TransitionsPerTick,
+            "max_transitions_per_tick",
+        ),
+        (ContractResource::InputBytes, "max_input_bytes"),
+        (ContractResource::OutputBytes, "max_output_bytes"),
+        (ContractResource::BlobBytes, "max_blob_bytes"),
+        (ContractResource::IpcPayloadBytes, "max_ipc_payload_bytes"),
+        (ContractResource::RetryAttempts, "max_retry_attempts"),
+        (ContractResource::Fanout, "max_fanout"),
+        (ContractResource::CollectItems, "max_collect_items"),
+        (ContractResource::QueueDepth, "max_queue_depth"),
+        (
+            ContractResource::JournalBatchBytes,
+            "max_journal_batch_bytes",
+        ),
+        (ContractResource::BranchCount, "branch_count"),
+        (ContractResource::LoopRegions, "loop_regions"),
+        (ContractResource::ListItems, "list_items"),
+        (ContractResource::ObjectFields, "object_fields"),
+    ];
+    for (resource, name) in cases {
+        assert_eq!(resource.as_str(), name);
+        assert_eq!(resource.to_string(), name);
+    }
+}
+
+#[test]
 fn workflow_error_step_count_overflow_exact_variant_fields() -> Result<(), String> {
     match (WorkflowError::StepCountOverflow { actual: u64::MAX }) {
         WorkflowError::StepCountOverflow { actual } if actual == u64::MAX => Ok(()),
@@ -4376,8 +4452,8 @@ fn budget_node(index: u16, kind: CompiledNodeKind) -> CompiledNode {
 #[cfg(test)]
 mod proptests {
     use super::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ResourceContract,
-        WorkflowError, WorkflowParts,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ContractResource,
+        ResourceContract, WorkflowError, WorkflowParts,
     };
     use crate::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
     use proptest::prelude::*;
@@ -4753,7 +4829,7 @@ mod proptests {
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
                 Err(WorkflowError::ResourceContractExceeded { resource }) => {
-                    prop_assert_eq!(resource, "max_steps");
+                    prop_assert_eq!(resource, ContractResource::Steps);
                 }
                 other => {
                     return Err(proptest::test_runner::TestCaseError::Fail(
@@ -4800,7 +4876,7 @@ mod proptests {
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
                 Err(WorkflowError::ResourceContractExceeded { resource }) => {
-                    prop_assert_eq!(resource, "max_slots");
+                    prop_assert_eq!(resource, ContractResource::Slots);
                 }
                 other => {
                     return Err(proptest::test_runner::TestCaseError::Fail(

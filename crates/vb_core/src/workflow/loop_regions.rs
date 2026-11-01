@@ -93,7 +93,7 @@ fn empty_regions(count: usize) -> Result<Vec<Option<CompiledLoopRegion>>, Workfl
 
 fn resource_error() -> WorkflowError {
     WorkflowError::ResourceContractExceeded {
-        resource: "loop_regions",
+        resource: crate::workflow::ContractResource::LoopRegions,
     }
 }
 

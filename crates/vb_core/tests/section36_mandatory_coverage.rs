@@ -11,8 +11,8 @@ use vb_core::ids::{
 use vb_core::value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
-    ExprProgram, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ContractResource,
+    ExprBranch, ExprOp, ExprProgram, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
 };
 use vb_core::{EngineSignal, StepBudget, run_until_blocked, step_once};
 
@@ -708,7 +708,7 @@ fn try_from_parts_rejects_resource_contract_exceeded_steps() {
     let result = CompiledWorkflow::try_from_parts(parts);
     match result {
         Err(WorkflowError::ResourceContractExceeded { resource }) => {
-            assert_eq!(resource, "max_steps");
+            assert_eq!(resource, ContractResource::Steps);
         }
         other => panic!("expected ResourceContractExceeded, got {other:?}"),
     }

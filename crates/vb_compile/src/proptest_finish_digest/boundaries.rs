@@ -3,8 +3,9 @@
 use super::{max_slots, slot_above_max, slot_below_max, yaml_with_steps};
 use crate::compile_source;
 use proptest::prelude::*;
+use vb_core::workflow::ContractResource;
 
-/// Compile and expect ResourceContractExceeded with resource="max_slots".
+/// Compile and expect ResourceContractExceeded with resource=ContractResource::Slots.
 fn compile_and_expect_max_slots_error(yaml: &str) -> Result<(), String> {
     let source = crate::parse_workflow_source(yaml).map_err(|e| format!("parse error: {e:?}"))?;
     let result = compile_source(&source);
@@ -17,7 +18,7 @@ fn compile_and_expect_max_slots_error(yaml: &str) -> Result<(), String> {
                         vb_core::workflow::WorkflowError::ResourceContractExceeded { resource },
                     ),
                 ] => {
-                    if *resource == "max_slots" {
+                    if *resource == ContractResource::Slots {
                         Ok(())
                     } else {
                         Err(format!("expected max_slots error, got: {resource}"))

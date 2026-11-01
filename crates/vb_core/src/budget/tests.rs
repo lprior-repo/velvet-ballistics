@@ -1423,6 +1423,37 @@ const fn test_budget(
     }
 }
 
+#[test]
+fn payload_budget_reports_first_exceeded_dimension_in_check_order() -> Result<(), String> {
+    let policy = BoundednessPolicy {
+        absolute_max_journal_batch_bytes: 10,
+        absolute_max_queue_depth: 10,
+        absolute_max_ipc_payload_bytes: 10,
+        absolute_max_blob_bytes: 10,
+        absolute_max_input_bytes: 10,
+        ..BoundednessPolicy::DEFAULT
+    };
+    let mut both_over = test_budget(1, 1, 0, 0);
+    both_over.max_blob_bytes = 11;
+    both_over.max_input_bytes = 11;
+    ensure_equal(
+        policy.validate(&both_over),
+        Err(BudgetError::BlobBytesExceeded {
+            actual: 11,
+            limit: 10,
+        }),
+    )?;
+    let mut input_only = test_budget(1, 1, 0, 0);
+    input_only.max_input_bytes = 11;
+    ensure_equal(
+        policy.validate(&input_only),
+        Err(BudgetError::InputBytesExceeded {
+            actual: 11,
+            limit: 10,
+        }),
+    )
+}
+
 const fn test_policy(
     max_total_steps: u64,
     max_total_slots: u64,

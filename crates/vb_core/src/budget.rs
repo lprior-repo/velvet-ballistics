@@ -483,53 +483,37 @@ fn validate_payload_budget(
     policy: &BoundednessPolicy,
     budget: &WholeWorkflowBudget,
 ) -> Result<(), BudgetError> {
-    validate_u32_budget(
-        "journal",
-        budget.max_journal_batch_bytes,
-        policy.absolute_max_journal_batch_bytes,
-    )?;
-    validate_u32_budget(
-        "queue",
-        budget.max_queue_depth,
-        policy.absolute_max_queue_depth,
-    )?;
-    validate_u32_budget(
-        "ipc",
-        budget.max_ipc_payload_bytes,
-        policy.absolute_max_ipc_payload_bytes,
-    )?;
-    validate_u64_budget(
-        "blob",
-        budget.max_blob_bytes,
-        policy.absolute_max_blob_bytes,
-    )?;
-    validate_u32_budget(
-        "input",
-        budget.max_input_bytes,
-        policy.absolute_max_input_bytes,
-    )
-}
-
-fn validate_u32_budget(kind: &'static str, actual: u32, limit: u32) -> Result<(), BudgetError> {
-    if actual <= limit {
-        return Ok(());
+    if budget.max_journal_batch_bytes > policy.absolute_max_journal_batch_bytes {
+        return Err(BudgetError::JournalBatchBytesExceeded {
+            actual: budget.max_journal_batch_bytes,
+            limit: policy.absolute_max_journal_batch_bytes,
+        });
     }
-    match kind {
-        "journal" => Err(BudgetError::JournalBatchBytesExceeded { actual, limit }),
-        "queue" => Err(BudgetError::QueueDepthExceeded { actual, limit }),
-        "ipc" => Err(BudgetError::IpcPayloadBytesExceeded { actual, limit }),
-        _ => Err(BudgetError::InputBytesExceeded { actual, limit }),
+    if budget.max_queue_depth > policy.absolute_max_queue_depth {
+        return Err(BudgetError::QueueDepthExceeded {
+            actual: budget.max_queue_depth,
+            limit: policy.absolute_max_queue_depth,
+        });
     }
-}
-
-fn validate_u64_budget(kind: &'static str, actual: u64, limit: u64) -> Result<(), BudgetError> {
-    if actual <= limit {
-        return Ok(());
+    if budget.max_ipc_payload_bytes > policy.absolute_max_ipc_payload_bytes {
+        return Err(BudgetError::IpcPayloadBytesExceeded {
+            actual: budget.max_ipc_payload_bytes,
+            limit: policy.absolute_max_ipc_payload_bytes,
+        });
     }
-    match kind {
-        "blob" => Err(BudgetError::BlobBytesExceeded { actual, limit }),
-        _ => Err(BudgetError::TraceEventsExceeded { actual, limit }),
+    if budget.max_blob_bytes > policy.absolute_max_blob_bytes {
+        return Err(BudgetError::BlobBytesExceeded {
+            actual: budget.max_blob_bytes,
+            limit: policy.absolute_max_blob_bytes,
+        });
     }
+    if budget.max_input_bytes > policy.absolute_max_input_bytes {
+        return Err(BudgetError::InputBytesExceeded {
+            actual: budget.max_input_bytes,
+            limit: policy.absolute_max_input_bytes,
+        });
+    }
+    Ok(())
 }
 
 /// Budget validation failures.

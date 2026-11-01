@@ -286,6 +286,95 @@ pub struct ResourceContract {
     pub allows_secret_results: bool,
 }
 
+/// Resource dimension named by contract validation failures.
+///
+/// Exhaustive classification backing `WorkflowError::ResourceContractExceeded`
+/// and `WorkflowError::ResourceContractTooLarge`. The canonical names are
+/// frozen: diagnostics, tests, and admission mapping match on them, so
+/// renaming a string is a behavior change. Two legacy names break the `max_`
+/// convention (`branch_count`, `loop_regions`); they are preserved exactly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContractResource {
+    /// Step count bound.
+    Steps,
+    /// Slot count bound.
+    Slots,
+    /// Constant-pool entry bound.
+    Constants,
+    /// Accessor program bound.
+    Accessors,
+    /// Expression program bound.
+    Expressions,
+    /// Expression stack bound.
+    ExprStack,
+    /// Per-tick step budget bound.
+    StepBudgetPerTick,
+    /// Per-tick transition bound.
+    TransitionsPerTick,
+    /// Input byte bound.
+    InputBytes,
+    /// Output byte bound.
+    OutputBytes,
+    /// Blob byte bound.
+    BlobBytes,
+    /// IPC payload byte bound.
+    IpcPayloadBytes,
+    /// Retry attempt bound.
+    RetryAttempts,
+    /// Branch fanout bound.
+    Fanout,
+    /// Collection item bound.
+    CollectItems,
+    /// Queue depth bound.
+    QueueDepth,
+    /// Journal batch byte bound.
+    JournalBatchBytes,
+    /// Per-branch node count bound.
+    BranchCount,
+    /// Loop region table bound.
+    LoopRegions,
+    /// Build-list item bound.
+    ListItems,
+    /// Build-object field bound.
+    ObjectFields,
+}
+
+impl ContractResource {
+    /// Canonical resource name. Frozen: diagnostics match on these strings.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Steps => "max_steps",
+            Self::Slots => "max_slots",
+            Self::Constants => "max_constants",
+            Self::Accessors => "max_accessors",
+            Self::Expressions => "max_expressions",
+            Self::ExprStack => "max_expr_stack",
+            Self::StepBudgetPerTick => "max_step_budget_per_tick",
+            Self::TransitionsPerTick => "max_transitions_per_tick",
+            Self::InputBytes => "max_input_bytes",
+            Self::OutputBytes => "max_output_bytes",
+            Self::BlobBytes => "max_blob_bytes",
+            Self::IpcPayloadBytes => "max_ipc_payload_bytes",
+            Self::RetryAttempts => "max_retry_attempts",
+            Self::Fanout => "max_fanout",
+            Self::CollectItems => "max_collect_items",
+            Self::QueueDepth => "max_queue_depth",
+            Self::JournalBatchBytes => "max_journal_batch_bytes",
+            Self::BranchCount => "branch_count",
+            Self::LoopRegions => "loop_regions",
+            Self::ListItems => "list_items",
+            Self::ObjectFields => "object_fields",
+        }
+    }
+}
+
+impl core::fmt::Display for ContractResource {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 impl ResourceContract {
     /// Conservative default used until policy profiles become user-configurable.
     pub const DEFAULT: Self = Self {
@@ -476,14 +565,14 @@ pub enum WorkflowError {
     /// Resource contract does not cover the compiled artifact.
     #[error("resource contract exceeded: {resource}")]
     ResourceContractExceeded {
-        /// Resource name.
-        resource: &'static str,
+        /// Resource dimension that exceeded its declared bound.
+        resource: ContractResource,
     },
     /// Resource contract exceeds protocol hard limits.
     #[error("resource contract exceeds hard limit: {resource}")]
     ResourceContractTooLarge {
-        /// Resource name.
-        resource: &'static str,
+        /// Resource dimension that exceeds the protocol hard limit.
+        resource: ContractResource,
     },
     /// Branching node has no branch and no otherwise route.
     #[error("branch table must contain a branch or otherwise target")]
@@ -1021,7 +1110,7 @@ fn validate_node_id(node: &CompiledNode, index: usize) -> Result<(), WorkflowErr
         Err(WorkflowError::NodeIdMismatch {
             expected: StepIdx::new(u16::try_from(index).map_err(|_| {
                 WorkflowError::ResourceContractExceeded {
-                    resource: "max_steps",
+                    resource: ContractResource::Steps,
                 }
             })?),
             actual: node.id,
@@ -1042,12 +1131,12 @@ fn validate_transitions_per_tick(max_transitions_per_tick: u64) -> Result<(), Wo
     use crate::limits::MAX_STEP_BUDGET;
     if max_transitions_per_tick == 0 {
         return Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_transitions_per_tick",
+            resource: ContractResource::TransitionsPerTick,
         });
     }
     if max_transitions_per_tick > MAX_STEP_BUDGET {
         return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_transitions_per_tick",
+            resource: ContractResource::TransitionsPerTick,
         });
     }
     Ok(())
@@ -1066,19 +1155,19 @@ fn validate_primary_resource_counts(
     contract: ResourceContract,
 ) -> Result<(), WorkflowError> {
     validate_contract_limit(
-        "max_steps",
+        ContractResource::Steps,
         parts.nodes.len(),
         usize::from(contract.max_steps),
         MAX_STEPS_PER_WORKFLOW,
     )?;
     validate_contract_limit(
-        "max_slots",
+        ContractResource::Slots,
         usize::from(parts.slot_count),
         usize::from(contract.max_slots),
         MAX_SLOTS_PER_WORKFLOW,
     )?;
     validate_contract_limit(
-        "max_constants",
+        ContractResource::Constants,
         parts.constants.len(),
         usize::from(contract.max_constants),
         MAX_CONSTANTS,
@@ -1090,13 +1179,13 @@ fn validate_expression_resource_counts(
     contract: ResourceContract,
 ) -> Result<(), WorkflowError> {
     validate_contract_limit(
-        "max_accessors",
+        ContractResource::Accessors,
         parts.accessors.len(),
         usize::from(contract.max_accessors),
         MAX_ACCESSORS,
     )?;
     validate_contract_limit(
-        "max_expressions",
+        ContractResource::Expressions,
         parts.expressions.len(),
         usize::from(contract.max_expressions),
         MAX_EXPRESSIONS,
@@ -1104,7 +1193,7 @@ fn validate_expression_resource_counts(
 }
 
 fn validate_contract_limit(
-    resource: &'static str,
+    resource: ContractResource,
     actual: usize,
     declared: usize,
     hard_limit: usize,
@@ -1125,7 +1214,7 @@ fn validate_expr_stack_contract(
 ) -> Result<(), WorkflowError> {
     if max_expr_stack > MAX_EXPRESSION_STACK {
         return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expr_stack",
+            resource: ContractResource::ExprStack,
         });
     }
     if expressions
@@ -1133,7 +1222,7 @@ fn validate_expr_stack_contract(
         .any(|expression| expression.max_stack > max_expr_stack)
     {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_expr_stack",
+            resource: ContractResource::ExprStack,
         })
     } else {
         Ok(())
@@ -1231,7 +1320,7 @@ fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<
             branch_count,
             accumulator,
         } => {
-            validate_nonzero_u16(*branch_count, "branch_count")?;
+            validate_nonzero_u16(*branch_count, ContractResource::BranchCount)?;
             validate_slot(*accumulator, parts.slot_count)
         }
         CompiledNodeKind::CollectStart {
@@ -1330,7 +1419,7 @@ fn validate_slots(slots: &[SlotIdx], slot_count: u16) -> Result<(), WorkflowErro
 fn validate_build_list(items: &[SlotIdx], slot_count: u16) -> Result<(), WorkflowError> {
     if items.len() > MAX_LIST_ITEMS_PER_VALUE {
         return Err(WorkflowError::ResourceContractExceeded {
-            resource: "list_items",
+            resource: ContractResource::ListItems,
         });
     }
     validate_slots(items, slot_count)
@@ -1342,7 +1431,7 @@ fn validate_build_object(
 ) -> Result<(), WorkflowError> {
     if fields.len() > MAX_OBJECT_FIELDS_PER_VALUE {
         return Err(WorkflowError::ResourceContractExceeded {
-            resource: "object_fields",
+            resource: ContractResource::ObjectFields,
         });
     }
     for (_, slot) in fields {
@@ -1394,7 +1483,7 @@ fn validate_together(
     validate_step(join, parts.nodes.len())
 }
 
-fn validate_nonzero_u16(value: u16, resource: &'static str) -> Result<(), WorkflowError> {
+fn validate_nonzero_u16(value: u16, resource: ContractResource) -> Result<(), WorkflowError> {
     if value == 0 {
         Err(WorkflowError::ResourceContractExceeded { resource })
     } else {
@@ -1434,7 +1523,7 @@ fn validate_repeat_start(
     done: StepIdx,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
-    validate_nonzero_u16(max_attempts, "max_retry_attempts")?;
+    validate_nonzero_u16(max_attempts, ContractResource::RetryAttempts)?;
     validate_two_steps(body, done, parts)
 }
 
@@ -1689,7 +1778,7 @@ fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
             return Err(WorkflowError::UnreachableNode {
                 step: StepIdx::new(u16::try_from(index).map_err(|_| {
                     WorkflowError::ResourceContractExceeded {
-                        resource: "max_steps",
+                        resource: ContractResource::Steps,
                     }
                 })?),
             });
@@ -1809,7 +1898,7 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     for (index, node) in parts.nodes.iter().enumerate() {
         let current_id = StepIdx::new(u16::try_from(index).map_err(|_| {
             WorkflowError::ResourceContractExceeded {
-                resource: "max_steps",
+                resource: ContractResource::Steps,
             }
         })?);
 
@@ -2132,12 +2221,12 @@ fn push_loop_span(
             return Err(WorkflowError::ImproperLoopNesting {
                 inner: StepIdx::new(u16::try_from(ci).map_err(|_| {
                     WorkflowError::ResourceContractExceeded {
-                        resource: "max_steps",
+                        resource: ContractResource::Steps,
                     }
                 })?),
                 outer_done: StepIdx::new(u16::try_from(outer_done).map_err(|_| {
                     WorkflowError::ResourceContractExceeded {
-                        resource: "max_steps",
+                        resource: ContractResource::Steps,
                     }
                 })?),
             });

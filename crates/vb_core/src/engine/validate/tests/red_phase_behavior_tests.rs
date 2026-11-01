@@ -7,8 +7,8 @@ use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
 use crate::value::ConstValue;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, ResourceContract, SlotBranch,
-    WorkflowError, WorkflowParts,
+    CompiledNode, CompiledNodeKind, ContractResource, ExprBranch, ExprOp, ExprProgram,
+    ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
 };
 
 use crate::engine::validate::{
@@ -598,7 +598,7 @@ mod per_node_kind_invalid_configurations {
         assert_eq!(
             result,
             Err(WorkflowError::ResourceContractExceeded {
-                resource: "object_fields",
+                resource: ContractResource::ObjectFields,
             })
         );
     }
@@ -628,7 +628,7 @@ mod per_node_kind_invalid_configurations {
         assert_eq!(
             result,
             Err(WorkflowError::ResourceContractExceeded {
-                resource: "list_items",
+                resource: ContractResource::ListItems,
             })
         );
     }
@@ -758,7 +758,7 @@ mod per_node_kind_invalid_configurations {
         assert_eq!(
             result,
             Err(WorkflowError::ResourceContractExceeded {
-                resource: "branch_count",
+                resource: ContractResource::BranchCount,
             })
         );
     }
@@ -786,7 +786,7 @@ mod per_node_kind_invalid_configurations {
         assert_eq!(
             result,
             Err(WorkflowError::ResourceContractExceeded {
-                resource: "max_retry_attempts",
+                resource: ContractResource::RetryAttempts,
             })
         );
     }
@@ -918,7 +918,7 @@ mod resource_contract_exceeded {
         assert_eq!(
             result,
             Err(WorkflowError::ResourceContractExceeded {
-                resource: "max_steps",
+                resource: ContractResource::Steps,
             })
         );
     }
@@ -935,7 +935,7 @@ mod resource_contract_exceeded {
         assert_eq!(
             result,
             Err(WorkflowError::ResourceContractExceeded {
-                resource: "max_slots",
+                resource: ContractResource::Slots,
             })
         );
     }
@@ -953,7 +953,7 @@ mod resource_contract_exceeded {
         assert_eq!(
             result,
             Err(WorkflowError::ResourceContractExceeded {
-                resource: "max_constants",
+                resource: ContractResource::Constants,
             })
         );
     }
@@ -975,7 +975,7 @@ mod resource_contract_exceeded {
         assert_eq!(
             result,
             Err(WorkflowError::ResourceContractExceeded {
-                resource: "max_accessors",
+                resource: ContractResource::Accessors,
             })
         );
     }
@@ -997,7 +997,7 @@ mod resource_contract_exceeded {
         assert_eq!(
             result,
             Err(WorkflowError::ResourceContractExceeded {
-                resource: "max_expressions",
+                resource: ContractResource::Expressions,
             })
         );
     }
@@ -1288,7 +1288,7 @@ mod error_message_exactness_verification {
         assert_eq!(
             err,
             WorkflowError::ResourceContractExceeded {
-                resource: "max_steps",
+                resource: ContractResource::Steps,
             }
         );
     }

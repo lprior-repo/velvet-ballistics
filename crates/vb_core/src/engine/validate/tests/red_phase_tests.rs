@@ -12,7 +12,8 @@ use crate::limits::{
     MAX_STEPS_PER_WORKFLOW,
 };
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError, WorkflowParts,
+    CompiledNode, CompiledNodeKind, ContractResource, ResourceContract, WorkflowError,
+    WorkflowParts,
 };
 
 // ---------------------------------------------------------------------------
@@ -95,7 +96,7 @@ mod resource_contract_too_large {
         assert!(
             matches!(
                 &err,
-                WorkflowError::ResourceContractTooLarge { resource } if *resource == "max_accessors"
+                WorkflowError::ResourceContractTooLarge { resource } if *resource == ContractResource::Accessors
             ),
             "expected ResourceContractTooLarge {{ resource: \"max_accessors\" }}, got {err:?}"
         );
@@ -113,7 +114,7 @@ mod resource_contract_too_large {
         assert!(
             matches!(
                 &err,
-                WorkflowError::ResourceContractTooLarge { resource } if *resource == "max_expressions"
+                WorkflowError::ResourceContractTooLarge { resource } if *resource == ContractResource::Expressions
             ),
             "expected ResourceContractTooLarge {{ resource: \"max_expressions\" }}, got {err:?}"
         );
@@ -130,7 +131,7 @@ mod resource_contract_too_large {
         assert!(
             matches!(
                 &err,
-                WorkflowError::ResourceContractTooLarge { resource } if *resource == "max_expr_stack"
+                WorkflowError::ResourceContractTooLarge { resource } if *resource == ContractResource::ExprStack
             ),
             "expected ResourceContractTooLarge {{ resource: \"max_expr_stack\" }}, got {err:?}"
         );
@@ -183,7 +184,7 @@ mod resource_contract_too_large {
             matches!(
                 &err,
                 WorkflowError::ResourceContractTooLarge {
-                    resource: "max_accessors"
+                    resource: ContractResource::Accessors
                 }
             ),
             "expected first too-large resource to be max_accessors, got {err:?}"
@@ -201,7 +202,7 @@ mod resource_contract_error_exactness {
     use super::*;
 
     #[allow(dead_code)]
-    fn check_single_too_large(getter: fn(&mut WorkflowParts), resource_name: &'static str) {
+    fn check_single_too_large(getter: fn(&mut WorkflowParts), resource_name: ContractResource) {
         let mut parts = valid_parts();
         // Set only this one limit too large
         parts.resource_contract = ResourceContract::DEFAULT;
@@ -247,7 +248,7 @@ mod resource_contract_error_exactness {
             matches!(
                 &result,
                 WorkflowError::ResourceContractTooLarge {
-                    resource: "max_accessors"
+                    resource: ContractResource::Accessors
                 }
             ),
             "expected resource \"max_accessors\", got {result}"
@@ -263,7 +264,7 @@ mod resource_contract_error_exactness {
             matches!(
                 &result,
                 WorkflowError::ResourceContractTooLarge {
-                    resource: "max_expressions"
+                    resource: ContractResource::Expressions
                 }
             ),
             "expected resource \"max_expressions\", got {result}"
@@ -279,7 +280,7 @@ mod resource_contract_error_exactness {
             matches!(
                 &result,
                 WorkflowError::ResourceContractTooLarge {
-                    resource: "max_expr_stack"
+                    resource: ContractResource::ExprStack
                 }
             ),
             "expected resource \"max_expr_stack\", got {result}"
@@ -300,7 +301,7 @@ mod resource_contract_error_exactness {
 mod resource_contract_extended_field_bounds {
     use super::*;
 
-    fn assert_too_large_for(parts: &WorkflowParts, expected: &'static str) {
+    fn assert_too_large_for(parts: &WorkflowParts, expected: ContractResource) {
         let err = validate_resource_contract(parts)
             .expect_err("expected Err when extended resource exceeds hard limit");
         assert!(
@@ -316,42 +317,42 @@ mod resource_contract_extended_field_bounds {
     fn rejects_max_step_budget_per_tick_over_hard_limit() {
         let mut parts = valid_parts();
         parts.resource_contract.max_step_budget_per_tick = MAX_STEP_BUDGET.saturating_add(1);
-        assert_too_large_for(&parts, "max_step_budget_per_tick");
+        assert_too_large_for(&parts, ContractResource::StepBudgetPerTick);
     }
 
     #[test]
     fn rejects_max_transitions_per_tick_over_hard_limit() {
         let mut parts = valid_parts();
         parts.resource_contract.max_transitions_per_tick = MAX_STEP_BUDGET.saturating_add(1);
-        assert_too_large_for(&parts, "max_transitions_per_tick");
+        assert_too_large_for(&parts, ContractResource::TransitionsPerTick);
     }
 
     #[test]
     fn rejects_max_input_bytes_over_hard_limit() {
         let mut parts = valid_parts();
         parts.resource_contract.max_input_bytes = MAX_INPUT_BYTES.saturating_add(1);
-        assert_too_large_for(&parts, "max_input_bytes");
+        assert_too_large_for(&parts, ContractResource::InputBytes);
     }
 
     #[test]
     fn rejects_max_output_bytes_over_hard_limit() {
         let mut parts = valid_parts();
         parts.resource_contract.max_output_bytes = MAX_OUTPUT_BYTES.saturating_add(1);
-        assert_too_large_for(&parts, "max_output_bytes");
+        assert_too_large_for(&parts, ContractResource::OutputBytes);
     }
 
     #[test]
     fn rejects_max_blob_bytes_over_hard_limit() {
         let mut parts = valid_parts();
         parts.resource_contract.max_blob_bytes = MAX_BLOB_BYTES.saturating_add(1);
-        assert_too_large_for(&parts, "max_blob_bytes");
+        assert_too_large_for(&parts, ContractResource::BlobBytes);
     }
 
     #[test]
     fn rejects_max_ipc_payload_bytes_over_hard_limit() {
         let mut parts = valid_parts();
         parts.resource_contract.max_ipc_payload_bytes = MAX_IPC_PAYLOAD_BYTES.saturating_add(1);
-        assert_too_large_for(&parts, "max_ipc_payload_bytes");
+        assert_too_large_for(&parts, ContractResource::IpcPayloadBytes);
     }
 
     #[test]
@@ -359,7 +360,7 @@ mod resource_contract_extended_field_bounds {
         let mut parts = valid_parts();
         parts.resource_contract.max_retry_attempts =
             u16::try_from(u32::from(MAX_RETRY_ATTEMPTS).saturating_add(1)).unwrap_or(u16::MAX);
-        assert_too_large_for(&parts, "max_retry_attempts");
+        assert_too_large_for(&parts, ContractResource::RetryAttempts);
     }
 
     #[test]
@@ -367,28 +368,28 @@ mod resource_contract_extended_field_bounds {
         let mut parts = valid_parts();
         parts.resource_contract.max_fanout =
             u16::try_from(u32::from(MAX_FANOUT).saturating_add(1)).unwrap_or(u16::MAX);
-        assert_too_large_for(&parts, "max_fanout");
+        assert_too_large_for(&parts, ContractResource::Fanout);
     }
 
     #[test]
     fn rejects_max_collect_items_over_hard_limit() {
         let mut parts = valid_parts();
         parts.resource_contract.max_collect_items = MAX_COLLECT_ITEMS.saturating_add(1);
-        assert_too_large_for(&parts, "max_collect_items");
+        assert_too_large_for(&parts, ContractResource::CollectItems);
     }
 
     #[test]
     fn rejects_max_queue_depth_over_hard_limit() {
         let mut parts = valid_parts();
         parts.resource_contract.max_queue_depth = MAX_QUEUE_DEPTH.saturating_add(1);
-        assert_too_large_for(&parts, "max_queue_depth");
+        assert_too_large_for(&parts, ContractResource::QueueDepth);
     }
 
     #[test]
     fn rejects_max_journal_batch_bytes_over_hard_limit() {
         let mut parts = valid_parts();
         parts.resource_contract.max_journal_batch_bytes = MAX_JOURNAL_BATCH_BYTES.saturating_add(1);
-        assert_too_large_for(&parts, "max_journal_batch_bytes");
+        assert_too_large_for(&parts, ContractResource::JournalBatchBytes);
     }
 
     #[test]
