@@ -3,13 +3,23 @@ use vb_core::root_bundle::OwnedRootBundle;
 use vb_core::value_store::ObjectField;
 use vb_core::{CompiledWorkflow, InputSlotKind, SlotIdx, SlotValue, Taint, ValueStore};
 
+pub(super) fn original(workflow: &CompiledWorkflow) -> TestResult<(ValueStore, SlotIdx)> {
+    build(workflow, vec![3u8, 1, 4])
+}
+
+// Shared with the transport suite; this binary may not call every helper.
+#[allow(dead_code)]
 pub(super) fn original_with_blob(
     workflow: &CompiledWorkflow,
     blob_bytes: usize,
 ) -> TestResult<(ValueStore, SlotIdx)> {
+    build(workflow, vec![3u8; blob_bytes])
+}
+
+fn build(workflow: &CompiledWorkflow, seed: Vec<u8>) -> TestResult<(ValueStore, SlotIdx)> {
     let mut store = ValueStore::with_max_slots(workflow.resource_contract().max_slots);
     let key = store.insert_symbol("child")?;
-    let blob = store.insert_blob(vec![3u8; blob_bytes])?;
+    let blob = store.insert_blob(seed)?;
     let child = store.insert_list_with_taint(
         Box::from([SlotValue::I64(7), SlotValue::I64(1), SlotValue::I64(7)]),
         Box::from([Taint::Clean, Taint::DerivedFromSecret, Taint::Secret]),
