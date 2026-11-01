@@ -1213,6 +1213,9 @@ mod repeat_counter_ownership;
 mod loop_regions;
 pub use loop_regions::CompiledLoopRegion;
 
+mod node_assembly;
+pub use node_assembly::{node, node_with_handler};
+
 fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     if parts.nodes.is_empty() {
         return Err(WorkflowError::EmptyNodes);

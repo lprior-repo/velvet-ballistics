@@ -130,5 +130,5 @@ pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
     AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
     ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract, SlotBranch,
-    WorkflowError, WorkflowParts, check_expr_stack_bound,
+    WorkflowError, WorkflowParts, check_expr_stack_bound, node, node_with_handler,
 };
