@@ -1,4 +1,4 @@
-use crate::budget::BudgetError;
+use crate::budget::{BudgetDimension, BudgetError};
 use crate::ids::{
     AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
 };
@@ -4100,7 +4100,7 @@ fn workflow_error_empty_branch_table_display() {
 #[test]
 fn workflow_error_budget_policy_exceeded_display() {
     let error = WorkflowError::BudgetPolicyExceeded {
-        detail: "max_total_steps",
+        detail: BudgetDimension::TotalSteps,
     };
     assert!(error.to_string().contains("max_total_steps"));
 }
@@ -4132,36 +4132,36 @@ fn workflow_error_jump_cycle_exact_variant_fields() -> Result<(), String> {
 
 #[test]
 fn validate_budget_maps_every_budget_error_variant_to_exact_detail() -> Result<(), String> {
-    assert_budget_detail(total_steps_error(), "max_total_steps")?;
-    assert_budget_detail(total_slots_error(), "max_total_slots")?;
-    assert_budget_detail(fanout_error(), "max_fanout")?;
-    assert_budget_detail(nesting_depth_error(), "max_nesting_depth")?;
-    assert_budget_detail(parallel_error(), "max_parallel_in_flight")?;
-    assert_budget_detail(action_tickets_error(), "max_action_tickets")?;
-    assert_budget_detail(run_time_error(), "max_run_time_seconds")?;
-    assert_budget_detail(result_bytes_error(), "max_result_bytes")?;
-    assert_budget_detail(steps_executable_error(), "max_steps_executable")?;
+    assert_budget_detail(total_steps_error(), BudgetDimension::TotalSteps)?;
+    assert_budget_detail(total_slots_error(), BudgetDimension::TotalSlots)?;
+    assert_budget_detail(fanout_error(), BudgetDimension::Fanout)?;
+    assert_budget_detail(nesting_depth_error(), BudgetDimension::NestingDepth)?;
+    assert_budget_detail(parallel_error(), BudgetDimension::Parallel)?;
+    assert_budget_detail(action_tickets_error(), BudgetDimension::ActionTickets)?;
+    assert_budget_detail(run_time_error(), BudgetDimension::RunTime)?;
+    assert_budget_detail(result_bytes_error(), BudgetDimension::ResultBytes)?;
+    assert_budget_detail(steps_executable_error(), BudgetDimension::StepsExecutable)?;
     Ok(())
 }
 
 #[test]
 fn workflow_budget_validation_reports_total_steps_detail() -> Result<(), String> {
-    assert_workflow_budget_detail(total_steps_budget_parts(), "max_total_steps")
+    assert_workflow_budget_detail(total_steps_budget_parts(), BudgetDimension::TotalSteps)
 }
 
 #[test]
 fn workflow_budget_validation_reports_fanout_detail() -> Result<(), String> {
-    assert_workflow_budget_detail(fanout_budget_parts(), "max_fanout")
+    assert_workflow_budget_detail(fanout_budget_parts(), BudgetDimension::Fanout)
 }
 
 #[test]
 fn workflow_budget_validation_reports_nesting_depth_detail() -> Result<(), String> {
-    assert_workflow_budget_detail(nesting_depth_budget_parts(), "max_nesting_depth")
+    assert_workflow_budget_detail(nesting_depth_budget_parts(), BudgetDimension::NestingDepth)
 }
 
 #[test]
 fn workflow_budget_validation_reports_result_bytes_detail() -> Result<(), String> {
-    assert_workflow_budget_detail(result_bytes_budget_parts(), "max_result_bytes")
+    assert_workflow_budget_detail(result_bytes_budget_parts(), BudgetDimension::ResultBytes)
 }
 
 fn total_steps_error() -> BudgetError {
@@ -4227,14 +4227,17 @@ fn steps_executable_error() -> BudgetError {
     }
 }
 
-fn assert_budget_detail(error: BudgetError, detail: &'static str) -> Result<(), String> {
+fn assert_budget_detail(error: BudgetError, detail: BudgetDimension) -> Result<(), String> {
     match validate_budget_result(Err(error)) {
         Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => Ok(()),
         other => Err(format!("unexpected budget validation result: {other:?}")),
     }
 }
 
-fn assert_workflow_budget_detail(parts: WorkflowParts, detail: &'static str) -> Result<(), String> {
+fn assert_workflow_budget_detail(
+    parts: WorkflowParts,
+    detail: BudgetDimension,
+) -> Result<(), String> {
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => Ok(()),
         other => Err(format!("unexpected workflow validation result: {other:?}")),
