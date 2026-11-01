@@ -1,95 +1,21 @@
 #![forbid(unsafe_code)]
 //! PO-008: Kani harness for DiagnosticCode::from_str backward compatibility.
 //!
-//! Proves: (1) all previously supported codes parse successfully;
-//! (2) all newly added codes (E0501-E0603, E401C) parse successfully;
-//! (3) out-of-range codes return Err(UnsupportedCode).
+//! Binds directly to the production parser
+//! (`core::str::FromStr for crate::diagnostic::DiagnosticCode`) and the
+//! production `CODE_REGISTRY`. No mirrored parser, error type, or range
+//! table lives here: the harnesses execute the production `from_str`
+//! (char prefix check, hex packing with checked arithmetic, registry
+//! gate) so a passing proof constrains production behavior.
 //!
-//! Bound: ~100 code constants (unwind=100)
+//! Bound: Production registry size (unwind=300); full-u16 symbolic
+//! property (unwind=300).
 
-use super::kani_symbolic_code_validation::{CODE_REGISTRY, is_supported_code};
+use core::str::FromStr as _;
 
-/// Mirror of DiagnosticCodeParseError.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DiagnosticCodeParseError {
-    InvalidFormat,
-    UnsupportedCode,
-}
-
-/// Mirror of DiagnosticCode for parser.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct DiagnosticCode(u16);
-
-impl DiagnosticCode {
-    #[must_use]
-    pub const fn new(code: u16) -> Self {
-        Self(code)
-    }
-    #[must_use]
-    pub const fn code(self) -> u16 {
-        self.0
-    }
-}
-
-/// Parse a hex digit character.
-const fn parse_hex_digit(c: Option<char>) -> Result<u16, DiagnosticCodeParseError> {
-    match c {
-        Some(ch) => match ch.to_digit(16) {
-            Some(d) if d <= 15 => Ok(d as u16),
-            _ => Err(DiagnosticCodeParseError::InvalidFormat),
-        },
-        None => Err(DiagnosticCodeParseError::InvalidFormat),
-    }
-}
-
-/// Pack four hex digits into a u16.
-const fn pack_digits(a: u16, b: u16, c: u16, d: u16) -> Result<u16, DiagnosticCodeParseError> {
-    let a_s = match a.checked_shl(12) {
-        Some(v) => v,
-        None => return Err(DiagnosticCodeParseError::InvalidFormat),
-    };
-    let b_s = match b.checked_shl(8) {
-        Some(v) => v,
-        None => return Err(DiagnosticCodeParseError::InvalidFormat),
-    };
-    let c_s = match c.checked_shl(4) {
-        Some(v) => v,
-        None => return Err(DiagnosticCodeParseError::InvalidFormat),
-    };
-    let ab = match a_s.checked_add(b_s) {
-        Some(v) => v,
-        None => return Err(DiagnosticCodeParseError::InvalidFormat),
-    };
-    let abc = match ab.checked_add(c_s) {
-        Some(v) => v,
-        None => return Err(DiagnosticCodeParseError::InvalidFormat),
-    };
-    match abc.checked_add(d) {
-        Some(v) => Ok(v),
-        None => Err(DiagnosticCodeParseError::InvalidFormat),
-    }
-}
-
-/// Mirror of FromStr for DiagnosticCode.
-fn from_str_diagnostic_code(input: &str) -> Result<DiagnosticCode, DiagnosticCodeParseError> {
-    let mut chars = input.chars();
-    if chars.next() != Some('E') {
-        return Err(DiagnosticCodeParseError::InvalidFormat);
-    }
-    let first = parse_hex_digit(chars.next())?;
-    let second = parse_hex_digit(chars.next())?;
-    let third = parse_hex_digit(chars.next())?;
-    let fourth = parse_hex_digit(chars.next())?;
-    if chars.next().is_some() {
-        return Err(DiagnosticCodeParseError::InvalidFormat);
-    }
-    let code = pack_digits(first, second, third, fourth)?;
-    if is_supported_code(code) {
-        Ok(DiagnosticCode::new(code))
-    } else {
-        Err(DiagnosticCodeParseError::UnsupportedCode)
-    }
-}
+use crate::diagnostic::{
+    CODE_REGISTRY, DiagnosticCode, DiagnosticCodeParseError, is_registered_numeric,
+};
 
 /// Format a u16 as an "EXXXX" string.
 fn format_e_code(code: u16) -> String {
@@ -103,14 +29,15 @@ fn format_e_code(code: u16) -> String {
 mod harnesses {
     use super::*;
 
-    /// PO-008 H1: All registry numeric codes parse successfully via from_str.
+    /// PO-008 H1: Every production registry numeric code parses via
+    /// production `from_str` and round-trips to the same value.
     #[kani::proof]
-    #[kani::unwind(100)]
+    #[kani::unwind(300)]
     fn kani_from_str_backward_compat() {
         for i in 0..CODE_REGISTRY.len() {
             let code = CODE_REGISTRY[i].numeric;
             let e_str = format_e_code(code);
-            let result = from_str_diagnostic_code(&e_str);
+            let result = DiagnosticCode::from_str(&e_str);
             match result {
                 Ok(parsed) => {
                     assert_eq!(
@@ -120,54 +47,66 @@ mod harnesses {
                     );
                 }
                 Err(_) => {
-                    // If is_supported_code accepts it, from_str must succeed
-                    if is_supported_code(code) {
-                        kani::assert(false, "is_supported_code accepted but from_str rejected");
+                    // If the code is registered, production from_str must succeed.
+                    if is_registered_numeric(code) {
+                        kani::assert(false, "registered code rejected by production from_str");
                     }
                 }
             }
         }
     }
 
-    /// PO-008 H2: Newly added codes (E05xx, E06xx) parse successfully.
+    /// PO-008 H2 (binding): over all `u16` inputs, production `from_str`
+    /// succeeds exactly for registered codes, and the parsed value equals
+    /// the input. This binds the whole production parse path — prefix
+    /// check, hex digit packing, and registry gate — to the registry.
     #[kani::proof]
-    #[kani::unwind(60)]
-    fn kani_from_str_new_codes_parse() {
-        // Gate verifier range
-        for code in 0x0501u16..=0x0513 {
-            let e_str = format_e_code(code);
-            let result = from_str_diagnostic_code(&e_str);
-            assert!(result.is_ok(), "New Gate code {:04X} must parse", code);
-        }
-        // Contract discovery range
-        for code in 0x0601u16..=0x0603 {
-            let e_str = format_e_code(code);
-            let result = from_str_diagnostic_code(&e_str);
-            assert!(
-                result.is_ok(),
-                "New ContractDiscovery code {:04X} must parse",
-                code
+    #[kani::unwind(300)]
+    fn kani_from_str_agrees_with_registry() {
+        let raw: u16 = kani::any();
+        let e_str = format_e_code(raw);
+        let result = DiagnosticCode::from_str(&e_str);
+        if is_registered_numeric(raw) {
+            match result {
+                Ok(parsed) => {
+                    assert_eq!(parsed.code(), raw, "Registered code must parse to itself");
+                }
+                Err(_) => {
+                    kani::assert(false, "registered code rejected by production from_str");
+                }
+            }
+        } else {
+            assert_eq!(
+                result,
+                Err(DiagnosticCodeParseError::UnsupportedCode),
+                "Unregistered code {:04X} must be UnsupportedCode",
+                raw
             );
         }
-        // Extended boundary code
-        let e_str = format_e_code(0x401C);
-        let result = from_str_diagnostic_code(&e_str);
-        assert!(result.is_ok(), "Extended boundary code 0x401C must parse");
     }
 
-    /// PO-008 H3: Out-of-range codes return Err(UnsupportedCode).
+    /// PO-008 H3: Verified gap anchors stay rejected with the production
+    /// `UnsupportedCode` error. Each value below is confirmed absent from
+    /// the production registry (see bead contract); H2 above proves the
+    /// general case over all `u16`.
     #[kani::proof]
-    #[kani::unwind(30)]
+    #[kani::unwind(300)]
     fn kani_from_str_rejects_unsupported() {
         let unsupported = [
-            0x0100u16, 0x010C, 0x0200, 0x0205, 0x0300, 0x030A, 0x0400, 0x040D, 0x0500, 0x0600,
-            0x0604, 0x0900, 0x0F00, 0x1000, 0x1003, 0x1010, 0x1014, 0x1100, 0x1105, 0x1200, 0x1203,
-            0x1300, 0x130E, 0x1310, 0x1315, 0x1400, 0x1408, 0x2000, 0x2010, 0x3000, 0x300F, 0x4000,
-            0x401D,
+            0x0000u16, 0x0100, 0x010C, 0x0200, 0x0300, 0x030A, 0x0400, 0x040D, 0x0500, 0x0600,
+            0x0604, 0x0900, 0x0F00, 0x1000, 0x1007, 0x1010, 0x1016, 0x1100, 0x1106, 0x1200, 0x1204,
+            0x1300, 0x130E, 0x1310, 0x1400, 0x2000, 0x3000, 0x300E, 0x4000, 0xFFFF,
         ];
         for code in unsupported.iter() {
+            // Each anchor must genuinely be unregistered, or the anchor
+            // itself has drifted and must be refreshed.
+            assert!(
+                !is_registered_numeric(*code),
+                "Anchor {:04X} became registered; refresh the anchor list",
+                code
+            );
             let e_str = format_e_code(*code);
-            let result = from_str_diagnostic_code(&e_str);
+            let result = DiagnosticCode::from_str(&e_str);
             assert_eq!(
                 result,
                 Err(DiagnosticCodeParseError::UnsupportedCode),
