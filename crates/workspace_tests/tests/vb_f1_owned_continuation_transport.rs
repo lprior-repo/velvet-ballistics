@@ -1,16 +1,16 @@
 #![forbid(unsafe_code)]
 //! Bounded component evidence; public durable cold recovery remains Root-held.
-#[path = "vb_f1_owned_continuation_transport/arenas.rs"]
+#[path = "vb_f1_owned_continuation_common/arenas.rs"]
 mod arenas;
-#[path = "vb_f1_owned_continuation_transport/evidence.rs"]
+#[path = "vb_f1_owned_continuation_common/evidence.rs"]
 mod evidence;
 #[path = "vb_f1_owned_continuation_transport/golden.rs"]
 mod golden;
 #[path = "vb_f1_owned_continuation_transport/hostile.rs"]
 mod hostile;
-#[path = "vb_f1_owned_continuation_transport/receipt.rs"]
+#[path = "vb_f1_owned_continuation_common/receipt.rs"]
 mod receipt;
-#[path = "vb_f1_owned_continuation_transport/support.rs"]
+#[path = "vb_f1_owned_continuation_common/support.rs"]
 mod support;
 
 #[path = "vb_f1_owned_continuation_transport/layout.rs"]
