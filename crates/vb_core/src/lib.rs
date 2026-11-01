@@ -101,7 +101,8 @@ pub use action::{
 };
 pub use budget::{
     AggregateBudgetError, AggregateReservation, AggregateResourceBudget, AggregateResourceCapacity,
-    AggregateResourceUsage, BoundednessPolicy, BudgetError, WholeWorkflowBudget,
+    AggregateResourceUsage, BoundednessPolicy, BudgetError, BudgetExhaustionOutcome,
+    RemainingBudget, RemainingBudgetError, WholeWorkflowBudget, check_tenant_quota,
     validate_aggregate_budget,
 };
 pub use capability::{Capability, CapabilitySet};

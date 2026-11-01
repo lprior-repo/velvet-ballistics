@@ -141,6 +141,15 @@ impl RunAdmission {
         self.budget
     }
 
+    /// Returns fresh remaining-budget counters for the admitted budget,
+    /// when budget admission was used. Runtime enforcement points consume
+    /// from these counters; exhaustion is a typed
+    /// `RemainingBudgetError`, never a silent truncation.
+    #[must_use]
+    pub fn remaining_budget(&self) -> Option<RemainingBudget> {
+        self.budget.as_ref().map(RemainingBudget::from_budget)
+    }
+
     /// Returns the idempotency-attested action IDs available to dispatch.
     #[must_use]
     pub fn idempotency_attested(&self) -> &[ActionId] {

@@ -1031,6 +1031,15 @@ fn budget_error_detail(error: &crate::budget::BudgetError) -> &'static str {
         crate::budget::BudgetError::IpcPayloadBytesExceeded { .. } => "max_ipc_payload_bytes",
         crate::budget::BudgetError::BlobBytesExceeded { .. } => "max_blob_bytes",
         crate::budget::BudgetError::InputBytesExceeded { .. } => "max_input_bytes",
+        crate::budget::BudgetError::OpenGatesExceeded { .. } => "max_open_gates",
+        crate::budget::BudgetError::SignalSubscriptionsExceeded { .. } => {
+            "max_signal_subscriptions"
+        }
+        crate::budget::BudgetError::IncidentEmissionsExceeded { .. } => "max_incident_emissions",
+        crate::budget::BudgetError::TransitionsExceeded { .. } => "max_transitions",
+        crate::budget::BudgetError::JournalBytesTotalExceeded { .. } => "max_journal_bytes_total",
+        crate::budget::BudgetError::ValueStoreEntriesExceeded { .. } => "max_value_store_entries",
+        crate::budget::BudgetError::CostUnitsExceeded { .. } => "max_cost_units",
     }
 }
 

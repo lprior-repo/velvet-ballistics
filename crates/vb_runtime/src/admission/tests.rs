@@ -1125,6 +1125,13 @@ fn admit_run_with_budget_returns_resource_capacity_exceeded() {
         max_input_bytes: 1,
         max_step_budget_per_tick: 1,
         max_transitions_per_tick: 1,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = AggregateResourceCapacity {
         max_steps_executable: 0,
@@ -1144,6 +1151,15 @@ fn admit_run_with_budget_returns_resource_capacity_exceeded() {
         max_input_bytes: u64::MAX,
         max_step_budget_per_tick: u64::MAX,
         max_transitions_per_tick: u64::MAX,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
 
     let result = admit_run_with_budget(
@@ -1192,6 +1208,13 @@ fn admit_run_with_budget_policy_rejects_over_policy_before_capacity() {
         max_input_bytes: 1,
         max_step_budget_per_tick: 1,
         max_transitions_per_tick: 1,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = AggregateResourceCapacity {
         max_steps_executable: u64::MAX,
@@ -1211,6 +1234,15 @@ fn admit_run_with_budget_policy_rejects_over_policy_before_capacity() {
         max_input_bytes: u64::MAX,
         max_step_budget_per_tick: u64::MAX,
         max_transitions_per_tick: u64::MAX,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     let budget_policy = BoundednessPolicy {
         absolute_max_result_bytes: 2_000,
@@ -1275,6 +1307,13 @@ fn admit_run_with_budget_rejects_strict_without_artifact() {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = AggregateResourceCapacity {
         max_steps_executable: u64::MAX,
@@ -1294,6 +1333,15 @@ fn admit_run_with_budget_rejects_strict_without_artifact() {
         max_input_bytes: u64::MAX,
         max_step_budget_per_tick: u64::MAX,
         max_transitions_per_tick: u64::MAX,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
 
     let result = admit_run_with_budget(
@@ -1446,4 +1494,163 @@ fn admission_error_match_covers_all_variants() {
         }
     }
     let _ = _exhaustive_match;
+}
+// §77.18 tenant quota, global quota, and remaining-budget admission tests
+// -------------------------------------------------------------------------
+
+fn ample_capacity_77_18() -> AggregateResourceCapacity {
+    AggregateResourceCapacity {
+        max_steps_executable: u64::MAX,
+        max_action_tickets: u64::MAX,
+        max_parallel_in_flight: u32::MAX,
+        max_gather_pages: u64::MAX,
+        max_gather_items: u64::MAX,
+        max_result_bytes: u64::MAX,
+        max_total_slots_written: u64::MAX,
+        max_timer_entries: u64::MAX,
+        max_trace_events: u64::MAX,
+        max_active_runs: u64::MAX,
+        max_queue_depth: u64::MAX,
+        max_journal_batch_bytes: u64::MAX,
+        max_ipc_payload_bytes: u64::MAX,
+        max_blob_bytes: u64::MAX,
+        max_input_bytes: u64::MAX,
+        max_step_budget_per_tick: u64::MAX,
+        max_transitions_per_tick: u64::MAX,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
+    }
+}
+
+fn requested_budget_77_18(cost_units: u64, open_gates: u32) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 10,
+        max_action_tickets: 1,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 1,
+        max_gather_pages: 1,
+        max_gather_items: 1,
+        max_for_each_iterations: 1,
+        max_together_branches: 1,
+        max_repeat_attempts: 1,
+        max_run_time_seconds: 10,
+        max_result_bytes: 1,
+        max_total_slots_written: 1,
+        max_timer_entries: 1,
+        max_trace_events: 1,
+        max_queue_depth: 1,
+        max_journal_batch_bytes: 1,
+        max_ipc_payload_bytes: 1,
+        max_blob_bytes: 1,
+        max_input_bytes: 1,
+        max_step_budget_per_tick: 1,
+        max_transitions_per_tick: 1,
+        max_open_gates: open_gates,
+        max_signal_subscriptions: 1,
+        max_incident_emissions: 1,
+        max_transitions: 1,
+        max_journal_bytes_total: 1,
+        max_value_store_entries: 1,
+        max_cost_units: cost_units,
+    }
+}
+
+#[test]
+fn admit_run_with_budget_and_tenant_quota_rejects_over_quota() {
+    struct AlwaysPresentStore;
+    impl ArtifactStore for AlwaysPresentStore {
+        fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+            true
+        }
+    }
+    let result = admit_run_with_budget_and_tenant_quota(
+        &AlwaysPresentStore,
+        RuntimePolicy::Strict,
+        test_digest(),
+        RunId::new(1),
+        CapabilitySet::empty(),
+        AdmissionBudgetRequest {
+            requested: requested_budget_77_18(10, 1),
+            available: ample_capacity_77_18(),
+            policy: BoundednessPolicy::DEFAULT,
+        },
+        5,
+        10,
+    );
+    assert_eq!(
+        result,
+        Err(AdmissionError::ResourceCapacityExceeded {
+            resource: "tenant_quota_cost_units",
+            requested: 15,
+            available: 10,
+        })
+    );
+}
+
+#[test]
+fn admit_run_with_budget_and_tenant_quota_admits_at_quota_and_exposes_remaining() {
+    struct AlwaysPresentStore;
+    impl ArtifactStore for AlwaysPresentStore {
+        fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+            true
+        }
+    }
+    let admission = admit_run_with_budget_and_tenant_quota(
+        &AlwaysPresentStore,
+        RuntimePolicy::Strict,
+        test_digest(),
+        RunId::new(2),
+        CapabilitySet::empty(),
+        AdmissionBudgetRequest {
+            requested: requested_budget_77_18(10, 2),
+            available: ample_capacity_77_18(),
+            policy: BoundednessPolicy::DEFAULT,
+        },
+        0,
+        10,
+    )
+    .expect("at-quota admission must succeed");
+    let mut remaining = admission
+        .remaining_budget()
+        .expect("budget admission carries remaining counters");
+    assert_eq!(remaining.remaining_open_gates(), 2);
+    assert!(remaining.try_open_gate().is_ok());
+    assert_eq!(remaining.remaining_open_gates(), 1);
+    assert_eq!(remaining.remaining_cost_units(), 10);
+}
+
+#[test]
+fn admit_run_with_budget_rejects_over_global_quota() {
+    struct AlwaysPresentStore;
+    impl ArtifactStore for AlwaysPresentStore {
+        fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+            true
+        }
+    }
+    let mut capacity = ample_capacity_77_18();
+    capacity.global_quota_cost_units = 0;
+    let result = admit_run_with_budget(
+        &AlwaysPresentStore,
+        RuntimePolicy::Strict,
+        test_digest(),
+        RunId::new(3),
+        CapabilitySet::empty(),
+        requested_budget_77_18(10, 1),
+        capacity,
+    );
+    assert_eq!(
+        result,
+        Err(AdmissionError::ResourceCapacityExceeded {
+            resource: "global_quota_cost_units",
+            requested: 10,
+            available: 0,
+        })
+    );
 }

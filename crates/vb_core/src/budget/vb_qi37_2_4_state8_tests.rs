@@ -179,6 +179,13 @@ mod kani_overflow_harnesses {
             max_input_bytes: 0,
             max_step_budget_per_tick: 0,
             max_transitions_per_tick: 0,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         let budget = AggregateResourceBudget {
@@ -205,6 +212,13 @@ mod kani_overflow_harnesses {
             max_input_bytes: 0,
             max_step_budget_per_tick: 0,
             max_transitions_per_tick: 0,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         let result = usage.try_add_budget(&budget);
@@ -246,6 +260,13 @@ mod kani_overflow_harnesses {
             max_input_bytes: 0,
             max_step_budget_per_tick: 0,
             max_transitions_per_tick: 0,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         let budget = AggregateResourceBudget {
@@ -272,6 +293,13 @@ mod kani_overflow_harnesses {
             max_input_bytes: 0,
             max_step_budget_per_tick: 0,
             max_transitions_per_tick: 0,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         let result = usage.try_subtract_budget(&budget);
@@ -1285,6 +1313,13 @@ proptest! {
             max_input_bytes: base_steps.saturating_add(10),
             max_step_budget_per_tick: base_step_tick,
             max_transitions_per_tick: base_step_tick.saturating_add(1),
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         let budget = AggregateResourceBudget {
@@ -1309,6 +1344,13 @@ proptest! {
             max_input_bytes: 0,
             max_step_budget_per_tick: delta_step_tick,
             max_transitions_per_tick: 0,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         let added = usage.try_add_budget(&budget);
@@ -1356,6 +1398,13 @@ proptest! {
             max_input_bytes: 0,
             max_step_budget_per_tick: 1,
             max_transitions_per_tick: 1,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         let result = usage.try_add_budget(&budget);
@@ -1425,6 +1474,13 @@ proptest! {
             max_input_bytes: 0,
             max_step_budget_per_tick: 1,
             max_transitions_per_tick: 1,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         let result = usage.try_subtract_budget(&budget);
@@ -1492,6 +1548,13 @@ proptest! {
             max_input_bytes: 0,
             max_step_budget_per_tick: 10,
             max_transitions_per_tick: 10,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         let mut budget_b = budget_a;
@@ -1589,6 +1652,13 @@ fn test_budget(
         max_blob_bytes: 0,
         max_input_bytes: 0,
         max_queue_depth: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     }
 }
 

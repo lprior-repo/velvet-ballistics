@@ -56,6 +56,32 @@ pub struct WholeWorkflowBudget {
     pub max_blob_bytes: u64,
     /// Maximum input bytes required by reachable input operations.
     pub max_input_bytes: u32,
+    /// Maximum simultaneously open gates, counted as reachable Ask nodes.
+    /// AskResume nodes are resumes, not new gates, and are not counted.
+    pub max_open_gates: u32,
+    /// Maximum signal subscriptions, counted as reachable WaitEvent nodes.
+    /// WaitUntil nodes are timer waits, not signal subscriptions.
+    pub max_signal_subscriptions: u32,
+    /// Maximum incident emissions over the run. No IR node emits incidents,
+    /// so this is bounded by total step executions: at most one incident
+    /// per executed step.
+    pub max_incident_emissions: u64,
+    /// Maximum total engine transitions over the run. This is the run total
+    /// that `max_transitions_per_tick` (per-tick, from the contract) is not:
+    /// total steps times the retry factor, since a retry body re-executes.
+    pub max_transitions: u64,
+    /// Maximum cumulative journal bytes over the run: the per-batch cap
+    /// times total steps. Batches hold at least one event each and journal
+    /// events are bounded by trace events, which equal total steps.
+    pub max_journal_bytes_total: u64,
+    /// Maximum value-store entries over the run: at most one new top-level
+    /// entry per executed step, plus input slots and the constant pool.
+    /// Deeply nested action/input payloads are bounded at runtime by the
+    /// byte caps and the remaining-budget counter, not by this bound.
+    pub max_value_store_entries: u64,
+    /// Maximum cost units over the run. Cost model: one unit per action
+    /// ticket issued, so this equals the action ticket bound.
+    pub max_cost_units: u64,
 }
 
 impl WholeWorkflowBudget {
@@ -104,6 +130,8 @@ impl WholeWorkflowBudget {
             let mut max_together_branches: u16 = 0;
             let mut max_repeat_attempts: u16 = 0;
             let mut max_timer_entries: u32 = 0;
+            let mut max_open_gates: u32 = 0;
+            let mut max_signal_subscriptions: u32 = 0;
             compute_reachable_metrics(
                 nodes,
                 entry,
@@ -119,6 +147,8 @@ impl WholeWorkflowBudget {
                 &mut max_together_branches,
                 &mut max_repeat_attempts,
                 &mut max_timer_entries,
+                &mut max_open_gates,
+                &mut max_signal_subscriptions,
             )?;
 
             let max_nesting_depth = compute_structural_depth(nodes, &visited)?;
@@ -126,6 +156,8 @@ impl WholeWorkflowBudget {
 
             // Phase 0 executes at most one step per runtime tick, so steps bound time.
             let max_run_time_seconds = max_total_steps;
+
+            let derived = derive_budget_dimensions(max_total_steps, max_action_tickets, contract)?;
 
             Ok(Self {
                 max_total_steps,
@@ -158,9 +190,53 @@ impl WholeWorkflowBudget {
                 max_ipc_payload_bytes: contract.max_ipc_payload_bytes,
                 max_blob_bytes: contract.max_blob_bytes,
                 max_input_bytes: contract.max_input_bytes,
+                max_open_gates,
+                max_signal_subscriptions,
+                max_incident_emissions: derived.max_incident_emissions,
+                max_transitions: derived.max_transitions,
+                max_journal_bytes_total: derived.max_journal_bytes_total,
+                max_value_store_entries: derived.max_value_store_entries,
+                max_cost_units: derived.max_cost_units,
             })
         }
     }
+}
+
+/// Dimensions derived from the step and ticket bounds plus the contract.
+/// Shared by the general and small-linear compute paths so both agree.
+struct DerivedBudgetDimensions {
+    max_transitions: u64,
+    max_journal_bytes_total: u64,
+    max_value_store_entries: u64,
+    max_incident_emissions: u64,
+    max_cost_units: u64,
+}
+
+fn derive_budget_dimensions(
+    max_total_steps: u64,
+    max_action_tickets: u32,
+    contract: &ResourceContract,
+) -> Result<DerivedBudgetDimensions, BudgetTraversalError> {
+    let retry_factor = u64::from(contract.max_retry_attempts)
+        .checked_add(1)
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+    let max_transitions = max_total_steps
+        .checked_mul(retry_factor)
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+    let max_journal_bytes_total = u64::from(contract.max_journal_batch_bytes)
+        .checked_mul(max_total_steps)
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+    let max_value_store_entries = max_total_steps
+        .checked_add(u64::from(contract.max_slots))
+        .and_then(|value| value.checked_add(u64::from(contract.max_constants)))
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+    Ok(DerivedBudgetDimensions {
+        max_transitions,
+        max_journal_bytes_total,
+        max_value_store_entries,
+        max_incident_emissions: max_total_steps,
+        max_cost_units: u64::from(max_action_tickets),
+    })
 }
 
 /// Budget-local traversal failures. Deliberately excludes expression/core error
@@ -216,6 +292,7 @@ fn compute_small_linear_budget(
         return Ok(None);
     }
     let metrics = small_linear_metrics(nodes, entry)?;
+    let derived = derive_budget_dimensions(metrics.steps, metrics.actions, contract)?;
     Ok(Some(WholeWorkflowBudget {
         max_total_steps: metrics.steps,
         max_total_slots: u64::from(contract.max_slots),
@@ -247,6 +324,13 @@ fn compute_small_linear_budget(
         max_ipc_payload_bytes: contract.max_ipc_payload_bytes,
         max_blob_bytes: contract.max_blob_bytes,
         max_input_bytes: contract.max_input_bytes,
+        max_open_gates: metrics.gates,
+        max_signal_subscriptions: metrics.signals,
+        max_incident_emissions: derived.max_incident_emissions,
+        max_transitions: derived.max_transitions,
+        max_journal_bytes_total: derived.max_journal_bytes_total,
+        max_value_store_entries: derived.max_value_store_entries,
+        max_cost_units: derived.max_cost_units,
     }))
 }
 
@@ -255,6 +339,8 @@ struct SmallLinearMetrics {
     steps: u64,
     actions: u32,
     timers: u32,
+    gates: u32,
+    signals: u32,
 }
 
 fn small_linear_domain(nodes: &[crate::workflow::CompiledNode]) -> bool {
@@ -314,18 +400,36 @@ fn small_linear_node_metrics(node: &crate::workflow::CompiledNode) -> SmallLinea
             steps: 1,
             actions: 1,
             timers: 0,
+            gates: 0,
+            signals: 0,
         },
-        CompiledNodeKind::WaitUntil { .. }
-        | CompiledNodeKind::WaitEvent { .. }
-        | CompiledNodeKind::Ask { .. } => SmallLinearMetrics {
+        CompiledNodeKind::WaitEvent { .. } => SmallLinearMetrics {
             steps: 1,
             actions: 0,
             timers: 1,
+            gates: 0,
+            signals: 1,
+        },
+        CompiledNodeKind::Ask { .. } => SmallLinearMetrics {
+            steps: 1,
+            actions: 0,
+            timers: 1,
+            gates: 1,
+            signals: 0,
+        },
+        CompiledNodeKind::WaitUntil { .. } => SmallLinearMetrics {
+            steps: 1,
+            actions: 0,
+            timers: 1,
+            gates: 0,
+            signals: 0,
         },
         _ => SmallLinearMetrics {
             steps: 1,
             actions: 0,
             timers: 0,
+            gates: 0,
+            signals: 0,
         },
     }
 }
@@ -336,6 +440,8 @@ impl SmallLinearMetrics {
             steps: self.steps.saturating_add(other.steps),
             actions: self.actions.saturating_add(other.actions),
             timers: self.timers.saturating_add(other.timers),
+            gates: self.gates.saturating_add(other.gates),
+            signals: self.signals.saturating_add(other.signals),
         }
     }
 }
@@ -375,6 +481,20 @@ pub struct BoundednessPolicy {
     pub absolute_max_blob_bytes: u64,
     /// Absolute maximum input bytes.
     pub absolute_max_input_bytes: u32,
+    /// Absolute maximum open gates.
+    pub absolute_max_open_gates: u32,
+    /// Absolute maximum signal subscriptions.
+    pub absolute_max_signal_subscriptions: u32,
+    /// Absolute maximum incident emissions.
+    pub absolute_max_incident_emissions: u64,
+    /// Absolute maximum total transitions over the run.
+    pub absolute_max_transitions: u64,
+    /// Absolute maximum cumulative journal bytes over the run.
+    pub absolute_max_journal_bytes_total: u64,
+    /// Absolute maximum value-store entries over the run.
+    pub absolute_max_value_store_entries: u64,
+    /// Absolute maximum cost units over the run.
+    pub absolute_max_cost_units: u64,
 }
 
 impl BoundednessPolicy {
@@ -396,6 +516,13 @@ impl BoundednessPolicy {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: 1_000_000,
+        absolute_max_signal_subscriptions: 1_000_000,
+        absolute_max_incident_emissions: 1_000_000,
+        absolute_max_transitions: 10_000_000,
+        absolute_max_journal_bytes_total: 1_048_576_000_000,
+        absolute_max_value_store_entries: 2_000_000,
+        absolute_max_cost_units: 100_000,
     };
 
     /// Validates the computed budget against this policy. Returns the first
@@ -456,8 +583,58 @@ impl BoundednessPolicy {
             });
         }
         validate_extended_budget(self, budget)?;
+        validate_budget_dimensions(self, budget)?;
         Ok(())
     }
+}
+
+fn validate_budget_dimensions(
+    policy: &BoundednessPolicy,
+    budget: &WholeWorkflowBudget,
+) -> Result<(), BudgetError> {
+    if budget.max_open_gates > policy.absolute_max_open_gates {
+        return Err(BudgetError::OpenGatesExceeded {
+            actual: budget.max_open_gates,
+            limit: policy.absolute_max_open_gates,
+        });
+    }
+    if budget.max_signal_subscriptions > policy.absolute_max_signal_subscriptions {
+        return Err(BudgetError::SignalSubscriptionsExceeded {
+            actual: budget.max_signal_subscriptions,
+            limit: policy.absolute_max_signal_subscriptions,
+        });
+    }
+    if budget.max_incident_emissions > policy.absolute_max_incident_emissions {
+        return Err(BudgetError::IncidentEmissionsExceeded {
+            actual: budget.max_incident_emissions,
+            limit: policy.absolute_max_incident_emissions,
+        });
+    }
+    if budget.max_transitions > policy.absolute_max_transitions {
+        return Err(BudgetError::TransitionsExceeded {
+            actual: budget.max_transitions,
+            limit: policy.absolute_max_transitions,
+        });
+    }
+    if budget.max_journal_bytes_total > policy.absolute_max_journal_bytes_total {
+        return Err(BudgetError::JournalBytesTotalExceeded {
+            actual: budget.max_journal_bytes_total,
+            limit: policy.absolute_max_journal_bytes_total,
+        });
+    }
+    if budget.max_value_store_entries > policy.absolute_max_value_store_entries {
+        return Err(BudgetError::ValueStoreEntriesExceeded {
+            actual: budget.max_value_store_entries,
+            limit: policy.absolute_max_value_store_entries,
+        });
+    }
+    if budget.max_cost_units > policy.absolute_max_cost_units {
+        return Err(BudgetError::CostUnitsExceeded {
+            actual: budget.max_cost_units,
+            limit: policy.absolute_max_cost_units,
+        });
+    }
+    Ok(())
 }
 
 fn validate_extended_budget(
@@ -568,6 +745,20 @@ pub enum BudgetError {
     BlobBytesExceeded { actual: u64, limit: u64 },
     #[error("input bytes exceeded: {actual} > {limit}")]
     InputBytesExceeded { actual: u32, limit: u32 },
+    #[error("open gates exceeded: {actual} > {limit}")]
+    OpenGatesExceeded { actual: u32, limit: u32 },
+    #[error("signal subscriptions exceeded: {actual} > {limit}")]
+    SignalSubscriptionsExceeded { actual: u32, limit: u32 },
+    #[error("incident emissions exceeded: {actual} > {limit}")]
+    IncidentEmissionsExceeded { actual: u64, limit: u64 },
+    #[error("transitions exceeded: {actual} > {limit}")]
+    TransitionsExceeded { actual: u64, limit: u64 },
+    #[error("cumulative journal bytes exceeded: {actual} > {limit}")]
+    JournalBytesTotalExceeded { actual: u64, limit: u64 },
+    #[error("value-store entries exceeded: {actual} > {limit}")]
+    ValueStoreEntriesExceeded { actual: u64, limit: u64 },
+    #[error("cost units exceeded: {actual} > {limit}")]
+    CostUnitsExceeded { actual: u64, limit: u64 },
 }
 
 /// Aggregate whole-run budget required for runtime admission.
@@ -596,6 +787,20 @@ pub struct AggregateResourceBudget {
     pub max_step_budget_per_tick: u64,
     /// Maximum transitions per runtime tick.
     pub max_transitions_per_tick: u64,
+    /// Maximum simultaneously open gates.
+    pub max_open_gates: u32,
+    /// Maximum signal subscriptions.
+    pub max_signal_subscriptions: u32,
+    /// Maximum incident emissions over the run.
+    pub max_incident_emissions: u64,
+    /// Maximum total transitions over the run.
+    pub max_transitions: u64,
+    /// Maximum cumulative journal bytes over the run.
+    pub max_journal_bytes_total: u64,
+    /// Maximum value-store entries over the run.
+    pub max_value_store_entries: u64,
+    /// Maximum cost units over the run.
+    pub max_cost_units: u64,
 }
 
 /// Shard-local aggregate admission capacity.
@@ -620,6 +825,27 @@ pub struct AggregateResourceCapacity {
     pub max_step_budget_per_tick: u64,
     /// Maximum transitions per tick capacity.
     pub max_transitions_per_tick: u64,
+    /// Maximum open gates capacity.
+    pub max_open_gates: u64,
+    /// Maximum signal subscriptions capacity.
+    pub max_signal_subscriptions: u64,
+    /// Maximum incident emissions capacity.
+    pub max_incident_emissions: u64,
+    /// Maximum total transitions capacity.
+    pub max_transitions: u64,
+    /// Maximum cumulative journal bytes capacity.
+    pub max_journal_bytes_total: u64,
+    /// Maximum value-store entries capacity.
+    pub max_value_store_entries: u64,
+    /// Maximum cost units capacity.
+    pub max_cost_units: u64,
+    /// Maximum aggregate cost units attributable to a single tenant.
+    /// Enforced by [`check_tenant_quota`] at tenant-scoped admission; the
+    /// shard usage snapshot carries no tenant identity.
+    pub tenant_quota_cost_units: u64,
+    /// Maximum aggregate cost units shard-wide. Distinct from
+    /// `max_cost_units` capacity: both cap summed cost, and both must hold.
+    pub global_quota_cost_units: u64,
 }
 
 /// Active shard aggregate usage snapshot.
@@ -644,6 +870,20 @@ pub struct AggregateResourceUsage {
     pub max_step_budget_per_tick: u64,
     /// Current transitions per tick usage.
     pub max_transitions_per_tick: u64,
+    /// Current open gates usage.
+    pub max_open_gates: u64,
+    /// Current signal subscriptions usage.
+    pub max_signal_subscriptions: u64,
+    /// Current incident emissions usage.
+    pub max_incident_emissions: u64,
+    /// Current total transitions usage.
+    pub max_transitions: u64,
+    /// Current cumulative journal bytes usage.
+    pub max_journal_bytes_total: u64,
+    /// Current value-store entries usage.
+    pub max_value_store_entries: u64,
+    /// Current cost units usage.
+    pub max_cost_units: u64,
 }
 
 /// Exact budget reservation associated with a run.
@@ -772,6 +1012,13 @@ impl AggregateResourceBudget {
             max_input_bytes: budget.max_input_bytes,
             max_step_budget_per_tick: contract.max_step_budget_per_tick,
             max_transitions_per_tick: contract.max_transitions_per_tick,
+            max_open_gates: budget.max_open_gates,
+            max_signal_subscriptions: budget.max_signal_subscriptions,
+            max_incident_emissions: budget.max_incident_emissions,
+            max_transitions: budget.max_transitions,
+            max_journal_bytes_total: budget.max_journal_bytes_total,
+            max_value_store_entries: budget.max_value_store_entries,
+            max_cost_units: budget.max_cost_units,
         })
     }
 }
@@ -869,6 +1116,37 @@ impl AggregateResourceUsage {
                 budget.max_transitions_per_tick,
                 "max_transitions_per_tick",
             )?,
+            max_open_gates: add_dim(
+                self.max_open_gates,
+                u64::from(budget.max_open_gates),
+                "max_open_gates",
+            )?,
+            max_signal_subscriptions: add_dim(
+                self.max_signal_subscriptions,
+                u64::from(budget.max_signal_subscriptions),
+                "max_signal_subscriptions",
+            )?,
+            max_incident_emissions: add_dim(
+                self.max_incident_emissions,
+                budget.max_incident_emissions,
+                "max_incident_emissions",
+            )?,
+            max_transitions: add_dim(
+                self.max_transitions,
+                budget.max_transitions,
+                "max_transitions",
+            )?,
+            max_journal_bytes_total: add_dim(
+                self.max_journal_bytes_total,
+                budget.max_journal_bytes_total,
+                "max_journal_bytes_total",
+            )?,
+            max_value_store_entries: add_dim(
+                self.max_value_store_entries,
+                budget.max_value_store_entries,
+                "max_value_store_entries",
+            )?,
+            max_cost_units: add_dim(self.max_cost_units, budget.max_cost_units, "max_cost_units")?,
         })
     }
 
@@ -954,6 +1232,37 @@ impl AggregateResourceUsage {
                 budget.max_transitions_per_tick,
                 "max_transitions_per_tick",
             )?,
+            max_open_gates: sub_dim(
+                self.max_open_gates,
+                u64::from(budget.max_open_gates),
+                "max_open_gates",
+            )?,
+            max_signal_subscriptions: sub_dim(
+                self.max_signal_subscriptions,
+                u64::from(budget.max_signal_subscriptions),
+                "max_signal_subscriptions",
+            )?,
+            max_incident_emissions: sub_dim(
+                self.max_incident_emissions,
+                budget.max_incident_emissions,
+                "max_incident_emissions",
+            )?,
+            max_transitions: sub_dim(
+                self.max_transitions,
+                budget.max_transitions,
+                "max_transitions",
+            )?,
+            max_journal_bytes_total: sub_dim(
+                self.max_journal_bytes_total,
+                budget.max_journal_bytes_total,
+                "max_journal_bytes_total",
+            )?,
+            max_value_store_entries: sub_dim(
+                self.max_value_store_entries,
+                budget.max_value_store_entries,
+                "max_value_store_entries",
+            )?,
+            max_cost_units: sub_dim(self.max_cost_units, budget.max_cost_units, "max_cost_units")?,
         })
     }
 
@@ -1045,6 +1354,46 @@ impl AggregateResourceUsage {
             "max_transitions_per_tick",
             self.max_transitions_per_tick,
             capacity.max_transitions_per_tick,
+        )?;
+        check_capacity(
+            "max_open_gates",
+            self.max_open_gates,
+            capacity.max_open_gates,
+        )?;
+        check_capacity(
+            "max_signal_subscriptions",
+            self.max_signal_subscriptions,
+            capacity.max_signal_subscriptions,
+        )?;
+        check_capacity(
+            "max_incident_emissions",
+            self.max_incident_emissions,
+            capacity.max_incident_emissions,
+        )?;
+        check_capacity(
+            "max_transitions",
+            self.max_transitions,
+            capacity.max_transitions,
+        )?;
+        check_capacity(
+            "max_journal_bytes_total",
+            self.max_journal_bytes_total,
+            capacity.max_journal_bytes_total,
+        )?;
+        check_capacity(
+            "max_value_store_entries",
+            self.max_value_store_entries,
+            capacity.max_value_store_entries,
+        )?;
+        check_capacity(
+            "max_cost_units",
+            self.max_cost_units,
+            capacity.max_cost_units,
+        )?;
+        check_capacity(
+            "global_quota_cost_units",
+            self.max_cost_units,
+            capacity.global_quota_cost_units,
         )
     }
 
@@ -1106,8 +1455,61 @@ impl AggregateResourceUsage {
             "max_input_bytes",
             self.max_input_bytes,
             u64::from(policy.absolute_max_input_bytes),
+        )?;
+        check_policy(
+            "max_open_gates",
+            self.max_open_gates,
+            u64::from(policy.absolute_max_open_gates),
+        )?;
+        check_policy(
+            "max_signal_subscriptions",
+            self.max_signal_subscriptions,
+            u64::from(policy.absolute_max_signal_subscriptions),
+        )?;
+        check_policy(
+            "max_incident_emissions",
+            self.max_incident_emissions,
+            policy.absolute_max_incident_emissions,
+        )?;
+        check_policy(
+            "max_transitions",
+            self.max_transitions,
+            policy.absolute_max_transitions,
+        )?;
+        check_policy(
+            "max_journal_bytes_total",
+            self.max_journal_bytes_total,
+            policy.absolute_max_journal_bytes_total,
+        )?;
+        check_policy(
+            "max_value_store_entries",
+            self.max_value_store_entries,
+            policy.absolute_max_value_store_entries,
+        )?;
+        check_policy(
+            "max_cost_units",
+            self.max_cost_units,
+            policy.absolute_max_cost_units,
         )
     }
+}
+
+/// Checks a tenant-scoped cost quota: the tenant's already-admitted cost
+/// plus the requested run's cost must not exceed the tenant quota.
+/// The shard usage snapshot carries no tenant identity, so tenant-scoped
+/// admission passes the tenant's summed cost explicitly.
+pub fn check_tenant_quota(
+    tenant_cost_usage: u64,
+    requested_cost: u64,
+    tenant_quota: u64,
+) -> Result<(), AggregateBudgetError> {
+    let total =
+        tenant_cost_usage
+            .checked_add(requested_cost)
+            .ok_or(AggregateBudgetError::Overflow {
+                resource: "tenant_quota_cost_units",
+            })?;
+    check_capacity("tenant_quota_cost_units", total, tenant_quota)
 }
 
 pub fn validate_aggregate_budget(
@@ -1208,7 +1610,301 @@ pub fn validate_aggregate_budget(
         "max_input_bytes",
         u64::from(budget.max_input_bytes),
         u64::from(policy.absolute_max_input_bytes),
+    )?;
+    check_policy(
+        "max_open_gates",
+        u64::from(budget.max_open_gates),
+        u64::from(policy.absolute_max_open_gates),
+    )?;
+    check_policy(
+        "max_signal_subscriptions",
+        u64::from(budget.max_signal_subscriptions),
+        u64::from(policy.absolute_max_signal_subscriptions),
+    )?;
+    check_policy(
+        "max_incident_emissions",
+        budget.max_incident_emissions,
+        policy.absolute_max_incident_emissions,
+    )?;
+    check_policy(
+        "max_transitions",
+        budget.max_transitions,
+        policy.absolute_max_transitions,
+    )?;
+    check_policy(
+        "max_journal_bytes_total",
+        budget.max_journal_bytes_total,
+        policy.absolute_max_journal_bytes_total,
+    )?;
+    check_policy(
+        "max_value_store_entries",
+        budget.max_value_store_entries,
+        policy.absolute_max_value_store_entries,
+    )?;
+    check_policy(
+        "max_cost_units",
+        budget.max_cost_units,
+        policy.absolute_max_cost_units,
     )
+}
+
+/// Outcome of a remaining-budget exhaustion, for the caller's policy to act
+/// on. Releasable dimensions (open gates, signal subscriptions) suspend:
+/// a slot frees when a gate closes or a subscription drops, so the run can
+/// resume. Monotonic dimensions (transitions, journal bytes, value-store
+/// entries, incidents, cost) never replenish within a run, so exhaustion
+/// fails. Callers may override this default mapping; the error stays typed
+/// either way.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BudgetExhaustionOutcome {
+    Suspend,
+    Fail,
+}
+
+/// Per-dimension remaining-budget exhaustion for one admitted run.
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RemainingBudgetError {
+    #[error("open gates exhausted")]
+    OpenGatesExhausted,
+    #[error("signal subscriptions exhausted")]
+    SignalSubscriptionsExhausted,
+    #[error("incident emissions exhausted")]
+    IncidentEmissionsExhausted,
+    #[error("transitions exhausted")]
+    TransitionsExhausted,
+    #[error("journal bytes exhausted: requested {requested}, remaining {remaining}")]
+    JournalBytesExhausted { requested: u64, remaining: u64 },
+    #[error("value-store entries exhausted: requested {requested}, remaining {remaining}")]
+    ValueStoreEntriesExhausted { requested: u64, remaining: u64 },
+    #[error("cost units exhausted: requested {requested}, remaining {remaining}")]
+    CostUnitsExhausted { requested: u64, remaining: u64 },
+    #[error("release above admitted limit: {resource}")]
+    ReleaseAboveLimit { resource: &'static str },
+}
+
+impl RemainingBudgetError {
+    /// Default suspension/failure mapping for this exhaustion.
+    #[must_use]
+    pub const fn outcome(&self) -> BudgetExhaustionOutcome {
+        match self {
+            Self::OpenGatesExhausted | Self::SignalSubscriptionsExhausted => {
+                BudgetExhaustionOutcome::Suspend
+            }
+            _ => BudgetExhaustionOutcome::Fail,
+        }
+    }
+}
+
+/// Remaining-budget counters for one admitted run, covering the §77.18
+/// dimensions added by this batch. Created from the admitted aggregate
+/// budget; every consume is checked, never saturating or truncating.
+/// Gates and signal subscriptions are releasable (close/unsubscribe);
+/// transitions, journal bytes, value-store entries, incidents, and cost
+/// are monotonic within a run. Whole-run release is shard-level
+/// accounting via `AggregateResourceUsage::try_subtract_budget`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RemainingBudget {
+    limits: AggregateResourceBudget,
+    remaining_open_gates: u32,
+    remaining_signal_subscriptions: u32,
+    remaining_incident_emissions: u64,
+    remaining_transitions: u64,
+    remaining_journal_bytes_total: u64,
+    remaining_value_store_entries: u64,
+    remaining_cost_units: u64,
+}
+
+impl RemainingBudget {
+    /// Creates counters with every dimension fully remaining.
+    #[must_use]
+    pub const fn from_budget(budget: &AggregateResourceBudget) -> Self {
+        Self {
+            limits: *budget,
+            remaining_open_gates: budget.max_open_gates,
+            remaining_signal_subscriptions: budget.max_signal_subscriptions,
+            remaining_incident_emissions: budget.max_incident_emissions,
+            remaining_transitions: budget.max_transitions,
+            remaining_journal_bytes_total: budget.max_journal_bytes_total,
+            remaining_value_store_entries: budget.max_value_store_entries,
+            remaining_cost_units: budget.max_cost_units,
+        }
+    }
+
+    /// The admitted budget these counters enforce.
+    #[must_use]
+    pub const fn limits(&self) -> AggregateResourceBudget {
+        self.limits
+    }
+
+    /// Remaining open-gate slots.
+    #[must_use]
+    pub const fn remaining_open_gates(&self) -> u32 {
+        self.remaining_open_gates
+    }
+
+    /// Remaining signal-subscription slots.
+    #[must_use]
+    pub const fn remaining_signal_subscriptions(&self) -> u32 {
+        self.remaining_signal_subscriptions
+    }
+
+    /// Remaining incident emissions.
+    #[must_use]
+    pub const fn remaining_incident_emissions(&self) -> u64 {
+        self.remaining_incident_emissions
+    }
+
+    /// Remaining total transitions.
+    #[must_use]
+    pub const fn remaining_transitions(&self) -> u64 {
+        self.remaining_transitions
+    }
+
+    /// Remaining cumulative journal bytes.
+    #[must_use]
+    pub const fn remaining_journal_bytes_total(&self) -> u64 {
+        self.remaining_journal_bytes_total
+    }
+
+    /// Remaining value-store entries.
+    #[must_use]
+    pub const fn remaining_value_store_entries(&self) -> u64 {
+        self.remaining_value_store_entries
+    }
+
+    /// Remaining cost units.
+    #[must_use]
+    pub const fn remaining_cost_units(&self) -> u64 {
+        self.remaining_cost_units
+    }
+
+    /// Opens one gate, consuming one open-gate slot.
+    pub fn try_open_gate(&mut self) -> Result<(), RemainingBudgetError> {
+        match self.remaining_open_gates.checked_sub(1) {
+            Some(next) => {
+                self.remaining_open_gates = next;
+                Ok(())
+            }
+            None => Err(RemainingBudgetError::OpenGatesExhausted),
+        }
+    }
+
+    /// Closes one gate, releasing its slot. Releasing past the admitted
+    /// limit is a caller bug, not silent replenishment.
+    pub fn release_gate(&mut self) -> Result<(), RemainingBudgetError> {
+        if self.remaining_open_gates >= self.limits.max_open_gates {
+            return Err(RemainingBudgetError::ReleaseAboveLimit {
+                resource: "max_open_gates",
+            });
+        }
+        match self.remaining_open_gates.checked_add(1) {
+            Some(next) => {
+                self.remaining_open_gates = next;
+                Ok(())
+            }
+            None => Err(RemainingBudgetError::ReleaseAboveLimit {
+                resource: "max_open_gates",
+            }),
+        }
+    }
+
+    /// Subscribes to one signal, consuming one subscription slot.
+    pub fn try_subscribe_signal(&mut self) -> Result<(), RemainingBudgetError> {
+        match self.remaining_signal_subscriptions.checked_sub(1) {
+            Some(next) => {
+                self.remaining_signal_subscriptions = next;
+                Ok(())
+            }
+            None => Err(RemainingBudgetError::SignalSubscriptionsExhausted),
+        }
+    }
+
+    /// Drops one signal subscription, releasing its slot.
+    pub fn release_signal(&mut self) -> Result<(), RemainingBudgetError> {
+        if self.remaining_signal_subscriptions >= self.limits.max_signal_subscriptions {
+            return Err(RemainingBudgetError::ReleaseAboveLimit {
+                resource: "max_signal_subscriptions",
+            });
+        }
+        match self.remaining_signal_subscriptions.checked_add(1) {
+            Some(next) => {
+                self.remaining_signal_subscriptions = next;
+                Ok(())
+            }
+            None => Err(RemainingBudgetError::ReleaseAboveLimit {
+                resource: "max_signal_subscriptions",
+            }),
+        }
+    }
+
+    /// Emits one incident, consuming one emission.
+    pub fn try_emit_incident(&mut self) -> Result<(), RemainingBudgetError> {
+        match self.remaining_incident_emissions.checked_sub(1) {
+            Some(next) => {
+                self.remaining_incident_emissions = next;
+                Ok(())
+            }
+            None => Err(RemainingBudgetError::IncidentEmissionsExhausted),
+        }
+    }
+
+    /// Consumes one total transition.
+    pub fn try_consume_transition(&mut self) -> Result<(), RemainingBudgetError> {
+        match self.remaining_transitions.checked_sub(1) {
+            Some(next) => {
+                self.remaining_transitions = next;
+                Ok(())
+            }
+            None => Err(RemainingBudgetError::TransitionsExhausted),
+        }
+    }
+
+    /// Appends `bytes` journal bytes. No partial append: an overrun
+    /// consumes nothing and returns the typed exhaustion.
+    pub fn try_append_journal_bytes(&mut self, bytes: u64) -> Result<(), RemainingBudgetError> {
+        match self.remaining_journal_bytes_total.checked_sub(bytes) {
+            Some(next) => {
+                self.remaining_journal_bytes_total = next;
+                Ok(())
+            }
+            None => Err(RemainingBudgetError::JournalBytesExhausted {
+                requested: bytes,
+                remaining: self.remaining_journal_bytes_total,
+            }),
+        }
+    }
+
+    /// Creates `count` value-store entries.
+    pub fn try_create_value_store_entries(
+        &mut self,
+        count: u64,
+    ) -> Result<(), RemainingBudgetError> {
+        match self.remaining_value_store_entries.checked_sub(count) {
+            Some(next) => {
+                self.remaining_value_store_entries = next;
+                Ok(())
+            }
+            None => Err(RemainingBudgetError::ValueStoreEntriesExhausted {
+                requested: count,
+                remaining: self.remaining_value_store_entries,
+            }),
+        }
+    }
+
+    /// Spends `units` cost units.
+    pub fn try_spend_cost_units(&mut self, units: u64) -> Result<(), RemainingBudgetError> {
+        match self.remaining_cost_units.checked_sub(units) {
+            Some(next) => {
+                self.remaining_cost_units = next;
+                Ok(())
+            }
+            None => Err(RemainingBudgetError::CostUnitsExhausted {
+                requested: units,
+                remaining: self.remaining_cost_units,
+            }),
+        }
+    }
 }
 
 /// Validates step ceiling dimensions (max_step_budget_per_tick and
@@ -1980,6 +2676,8 @@ fn compute_reachable_metrics(
     max_together_branches: &mut u16,
     max_repeat_attempts: &mut u16,
     max_timer_entries: &mut u32,
+    max_open_gates: &mut u32,
+    max_signal_subscriptions: &mut u32,
 ) -> Result<(), BudgetTraversalError> {
     // vb-8eocj.7.2.1 Explicit DFS event stack preserves the original recursive
     // in-path set semantics so jump cycle detection and backtracking remain
@@ -2025,6 +2723,8 @@ fn compute_reachable_metrics(
                     max_together_branches,
                     max_repeat_attempts,
                     max_timer_entries,
+                    max_open_gates,
+                    max_signal_subscriptions,
                 )?;
 
                 let mut targets: Vec<StepIdx> = Vec::new();
@@ -2171,6 +2871,8 @@ fn update_workflow_metrics(
     max_together_branches: &mut u16,
     max_repeat_attempts: &mut u16,
     max_timer_entries: &mut u32,
+    max_open_gates: &mut u32,
+    max_signal_subscriptions: &mut u32,
 ) -> Result<(), BudgetTraversalError> {
     match kind {
         CompiledNodeKind::Do { .. } => {
@@ -2209,6 +2911,19 @@ fn update_workflow_metrics(
         | CompiledNodeKind::RetryCheck { .. }
         | CompiledNodeKind::RepeatCheck { .. } => {
             *max_timer_entries = max_timer_entries
+                .checked_add(1)
+                .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+        }
+        _ => {}
+    }
+    match kind {
+        CompiledNodeKind::Ask { .. } => {
+            *max_open_gates = max_open_gates
+                .checked_add(1)
+                .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+        }
+        CompiledNodeKind::WaitEvent { .. } => {
+            *max_signal_subscriptions = max_signal_subscriptions
                 .checked_add(1)
                 .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
         }

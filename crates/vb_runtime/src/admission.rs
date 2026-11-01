@@ -32,7 +32,8 @@ use std::sync::Arc;
 use thiserror::Error;
 use vb_core::budget::{
     AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,
-    AggregateResourceUsage, BoundednessPolicy, validate_aggregate_budget,
+    AggregateResourceUsage, BoundednessPolicy, RemainingBudget, check_tenant_quota,
+    validate_aggregate_budget,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, WorkflowDigest};
@@ -95,6 +96,32 @@ pub fn admit_run_with_budget_policy(
         policy,
         budget.requested,
     ))
+}
+
+/// Performs artifact admission plus tenant-scoped cost quota admission,
+/// then the usual policy and aggregate capacity admission.
+///
+/// The tenant quota caps the tenant's already-admitted cost plus this run's
+/// cost; the shard usage snapshot carries no tenant identity, so the
+/// tenant's summed cost is passed explicitly.
+#[allow(clippy::too_many_arguments)]
+pub fn admit_run_with_budget_and_tenant_quota(
+    store: &dyn ArtifactStore,
+    policy: RuntimePolicy,
+    digest: WorkflowDigest,
+    run_id: RunId,
+    caps: CapabilitySet,
+    budget: AdmissionBudgetRequest,
+    tenant_cost_usage: u64,
+    tenant_quota: u64,
+) -> Result<RunAdmission, AdmissionError> {
+    check_tenant_quota(
+        tenant_cost_usage,
+        budget.requested.max_cost_units,
+        tenant_quota,
+    )
+    .map_err(map_budget_error)?;
+    admit_run_with_budget_policy(store, policy, digest, run_id, caps, budget)
 }
 
 fn validate_requested_budget(budget: &AdmissionBudgetRequest) -> Result<(), AdmissionError> {

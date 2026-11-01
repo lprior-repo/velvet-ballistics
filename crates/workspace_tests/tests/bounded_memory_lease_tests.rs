@@ -65,6 +65,13 @@ fn small_budget() -> AggregateResourceBudget {
         max_input_bytes: 1024,
         max_step_budget_per_tick: 4,
         max_transitions_per_tick: 4,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     }
 }
 
@@ -89,6 +96,15 @@ fn small_capacity() -> AggregateResourceCapacity {
         max_input_bytes: 1024,
         max_step_budget_per_tick: 4,
         max_transitions_per_tick: 4,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     }
 }
 
@@ -112,6 +128,15 @@ fn tight_capacity() -> AggregateResourceCapacity {
         max_input_bytes: 512,
         max_step_budget_per_tick: 2,
         max_transitions_per_tick: 2,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     }
 }
 
@@ -135,6 +160,15 @@ fn headroom_capacity() -> AggregateResourceCapacity {
         max_input_bytes: 10240,
         max_step_budget_per_tick: 40,
         max_transitions_per_tick: 40,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     }
 }
 
@@ -162,6 +196,13 @@ fn budget_with_bytes(result_bytes: u32, blob_bytes: u64) -> AggregateResourceBud
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     }
 }
 
@@ -185,6 +226,13 @@ fn empty_usage() -> AggregateResourceUsage {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     }
 }
 
