@@ -193,4 +193,8 @@ pub fn load_fixture_source(text: &str) -> YamlResult<WorkflowSource> {
 pub fn reject_forbidden_yaml_features(events: &[YamlEvent]) -> YamlResult<()> {
     vb_yaml::reject_forbidden_yaml_features(events)
 }
+
+// Test-only module: it exercises test-gated `vb_yaml` internals and holds
+// no production items, so normal builds exclude it entirely.
+#[cfg(test)]
 mod tests_target_identity;
