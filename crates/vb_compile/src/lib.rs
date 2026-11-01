@@ -29,8 +29,7 @@ mod control_flow;
 pub mod expression;
 mod expression_bytecode;
 mod limits;
-#[cfg(test)]
-mod migration_compat;
+pub mod migration_compat;
 mod mod_compile_core;
 mod mod_compile_errors;
 pub mod mod_compile_lowering;

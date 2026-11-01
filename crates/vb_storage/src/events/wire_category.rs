@@ -9,6 +9,7 @@ pub(super) enum JournalRecordCategory {
     Action,
     WaitAsk,
     Policy,
+    Compat,
     Continuation,
 }
 
@@ -25,6 +26,8 @@ pub(super) fn journal_record_category(kind: RecordKind) -> Option<JournalRecordC
         Some(JournalRecordCategory::WaitAsk)
     } else if is_policy_record(kind) {
         Some(JournalRecordCategory::Policy)
+    } else if is_compat_record(kind) {
+        Some(JournalRecordCategory::Compat)
     } else {
         None
     }
@@ -85,4 +88,8 @@ fn is_wait_or_ask_record(kind: RecordKind) -> bool {
 
 fn is_policy_record(kind: RecordKind) -> bool {
     matches!(kind, RecordKind::PolicyDecision)
+}
+
+fn is_compat_record(kind: RecordKind) -> bool {
+    matches!(kind, RecordKind::CompatibilityDecision)
 }
