@@ -227,6 +227,8 @@ pub enum RecordKind {
     RunOwnedInputs = 42,
     /// Bounded cold continuation carrier; appended to preserve every old ordinal.
     RunContinuation = 43,
+    /// Manual gate outcome record; appended to preserve every old ordinal.
+    GateDecision = 44,
 }
 
 impl RecordKind {
@@ -271,6 +273,7 @@ impl RecordKind {
             Self::RunAdmissionBoundPinned => 41,
             Self::RunOwnedInputs => 42,
             Self::RunContinuation => 43,
+            Self::GateDecision => 44,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -317,6 +320,7 @@ impl RecordKind {
             41 => Some(Self::RunAdmissionBoundPinned),
             42 => Some(Self::RunOwnedInputs),
             43 => Some(Self::RunContinuation),
+            44 => Some(Self::GateDecision),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -357,6 +361,7 @@ impl RecordKind {
             | Self::ActionCompletedEnvelope
             | Self::RetryCheckpoint
             | Self::PolicyDecision
+            | Self::GateDecision
             | Self::RunContinuation => true,
             Self::WorkflowSource
             | Self::CompiledIr

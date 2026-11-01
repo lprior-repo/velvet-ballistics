@@ -80,11 +80,13 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         }
         // Lifecycle events (RunResumed, RunRetried, RunAnswered) do not carry sequence
         // numbers and are not part of the durable event log ordering for recovery summary.
-        // Policy decisions are informational facts and do not affect the summary state.
+        // Policy decisions and gate decisions are informational facts and do not
+        // affect the summary state.
         JournalEvent::RunResumed { .. }
         | JournalEvent::RunRetried { .. }
         | JournalEvent::RunAnswered { .. }
-        | JournalEvent::PolicyDecisionEvent { .. } => {}
+        | JournalEvent::PolicyDecisionEvent { .. }
+        | JournalEvent::GateDecisionEvent { .. } => {}
     }
 }
 

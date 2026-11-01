@@ -1225,6 +1225,7 @@ mod tests {
                 JournalEvent::RunRetried { .. } => Ok(false),
                 JournalEvent::RunAnswered { .. } => Ok(false),
                 JournalEvent::PolicyDecisionEvent { .. } => Ok(false),
+                JournalEvent::GateDecisionEvent { .. } => Ok(false),
             }
         }
     };
