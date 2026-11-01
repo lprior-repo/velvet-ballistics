@@ -11,10 +11,7 @@ use vb_core::workflow::{
 };
 
 fn encode<T: serde::Serialize + ?Sized>(value: &T) -> Vec<u8> {
-    postcard::to_allocvec(value)
-        .into_iter()
-        .flatten()
-        .collect()
+    postcard::to_allocvec(value).into_iter().flatten().collect()
 }
 
 #[test]
@@ -24,10 +21,7 @@ fn output_discard_encodes_as_zero() {
 
 #[test]
 fn output_slot_encodes_as_one_followed_by_slot() {
-    assert_eq!(
-        encode(&NodeOutput::Slot(SlotIdx::new(1))),
-        vec![0x01, 0x01]
-    );
+    assert_eq!(encode(&NodeOutput::Slot(SlotIdx::new(1))), vec![0x01, 0x01]);
 }
 
 #[test]
