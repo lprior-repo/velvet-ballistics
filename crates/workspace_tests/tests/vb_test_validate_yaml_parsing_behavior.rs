@@ -30,6 +30,17 @@ fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
     StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
 }
 
+fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
+    vb_core::workflow::node(
+        StepIdx::new(index),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(result_slot),
+        },
+        None,
+        None,
+    )
+}
+
 fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     WorkflowParts {
         semantic_source_identity: None,
@@ -46,17 +57,6 @@ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     }
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(index),
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-        None,
-        None,
-    )
 }
 
 fn valid_workflow_doc() -> WorkflowDoc {

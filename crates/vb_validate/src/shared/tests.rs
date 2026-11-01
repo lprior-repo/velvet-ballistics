@@ -3,38 +3,11 @@ use crate::ValidationError;
 #[cfg(test)]
 use crate::shared::{ValidationPipeline, validate};
 #[cfg(test)]
+use crate::test_helpers::{finish_node, make_parts};
+#[cfg(test)]
 use vb_core::ids::{SlotIdx, StepIdx};
 #[cfg(test)]
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
-
-fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> crate::shared::WorkflowParts {
-    crate::shared::WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from("test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([]),
-        slot_count,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    }
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(index),
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-        None,
-        None,
-    )
-}
+use vb_core::workflow::CompiledNodeKind;
 
 #[test]
 fn pipeline_default_is_all_gates() {

@@ -8,50 +8,13 @@ use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, WorkflowParts,
 };
 use vb_validate::ValidationError;
 use vb_validate::shared::{ValidationPipeline, validate};
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-fn make_parts(
-    nodes: Vec<CompiledNode>,
-    slot_count: u16,
-    symbols_count: u32,
-    expressions: Vec<ExprProgram>,
-    accessors: Vec<AccessorProgram>,
-    constants: Vec<ConstValue>,
-) -> WorkflowParts {
-    WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from("test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: expressions.into_boxed_slice(),
-        accessors: accessors.into_boxed_slice(),
-        constants: constants.into_boxed_slice(),
-        slot_count,
-        symbols_count,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    }
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    vb_core::workflow::node(
-        StepIdx::new(index),
-        CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-        None,
-        None,
-    )
-}
+#[path = "routing_support/support.rs"]
+mod routing_support;
+use routing_support::{finish_node, make_parts_full as make_parts};
 
 fn nop_node(index: u16) -> CompiledNode {
     vb_core::workflow::node(
