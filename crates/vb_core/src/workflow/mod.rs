@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Compiled workflow IR.
 
+use crate::budget::BudgetDimension;
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{
     AccessorIdx, ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
@@ -529,8 +530,8 @@ pub enum WorkflowError {
     /// Whole-workflow budget exceeded the boundedness policy.
     #[error("budget policy exceeded: {detail}")]
     BudgetPolicyExceeded {
-        /// Human-readable detail describing which dimension failed.
-        detail: &'static str,
+        /// Budget dimension that failed the policy bound.
+        detail: BudgetDimension,
     },
     /// Budget step count overflowed during computation.
     #[error("budget step count overflow: {actual} cannot be represented")]
@@ -1008,38 +1009,8 @@ fn validate_budget_result(
     match result {
         Ok(()) => Ok(()),
         Err(error) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: budget_error_detail(&error),
+            detail: error.dimension(),
         }),
-    }
-}
-
-fn budget_error_detail(error: &crate::budget::BudgetError) -> &'static str {
-    match error {
-        crate::budget::BudgetError::TotalStepsExceeded { .. } => "max_total_steps",
-        crate::budget::BudgetError::TotalSlotsExceeded { .. } => "max_total_slots",
-        crate::budget::BudgetError::FanoutExceeded { .. } => "max_fanout",
-        crate::budget::BudgetError::NestingDepthExceeded { .. } => "max_nesting_depth",
-        crate::budget::BudgetError::ParallelExceeded { .. } => "max_parallel_in_flight",
-        crate::budget::BudgetError::ActionTicketsExceeded { .. } => "max_action_tickets",
-        crate::budget::BudgetError::RunTimeExceeded { .. } => "max_run_time_seconds",
-        crate::budget::BudgetError::ResultBytesExceeded { .. } => "max_result_bytes",
-        crate::budget::BudgetError::StepsExecutableExceeded { .. } => "max_steps_executable",
-        crate::budget::BudgetError::TimerEntriesExceeded { .. } => "max_timer_entries",
-        crate::budget::BudgetError::TraceEventsExceeded { .. } => "max_trace_events",
-        crate::budget::BudgetError::JournalBatchBytesExceeded { .. } => "max_journal_batch_bytes",
-        crate::budget::BudgetError::QueueDepthExceeded { .. } => "max_queue_depth",
-        crate::budget::BudgetError::IpcPayloadBytesExceeded { .. } => "max_ipc_payload_bytes",
-        crate::budget::BudgetError::BlobBytesExceeded { .. } => "max_blob_bytes",
-        crate::budget::BudgetError::InputBytesExceeded { .. } => "max_input_bytes",
-        crate::budget::BudgetError::OpenGatesExceeded { .. } => "max_open_gates",
-        crate::budget::BudgetError::SignalSubscriptionsExceeded { .. } => {
-            "max_signal_subscriptions"
-        }
-        crate::budget::BudgetError::IncidentEmissionsExceeded { .. } => "max_incident_emissions",
-        crate::budget::BudgetError::TransitionsExceeded { .. } => "max_transitions",
-        crate::budget::BudgetError::JournalBytesTotalExceeded { .. } => "max_journal_bytes_total",
-        crate::budget::BudgetError::ValueStoreEntriesExceeded { .. } => "max_value_store_entries",
-        crate::budget::BudgetError::CostUnitsExceeded { .. } => "max_cost_units",
     }
 }
 
