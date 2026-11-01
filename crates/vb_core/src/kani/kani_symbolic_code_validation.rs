@@ -12,7 +12,7 @@
 //! `CODE_REGISTRY`, so a passing proof constrains production
 //! behavior (GOD RULE 2).
 //!
-//! Bound: Registry size is production-defined (~242 entries,
+//! Bound: Registry size is production-defined (241 entries,
 //! unwind=300). The `kani::Arbitrary` impls consumed by the
 //! binding harnesses live in `kani_diagnostic_arbitrary`.
 

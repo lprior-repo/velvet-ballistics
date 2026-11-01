@@ -86,7 +86,7 @@ mod harnesses {
 
     /// PO-009 H2: For well-formed but unregistered strings, deserialize returns Err.
     #[kani::proof]
-    #[kani::unwind(50)]
+    #[kani::unwind(300)]
     fn kani_serde_rejects_unknown() {
         let unknown = [
             "\"__UNKNOWN__\"",

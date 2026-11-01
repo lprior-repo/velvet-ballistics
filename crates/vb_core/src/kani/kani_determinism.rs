@@ -1,11 +1,10 @@
 #![forbid(unsafe_code)]
 //! PO-013: Kani harness for symbolic_code determinism and panic-freedom.
 //!
-//! Proves: For any error value implementing HasSymbolicCode, calling
-//! symbolic_code() twice returns the same SymbolicCode; never panics;
-//! no I/O side effects.
+//! Proves: For any production DiagnosticCode, calling symbolic_code() twice
+//! returns the same SymbolicCode; never panics; no I/O side effects.
 //!
-//! Bound: Each HasSymbolicCode implementor — arbitrary instance (kani::any);
+//! Bound: DiagnosticCode — arbitrary instance (kani::any);
 //! For DiagnosticCode::symbolic_code(): production registry scan (unwind=300).
 
 use crate::diagnostic::{CODE_REGISTRY, DiagnosticCode};

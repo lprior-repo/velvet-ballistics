@@ -1490,12 +1490,12 @@ steps:
 /// This test indirectly verifies the canonical name fix by checking that
 /// the compiled workflow digest is deterministic and that together steps
 /// are recognized. The canonical_primitive_name function is `pub(super)`
-/// and cannot be directly called from this test module; the Kani harness in
-/// `kani_canonical_name.rs` provides direct verification.
+/// and cannot be directly called from this test module; direct verification
+/// was previously provided by the Kani harness in `kani_canonical_name.rs`,
+/// retired with the dead kani fleet (vb-tkcc7).
 ///
 /// The canonical name fix (part_05.rs line 105) now returns "together".
 /// The direct assertion is in `canonical_primitive_name_together_returns_together_direct`.
-/// Kani harness `canonical_name_together_harness` provides formal verification.
 #[test]
 fn test_canonical_primitive_name_together_returns_together() {
     // Construct a StepPrimitive::Together via YAML parsing
