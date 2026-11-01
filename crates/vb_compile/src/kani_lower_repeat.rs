@@ -20,9 +20,18 @@ fn assert_start_node(
         node.output == Some(attempt_slot),
         "RepeatStart output is attempt slot",
     );
-    kani::assert(node.next.is_none(), "RepeatStart next is None");
-    kani::assert(node.error_slot.is_none(), "RepeatStart error_slot is None");
-    kani::assert(node.on_error.is_none(), "RepeatStart on_error is None");
+    kani::assert(
+        matches!(node.routing.next, NodeContinuation::End),
+        "RepeatStart next is None",
+    );
+    kani::assert(
+        node.routing.error.error_slot().is_none(),
+        "RepeatStart error_slot is None",
+    );
+    kani::assert(
+        matches!(node.routing.error, crate::workflow::ErrorRouting::None),
+        "RepeatStart on_error is None",
+    );
     match node.kind {
         CompiledNodeKind::RepeatStart {
             max_attempts: actual_max,
@@ -42,13 +51,19 @@ fn assert_start_node(
 
 fn assert_attempt_node(node: &CompiledNode, body: StepIdx, attempt_slot: SlotIdx, done: StepIdx) {
     kani::assert(node.id == body, "RepeatAttempt id must equal body step");
-    kani::assert(node.output.is_none(), "RepeatAttempt output is None");
-    kani::assert(node.next.is_none(), "RepeatAttempt next is None");
+    kani::assert(node.output.slot().is_none(), "RepeatAttempt output is None");
     kani::assert(
-        node.error_slot.is_none(),
+        matches!(node.routing.next, NodeContinuation::End),
+        "RepeatAttempt next is None",
+    );
+    kani::assert(
+        node.routing.error.error_slot().is_none(),
         "RepeatAttempt error_slot is None",
     );
-    kani::assert(node.on_error.is_none(), "RepeatAttempt on_error is None");
+    kani::assert(
+        matches!(node.routing.error, crate::workflow::ErrorRouting::None),
+        "RepeatAttempt on_error is None",
+    );
     match node.kind {
         CompiledNodeKind::RepeatAttempt {
             attempt_slot: actual_slot,
@@ -77,9 +92,18 @@ fn assert_finish_node(
         node.output == Some(expected_output),
         "RepeatFinish output is exact expected slot",
     );
-    kani::assert(node.next.is_none(), "RepeatFinish next is None");
-    kani::assert(node.error_slot.is_none(), "RepeatFinish error_slot is None");
-    kani::assert(node.on_error.is_none(), "RepeatFinish on_error is None");
+    kani::assert(
+        matches!(node.routing.next, NodeContinuation::End),
+        "RepeatFinish next is None",
+    );
+    kani::assert(
+        node.routing.error.error_slot().is_none(),
+        "RepeatFinish error_slot is None",
+    );
+    kani::assert(
+        matches!(node.routing.error, crate::workflow::ErrorRouting::None),
+        "RepeatFinish on_error is None",
+    );
     match node.kind {
         CompiledNodeKind::RepeatFinish { result } => {
             kani::assert(

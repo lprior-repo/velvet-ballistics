@@ -8,10 +8,7 @@ use vb_core::action::{
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
-    WorkflowParts,
-};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,24 +28,26 @@ macro_rules! fail_assert {
 fn set_const_finish_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        };
     let node1 = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("set_finish"),
@@ -82,25 +81,27 @@ fn compile_set_const_finish(name: &str) -> Option<CompiledWorkflow> {
 fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(7),
             input: SlotIdx::new(0),
         },
-    };
+        };
     let node1 = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("do_action"),
@@ -133,24 +134,26 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
 
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::EvalExpr {
             expr: ExprIdx::new(0),
         },
-    };
+        };
     let node1 = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("taint_expr"),

@@ -7,7 +7,10 @@
 
 use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract, WorkflowParts,
+};
 
 #[path = "../src/cli_postcard.rs"]
 mod cli_postcard;
@@ -29,10 +32,11 @@ steps:
 fn input_slot_parts() -> WorkflowParts {
     let finish = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
@@ -1145,10 +1149,11 @@ fn expr_variable_reference() {
 fn core_workflow_rejects_out_of_bounds_step() {
     let bad_node = CompiledNode {
         id: StepIdx::new(99),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = minimal_parts(Box::from([bad_node]));
@@ -1160,10 +1165,11 @@ fn core_workflow_rejects_out_of_bounds_step() {
 fn core_workflow_rejects_invalid_jump_target() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Jump {
             target: StepIdx::new(50),
         },

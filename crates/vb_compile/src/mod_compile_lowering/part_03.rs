@@ -69,10 +69,11 @@ pub(super) fn lower_canonical_parallel(
     })?;
     builder.push_node(CompiledNode {
         id,
-        output: Some(accumulator),
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(accumulator),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherStart {
             branches: branch_targets.into_boxed_slice(),
             join,
@@ -81,10 +82,11 @@ pub(super) fn lower_canonical_parallel(
     emit_together_branches(id, branches, join, slots, index, builder)?;
     builder.push_node(CompiledNode {
         id: join,
-        output: Some(result),
-        next,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(result),
+        routing: NodeRouting {
+            next: next.into(),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,
@@ -150,14 +152,16 @@ pub(super) fn emit_together_branches(
             .map_err(|e| CompileErrors(vec![e]))?;
         builder.push_node(CompiledNode {
             id: branch_id,
-            output: if branch_number == 0 {
+            output: (if branch_number == 0 {
                 None
             } else {
                 Some(slots.result)
+            })
+            .into(),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
             },
-            next: None,
-            error_slot: None,
-            on_error: None,
             kind: CompiledNodeKind::TogetherBranch {
                 branch: branch_number,
                 entry,

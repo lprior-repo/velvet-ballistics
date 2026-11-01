@@ -6,23 +6,22 @@
 use proptest::prelude::*;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
 use vb_runtime::shard::RunState;
 use vb_runtime::shard::helpers::timer_registration_required;
 
 fn wait_until_wf() -> CompiledWorkflow {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::WaitUntil {
             deadline_slot: SlotIdx::ZERO,
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("wait"),
@@ -43,15 +42,16 @@ fn wait_until_wf() -> CompiledWorkflow {
 fn do_wf() -> CompiledWorkflow {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("do"),

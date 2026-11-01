@@ -69,10 +69,11 @@ fn admission_node(
     if next_step.is_none() {
         vb_core::CompiledNode {
             id: step_idx,
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: vb_core::workflow::NodeOutput::Discard,
+            routing: vb_core::workflow::NodeRouting {
+                next: vb_core::workflow::NodeContinuation::End,
+                error: vb_core::workflow::ErrorRouting::None,
+            },
             kind: vb_core::CompiledNodeKind::Finish {
                 result: vb_core::SlotIdx::new(max_slot),
             },
@@ -80,10 +81,11 @@ fn admission_node(
     } else {
         vb_core::CompiledNode {
             id: step_idx,
-            output: Some(vb_core::SlotIdx::new(max_slot)),
-            next: next_step,
-            error_slot: None,
-            on_error: None,
+            output: vb_core::workflow::NodeOutput::Slot(vb_core::SlotIdx::new(max_slot)),
+            routing: vb_core::workflow::NodeRouting {
+                next: (next_step).into(),
+                error: vb_core::workflow::ErrorRouting::None,
+            },
             kind: vb_core::CompiledNodeKind::Nop,
         }
     }
@@ -172,10 +174,11 @@ pub fn fuzz_digest_coherence(data: &[u8]) {
     };
     let nodes: Box<[vb_core::CompiledNode]> = Box::new([vb_core::CompiledNode {
         id: vb_core::StepIdx::ZERO,
-        output: Some(vb_core::SlotIdx::ZERO),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: vb_core::workflow::NodeOutput::Slot(vb_core::SlotIdx::ZERO),
+        routing: vb_core::workflow::NodeRouting {
+            next: vb_core::workflow::NodeContinuation::End,
+            error: vb_core::workflow::ErrorRouting::None,
+        },
         kind: vb_core::CompiledNodeKind::Finish {
             result: vb_core::SlotIdx::ZERO,
         },

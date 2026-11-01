@@ -52,10 +52,11 @@ fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> W
 
     nodes.push(CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -67,10 +68,11 @@ fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> W
 
     nodes.push(CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -78,10 +80,11 @@ fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> W
 
     nodes.push(CompiledNode {
         id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachNext {
             iterator_slot: SlotIdx::new(1),
             body: StepIdx::new(1),
@@ -91,10 +94,11 @@ fn build_foreach_parts(_node_count: u8, _slot_count: u16, _const_count: u8) -> W
 
     nodes.push(CompiledNode {
         id: StepIdx::new(3),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(2),
         },

@@ -4,7 +4,10 @@ use proptest::prelude::*;
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract, WorkflowParts,
+};
 use vb_validate::ValidationError;
 use vb_validate::diagnostic::diagnostic_from_error;
 use vb_validate::shared::{self, ValidationPipeline};
@@ -17,10 +20,11 @@ fn workflow_with_do_actions(actions: &[u16]) -> WorkflowParts {
     for action in actions {
         nodes.push(CompiledNode {
             id: StepIdx::new(index),
-            output: None,
-            next: Some(StepIdx::new(index.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(index.saturating_add(1))),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(*action),
                 input: SlotIdx::new(0),
@@ -30,10 +34,11 @@ fn workflow_with_do_actions(actions: &[u16]) -> WorkflowParts {
     }
     nodes.push(CompiledNode {
         id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

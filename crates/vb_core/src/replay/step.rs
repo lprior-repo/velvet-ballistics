@@ -216,7 +216,7 @@ fn replay_collect_start(
             reason: "collect item count exceeds limit during replay",
         });
     }
-    let collector = node.output.map_or(args.source, |slot| slot);
+    let collector = node.output.slot().map_or(args.source, |slot| slot);
     if items.is_empty() {
         write_empty_collect_page(run, store, collector, source_taint)?;
         states.remove(collector);
@@ -314,7 +314,7 @@ fn replay_collect_finish(
     let taint = run
         .read_taint(collector_slot)
         .map_err(engine_to_replay_err)?;
-    let output = node.output.ok_or(ReplayError::Internal {
+    let output = node.output.slot().ok_or(ReplayError::Internal {
         reason: "CollectFinish node missing output slot",
     })?;
     run.write_slot_with_taint(output, value, taint)
@@ -396,7 +396,7 @@ fn write_empty_collect_page(
 }
 
 fn replay_nop(node: &CompiledNode, run: &mut RunFrame) -> Result<ReplayAction, ReplayError> {
-    let next = node.next.ok_or(ReplayError::Internal {
+    let next = node.routing.next.step().ok_or(ReplayError::Internal {
         reason: "Nop node missing next step",
     })?;
     run.set_pc(next).map_err(engine_to_replay_err)?;
@@ -443,7 +443,7 @@ fn replay_set_const(
         .map_err(|_| ReplayError::Internal {
             reason: "constant to slot value failed",
         })?;
-    let output = node.output.ok_or(ReplayError::Internal {
+    let output = node.output.slot().ok_or(ReplayError::Internal {
         reason: "SetConst node missing output slot",
     })?;
     run.write_slot(output, slot_value)
@@ -465,7 +465,7 @@ fn replay_copy(
         },
     })?;
     let taint = run.read_taint(source).map_err(engine_to_replay_err)?;
-    let output = node.output.ok_or(ReplayError::Internal {
+    let output = node.output.slot().ok_or(ReplayError::Internal {
         reason: "Copy node missing output slot",
     })?;
     run.write_slot_with_taint(output, value, taint)
@@ -483,7 +483,7 @@ fn replay_eval_expr(
 ) -> Result<ReplayAction, ReplayError> {
     let (value, taint) = eval_expr_for_replay(plan, run, store, expr)
         .map_err(|_| ReplayError::ExpressionEvalFailed { step: node.id })?;
-    let output = node.output.ok_or(ReplayError::Internal {
+    let output = node.output.slot().ok_or(ReplayError::Internal {
         reason: "EvalExpr node missing output slot",
     })?;
     run.write_slot_with_taint(output, value, taint)
@@ -533,7 +533,7 @@ fn replay_build_object(
         .map_err(|_| ReplayError::Internal {
             reason: "insert_object failed",
         })?;
-    let output = node.output.ok_or(ReplayError::Internal {
+    let output = node.output.slot().ok_or(ReplayError::Internal {
         reason: "BuildObject node missing output slot",
     })?;
     run.write_slot_with_taint(output, SlotValue::Object(handle), accumulated_taint)
@@ -580,7 +580,7 @@ fn replay_build_list(
             .map_err(|_| ReplayError::Internal {
                 reason: "insert_list failed",
             })?;
-    let output = node.output.ok_or(ReplayError::Internal {
+    let output = node.output.slot().ok_or(ReplayError::Internal {
         reason: "BuildList node missing output slot",
     })?;
     run.write_slot_with_taint(output, SlotValue::List(handle), accumulated_taint)
@@ -590,7 +590,7 @@ fn replay_build_list(
 }
 
 fn advance_to_next(run: &mut RunFrame, node: &CompiledNode) -> Result<StepIdx, ReplayError> {
-    let next = node.next.ok_or(ReplayError::Internal {
+    let next = node.routing.next.step().ok_or(ReplayError::Internal {
         reason: "node missing next step",
     })?;
     run.set_pc(next).map_err(engine_to_replay_err)?;

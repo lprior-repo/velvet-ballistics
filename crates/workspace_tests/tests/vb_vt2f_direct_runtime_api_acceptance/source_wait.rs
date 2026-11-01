@@ -40,7 +40,7 @@ fn run_named_wait(event: bool) -> Result<(), String> {
 
     let node = compiled.node(StepIdx::new(2)).ok_or("node 2 missing")?;
     assert_eq!(node.id, StepIdx::new(2));
-    assert_eq!(node.next, Some(StepIdx::new(3)));
+    assert_eq!(node.routing.next, NodeContinuation::Step(StepIdx::new(3)));
 
     if event {
         let CompiledNodeKind::WaitEvent {

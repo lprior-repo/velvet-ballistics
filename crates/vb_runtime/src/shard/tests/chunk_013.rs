@@ -2,55 +2,60 @@
 fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: Some(vb_core::ids::StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::ZERO),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        };
     let set_timeout = CompiledNode {
         id: vb_core::ids::StepIdx::new(1),
-        output: Some(SlotIdx::new(1)),
-        next: Some(vb_core::ids::StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(1),
         },
-    };
+        };
     let ask = CompiledNode {
         id: vb_core::ids::StepIdx::new(2),
-        output: None,
-        next: Some(vb_core::ids::StepIdx::new(3)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(3)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
             timeout_slot: Some(SlotIdx::new(1)),
         },
-    };
+        };
     let resume = CompiledNode {
         id: vb_core::ids::StepIdx::new(3),
-        output: None,
-        next: Some(vb_core::ids::StepIdx::new(4)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(4)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::AskResume {
             answer: SlotIdx::new(2),
         },
-    };
+        };
     let finish = CompiledNode {
         id: vb_core::ids::StepIdx::new(4),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(2),
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("ask_then_finish"),

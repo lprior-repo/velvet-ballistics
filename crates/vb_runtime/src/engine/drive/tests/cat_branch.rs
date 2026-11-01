@@ -9,7 +9,8 @@ use vb_core::engine::StepBudget;
 use vb_core::ids::{StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, ResourceContract, WorkflowParts,
 };
 
 #[cfg(test)]
@@ -120,10 +121,11 @@ mod tests {
 
         let node = CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherStart {
                 branches,
                 join: StepIdx::new(0),

@@ -66,7 +66,7 @@ pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> Validati
             }
             if let Some(constant) = parts.constants.get(cidx) {
                 let kind = const_value_discriminant(constant);
-                if let Some(slot) = node.output {
+                if let Some(slot) = node.output.slot() {
                     let su = slot.as_usize();
                     if su < slot_count {
                         let existing = slot_const_kind

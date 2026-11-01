@@ -136,7 +136,9 @@ fn resolve_completion_context(
     let next = plan
         .node(resume.step)
         .ok_or(EngineError::InvalidProgramCounter { step: resume.step })?
+        .routing
         .next
+        .step()
         .ok_or(EngineError::MissingNextStep { step: resume.step })?;
     validate_next_step(plan, run, next)?;
     validate_can_increment(run)?;
@@ -175,6 +177,7 @@ fn resolve_action_resume(
         CompiledNodeKind::Do { action, .. } if *action == ticket.action => {
             let output = node
                 .output
+                .slot()
                 .ok_or(EngineError::MissingOutputSlot { step: ticket.step })?;
             Ok(SuspendedActionContext {
                 step: ticket.step,

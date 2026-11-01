@@ -45,7 +45,10 @@
 use vb_core::{
     budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget},
     ids::{ActionId, SlotIdx, StepIdx},
-    workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError},
+    workflow::{
+        CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+        ResourceContract, SecretResultPolicy, WorkflowError,
+    },
 };
 
 #[path = "vb_qi37_2_4_integration_budget_errors/depth_fixtures_tests.rs"]
@@ -75,7 +78,7 @@ fn test_contract(max_steps: u16, max_slots: u16) -> ResourceContract {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     }
 }
 
@@ -119,10 +122,11 @@ fn build_linear_workflow(node_count: u16) -> (Vec<CompiledNode>, StepIdx) {
 
         nodes.push(CompiledNode {
             id: StepIdx::new(i),
-            output: None,
-            next,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: next.into(),
+                error: ErrorRouting::None,
+            },
             kind: if i == node_count - 1 {
                 CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
@@ -145,10 +149,11 @@ fn build_collect_workflow(limit: u32, body_node_count: u16) -> (Vec<CompiledNode
         // CollectStart
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
                 limit,
@@ -163,14 +168,16 @@ fn build_collect_workflow(limit: u32, body_node_count: u16) -> (Vec<CompiledNode
     for i in 1..=body_node_count {
         nodes.push(CompiledNode {
             id: StepIdx::new(i),
-            output: None,
-            next: if i < body_node_count {
-                Some(StepIdx::new(i + 1))
-            } else {
-                None
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: (if i < body_node_count {
+                    Some(StepIdx::new(i + 1))
+                } else {
+                    None
+                })
+                .into(),
+                error: ErrorRouting::None,
             },
-            on_error: None,
-            error_slot: None,
             kind: CompiledNodeKind::Nop,
         });
     }
@@ -178,10 +185,11 @@ fn build_collect_workflow(limit: u32, body_node_count: u16) -> (Vec<CompiledNode
     // CollectFinish
     nodes.push(CompiledNode {
         id: StepIdx::new(collect_done),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectFinish {
             collector_slot: SlotIdx::new(1),
         },
@@ -191,10 +199,11 @@ fn build_collect_workflow(limit: u32, body_node_count: u16) -> (Vec<CompiledNode
     let finish_idx = collect_done + 1;
     nodes.push(CompiledNode {
         id: StepIdx::new(finish_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -212,10 +221,11 @@ fn build_repeat_workflow(max_attempts: u16, body_node_count: u16) -> (Vec<Compil
         // RepeatStart
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts,
                 body: StepIdx::new(1),
@@ -228,14 +238,16 @@ fn build_repeat_workflow(max_attempts: u16, body_node_count: u16) -> (Vec<Compil
     for i in 1..=body_node_count {
         nodes.push(CompiledNode {
             id: StepIdx::new(i),
-            output: None,
-            next: if i < body_node_count {
-                Some(StepIdx::new(i + 1))
-            } else {
-                None
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: (if i < body_node_count {
+                    Some(StepIdx::new(i + 1))
+                } else {
+                    None
+                })
+                .into(),
+                error: ErrorRouting::None,
             },
-            on_error: None,
-            error_slot: None,
             kind: CompiledNodeKind::Nop,
         });
     }
@@ -243,10 +255,11 @@ fn build_repeat_workflow(max_attempts: u16, body_node_count: u16) -> (Vec<Compil
     // RepeatFinish
     nodes.push(CompiledNode {
         id: StepIdx::new(repeat_done),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RepeatFinish {
             result: SlotIdx::new(0),
         },
@@ -256,10 +269,11 @@ fn build_repeat_workflow(max_attempts: u16, body_node_count: u16) -> (Vec<Compil
     let finish_idx = repeat_done + 1;
     nodes.push(CompiledNode {
         id: StepIdx::new(finish_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -276,10 +290,11 @@ fn build_together_workflow(branch_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     // TogetherStart
     nodes.push(CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherStart {
             branches: (1u16..=branch_count)
                 .map(|i| StepIdx::new(i))
@@ -293,10 +308,11 @@ fn build_together_workflow(branch_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     for i in 1..=branch_count {
         nodes.push(CompiledNode {
             id: StepIdx::new(i),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         });
     }
@@ -304,10 +320,11 @@ fn build_together_workflow(branch_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     // TogetherJoin
     nodes.push(CompiledNode {
         id: StepIdx::new(join_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator: SlotIdx::new(0),
@@ -318,10 +335,11 @@ fn build_together_workflow(branch_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     let finish_idx = join_idx + 1;
     nodes.push(CompiledNode {
         id: StepIdx::new(finish_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -338,10 +356,11 @@ fn build_workflow_with_do_nodes(do_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     // First node: Nop to start
     nodes.push(CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     });
 
@@ -349,14 +368,16 @@ fn build_workflow_with_do_nodes(do_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     for i in 0..do_count_usize {
         nodes.push(CompiledNode {
             id: StepIdx::new((1 + i) as u16),
-            output: None,
-            next: if i < do_count_usize - 1 {
-                Some(StepIdx::new((2 + i) as u16))
-            } else {
-                None
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: (if i < do_count_usize - 1 {
+                    Some(StepIdx::new((2 + i) as u16))
+                } else {
+                    None
+                })
+                .into(),
+                error: ErrorRouting::None,
             },
-            on_error: None,
-            error_slot: None,
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(i as u16),
                 input: SlotIdx::new(0),
@@ -368,10 +389,11 @@ fn build_workflow_with_do_nodes(do_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     let finish_idx = 1 + do_count_usize;
     nodes.push(CompiledNode {
         id: StepIdx::new(finish_idx as u16),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -415,7 +437,7 @@ fn integration_policy_returns_total_slots_exceeded_when_slots_cross_limit() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -608,7 +630,7 @@ fn integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -684,7 +706,7 @@ fn integration_policy_returns_result_bytes_exceeded_when_result_bytes_cross_limi
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -1041,7 +1063,7 @@ fn integration_result_size_returns_result_bytes_exceeded() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -1200,10 +1222,11 @@ fn e2e_workflow_error_budget_policy_exceeded_contains_detail() {
 fn integration_budget_compute_single_finish_node() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1223,10 +1246,11 @@ fn integration_budget_compute_single_do_node() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(1),
                 input: SlotIdx::new(0),
@@ -1234,10 +1258,11 @@ fn integration_budget_compute_single_do_node() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1887,7 +1912,7 @@ fn integration_policy_validates_result_bytes() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -1964,10 +1989,11 @@ fn integration_budget_compute_empty_workflow_error() {
 fn integration_budget_compute_single_nop() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     }];
 

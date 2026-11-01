@@ -126,14 +126,18 @@ pub fn route_error_handler(
     let node = plan
         .node(failed_step)
         .ok_or(EngineError::InvalidProgramCounter { step: failed_step })?;
-    let Some(handler_step) = node.on_error else {
+    let crate::workflow::ErrorRouting::Handler {
+        handler: handler_step,
+        ..
+    } = node.routing.error
+    else {
         return Ok(ErrorHandlerOutcome::NoHandler);
     };
 
     let error_slot = plan
         .error_handler_for_body(failed_step)
-        .and_then(|eh| eh.error_slot)
-        .or(node.error_slot);
+        .and_then(|eh| eh.routing.error.error_slot())
+        .or(node.routing.error.error_slot());
 
     if let Some(error_slot) = error_slot {
         write_error_slot(run, error_slot, error, failed_step)?;
@@ -163,7 +167,7 @@ fn write_error_slot(
 #[cfg(test)]
 #[must_use]
 fn has_error_handler(node: &CompiledNode) -> bool {
-    node.on_error.is_some()
+    node.routing.error.handler().is_some()
 }
 
 #[cfg(test)]
@@ -178,7 +182,10 @@ mod tests {
     use crate::ids::{RunId, SlotIdx, StepIdx};
     use crate::value::SlotValue;
     use crate::workflow::ResourceContract;
-    use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+    use crate::workflow::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation,
+        NodeOutput, NodeRouting, WorkflowParts,
+    };
 
     fn test_parts_with_error_handler() -> WorkflowParts {
         WorkflowParts {
@@ -189,40 +196,47 @@ mod tests {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: Some(StepIdx::new(2)),
-                    error_slot: Some(SlotIdx::new(1)),
+                    output: NodeOutput::Slot(SlotIdx::new(0)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::Handler {
+                            handler: StepIdx::new(2),
+                            error_slot: Some(SlotIdx::new(1)),
+                        },
+                    },
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    output: Some(SlotIdx::new(2)),
-                    next: Some(StepIdx::new(3)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Slot(SlotIdx::new(2)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(3)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },
@@ -249,20 +263,22 @@ mod tests {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Slot(SlotIdx::new(0)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -357,20 +373,25 @@ mod tests {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: Some(StepIdx::new(1)),
-                    error_slot: None,
+                    output: NodeOutput::Slot(SlotIdx::new(0)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::Handler {
+                            handler: StepIdx::new(1),
+                            error_slot: None,
+                        },
+                    },
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -472,10 +493,14 @@ mod tests {
     fn has_error_handler_returns_true_when_configured() {
         let node = CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: Some(StepIdx::new(1)),
-            error_slot: Some(SlotIdx::new(0)),
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::Handler {
+                    handler: StepIdx::new(1),
+                    error_slot: Some(SlotIdx::new(0)),
+                },
+            },
             kind: CompiledNodeKind::Nop,
         };
         assert!(has_error_handler(&node));
@@ -485,10 +510,11 @@ mod tests {
     fn has_error_handler_returns_false_when_not_configured() {
         let node = CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         };
         assert!(!has_error_handler(&node));

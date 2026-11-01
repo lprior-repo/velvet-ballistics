@@ -7,6 +7,7 @@ use super::canonical_scalar::compile_canonical_expression;
 use crate::CompileError;
 use crate::mod_compile_errors::CompileErrors;
 use crate::mod_compile_lowering::SlotCompiler;
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 use vb_core::{CompiledNode, CompiledNodeKind, ExprBranch, ExprIdx, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
 
@@ -58,10 +59,11 @@ fn emit_choose_node(
 ) {
     builder.push_node(CompiledNode {
         id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Choose {
             branches: Box::from([ExprBranch { condition, target }]),
             otherwise,

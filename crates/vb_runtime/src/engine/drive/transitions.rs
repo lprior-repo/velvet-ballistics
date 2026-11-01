@@ -52,7 +52,7 @@ pub(super) fn loop_body_target(node: &CompiledNode) -> Option<StepIdx> {
         CompiledNodeKind::ForEachNext { body, .. }
         | CompiledNodeKind::ReduceNext { body, .. }
         | CompiledNodeKind::CollectNext { body, .. } => Some(body),
-        CompiledNodeKind::RepeatCheck { .. } => node.next,
+        CompiledNodeKind::RepeatCheck { .. } => node.routing.next.step(),
         _ => None,
     }
 }
@@ -103,7 +103,7 @@ pub(super) fn finish_drive_step(
     if signal_is_success(signal) {
         mark_step_after_signal(run, step.pc, signal)?;
         evidence
-            .push_step_succeeded(step.pc, step.node.output)
+            .push_step_succeeded(step.pc, step.node.output.slot())
             .map_err(RuntimeEngineError::Core)?;
         owned_continuation_rearm(plan, run, step)?;
     } else {

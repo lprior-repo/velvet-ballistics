@@ -1,7 +1,9 @@
 #[cfg(test)]
 use super::*;
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+};
 
 use super::super::test_helpers::{finish_node, make_parts, nop_node};
 
@@ -17,10 +19,11 @@ fn accepts_valid_finish_node() {
 fn accepts_valid_copy_node() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
@@ -33,10 +36,11 @@ fn accepts_valid_copy_node() {
 fn accepts_valid_build_object() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(2)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(2)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::BuildObject {
             fields: Box::new([
                 (SymbolId::new(1), SlotIdx::new(0)),
@@ -52,10 +56,11 @@ fn accepts_valid_build_object() {
 fn accepts_valid_build_list() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(2)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(2)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::BuildList {
             items: Box::new([SlotIdx::new(0), SlotIdx::new(1)]),
         },
@@ -68,10 +73,11 @@ fn accepts_valid_build_list() {
 fn accepts_valid_set_const() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -102,10 +108,11 @@ fn accepts_nop_node() {
 fn rejects_output_slot_out_of_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(99)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = make_parts(vec![node], 1);
@@ -119,10 +126,11 @@ fn rejects_output_slot_out_of_range() {
 fn rejects_copy_source_out_of_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(50),
         },
@@ -151,10 +159,11 @@ fn rejects_expr_load_slot_out_of_range() {
 fn rejects_build_object_slot_out_of_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::BuildObject {
             fields: Box::new([(SymbolId::new(1), SlotIdx::new(99))]),
         },
@@ -170,10 +179,11 @@ fn rejects_build_object_slot_out_of_range() {
 fn rejects_build_list_slot_out_of_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::BuildList {
             items: Box::new([SlotIdx::new(50)]),
         },
@@ -189,10 +199,11 @@ fn rejects_build_list_slot_out_of_range() {
 fn rejects_do_input_out_of_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: vb_core::ids::ActionId::new(1),
             input: SlotIdx::new(99),
@@ -213,10 +224,14 @@ fn rejects_node_error_slot_out_of_range() {
     // error handler.
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: Some(SlotIdx::new(99)),
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::Handler {
+                handler: StepIdx::new(0),
+                error_slot: Some(SlotIdx::new(99)),
+            },
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = make_parts(vec![node], 1);
@@ -230,10 +245,14 @@ fn rejects_node_error_slot_out_of_range() {
 fn accepts_node_error_slot_in_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: Some(SlotIdx::new(0)),
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::Handler {
+                handler: StepIdx::new(1),
+                error_slot: Some(SlotIdx::new(0)),
+            },
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = make_parts(vec![node, nop_node(1)], 1);
@@ -244,10 +263,11 @@ fn accepts_node_error_slot_in_range() {
 fn accepts_node_error_slot_none() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = make_parts(vec![node, nop_node(1)], 1);

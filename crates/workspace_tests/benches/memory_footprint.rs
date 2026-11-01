@@ -48,10 +48,11 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
     while step < count {
         nodes.push(CompiledNode {
             id: StepIdx::new(step),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(step.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(step.saturating_add(1))),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -60,10 +61,11 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
     }
     nodes.push(CompiledNode {
         id: StepIdx::new(count),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

@@ -6,8 +6,9 @@ use crate::limits::MAX_EXPRESSION_STACK;
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
-    WorkflowParts, check_expr_stack_bound,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp, ExprProgram,
+    NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
+    check_expr_stack_bound,
 };
 
 use super::eval_expr_with_store;
@@ -33,11 +34,12 @@ fn empty_plan_with_expr(
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            output: None,
         }]
         .into(),
         expressions: vec![expr].into(),
@@ -1542,8 +1544,9 @@ mod proptests {
     use crate::value::{ConstValue, SlotValue};
     use crate::value_store::ValueStore;
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
-        WorkflowParts, check_expr_stack_bound,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp, ExprProgram,
+        NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
+        check_expr_stack_bound,
     };
     use proptest::prelude::*;
 
@@ -1568,11 +1571,12 @@ mod proptests {
             digest: WorkflowDigest::from_bytes([0; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                output: None,
             }]
             .into(),
             expressions: vec![expr].into(),

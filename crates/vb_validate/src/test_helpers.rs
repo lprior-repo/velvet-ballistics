@@ -4,7 +4,10 @@
 //! here to avoid copy-paste maintenance burden.
 
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract, WorkflowParts,
+};
 
 pub(crate) fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
     WorkflowParts {
@@ -27,10 +30,11 @@ pub(crate) fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowP
 pub(crate) fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(result_slot),
         },
@@ -40,10 +44,11 @@ pub(crate) fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
 pub(crate) fn nop_node(index: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: None,
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(index.saturating_add(1))),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     }
 }
@@ -51,10 +56,11 @@ pub(crate) fn nop_node(index: u16) -> CompiledNode {
 pub(crate) fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: Some(SlotIdx::new(output)),
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(output)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(index.saturating_add(1))),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(source),
         },

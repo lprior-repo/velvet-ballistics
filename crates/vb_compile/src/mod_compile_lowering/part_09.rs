@@ -197,10 +197,11 @@ pub(super) fn set_const_node(
 ) -> Result<CompiledNode, CompileError> {
     Ok(CompiledNode {
         id,
-        output: Some(output),
-        next: Some(next),
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(output),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(next),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst { value },
     })
 }

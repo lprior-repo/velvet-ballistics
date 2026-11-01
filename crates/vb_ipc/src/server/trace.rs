@@ -174,25 +174,30 @@ mod tests {
     fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {
         use vb_core::WorkflowDigest;
         use vb_core::ids::{SlotIdx, StepIdx};
-        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+        use vb_core::workflow::{
+            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
+            NodeRouting, ResourceContract, WorkflowParts,
+        };
 
         let mut nodes = Vec::new();
         for i in 0..10 {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i),
-                output: None,
-                next: Some(StepIdx::new(i + 1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(i + 1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             });
         }
         nodes.push(CompiledNode {
             id: StepIdx::new(10),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::ZERO,
             },

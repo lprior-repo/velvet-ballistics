@@ -121,6 +121,7 @@ impl SourceRun {
             .node(vb_core::StepIdx::new(step))
             .ok_or_else(|| format!("step {} not found", step))?;
         node.output
+            .slot()
             .ok_or_else(|| format!("step {} has no output slot", step))
     }
 }

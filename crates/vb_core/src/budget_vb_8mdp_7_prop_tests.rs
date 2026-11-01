@@ -22,9 +22,7 @@ use crate::budget::{
     BudgetError, WholeWorkflowBudget,
 };
 use crate::ids::{StepIdx, WorkflowDigest};
-use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
 
 // ─────────────────────────────────────────────────────────────────
 // Generation strategies
@@ -231,12 +229,13 @@ fn minimal_nop_workflow() -> Option<CompiledWorkflow> {
     let digest = WorkflowDigest::from_bytes([0x11; 32]);
     let nodes: Box<[CompiledNode]> = Box::new([CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
-    }]);
+        }]);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("minimal_nop"),

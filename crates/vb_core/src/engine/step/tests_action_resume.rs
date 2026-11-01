@@ -10,7 +10,10 @@ use crate::frame::StepState;
 use crate::ids::{ActionId, BlobId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{SlotValue, Taint};
 use crate::value_store::ValueStore;
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, WorkflowParts,
+};
 
 #[test]
 fn completion_rejects_wrong_output_slot() -> Result<(), String> {
@@ -286,10 +289,11 @@ fn do_then_finish_output_slot_one() -> Result<CompiledWorkflow, String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(1)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
@@ -297,10 +301,11 @@ fn do_then_finish_output_slot_one() -> Result<CompiledWorkflow, String> {
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },

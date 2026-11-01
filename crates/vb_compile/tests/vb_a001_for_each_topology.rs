@@ -7,7 +7,10 @@
 
 use vb_compile::{YamlCompiler, compile_workflow, lower_set, lower_steps_to_ir};
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    WorkflowParts,
+};
 
 // ---------------------------------------------------------------------------
 // Corpus YAML for the for_each workflow under vb-a001
@@ -120,7 +123,9 @@ fn vb_a001_body_setconst_next_points_to_foreachnext() -> Result<(), Box<dyn std:
         CompiledNodeKind::SetConst { value } => {
             assert_eq!(value, &ConstIdx::new(0), "body SetConst const index");
             let next = parts.nodes[1]
+                .routing
                 .next
+                .step()
                 .ok_or("body SetConst must have a next edge to ForEachNext")?;
             assert_eq!(
                 next,
@@ -160,10 +165,11 @@ fn vb_a001_body_setconst_next_points_to_foreachnext() -> Result<(), Box<dyn std:
 fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn std::error::Error>> {
     let foreach_start = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(2)),
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(SlotIdx::new(2)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -183,10 +189,11 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
 
     let foreach_next = CompiledNode {
         id: StepIdx::new(2),
-        output: Some(SlotIdx::new(1)),
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachNext {
             iterator_slot: SlotIdx::new(2),
             body: StepIdx::new(1),
@@ -196,10 +203,11 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
 
     let finish = CompiledNode {
         id: StepIdx::new(3),
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -231,10 +239,11 @@ fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn s
     // Node 0: ForEachStart with body→1, done→3
     let foreach_start = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -254,10 +263,11 @@ fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn s
 
     let foreach_next = CompiledNode {
         id: StepIdx::new(2),
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachNext {
             iterator_slot: SlotIdx::new(1),
             body: StepIdx::new(1),
@@ -267,10 +277,11 @@ fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn s
 
     let finish = CompiledNode {
         id: StepIdx::new(3),
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -334,10 +345,10 @@ fn vb_a001_for_each_slots_have_distinct_roles() -> Result<(), Box<dyn std::error
     assert_eq!(actual_input, SlotIdx::new(0));
     assert_eq!(actual_item_slot, SlotIdx::new(2));
 
-    let start_output = start.output.ok_or("missing start output")?;
+    let start_output = start.output.slot().ok_or("missing start output")?;
     assert_eq!(start_output, SlotIdx::new(1));
 
-    let body_output = body.output.ok_or("missing body output")?;
+    let body_output = body.output.slot().ok_or("missing body output")?;
     assert_eq!(body_output, SlotIdx::new(3));
 
     let actual_iterator_slot = match &next.kind {
@@ -346,7 +357,7 @@ fn vb_a001_for_each_slots_have_distinct_roles() -> Result<(), Box<dyn std::error
     };
     assert_eq!(actual_iterator_slot, SlotIdx::new(1));
 
-    let next_output = next.output.ok_or("missing next output")?;
+    let next_output = next.output.slot().ok_or("missing next output")?;
     assert_eq!(next_output, SlotIdx::new(2));
 
     assert_eq!(next_output, actual_item_slot);
@@ -437,7 +448,10 @@ fn vb_a001_finish_is_last_with_no_next() -> Result<(), Box<dyn std::error::Error
         matches!(&last.kind, CompiledNodeKind::Finish { .. }),
         "last node must be Finish"
     );
-    assert!(last.next.is_none(), "finish must have no next edge");
+    assert!(
+        last.routing.next.step().is_none(),
+        "finish must have no next edge"
+    );
     Ok(())
 }
 

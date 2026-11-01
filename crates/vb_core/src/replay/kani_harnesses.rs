@@ -10,10 +10,13 @@ use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{ConstValue, SlotValue};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, ResourceContract, SlotBranch, WorkflowParts,
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract, SlotBranch, WorkflowParts,
 };
 
-use super::{ReplayAction, step::replay_step};
+use super::{
+    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, ReplayAction, step::replay_step,
+};
 
 fn make_minimal_plan(
     nodes: Vec<CompiledNode>,
@@ -57,8 +60,11 @@ mod verification {
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::ChooseSlot {
                         branches: vec![
                             SlotBranch {
@@ -77,32 +83,33 @@ mod verification {
                             None
                         },
                     },
-                    output: None,
-                    next: None,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
                 },
             ],
             vec![],
@@ -141,8 +148,11 @@ mod verification {
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::ChooseSlot {
                         branches: vec![
                             SlotBranch {
@@ -157,32 +167,33 @@ mod verification {
                         .into_boxed_slice(),
                         otherwise: Some(StepIdx::new(3)),
                     },
-                    output: None,
-                    next: None,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
                 },
             ],
             vec![],
@@ -228,8 +239,11 @@ mod verification {
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::ChooseSlot {
                         branches: vec![SlotBranch {
                             condition: SlotIdx::new(0),
@@ -238,24 +252,24 @@ mod verification {
                         .into_boxed_slice(),
                         otherwise: Some(StepIdx::new(2)),
                     },
-                    output: None,
-                    next: None,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
                 },
             ],
             vec![],

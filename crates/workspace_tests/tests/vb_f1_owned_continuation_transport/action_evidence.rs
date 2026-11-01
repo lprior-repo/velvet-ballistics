@@ -24,7 +24,10 @@ pub(super) fn compiled(workflow: &CompiledWorkflow) -> TestResult {
     let action = workflow.node(ACTION).ok_or("real Do missing")?;
     assert!(matches!(action.kind, CompiledNodeKind::Do { action, input }
         if action == vb_core::ActionId::new(0) && input == guard_slot(workflow)?));
-    assert_eq!(action.next, Some(START));
+    assert_eq!(
+        action.routing.next,
+        vb_core::workflow::NodeContinuation::Step(START)
+    );
     Ok(())
 }
 

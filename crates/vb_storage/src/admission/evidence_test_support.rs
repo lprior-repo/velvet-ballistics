@@ -11,10 +11,11 @@ pub(super) fn action_workflow(actions: &[ActionId]) -> Result<CompiledWorkflow, 
         let after = next.checked_add(1).ok_or("fixture step overflow")?;
         nodes.push(CompiledNode {
             id: StepIdx::new(id),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(next)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(next)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: *action,
                 input: SlotIdx::new(0),
@@ -22,19 +23,21 @@ pub(super) fn action_workflow(actions: &[ActionId]) -> Result<CompiledWorkflow, 
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(next),
-            output: None,
-            next: Some(StepIdx::new(after)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(after)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         });
     }
     nodes.push(CompiledNode {
         id: StepIdx::new(u16::try_from(nodes.len()).map_err(|e| e.to_string())?),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

@@ -63,24 +63,26 @@ fn budget_validation_rejects_oversized_workflow() {
     // by constructing a WorkflowParts with max_steps=1 but 2 nodes
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        };
     let node1 = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        };
     let mut tight_contract = ResourceContract::DEFAULT;
     tight_contract.max_steps = 1;
     let oversized_parts = WorkflowParts {
@@ -109,14 +111,15 @@ fn budget_validation_rejects_oversized_workflow() {
     // Verify slot limit rejection too
     let single_node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        };
     let mut slot_contract = ResourceContract::DEFAULT;
     slot_contract.max_slots = 0;
     let slot_parts = WorkflowParts {

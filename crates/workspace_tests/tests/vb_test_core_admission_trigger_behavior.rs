@@ -20,8 +20,8 @@ use vb_core::ids::{ActionId, ConstIdx, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx, 
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ResourceContract, SecretResultPolicy,
-    WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp, NodeContinuation,
+    NodeOutput, NodeRouting, ResourceContract, SecretResultPolicy, WorkflowParts,
 };
 use vb_core::{
     EngineSignal, ErrorHandlerOutcome, StepBudget, drive_deterministic, resume_action_completion,
@@ -110,20 +110,22 @@ fn make_simple_workflow() -> Result<CompiledWorkflow, String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -164,30 +166,36 @@ fn workflow_with_error_handler(
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: Some(handler_target),
-                error_slot: Some(SlotIdx::new(1)),
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::Handler {
+                        handler: handler_target,
+                        error_slot: Some(SlotIdx::new(1)),
+                    },
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
             },
             CompiledNode {
                 id: handler_body,
-                output: Some(SlotIdx::new(2)),
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(2)),
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
@@ -215,20 +223,22 @@ fn workflow_without_error_handler() -> Result<CompiledWorkflow, String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -256,10 +266,11 @@ fn do_node_workflow() -> Result<CompiledWorkflow, String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
@@ -267,10 +278,11 @@ fn do_node_workflow() -> Result<CompiledWorkflow, String> {
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -448,10 +460,11 @@ mod trigger_condition_evaluation {
             digest: digest(0x05),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::WaitUntil {
                     deadline_slot: SlotIdx::new(0),
                 },
@@ -489,10 +502,11 @@ mod trigger_condition_evaluation {
             digest: digest(0x06),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Ask {
                     prompt: SlotIdx::new(0),
                     timeout_slot: None,
@@ -685,30 +699,36 @@ mod fail_closed_vs_fail_open {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: Some(StepIdx::new(2)),
-                    error_slot: Some(SlotIdx::new(1)),
+                    output: NodeOutput::Slot(SlotIdx::new(0)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::Handler {
+                            handler: StepIdx::new(2),
+                            error_slot: Some(SlotIdx::new(1)),
+                        },
+                    },
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(1),
                     },
@@ -758,20 +778,22 @@ mod fail_closed_vs_fail_open {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: None, // No handler!
-                    error_slot: None,
+                    output: NodeOutput::Slot(SlotIdx::new(0)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -1137,7 +1159,7 @@ mod resource_contract_admission {
             max_collect_items: u32::MAX,
             max_queue_depth: u32::MAX,
             max_journal_batch_bytes: u32::MAX,
-            allows_secret_results: false,
+            allows_secret_results: SecretResultPolicy::Deny,
         };
 
         // Validation happens in CompiledWorkflow::try_from_parts
@@ -1148,10 +1170,11 @@ mod resource_contract_admission {
             digest: digest(0x09),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },

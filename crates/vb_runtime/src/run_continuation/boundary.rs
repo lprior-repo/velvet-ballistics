@@ -1,6 +1,7 @@
 use super::payload::{Body, Boundary, ContinuationCut};
 use super::{ContinuationAuthority, RunContinuationError};
 use vb_core::frame::{CheckpointStepState, RunFrameCheckpointV1};
+use vb_core::workflow::NodeContinuation;
 use vb_core::{CompiledNodeKind, SlotIdx, SlotValue, StepIdx, Taint};
 
 type Result<T> = core::result::Result<T, RunContinuationError>;
@@ -37,7 +38,11 @@ fn candidate(
     if !matches!(node.kind, CompiledNodeKind::CollectFinish { .. }) {
         return Ok(None);
     }
-    let exit = node.next.ok_or(RunContinuationError::BoundaryState)?;
+    let exit = node
+        .routing
+        .next
+        .step()
+        .ok_or(RunContinuationError::BoundaryState)?;
     let cut = if frame.pc == finish {
         ContinuationCut::BeforeCollectFinish
     } else if frame.pc == exit {
@@ -103,8 +108,14 @@ fn shape(
     let finish = workflow
         .node(boundary.finish)
         .ok_or(RunContinuationError::BoundaryState)?;
-    let collector = start.output.ok_or(RunContinuationError::BoundaryState)?;
-    let output = finish.output.ok_or(RunContinuationError::BoundaryState)?;
+    let collector = start
+        .output
+        .slot()
+        .ok_or(RunContinuationError::BoundaryState)?;
+    let output = finish
+        .output
+        .slot()
+        .ok_or(RunContinuationError::BoundaryState)?;
     let source = match start.kind {
         CompiledNodeKind::CollectStart {
             source,
@@ -147,7 +158,7 @@ fn edges(
         || !matches!(exit.kind, CompiledNodeKind::Finish { result } if result == output)
         || region.control() != boundary.control
         || region.done() != boundary.finish
-        || finish.next != Some(boundary.exit)
+        || finish.routing.next != NodeContinuation::Step(boundary.exit)
     {
         return Err(RunContinuationError::BoundaryState);
     }

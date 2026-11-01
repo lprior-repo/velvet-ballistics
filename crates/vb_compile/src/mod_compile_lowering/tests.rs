@@ -896,8 +896,14 @@ fn lower_canonical_choose_multi_body_steps_chain_to_common_next() {
         }
         other => panic!("expected ChooseSlot, got {other:?}"),
     }
-    assert_eq!(builder.nodes[1].next, Some(vb_core::ids::StepIdx::new(2)));
-    assert_eq!(builder.nodes[2].next, Some(vb_core::ids::StepIdx::new(3)));
+    assert_eq!(
+        builder.nodes[1].routing.next,
+        vb_core::workflow::NodeContinuation::Step(vb_core::ids::StepIdx::new(2))
+    );
+    assert_eq!(
+        builder.nodes[2].routing.next,
+        vb_core::workflow::NodeContinuation::Step(vb_core::ids::StepIdx::new(3))
+    );
 }
 
 #[test]
@@ -1396,7 +1402,7 @@ fn slot_compiler_records_unique_indices() {
     .expect("choose must lower");
     // Then: the body Set node has an output slot (observable behavior)
     assert!(
-        builder.nodes[1].output.is_some(),
+        builder.nodes[1].output.slot().is_some(),
         "body Set node must have an output slot assigned"
     );
     // Verify the ChooseSlot condition is correctly parsed from when="1"
@@ -1448,6 +1454,7 @@ fn lower_canonical_choose_slots_disjoint_from_conditions() {
     // Extract the body node's actual output slot from the compiled IR
     let body_output_slot = builder.nodes[1]
         .output
+        .slot()
         .expect("body Set node must have an output slot");
     // Verify that the condition slot does NOT match the body output slot
     assert_ne!(

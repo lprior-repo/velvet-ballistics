@@ -48,10 +48,11 @@ pub(super) fn compile_slot_choose(
     builder.record_slot(condition);
     Ok(CompiledNode {
         id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ChooseSlot {
             branches: vec![SlotBranch {
                 condition,
@@ -77,10 +78,11 @@ pub(super) fn compile_literal_choose(
     builder.record_slot(output);
     Ok(CompiledNode {
         id,
-        output: Some(output),
-        next: Some(if value { on_true } else { on_false }),
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(output),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(if value { on_true } else { on_false }),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst { value: constant },
     })
 }
@@ -143,10 +145,11 @@ pub(super) fn compile_parallel(
     Ok(vec![
         CompiledNode {
             id,
-            output: Some(accumulator),
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(accumulator),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherStart {
                 branches: branches.into_boxed_slice(),
                 join,
@@ -154,10 +157,11 @@ pub(super) fn compile_parallel(
         },
         CompiledNode {
             id: join,
-            output: Some(accumulator),
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(accumulator),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherJoin {
                 branch_count,
                 accumulator,
@@ -194,7 +198,7 @@ pub(super) fn compile_collect(
     )?;
     // CollectFinish (index 2) chains to the next step.
     if let Some(finish) = nodes.get_mut(2) {
-        finish.next = next;
+        finish.routing.next = next.into();
     }
     Ok(nodes)
 }
@@ -234,7 +238,7 @@ pub(super) fn compile_aggregate(
     )?;
     // ReduceFinish (index 2) chains to the next step.
     if let Some(finish) = nodes.get_mut(2) {
-        finish.next = next;
+        finish.routing.next = next.into();
     }
     Ok(nodes)
 }

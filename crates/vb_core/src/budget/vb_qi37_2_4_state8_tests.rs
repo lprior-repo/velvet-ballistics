@@ -19,7 +19,10 @@ use crate::budget::{
 };
 use crate::ids::{SlotIdx, StepIdx};
 use crate::workflow::WorkflowError;
-use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract,
+};
 use proptest::prelude::*;
 
 // ============================================================================
@@ -325,10 +328,11 @@ proptest! {
             // CollectStart at node 0
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::CollectStart {
                     source: SlotIdx::new(0),
                     limit,
@@ -336,47 +340,50 @@ proptest! {
                     body: StepIdx::new(1),
                     done: StepIdx::new(collect_done),
                 },
-            },
+                },
         ];
 
         // Body nodes: Nop chain
         for i in 1..=body_node_count as usize {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i as u16),
-                output: None,
-                next: if i < body_node_count as usize {
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: (if i < body_node_count as usize {
                     Some(StepIdx::new((i + 1) as u16))
                 } else {
                     None
+                }).into(),
+                    error: ErrorRouting::None,
                 },
-                on_error: None,
-                error_slot: None,
                 kind: CompiledNodeKind::Nop,
-            });
+                });
         }
 
         // CollectFinish and Finish
         let finish_idx = collect_done + 1;
         nodes.push(CompiledNode {
             id: StepIdx::new(collect_done),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::CollectFinish {
                 collector_slot: SlotIdx::new(1),
             },
-        });
+            });
         nodes.push(CompiledNode {
             id: StepIdx::new(finish_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        });
+            });
 
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
@@ -415,54 +422,58 @@ proptest! {
         let mut nodes: Vec<CompiledNode> = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::RepeatStart {
                     max_attempts,
                     body: StepIdx::new(1),
                     done: StepIdx::new(repeat_done),
                 },
-            },
+                },
         ];
 
         for i in 1..=body_node_count as usize {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i as u16),
-                output: None,
-                next: if i < body_node_count as usize {
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: (if i < body_node_count as usize {
                     Some(StepIdx::new((i + 1) as u16))
                 } else {
                     None
+                }).into(),
+                    error: ErrorRouting::None,
                 },
-                on_error: None,
-                error_slot: None,
                 kind: CompiledNodeKind::Nop,
-            });
+                });
         }
 
         let finish_idx = repeat_done + 1;
         nodes.push(CompiledNode {
             id: StepIdx::new(repeat_done),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatFinish {
                 result: SlotIdx::new(0),
             },
-        });
+            });
         nodes.push(CompiledNode {
             id: StepIdx::new(finish_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        });
+            });
 
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
@@ -505,10 +516,11 @@ proptest! {
             // Node 0: Outer ForEachStart
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
@@ -516,14 +528,15 @@ proptest! {
                     body: StepIdx::new(1),
                     done: StepIdx::new(outer_done),
                 },
-            },
+                },
             // Node 1: Inner ForEachStart
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(2),
                     item_slot: SlotIdx::new(3),
@@ -531,56 +544,60 @@ proptest! {
                     body: StepIdx::new(2),
                     done: StepIdx::new(inner_done),
                 },
-            },
+                },
         ];
 
         // Inner body: Nop chain
         for i in 2..=inner_body_count as usize {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i as u16),
-                output: None,
-                next: if i < inner_body_count as usize {
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: (if i < inner_body_count as usize {
                     Some(StepIdx::new((i + 1) as u16))
                 } else {
                     None
+                }).into(),
+                    error: ErrorRouting::None,
                 },
-                on_error: None,
-                error_slot: None,
                 kind: CompiledNodeKind::Nop,
-            });
+                });
         }
 
         let finish_idx = outer_done + 1;
         nodes.push(CompiledNode {
             id: StepIdx::new(inner_done),
-            output: Some(SlotIdx::new(4)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(4)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachJoin {
                 output: SlotIdx::new(4),
             },
-        });
+            });
         nodes.push(CompiledNode {
             id: StepIdx::new(outer_done),
-            output: Some(SlotIdx::new(5)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(5)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachJoin {
                 output: SlotIdx::new(5),
             },
-        });
+            });
         nodes.push(CompiledNode {
             id: StepIdx::new(finish_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(4),
             },
-        });
+            });
 
         let contract = test_contract(nodes.len() as u16 + 10, 6);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
@@ -618,54 +635,58 @@ proptest! {
         let mut nodes: Vec<CompiledNode> = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::TogetherStart {
                     branches: (1u16..=branch_count).map(|i| StepIdx::new(i)).collect::<Vec<_>>().into_boxed_slice(),
                     join: StepIdx::new(join_idx),
                 },
-            },
+                },
         ];
 
         // Branch nodes
         for i in 1..=branch_count_usize {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i as u16),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-            });
+                });
         }
 
         // Join node
         nodes.push(CompiledNode {
             id: StepIdx::new(join_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherJoin {
                 branch_count,
                 accumulator: SlotIdx::new(0),
             },
-        });
+            });
 
         // Finish
         let finish_idx = join_idx + 1;
         nodes.push(CompiledNode {
             id: StepIdx::new(finish_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        });
+            });
 
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
@@ -707,10 +728,11 @@ proptest! {
         let mut nodes: Vec<CompiledNode> = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::CollectStart {
                     source: SlotIdx::new(0),
                     limit,
@@ -718,45 +740,48 @@ proptest! {
                     body: StepIdx::new(1),
                     done: StepIdx::new(collect_done),
                 },
-            },
+                },
         ];
 
         for i in 1..=body_node_count as usize {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i as u16),
-                output: None,
-                next: if i < body_node_count as usize {
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: (if i < body_node_count as usize {
                     Some(StepIdx::new((i + 1) as u16))
                 } else {
                     None
+                }).into(),
+                    error: ErrorRouting::None,
                 },
-                on_error: None,
-                error_slot: None,
                 kind: CompiledNodeKind::Nop,
-            });
+                });
         }
 
         let finish_idx = collect_done + 1;
         nodes.push(CompiledNode {
             id: StepIdx::new(collect_done),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::CollectFinish {
                 collector_slot: SlotIdx::new(1),
             },
-        });
+            });
         nodes.push(CompiledNode {
             id: StepIdx::new(finish_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        });
+            });
 
         let contract = test_contract(nodes.len() as u16 + 10, 4);
 
@@ -816,10 +841,11 @@ proptest! {
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::CollectStart {
                     source: SlotIdx::new(0),
                     limit,
@@ -827,35 +853,38 @@ proptest! {
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
                 },
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::CollectFinish {
                     collector_slot: SlotIdx::new(1),
                 },
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(3),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                },
         ];
 
         let contract = test_contract(4, 4);
@@ -961,51 +990,55 @@ proptest! {
         let mut nodes: Vec<CompiledNode> = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::TogetherStart {
                     branches: (1u16..=branch_count).map(|i| StepIdx::new(i)).collect::<Vec<_>>().into_boxed_slice(),
                     join: StepIdx::new(join_idx),
                 },
-            },
+                },
         ];
 
         for i in 1..=branch_count_usize {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i as u16),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-            });
+                });
         }
 
         nodes.push(CompiledNode {
             id: StepIdx::new(join_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherJoin {
                 branch_count,
                 accumulator: SlotIdx::new(0),
             },
-        });
+            });
 
         let finish_idx = join_idx + 1;
         nodes.push(CompiledNode {
             id: StepIdx::new(finish_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        });
+            });
 
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget_result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
@@ -1057,10 +1090,11 @@ proptest! {
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::ReduceStart {
                     input: SlotIdx::new(0),
                     accumulator: SlotIdx::new(1),
@@ -1068,25 +1102,27 @@ proptest! {
                     body: StepIdx::new(1),
                     done: StepIdx::new(2),
                 },
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::ReduceFinish {
                     accumulator: SlotIdx::new(1),
                 },
-            },
+                },
         ];
 
         let contract = test_contract(3, 3);
@@ -1142,10 +1178,11 @@ proptest! {
         let mut nodes: Vec<CompiledNode> = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
@@ -1153,13 +1190,14 @@ proptest! {
                     body: StepIdx::new(1),
                     done: StepIdx::new(outer_done),
                 },
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(2),
                     item_slot: SlotIdx::new(3),
@@ -1167,48 +1205,52 @@ proptest! {
                     body: StepIdx::new(2),
                     done: StepIdx::new(inner_done),
                 },
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(inner_done),
-                output: Some(SlotIdx::new(4)),
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(4)),
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::ForEachJoin {
                     output: SlotIdx::new(4),
                 },
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(outer_done),
-                output: Some(SlotIdx::new(5)),
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(5)),
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::ForEachJoin {
                     output: SlotIdx::new(5),
                 },
-            },
+                },
         ];
 
         let finish_idx = outer_done + 1;
         nodes.push(CompiledNode {
             id: StepIdx::new(finish_idx),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(4),
             },
-        });
+            });
 
         // Use a very tight contract to force rejection
         let contract = test_contract(nodes.len() as u16 + 10, 4);

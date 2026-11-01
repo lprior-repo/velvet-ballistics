@@ -1,55 +1,60 @@
 fn ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_prompt = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::ZERO),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        };
     let set_timeout = CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(1),
         },
-    };
+        };
     let ask = CompiledNode {
         id: StepIdx::new(2),
-        output: None,
-        next: Some(StepIdx::new(3)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(3)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Ask {
             prompt: SlotIdx::ZERO,
             timeout_slot: Some(SlotIdx::new(1)),
         },
-    };
+        };
     let resume = CompiledNode {
         id: StepIdx::new(3),
-        output: None,
-        next: Some(StepIdx::new(4)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(4)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::AskResume {
             answer: SlotIdx::new(2),
         },
-    };
+        };
     let finish_node = CompiledNode {
         id: StepIdx::new(4),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(2),
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("ask_then_finish"),
@@ -156,47 +161,51 @@ fn action_failed_count(events: &[RuntimeJournalEvent], run: RunId, step: StepIdx
 fn retry_workflow() -> Result<vb_core::workflow::CompiledWorkflow, String> {
     let set_policy = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        };
     let action = CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::ZERO),
-        next: Some(StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::ZERO),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
         },
-    };
+        };
     let retry = CompiledNode {
         id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(1),
             body: StepIdx::new(1),
             exhausted: StepIdx::new(3),
         },
-    };
+        };
     let finish = CompiledNode {
         id: StepIdx::new(3),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    };
+        };
     let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("retry"),

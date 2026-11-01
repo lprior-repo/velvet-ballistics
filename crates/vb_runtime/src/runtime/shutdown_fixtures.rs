@@ -1,5 +1,6 @@
 use crate::{journal::QueuedStorageRuntimeJournal, runtime::Runtime, shard::ShardConfig};
 use std::{num::NonZeroUsize, sync::Arc};
+use vb_core::workflow::{ErrorRouting, NodeRouting};
 use vb_core::{
     ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest},
     value::ConstValue,
@@ -10,14 +11,6 @@ use vb_storage::{FjallJournal, JournalWriterQueue, StorageLimits};
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 pub(super) fn waiting_workflow() -> TestResult<CompiledWorkflow> {
-    let node = |id, kind, output, next| CompiledNode {
-        id: StepIdx::new(id),
-        kind,
-        output,
-        next,
-        on_error: None,
-        error_slot: None,
-    };
     Ok(CompiledWorkflow::try_from_parts(WorkflowParts {
         name: Box::from("shutdown_wait"),
         digest: WorkflowDigest::from_bytes([33; 32]),
@@ -116,11 +109,12 @@ fn node(
 ) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
+        output: output.into(),
+        routing: NodeRouting {
+            next: next.into(),
+            error: ErrorRouting::None,
+        },
         kind,
-        output,
-        next,
-        on_error: None,
-        error_slot: None,
     }
 }
 

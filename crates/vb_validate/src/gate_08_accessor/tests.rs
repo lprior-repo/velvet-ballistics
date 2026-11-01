@@ -1,7 +1,9 @@
 use super::*;
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+};
 
 fn workflow_parts_with_accessors(
     slot_count: u16,
@@ -15,10 +17,11 @@ fn workflow_parts_with_accessors(
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },

@@ -275,7 +275,8 @@ mod tests {
         use crate::ids::{ConstIdx, ExprIdx, WorkflowDigest};
         use crate::value::ConstValue;
         use crate::workflow::{
-            CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, WorkflowParts,
+            CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp, ExprProgram,
+            NodeContinuation, NodeOutput, NodeRouting, WorkflowParts,
         };
 
         let expr_true =
@@ -295,10 +296,11 @@ mod tests {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Choose {
                         branches: vec![
                             ExprBranch {
@@ -316,26 +318,29 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
             ]

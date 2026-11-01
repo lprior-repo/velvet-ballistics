@@ -23,7 +23,7 @@ pub(crate) fn validate_resume_targets(parts: &WorkflowParts) -> ValidationResult
             continue;
         }
 
-        if let Some(next_step) = node.next {
+        if let Some(next_step) = node.routing.next.step() {
             let next_idx = next_step.as_usize();
             if next_idx >= node_count || next_idx <= node_index {
                 return Err(ValidationError::NodeKindConstraintViolation {

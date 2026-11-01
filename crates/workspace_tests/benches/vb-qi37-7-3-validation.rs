@@ -4,9 +4,7 @@
 use criterion::{Criterion, Throughput};
 use vb_core::engine::validate_resource_contract;
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
 use vb_validate::gates::validate_gate_08_accessor_path_segments;
 
 // ---------------------------------------------------------------------------
@@ -24,14 +22,15 @@ fn make_parts(
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]),
+            }]),
         expressions: Box::new([]),
         accessors: accessors.into_boxed_slice(),
         constants: Box::new([]),

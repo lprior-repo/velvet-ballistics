@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use crate::workflow::CompiledWorkflow;
+pub(super) use crate::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 pub(super) use crate::{
     CompiledNode, CompiledNodeKind, ConstIdx, ConstValue, ResourceContract, SlotIdx, StepIdx,
     WorkflowDigest, WorkflowParts,
@@ -56,10 +57,11 @@ fn linear_nodes(count: u16) -> TestResult<Vec<CompiledNode>> {
         let terminal = next == count;
         nodes.push(CompiledNode {
             id: step(id),
-            output: None,
-            next: (!terminal).then_some(step(next)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: ((!terminal).then_some(step(next))).into(),
+                error: ErrorRouting::None,
+            },
             kind: if terminal {
                 CompiledNodeKind::Finish { result: slot(0) }
             } else {

@@ -3,6 +3,7 @@
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::part_14::emit_scoped_flat_body;
 use crate::mod_compile_lowering::{CanonicalScope, SlotCompiler, body_width, checked_step_offset};
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
 
 pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
@@ -30,10 +31,11 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
         .map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
-        output: Some(attempt_slot),
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(attempt_slot),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RepeatStart {
             max_attempts,
             body: layout.body,
@@ -76,10 +78,11 @@ fn push_repeat_continuations(
 ) {
     builder.push_node(CompiledNode {
         id: layout.check,
-        output: Some(attempt_slot),
-        next: Some(layout.body),
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(attempt_slot),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(layout.body),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RepeatCheck {
             attempt_slot,
             done: layout.done,
@@ -87,10 +90,11 @@ fn push_repeat_continuations(
     });
     builder.push_node(CompiledNode {
         id: layout.done,
-        output: Some(result),
-        next,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(result),
+        routing: NodeRouting {
+            next: next.into(),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RepeatFinish { result },
     });
 }

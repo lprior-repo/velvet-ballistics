@@ -76,7 +76,7 @@ impl Fixture {
         self.state
             .workflow
             .node(step)
-            .and_then(|node| node.output)
+            .and_then(|node| node.output.slot())
             .ok_or_else(|| "compiled output missing".into())
     }
 }

@@ -2,8 +2,8 @@ use super::{InputMappingError, map_runtime_inputs};
 use std::error::Error;
 use vb_core::ids::{StepIdx, WorkflowDigest};
 use vb_core::workflow::{
-    CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, InputSlotKind,
-    ResourceContract, WorkflowParts,
+    CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting,
+    InputSlotKind, NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
 };
 use vb_core::{SlotIdx, SlotValue};
 
@@ -12,10 +12,11 @@ type TestResult<T> = Result<T, Box<dyn Error>>;
 fn fixture(input_slots: Box<[CompiledInputSlot]>) -> TestResult<CompiledWorkflow> {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(2),
         },

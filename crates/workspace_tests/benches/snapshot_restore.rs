@@ -49,10 +49,11 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
 fn simple_workflow() -> CompiledWorkflow {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

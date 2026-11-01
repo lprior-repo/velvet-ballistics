@@ -111,10 +111,11 @@ fn one_node_parts(name: &'static str, digest: [u8; 32]) -> vb_core::WorkflowPart
         semantic_source_identity: None,
         nodes: Box::new([vb_core::CompiledNode {
             id: vb_core::StepIdx::ZERO,
-            output: Some(vb_core::SlotIdx::ZERO),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: vb_core::workflow::NodeOutput::Slot(vb_core::SlotIdx::ZERO),
+            routing: vb_core::workflow::NodeRouting {
+                next: vb_core::workflow::NodeContinuation::End,
+                error: vb_core::workflow::ErrorRouting::None,
+            },
             kind: vb_core::CompiledNodeKind::Finish {
                 result: vb_core::SlotIdx::ZERO,
             },

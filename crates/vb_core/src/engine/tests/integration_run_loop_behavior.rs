@@ -7,7 +7,7 @@ use crate::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::limits::MAX_STEP_BUDGET;
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
 
 use crate::engine::{
     EngineSignal, StepBudget, drive_deterministic, new_run_frame, run_until_blocked, step_once,
@@ -44,24 +44,26 @@ fn two_step_workflow(value: ConstValue) -> Result<CompiledWorkflow, String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                },
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -83,14 +85,15 @@ fn single_step_finish_workflow() -> Result<CompiledWorkflow, String> {
         digest: WorkflowDigest::from_bytes([0x02; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            }]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -112,25 +115,27 @@ fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
                 },
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                },
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -152,14 +157,15 @@ fn wait_workflow() -> Result<CompiledWorkflow, String> {
         digest: WorkflowDigest::from_bytes([0x04; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::WaitUntil {
                 deadline_slot: SlotIdx::new(0),
             },
-        }]
+            }]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -180,15 +186,16 @@ fn ask_workflow() -> Result<CompiledWorkflow, String> {
         digest: WorkflowDigest::from_bytes([0x05; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
                 timeout_slot: None,
             },
-        }]
+            }]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -208,29 +215,31 @@ fn four_step_set_const_chain_workflow(values: &[ConstValue]) -> Result<CompiledW
             let is_last = i == values.len() - 1;
             CompiledNode {
                 id: StepIdx::new(i as u16),
-                output: Some(SlotIdx::new(i as u16)),
-                next: if is_last {
+                output: NodeOutput::Slot(SlotIdx::new(i as u16)),
+                routing: NodeRouting {
+                    next: (if is_last {
                     Some(StepIdx::new(values.len() as u16))
                 } else {
                     Some(StepIdx::new(i as u16 + 1))
+                }).into(),
+                    error: ErrorRouting::None,
                 },
-                on_error: None,
-                error_slot: None,
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(i as u16),
                 },
-            }
+                }
         })
         .chain(std::iter::once(CompiledNode {
             id: StepIdx::new(values.len() as u16),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(values.len() as u16 - 1),
             },
-        }))
+            }))
         .collect();
 
     CompiledWorkflow::try_from_parts(WorkflowParts {
@@ -258,22 +267,24 @@ fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                },
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),

@@ -6,7 +6,10 @@ use crate::frame::StepState;
 use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, WorkflowParts,
+};
 
 use crate::engine::{
     EngineSignal, StepBudget, build_list_impl, build_object_impl, new_run_frame, run_until_blocked,
@@ -313,10 +316,11 @@ fn missing_constant_workflow(constant: ConstIdx) -> Result<CompiledWorkflow, cra
     parts.nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst { value: constant },
         },
         tiny_finish_node(),
@@ -332,10 +336,11 @@ fn tiny_workflow_nodes() -> Box<[CompiledNode]> {
 fn tiny_set_const_node() -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -345,10 +350,11 @@ fn tiny_set_const_node() -> CompiledNode {
 fn tiny_finish_node() -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -364,10 +370,11 @@ fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::Wor
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: output.into(),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
@@ -395,40 +402,44 @@ fn construction_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(1)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(2)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(2),
-                output: Some(SlotIdx::new(2)),
-                next: Some(StepIdx::new(3)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(2)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(3)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::BuildList {
                     items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(3),
-                output: Some(SlotIdx::new(3)),
-                next: Some(StepIdx::new(4)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(3)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(4)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::BuildObject {
                     fields: vec![
                         (SymbolId::new(1), SlotIdx::new(2)),
@@ -439,10 +450,11 @@ fn construction_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
             },
             CompiledNode {
                 id: StepIdx::new(4),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(3),
                 },

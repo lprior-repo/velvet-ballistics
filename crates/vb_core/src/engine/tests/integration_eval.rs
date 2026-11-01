@@ -6,7 +6,8 @@ use crate::frame::StepState;
 use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp, ExprProgram,
+    NodeContinuation, NodeOutput, NodeRouting, WorkflowParts,
 };
 
 use crate::engine::{
@@ -89,10 +90,11 @@ fn eval_expr_division_by_zero_returns_division_by_zero_error() -> Result<(), Str
         digest: WorkflowDigest::from_bytes([0x11; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
@@ -140,10 +142,11 @@ fn eval_expr_integer_overflow_returns_invalid_compiled_workflow() -> Result<(), 
         digest: WorkflowDigest::from_bytes([0x22; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
@@ -188,10 +191,11 @@ fn eval_expr_not_on_non_bool_returns_type_mismatch() -> Result<(), String> {
         digest: WorkflowDigest::from_bytes([0x33; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
@@ -239,20 +243,22 @@ fn eval_add_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },

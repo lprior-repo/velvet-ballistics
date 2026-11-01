@@ -95,25 +95,27 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
 
     let do_node = vb_core::workflow::CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
-        output: Some(vb_core::ids::SlotIdx::new(1)),
-        next: Some(vb_core::ids::StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(vb_core::ids::SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: vb_core::workflow::CompiledNodeKind::Do {
             action: vb_core::ids::ActionId::new(0),
             input: vb_core::ids::SlotIdx::new(0),
         },
-    };
+        };
     let finish_node = vb_core::workflow::CompiledNode {
         id: vb_core::ids::StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: vb_core::workflow::CompiledNodeKind::Finish {
             result: vb_core::ids::SlotIdx::new(1),
         },
-    };
+        };
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("recovery-test"),

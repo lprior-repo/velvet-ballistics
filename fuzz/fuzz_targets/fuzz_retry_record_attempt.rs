@@ -62,10 +62,11 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
 
     let do_node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: vb_core::workflow::NodeOutput::Discard,
+        routing: vb_core::workflow::NodeRouting {
+            next: vb_core::workflow::NodeContinuation::End,
+            error: vb_core::workflow::ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(u16::from(action_byte)),
             input: vb_core::ids::SlotIdx::new(0),

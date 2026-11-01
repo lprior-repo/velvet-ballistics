@@ -10,8 +10,9 @@ use crate::replay::{ReplayError, ReplayExprStack, eval_expr_for_replay};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, WorkflowParts, check_expr_stack_bound,
+    AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, ExprOp, ExprProgram,
+    NodeContinuation, NodeOutput, NodeRouting, PathSegment, ResourceContract, WorkflowParts,
+    check_expr_stack_bound,
 };
 
 use super::{eval_replay_op, pop_i64_pair, pop_pair};
@@ -58,21 +59,23 @@ fn make_minimal_plan_with_constants(
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         constants,
@@ -1183,21 +1186,23 @@ fn eval_load_accessor_object_field() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -1242,21 +1247,23 @@ fn eval_load_accessor_list_index() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -1297,21 +1304,23 @@ fn eval_load_accessor_empty_path_returns_root() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -1414,21 +1423,23 @@ fn eval_expr_for_replay_addition() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -1468,21 +1479,23 @@ fn eval_expr_for_replay_comparison_chain() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![
@@ -1518,21 +1531,23 @@ fn eval_expr_for_replay_with_uninitialized_slot() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -1678,21 +1693,23 @@ fn blackhat_taint_joins_across_expression() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -1845,21 +1862,23 @@ fn ce003_replay_object_field_taint_joins_segment() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -1912,21 +1931,23 @@ fn ce003_replay_list_item_taint_joins_segment() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -1994,21 +2015,23 @@ fn ce003_replay_multi_segment_path_joins_every_segment_taint() -> Result<(), Cor
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -2077,21 +2100,23 @@ fn ce003_replay_root_taint_joins_into_accumulator() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],
@@ -2173,21 +2198,23 @@ fn ce003_replay_lattice_random_respected() -> Result<(), CoreError> {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
-                output: None,
-                next: Some(StepIdx::new(1)),
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-                output: None,
-                next: None,
             },
         ],
         vec![],

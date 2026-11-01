@@ -4,8 +4,8 @@
 use crate::ValidationError;
 use vb_core::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, ExprOp, ExprProgram,
+    NodeContinuation, NodeOutput, NodeRouting, PathSegment, ResourceContract, WorkflowParts,
 };
 
 // ---------------------------------------------------------------------------
@@ -33,10 +33,11 @@ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
 fn nop_node(index: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: None,
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(index.saturating_add(1))),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     }
 }
@@ -44,10 +45,11 @@ fn nop_node(index: u16) -> CompiledNode {
 fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(result_slot),
         },
@@ -57,10 +59,11 @@ fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
 fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: Some(SlotIdx::new(output)),
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(output)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(index.saturating_add(1))),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(source),
         },
@@ -273,10 +276,11 @@ fn gate_09_accepts_valid_slot_references() {
 fn gate_09_rejects_output_slot_out_of_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(99)), // out of range for slot_count=1
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(99)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = make_parts(vec![node], 1);
@@ -325,10 +329,11 @@ fn gate_09_accepts_slot_at_boundary_slot_count_minus_one() {
 fn gate_09_rejects_build_object_slot_out_of_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::BuildObject {
             fields: Box::new([(SymbolId::new(1), SlotIdx::new(99))]),
         },
@@ -344,10 +349,11 @@ fn gate_09_rejects_build_object_slot_out_of_range() {
 fn gate_09_rejects_build_list_slot_out_of_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::BuildList {
             items: Box::new([SlotIdx::new(50)]),
         },
@@ -376,10 +382,11 @@ fn gate_11_accepts_valid_for_each() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
@@ -390,10 +397,11 @@ fn gate_11_accepts_valid_for_each() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachNext {
                 iterator_slot: SlotIdx::new(0),
                 body: StepIdx::new(1),
@@ -410,10 +418,11 @@ fn gate_11_accepts_valid_for_each() {
 fn gate_11_rejects_for_each_body_out_of_range() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -433,10 +442,11 @@ fn gate_11_rejects_for_each_body_out_of_range() {
 fn gate_11_rejects_for_each_done_out_of_range() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -457,10 +467,11 @@ fn gate_11_accepts_valid_together() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherStart {
                 branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
                 join: StepIdx::new(3),
@@ -478,10 +489,11 @@ fn gate_11_accepts_valid_together() {
 fn gate_11_rejects_together_branch_out_of_range() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherStart {
             branches: Box::new([StepIdx::new(99)]),
             join: StepIdx::new(1),
@@ -499,10 +511,11 @@ fn gate_11_rejects_loop_body_before_start() {
     // Body at index 0, start at index 0 => not forward
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -523,10 +536,11 @@ fn gate_11_accepts_valid_repeat() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts: 3,
                 body: StepIdx::new(1),
@@ -535,10 +549,11 @@ fn gate_11_accepts_valid_repeat() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatAttempt {
                 attempt_slot: SlotIdx::new(0),
                 body: StepIdx::new(1),
@@ -547,10 +562,11 @@ fn gate_11_accepts_valid_repeat() {
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatCheck {
                 attempt_slot: SlotIdx::new(0),
                 done: StepIdx::new(3),
@@ -567,10 +583,11 @@ fn gate_11_accepts_together_with_empty_branches() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherStart {
                 branches: Box::new([]),
                 join: StepIdx::new(1),
@@ -587,10 +604,11 @@ fn gate_11_accepts_together_with_empty_branches() {
 fn gate_11_rejects_for_each_done_before_body() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -630,10 +648,11 @@ fn gate_13_accepts_linear_slot_chain() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -641,10 +660,11 @@ fn gate_13_accepts_linear_slot_chain() {
         copy_node(1, 0, 1),
         CompiledNode {
             id: StepIdx::new(2),
-            output: Some(SlotIdx::new(2)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(2)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(1),
             },
@@ -660,20 +680,22 @@ fn gate_13_rejects_direct_slot_cycle() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(1),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
@@ -692,10 +714,11 @@ fn gate_13_accepts_self_copy_is_not_cycle() {
     // model because we filter out self-edges in the adjacency list.
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
@@ -710,30 +733,33 @@ fn gate_13_rejects_three_slot_cycle() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(1),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(2),
             },
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: Some(SlotIdx::new(2)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(2)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
@@ -753,10 +779,11 @@ fn gate_13_accepts_diamond_dependency() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -764,20 +791,22 @@ fn gate_13_accepts_diamond_dependency() {
         copy_node(1, 0, 1),
         CompiledNode {
             id: StepIdx::new(2),
-            output: Some(SlotIdx::new(2)),
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(2)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(3)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(3),
-            output: Some(SlotIdx::new(3)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(3)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::BuildList {
                 items: Box::new([SlotIdx::new(1), SlotIdx::new(2)]),
             },
@@ -795,20 +824,22 @@ fn gate_13_rejects_cycle_through_eval_expr() {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(1)),
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
@@ -836,20 +867,22 @@ fn gate_13_accepts_linear_chain_through_eval_expr() {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(1)),
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
@@ -871,30 +904,33 @@ fn gate_13_rejects_three_slot_cycle_through_eval_expr() {
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(1)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(2)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(2),
-                output: Some(SlotIdx::new(2)),
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(2)),
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(1),
                 },

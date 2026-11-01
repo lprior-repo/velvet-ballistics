@@ -1,6 +1,7 @@
 //! Compile-only regressions; runtime re-entry is qualified by source-drive tests.
 
 use crate::{CompileError, compile_workflow};
+use vb_core::workflow::{NodeContinuation, NodeOutput};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ExprOp, SlotIdx, StepIdx,
 };
@@ -27,6 +28,7 @@ fn node(workflow: &CompiledWorkflow, id: u16) -> Result<&CompiledNode, String> {
 fn output(workflow: &CompiledWorkflow, id: u16) -> Result<SlotIdx, String> {
     node(workflow, id)?
         .output
+        .slot()
         .ok_or_else(|| format!("missing output {id}"))
 }
 
@@ -67,10 +69,19 @@ fn flat_repeat_layout_uses_actual_width_and_private_outputs() -> Result<(), Stri
                 done: StepIdx::new(5),
             }
         );
-        assert_eq!(node(&workflow, 2)?.next, Some(StepIdx::new(3)));
-        assert_eq!(node(&workflow, 3)?.next, Some(StepIdx::new(4)));
-        assert_eq!(node(&workflow, 4)?.output, Some(counter));
-        assert_eq!(node(&workflow, 4)?.next, Some(StepIdx::new(2)));
+        assert_eq!(
+            node(&workflow, 2)?.routing.next,
+            NodeContinuation::Step(StepIdx::new(3))
+        );
+        assert_eq!(
+            node(&workflow, 3)?.routing.next,
+            NodeContinuation::Step(StepIdx::new(4))
+        );
+        assert_eq!(node(&workflow, 4)?.output, NodeOutput::Slot(counter));
+        assert_eq!(
+            node(&workflow, 4)?.routing.next,
+            NodeContinuation::Step(StepIdx::new(2))
+        );
         assert_eq!(
             node(&workflow, 4)?.kind,
             CompiledNodeKind::RepeatCheck {
@@ -82,8 +93,11 @@ fn flat_repeat_layout_uses_actual_width_and_private_outputs() -> Result<(), Stri
             node(&workflow, 5)?.kind,
             CompiledNodeKind::RepeatFinish { result: last }
         );
-        assert_eq!(node(&workflow, 5)?.output, Some(last));
-        assert_eq!(node(&workflow, 5)?.next, Some(StepIdx::new(6)));
+        assert_eq!(node(&workflow, 5)?.output, NodeOutput::Slot(last));
+        assert_eq!(
+            node(&workflow, 5)?.routing.next,
+            NodeContinuation::Step(StepIdx::new(6))
+        );
         assert_eq!(
             node(&workflow, 6)?.kind,
             CompiledNodeKind::Finish { result: parent }
@@ -162,7 +176,10 @@ fn repeat_do_reads_prior_local_and_feeds_following_expression() -> Result<(), St
             input: first,
         }
     );
-    assert_eq!(node(&workflow, 3)?.next, Some(StepIdx::new(4)));
+    assert_eq!(
+        node(&workflow, 3)?.routing.next,
+        NodeContinuation::Step(StepIdx::new(4))
+    );
     assert_ne!(action_output, first);
     assert_ne!(action_output, output(&workflow, 1)?);
     assert_add_one(&workflow, 4, action_output)

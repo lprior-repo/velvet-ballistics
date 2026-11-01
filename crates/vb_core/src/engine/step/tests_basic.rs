@@ -6,7 +6,8 @@ use crate::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, ResourceContract, WorkflowParts,
 };
 
 #[test]
@@ -51,10 +52,11 @@ fn step_once_do_returns_awaiting_action() -> Result<(), String> {
         digest: WorkflowDigest::from_bytes([0x22; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(5),
                 input: SlotIdx::new(0),
@@ -113,20 +115,22 @@ fn step_once_jump_advances_pc_to_target() -> Result<(), String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Jump {
                     target: StepIdx::new(1),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -185,10 +189,11 @@ fn single_node_workflow(
         digest: WorkflowDigest::from_bytes(digest),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind,
         }]
         .into_boxed_slice(),

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use proptest::prelude::*;
 use vb_core::action::ActionName;
 use vb_core::artifact::{ArtifactEvidence, ObligationClosure};
-use vb_core::workflow::WorkflowParts;
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, WorkflowParts};
 use vb_core::{
     ActionContract, ActionId, Capability, CapabilitySet, CompiledNode, CompiledNodeKind,
     CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
@@ -463,10 +463,11 @@ fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capabilit
     let mut nodes = Vec::new();
     nodes.push(CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
@@ -474,10 +475,11 @@ fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capabilit
     });
     nodes.push(CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

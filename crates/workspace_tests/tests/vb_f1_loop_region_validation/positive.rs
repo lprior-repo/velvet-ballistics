@@ -18,7 +18,7 @@ fn four_families_cache_exact_owner_and_exclusive_endpoints() -> TestResult {
 fn collect_legacy_source_slot_fallback_is_a_real_owner() -> TestResult {
     let mut parts = paired(Family::Collect)?;
     let owner = edit(&mut parts, 1)?;
-    owner.output = None;
+    owner.output = NodeOutput::Discard;
     owner.kind = CompiledNodeKind::CollectStart {
         source: slot(1),
         limit: 2,
@@ -49,10 +49,10 @@ fn forward_only_controls_remain_uncached() -> TestResult {
         let mut parts = linear_parts(6)?;
         let node = edit(&mut parts, 1)?;
         node.kind = control_kind(family, 1, 2, 5);
-        node.next = if matches!(family, Family::Repeat) {
-            Some(step(2))
+        node.routing.next = if matches!(family, Family::Repeat) {
+            NodeContinuation::Step(step(2))
         } else {
-            None
+            NodeContinuation::End
         };
         let plan = accept(parts)?;
         assert!(plan.loop_region(step(1)).is_none());
@@ -88,7 +88,7 @@ fn internal_forward_choose_and_jump_bypass_are_closed() -> TestResult {
         edit(&mut parts, 2)?.kind = choose(3, 4, expressions);
         let jump = edit(&mut parts, 3)?;
         jump.kind = CompiledNodeKind::Jump { target: step(5) };
-        jump.next = None;
+        jump.routing.next = NodeContinuation::End;
         assert_region(&accept(parts)?, 1, 2, 6, 7)?;
     }
     Ok(())

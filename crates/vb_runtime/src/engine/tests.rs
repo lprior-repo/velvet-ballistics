@@ -11,6 +11,7 @@ use vb_core::engine::EngineSignal;
 use vb_core::errors::EngineError;
 use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledNode;
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 
 use crate::engine::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
@@ -829,10 +830,11 @@ fn resolve_contract_returns_unknown_action_for_empty_contracts() {
 fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = vb_core::workflow::WorkflowParts {
@@ -1033,10 +1035,11 @@ fn bh_drive_budget_exhausted_does_not_emit_step_succeeded_in_evidence() {
     // immediately without executing any step. Evidence should be empty.
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = vb_core::workflow::WorkflowParts {
@@ -1095,18 +1098,20 @@ fn bh_drive_single_nop_emits_started_then_succeeded() {
     // of StepStarted/StepSucceeded.
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let finish = CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1180,10 +1185,11 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
     // action result. Only StepStarted should be emitted for such steps.
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(5),
             input: SlotIdx::new(0),
@@ -1607,7 +1613,10 @@ mod blackhat_engine {
     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx};
     use vb_core::value::{SlotValue, Taint};
     use vb_core::value_store::ValueStore;
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation,
+        NodeOutput, NodeRouting, WorkflowParts,
+    };
 
     use crate::engine::{
         EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
@@ -1673,10 +1682,11 @@ mod blackhat_engine {
     fn finish_node(id: u16, slot: u16) -> CompiledNode {
         CompiledNode {
             id: StepIdx::new(id),
-            output: Some(SlotIdx::new(slot)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(slot)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(slot),
             },
@@ -1731,10 +1741,11 @@ mod blackhat_engine {
         // can produce up to 3*N events. Use SetConst which actually writes.
         let set_const = CompiledNode {
             id: StepIdx::ZERO,
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -1798,18 +1809,20 @@ mod blackhat_engine {
         // TODO(vb-3p9f7): rewrite to assert spec behavior, not buggy state
         let nop = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         };
         let nop1 = CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         };
         let finish = finish_node(2, 0);
@@ -1883,10 +1896,11 @@ mod blackhat_engine {
     fn bh_eng_05_error_handler_dispatches_to_body_not_handler() {
         let node = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(1),
                 handler: StepIdx::new(2),
@@ -1958,10 +1972,11 @@ mod blackhat_engine {
     fn bh_eng_07_do_without_contract_now_enforces_taint_check() {
         let node = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
@@ -2001,10 +2016,11 @@ mod blackhat_engine {
     fn bh_eng_07_do_without_contract_rejects_clean_input() {
         let node = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
@@ -2041,10 +2057,11 @@ mod blackhat_engine {
     fn bh_eng_07_do_with_contract_catches_taint_violation() {
         let node = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
@@ -2104,10 +2121,11 @@ mod blackhat_engine {
     fn bh_eng_08_retry_check_increments_executed_counter() {
         let node0 = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RetryCheck {
                 policy_slot: SlotIdx::new(0),
                 body: StepIdx::new(0),
@@ -2154,10 +2172,11 @@ mod blackhat_engine {
     fn bh_eng_09_no_slot_written_for_awaiting_action_steps() {
         let node = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
@@ -2305,10 +2324,11 @@ mod blackhat_engine {
         // Use SetConst -> Finish which doesn't need pre-initialized slots.
         let set_const = CompiledNode {
             id: StepIdx::ZERO,
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -2549,10 +2569,11 @@ mod blackhat_engine {
             .collect();
         let node = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherStart {
                 branches,
                 join: StepIdx::new(4),
@@ -2560,26 +2581,29 @@ mod blackhat_engine {
         };
         let step1 = CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(4)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         };
         let step2 = CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(4)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         };
         let step3 = CompiledNode {
             id: StepIdx::new(3),
-            output: None,
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(4)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         };
         let finish = finish_node(4, 0);
@@ -2621,18 +2645,20 @@ mod blackhat_engine {
     fn bh_eng_18_budget_exhaustion_preserves_pc_for_resume() {
         let nop0 = CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         };
         let nop1 = CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         };
         let finish = finish_node(2, 0);

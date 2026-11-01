@@ -5,7 +5,10 @@ use crate::shared::{ValidationPipeline, validate};
 #[cfg(test)]
 use vb_core::ids::{SlotIdx, StepIdx};
 #[cfg(test)]
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract,
+};
 
 fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> crate::shared::WorkflowParts {
     crate::shared::WorkflowParts {
@@ -28,10 +31,11 @@ fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> crate::shared::Workf
 fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(result_slot),
         },
@@ -76,10 +80,11 @@ fn validate_convenience_passes_valid_parts() {
 fn validate_convenience_catches_bad_slot_reference() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(99)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = make_parts(vec![node], 1);
@@ -95,10 +100,11 @@ fn selective_gates_skip_disabled() {
     // parts should pass.
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(99)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = make_parts(vec![node], 1);
@@ -116,10 +122,11 @@ fn pipeline_short_circuits_on_first_error() {
     // only gate 9 fails.
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(99)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     };
     let parts = make_parts(vec![node], 1);

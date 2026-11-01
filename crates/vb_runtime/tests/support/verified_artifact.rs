@@ -1,4 +1,5 @@
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 use vb_core::{
     ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx,
     WorkflowDigest,
@@ -24,10 +25,11 @@ pub(super) fn accepted_artifact_with_caps(
         let after = next.checked_add(1).ok_or("fixture step overflow")?;
         nodes.push(CompiledNode {
             id: StepIdx::new(id),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(next)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(next)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action,
                 input: SlotIdx::new(0),
@@ -35,10 +37,11 @@ pub(super) fn accepted_artifact_with_caps(
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(next),
-            output: None,
-            next: Some(StepIdx::new(after)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(after)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         });
         contracts.push(ActionContract {
@@ -63,10 +66,11 @@ pub(super) fn accepted_artifact_with_caps(
     }
     nodes.push(CompiledNode {
         id: StepIdx::new(u16::try_from(nodes.len()).map_err(|e| e.to_string())?),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -84,7 +88,9 @@ pub(super) fn accepted_artifact_with_caps(
 
 fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
     use vb_core::value::ConstValue;
-    use vb_core::workflow::{ResourceContract, WorkflowParts};
+    use vb_core::workflow::{
+        ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
+    };
     use vb_core::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx,
         WorkflowDigest,
@@ -98,20 +104,22 @@ fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
         nodes: Box::new([
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },

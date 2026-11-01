@@ -4,7 +4,9 @@
 //! Whole-workflow budget computation and boundedness policy enforcement.
 
 use crate::ids::{RunId, StepIdx};
-use crate::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError};
+use crate::workflow::{
+    CompiledNodeKind, CompiledWorkflow, NodeContinuation, ResourceContract, WorkflowError,
+};
 use thiserror::Error;
 
 /// Computed budget for an entire workflow, derived by walking the IR.
@@ -272,8 +274,8 @@ fn small_linear_domain(nodes: &[crate::workflow::CompiledNode]) -> bool {
 }
 
 fn small_linear_node(node: &crate::workflow::CompiledNode, node_count: usize) -> bool {
-    small_linear_next(node.next, node_count)
-        && small_linear_next(node.on_error, node_count)
+    small_linear_next(node.routing.next.step(), node_count)
+        && small_linear_next(node.routing.error.handler(), node_count)
         && matches!(
             node.kind,
             CompiledNodeKind::Nop
@@ -299,7 +301,7 @@ fn small_linear_metrics(
     let first_idx = entry.as_usize();
     let first = node_at_position(nodes, first_idx, entry)?;
     let first_metrics = small_linear_node_metrics(first);
-    match first.next {
+    match first.routing.next.step() {
         Some(next) if next.as_usize() != first_idx => {
             let second = node_at_position(nodes, next.as_usize(), next)?;
             Ok(first_metrics.add(small_linear_node_metrics(second)))
@@ -1582,7 +1584,7 @@ fn visit_node_for_total_steps(
         }
         _ => {
             push_successor_targets(&node.kind, stack);
-            if let Some(next) = node.next {
+            if let Some(next) = node.routing.next.step() {
                 stack.push(next);
             }
         }
@@ -1696,7 +1698,7 @@ fn push_done_continuation(
 ) -> Result<(), BudgetError> {
     let done_idx = find_node_position(nodes, done, node_count)?;
     if let Some(node) = nodes.get(done_idx)
-        && node.next.is_none()
+        && matches!(node.routing.next, NodeContinuation::End)
         && let Some(next_idx) = done_idx.checked_add(1)
         && next_idx < nodes.len()
         && let Some(next_node) = nodes.get(next_idx)
@@ -1816,7 +1818,7 @@ fn visit_body_region_node(
         }
         _ => {
             push_successor_targets(&node.kind, stack);
-            if let Some(next) = node.next {
+            if let Some(next) = node.routing.next.step() {
                 stack.push(next);
             }
         }
@@ -2113,7 +2115,7 @@ fn compute_reachable_metrics(
 
                 let mut targets: Vec<StepIdx> = Vec::new();
                 push_successor_targets(&node.kind, &mut targets);
-                if let Some(next) = node.next {
+                if let Some(next) = node.routing.next.step() {
                     targets.push(next);
                 }
 

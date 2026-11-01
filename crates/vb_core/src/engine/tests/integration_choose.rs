@@ -4,8 +4,8 @@
 use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp, ExprProgram, SlotBranch,
-    WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprBranch, ExprOp,
+    ExprProgram, NodeContinuation, NodeOutput, NodeRouting, SlotBranch, WorkflowParts,
 };
 
 use crate::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};
@@ -245,10 +245,11 @@ fn choose_slot_workflow_with_otherwise(
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ChooseSlot {
                 branches: vec![
                     SlotBranch {
@@ -269,10 +270,11 @@ fn choose_slot_workflow_with_otherwise(
         set_const_node(3, 2, 2),
         CompiledNode {
             id: StepIdx::new(4),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(2),
             },
@@ -322,10 +324,11 @@ fn choose_expr_workflow_with(
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Choose {
                 branches: vec![
                     ExprBranch {
@@ -346,10 +349,11 @@ fn choose_expr_workflow_with(
         set_const_node(3, 2, 4),
         CompiledNode {
             id: StepIdx::new(4),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(2),
             },
@@ -382,10 +386,11 @@ fn choose_expr_workflow_with(
 fn set_const_node(id: u16, output: u16, constant: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: Some(SlotIdx::new(output)),
-        next: Some(StepIdx::new(4)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(output)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(4)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(constant),
         },

@@ -15,7 +15,7 @@
 
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
 
 // ─────────────────────────────────────────────────────────────────
 // Budget boundary strategies
@@ -62,10 +62,11 @@ fn make_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                error_slot: None,
-                on_error: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::CollectStart {
                     source: source_slot,
                     limit,
@@ -73,39 +74,42 @@ fn make_collect_workflow(limit: u32, page_size: u32) -> WorkflowParts {
                     body: body_step,
                     done: done_step,
                 },
-            },
+                },
             CompiledNode {
                 id: body_step,
-                output: Some(SlotIdx::new(1)),
-                next: None,
-                error_slot: None,
-                on_error: None,
+                output: NodeOutput::Slot(SlotIdx::new(1)),
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: vb_core::ids::ConstIdx::new(0),
                 },
-            },
+                },
             CompiledNode {
                 id: StepIdx::new(2),
-                output: None,
-                next: None,
-                error_slot: None,
-                on_error: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::CollectPage {
                     collector_slot: source_slot,
                     body: body_step,
                     done: done_step,
                 },
-            },
+                },
             CompiledNode {
                 id: done_step,
-                output: None,
-                next: None,
-                error_slot: None,
-                on_error: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::CollectFinish {
                     collector_slot: source_slot,
                 },
-            },
+                },
         ],
         expressions: vec![],
         accessors: vec![],

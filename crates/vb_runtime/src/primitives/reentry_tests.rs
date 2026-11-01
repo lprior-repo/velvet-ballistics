@@ -302,7 +302,8 @@ fn vb_y4pa_006_repeat_check_reentry() {
 fn minimal_workflow() -> vb_core::workflow::CompiledWorkflow {
     use vb_core::value::ConstValue;
     use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation,
+        NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
     };
 
     let parts = WorkflowParts {
@@ -311,10 +312,11 @@ fn minimal_workflow() -> vb_core::workflow::CompiledWorkflow {
         digest: vb_core::ids::WorkflowDigest::from_bytes([7; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),
@@ -1205,7 +1207,8 @@ fn gwt_re6_succeeded_to_running_rejected() {
 fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
     use vb_core::value::ConstValue;
     use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation,
+        NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
     };
 
     let parts = WorkflowParts {
@@ -1214,10 +1217,11 @@ fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
         digest: vb_core::ids::WorkflowDigest::from_bytes([7; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),
@@ -1269,7 +1273,8 @@ mod proptest_reentry {
     fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
         use vb_core::value::ConstValue;
         use vb_core::workflow::{
-            CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+            CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation,
+            NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
         };
 
         let parts = WorkflowParts {
@@ -1278,10 +1283,11 @@ mod proptest_reentry {
             digest: vb_core::ids::WorkflowDigest::from_bytes([9; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::ZERO,
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),

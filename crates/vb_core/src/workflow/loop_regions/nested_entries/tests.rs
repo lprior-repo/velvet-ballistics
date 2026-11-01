@@ -36,10 +36,13 @@ fn nested_start_at_outer_body_and_all_cached_body_steps_are_flagged() -> TestRes
 fn nested_owner_gap_and_done_are_not_inferred_body() -> TestResult {
     let mut parts = outer_parts(10, 8, 9)?;
     install_pair(&mut parts, Family::Collect, 2, 4, 6, 7, 2)?;
-    edit(&mut parts, 2)?.on_error = Some(step(3));
+    edit(&mut parts, 2)?.routing.error = ErrorRouting::Handler {
+        handler: step(3),
+        error_slot: None,
+    };
     let gap = edit(&mut parts, 3)?;
     gap.kind = CompiledNodeKind::Finish { result: slot(0) };
-    gap.next = None;
+    gap.routing.next = NodeContinuation::End;
     check_flags(parts, &[2, 4, 5, 6])
 }
 

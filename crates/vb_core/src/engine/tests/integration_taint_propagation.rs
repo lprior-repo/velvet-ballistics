@@ -12,8 +12,9 @@ use crate::ids::{
 use crate::value::{ConstValue, SlotValue, Taint, join_taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp, ExprProgram,
-    ResourceContract, SlotBranch, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprBranch, ExprOp,
+    ExprProgram, NodeContinuation, NodeOutput, NodeRouting, ResourceContract, SlotBranch,
+    WorkflowParts,
 };
 
 use crate::action::{
@@ -313,10 +314,11 @@ fn eval_workflow_with_slots(
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
@@ -681,10 +683,11 @@ fn choose_expr_branch_does_not_accumulate_taint_from_condition() -> Result<(), S
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Choose {
                     branches: vec![ExprBranch {
                         condition: ExprIdx::new(0),
@@ -696,18 +699,20 @@ fn choose_expr_branch_does_not_accumulate_taint_from_condition() -> Result<(), S
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             },
         ]
@@ -854,10 +859,11 @@ fn copy_slot_preserves_both_value_and_taint() -> Result<(), String> {
 
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
@@ -883,10 +889,11 @@ fn copy_slot_returns_slot_uninitialized_for_uninitialized_source() -> Result<(),
 
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(2),
         },
@@ -916,10 +923,11 @@ fn copy_slot_destination_taint_equals_source_taint_after_copy() -> Result<(), St
 
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(2)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(2)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
@@ -946,10 +954,11 @@ fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
@@ -957,10 +966,11 @@ fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             },
         ]
@@ -1247,10 +1257,11 @@ fn eval_expr_returns_expr_out_of_bounds_for_invalid_index() -> Result<(), String
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         }]
         .into(),
@@ -1346,10 +1357,11 @@ fn choose_expr_branch_returns_missing_next_step_when_no_match_and_no_otherwise()
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Choose {
                     branches: vec![ExprBranch {
                         condition: ExprIdx::new(0),
@@ -1362,10 +1374,11 @@ fn choose_expr_branch_returns_missing_next_step_when_no_match_and_no_otherwise()
             // This node exists so StepIdx(1) is a valid target
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             },
         ]
@@ -1449,10 +1462,11 @@ fn copy_slot_returns_slot_uninitialized_for_slot_zero_source() -> Result<(), Str
 
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
@@ -1804,10 +1818,11 @@ fn copy_slot_preserves_random_taint() -> Result<(), String> {
 
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
@@ -1830,10 +1845,11 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
@@ -1841,10 +1857,11 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },

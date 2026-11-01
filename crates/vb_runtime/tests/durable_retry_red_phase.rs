@@ -20,7 +20,8 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, Taint};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, ResourceContract, WorkflowParts,
 };
 
 use vb_runtime::journal::{RuntimeJournalEvent, SharedRuntimeJournal, VolatileRuntimeJournal};
@@ -29,20 +30,22 @@ use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
 fn retry_workflow() -> Option<CompiledWorkflow> {
     let set_policy = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
     };
     let action = CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::ZERO),
-        next: Some(StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::ZERO),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
@@ -50,10 +53,11 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
     };
     let retry = CompiledNode {
         id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(1),
             body: StepIdx::new(1),
@@ -62,10 +66,11 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
     };
     let finish = CompiledNode {
         id: StepIdx::new(3),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
@@ -91,10 +96,11 @@ fn retry_workflow() -> Option<CompiledWorkflow> {
 fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
     let guard = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
@@ -103,10 +109,11 @@ fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
     };
     let action = CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(3)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(3)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
@@ -114,10 +121,11 @@ fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
     };
     let handler = CompiledNode {
         id: StepIdx::new(2),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(3)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(3)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(1),
@@ -125,10 +133,11 @@ fn error_handler_with_slot_workflow() -> Option<CompiledWorkflow> {
     };
     let finish = CompiledNode {
         id: StepIdx::new(3),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -169,10 +178,11 @@ fn run_exists(shard: &mut Shard, run: RunId) -> bool {
 fn suspended_workflow_no_retry() -> Option<CompiledWorkflow> {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::ZERO),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
@@ -203,20 +213,22 @@ fn slot_preservation_workflow() -> Option<CompiledWorkflow> {
     // RetryCheck reads policy from slot 2
     let set_policy = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(2)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(2)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
     };
     let do_node = CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
@@ -224,10 +236,11 @@ fn slot_preservation_workflow() -> Option<CompiledWorkflow> {
     };
     let retry_check = CompiledNode {
         id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(2),
             body: StepIdx::new(1),
@@ -236,10 +249,11 @@ fn slot_preservation_workflow() -> Option<CompiledWorkflow> {
     };
     let finish = CompiledNode {
         id: StepIdx::new(3),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },

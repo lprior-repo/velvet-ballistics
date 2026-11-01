@@ -25,10 +25,11 @@ pub fn lower_repeat(
     Ok(vec![
         CompiledNode {
             id,
-            output: Some(attempt_slot),
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(attempt_slot),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts,
                 body,
@@ -37,10 +38,11 @@ pub fn lower_repeat(
         },
         CompiledNode {
             id: body,
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatAttempt {
                 attempt_slot,
                 body,
@@ -49,10 +51,11 @@ pub fn lower_repeat(
         },
         CompiledNode {
             id: done,
-            output: Some(result),
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(result),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatFinish {
                 result: attempt_slot,
             },
@@ -98,10 +101,11 @@ pub fn lower_wait(id: StepIdx, kind: WaitKind, builder: &mut SlotCompiler) -> Co
     };
     CompiledNode {
         id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: compiled_kind,
     }
 }
@@ -130,10 +134,11 @@ pub fn lower_ask(
     Ok(vec![
         CompiledNode {
             id,
-            output: Some(answer),
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(answer),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Ask {
                 prompt,
                 timeout_slot,
@@ -141,10 +146,11 @@ pub fn lower_ask(
         },
         CompiledNode {
             id: resume,
-            output: Some(answer),
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(answer),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::AskResume { answer },
         },
     ])
@@ -155,10 +161,11 @@ pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) ->
     builder.record_slot(result);
     CompiledNode {
         id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish { result },
     }
 }

@@ -6,7 +6,9 @@ use crate::{AcceptedArtifact, admission};
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::action_pack::{ActionPack, CapabilityScopeSpec, RecoveryClass};
 use vb_core::value::ConstValue;
-use vb_core::workflow::{ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
+};
 use vb_core::{
     Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx,
     StepIdx, WorkflowDigest,
@@ -45,10 +47,11 @@ pub(super) fn action_workflow() -> Result<CompiledWorkflow, BoxError> {
 fn set_node() -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -58,10 +61,11 @@ fn set_node() -> CompiledNode {
 fn action_node() -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: vb_core::ActionId::new(0),
             input: SlotIdx::new(0),
@@ -72,10 +76,11 @@ fn action_node() -> CompiledNode {
 fn finish_node(id: u16, result: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(result),
         },

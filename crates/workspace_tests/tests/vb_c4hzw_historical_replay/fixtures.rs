@@ -6,7 +6,8 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, ResourceContract, WorkflowParts,
 };
 use vb_runtime::shard::ShardConfig;
 
@@ -27,10 +28,11 @@ pub(super) fn strict_config() -> ShardConfig {
 fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: output.map(SlotIdx::new),
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
+        output: (output.map(SlotIdx::new)).into(),
+        routing: NodeRouting {
+            next: (next.map(StepIdx::new)).into(),
+            error: ErrorRouting::None,
+        },
         kind,
     }
 }

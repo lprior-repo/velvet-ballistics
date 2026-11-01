@@ -23,7 +23,7 @@ pub(super) fn control_shape(node: &CompiledNode) -> Option<LoopShape> {
         CompiledNodeKind::ForEachNext { body, done, .. }
         | CompiledNodeKind::CollectNext { body, done, .. }
         | CompiledNodeKind::ReduceNext { body, done, .. } => (body, done),
-        CompiledNodeKind::RepeatCheck { done, .. } => (node.next?, done),
+        CompiledNodeKind::RepeatCheck { done, .. } => (node.routing.next.step()?, done),
         _ => return None,
     };
     Some(LoopShape {
@@ -68,14 +68,14 @@ pub(super) fn start_shape(node: &CompiledNode) -> Option<LoopShape> {
 
 fn start_state(node: &CompiledNode) -> Option<LoopState> {
     match node.kind {
-        CompiledNodeKind::ForEachStart { .. } => Some(LoopState::ForEach(node.output?)),
+        CompiledNodeKind::ForEachStart { .. } => Some(LoopState::ForEach(node.output.slot()?)),
         CompiledNodeKind::CollectStart { source, .. } => Some(LoopState::Collect(
-            node.output.map_or(source, core::convert::identity),
+            node.output.slot().map_or(source, core::convert::identity),
         )),
         CompiledNodeKind::ReduceStart { accumulator, .. } => {
-            Some(LoopState::Reduce(node.output?, accumulator))
+            Some(LoopState::Reduce(node.output.slot()?, accumulator))
         }
-        CompiledNodeKind::RepeatStart { .. } => Some(LoopState::Repeat(node.output?)),
+        CompiledNodeKind::RepeatStart { .. } => Some(LoopState::Repeat(node.output.slot()?)),
         _ => None,
     }
 }

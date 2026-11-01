@@ -40,10 +40,11 @@ fn build_fuzz_node(
     };
     vb_core::CompiledNode {
         id: step_idx,
-        output,
-        next: next_step,
-        error_slot: None,
-        on_error: None,
+        output: output.into(),
+        routing: vb_core::workflow::NodeRouting {
+            next: (next_step).into(),
+            error: vb_core::workflow::ErrorRouting::None,
+        },
         kind,
     }
 }

@@ -3,7 +3,9 @@
 use super::*;
 use crate::ValidationError;
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+};
 
 use super::super::test_helpers::{finish_node, make_parts, nop_node};
 
@@ -26,10 +28,11 @@ fn accepts_valid_for_each() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
@@ -40,10 +43,11 @@ fn accepts_valid_for_each() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachNext {
                 iterator_slot: SlotIdx::new(0),
                 body: StepIdx::new(1),
@@ -61,10 +65,11 @@ fn accepts_valid_together() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherStart {
                 branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
                 join: StepIdx::new(3),
@@ -83,10 +88,11 @@ fn accepts_together_with_empty_branches() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherStart {
                 branches: Box::new([]),
                 join: StepIdx::new(1),
@@ -103,10 +109,11 @@ fn accepts_valid_repeat() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts: 3,
                 body: StepIdx::new(1),
@@ -115,10 +122,11 @@ fn accepts_valid_repeat() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatAttempt {
                 attempt_slot: SlotIdx::new(0),
                 body: StepIdx::new(1),
@@ -127,10 +135,11 @@ fn accepts_valid_repeat() {
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatCheck {
                 attempt_slot: SlotIdx::new(0),
                 done: StepIdx::new(3),
@@ -147,10 +156,11 @@ fn accepts_valid_collect() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
                 limit: 100,
@@ -161,10 +171,11 @@ fn accepts_valid_collect() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::CollectPage {
                 collector_slot: SlotIdx::new(0),
                 body: StepIdx::new(1),
@@ -182,10 +193,11 @@ fn accepts_valid_reduce() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ReduceStart {
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
@@ -196,10 +208,11 @@ fn accepts_valid_reduce() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ReduceNext {
                 iterator_slot: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
@@ -218,10 +231,11 @@ fn accepts_error_handler_with_valid_steps() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(1),
                 handler: StepIdx::new(2),
@@ -241,10 +255,11 @@ fn accepts_error_handler_with_valid_steps() {
 fn rejects_for_each_body_out_of_range() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -264,10 +279,11 @@ fn rejects_for_each_body_out_of_range() {
 fn rejects_for_each_done_out_of_range() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -287,10 +303,11 @@ fn rejects_for_each_done_out_of_range() {
 fn rejects_together_branch_out_of_range() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherStart {
             branches: Box::new([StepIdx::new(99)]),
             join: StepIdx::new(1),
@@ -307,10 +324,11 @@ fn rejects_together_branch_out_of_range() {
 fn rejects_loop_body_not_after_start() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -330,10 +348,11 @@ fn rejects_loop_body_not_after_start() {
 fn rejects_done_before_body() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -353,10 +372,11 @@ fn rejects_done_before_body() {
 fn rejects_together_branch_before_start() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherStart {
             branches: Box::new([StepIdx::new(0)]),
             join: StepIdx::new(3),
@@ -373,10 +393,11 @@ fn rejects_together_branch_before_start() {
 fn rejects_together_join_before_branch() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherStart {
             branches: Box::new([StepIdx::new(2)]),
             join: StepIdx::new(1),
@@ -393,10 +414,11 @@ fn rejects_together_join_before_branch() {
 fn rejects_retry_check_body_out_of_range() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(99),
@@ -414,10 +436,11 @@ fn rejects_retry_check_body_out_of_range() {
 fn rejects_error_handler_body_out_of_range() {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(99),
             handler: StepIdx::new(1),

@@ -38,7 +38,7 @@ pub(super) fn compile_repeat(
     let mut nodes = lower_repeat(id, max_attempts, body_step, done, &mut SlotCompiler::new())?;
     // RepeatFinish (index 2) chains to the next step.
     if let Some(finish) = nodes.get_mut(2) {
-        finish.next = next;
+        finish.routing.next = next.into();
     }
     Ok(nodes)
 }
@@ -84,7 +84,7 @@ pub(super) fn compile_wait(
             });
         }
     };
-    node.next = next;
+    node.routing.next = next.into();
     Ok(node)
 }
 
@@ -112,12 +112,12 @@ pub(super) fn compile_ask(
     if let (Some(_ask_node), Some(resume_node)) = (nodes.first(), nodes.get(1)) {
         let resume_id = resume_node.id;
         if let Some(ask_node) = nodes.first_mut() {
-            ask_node.next = Some(resume_id);
+            ask_node.routing.next = NodeContinuation::Step(resume_id);
         }
     }
     // AskResume (index 1) chains to the next step.
     if let Some(resume) = nodes.get_mut(1) {
-        resume.next = next;
+        resume.routing.next = next.into();
     }
     Ok(nodes)
 }
@@ -153,10 +153,11 @@ pub(super) fn compile_finish_result(
         builder.record_slot(slot);
         return Ok(vec![CompiledNode {
             id,
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish { result: slot },
         }]);
     }
@@ -170,18 +171,20 @@ pub(super) fn compile_finish_result(
     Ok(vec![
         CompiledNode {
             id,
-            output: Some(output),
-            next: Some(finish_id),
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(output),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(finish_id),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst { value },
         },
         CompiledNode {
             id: finish_id,
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish { result: output },
         },
     ])

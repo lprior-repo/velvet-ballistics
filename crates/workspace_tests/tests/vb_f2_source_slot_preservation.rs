@@ -72,7 +72,7 @@ impl SourceRun {
                 CompiledNodeKind::SetConst { value }
                     if self.workflow.constant(*value) == Some(&ConstValue::I64(expected)) =>
                 {
-                    node.output
+                    node.output.slot()
                 }
                 _ => None,
             })
@@ -215,9 +215,9 @@ fn assert_role_isolation(run: &SourceRun, numeric_input: Option<SlotIdx>) -> Res
                 if matches!(run.workflow.constant(*value), Some(ConstValue::I64(42 | 99)))
         );
         if !sentinel_definition {
-            writes.extend(node.output);
+            writes.extend(node.output.slot());
         }
-        writes.extend(node.error_slot);
+        writes.extend(node.routing.error.error_slot());
         writes.extend(implicit_state_writes(node)?);
         for slot in writes {
             assert!(
@@ -234,7 +234,10 @@ fn implicit_state_writes(node: &CompiledNode) -> Result<Vec<SlotIdx>, String> {
     let mut writes = Vec::new();
     match &node.kind {
         CompiledNodeKind::ForEachStart { item_slot, .. } => {
-            let state = node.output.ok_or("ForEachStart lacks iterator output")?;
+            let state = node
+                .output
+                .slot()
+                .ok_or("ForEachStart lacks iterator output")?;
             assert_ne!(state, *item_slot, "item aliases iterator state");
             writes.push(*item_slot);
         }
@@ -242,7 +245,10 @@ fn implicit_state_writes(node: &CompiledNode) -> Result<Vec<SlotIdx>, String> {
         CompiledNodeKind::ReduceStart {
             input, accumulator, ..
         } => {
-            let state = node.output.ok_or("ReduceStart lacks iterator output")?;
+            let state = node
+                .output
+                .slot()
+                .ok_or("ReduceStart lacks iterator output")?;
             assert_ne!(state, *input, "reduce item aliases iterator state");
             assert_ne!(
                 state, *accumulator,
@@ -254,14 +260,16 @@ fn implicit_state_writes(node: &CompiledNode) -> Result<Vec<SlotIdx>, String> {
         CompiledNodeKind::ReduceNext { iterator_slot, .. } => writes.push(*iterator_slot),
         CompiledNodeKind::TogetherBranch { accumulator, .. }
         | CompiledNodeKind::TogetherJoin { accumulator, .. } => {
-            if let Some(output) = node.output {
+            if let Some(output) = node.output.slot() {
                 assert_ne!(output, *accumulator, "branch result aliases accumulator");
             }
             writes.push(*accumulator);
         }
         CompiledNodeKind::RepeatCheck { attempt_slot, .. } => writes.push(*attempt_slot),
         CompiledNodeKind::RepeatStart { .. } => {
-            node.output.ok_or("RepeatStart lacks attempt state")?;
+            node.output
+                .slot()
+                .ok_or("RepeatStart lacks attempt state")?;
         }
         _ => {}
     }
@@ -408,7 +416,7 @@ fn reduce_compiles_with_four_distinct_private_roles_and_no_nop() -> Result<(), S
         .find_map(|node| match &node.kind {
             CompiledNodeKind::ReduceStart {
                 input, accumulator, ..
-            } => Some((*input, *accumulator, node.output)),
+            } => Some((*input, *accumulator, node.output.slot())),
             _ => None,
         })
         .ok_or("missing compiled ReduceStart")?;
@@ -421,7 +429,7 @@ fn reduce_compiles_with_four_distinct_private_roles_and_no_nop() -> Result<(), S
                 iterator_slot,
                 accumulator,
                 ..
-            } => Some((*iterator_slot, *accumulator, node.output)),
+            } => Some((*iterator_slot, *accumulator, node.output.slot())),
             _ => None,
         })
         .ok_or("missing compiled ReduceNext")?;
@@ -447,7 +455,7 @@ fn reduce_compiles_with_four_distinct_private_roles_and_no_nop() -> Result<(), S
         parts.nodes.iter().any(|node| matches!(
             &node.kind,
             CompiledNodeKind::Copy { source } if *source == SlotIdx::new(8)
-                && node.output == Some(initial_item)
+                && node.output.slot() == Some(initial_item)
         )),
         "Reduce must preserve its authored list through a private Copy"
     );

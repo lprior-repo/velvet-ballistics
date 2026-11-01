@@ -57,7 +57,7 @@ pub(crate) fn emit_slot_evidence(
                 return Ok(());
             }
         }
-    } else if let Some(slot) = node.output {
+    } else if let Some(slot) = node.output.slot() {
         match run.read_slot(slot) {
             Ok(value) => {
                 let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
@@ -80,7 +80,7 @@ pub(crate) fn emit_slot_evidence(
 /// so the first page still emits a collect-bearing event.
 fn collect_written_slot(node: &CompiledNode) -> Option<SlotIdx> {
     match &node.kind {
-        CompiledNodeKind::CollectStart { source, .. } => match node.output {
+        CompiledNodeKind::CollectStart { source, .. } => match node.output.slot() {
             Some(output) => Some(output),
             None => Some(*source),
         },

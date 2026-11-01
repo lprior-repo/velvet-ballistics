@@ -53,18 +53,20 @@ pub(super) fn lower_canonical_aggregate(
         checked_step_offset(id, 4, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.push_node(CompiledNode {
         id,
-        output: Some(initial_input),
-        next: Some(start),
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(initial_input),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(start),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy { source: input },
     });
     builder.push_node(CompiledNode {
         id: start,
-        output: Some(iterator_slot),
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(iterator_slot),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ReduceStart {
             input: initial_input,
             accumulator,
@@ -84,10 +86,11 @@ pub(super) fn lower_canonical_aggregate(
     )?;
     builder.push_node(CompiledNode {
         id: next_step,
-        output: Some(next_item),
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(next_item),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ReduceNext {
             iterator_slot,
             accumulator,
@@ -97,10 +100,11 @@ pub(super) fn lower_canonical_aggregate(
     });
     builder.push_node(CompiledNode {
         id: done,
-        output: Some(accumulator),
-        next,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(accumulator),
+        routing: NodeRouting {
+            next: next.into(),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ReduceFinish { accumulator },
     });
     Ok(())
@@ -138,7 +142,7 @@ pub(super) fn lower_canonical_wait(
             }]));
         }
     };
-    node.next = next;
+    node.routing.next = next.into();
     builder.push_node(node);
     Ok(())
 }
@@ -168,10 +172,10 @@ pub(super) fn lower_canonical_ask(
         .map(|node| node.id)
         .ok_or_else(|| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: index }]))?;
     if let Some(node) = nodes.get_mut(0) {
-        node.next = Some(resume);
+        node.routing.next = NodeContinuation::Step(resume);
     }
     if let Some(node) = nodes.get_mut(1) {
-        node.next = next;
+        node.routing.next = next.into();
     }
     for node in nodes {
         builder.push_node(node);
@@ -246,10 +250,11 @@ pub(super) fn emit_single_body_set(
             // Construct Do node directly to avoid double-borrow of builder
             builder.push_node(CompiledNode {
                 id,
-                output: Some(slot),
-                next,
-                error_slot: None,
-                on_error: None,
+                output: NodeOutput::Slot(slot),
+                routing: NodeRouting {
+                    next: next.into(),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Do {
                     action: vb_core::ActionId::new(action_id),
                     input: input_slot,

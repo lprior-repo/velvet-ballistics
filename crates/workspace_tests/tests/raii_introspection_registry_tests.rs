@@ -19,7 +19,8 @@ use std::num::NonZeroUsize;
 use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, ResourceContract, WorkflowParts,
 };
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{
@@ -50,20 +51,22 @@ fn finished_workflow() -> Result<CompiledWorkflow, String> {
     let nodes = Box::from([
         CompiledNode {
             id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::ZERO),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::ZERO,
             },

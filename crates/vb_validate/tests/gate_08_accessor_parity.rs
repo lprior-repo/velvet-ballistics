@@ -2,8 +2,9 @@
 
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, PathSegment,
-    ResourceContract, WorkflowError, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting,
+    NodeContinuation, NodeOutput, NodeRouting, PathSegment, ResourceContract, WorkflowError,
+    WorkflowParts,
 };
 use vb_validate::ValidationError;
 use vb_validate::gates;
@@ -11,10 +12,11 @@ use vb_validate::gates;
 fn finish_node() -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

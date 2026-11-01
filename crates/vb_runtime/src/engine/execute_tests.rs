@@ -10,16 +10,20 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, WorkflowParts,
+};
 
 /// Terminal Finish node. Valid sink for any workflow path.
 fn finish_node(id: u16, slot: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: Some(SlotIdx::new(slot)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(slot)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(slot),
         },
@@ -30,10 +34,11 @@ fn finish_node(id: u16, slot: u16) -> CompiledNode {
 fn nop_forward(id: u16, next_id: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: None,
-        next: Some(StepIdx::new(next_id)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(next_id)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     }
 }
@@ -130,10 +135,11 @@ fn execute_jump_falls_through_to_step_once() {
     // Jump at 0 targeting 1 (forward edge). Finish at 1 as sink.
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Jump {
             target: StepIdx::new(1),
         },
@@ -177,10 +183,11 @@ fn execute_do_without_contract_rejects_without_ticket() {
     // because the validator does not require next for Do (no kind-specific targets).
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(5),
             input: SlotIdx::new(0),
@@ -228,10 +235,11 @@ fn execute_do_without_contract_rejects_without_ticket() {
 fn execute_do_with_known_contract_returns_awaiting_action() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(1),
             input: SlotIdx::new(0),
@@ -305,10 +313,11 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
 fn execute_do_with_unknown_contract_returns_error() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(99),
             input: SlotIdx::new(0),
@@ -365,10 +374,11 @@ fn execute_do_with_unknown_contract_returns_error() {
 fn execute_do_taint_violation_for_deterministic_pure_with_secret_input() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
@@ -431,10 +441,11 @@ fn execute_retry_check_never_policy_uninitialized_routes_to_body() {
     // 0 < 1, so routes to body (not exhausted).
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(0),
@@ -475,10 +486,11 @@ fn execute_retry_check_never_policy_uninitialized_routes_to_body() {
 fn execute_retry_check_never_policy_attempt_one_routes_to_exhausted() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(0),
@@ -525,10 +537,11 @@ fn execute_retry_check_never_policy_attempt_one_routes_to_exhausted() {
 fn execute_retry_check_default_policy_routes_to_body() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(0),
@@ -570,10 +583,11 @@ fn execute_retry_check_default_policy_routes_to_body() {
 fn execute_retry_check_default_policy_attempt_three_routes_to_exhausted() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(0),
@@ -619,10 +633,11 @@ fn execute_retry_check_default_policy_attempt_three_routes_to_exhausted() {
 fn execute_error_handler_routes_to_body_step() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
@@ -659,10 +674,14 @@ fn execute_error_handler_routes_to_body_step() {
 fn execute_error_handler_with_error_slot_routes_to_body_step() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: Some(SlotIdx::new(3)),
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::Handler {
+                handler: StepIdx::new(2),
+                error_slot: Some(SlotIdx::new(3)),
+            },
+        },
         kind: CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
@@ -704,10 +723,11 @@ fn execute_for_each_start_errors_on_uninitialized_input() {
     // body=1 (forward, makes node 1 reachable), done=2 (forward)
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(5),
             item_slot: SlotIdx::new(6),
@@ -756,10 +776,11 @@ fn execute_for_each_start_errors_on_uninitialized_input() {
 fn execute_for_each_join_errors_on_missing_next_step() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachJoin {
             output: SlotIdx::new(0),
         },
@@ -813,10 +834,11 @@ fn execute_for_each_join_errors_on_missing_next_step() {
 fn execute_for_each_next_errors_on_uninitialized_iterator() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachNext {
             iterator_slot: SlotIdx::new(0),
             body: StepIdx::new(1),
@@ -864,10 +886,11 @@ fn execute_together_start_empty_branches_no_panic() {
     // join=1 must be forward
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherStart {
             branches: Box::from([]),
             join: StepIdx::new(1),
@@ -911,10 +934,11 @@ fn execute_together_start_empty_branches_no_panic() {
 fn execute_together_join_errors_on_missing_next_step() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherJoin {
             branch_count: 2,
             accumulator: SlotIdx::new(1),
@@ -977,10 +1001,11 @@ fn execute_together_join_errors_on_missing_next_step() {
 fn execute_collect_start_errors_on_uninitialized_source() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectStart {
             source: SlotIdx::new(5),
             limit: 10,
@@ -1029,10 +1054,11 @@ fn execute_collect_start_errors_on_uninitialized_source() {
 fn execute_collect_page_errors_on_uninitialized_collector() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectPage {
             collector_slot: SlotIdx::new(0),
             body: StepIdx::new(1),
@@ -1079,10 +1105,11 @@ fn execute_collect_page_errors_on_uninitialized_collector() {
 fn execute_collect_next_errors_on_uninitialized_collector() -> Result<(), String> {
     let start = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectStart {
             source: SlotIdx::new(1),
             limit: 2,
@@ -1094,10 +1121,11 @@ fn execute_collect_next_errors_on_uninitialized_collector() -> Result<(), String
     let node1 = nop_forward(1, 2);
     let node2 = CompiledNode {
         id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectNext {
             collector_slot: SlotIdx::new(0),
             body: StepIdx::new(1),
@@ -1149,10 +1177,11 @@ fn execute_collect_next_errors_on_uninitialized_collector() -> Result<(), String
 fn execute_collect_finish_errors_on_uninitialized_collector() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectFinish {
             collector_slot: SlotIdx::new(0),
         },
@@ -1195,10 +1224,11 @@ fn execute_collect_finish_errors_on_uninitialized_collector() {
 fn execute_reduce_start_errors_on_uninitialized_input() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ReduceStart {
             input: SlotIdx::new(5),
             accumulator: SlotIdx::new(6),
@@ -1249,10 +1279,11 @@ fn execute_reduce_start_errors_on_uninitialized_input() {
 fn execute_reduce_next_errors_on_uninitialized_iterator() -> Result<(), String> {
     let start = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ReduceStart {
             input: SlotIdx::new(2),
             accumulator: SlotIdx::new(1),
@@ -1264,10 +1295,11 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() -> Result<(), String> 
     let node1 = nop_forward(1, 2);
     let node2 = CompiledNode {
         id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ReduceNext {
             iterator_slot: SlotIdx::new(0),
             accumulator: SlotIdx::new(1),
@@ -1320,10 +1352,11 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() -> Result<(), String> 
 fn execute_reduce_finish_errors_on_missing_next_step() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ReduceFinish {
             accumulator: SlotIdx::new(0),
         },
@@ -1370,10 +1403,11 @@ fn execute_reduce_finish_errors_on_missing_next_step() {
 fn execute_repeat_start_single_attempt_no_panic() -> Result<(), String> {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        output: Some(SlotIdx::new(0)),
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RepeatStart {
             max_attempts: 1,
             body: StepIdx::new(1),
@@ -1381,9 +1415,9 @@ fn execute_repeat_start_single_attempt_no_panic() -> Result<(), String> {
         },
     };
     let mut node1 = finish_node(1, 0);
-    node1.output = None;
+    node1.output = NodeOutput::Discard;
     let mut node2 = finish_node(2, 0);
-    node2.output = None;
+    node2.output = NodeOutput::Discard;
     let wf = make_workflow(vec![node0, node1, node2], 8);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
@@ -1418,10 +1452,11 @@ fn execute_repeat_start_single_attempt_no_panic() -> Result<(), String> {
 fn execute_repeat_attempt_errors_on_uninitialized_attempt_slot() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RepeatAttempt {
             attempt_slot: SlotIdx::new(5),
             body: StepIdx::new(0),
@@ -1467,10 +1502,11 @@ fn execute_repeat_attempt_errors_on_uninitialized_attempt_slot() {
 fn execute_repeat_finish_errors_on_uninitialized_result_slot() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RepeatFinish {
             result: SlotIdx::new(5),
         },
@@ -1513,10 +1549,11 @@ fn execute_repeat_finish_errors_on_uninitialized_result_slot() {
 fn execute_wait_until_errors_on_uninitialized_deadline() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::WaitUntil {
             deadline_slot: SlotIdx::new(5),
         },
@@ -1559,10 +1596,11 @@ fn execute_wait_until_errors_on_uninitialized_deadline() {
 fn execute_wait_event_errors_on_uninitialized_event() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::WaitEvent {
             event: SlotIdx::new(5),
             timeout_slot: None,
@@ -1606,10 +1644,11 @@ fn execute_wait_event_errors_on_uninitialized_event() {
 fn execute_ask_errors_on_uninitialized_prompt() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Ask {
             prompt: SlotIdx::new(5),
             timeout_slot: None,
@@ -1653,10 +1692,11 @@ fn execute_ask_errors_on_uninitialized_prompt() {
 fn execute_ask_resume_errors_on_uninitialized_answer() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::AskResume {
             answer: SlotIdx::new(5),
         },
@@ -1699,10 +1739,11 @@ fn execute_ask_resume_errors_on_uninitialized_answer() {
 fn execute_repeat_check_routes_forward_on_done() {
     let node0 = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RepeatCheck {
             attempt_slot: SlotIdx::new(0),
             done: StepIdx::new(1),

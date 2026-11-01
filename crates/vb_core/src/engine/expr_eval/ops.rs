@@ -189,8 +189,9 @@ mod tests {
     use crate::limits::MAX_EXPRESSION_STACK;
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
-        WorkflowParts, check_expr_stack_bound,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp, ExprProgram,
+        NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
+        check_expr_stack_bound,
     };
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -235,10 +236,11 @@ mod tests {
             digest: WorkflowDigest::from_bytes([0xFA; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),

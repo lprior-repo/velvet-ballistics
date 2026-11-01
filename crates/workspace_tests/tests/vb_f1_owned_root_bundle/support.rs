@@ -2,8 +2,8 @@ use std::error::Error;
 use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value_store::ValueStoreCheckpointV1;
 use vb_core::workflow::{
-    CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract,
-    WorkflowParts,
+    CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting,
+    NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
 };
 
 pub(super) type TestResult<T> = Result<T, Box<dyn Error>>;
@@ -16,10 +16,11 @@ pub(super) fn fixture(
 ) -> TestResult<CompiledWorkflow> {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

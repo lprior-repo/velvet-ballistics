@@ -18,6 +18,7 @@
 //! - Bounds checking - SlotOutOfBounds, SlotUninitialized errors
 //! - State transitions via `mark_*` methods
 
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 use vb_core::{
     // Error types
     CoreError,
@@ -52,20 +53,22 @@ fn two_step_workflow(value: i64) -> CompiledWorkflow {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -94,30 +97,33 @@ fn three_step_workflow() -> CompiledWorkflow {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(1)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(2)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
@@ -145,10 +151,11 @@ fn suspend_on_action_workflow() -> CompiledWorkflow {
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: vb_core::ids::ActionId::new(1),
                 input: SlotIdx::new(0),
@@ -207,19 +214,21 @@ mod behavior_new_run_frame {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: None,
-                    next: Some(StepIdx::new(1)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop, // No Finish that references slots
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
+                    kind: CompiledNodeKind::Nop,
                 },
             ]
             .into_boxed_slice(),
@@ -490,10 +499,11 @@ mod behavior_slot_management {
             digest: WorkflowDigest::from_bytes([0xFF; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -542,10 +552,11 @@ mod behavior_slot_management {
             digest: WorkflowDigest::from_bytes([0x11; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -580,10 +591,11 @@ mod behavior_slot_management {
             digest: WorkflowDigest::from_bytes([0x22; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -618,10 +630,11 @@ mod behavior_slot_management {
             digest: WorkflowDigest::from_bytes([0x33; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -664,10 +677,11 @@ mod behavior_slot_management {
             digest: WorkflowDigest::from_bytes([0x44; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -702,10 +716,11 @@ mod behavior_slot_management {
             digest: WorkflowDigest::from_bytes([0x55; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -758,26 +773,29 @@ mod behavior_step_state_transitions {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: None,
-                    next: Some(StepIdx::new(1)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: Some(StepIdx::new(2)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(2)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
             ]
@@ -857,10 +875,11 @@ mod behavior_step_state_transitions {
             digest: WorkflowDigest::from_bytes([0x77; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -893,10 +912,11 @@ mod behavior_step_state_transitions {
             digest: WorkflowDigest::from_bytes([0x88; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -1112,10 +1132,11 @@ mod behavior_parallel_in_flight {
             digest: WorkflowDigest::from_bytes([0x99; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -1157,10 +1178,11 @@ mod behavior_parallel_in_flight {
             digest: WorkflowDigest::from_bytes([0xAA; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -1201,10 +1223,11 @@ mod behavior_slot_snapshots {
             digest: WorkflowDigest::from_bytes([0xBB; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -1247,10 +1270,11 @@ mod behavior_slot_snapshots {
             digest: WorkflowDigest::from_bytes([0xCC; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -1307,20 +1331,22 @@ mod behavior_validate_compiled_workflow {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Slot(SlotIdx::new(0)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
@@ -1385,10 +1411,11 @@ mod behavior_taint_propagation {
             digest: WorkflowDigest::from_bytes([0xEE; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -1434,10 +1461,11 @@ mod behavior_taint_propagation {
             digest: WorkflowDigest::from_bytes([0xFF; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -1479,42 +1507,47 @@ mod behavior_pc_manipulation {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: None,
-                    next: Some(StepIdx::new(1)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: Some(StepIdx::new(2)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(2)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    output: None,
-                    next: Some(StepIdx::new(3)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(3)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
-                    output: None,
-                    next: Some(StepIdx::new(4)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(4)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(4),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
             ]
@@ -1550,26 +1583,29 @@ mod behavior_pc_manipulation {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: None,
-                    next: Some(StepIdx::new(1)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: Some(StepIdx::new(2)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(2)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 },
             ]

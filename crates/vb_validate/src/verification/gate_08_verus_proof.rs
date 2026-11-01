@@ -135,8 +135,8 @@ mod verus_unit_tests {
     use crate::gate_08_accessor::validate_gate_08_accessor_path_segments;
     use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
     use vb_core::workflow::{
-        AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract,
-        WorkflowDigest, WorkflowParts,
+        AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation,
+        NodeOutput, NodeRouting, PathSegment, ResourceContract, WorkflowDigest, WorkflowParts,
     };
 
     fn make_parts(
@@ -150,10 +150,11 @@ mod verus_unit_tests {
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             nodes: Box::new([CompiledNode {
                 id: StepIdx::ZERO,
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::ZERO,
                 },

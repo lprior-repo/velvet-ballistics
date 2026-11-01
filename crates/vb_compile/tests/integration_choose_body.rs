@@ -81,8 +81,8 @@ fn compile_workflow_choose_body_set_success() {
     );
     // Verify the body node chains to the finish node
     assert_eq!(
-        body_node.next,
-        Some(StepIdx::new(3)),
+        body_node.routing.next,
+        vb_core::workflow::NodeContinuation::Step(StepIdx::new(3)),
         "body node must chain to finish node at index 3"
     );
     // Verify ChooseSlot has branch target pointing to the body
@@ -147,8 +147,8 @@ fn compile_workflow_choose_body_do_success() {
     );
     // Verify the Do body node chains to the finish node
     assert_eq!(
-        body_node.next,
-        Some(StepIdx::new(3)),
+        body_node.routing.next,
+        vb_core::workflow::NodeContinuation::Step(StepIdx::new(3)),
         "Do body node must chain to finish node at index 3"
     );
     // Verify ChooseSlot has branch target pointing to the Do body

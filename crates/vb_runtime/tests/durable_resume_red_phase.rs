@@ -20,7 +20,10 @@ use vb_core::ids::ActionId;
 use vb_core::ids::RunId;
 use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::CompiledWorkflow;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract, WorkflowParts,
+};
 
 // Import the types we expect to exist after implementation.
 // These imports will fail until vb-qi37.16.2 is implemented.
@@ -668,10 +671,11 @@ fn small_config() -> ShardConfig {
 fn suspended_workflow() -> Option<CompiledWorkflow> {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::ZERO),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: vb_core::ids::ActionId::new(0),
             input: SlotIdx::new(0),

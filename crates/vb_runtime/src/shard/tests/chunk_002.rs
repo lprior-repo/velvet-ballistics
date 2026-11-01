@@ -173,24 +173,26 @@ fn inspect_nonexistent_run_returns_not_found() {
 fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_const = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(vb_core::ids::StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        };
     let finish = CompiledNode {
         id: vb_core::ids::StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("finished"),
@@ -212,34 +214,37 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 fn timed_wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_deadline = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: Some(vb_core::ids::StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::ZERO),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        };
     let wait = CompiledNode {
         id: vb_core::ids::StepIdx::new(1),
-        output: None,
-        next: Some(vb_core::ids::StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::WaitUntil {
             deadline_slot: SlotIdx::ZERO,
         },
-    };
+        };
     let finish = CompiledNode {
         id: vb_core::ids::StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("timed_wait_then_finish"),

@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 
 use crate::mod_compile_errors::CompileErrors;
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 use vb_core::{
     AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
     ConstValue, ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
@@ -48,10 +49,11 @@ pub fn lower_set(
 ) -> CompiledNode {
     CompiledNode {
         id,
-        output: Some(output),
-        next,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(output),
+        routing: NodeRouting {
+            next: next.into(),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst { value },
     }
 }
@@ -68,10 +70,11 @@ pub fn lower_do(
     builder.record_slot(input);
     CompiledNode {
         id,
-        output,
-        next,
-        error_slot: None,
-        on_error: None,
+        output: output.into(),
+        routing: NodeRouting {
+            next: next.into(),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do { action, input },
     }
 }

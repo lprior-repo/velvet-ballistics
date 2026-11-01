@@ -6,7 +6,8 @@
 
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, PathSegment, ResourceContract, WorkflowParts,
 };
 use vb_validate::shared::{ValidationPipeline, validate};
 
@@ -22,10 +23,11 @@ fn make_parts(slot_count: u16, symbols_count: u32) -> WorkflowParts {
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -45,14 +47,16 @@ fn make_parts(slot_count: u16, symbols_count: u32) -> WorkflowParts {
 fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: None,
-        next: if index == 0 {
-            Some(StepIdx::new(1))
-        } else {
-            None
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: (if index == 0 {
+                Some(StepIdx::new(1))
+            } else {
+                None
+            })
+            .into(),
+            error: ErrorRouting::None,
         },
-        on_error: None,
-        error_slot: None,
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(result_slot),
         },
@@ -63,10 +67,11 @@ fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
 fn nop_node(index: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: None,
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(index.saturating_add(1))),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     }
 }
@@ -256,10 +261,11 @@ fn pipeline_validate_rejects_slot_reference_out_of_range() {
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(99)), // slot 99, slot_count=1
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(99)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         }]),
         expressions: Box::new([]),

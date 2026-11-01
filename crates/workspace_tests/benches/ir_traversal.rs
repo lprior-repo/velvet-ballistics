@@ -30,10 +30,11 @@ fn chain_workflow(count: u16) -> Option<CompiledWorkflow> {
     while step < count {
         nodes.push(CompiledNode {
             id: StepIdx::new(step),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(step.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(step.saturating_add(1))),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -42,10 +43,11 @@ fn chain_workflow(count: u16) -> Option<CompiledWorkflow> {
     }
     nodes.push(CompiledNode {
         id: StepIdx::new(count),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -73,60 +75,66 @@ fn mixed_workflow() -> Option<CompiledWorkflow> {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: Some(SlotIdx::new(2)),
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(2)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(3)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(3),
-            output: Some(SlotIdx::new(3)),
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(3)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(4)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::BuildObject {
                 fields: Box::from([]),
             },
         },
         CompiledNode {
             id: StepIdx::new(4),
-            output: Some(SlotIdx::new(4)),
-            next: Some(StepIdx::new(5)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(4)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(5)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::BuildList {
                 items: Box::from([SlotIdx::new(0), SlotIdx::new(1)]),
             },
         },
         CompiledNode {
             id: StepIdx::new(5),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(4),
             },
@@ -172,10 +180,11 @@ fn expression_workflow(expr_count: u16) -> Option<CompiledWorkflow> {
         }
         nodes.push(CompiledNode {
             id: StepIdx::new(step),
-            output: Some(SlotIdx::new(step)),
-            next: Some(StepIdx::new(step.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(step)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(step.saturating_add(1))),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(step),
             },
@@ -184,10 +193,11 @@ fn expression_workflow(expr_count: u16) -> Option<CompiledWorkflow> {
     }
     nodes.push(CompiledNode {
         id: StepIdx::new(step),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -228,7 +238,7 @@ fn count_nodes_df(workflow: &CompiledWorkflow) -> usize {
         if let Some(node) = workflow.node(step) {
             count = count.saturating_add(1);
             // Push next nodes in reverse order to maintain left-to-right
-            if let Some(next) = node.next {
+            if let Some(next) = node.routing.next.step() {
                 stack.push(next);
             }
             // For ChooseSlot, also push branch targets
@@ -260,7 +270,7 @@ fn count_nodes_bfs(workflow: &CompiledWorkflow) -> usize {
     while let Some(step) = queue.pop() {
         if let Some(node) = workflow.node(step) {
             count = count.saturating_add(1);
-            if let Some(next) = node.next {
+            if let Some(next) = node.routing.next.step() {
                 queue.push(next);
             }
             if let CompiledNodeKind::ChooseSlot { branches, .. } = &node.kind {

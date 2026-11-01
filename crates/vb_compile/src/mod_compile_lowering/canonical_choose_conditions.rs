@@ -39,10 +39,11 @@ pub(super) fn choose_node(
     }
     Ok(CompiledNode {
         id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Choose {
             branches: expressions.into_boxed_slice(),
             otherwise,

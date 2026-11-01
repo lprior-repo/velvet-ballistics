@@ -128,8 +128,8 @@ mod tests {
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::value_store::ValueStore;
     use crate::workflow::{
-        AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
-        ResourceContract, WorkflowParts,
+        AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp,
+        ExprProgram, NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
     };
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
@@ -162,10 +162,11 @@ mod tests {
             digest: WorkflowDigest::from_bytes([0xFC; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),
@@ -324,10 +325,11 @@ mod tests {
             digest: WorkflowDigest::from_bytes([0xFD; 32]),
             nodes: vec![CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             }]
             .into_boxed_slice(),

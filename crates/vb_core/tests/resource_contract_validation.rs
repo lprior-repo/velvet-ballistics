@@ -3,7 +3,9 @@
 //! Bead: vb-xi2f.35 — P1: digest covers resource contract semantics.
 
 use vb_core::ids::ConstIdx;
-use vb_core::workflow::{ContractResource, SecretResultPolicy};
+use vb_core::workflow::{
+    ContractResource, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, SecretResultPolicy,
+};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ExprOp, ExprProgram,
     ResourceContract, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
@@ -53,10 +55,11 @@ fn nop_parts(contract: ResourceContract) -> WorkflowParts {
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),

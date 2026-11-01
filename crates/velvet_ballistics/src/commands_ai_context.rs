@@ -332,8 +332,8 @@ fn compiled_node_json(compiled: &vb_core::CompiledWorkflow, raw: u16) -> Option<
             "step": raw,
             "name": compiled.step_name(step),
             "kind": node_kind_name(&node.kind),
-            "output": node.output.map(|slot| slot.get()),
-            "next": node.next.map(|next| next.get()),
+            "output": node.output.slot().map(|slot| slot.get()),
+            "next": node.routing.next.step().map(|next| next.get()),
         })
     })
 }

@@ -27,7 +27,10 @@ use proptest::prelude::*;
 use vb_core::ids::WorkflowDigest;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract, WorkflowParts,
+};
 
 use crate::error::RuntimeError;
 use crate::runtime::Runtime;
@@ -38,10 +41,11 @@ use crate::shard::{AskAnswer, AskTicket, PendingTimerKind, ShardConfig};
 fn small_workflow() -> vb_core::workflow::CompiledWorkflow {
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

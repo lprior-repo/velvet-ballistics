@@ -21,7 +21,9 @@
 use tempfile::TempDir;
 use vb_core::capability::CapabilitySet;
 use vb_core::value::{ConstValue, SlotValue};
-use vb_core::workflow::{ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
+};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RunId, SlotIdx, StepIdx,
     WorkflowDigest,
@@ -70,10 +72,11 @@ fn make_workflow(
 fn set_const_node(id: u16, const_idx: u16, output: u16, next: Option<u16>) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: Some(SlotIdx::new(output)),
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(output)),
+        routing: NodeRouting {
+            next: (next.map(StepIdx::new)).into(),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(const_idx),
         },
@@ -84,10 +87,11 @@ fn set_const_node(id: u16, const_idx: u16, output: u16, next: Option<u16>) -> Co
 fn nop_node(id: u16, next: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: None,
-        next: Some(StepIdx::new(next)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(next)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Nop,
     }
 }
@@ -96,10 +100,11 @@ fn nop_node(id: u16, next: u16) -> CompiledNode {
 fn finish_node(id: u16, result: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(result),
         },
@@ -110,10 +115,11 @@ fn finish_node(id: u16, result: u16) -> CompiledNode {
 fn copy_node(id: u16, source: u16, output: u16, next: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: Some(SlotIdx::new(output)),
-        next: Some(StepIdx::new(next)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(output)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(next)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(source),
         },
@@ -124,10 +130,11 @@ fn copy_node(id: u16, source: u16, output: u16, next: u16) -> CompiledNode {
 fn collect_start_node(id: u16, source: u16, output: u16, body: u16, done: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: Some(SlotIdx::new(output)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(output)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectStart {
             source: SlotIdx::new(source),
             limit: 100,

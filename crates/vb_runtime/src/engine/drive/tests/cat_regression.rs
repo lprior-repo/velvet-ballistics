@@ -14,7 +14,9 @@ use vb_core::frame::StepState;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::{ConstValue, SlotValue};
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+};
 
 #[cfg(test)]
 mod tests {
@@ -326,10 +328,11 @@ mod tests {
         // the gap-surfacing path converts it into the typed error.
         let nop_node = CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         };
         let wf = mkwfc(

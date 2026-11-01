@@ -17,7 +17,8 @@ use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, SlotBranch, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeRouting, ResourceContract,
+    SlotBranch, WorkflowParts,
 };
 
 pub(crate) fn cn(
@@ -28,10 +29,11 @@ pub(crate) fn cn(
 ) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: output.map(SlotIdx::new),
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
+        output: (output.map(SlotIdx::new)).into(),
+        routing: NodeRouting {
+            next: (next.map(StepIdx::new)).into(),
+            error: ErrorRouting::None,
+        },
         kind,
     }
 }

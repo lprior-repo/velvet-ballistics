@@ -6,7 +6,9 @@
 //! max_transitions_per_tick and allows_secret_results.
 
 use vb_core::ResourceContract;
-use vb_core::workflow::SecretResultPolicy;
+use vb_core::workflow::{
+    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, SecretResultPolicy,
+};
 
 // ---------------------------------------------------------------------------
 // B1: Canonical type has exactly 17 fields
@@ -86,10 +88,11 @@ fn compiled_workflow_accepts_17_field_resource_contract() {
         digest: WorkflowDigest::from_bytes([0xCA; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),
@@ -137,10 +140,11 @@ fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
         digest: WorkflowDigest::from_bytes([0x1D; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         }]
         .into_boxed_slice(),

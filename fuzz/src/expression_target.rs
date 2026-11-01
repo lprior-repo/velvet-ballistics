@@ -66,10 +66,11 @@ pub fn fuzz_expr_bytecode(data: &[u8]) {
         semantic_source_identity: None,
         nodes: vec![vb_core::CompiledNode {
             id: vb_core::StepIdx::new(0),
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: vb_core::workflow::NodeOutput::Discard,
+            routing: vb_core::workflow::NodeRouting {
+                next: vb_core::workflow::NodeContinuation::End,
+                error: vb_core::workflow::ErrorRouting::None,
+            },
             kind: vb_core::CompiledNodeKind::Finish {
                 result: vb_core::SlotIdx::new(0),
             },
@@ -149,10 +150,11 @@ pub fn fuzz_taint_propagation(data: &[u8]) {
         semantic_source_identity: None,
         nodes: vec![vb_core::CompiledNode {
             id: vb_core::StepIdx::new(0),
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: vb_core::workflow::NodeOutput::Discard,
+            routing: vb_core::workflow::NodeRouting {
+                next: vb_core::workflow::NodeContinuation::End,
+                error: vb_core::workflow::ErrorRouting::None,
+            },
             kind: vb_core::CompiledNodeKind::Finish {
                 result: vb_core::SlotIdx::new(0),
             },

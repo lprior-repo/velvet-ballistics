@@ -1,6 +1,9 @@
 //! Allocate declarations before lowering any source expression or scratch state.
 
-use super::{ForEachInputs, SlotCompiler, kind_from_input_schema, step_idx};
+use super::{
+    ErrorRouting, ForEachInputs, NodeContinuation, NodeOutput, NodeRouting, SlotCompiler,
+    kind_from_input_schema, step_idx,
+};
 use crate::{AuthorValue, CompileError, WorkflowSource};
 use std::collections::HashMap;
 use vb_core::{CompiledNode, CompiledNodeKind, ConstValue, InputSlotKind, SlotIdx};
@@ -57,10 +60,11 @@ fn emit_variable(
     let constant = builder.push_constant(value)?;
     builder.push_node(CompiledNode {
         id: step_idx(index)?,
-        output: Some(slot),
-        next: Some(step_idx(next)?),
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(slot),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(step_idx(next)?),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst { value: constant },
     });
     Ok(())

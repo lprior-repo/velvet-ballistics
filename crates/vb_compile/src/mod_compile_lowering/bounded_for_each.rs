@@ -1,5 +1,7 @@
 use super::super::part_01::ForEachInputs;
-use super::{CanonicalScope, resolve_slot_reference};
+use super::{
+    CanonicalScope, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, resolve_slot_reference,
+};
 use crate::{CompileError, CompileErrors};
 use vb_core::{SlotIdx, StepIdx};
 
@@ -167,10 +169,11 @@ fn emit_start(
 ) {
     builder.push_node(CompiledNode {
         id,
-        output: Some(iterator),
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(iterator),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input,
             item_slot: item,
@@ -184,10 +187,11 @@ fn emit_start(
 fn emit_next(iterator: SlotIdx, item: SlotIdx, edges: &ForEachEdges, builder: &mut SlotCompiler) {
     builder.push_node(CompiledNode {
         id: edges.advance,
-        output: Some(item),
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(item),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachNext {
             iterator_slot: iterator,
             body: edges.body,

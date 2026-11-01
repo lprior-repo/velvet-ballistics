@@ -25,10 +25,10 @@ fn validate_node_slots(
     node_index: usize,
     slot_count: usize,
 ) -> ValidationResult<()> {
-    if let Some(output) = node.output {
+    if let Some(output) = node.output.slot() {
         check_slot(output, node_index, slot_count)?;
     }
-    if let Some(error_slot) = node.error_slot {
+    if let Some(error_slot) = node.routing.error.error_slot() {
         check_slot(error_slot, node_index, slot_count)?;
     }
     match &node.kind {

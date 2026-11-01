@@ -572,7 +572,10 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
         value::ConstValue,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+        workflow::{
+            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
+            NodeRouting, ResourceContract,
+        },
     };
 
     let temp_dir = tempfile::tempdir()?;
@@ -580,20 +583,22 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
 
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
     };
     let finish = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -641,7 +646,10 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
         value::ConstValue,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+        workflow::{
+            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
+            NodeRouting, ResourceContract,
+        },
     };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -649,20 +657,22 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
 
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
     };
     let finish = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -703,25 +713,30 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
         value::ConstValue,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+        workflow::{
+            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
+            NodeRouting, ResourceContract,
+        },
     };
 
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
     };
     let finish = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -791,7 +806,10 @@ fn submit_artifact_checksum_mismatch_rejected() {
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
         value::ConstValue,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+        workflow::{
+            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
+            NodeRouting, ResourceContract,
+        },
     };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -800,20 +818,22 @@ fn submit_artifact_checksum_mismatch_rejected() {
     // Build a workflow with a wrong digest.
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
     };
     let finish = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -852,7 +872,10 @@ fn submit_artifact_stale_digest_rejected() {
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowParts,
         value::ConstValue,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+        workflow::{
+            CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
+            NodeRouting, ResourceContract,
+        },
     };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -870,20 +893,22 @@ fn submit_artifact_stale_digest_rejected() {
     // Build a different workflow.
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
     };
     let finish = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

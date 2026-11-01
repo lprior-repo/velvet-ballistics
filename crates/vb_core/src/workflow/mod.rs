@@ -873,23 +873,167 @@ pub fn check_expr_stack_bound(ops: &[ExprOp], capacity: u8) -> CoreResult<u8> {
 }
 
 /// One compiled state-machine node.
+///
+/// Data routing (`output`) and control routing (`routing`) are separate
+/// planes. Field order is frozen: it defines the canonical postcard
+/// artifact bytes, so fields are never reordered.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompiledNode {
     /// Step index of this node.
     pub id: StepIdx,
-    /// Optional output slot written by this node.
-    pub output: Option<SlotIdx>,
-    /// Optional fallthrough step.
-    pub next: Option<StepIdx>,
-    /// Optional error handler step. When this step fails and `on_error` is
-    /// set, the engine routes PC to this handler instead of failing the run.
-    pub on_error: Option<StepIdx>,
-    /// Optional slot where failure information is written before routing to
-    /// the error handler. The slot receives an object with `code`, `message`,
-    /// and `step` fields describing the failure.
-    pub error_slot: Option<SlotIdx>,
+    /// Where this node writes its result.
+    pub output: NodeOutput,
+    /// Control and error routing for this node.
+    pub routing: NodeRouting,
     /// Node behavior.
     pub kind: CompiledNodeKind,
+}
+
+/// Where a node writes its result, when it writes one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NodeOutput {
+    /// The node writes nothing.
+    Discard,
+    /// The node writes its result into this slot.
+    Slot(SlotIdx),
+}
+
+impl NodeOutput {
+    /// Output slot, when this node writes one.
+    #[must_use]
+    pub const fn slot(self) -> Option<SlotIdx> {
+        match self {
+            Self::Discard => None,
+            Self::Slot(slot) => Some(slot),
+        }
+    }
+}
+
+/// Control-flow routing for a node: fallthrough plus failure handling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodeRouting {
+    /// Fallthrough step after this node completes.
+    pub next: NodeContinuation,
+    /// Where failures of this node are routed.
+    pub error: ErrorRouting,
+}
+
+/// Fallthrough continuation after a node completes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NodeContinuation {
+    /// No fallthrough step; stepping off raises `MissingNextStep`.
+    End,
+    /// Fall through to this step.
+    Step(StepIdx),
+}
+
+impl NodeContinuation {
+    /// Fallthrough target, or `None` when this node ends the path.
+    #[must_use]
+    pub const fn step(self) -> Option<StepIdx> {
+        match self {
+            Self::End => None,
+            Self::Step(step) => Some(step),
+        }
+    }
+}
+
+impl From<Option<StepIdx>> for NodeContinuation {
+    fn from(next: Option<StepIdx>) -> Self {
+        match next {
+            Some(step) => Self::Step(step),
+            None => Self::End,
+        }
+    }
+}
+
+impl From<Option<SlotIdx>> for NodeOutput {
+    fn from(output: Option<SlotIdx>) -> Self {
+        match output {
+            Some(slot) => Self::Slot(slot),
+            None => Self::Discard,
+        }
+    }
+}
+
+/// Failure routing for a node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ErrorRouting {
+    /// No error handler; failures fail the run.
+    None,
+    /// Route failures to a handler step, optionally recording into a slot.
+    Handler {
+        /// Handler step receiving control on failure.
+        handler: StepIdx,
+        /// Slot receiving failure information before routing.
+        error_slot: Option<SlotIdx>,
+    },
+}
+
+impl ErrorRouting {
+    /// Handler step, when routing is configured.
+    #[must_use]
+    pub const fn handler(self) -> Option<StepIdx> {
+        match self {
+            Self::None => None,
+            Self::Handler { handler, .. } => Some(handler),
+        }
+    }
+
+    /// Failure-information slot, when configured.
+    #[must_use]
+    pub const fn error_slot(self) -> Option<SlotIdx> {
+        match self {
+            Self::None => None,
+            Self::Handler { error_slot, .. } => error_slot,
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for NodeOutput {
+    fn any() -> Self {
+        if kani::any() {
+            Self::Slot(SlotIdx::new(kani::any()))
+        } else {
+            Self::Discard
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for NodeContinuation {
+    fn any() -> Self {
+        if kani::any() {
+            Self::Step(StepIdx::new(kani::any()))
+        } else {
+            Self::End
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for ErrorRouting {
+    fn any() -> Self {
+        if kani::any() {
+            Self::Handler {
+                handler: StepIdx::new(kani::any()),
+                error_slot: kani::any(),
+            }
+        } else {
+            Self::None
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for NodeRouting {
+    fn any() -> Self {
+        Self {
+            next: kani::any(),
+            error: kani::any(),
+        }
+    }
 }
 
 /// Hot-path node variants. All references are numeric.
@@ -1312,10 +1456,10 @@ fn validate_for_each_next_targets(node: &CompiledNode) -> Result<(), WorkflowErr
 }
 
 fn validate_node_common(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
-    validate_optional_slot(node.output, parts.slot_count)?;
-    validate_optional_step(node.next, parts.nodes.len())?;
-    validate_optional_step(node.on_error, parts.nodes.len())?;
-    validate_optional_slot(node.error_slot, parts.slot_count)
+    validate_optional_slot(node.output.slot(), parts.slot_count)?;
+    validate_optional_step(node.routing.next.step(), parts.nodes.len())?;
+    validate_optional_step(node.routing.error.handler(), parts.nodes.len())?;
+    validate_optional_slot(node.routing.error.error_slot(), parts.slot_count)
 }
 
 fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<(), WorkflowError> {
@@ -1795,10 +1939,10 @@ fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
             Some(n) => n,
             None => break,
         };
-        if let Some(next) = node.next {
+        if let Some(next) = node.routing.next.step() {
             targets.push(next);
         }
-        if let Some(handler) = node.on_error {
+        if let Some(handler) = node.routing.error.handler() {
             targets.push(handler);
         }
         collect_node_targets(&node.kind, &mut targets);
@@ -1946,7 +2090,7 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
             }
         })?);
 
-        if let Some(next) = node.next {
+        if let Some(next) = node.routing.next.step() {
             if matches!(node.kind, CompiledNodeKind::RepeatCheck { .. }) && next.as_usize() <= index
             {
                 repeat_check_validate::validate(parts, index, node, next)?;
@@ -1955,7 +2099,7 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
             }
         }
 
-        if let Some(handler) = node.on_error {
+        if let Some(handler) = node.routing.error.handler() {
             validate_forward_target(handler, index, current_id)?;
         }
 
@@ -2144,7 +2288,7 @@ mod repeat_check_validate {
                 });
             }
         };
-        if owner.output != Some(check_attempt) {
+        if owner.output.slot() != Some(check_attempt) {
             return Err(WorkflowError::BackwardEdge {
                 from: check.id,
                 to: back_target,

@@ -13,7 +13,10 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract, WorkflowParts,
+};
 
 #[cfg(test)]
 mod tests {
@@ -84,10 +87,11 @@ mod tests {
     fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let node = CompiledNode {
             id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::ZERO),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
@@ -114,10 +118,11 @@ mod tests {
     fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let do_node = CompiledNode {
             id: StepIdx::ZERO,
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(7),
                 input: SlotIdx::new(0),
@@ -125,10 +130,11 @@ mod tests {
         };
         let finish = CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
@@ -285,30 +291,33 @@ mod tests {
     fn ask_waiting_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let set_prompt = CompiledNode {
             id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::ZERO),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         };
         let set_timeout = CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
         };
         let ask = CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(3)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Ask {
                 prompt: SlotIdx::ZERO,
                 timeout_slot: Some(SlotIdx::new(1)),
@@ -316,20 +325,22 @@ mod tests {
         };
         let resume = CompiledNode {
             id: StepIdx::new(3),
-            output: None,
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(4)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::AskResume {
                 answer: SlotIdx::new(2),
             },
         };
         let finish = CompiledNode {
             id: StepIdx::new(4),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(2),
             },
@@ -355,20 +366,22 @@ mod tests {
     fn ask_without_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let set_prompt = CompiledNode {
             id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::ZERO),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         };
         let ask = CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Ask {
                 prompt: SlotIdx::ZERO,
                 timeout_slot: None,
@@ -376,20 +389,22 @@ mod tests {
         };
         let resume = CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(3)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::AskResume {
                 answer: SlotIdx::new(1),
             },
         };
         let finish = CompiledNode {
             id: StepIdx::new(3),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
@@ -739,20 +754,22 @@ mod tests {
     fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let set_const = CompiledNode {
             id: StepIdx::ZERO,
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         };
         let finish = CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -3006,30 +3023,33 @@ mod tests {
     fn wait_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let set_deadline = CompiledNode {
             id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::ZERO),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         };
         let wait = CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::WaitUntil {
                 deadline_slot: SlotIdx::ZERO,
             },
         };
         let finish = CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::ZERO,
             },

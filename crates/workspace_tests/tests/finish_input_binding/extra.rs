@@ -1,4 +1,5 @@
 use super::*;
+use vb_core::workflow::{NodeContinuation, NodeOutput};
 
 #[test]
 fn test_longform_schema() -> Result<(), Box<dyn std::error::Error>> {
@@ -89,8 +90,11 @@ fn test_input_expression_save_preserves_value_and_secret() -> Result<(), Box<dyn
         }
         _ => return Err("node 0 should be EvalExpr".into()),
     }
-    assert_eq!(node0.output, Some(SlotIdx::new(0)));
-    assert_eq!(node0.next, Some(vb_core::StepIdx::new(1)));
+    assert_eq!(node0.output, NodeOutput::Slot(SlotIdx::new(0)));
+    assert_eq!(
+        node0.routing.next,
+        NodeContinuation::Step(vb_core::StepIdx::new(1))
+    );
 
     let expr = workflow
         .expression(vb_core::ExprIdx::new(0))
@@ -109,7 +113,7 @@ fn test_input_expression_save_preserves_value_and_secret() -> Result<(), Box<dyn
         }
         _ => return Err("node 1 should be Finish".into()),
     }
-    assert_eq!(node1.next, None);
+    assert_eq!(node1.routing.next, NodeContinuation::End);
 
     for value in [i64::MIN, -1, 0, 42, i64::MAX] {
         let signal = run(&workflow, &[value])?;

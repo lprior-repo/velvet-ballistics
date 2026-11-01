@@ -1,6 +1,9 @@
 use super::super::part_14::emit_scoped_flat_body;
 use super::super::{SlotCompiler, checked_step_offset, slot_from_text};
-use super::{CanonicalScope, resolve_slot_reference, validate_output_alias};
+use super::{
+    CanonicalScope, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    resolve_slot_reference, validate_output_alias,
+};
 use crate::mod_compile_validation::validate_public_name;
 use crate::{CompileError, CompileErrors};
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
@@ -178,10 +181,11 @@ fn plan_build(
 fn emit_start(id: StepIdx, plan: &CollectPlan, builder: &mut SlotCompiler) {
     builder.push_node(CompiledNode {
         id,
-        output: Some(plan.collector_slot),
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(plan.collector_slot),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectStart {
             source: plan.source,
             limit: plan.limit,
@@ -220,10 +224,11 @@ fn emit_body(
 fn emit_next(plan: &CollectPlan, builder: &mut SlotCompiler) {
     builder.push_node(CompiledNode {
         id: plan.advance,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectNext {
             collector_slot: plan.collector_slot,
             body: plan.body_step,
@@ -235,10 +240,11 @@ fn emit_next(plan: &CollectPlan, builder: &mut SlotCompiler) {
 fn emit_finish(next: Option<StepIdx>, plan: &CollectPlan, builder: &mut SlotCompiler) {
     builder.push_node(CompiledNode {
         id: plan.done,
-        output: Some(plan.finish_slot),
-        next,
-        error_slot: None,
-        on_error: None,
+        output: NodeOutput::Slot(plan.finish_slot),
+        routing: NodeRouting {
+            next: next.into(),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::CollectFinish {
             collector_slot: plan.collector_slot,
         },

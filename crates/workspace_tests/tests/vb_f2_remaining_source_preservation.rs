@@ -69,7 +69,7 @@ impl SourceRun {
                 CompiledNodeKind::SetConst { value }
                     if self.workflow.constant(*value) == Some(&ConstValue::I64(expected)) =>
                 {
-                    node.output
+                    node.output.slot()
                 }
                 _ => None,
             })
@@ -278,7 +278,7 @@ fn ask_with_timeout_resumes() -> Result<(), String> {
         .iter()
         .find_map(|node| {
             if matches!(&node.kind, CompiledNodeKind::AskResume { .. }) {
-                Some((node.output?, node.output?, node.id))
+                Some((node.output.slot()?, node.output.slot()?, node.id))
             } else {
                 None
             }
@@ -323,7 +323,7 @@ fn ask_without_timeout_resumes() -> Result<(), String> {
         .iter()
         .find_map(|node| {
             if matches!(&node.kind, CompiledNodeKind::AskResume { .. }) {
-                Some((node.output?, node.output?, node.id))
+                Some((node.output.slot()?, node.output.slot()?, node.id))
             } else {
                 None
             }

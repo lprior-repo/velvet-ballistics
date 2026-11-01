@@ -39,14 +39,18 @@ fn make_run_state(step_count: u16, action_attempts: &[u16]) -> Result<RunState, 
     use vb_core::frame::RunFrame;
     use vb_core::ids::WorkflowDigest;
     use vb_core::value_store::ValueStore;
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+        ResourceContract, WorkflowParts,
+    };
 
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),

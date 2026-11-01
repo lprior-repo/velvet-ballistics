@@ -10,8 +10,8 @@ use crate::frame::RunFrame;
 use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError,
-    WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, ResourceContract, WorkflowError, WorkflowParts,
 };
 
 use crate::engine::{ErrorHandlerOutcome, ErrorSlotData, new_run_frame, route_error_handler};
@@ -65,40 +65,47 @@ fn make_simple_handler_workflow() -> Result<CompiledWorkflow, String> {
     make_workflow("handler_test", |nodes| {
         nodes.push(CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: Some(StepIdx::new(2)),
-            error_slot: Some(SlotIdx::new(1)),
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::Handler {
+                    handler: StepIdx::new(2),
+                    error_slot: Some(SlotIdx::new(1)),
+                },
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(2),
-            output: Some(SlotIdx::new(2)),
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(2)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(3)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(3),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(2),
             },
@@ -110,20 +117,22 @@ fn make_no_handler_workflow() -> Result<CompiledWorkflow, String> {
     make_workflow("no_handler_test", |nodes| {
         nodes.push(CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -135,60 +144,72 @@ fn make_multihandler_workflow() -> Result<CompiledWorkflow, String> {
     make_workflow("multihandler_test", |nodes| {
         nodes.push(CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: Some(StepIdx::new(3)),
-            error_slot: Some(SlotIdx::new(2)),
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::Handler {
+                    handler: StepIdx::new(3),
+                    error_slot: Some(SlotIdx::new(2)),
+                },
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(2),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(5)),
-            on_error: Some(StepIdx::new(4)),
-            error_slot: Some(SlotIdx::new(3)),
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(5)),
+                error: ErrorRouting::Handler {
+                    handler: StepIdx::new(4),
+                    error_slot: Some(SlotIdx::new(3)),
+                },
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(3),
-            output: Some(SlotIdx::new(4)),
-            next: Some(StepIdx::new(5)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(4)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(5)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(4),
-            output: Some(SlotIdx::new(4)),
-            next: Some(StepIdx::new(5)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(4)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(5)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         });
         nodes.push(CompiledNode {
             id: StepIdx::new(5),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1317,10 +1338,14 @@ fn invalid_handler_step_nodes() -> Box<[CompiledNode]> {
 fn invalid_handler_source_node() -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: Some(StepIdx::new(99)),
-        error_slot: Some(SlotIdx::new(1)),
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::Handler {
+                handler: StepIdx::new(99),
+                error_slot: Some(SlotIdx::new(1)),
+            },
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -1330,10 +1355,11 @@ fn invalid_handler_source_node() -> CompiledNode {
 fn finish_node_for_invalid_handler() -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1371,7 +1397,8 @@ mod proptest_properties {
     use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::ConstValue;
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation,
+        NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
     };
 
     fn prop_workflow() -> CompiledWorkflow {
@@ -1383,40 +1410,47 @@ mod proptest_properties {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: Some(StepIdx::new(2)),
-                    error_slot: Some(SlotIdx::new(1)),
+                    output: NodeOutput::Slot(SlotIdx::new(0)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(1)),
+                        error: ErrorRouting::Handler {
+                            handler: StepIdx::new(2),
+                            error_slot: Some(SlotIdx::new(1)),
+                        },
+                    },
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
-                    output: Some(SlotIdx::new(2)),
-                    next: Some(StepIdx::new(3)),
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Slot(SlotIdx::new(2)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::Step(StepIdx::new(3)),
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(3),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Discard,
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(2),
                     },

@@ -7,7 +7,8 @@ use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
 use crate::value::{SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, ResourceContract, WorkflowParts,
 };
 
 pub(super) fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
@@ -40,18 +41,20 @@ pub(super) fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -234,10 +237,17 @@ fn do_node(
 ) -> CompiledNode {
     CompiledNode {
         id,
-        output: Some(SlotIdx::new(0)),
-        next,
-        on_error,
-        error_slot,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: next.into(),
+            error: match on_error {
+                Some(handler) => ErrorRouting::Handler {
+                    handler,
+                    error_slot,
+                },
+                None => ErrorRouting::None,
+            },
+        },
         kind: CompiledNodeKind::Do {
             action,
             input: SlotIdx::new(0),
@@ -248,10 +258,11 @@ fn do_node(
 fn finish_node(id: StepIdx) -> CompiledNode {
     CompiledNode {
         id,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

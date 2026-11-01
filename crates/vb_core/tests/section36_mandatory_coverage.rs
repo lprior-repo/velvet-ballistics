@@ -12,7 +12,8 @@ use vb_core::value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ContractResource,
-    ExprBranch, ExprOp, ExprProgram, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
+    ErrorRouting, ExprBranch, ExprOp, ExprProgram, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
 };
 use vb_core::{EngineSignal, StepBudget, run_until_blocked, step_once};
 
@@ -503,20 +504,22 @@ fn valid_parts() -> WorkflowParts {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -577,10 +580,10 @@ fn try_from_parts_rejects_backward_edge() {
     let mut parts = valid_parts();
     // Node 0 points forward to 1 (OK), but node 1 points back to 0 (invalid)
     if let Some(node) = parts.nodes.first_mut() {
-        node.next = Some(StepIdx::new(1));
+        node.routing.next = NodeContinuation::Step(StepIdx::new(1));
     }
     if let Some(node) = parts.nodes.get_mut(1) {
-        node.next = Some(StepIdx::new(0));
+        node.routing.next = NodeContinuation::Step(StepIdx::new(0));
     }
     let result = CompiledWorkflow::try_from_parts(parts);
     match result {
@@ -603,30 +606,33 @@ fn try_from_parts_rejects_unreachable_node() {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Nop,
             },
         ]
@@ -672,7 +678,7 @@ fn try_from_parts_rejects_step_out_of_bounds_in_next() {
     let mut parts = valid_parts();
     // Node 0 points to step 99 but there are only 2 nodes
     if let Some(node) = parts.nodes.first_mut() {
-        node.next = Some(StepIdx::new(99));
+        node.routing.next = NodeContinuation::Step(StepIdx::new(99));
     }
     let result = CompiledWorkflow::try_from_parts(parts);
     match result {
@@ -724,10 +730,11 @@ fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::ChooseSlot {
                     branches: Box::new([]),
                     otherwise: None,
@@ -735,10 +742,11 @@ fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -830,20 +838,22 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -930,20 +940,22 @@ fn missing_output_slot_returns_typed_error() -> Result<(), String> {
         nodes: vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -1126,10 +1138,11 @@ fn eval_expr_value(
         digest: WorkflowDigest::from_bytes([0x36; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1175,10 +1188,11 @@ fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1364,11 +1378,12 @@ fn validate_node_bounds_accepts_valid_parts() {
 fn validate_node_bounds_rejects_node_id_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(5), // id 5 but only 1 node (index 0)
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        id: StepIdx::new(5),
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1386,10 +1401,11 @@ fn validate_node_bounds_rejects_next_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: Some(StepIdx::new(99)), // next points to nonexistent node
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(99)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1408,20 +1424,22 @@ fn validate_node_bounds_accepts_next_at_last_index() {
     parts.nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1454,10 +1472,11 @@ fn validate_transition_target_rejects_jump_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Jump {
             target: StepIdx::new(50),
         },
@@ -1475,10 +1494,11 @@ fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Choose {
             branches: vec![ExprBranch {
                 condition: ExprIdx::new(0),
@@ -1508,10 +1528,11 @@ fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Choose {
             branches: Box::new([]),
             otherwise: Some(StepIdx::new(99)),
@@ -1530,10 +1551,11 @@ fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ChooseSlot {
             branches: vec![SlotBranch {
                 condition: SlotIdx::new(0),
@@ -1556,10 +1578,11 @@ fn validate_transition_target_rejects_for_each_body_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
@@ -1581,10 +1604,11 @@ fn validate_transition_target_rejects_together_start_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherStart {
             branches: vec![StepIdx::new(99)].into_boxed_slice(),
             join: StepIdx::new(0),
@@ -1603,10 +1627,11 @@ fn validate_transition_target_rejects_together_start_join_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherStart {
             branches: vec![StepIdx::new(0)].into_boxed_slice(),
             join: StepIdx::new(99),
@@ -1625,10 +1650,11 @@ fn validate_transition_target_rejects_together_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherBranch {
             branch: 0,
             entry: StepIdx::new(99),
@@ -1649,10 +1675,11 @@ fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::TogetherBranch {
             branch: 0,
             entry: StepIdx::new(0),
@@ -1673,10 +1700,11 @@ fn validate_transition_target_rejects_repeat_check_done_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RepeatCheck {
             attempt_slot: SlotIdx::new(0),
             done: StepIdx::new(99),
@@ -1695,10 +1723,11 @@ fn validate_transition_target_rejects_retry_check_body_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(99),
@@ -1718,10 +1747,11 @@ fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(99),
             handler: StepIdx::new(0),
@@ -1741,10 +1771,11 @@ fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(0),
             handler: StepIdx::new(99),
@@ -1765,20 +1796,22 @@ fn validate_transition_target_accepts_valid_multi_node_workflow() {
     parts.nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -1828,13 +1861,15 @@ fn budget_parts_with_steps(step_count: usize, contract: ResourceContract) -> Wor
         let is_last = i == step_count - 1;
         nodes.push(CompiledNode {
             id: StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)),
-            output: None,
-            on_error: None,
-            error_slot: None,
-            next: if is_last {
-                None
-            } else {
-                Some(StepIdx::new(u16::try_from(i + 1).unwrap_or(u16::MAX)))
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: (if is_last {
+                    None
+                } else {
+                    Some(StepIdx::new(u16::try_from(i + 1).unwrap_or(u16::MAX)))
+                })
+                .into(),
+                error: ErrorRouting::None,
             },
             kind: CompiledNodeKind::Nop,
         });
@@ -1900,7 +1935,7 @@ fn budget_accepts_workflow_at_exact_limits() {
         ..ResourceContract::DEFAULT
     };
     let mut parts = budget_parts_with_steps(2, contract);
-    parts.nodes[0].output = Some(SlotIdx::new(0));
+    parts.nodes[0].output = NodeOutput::Slot(SlotIdx::new(0));
     parts.constants = vec![ConstValue::I64(1)].into_boxed_slice();
     parts.nodes[0].kind = CompiledNodeKind::SetConst {
         value: ConstIdx::new(0),
@@ -2127,30 +2162,33 @@ fn reachability_rejects_unreachable_second_node() {
     parts.nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         },
     ]
@@ -2172,30 +2210,33 @@ fn reachability_accepts_linear_chain() {
     parts.nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
@@ -2224,30 +2265,33 @@ fn forward_edge_rejects_backward_next() {
     parts.nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: Some(StepIdx::new(1)), // backward edge
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -2282,10 +2326,11 @@ fn branch_route_rejects_empty_branches_without_otherwise() {
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: vec![CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ChooseSlot {
                 branches: Box::new([]),
                 otherwise: None,
@@ -2321,10 +2366,11 @@ fn branch_route_accepts_empty_branches_with_otherwise() {
     parts.nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ChooseSlot {
                 branches: Box::new([]),
                 otherwise: Some(StepIdx::new(1)),
@@ -2332,10 +2378,11 @@ fn branch_route_accepts_empty_branches_with_otherwise() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -2465,10 +2512,11 @@ fn accessor_validation_accepts_valid_accessor_reference() {
     // Change node to EvalExpr
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -2501,10 +2549,11 @@ fn accessor_root_slot_must_be_in_bounds() {
     parts.accessors = vec![accessor].into_boxed_slice();
     parts.nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -2527,10 +2576,11 @@ fn kind_edges_rejects_backward_done_in_for_each_start() {
     parts.nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
@@ -2541,20 +2591,22 @@ fn kind_edges_rejects_backward_done_in_for_each_start() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachJoin {
                 output: SlotIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachNext {
                 iterator_slot: SlotIdx::new(0),
                 body: StepIdx::new(2),
@@ -2607,10 +2659,11 @@ fn expression_with_no_ops_is_rejected() {
                 parts.expressions = vec![prog].into_boxed_slice();
                 parts.nodes = vec![CompiledNode {
                     id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
+                    output: NodeOutput::Slot(SlotIdx::new(0)),
+                    routing: NodeRouting {
+                        next: NodeContinuation::End,
+                        error: ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },

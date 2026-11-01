@@ -12,6 +12,7 @@ use vb_core::{
         DeterminismError, DigestStatus, PublicObservation, TaintStatus, TerminalResult,
         compare_cross_run, compare_generated_ir, compare_replay, normalize_observation,
     },
+    workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting},
 };
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
@@ -340,20 +341,22 @@ fn scenario_fixture(
 fn deterministic_finish_workflow(digest_byte: u8) -> Result<CompiledWorkflow, String> {
     let set_const = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
     };
     let finish = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::compile_workflow;
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput};
 use vb_core::{
     CapabilitySet, CompiledNodeKind, CompiledWorkflow, RunId, SlotIdx, SlotValue, StepBudget,
     StepIdx, ValueStore, new_run_frame,
@@ -75,9 +76,9 @@ fn find_repeat_slots(workflow: &CompiledWorkflow) -> Option<(StepIdx, StepIdx, S
             let owner = node.id;
             for check_node in &parts.nodes {
                 if let CompiledNodeKind::RepeatCheck { attempt_slot, .. } = &check_node.kind {
-                    if check_node.next == Some(*body) {
+                    if check_node.routing.next.step() == Some(*body) {
                         let body_node = parts.nodes.iter().find(|n| n.id == *body)?;
-                        let body_output = body_node.output?;
+                        let body_output = body_node.output.slot()?;
                         return Some((owner, *body, *attempt_slot, body_output));
                     }
                 }
@@ -256,7 +257,7 @@ fn repeat_body_output_mutated_to_counter() -> Result<(), Box<dyn std::error::Err
         .iter_mut()
         .find(|n| n.id == body)
         .ok_or("body node not found")?;
-    body_node.output = Some(counter_slot);
+    body_node.output = NodeOutput::Slot(counter_slot);
 
     let result = CompiledWorkflow::try_from_parts(parts);
     expect_repeat_counter_foreign_write(result, owner, body, counter_slot)
@@ -272,12 +273,21 @@ fn repeat_body_error_slot_mutated_to_counter()
         find_repeat_slots(&baseline).ok_or("could not find repeat slots")?;
 
     let mut parts = baseline.to_parts();
+    let finish = parts
+        .nodes
+        .iter()
+        .find(|n| matches!(&n.kind, CompiledNodeKind::Finish { .. }))
+        .map(|n| n.id)
+        .ok_or("finish node not found")?;
     let body_node = parts
         .nodes
         .iter_mut()
         .find(|n| n.id == body)
         .ok_or("body node not found")?;
-    body_node.error_slot = Some(counter_slot);
+    body_node.routing.error = ErrorRouting::Handler {
+        handler: finish,
+        error_slot: Some(counter_slot),
+    };
 
     let result = CompiledWorkflow::try_from_parts(parts);
     expect_repeat_counter_foreign_write(result, owner, body, counter_slot)
@@ -293,12 +303,21 @@ fn repeat_owner_error_slot_mutated_to_counter()
         find_repeat_slots(&baseline).ok_or("could not find repeat slots")?;
 
     let mut parts = baseline.to_parts();
+    let finish = parts
+        .nodes
+        .iter()
+        .find(|n| matches!(&n.kind, CompiledNodeKind::Finish { .. }))
+        .map(|n| n.id)
+        .ok_or("finish node not found")?;
     let owner_node = parts
         .nodes
         .iter_mut()
         .find(|n| n.id == owner)
         .ok_or("owner node not found")?;
-    owner_node.error_slot = Some(counter_slot);
+    owner_node.routing.error = ErrorRouting::Handler {
+        handler: finish,
+        error_slot: Some(counter_slot),
+    };
 
     let result = CompiledWorkflow::try_from_parts(parts);
     expect_repeat_counter_foreign_write(result, owner, owner, counter_slot)
@@ -314,13 +333,22 @@ fn repeat_check_error_slot_mutated_to_counter()
         find_repeat_slots(&baseline).ok_or("could not find repeat slots")?;
 
     let mut parts = baseline.to_parts();
+    let finish = parts
+        .nodes
+        .iter()
+        .find(|n| matches!(&n.kind, CompiledNodeKind::Finish { .. }))
+        .map(|n| n.id)
+        .ok_or("finish node not found")?;
     let check_node = parts
         .nodes
         .iter_mut()
         .find(|n| matches!(&n.kind, CompiledNodeKind::RepeatCheck { .. }))
         .ok_or("check node not found")?;
     let writer = check_node.id;
-    check_node.error_slot = Some(counter_slot);
+    check_node.routing.error = ErrorRouting::Handler {
+        handler: finish,
+        error_slot: Some(counter_slot),
+    };
 
     let result = CompiledWorkflow::try_from_parts(parts);
     expect_repeat_counter_foreign_write(result, owner, writer, counter_slot)
@@ -341,7 +369,7 @@ fn repeat_check_next_none() -> Result<(), Box<dyn std::error::Error + Send + Syn
         .find(|n| matches!(&n.kind, CompiledNodeKind::RepeatCheck { .. }))
         .ok_or("check node not found")?;
     let writer = check_node.id;
-    check_node.next = None;
+    check_node.routing.next = NodeContinuation::End;
 
     let result = CompiledWorkflow::try_from_parts(parts);
     expect_repeat_counter_foreign_write(result, owner, writer, counter_slot)
@@ -370,7 +398,7 @@ fn repeat_check_next_done() -> Result<(), Box<dyn std::error::Error + Send + Syn
         .find(|n| matches!(&n.kind, CompiledNodeKind::RepeatCheck { .. }))
         .ok_or("check node not found")?;
     let writer = check_node.id;
-    check_node.next = Some(done_step);
+    check_node.routing.next = NodeContinuation::Step(done_step);
 
     let result = CompiledWorkflow::try_from_parts(parts);
     expect_repeat_counter_foreign_write(result, owner, writer, counter_slot)
@@ -463,7 +491,7 @@ fn repeat_counter_ask_resume_foreign_write() -> Result<(), Box<dyn std::error::E
         .ok_or("AskResume node not found")?;
     assert_ne!(
         ask_node.output,
-        Some(counter_slot),
+        NodeOutput::Slot(counter_slot),
         "original output should not be counter slot"
     );
 
@@ -571,17 +599,21 @@ fn test_implicit_counter_writers() -> Result<(), Box<dyn std::error::Error + Sen
         .iter()
         .find(|n| n.id == trailing_writer)
         .ok_or("missing writer node")?;
-    assert_ne!(writer_node.output, Some(counter));
+    assert_ne!(writer_node.output, NodeOutput::Slot(counter));
 
-    let target = writer_node.next.ok_or("missing forward Finish")?;
+    let target = writer_node
+        .routing
+        .next
+        .step()
+        .ok_or("missing forward Finish")?;
     let done_target = parts
         .nodes
         .iter()
         .find(|node| node.id == target)
-        .and_then(|node| node.next)
+        .and_then(|node| node.routing.next.step())
         .ok_or("missing distinct forward Finish")?;
     assert_ne!(target, done_target);
-    let private = writer_node.output.ok_or("missing private output")?;
+    let private = writer_node.output.slot().ok_or("missing private output")?;
     let initial = match &writer_node.kind {
         CompiledNodeKind::SetConst { value } => *value,
         _ => return Err("writer is not SetConst".into()),
@@ -683,7 +715,7 @@ fn test_explicit_reservation_before_owner() -> Result<(), Box<dyn std::error::Er
         .iter_mut()
         .find(|n| n.id == set_42)
         .ok_or("missing writer node")?;
-    writer_node.output = Some(counter);
+    writer_node.output = NodeOutput::Slot(counter);
     let result = CompiledWorkflow::try_from_parts(parts);
     expect_repeat_counter_foreign_write(result, owner, set_42, counter)?;
 
@@ -703,7 +735,7 @@ fn test_explicit_reservation_after_owner() -> Result<(), Box<dyn std::error::Err
         .iter_mut()
         .find(|n| n.id == trailing_writer)
         .ok_or("missing writer node")?;
-    writer_node.output = Some(counter);
+    writer_node.output = NodeOutput::Slot(counter);
     let result = CompiledWorkflow::try_from_parts(parts);
     expect_repeat_counter_foreign_write(result, owner, trailing_writer, counter)?;
 
@@ -724,8 +756,12 @@ fn test_collect_start_foreign_write() -> Result<(), Box<dyn std::error::Error + 
         .iter_mut()
         .find(|n| n.id == trailing_writer)
         .ok_or("missing writer node")?;
-    writer_node.output = None;
-    let target = writer_node.next.ok_or("missing forward target")?;
+    writer_node.output = NodeOutput::Discard;
+    let target = writer_node
+        .routing
+        .next
+        .step()
+        .ok_or("missing forward target")?;
     writer_node.kind = CompiledNodeKind::CollectStart {
         source: counter,
         limit: 1,
@@ -788,20 +824,20 @@ fn malformed_ir_loop_rearm_region_crossing_edge()
         .nodes
         .iter()
         .find(|node| node.id == trailing)
-        .and_then(|node| node.next)
+        .and_then(|node| node.routing.next.step())
         .ok_or("missing trailing continuation")?;
 
     for node in &mut parts.nodes {
         if node.id == body {
             node.kind = CompiledNodeKind::Jump { target: trailing };
-            node.next = None;
-            node.output = None;
+            node.routing.next = NodeContinuation::End;
+            node.output = NodeOutput::Discard;
         } else if node.id == trailing {
             node.kind = CompiledNodeKind::Jump { target: check };
-            node.next = None;
-            node.output = None;
+            node.routing.next = NodeContinuation::End;
+            node.output = NodeOutput::Discard;
         } else if node.id == done {
-            node.next = Some(target_finish);
+            node.routing.next = NodeContinuation::Step(target_finish);
         }
     }
 
@@ -830,9 +866,13 @@ fn test_jump_forward_target_ok() -> Result<(), Box<dyn std::error::Error + Send 
         .iter_mut()
         .find(|n| n.id == trailing)
         .ok_or("missing writer node")?;
-    let target = writer_node.next.ok_or("missing forward target")?;
+    let target = writer_node
+        .routing
+        .next
+        .step()
+        .ok_or("missing forward target")?;
     writer_node.kind = CompiledNodeKind::Jump { target };
-    writer_node.output = None;
+    writer_node.output = NodeOutput::Discard;
 
     let result = CompiledWorkflow::try_from_parts(parts);
     assert!(
@@ -856,7 +896,7 @@ fn test_jump_self_backward_edge() -> Result<(), Box<dyn std::error::Error + Send
         .find(|n| n.id == trailing)
         .ok_or("missing writer node")?;
     writer_node.kind = CompiledNodeKind::Jump { target: trailing };
-    writer_node.output = None;
+    writer_node.output = NodeOutput::Discard;
 
     let result = CompiledWorkflow::try_from_parts(parts);
     assert!(

@@ -17,8 +17,8 @@
 
 use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, LifecycleState, ResourceContract,
-    WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, LifecycleState,
+    NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
 };
 use vb_storage::FjallJournal;
 use vb_storage::JournalEvent;
@@ -36,20 +36,22 @@ use velvet_ballistics::lifecycle::test_helpers::create_run_header;
 fn finished_workflow() -> CompiledWorkflow {
     let set_const = CompiledNode {
         id: StepIdx::ZERO,
-        output: Some(vb_core::ids::SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(vb_core::ids::SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
     };
     let finish = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: vb_core::ids::SlotIdx::ZERO,
         },

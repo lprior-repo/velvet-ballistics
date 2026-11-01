@@ -254,47 +254,51 @@ fn runtime_error_active_run_capacity_zero_has_diagnostic_code() {
 fn do_with_retry_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let set_policy = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
-        output: Some(SlotIdx::new(1)),
-        next: Some(vb_core::ids::StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        };
     let action = CompiledNode {
         id: vb_core::ids::StepIdx::new(1),
-        output: Some(SlotIdx::new(0)),
-        next: Some(vb_core::ids::StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
         },
-    };
+        };
     let retry_check = CompiledNode {
         id: vb_core::ids::StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(1),
             body: vb_core::ids::StepIdx::new(1),
             exhausted: vb_core::ids::StepIdx::new(3),
         },
-    };
+        };
     let finish = CompiledNode {
         id: vb_core::ids::StepIdx::new(3),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        };
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("do_with_retry"),

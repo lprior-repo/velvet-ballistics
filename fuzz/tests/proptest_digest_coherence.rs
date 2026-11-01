@@ -48,10 +48,11 @@ proptest! {
             if next_index == node_count {
                 nodes.push(CompiledNode {
                     id: step_idx,
-                    output: None,
-                    next: None,
-                    error_slot: None,
-                    on_error: None,
+                    output: vb_core::workflow::NodeOutput::Discard,
+                    routing: vb_core::workflow::NodeRouting {
+                        next: vb_core::workflow::NodeContinuation::End,
+                        error: vb_core::workflow::ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Finish {
                         result: SlotIdx::new(max_slot),
                     },
@@ -59,10 +60,11 @@ proptest! {
             } else {
                 nodes.push(CompiledNode {
                     id: step_idx,
-                    output: Some(SlotIdx::new(max_slot)),
-                    next: next_step,
-                    error_slot: None,
-                    on_error: None,
+                    output: vb_core::workflow::NodeOutput::Slot(SlotIdx::new(max_slot)),
+                    routing: vb_core::workflow::NodeRouting {
+                        next: next_step.into(),
+                        error: vb_core::workflow::ErrorRouting::None,
+                    },
                     kind: CompiledNodeKind::Nop,
                 });
             }

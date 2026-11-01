@@ -15,7 +15,8 @@ use crate::{
 use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
+    NodeRouting, ResourceContract, WorkflowParts,
 };
 use vb_core::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
@@ -53,39 +54,42 @@ fn deterministic_nodes() -> Vec<CompiledNode> {
 fn set_const_zero() -> CompiledNode {
     CompiledNode {
         id: StepIdx::ZERO,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: vb_core::ConstIdx::new(0),
         },
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
     }
 }
 
 fn copy_zero_to_one() -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(1),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(2)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(2)),
     }
 }
 
 fn finish_one() -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(2),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
-        output: None,
-        next: None,
     }
 }
 
@@ -691,14 +695,15 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
         digest,
         nodes: vec![CompiledNode {
             id: StepIdx::ZERO,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action,
                 input: SlotIdx::new(0),
             },
-            output: Some(SlotIdx::new(1)),
-            next: None,
         }]
         .into(),
         expressions: Vec::new().into(),

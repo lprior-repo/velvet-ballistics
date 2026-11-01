@@ -17,7 +17,7 @@ fn identify_counter_owners(
     let mut owners = Vec::new();
     for node in parts.nodes.iter() {
         if let CompiledNodeKind::RepeatStart { .. } = node.kind
-            && let Some(slot) = node.output
+            && let Some(slot) = node.output.slot()
         {
             for (existing_slot, existing_owner) in &owners {
                 if *existing_slot == slot {
@@ -41,7 +41,7 @@ fn validate_slot_ownership(
 ) -> Result<(), WorkflowError> {
     for node in parts.nodes.iter() {
         if node.id == owner {
-            if node.error_slot == Some(slot) {
+            if node.routing.error.error_slot() == Some(slot) {
                 return Err(WorkflowError::RepeatCounterForeignWrite {
                     owner,
                     writer: node.id,
@@ -51,7 +51,7 @@ fn validate_slot_ownership(
             continue;
         }
         if is_paired_check(parts, node, slot, owner) {
-            if node.error_slot == Some(slot) {
+            if node.routing.error.error_slot() == Some(slot) {
                 return Err(WorkflowError::RepeatCounterForeignWrite {
                     owner,
                     writer: node.id,
@@ -105,14 +105,14 @@ fn is_paired_check(
     let body_u = body.as_usize();
     let check_u = node.id.as_usize();
     let done_u = start_done.as_usize();
-    body_u < check_u && check_u < done_u && node.next == Some(*body)
+    body_u < check_u && check_u < done_u && node.routing.next.step() == Some(*body)
 }
 
 fn writes_slot(node: &CompiledNode, slot: SlotIdx) -> bool {
-    if node.output == Some(slot) {
+    if node.output.slot() == Some(slot) {
         return true;
     }
-    if node.error_slot == Some(slot) {
+    if node.routing.error.error_slot() == Some(slot) {
         return true;
     }
     match &node.kind {
@@ -120,7 +120,9 @@ fn writes_slot(node: &CompiledNode, slot: SlotIdx) -> bool {
         CompiledNodeKind::ForEachNext { iterator_slot, .. } => *iterator_slot == slot,
         CompiledNodeKind::TogetherBranch { accumulator, .. }
         | CompiledNodeKind::TogetherJoin { accumulator, .. } => *accumulator == slot,
-        CompiledNodeKind::CollectStart { source, .. } => node.output.is_none() && *source == slot,
+        CompiledNodeKind::CollectStart { source, .. } => {
+            node.output.slot().is_none() && *source == slot
+        }
         CompiledNodeKind::CollectNext { collector_slot, .. } => *collector_slot == slot,
         CompiledNodeKind::ReduceStart {
             input, accumulator, ..

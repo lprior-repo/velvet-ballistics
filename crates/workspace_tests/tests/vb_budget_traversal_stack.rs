@@ -3,23 +3,25 @@
 use vb_core::budget::WholeWorkflowBudget;
 use vb_core::ids::{ExprIdx, SlotIdx, StepIdx};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch, WorkflowError,
+    CompiledNode, CompiledNodeKind, ErrorRouting, ExprBranch, NodeContinuation, NodeOutput,
+    NodeRouting, ResourceContract, SlotBranch, WorkflowError,
 };
 
 fn step(id: u16, kind: CompiledNodeKind) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind,
     }
 }
 
 fn step_next(id: u16, next: u16, kind: CompiledNodeKind) -> CompiledNode {
     let mut n = step(id, kind);
-    n.next = Some(StepIdx::new(next));
+    n.routing.next = NodeContinuation::Step(StepIdx::new(next));
     n
 }
 

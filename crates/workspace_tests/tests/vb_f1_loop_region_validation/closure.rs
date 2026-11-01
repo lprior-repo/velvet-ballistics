@@ -24,11 +24,14 @@ fn both_choose_forms_and_fallback_cannot_enter_body_or_latch() -> TestResult {
 fn only_declared_start_body_edge_is_permitted_ingress() -> TestResult {
     for from in [0, 1] {
         let mut parts = paired(Family::ForEach)?;
-        edit(&mut parts, from)?.on_error = Some(step(2));
+        edit(&mut parts, from)?.routing.error = ErrorRouting::Handler {
+            handler: step(2),
+            error_slot: None,
+        };
         reject(parts, crossing(4, from, 2))?;
     }
     let mut redundant_next = paired(Family::ForEach)?;
-    edit(&mut redundant_next, 1)?.next = Some(step(2));
+    edit(&mut redundant_next, 1)?.routing.next = NodeContinuation::Step(step(2));
     reject(redundant_next, crossing(4, 1, 2))
 }
 
@@ -40,8 +43,11 @@ fn jump_and_async_next_cannot_enter_an_owned_region() -> TestResult {
     let mut resume = paired(Family::ForEach)?;
     let outside = edit(&mut resume, 0)?;
     outside.kind = CompiledNodeKind::AskResume { answer: slot(3) };
-    outside.next = Some(step(2));
-    outside.on_error = Some(step(1));
+    outside.routing.next = NodeContinuation::Step(step(2));
+    outside.routing.error = ErrorRouting::Handler {
+        handler: step(1),
+        error_slot: None,
+    };
     reject(resume, crossing(4, 0, 2))
 }
 
@@ -147,7 +153,7 @@ fn crossing_region_intervals_are_not_wholly_nested() -> TestResult {
     install_pair(&mut parts, Family::ForEach, 1, 3, 6, 9, 1)?;
     install_pair(&mut parts, Family::Collect, 2, 4, 7, 8, 2)?;
     edit(&mut parts, 0)?.kind = choose(1, 2, false);
-    edit(&mut parts, 6)?.next = Some(step(7));
+    edit(&mut parts, 6)?.routing.next = NodeContinuation::Step(step(7));
     reject(parts, crossing(7, 4, 7))
 }
 
@@ -157,6 +163,6 @@ fn shared_body_is_not_independent_nested_ownership() -> TestResult {
     install_pair(&mut parts, Family::ForEach, 1, 3, 5, 8, 1)?;
     install_pair(&mut parts, Family::Collect, 2, 3, 6, 7, 2)?;
     edit(&mut parts, 0)?.kind = choose(1, 2, false);
-    edit(&mut parts, 5)?.next = Some(step(6));
+    edit(&mut parts, 5)?.routing.next = NodeContinuation::Step(step(6));
     reject(parts, crossing(6, 3, 6))
 }

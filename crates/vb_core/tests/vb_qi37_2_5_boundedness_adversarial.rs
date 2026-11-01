@@ -12,7 +12,7 @@ use vb_core::{
         MAX_STEP_BUDGET, MAX_SYMBOL_BYTES_PER_VALUE,
     },
     new_run_frame, run_until_blocked,
-    workflow::CompiledWorkflow,
+    workflow::{CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting},
 };
 
 fn policy_limit_budget(policy: BoundednessPolicy) -> WholeWorkflowBudget {
@@ -52,20 +52,22 @@ fn two_step_workflow() -> Result<CompiledWorkflow, WorkflowError> {
         nodes: Box::from([
             CompiledNode {
                 id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Slot(SlotIdx::new(0)),
+                routing: NodeRouting {
+                    next: NodeContinuation::Step(StepIdx::new(1)),
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::SetConst {
                     value: vb_core::ConstIdx::new(0),
                 },
             },
             CompiledNode {
                 id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
+                output: NodeOutput::Discard,
+                routing: NodeRouting {
+                    next: NodeContinuation::End,
+                    error: ErrorRouting::None,
+                },
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
@@ -104,10 +106,11 @@ fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
     Box::from([
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
                 limit: collect_limit,
@@ -118,10 +121,11 @@ fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::TogetherStart {
                 branches: Box::from([StepIdx::new(2), StepIdx::new(4)]),
                 join: StepIdx::new(5),
@@ -129,10 +133,11 @@ fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts: 2,
                 body: StepIdx::new(3),
@@ -141,36 +146,40 @@ fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
         },
         CompiledNode {
             id: StepIdx::new(3),
-            output: None,
-            next: Some(StepIdx::new(5)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(5)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         },
         CompiledNode {
             id: StepIdx::new(4),
-            output: None,
-            next: Some(StepIdx::new(5)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(5)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         },
         CompiledNode {
             id: StepIdx::new(5),
-            output: None,
-            next: Some(StepIdx::new(6)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(6)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::CollectFinish {
                 collector_slot: SlotIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(6),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
@@ -187,10 +196,11 @@ fn step_count_overflow_nodes() -> Box<[CompiledNode]> {
     Box::from([
         CompiledNode {
             id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts: u16::MAX,
                 body: StepIdx::new(1),
@@ -199,10 +209,11 @@ fn step_count_overflow_nodes() -> Box<[CompiledNode]> {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts: u16::MAX,
                 body: StepIdx::new(2),
@@ -211,26 +222,29 @@ fn step_count_overflow_nodes() -> Box<[CompiledNode]> {
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(3)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         },
         CompiledNode {
             id: StepIdx::new(3),
-            output: None,
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(4)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Nop,
         },
         CompiledNode {
             id: StepIdx::new(4),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },

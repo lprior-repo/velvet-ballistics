@@ -5,6 +5,7 @@ use crate::ast::{
 };
 use crate::expression::{ExpressionLiteral, ParsedExpression};
 use crate::{CompileError, YamlCompiler, YamlLimits};
+use vb_core::workflow::{NodeContinuation, NodeOutput};
 use vb_core::{CompiledNodeKind, CompiledWorkflow, ConstValue, SlotIdx, StepIdx};
 
 fn parse_error(source: &[u8]) -> Result<CompileError, String> {
@@ -106,7 +107,8 @@ fn ensure_finish_const_value(source: &[u8], expected: ConstValue) -> Result<(), 
         .ok_or_else(|| "compiled workflow did not contain step 0".to_owned())?;
     match &node.kind {
         CompiledNodeKind::SetConst { value }
-            if node.output == Some(SlotIdx::new(0)) && node.next == Some(StepIdx::new(1)) =>
+            if node.output == NodeOutput::Slot(SlotIdx::new(0))
+                && node.routing.next == NodeContinuation::Step(StepIdx::new(1)) =>
         {
             workflow
                 .constant(*value)

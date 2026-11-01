@@ -678,10 +678,11 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
     while step < count {
         nodes.push(CompiledNode {
             id: StepIdx::new(step),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(step.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(step.saturating_add(1))),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
@@ -690,10 +691,11 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
     }
     nodes.push(CompiledNode {
         id: StepIdx::new(count),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -709,20 +711,22 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ChooseSlot {
                 branches: Box::from([SlotBranch {
                     condition: SlotIdx::new(0),
@@ -733,30 +737,33 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(4)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
         },
         CompiledNode {
             id: StepIdx::new(3),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(4)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(2),
             },
         },
         CompiledNode {
             id: StepIdx::new(4),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
@@ -776,10 +783,11 @@ fn choose_slot_workflow(condition: bool) -> Option<CompiledWorkflow> {
 fn finish_workflow() -> Option<CompiledWorkflow> {
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -791,10 +799,11 @@ fn choose_100_workflow() -> Option<CompiledWorkflow> {
     let mut nodes = Vec::with_capacity(103);
     nodes.push(CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
@@ -809,10 +818,11 @@ fn choose_100_workflow() -> Option<CompiledWorkflow> {
     }
     nodes.push(CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::ChooseSlot {
             branches: branches.into_boxed_slice(),
             otherwise: Some(StepIdx::new(102)),
@@ -820,20 +830,22 @@ fn choose_100_workflow() -> Option<CompiledWorkflow> {
     });
     nodes.push(CompiledNode {
         id: StepIdx::new(102),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(103)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(1)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(103)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(1),
         },
     });
     nodes.push(CompiledNode {
         id: StepIdx::new(103),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
@@ -849,30 +861,33 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
@@ -891,40 +906,44 @@ fn for_each_workflow() -> Option<CompiledWorkflow> {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: Some(SlotIdx::new(2)),
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(2)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(3)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::BuildList {
                 items: Box::new([SlotIdx::new(0), SlotIdx::new(1)]),
             },
         },
         CompiledNode {
             id: StepIdx::new(3),
-            output: Some(SlotIdx::new(4)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(4)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(2),
                 item_slot: SlotIdx::new(3),
@@ -935,10 +954,11 @@ fn for_each_workflow() -> Option<CompiledWorkflow> {
         },
         CompiledNode {
             id: StepIdx::new(4),
-            output: Some(SlotIdx::new(3)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(3)),
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::ForEachNext {
                 iterator_slot: SlotIdx::new(4),
                 body: StepIdx::new(5),
@@ -947,10 +967,11 @@ fn for_each_workflow() -> Option<CompiledWorkflow> {
         },
         CompiledNode {
             id: StepIdx::new(5),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(3),
             },
@@ -1245,10 +1266,11 @@ fn taint_expr_workflow(
     let program = ExprProgram::try_from_parts(ops, max_stack).ok()?;
     let nodes = vec![CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1435,10 +1457,11 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
         constants.push(const_val);
         nodes.push(CompiledNode {
             id: StepIdx::new(field_idx),
-            output: Some(SlotIdx::new(field_idx)),
-            next: Some(StepIdx::new(field_idx.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(field_idx)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(field_idx.saturating_add(1))),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(field_idx),
             },
@@ -1456,20 +1479,22 @@ fn taint_build_object_workflow(field_count: u16) -> Option<CompiledWorkflow> {
 
     nodes.push(CompiledNode {
         id: StepIdx::new(build_idx),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(finish_idx)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(finish_idx)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::BuildObject {
             fields: fields.into_boxed_slice(),
         },
     });
     nodes.push(CompiledNode {
         id: StepIdx::new(finish_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1557,10 +1582,11 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
         constants.push(vb_core::ConstValue::I64(i64::from(idx).saturating_add(1)));
         nodes.push(CompiledNode {
             id: StepIdx::new(idx),
-            output: Some(SlotIdx::new(idx)),
-            next: Some(StepIdx::new(idx.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(idx)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(idx.saturating_add(1))),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(idx),
             },
@@ -1571,20 +1597,22 @@ fn taint_build_list_workflow(item_count: u16) -> Option<CompiledWorkflow> {
 
     nodes.push(CompiledNode {
         id: StepIdx::new(build_idx),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(finish_idx)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(finish_idx)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::BuildList {
             items: items.into_boxed_slice(),
         },
     });
     nodes.push(CompiledNode {
         id: StepIdx::new(finish_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -1672,40 +1700,44 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
         },
         CompiledNode {
             id: StepIdx::new(2),
-            output: Some(SlotIdx::new(2)),
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(2)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(3)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
         },
         CompiledNode {
             id: StepIdx::new(3),
-            output: Some(SlotIdx::new(3)),
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(3)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(4)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::BuildObject {
                 fields: Box::from([
                     (SymbolId::new(0), SlotIdx::new(0)),
@@ -1715,20 +1747,22 @@ fn taint_full_workflow() -> Option<CompiledWorkflow> {
         },
         CompiledNode {
             id: StepIdx::new(4),
-            output: Some(SlotIdx::new(4)),
-            next: Some(StepIdx::new(5)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(4)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(5)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::BuildList {
                 items: Box::from([SlotIdx::new(0), SlotIdx::new(2), SlotIdx::new(0)]),
             },
         },
         CompiledNode {
             id: StepIdx::new(5),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish {
                 result: SlotIdx::new(2),
             },

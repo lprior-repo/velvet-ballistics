@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 use vb_core::{
     ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest,
     WorkflowParts,
@@ -32,10 +33,11 @@ pub(super) fn action_workflow() -> Result<CompiledWorkflow, Box<dyn std::error::
         first,
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),

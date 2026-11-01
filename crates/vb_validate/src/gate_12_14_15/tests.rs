@@ -4,7 +4,7 @@ use super::*;
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx};
 use vb_core::value::ConstValue;
-use vb_core::workflow::CompiledNode;
+use vb_core::workflow::{CompiledNode, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 
 use crate::ValidationError;
 use crate::gate_12_14_15::{
@@ -17,10 +17,11 @@ use super::super::test_helpers::{finish_node, make_parts, nop_node};
 fn do_node(index: u16, action: u16, input: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(index.saturating_add(1))),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(action),
             input: SlotIdx::new(input),
@@ -47,10 +48,11 @@ fn make_contract(action_id: u16) -> ActionContract {
 fn set_const_node(index: u16, const_idx: u16, output_slot: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(index),
-        output: Some(SlotIdx::new(output_slot)),
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(output_slot)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(index.saturating_add(1))),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(const_idx),
         },
@@ -222,10 +224,11 @@ fn gate_15_accepts_adjacent_do_nodes() {
 fn gate_15_accepts_ask_followed_by_do() {
     let ask_node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Ask {
             prompt: SlotIdx::new(0),
             timeout_slot: None,
@@ -239,10 +242,11 @@ fn gate_15_accepts_ask_followed_by_do() {
 fn gate_15_accepts_do_with_no_next() {
     let node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: ActionId::new(1),
             input: SlotIdx::new(0),

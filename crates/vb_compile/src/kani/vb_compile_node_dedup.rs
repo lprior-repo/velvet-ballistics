@@ -32,34 +32,37 @@ fn node_id_uniqueness() {
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: vb_core::ActionId::new(1),
                 input: SlotIdx::new(0),
             },
-        },
+            },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: vb_core::ActionId::new(2),
                 input: SlotIdx::new(1),
             },
-        },
+            },
         CompiledNode {
             id: StepIdx::new(2),
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish { result: SlotIdx::new(2) },
-        },
+            },
     ];
 
     let result = lower_steps_to_ir(
@@ -82,36 +85,39 @@ fn node_id_uniqueness() {
     let dup_nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(SlotIdx::new(0)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(1)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: vb_core::ActionId::new(1),
                 input: SlotIdx::new(0),
             },
-        },
+            },
         // Duplicate StepIdx = 1
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Slot(SlotIdx::new(1)),
+            routing: NodeRouting {
+                next: NodeContinuation::Step(StepIdx::new(2)),
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: vb_core::ActionId::new(2),
                 input: SlotIdx::new(1),
             },
-        },
+            },
         // DUPLICATE: also StepIdx = 1
         CompiledNode {
             id: StepIdx::new(1),
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: NodeContinuation::End,
+                error: ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Finish { result: SlotIdx::new(2) },
-        },
+            },
     ];
 
     let dup_result = lower_steps_to_ir(
@@ -141,16 +147,17 @@ fn step_idx_ordering_preserved() {
     let ordered_nodes: Vec<CompiledNode> = (0..5)
         .map(|i| CompiledNode {
             id: StepIdx::new(i),
-            output: Some(SlotIdx::new(i)),
-            next: if i < 4 {
+            output: NodeOutput::Slot(SlotIdx::new(i)),
+            routing: NodeRouting {
+                next: (if i < 4 {
                 Some(StepIdx::new(i + 1))
             } else {
                 None
+            }).into(),
+                error: ErrorRouting::None,
             },
-            error_slot: None,
-            on_error: None,
             kind: CompiledNodeKind::Finish { result: SlotIdx::new(i) },
-        })
+            })
         .collect();
 
     let result = lower_steps_to_ir(

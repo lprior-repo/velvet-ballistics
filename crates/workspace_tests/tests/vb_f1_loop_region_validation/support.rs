@@ -3,6 +3,7 @@
 //! These public-IR cases prove topology only. Nested activation, state preflight,
 //! source execution and cleanup are separate runtime acceptance obligations.
 
+pub(crate) use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 pub(crate) use vb_core::{
     ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ExprBranch,
     ExprIdx, ExprOp, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
@@ -64,10 +65,11 @@ fn linear_nodes(count: u16) -> TestResult<Vec<CompiledNode>> {
         let terminal = next == count;
         nodes.push(CompiledNode {
             id: step(id),
-            output: None,
-            next: (!terminal).then_some(step(next)),
-            on_error: None,
-            error_slot: None,
+            output: NodeOutput::Discard,
+            routing: NodeRouting {
+                next: ((!terminal).then_some(step(next))).into(),
+                error: ErrorRouting::None,
+            },
             kind: if terminal {
                 CompiledNodeKind::Finish { result: slot(0) }
             } else {

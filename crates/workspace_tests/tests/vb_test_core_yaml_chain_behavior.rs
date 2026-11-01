@@ -469,15 +469,18 @@ fn validation_pipeline_no_gates_disables_all() {
 #[test]
 fn validate_with_contracts_rejects_missing_action_contract() {
     use vb_core::ids::{SlotIdx, StepIdx};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    };
 
     // Create a workflow with a Do node but no corresponding ActionContract
     let do_node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: vb_core::ActionId::new(99), // Action 99 has no contract
             input: SlotIdx::new(0),
@@ -485,10 +488,11 @@ fn validate_with_contracts_rejects_missing_action_contract() {
     };
     let finish_node = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -529,15 +533,18 @@ fn validate_with_contracts_rejects_missing_action_contract() {
 #[test]
 fn validate_with_contracts_rejects_orphan_action_contract() {
     use vb_core::ids::{SlotIdx, StepIdx};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    };
 
     // Create a workflow with no Do nodes but a contract for action 99
     let finish_node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -588,15 +595,18 @@ fn validate_with_contracts_rejects_orphan_action_contract() {
 #[test]
 fn validate_with_contracts_accepts_matching_contract() {
     use vb_core::ids::{SlotIdx, StepIdx};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    };
 
     // Create a workflow with a Do node using action 42
     let do_node = CompiledNode {
         id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: NodeContinuation::Step(StepIdx::new(1)),
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Do {
             action: vb_core::ActionId::new(42),
             input: SlotIdx::new(0),
@@ -604,10 +614,11 @@ fn validate_with_contracts_accepts_matching_contract() {
     };
     let finish_node = CompiledNode {
         id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
@@ -725,15 +736,18 @@ fn action_contract_side_effects_require_key_when_not_safe() {
 #[test]
 fn workflow_parts_accepts_resource_contract_at_exact_usage_bounds() {
     use vb_core::ids::{SlotIdx, StepIdx};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    };
 
     // Workflow with exact bounds matching DEFAULT contract
     let finish_node = CompiledNode {
         id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
