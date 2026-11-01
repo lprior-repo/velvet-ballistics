@@ -5,10 +5,10 @@ use std::sync::Arc;
 use proptest::prelude::*;
 use vb_core::action::ActionName;
 use vb_core::artifact::{ArtifactEvidence, ObligationClosure};
-use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, WorkflowParts};
+use vb_core::workflow::{WorkflowParts, node};
 use vb_core::{
-    ActionContract, ActionId, Capability, CapabilitySet, CompiledNode, CompiledNodeKind,
-    CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
+    ActionContract, ActionId, Capability, CapabilitySet, CompiledNodeKind, CompiledWorkflow, RunId,
+    RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
 };
 use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, StorageArtifactStore,
@@ -461,29 +461,23 @@ fn admit_strict_artifact_run_returns_capability_mismatch_when_required_capabilit
         step_names: Box::new([]),
     };
     let mut nodes = Vec::new();
-    nodes.push(CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    nodes.push(node(
+        StepIdx::new(0),
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
         },
-    });
-    nodes.push(CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    ));
+    nodes.push(node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
     parts.nodes = nodes.into_boxed_slice();
     parts.digest = WorkflowDigest::from_bytes(
         blake3::hash(&postcard::to_allocvec(&parts).map_err(|e| e.to_string())?).into(),

@@ -9,23 +9,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 use vb_core::value::Taint;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
+use vb_core::workflow::{ CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 use vb_storage::{
     DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterQueue, StorageLimits,
 };
 
 fn single_finish_workflow(workflow: WorkflowDigest) -> Result<CompiledWorkflow, String> {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-        };
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("single_finish"),

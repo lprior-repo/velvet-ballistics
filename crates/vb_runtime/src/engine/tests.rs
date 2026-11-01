@@ -10,8 +10,6 @@ use vb_core::action::SideEffect;
 use vb_core::engine::EngineSignal;
 use vb_core::errors::EngineError;
 use vb_core::value::SlotValue;
-use vb_core::workflow::CompiledNode;
-use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
 
 use crate::engine::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
@@ -828,15 +826,7 @@ fn resolve_contract_returns_unknown_action_for_empty_contracts() {
 
 #[test]
 fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("nop"),
@@ -1033,15 +1023,7 @@ fn bh_retry_check_custom_policy_boundary() {
 fn bh_drive_budget_exhausted_does_not_emit_step_succeeded_in_evidence() {
     // When budget is zero, drive_deterministic_full returns StepBudgetExhausted
     // immediately without executing any step. Evidence should be empty.
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("bh_nop"),
@@ -1096,26 +1078,15 @@ fn bh_drive_single_nop_emits_started_then_succeeded() {
     // With budget > 0 and a Nop that advances to a Finish, the drive loop
     // executes at least one step. Evidence should contain matched pairs
     // of StepStarted/StepSucceeded.
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
+    let finish = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("bh_nop_finish"),
@@ -1183,18 +1154,15 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
     // A Do node produces AwaitingAction. The drive loop must NOT emit StepSucceeded
     // because the step did not actually complete -- it suspended waiting for an
     // action result. Only StepStarted should be emitted for such steps.
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: ActionId::new(5),
             input: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = vb_core::workflow::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("bh_do"),
@@ -1613,10 +1581,7 @@ mod blackhat_engine {
     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx};
     use vb_core::value::{SlotValue, Taint};
     use vb_core::value_store::ValueStore;
-    use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation,
-        NodeOutput, NodeRouting, WorkflowParts,
-    };
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
     use crate::engine::{
         EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
@@ -1680,17 +1645,14 @@ mod blackhat_engine {
     }
 
     fn finish_node(id: u16, slot: u16) -> CompiledNode {
-        CompiledNode {
-            id: StepIdx::new(id),
-            output: NodeOutput::Slot(SlotIdx::new(slot)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        vb_core::workflow::node(
+            StepIdx::new(id),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(slot),
             },
-        }
+            Some(SlotIdx::new(slot)),
+            None,
+        )
     }
 
     fn make_run(slot_count: u16, step_count: u16) -> RunFrame {
@@ -1739,17 +1701,14 @@ mod blackhat_engine {
         // Each step in drive_deterministic_full can emit up to 3 events:
         // StepStarted, SlotWritten, StepSucceeded. A budget of N steps
         // can produce up to 3*N events. Use SetConst which actually writes.
-        let set_const = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        let set_const = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        };
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(1)),
+        );
         let finish = finish_node(1, 0);
         let wf = make_workflow_with_constants(
             vec![set_const, finish],
@@ -1807,24 +1766,18 @@ mod blackhat_engine {
     #[test]
     fn bh_eng_02_budget_exhaustion_leaves_step_in_running_state_bug_pin() {
         // TODO(vb-3p9f7): rewrite to assert spec behavior, not buggy state
-        let nop = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        };
-        let nop1 = CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(2)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        };
+        let nop = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(1)),
+        );
+        let nop1 = vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(2)),
+        );
         let finish = finish_node(2, 0);
         let wf = make_workflow(vec![nop, nop1, finish], 4);
         let mut run = make_run(4, 4);
@@ -1894,19 +1847,16 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_05_error_handler_dispatches_to_body_not_handler() {
-        let node = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ErrorHandler {
+        let node = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::ErrorHandler {
                 body: StepIdx::new(1),
                 handler: StepIdx::new(2),
                 error_slot: None,
             },
-        };
+            None,
+            None,
+        );
         let finish1 = finish_node(1, 0);
         let finish2 = finish_node(2, 0);
         let wf = make_workflow(vec![node, finish1, finish2], 4);
@@ -1970,18 +1920,15 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_07_do_without_contract_now_enforces_taint_check() {
-        let node = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        let node = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
             },
-        };
+            None,
+            None,
+        );
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
         assert_eq!(
@@ -2014,18 +1961,15 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_07_do_without_contract_rejects_clean_input() {
-        let node = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        let node = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
             },
-        };
+            None,
+            None,
+        );
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
         assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(42)), Ok(()));
@@ -2055,18 +1999,15 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_07_do_with_contract_catches_taint_violation() {
-        let node = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        let node = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
             },
-        };
+            None,
+            None,
+        );
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
         assert_eq!(
@@ -2119,19 +2060,16 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_08_retry_check_increments_executed_counter() {
-        let node0 = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::RetryCheck {
+        let node0 = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::RetryCheck {
                 policy_slot: SlotIdx::new(0),
                 body: StepIdx::new(0),
                 exhausted: StepIdx::new(1),
             },
-        };
+            None,
+            None,
+        );
         let finish = finish_node(1, 0);
         let wf = make_workflow(vec![node0, finish], 4);
         let mut run = make_run(4, 4);
@@ -2170,18 +2108,15 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_09_no_slot_written_for_awaiting_action_steps() {
-        let node = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        let node = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
             },
-        };
+            None,
+            None,
+        );
         let parts = WorkflowParts {
             semantic_source_identity: None,
             name: Box::from("bh_do_no_out"),
@@ -2322,17 +2257,14 @@ mod blackhat_engine {
     #[test]
     fn bh_eng_12_drive_with_actions_uses_fresh_value_store() {
         // Use SetConst -> Finish which doesn't need pre-initialized slots.
-        let set_const = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        let set_const = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        };
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(1)),
+        );
         let finish = finish_node(1, 0);
         let wf = make_workflow_with_constants(
             vec![set_const, finish],
@@ -2567,45 +2499,33 @@ mod blackhat_engine {
         let branches: Box<[StepIdx]> = (0u32..3)
             .map(|i| StepIdx::new(i.saturating_add(1) as u16))
             .collect();
-        let node = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::TogetherStart {
+        let node = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::TogetherStart {
                 branches,
                 join: StepIdx::new(4),
             },
-        };
-        let step1 = CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(4)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        };
-        let step2 = CompiledNode {
-            id: StepIdx::new(2),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(4)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        };
-        let step3 = CompiledNode {
-            id: StepIdx::new(3),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(4)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        };
+            None,
+            None,
+        );
+        let step1 = vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(4)),
+        );
+        let step2 = vb_core::workflow::node(
+            StepIdx::new(2),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(4)),
+        );
+        let step3 = vb_core::workflow::node(
+            StepIdx::new(3),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(4)),
+        );
         let finish = finish_node(4, 0);
         let wf = make_workflow(vec![node, step1, step2, step3, finish], 4);
         let mut run = make_run(4, 4);
@@ -2643,24 +2563,18 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_18_budget_exhaustion_preserves_pc_for_resume() {
-        let nop0 = CompiledNode {
-            id: StepIdx::ZERO,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        };
-        let nop1 = CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(2)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        };
+        let nop0 = vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(1)),
+        );
+        let nop1 = vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(2)),
+        );
         let finish = finish_node(2, 0);
         let wf = make_workflow(vec![nop0, nop1, finish], 4);
         let mut run = make_run(4, 4);

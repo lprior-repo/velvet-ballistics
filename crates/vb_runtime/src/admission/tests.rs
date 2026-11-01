@@ -6,22 +6,16 @@ use vb_storage::RunPolicyPin;
 
 /// Builds a minimal compiled workflow for policy digest computation.
 fn build_workflow_with_single_action() -> Result<vb_core::workflow::CompiledWorkflow, String> {
-    use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
-        ResourceContract, WorkflowParts,
-    };
-    let node = CompiledNode {
-        id: vb_core::ids::StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    use vb_core::workflow::{CompiledNodeKind, ResourceContract, WorkflowParts};
+    let node = vb_core::workflow::node(
+        vb_core::ids::StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: vb_core::ids::ActionId::new(1),
             input: vb_core::ids::SlotIdx::ZERO,
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         name: Box::from("admission-test"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),

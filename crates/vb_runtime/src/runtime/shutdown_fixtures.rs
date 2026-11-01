@@ -1,6 +1,6 @@
 use crate::{journal::QueuedStorageRuntimeJournal, runtime::Runtime, shard::ShardConfig};
 use std::{num::NonZeroUsize, sync::Arc};
-use vb_core::workflow::{ErrorRouting, NodeRouting};
+
 use vb_core::{
     ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest},
     value::ConstValue,
@@ -107,15 +107,7 @@ fn node(
     output: Option<SlotIdx>,
     next: Option<StepIdx>,
 ) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: output.into(),
-        routing: NodeRouting {
-            next: next.into(),
-            error: ErrorRouting::None,
-        },
-        kind,
-    }
+    vb_core::workflow::node(StepIdx::new(id), kind, output, next)
 }
 
 fn workflow(nodes: Vec<CompiledNode>, constants: Vec<ConstValue>) -> TestResult<CompiledWorkflow> {

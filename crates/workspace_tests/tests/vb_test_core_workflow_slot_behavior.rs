@@ -18,7 +18,7 @@
 //! - Bounds checking - SlotOutOfBounds, SlotUninitialized errors
 //! - State transitions via `mark_*` methods
 
-use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
+use vb_core::workflow::node;
 use vb_core::{
     // Error types
     CoreError,
@@ -36,7 +36,7 @@ use vb_core::{
     // Validation
     validate_compiled_workflow,
     value::{ConstValue, SlotValue, Taint},
-    workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts},
+    workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts},
 };
 
 // =============================================================================
@@ -51,28 +51,22 @@ fn two_step_workflow(value: i64) -> CompiledWorkflow {
         name: Box::<str>::from("test_two_step"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -95,39 +89,30 @@ fn three_step_workflow() -> CompiledWorkflow {
         name: Box::<str>::from("test_three_step"),
         digest: WorkflowDigest::from_bytes([0xCD; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(2)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Copy {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -149,18 +134,15 @@ fn suspend_on_action_workflow() -> CompiledWorkflow {
         input_slots: Box::new([]),
         name: Box::<str>::from("test_do_suspend"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Do {
                 action: vb_core::ids::ActionId::new(1),
                 input: SlotIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -185,6 +167,7 @@ fn make_frame(workflow: &CompiledWorkflow, run_id: u64) -> RunFrame {
 
 mod behavior_new_run_frame {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn given_valid_workflow_when_new_run_frame_then_returns_valid_frame() {
@@ -212,24 +195,13 @@ mod behavior_new_run_frame {
             name: Box::<str>::from("zero_slots"),
             digest: WorkflowDigest::from_bytes([0xEE; 32]),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(1)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::Nop,
+                    None,
+                    Some(StepIdx::new(1)),
+                ),
+                node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
             ]
             .into_boxed_slice(),
             expressions: Box::new([]),
@@ -488,6 +460,7 @@ mod behavior_step_once {
 
 mod behavior_slot_management {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn given_empty_frame_when_write_and_read_slot_then_roundtrips_correctly() {
@@ -497,16 +470,8 @@ mod behavior_slot_management {
             input_slots: Box::new([]),
             name: Box::<str>::from("slot_test"),
             digest: WorkflowDigest::from_bytes([0xFF; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -550,16 +515,8 @@ mod behavior_slot_management {
             input_slots: Box::new([]),
             name: Box::<str>::from("slot_test"),
             digest: WorkflowDigest::from_bytes([0x11; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -589,16 +546,8 @@ mod behavior_slot_management {
             input_slots: Box::new([]),
             name: Box::<str>::from("slot_test"),
             digest: WorkflowDigest::from_bytes([0x22; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -628,16 +577,8 @@ mod behavior_slot_management {
             input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0x33; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -675,16 +616,8 @@ mod behavior_slot_management {
             input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0x44; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -714,16 +647,8 @@ mod behavior_slot_management {
             input_slots: Box::new([]),
             name: Box::<str>::from("overwrite_test"),
             digest: WorkflowDigest::from_bytes([0x55; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -761,6 +686,7 @@ mod behavior_slot_management {
 
 mod behavior_step_state_transitions {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn given_frame_when_mark_steps_through_state_machine_then_states_correct() {
@@ -771,33 +697,19 @@ mod behavior_step_state_transitions {
             name: Box::<str>::from("state_test"),
             digest: WorkflowDigest::from_bytes([0x66; 32]),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(1)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(2)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::Nop,
+                    None,
+                    Some(StepIdx::new(1)),
+                ),
+                node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Nop,
+                    None,
+                    Some(StepIdx::new(2)),
+                ),
+                node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
             ]
             .into_boxed_slice(),
             expressions: Box::new([]),
@@ -873,16 +785,8 @@ mod behavior_step_state_transitions {
             input_slots: Box::new([]),
             name: Box::<str>::from("state_test"),
             digest: WorkflowDigest::from_bytes([0x77; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -910,16 +814,8 @@ mod behavior_step_state_transitions {
             input_slots: Box::new([]),
             name: Box::<str>::from("state_test"),
             digest: WorkflowDigest::from_bytes([0x88; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -1121,6 +1017,7 @@ mod behavior_error_propagation {
 
 mod behavior_parallel_in_flight {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn given_frame_when_add_sub_parallel_in_flight_then_counts_correct() {
@@ -1130,16 +1027,8 @@ mod behavior_parallel_in_flight {
             input_slots: Box::new([]),
             name: Box::<str>::from("parallel_test"),
             digest: WorkflowDigest::from_bytes([0x99; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -1176,16 +1065,8 @@ mod behavior_parallel_in_flight {
             input_slots: Box::new([]),
             name: Box::<str>::from("parallel_test"),
             digest: WorkflowDigest::from_bytes([0xAA; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -1212,6 +1093,7 @@ mod behavior_parallel_in_flight {
 
 mod behavior_slot_snapshots {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn given_frame_with_written_slots_when_slots_snapshot_then_contains_all_values() {
@@ -1221,16 +1103,8 @@ mod behavior_slot_snapshots {
             input_slots: Box::new([]),
             name: Box::<str>::from("snapshot_test"),
             digest: WorkflowDigest::from_bytes([0xBB; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -1268,16 +1142,8 @@ mod behavior_slot_snapshots {
             input_slots: Box::new([]),
             name: Box::<str>::from("snapshot_test"),
             digest: WorkflowDigest::from_bytes([0xCC; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -1319,6 +1185,7 @@ mod behavior_slot_snapshots {
 
 mod behavior_validate_compiled_workflow {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn given_valid_workflow_parts_when_validate_then_returns_ok() {
@@ -1329,28 +1196,22 @@ mod behavior_validate_compiled_workflow {
             name: Box::<str>::from("validate_test"),
             digest: WorkflowDigest::from_bytes([0x12; 32]),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: NodeOutput::Slot(SlotIdx::new(0)),
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(1)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::SetConst {
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Finish {
+                    Some(SlotIdx::new(0)),
+                    Some(StepIdx::new(1)),
+                ),
+                node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
-                },
+                    None,
+                    None,
+                ),
             ]
             .into_boxed_slice(),
             expressions: Box::new([]),
@@ -1400,6 +1261,7 @@ mod behavior_validate_compiled_workflow {
 
 mod behavior_taint_propagation {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn given_frame_when_write_slot_with_taint_then_both_set() {
@@ -1409,16 +1271,8 @@ mod behavior_taint_propagation {
             input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0xEE; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -1459,16 +1313,8 @@ mod behavior_taint_propagation {
             input_slots: Box::new([]),
             name: Box::<str>::from("taint_test"),
             digest: WorkflowDigest::from_bytes([0xFF; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)]
+                .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -1495,6 +1341,7 @@ mod behavior_taint_propagation {
 
 mod behavior_pc_manipulation {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn given_frame_when_set_pc_valid_then_pc_updated() {
@@ -1505,51 +1352,31 @@ mod behavior_pc_manipulation {
             name: Box::<str>::from("pc_test"),
             digest: WorkflowDigest::from_bytes([0x11; 32]),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(1)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(2)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(3)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(4)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(4),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::Nop,
+                    None,
+                    Some(StepIdx::new(1)),
+                ),
+                node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Nop,
+                    None,
+                    Some(StepIdx::new(2)),
+                ),
+                node(
+                    StepIdx::new(2),
+                    CompiledNodeKind::Nop,
+                    None,
+                    Some(StepIdx::new(3)),
+                ),
+                node(
+                    StepIdx::new(3),
+                    CompiledNodeKind::Nop,
+                    None,
+                    Some(StepIdx::new(4)),
+                ),
+                node(StepIdx::new(4), CompiledNodeKind::Nop, None, None),
             ]
             .into_boxed_slice(),
             expressions: Box::new([]),
@@ -1581,33 +1408,19 @@ mod behavior_pc_manipulation {
             name: Box::<str>::from("pc_test"),
             digest: WorkflowDigest::from_bytes([0x22; 32]),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(1)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::Step(StepIdx::new(2)),
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::Nop,
+                    None,
+                    Some(StepIdx::new(1)),
+                ),
+                node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Nop,
+                    None,
+                    Some(StepIdx::new(2)),
+                ),
+                node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
             ]
             .into_boxed_slice(),
             expressions: Box::new([]),

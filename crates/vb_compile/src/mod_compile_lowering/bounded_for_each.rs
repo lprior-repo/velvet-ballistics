@@ -1,7 +1,5 @@
 use super::super::part_01::ForEachInputs;
-use super::{
-    CanonicalScope, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, resolve_slot_reference,
-};
+use super::{CanonicalScope, resolve_slot_reference};
 use crate::{CompileError, CompileErrors};
 use vb_core::{SlotIdx, StepIdx};
 
@@ -156,7 +154,8 @@ fn validate_body(index: usize, config: &ForEachLowering<'_>) -> Result<(), Compi
 }
 
 use super::super::SlotCompiler;
-use vb_core::{CompiledNode, CompiledNodeKind};
+use vb_core::CompiledNodeKind;
+use vb_core::workflow::node;
 
 fn emit_start(
     id: StepIdx,
@@ -167,37 +166,31 @@ fn emit_start(
     edges: &ForEachEdges,
     builder: &mut SlotCompiler,
 ) {
-    builder.push_node(CompiledNode {
+    builder.push_node(node(
         id,
-        output: NodeOutput::Slot(iterator),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachStart {
+        CompiledNodeKind::ForEachStart {
             input,
             item_slot: item,
             limit,
             body: edges.body,
             done: edges.done,
         },
-    });
+        Some(iterator),
+        None,
+    ));
 }
 
 fn emit_next(iterator: SlotIdx, item: SlotIdx, edges: &ForEachEdges, builder: &mut SlotCompiler) {
-    builder.push_node(CompiledNode {
-        id: edges.advance,
-        output: NodeOutput::Slot(item),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachNext {
+    builder.push_node(node(
+        edges.advance,
+        CompiledNodeKind::ForEachNext {
             iterator_slot: iterator,
             body: edges.body,
             done: edges.done,
         },
-    });
+        Some(item),
+        None,
+    ));
 }
 
 fn validate_body_shape(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {

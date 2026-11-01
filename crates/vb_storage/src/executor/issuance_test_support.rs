@@ -6,9 +6,7 @@ use crate::{AcceptedArtifact, admission};
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::action_pack::{ActionPack, CapabilityScopeSpec, RecoveryClass};
 use vb_core::value::ConstValue;
-use vb_core::workflow::{
-    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{ResourceContract, WorkflowParts, node};
 use vb_core::{
     Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx,
     StepIdx, WorkflowDigest,
@@ -45,46 +43,37 @@ pub(super) fn action_workflow() -> Result<CompiledWorkflow, BoxError> {
 }
 
 fn set_node() -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    node(
+        StepIdx::new(0),
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    }
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    )
 }
 
 fn action_node() -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(2)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    node(
+        StepIdx::new(1),
+        CompiledNodeKind::Do {
             action: vb_core::ActionId::new(0),
             input: SlotIdx::new(0),
         },
-    }
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(2)),
+    )
 }
 
 fn finish_node(id: u16, result: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    node(
+        StepIdx::new(id),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(result),
         },
-    }
+        None,
+        None,
+    )
 }
 
 fn parts_from(name: &'static str) -> WorkflowParts {

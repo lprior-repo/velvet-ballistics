@@ -7,10 +7,7 @@
 
 use vb_compile::{YamlCompiler, compile_workflow, lower_set, lower_steps_to_ir};
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
-    WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, WorkflowParts, node};
 
 // ---------------------------------------------------------------------------
 // Corpus YAML for the for_each workflow under vb-a001
@@ -163,21 +160,18 @@ fn vb_a001_body_setconst_next_points_to_foreachnext() -> Result<(), Box<dyn std:
 /// that a properly connected for_each passes validation.
 #[test]
 fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn std::error::Error>> {
-    let foreach_start = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(2)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachStart {
+    let foreach_start = node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 2,
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    };
+        Some(SlotIdx::new(2)),
+        None,
+    );
 
     // THE FIX: body SetConst next → ForEachNext (index 2)
     let body_set = lower_set(
@@ -187,31 +181,25 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
         Some(StepIdx::new(2)), // ← this is the vb-a001 fix
     );
 
-    let foreach_next = CompiledNode {
-        id: StepIdx::new(2),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachNext {
+    let foreach_next = node(
+        StepIdx::new(2),
+        CompiledNodeKind::ForEachNext {
             iterator_slot: SlotIdx::new(2),
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    };
+        Some(SlotIdx::new(1)),
+        None,
+    );
 
-    let finish = CompiledNode {
-        id: StepIdx::new(3),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    let finish = node(
+        StepIdx::new(3),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
 
     let result = lower_steps_to_ir(
         vec![foreach_start, body_set, foreach_next, finish],
@@ -237,21 +225,18 @@ fn vb_a001_lower_steps_to_ir_accepts_connected_foreach() -> Result<(), Box<dyn s
 #[test]
 fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn std::error::Error>> {
     // Node 0: ForEachStart with body→1, done→3
-    let foreach_start = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachStart {
+    let foreach_start = node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 2,
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    };
+        None,
+        None,
+    );
 
     // BUG: body SetConst next = None → unreachable nodes
     let body_set = lower_set(
@@ -261,31 +246,25 @@ fn vb_a001_lower_steps_to_ir_rejects_disconnected_body() -> Result<(), Box<dyn s
         None, // ← missing next edge
     );
 
-    let foreach_next = CompiledNode {
-        id: StepIdx::new(2),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachNext {
+    let foreach_next = node(
+        StepIdx::new(2),
+        CompiledNodeKind::ForEachNext {
             iterator_slot: SlotIdx::new(1),
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    };
+        None,
+        None,
+    );
 
-    let finish = CompiledNode {
-        id: StepIdx::new(3),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    let finish = node(
+        StepIdx::new(3),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
 
     let result = lower_steps_to_ir(
         vec![foreach_start, body_set, foreach_next, finish],

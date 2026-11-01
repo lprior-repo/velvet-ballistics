@@ -6,18 +6,7 @@ use crate::shard::lifecycle::MAX_ACTION_OUTPUT_BYTES;
 /// `ActionId(0)` completes.  The input slot and output slot are both
 /// `SlotIdx::ZERO`, matching the default test helpers.
 fn single_do_workflow() -> Result<CompiledWorkflow, String> {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::ZERO,
-        },
-        };
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("action_output_policy"),
@@ -42,29 +31,8 @@ fn single_do_workflow() -> Result<CompiledWorkflow, String> {
 /// program counter to the Finish node, allowing a happy-path completion
 /// test to observe a terminated run.
 fn do_then_finish_workflow() -> Result<CompiledWorkflow, String> {
-    let do_node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::ZERO,
-        },
-        };
-    let finish_node = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::ZERO,
-        },
-        };
+    let do_node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), Some(StepIdx::new(1)));
+    let finish_node = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::ZERO, }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("do_then_finish"),

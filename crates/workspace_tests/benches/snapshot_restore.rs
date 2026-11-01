@@ -7,7 +7,6 @@
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use serde::{Deserialize, Serialize};
 use std::hint::black_box;
-use vb_core::CompiledNode;
 use vb_core::CompiledNodeKind;
 use vb_core::CompiledWorkflow;
 use vb_core::ResourceContract;
@@ -17,6 +16,7 @@ use vb_core::WorkflowParts;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, StepIdx};
 use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
+use vb_core::workflow::node;
 
 const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence";
 
@@ -48,17 +48,14 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
 
 /// Simple workflow for testing.
 fn simple_workflow() -> CompiledWorkflow {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }];
+        None,
+        None,
+    )];
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

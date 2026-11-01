@@ -14,8 +14,7 @@
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowError, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError, WorkflowParts, node,
 };
 
 // ---------------------------------------------------------------------------
@@ -23,17 +22,14 @@ use vb_core::workflow::{
 // ---------------------------------------------------------------------------
 
 fn minimal_valid_parts() -> WorkflowParts {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }];
+        Some(SlotIdx::new(0)),
+        None,
+    )];
 
     WorkflowParts {
         semantic_source_identity: None,
@@ -88,15 +84,12 @@ fn entry_out_of_bounds_returns_error() {
 fn step_out_of_bounds_returns_error() {
     let mut parts = minimal_valid_parts();
     let mut nodes = parts.nodes.to_vec();
-    nodes[0] = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(99)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    nodes[0] = node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(99)),
+    );
     parts.nodes = nodes.into_boxed_slice();
 
     let result = CompiledWorkflow::try_from_parts(parts);
@@ -112,15 +105,12 @@ fn step_out_of_bounds_returns_error() {
 fn slot_out_of_bounds_returns_error() {
     let mut parts = minimal_valid_parts();
     let mut nodes = parts.nodes.to_vec();
-    nodes[0] = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(99)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    nodes[0] = node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     parts.nodes = nodes.into_boxed_slice();
 
     let result = CompiledWorkflow::try_from_parts(parts);
@@ -135,26 +125,15 @@ fn slot_out_of_bounds_returns_error() {
 #[test]
 fn unreachable_node_returns_error() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        },
+            None,
+            None,
+        ),
+        node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
     ];
 
     let parts = WorkflowParts {
@@ -185,26 +164,20 @@ fn unreachable_node_returns_error() {
 #[test]
 fn backward_edge_returns_error() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(0)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
+            None,
+            Some(StepIdx::new(0)),
+        ),
     ];
 
     let parts = WorkflowParts {
@@ -268,15 +241,7 @@ proptest! {
     fn arbitrary_invalid_slot_returns_slot_error(slot_idx in 10u16..=100u16) {
         let mut parts = minimal_valid_parts();
         let mut nodes = parts.nodes.to_vec();
-        nodes[0] = CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(slot_idx)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-            };
+        nodes[0] = node(StepIdx::new(0), CompiledNodeKind::Nop, Some(SlotIdx::new(slot_idx)), None);
         parts.nodes = nodes.into_boxed_slice();
 
         let result = CompiledWorkflow::try_from_parts(parts);

@@ -6,6 +6,7 @@ use crate::mod_compile_validation::{
 };
 use saphyr::Yaml;
 use std::collections::HashMap;
+use vb_core::workflow::node;
 use vb_core::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
     ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
@@ -151,15 +152,12 @@ pub(super) fn compile_finish_result(
 ) -> Result<Vec<CompiledNode>, CompileError> {
     if let Some(slot) = finish_result_slot(result, index)? {
         builder.record_slot(slot);
-        return Ok(vec![CompiledNode {
+        return Ok(vec![node(
             id,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish { result: slot },
-        }]);
+            CompiledNodeKind::Finish { result: slot },
+            None,
+            None,
+        )]);
     }
     let value = slot_value(result, index)?;
     let value = builder.push_constant(value)?;
@@ -169,24 +167,18 @@ pub(super) fn compile_finish_result(
         value: id.as_usize(),
     })?;
     Ok(vec![
-        CompiledNode {
+        node(
             id,
-            output: NodeOutput::Slot(output),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(finish_id),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst { value },
-        },
-        CompiledNode {
-            id: finish_id,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish { result: output },
-        },
+            CompiledNodeKind::SetConst { value },
+            Some(output),
+            Some(finish_id),
+        ),
+        node(
+            finish_id,
+            CompiledNodeKind::Finish { result: output },
+            None,
+            None,
+        ),
     ])
 }
 

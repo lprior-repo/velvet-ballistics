@@ -4,10 +4,7 @@
 use crate::frame::StepState;
 use crate::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
-use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, WorkflowParts,
-};
+use crate::workflow::{CompiledNodeKind, CompiledWorkflow, WorkflowParts, node};
 
 use crate::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};
 
@@ -37,28 +34,22 @@ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowE
         name: Box::<str>::from("tiny"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: crate::ids::ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),

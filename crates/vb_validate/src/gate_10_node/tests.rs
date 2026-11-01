@@ -3,10 +3,7 @@
 #[cfg(test)]
 use super::*;
 use vb_core::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, ExprBranch, ExprOp, ExprProgram,
-    NodeContinuation, NodeOutput, NodeRouting, SlotBranch,
-};
+use vb_core::workflow::{CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, SlotBranch};
 
 use super::super::test_helpers::{finish_node, make_parts};
 
@@ -20,15 +17,7 @@ fn accepts_finish_with_valid_slot() {
 
 #[test]
 fn accepts_nop_node() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, None);
     let parts = make_parts(vec![node], 0);
     assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
 }
@@ -37,21 +26,18 @@ fn accepts_nop_node() {
 fn accepts_choose_with_valid_branches() {
     let mut parts = make_parts(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Choose {
+            vb_core::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Choose {
                     branches: Box::new([ExprBranch {
                         condition: ExprIdx::new(0),
                         target: StepIdx::new(1),
                     }]),
                     otherwise: Some(StepIdx::new(1)),
                 },
-            },
+                None,
+                Some(StepIdx::new(1)),
+            ),
             finish_node(1, 0),
         ],
         1,
@@ -67,21 +53,18 @@ fn accepts_choose_with_valid_branches() {
 fn accepts_choose_slot_with_valid_branches() {
     let parts = make_parts(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::ChooseSlot {
+            vb_core::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::ChooseSlot {
                     branches: Box::new([SlotBranch {
                         condition: SlotIdx::new(0),
                         target: StepIdx::new(1),
                     }]),
                     otherwise: Some(StepIdx::new(1)),
                 },
-            },
+                None,
+                Some(StepIdx::new(1)),
+            ),
             finish_node(1, 0),
         ],
         1,
@@ -92,17 +75,14 @@ fn accepts_choose_slot_with_valid_branches() {
 #[test]
 fn accepts_set_const_with_valid_index() {
     let mut parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        }],
+            Some(SlotIdx::new(0)),
+            None,
+        )],
         1,
     );
     parts.constants = Box::new([vb_core::value::ConstValue::I64(42)]);
@@ -112,17 +92,14 @@ fn accepts_set_const_with_valid_index() {
 #[test]
 fn accepts_eval_expr_with_valid_index() {
     let mut parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::EvalExpr {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
-        }],
+            Some(SlotIdx::new(0)),
+            None,
+        )],
         1,
     );
     parts.expressions = Box::new([ExprProgram {
@@ -135,18 +112,15 @@ fn accepts_eval_expr_with_valid_index() {
 #[test]
 fn accepts_do_with_valid_action() {
     let parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Do {
                 action: ActionId::new(1),
                 input: SlotIdx::new(0),
             },
-        }],
+            Some(SlotIdx::new(0)),
+            None,
+        )],
         1,
     );
     assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
@@ -167,21 +141,18 @@ fn rejects_finish_slot_out_of_range() {
 fn rejects_choose_expr_index_out_of_range() {
     let parts = make_parts(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Choose {
+            vb_core::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Choose {
                     branches: Box::new([ExprBranch {
                         condition: ExprIdx::new(99),
                         target: StepIdx::new(1),
                     }]),
                     otherwise: None,
                 },
-            },
+                None,
+                Some(StepIdx::new(1)),
+            ),
             finish_node(1, 0),
         ],
         1,
@@ -196,21 +167,18 @@ fn rejects_choose_expr_index_out_of_range() {
 fn rejects_choose_target_out_of_range() {
     let mut parts = make_parts(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Choose {
+            vb_core::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Choose {
                     branches: Box::new([ExprBranch {
                         condition: ExprIdx::new(0),
                         target: StepIdx::new(99),
                     }]),
                     otherwise: None,
                 },
-            },
+                None,
+                Some(StepIdx::new(1)),
+            ),
             finish_node(1, 0),
         ],
         1,
@@ -229,21 +197,18 @@ fn rejects_choose_target_out_of_range() {
 fn rejects_choose_otherwise_out_of_range() {
     let mut parts = make_parts(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Choose {
+            vb_core::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Choose {
                     branches: Box::new([ExprBranch {
                         condition: ExprIdx::new(0),
                         target: StepIdx::new(1),
                     }]),
                     otherwise: Some(StepIdx::new(99)),
                 },
-            },
+                None,
+                Some(StepIdx::new(1)),
+            ),
             finish_node(1, 0),
         ],
         1,
@@ -262,21 +227,18 @@ fn rejects_choose_otherwise_out_of_range() {
 fn rejects_choose_slot_condition_out_of_range() {
     let parts = make_parts(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::ChooseSlot {
+            vb_core::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::ChooseSlot {
                     branches: Box::new([SlotBranch {
                         condition: SlotIdx::new(99),
                         target: StepIdx::new(1),
                     }]),
                     otherwise: None,
                 },
-            },
+                None,
+                Some(StepIdx::new(1)),
+            ),
             finish_node(1, 0),
         ],
         1,
@@ -290,17 +252,14 @@ fn rejects_choose_slot_condition_out_of_range() {
 #[test]
 fn rejects_set_const_index_out_of_range() {
     let parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(99),
             },
-        }],
+            Some(SlotIdx::new(0)),
+            None,
+        )],
         1,
     );
     assert!(matches!(
@@ -312,17 +271,14 @@ fn rejects_set_const_index_out_of_range() {
 #[test]
 fn rejects_eval_expr_index_out_of_range() {
     let parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::EvalExpr {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(99),
             },
-        }],
+            Some(SlotIdx::new(0)),
+            None,
+        )],
         1,
     );
     assert!(matches!(
@@ -334,18 +290,15 @@ fn rejects_eval_expr_index_out_of_range() {
 #[test]
 fn rejects_do_input_slot_out_of_range() {
     let parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Do {
                 action: ActionId::new(1),
                 input: SlotIdx::new(99),
             },
-        }],
+            Some(SlotIdx::new(0)),
+            None,
+        )],
         1,
     );
     assert!(matches!(
@@ -357,18 +310,15 @@ fn rejects_do_input_slot_out_of_range() {
 #[test]
 fn rejects_do_sentinel_action_id() {
     let parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Do {
                 action: ActionId::new(u16::MAX),
                 input: SlotIdx::new(0),
             },
-        }],
+            Some(SlotIdx::new(0)),
+            None,
+        )],
         1,
     );
     assert!(matches!(
@@ -380,21 +330,18 @@ fn rejects_do_sentinel_action_id() {
 #[test]
 fn rejects_for_each_start_input_out_of_range() {
     let parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ForEachStart {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(99),
                 item_slot: SlotIdx::new(1),
                 limit: 10,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
-        }],
+            None,
+            None,
+        )],
         2,
     );
     assert!(matches!(
@@ -406,18 +353,15 @@ fn rejects_for_each_start_input_out_of_range() {
 #[test]
 fn rejects_together_start_branch_out_of_range() {
     let parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::TogetherStart {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
                 branches: Box::new([StepIdx::new(99)]),
                 join: StepIdx::new(1),
             },
-        }],
+            None,
+            None,
+        )],
         1,
     );
     assert!(matches!(
@@ -429,18 +373,15 @@ fn rejects_together_start_branch_out_of_range() {
 #[test]
 fn rejects_together_start_join_out_of_range() {
     let parts = make_parts(
-        vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::TogetherStart {
+        vec![vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
                 branches: Box::new([]),
                 join: StepIdx::new(99),
             },
-        }],
+            None,
+            None,
+        )],
         1,
     );
     assert!(matches!(

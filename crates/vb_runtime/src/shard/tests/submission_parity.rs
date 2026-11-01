@@ -4,11 +4,9 @@ use vb_core::SlotValue;
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, RunId, SlotIdx};
 
-use super::{
-    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, Shard, ShardCommand, small_config,
-    suspended_workflow,
-};
+use super::{Shard, ShardCommand, small_config, suspended_workflow};
 use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal, VolatileRuntimeJournal};
+use vb_core::workflow::node;
 
 #[test]
 fn submit_empty_caps_no_fabrication() -> Result<(), Box<dyn Error>> {
@@ -115,27 +113,21 @@ fn submit_with_contracts_empty_caps_denied() -> Result<(), Box<dyn Error>> {
 }
 
 fn nop_then_do() -> Result<vb_core::workflow::CompiledWorkflow, Box<dyn Error>> {
-    let nop_node = super::CompiledNode {
-        id: vb_core::ids::StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: super::CompiledNodeKind::Nop,
-    };
-    let do_node = super::CompiledNode {
-        id: vb_core::ids::StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: super::CompiledNodeKind::Do {
+    let nop_node = node(
+        vb_core::ids::StepIdx::ZERO,
+        super::CompiledNodeKind::Nop,
+        None,
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let do_node = node(
+        vb_core::ids::StepIdx::new(1),
+        super::CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
         },
-    };
+        Some(SlotIdx::ZERO),
+        None,
+    );
     let parts = super::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("nop_then_do"),

@@ -71,39 +71,9 @@ fn bh_shd_03_action_failure_trace_events_count() {
 #[test]
 fn bh_shd_04_find_error_handler_linear_scan_fallback() {
     let handler_idx = 20u16;
-    let first_node = CompiledNode {
-        id: vb_core::ids::StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ErrorHandler {
-            body: vb_core::ids::StepIdx::new(1),
-            handler: vb_core::ids::StepIdx::new(handler_idx),
-            error_slot: None,
-        },
-        };
-    let middle_nodes = (1u16..handler_idx).map(|i| CompiledNode {
-        id: vb_core::ids::StepIdx::new(i),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::Step(vb_core::ids::StepIdx::new(i + 1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-        });
-    let last_node = CompiledNode {
-        id: vb_core::ids::StepIdx::new(handler_idx),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-        };
+    let first_node = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::ErrorHandler { body: vb_core::ids::StepIdx::new(1), handler: vb_core::ids::StepIdx::new(handler_idx), error_slot: None, }, None, None);
+    let middle_nodes = (1u16..handler_idx).map(|i| vb_core::workflow::node(vb_core::ids::StepIdx::new(i), CompiledNodeKind::Nop, None, Some(vb_core::ids::StepIdx::new(i + 1))));
+    let last_node = vb_core::workflow::node(vb_core::ids::StepIdx::new(handler_idx), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), None);
     let nodes = std::iter::once(first_node)
         .chain(middle_nodes)
         .chain(std::iter::once(last_node))

@@ -1,35 +1,15 @@
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::ConstValue;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
+use vb_core::workflow::{ CompiledNodeKind, ResourceContract, WorkflowParts};
 
 use crate::RuntimeError;
 
 use super::{MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig, ShardHealth};
 
 fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let set_const = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-        };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-        };
+    let set_const = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
+    let finish = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("finished"),

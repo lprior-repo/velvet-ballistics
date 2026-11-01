@@ -6,9 +6,7 @@
 //! max_transitions_per_tick and allows_secret_results.
 
 use vb_core::ResourceContract;
-use vb_core::workflow::{
-    ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, SecretResultPolicy,
-};
+use vb_core::workflow::{SecretResultPolicy, node};
 
 // ---------------------------------------------------------------------------
 // B1: Canonical type has exactly 17 fields
@@ -73,8 +71,7 @@ fn resource_contract_canonical_type_has_17_fields() {
 #[test]
 fn compiled_workflow_accepts_17_field_resource_contract() {
     use vb_core::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx, WorkflowDigest,
-        WorkflowParts,
+        CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx, WorkflowDigest, WorkflowParts,
     };
 
     let mut c = ResourceContract::DEFAULT;
@@ -86,16 +83,7 @@ fn compiled_workflow_accepts_17_field_resource_contract() {
         input_slots: Box::new([]),
         name: Box::<str>::from("type_integrity_test"),
         digest: WorkflowDigest::from_bytes([0xCA; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: vec![ConstValue::Null].into_boxed_slice(),
@@ -122,8 +110,7 @@ fn compiled_workflow_accepts_17_field_resource_contract() {
 #[test]
 fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
     use vb_core::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx, WorkflowDigest,
-        WorkflowParts,
+        CompiledNodeKind, CompiledWorkflow, ConstValue, StepIdx, WorkflowDigest, WorkflowParts,
     };
 
     let mut c = ResourceContract::DEFAULT;
@@ -138,16 +125,7 @@ fn compiled_workflow_resource_contract_returns_full_17_field_contract() {
         input_slots: Box::new([]),
         name: Box::<str>::from("roundtrip_test"),
         digest: WorkflowDigest::from_bytes([0x1D; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: vec![ConstValue::Null].into_boxed_slice(),

@@ -4,10 +4,7 @@
 //! oracle separately covers source compilation and deterministic artifact identity.
 
 use vb_core::budget::{BoundednessPolicy, BudgetDimension, BudgetError, WholeWorkflowBudget};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, NodeOutput, NodeRouting, ResourceContract,
-    WorkflowError,
-};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError};
 use vb_core::{ConstIdx, SlotIdx, StepIdx};
 
 type TestResult<T = ()> = Result<T, String>;
@@ -23,15 +20,7 @@ fn offset(base: usize, amount: usize) -> TestResult<StepIdx> {
 }
 
 fn node(id: StepIdx, kind: CompiledNodeKind, next: Option<StepIdx>) -> CompiledNode {
-    CompiledNode {
-        id,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: next.into(),
-            error: ErrorRouting::None,
-        },
-        kind,
-    }
+    vb_core::workflow::node(id, kind, None, next)
 }
 
 fn finish(nodes: &mut Vec<CompiledNode>) -> TestResult {

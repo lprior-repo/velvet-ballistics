@@ -10,8 +10,8 @@ use crate::ids::{
 use crate::value::{SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp,
-    ExprProgram, NodeContinuation, NodeOutput, NodeRouting, PathSegment, WorkflowParts,
+    AccessorProgram, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, PathSegment,
+    WorkflowParts, node,
 };
 
 use crate::engine::{
@@ -282,28 +282,22 @@ fn accessor_workflow_with_opts(
         name: Box::<str>::from("accessor"),
         digest: WorkflowDigest::from_bytes([8; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(1)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::EvalExpr {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: vec![expression].into_boxed_slice(),

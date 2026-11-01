@@ -8,9 +8,10 @@ use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use vb_core::ids::RunId;
 use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
+use vb_core::workflow::node;
 use vb_core::{
-    CapabilitySet, CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, SlotIdx,
-    StepIdx, WorkflowDigest, WorkflowParts,
+    CapabilitySet, CompiledNodeKind, CompiledWorkflow, ResourceContract, SlotIdx, StepIdx,
+    WorkflowDigest, WorkflowParts,
 };
 use vb_runtime::RuntimeError;
 use vb_runtime::shard::types::{ShardCommand, ShardCommandQueue};
@@ -35,17 +36,14 @@ fn make_submit_command(run_id: u64) -> ShardCommand {
 }
 
 fn simple_workflow() -> CompiledWorkflow {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }];
+        None,
+        None,
+    )];
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

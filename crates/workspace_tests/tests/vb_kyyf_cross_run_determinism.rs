@@ -5,14 +5,14 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
+use vb_core::workflow::node;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
-    RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract, RunId,
+    RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
     proof_kernels::vb_kyyf_normalization::{
         DeterminismError, DigestStatus, PublicObservation, TaintStatus, TerminalResult,
         compare_cross_run, compare_generated_ir, compare_replay, normalize_observation,
     },
-    workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting},
 };
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
@@ -339,28 +339,22 @@ fn scenario_fixture(
 }
 
 fn deterministic_finish_workflow(digest_byte: u8) -> Result<CompiledWorkflow, String> {
-    let set_const = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    let set_const = node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

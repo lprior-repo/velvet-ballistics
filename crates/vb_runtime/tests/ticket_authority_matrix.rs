@@ -8,8 +8,7 @@ use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_runtime::RuntimeError;
 use vb_runtime::journal::VolatileRuntimeJournal;
@@ -36,40 +35,31 @@ fn make_contract(
 }
 
 fn setconst_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
-    let set = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
+    let set = node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
-    let do_node = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(2)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let do_node = node(
+        StepIdx::new(1),
+        CompiledNodeKind::Do {
             action: ActionId::new(action_id),
             input: SlotIdx::ZERO,
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(2),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(2)),
+    );
+    let finish = node(
+        StepIdx::new(2),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("setconst-do"),

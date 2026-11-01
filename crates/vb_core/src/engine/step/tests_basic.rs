@@ -5,10 +5,7 @@ use crate::frame::StepState;
 use crate::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{SlotValue, Taint};
 use crate::value_store::ValueStore;
-use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
-};
+use crate::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node};
 
 #[test]
 fn step_once_nop_advances_pc_and_returns_continue() -> Result<(), String> {
@@ -50,18 +47,15 @@ fn step_once_do_returns_awaiting_action() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("do_test"),
         digest: WorkflowDigest::from_bytes([0x22; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Do {
                 action: ActionId::new(5),
                 input: SlotIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -113,28 +107,22 @@ fn step_once_jump_advances_pc_to_target() -> Result<(), String> {
         name: Box::<str>::from("jump_test"),
         digest: WorkflowDigest::from_bytes([0x55; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Jump {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Jump {
                     target: StepIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -187,16 +175,7 @@ fn single_node_workflow(
         input_slots: Box::new([]),
         name: Box::<str>::from(name),
         digest: WorkflowDigest::from_bytes(digest),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), kind, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([]),

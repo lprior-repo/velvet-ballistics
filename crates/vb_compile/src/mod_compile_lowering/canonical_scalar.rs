@@ -9,8 +9,8 @@ use crate::expression_bytecode::compile_expr_to_bytecode_with_resolver;
 use crate::mod_compile_errors::CompileErrors;
 use crate::mod_compile_lowering::SlotCompiler;
 use crate::mod_compile_lowering::part_05::lower_set;
-use vb_core::workflow::{ErrorRouting, NodeOutput, NodeRouting};
-use vb_core::{CompiledNode, CompiledNodeKind, ConstValue, SlotIdx, StepIdx};
+use vb_core::workflow::node;
+use vb_core::{CompiledNodeKind, ConstValue, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
 
 /// Lowers a Set primitive with expression value support and static type checking.
@@ -66,15 +66,12 @@ fn compile_and_emit_set(
 ) -> Result<ExprType, CompileErrors> {
     let (expr_idx, inferred) = compile_canonical_expression(value, scope, builder)?;
 
-    builder.push_node(CompiledNode {
+    builder.push_node(node(
         id,
-        output: NodeOutput::Slot(slot),
-        routing: NodeRouting {
-            next: next.into(),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::EvalExpr { expr: expr_idx },
-    });
+        CompiledNodeKind::EvalExpr { expr: expr_idx },
+        Some(slot),
+        next,
+    ));
 
     Ok(inferred)
 }

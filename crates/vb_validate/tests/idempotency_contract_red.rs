@@ -7,10 +7,7 @@ use vb_core::capability::Capability;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
-    ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts, node};
 use vb_validate::idempotency_contract::{
     IdempotencyContractError, IdempotencyContractErrors, IdempotencyContractViolation,
     collect_idempotency_contract_violations, is_statically_idempotent_contract,
@@ -51,30 +48,19 @@ fn contract(
 }
 
 fn do_node(index: u16, action_id: ActionId) -> CompiledNode {
-    CompiledNode {
-        id: step(index),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    node(
+        step(index),
+        CompiledNodeKind::Do {
             action: action_id,
             input: slot(0),
         },
-    }
+        None,
+        None,
+    )
 }
 
 fn nop_node(index: u16) -> CompiledNode {
-    CompiledNode {
-        id: step(index),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-    }
+    node(step(index), CompiledNodeKind::Nop, None, None)
 }
 
 fn workflow(nodes: Box<[CompiledNode]>) -> WorkflowParts {

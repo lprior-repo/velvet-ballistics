@@ -19,7 +19,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, NodeOutput, NodeRouting, NodeContinuation, ErrorRouting};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,};
 
 fn make_plan(nodes: Vec<CompiledNode>, slot_count: u16) -> Option<CompiledWorkflow> {
     let names: Box<[Box<str>]> = (0..nodes.len())
@@ -44,29 +44,11 @@ fn make_plan(nodes: Vec<CompiledNode>, slot_count: u16) -> Option<CompiledWorkfl
 }
 
 fn finish_node(id: u16, result_slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-        }
+    node(StepIdx::new(id), CompiledNodeKind::Finish { result: SlotIdx::new(result_slot), }, None, None)
 }
 
 fn nop_node(id: u16, next_id: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(next_id)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Nop,
-        }
+    node(StepIdx::new(id), CompiledNodeKind::Nop, None, Some(StepIdx::new(next_id)))
 }
 
 #[kani::proof]

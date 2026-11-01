@@ -126,7 +126,7 @@ mod tests {
     use crate::errors::EngineError;
     use crate::ids::{RunId, SlotIdx, StepIdx};
     use crate::value::SlotValue;
-    use crate::workflow::{ExprBranch, SlotBranch};
+    use crate::workflow::{ExprBranch, SlotBranch, node};
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -275,8 +275,7 @@ mod tests {
         use crate::ids::{ConstIdx, ExprIdx, WorkflowDigest};
         use crate::value::ConstValue;
         use crate::workflow::{
-            CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, ExprOp, ExprProgram,
-            NodeContinuation, NodeOutput, NodeRouting, WorkflowParts,
+            CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, WorkflowParts,
         };
 
         let expr_true =
@@ -294,14 +293,9 @@ mod tests {
             name: Box::<str>::from("choose_expr_test"),
             digest: WorkflowDigest::from_bytes([0x55; 32]),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Choose {
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::Choose {
                         branches: vec![
                             ExprBranch {
                                 condition: ExprIdx::new(0),
@@ -315,34 +309,12 @@ mod tests {
                         .into_boxed_slice(),
                         otherwise: Some(StepIdx::new(3)),
                     },
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    output: NodeOutput::Discard,
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Nop,
-                },
+                    None,
+                    None,
+                ),
+                node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
+                node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
+                node(StepIdx::new(3), CompiledNodeKind::Nop, None, None),
             ]
             .into_boxed_slice(),
             expressions: vec![expr_true, expr_false].into_boxed_slice(),

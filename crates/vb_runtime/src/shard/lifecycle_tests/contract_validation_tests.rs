@@ -37,18 +37,7 @@ fn make_contract(
 }
 
 fn do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(action_id),
-            input: SlotIdx::ZERO,
-        },
-        };
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(action_id), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), None);
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("test-do"),
@@ -69,40 +58,9 @@ fn do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::E
 
 /// SetConst->Do->Finish workflow with real input for Do.
 fn setconst_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
-    let set = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-        };
-    let do_node = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(2)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(action_id),
-            input: SlotIdx::ZERO,
-        },
-        };
-    let finish = CompiledNode {
-        id: StepIdx::new(2),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(1),
-        },
-        };
+    let set = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(StepIdx::new(1)));
+    let do_node = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Do { action: ActionId::new(action_id), input: SlotIdx::ZERO, }, Some(SlotIdx::new(1)), Some(StepIdx::new(2)));
+    let finish = vb_core::workflow::node(StepIdx::new(2), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("setconst-do"),
@@ -123,29 +81,8 @@ fn setconst_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std:
 
 /// Do->Finish workflow with typed input slot for seeded input tests.
 fn input_slot_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
-    let do_node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(action_id),
-            input: SlotIdx::ZERO,
-        },
-        };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(1),
-        },
-        };
+    let do_node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(action_id), input: SlotIdx::ZERO, }, Some(SlotIdx::new(1)), Some(StepIdx::new(1)));
+    let finish = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("input-do"),
@@ -318,30 +255,8 @@ fn validate_contracts_rejection_is_non_mutating() -> Result<(), Box<dyn std::err
 #[test]
 fn validate_contracts_accepts_reused_action_ids() -> Result<(), Box<dyn std::error::Error>> {
     // Workflow with same action appearing twice
-    let node1 = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::ZERO,
-        },
-        };
-    let node2 = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::new(1),
-        },
-        };
+    let node1 = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), Some(StepIdx::new(1)));
+    let node2 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(1), }, Some(SlotIdx::new(1)), None);
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("reused"),
@@ -414,30 +329,8 @@ fn validate_contracts_rejects_empty_action_name() -> Result<(), Box<dyn std::err
 fn validate_contracts_accepts_multiple_distinct_action_ids()
 -> Result<(), Box<dyn std::error::Error>> {
     // Workflow with two distinct actions
-    let node1 = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Slot(SlotIdx::ZERO),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(1)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::ZERO,
-        },
-        };
-    let node2 = CompiledNode {
-        id: StepIdx::new(1),
-        output: NodeOutput::Slot(SlotIdx::new(1)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(1),
-            input: SlotIdx::new(1),
-        },
-        };
+    let node1 = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO, }, Some(SlotIdx::ZERO), Some(StepIdx::new(1)));
+    let node2 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Do { action: ActionId::new(1), input: SlotIdx::new(1), }, Some(SlotIdx::new(1)), None);
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("multi-action"),

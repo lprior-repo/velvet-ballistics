@@ -13,9 +13,10 @@
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
+use vb_core::workflow::node;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
-    RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest, WorkflowParts, new_run_frame,
+    CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract, RunId, SlotIdx,
+    SlotValue, StepIdx, WorkflowDigest, WorkflowParts, new_run_frame,
 };
 
 const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence";
@@ -47,30 +48,24 @@ fn save_chain_workflow(count: u16) -> Option<CompiledWorkflow> {
     let mut nodes = Vec::with_capacity(usize::from(count).saturating_add(1));
     let mut step = 0_u16;
     while step < count {
-        nodes.push(CompiledNode {
-            id: StepIdx::new(step),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(step.saturating_add(1))),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        nodes.push(node(
+            StepIdx::new(step),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        });
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(step.saturating_add(1))),
+        ));
         step = step.saturating_add(1);
     }
-    nodes.push(CompiledNode {
-        id: StepIdx::new(count),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(count),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

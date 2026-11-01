@@ -7,8 +7,8 @@ use super::canonical_scalar::compile_canonical_expression;
 use crate::CompileError;
 use crate::mod_compile_errors::CompileErrors;
 use crate::mod_compile_lowering::SlotCompiler;
-use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
-use vb_core::{CompiledNode, CompiledNodeKind, ExprBranch, ExprIdx, SlotIdx, StepIdx};
+use vb_core::workflow::node;
+use vb_core::{CompiledNodeKind, ExprBranch, ExprIdx, SlotIdx, StepIdx};
 use vb_expr::expr_typecheck::ExprType;
 
 /// Lowers a top-level Do step, optionally guarded by a condition.
@@ -57,18 +57,15 @@ fn emit_choose_node(
     otherwise: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) {
-    builder.push_node(CompiledNode {
+    builder.push_node(node(
         id,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Choose {
+        CompiledNodeKind::Choose {
             branches: Box::from([ExprBranch { condition, target }]),
             otherwise,
         },
-    });
+        None,
+        None,
+    ));
 }
 
 fn extract_do_fields(step: &crate::StepAst, index: usize) -> Result<(&str, &str), CompileErrors> {

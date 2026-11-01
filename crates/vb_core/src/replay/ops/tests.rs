@@ -10,9 +10,8 @@ use crate::replay::{ReplayError, ReplayExprStack, eval_expr_for_replay};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, ExprOp, ExprProgram,
-    NodeContinuation, NodeOutput, NodeRouting, PathSegment, ResourceContract, WorkflowParts,
-    check_expr_stack_bound,
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
+    ResourceContract, WorkflowParts, check_expr_stack_bound, node,
 };
 
 use super::{eval_replay_op, pop_i64_pair, pop_pair};
@@ -57,26 +56,20 @@ fn make_minimal_plan_with_constants(
 ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
     make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         constants,
         vec![],
@@ -1184,26 +1177,20 @@ fn eval_load_accessor_object_field() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -1245,26 +1232,20 @@ fn eval_load_accessor_list_index() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -1302,26 +1283,20 @@ fn eval_load_accessor_list_index() -> Result<(), CoreError> {
 fn eval_load_accessor_empty_path_returns_root() -> Result<(), CoreError> {
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -1421,26 +1396,20 @@ fn eval_expr_for_replay_addition() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![expr],
@@ -1477,26 +1446,20 @@ fn eval_expr_for_replay_comparison_chain() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![
             ConstValue::I64(10),
@@ -1529,26 +1492,20 @@ fn eval_expr_for_replay_with_uninitialized_slot() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![expr],
@@ -1691,26 +1648,20 @@ fn blackhat_taint_joins_across_expression() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![expr],
@@ -1860,26 +1811,20 @@ fn ce003_replay_object_field_taint_joins_segment() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -1929,26 +1874,20 @@ fn ce003_replay_list_item_taint_joins_segment() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -2013,26 +1952,20 @@ fn ce003_replay_multi_segment_path_joins_every_segment_taint() -> Result<(), Cor
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -2098,26 +2031,20 @@ fn ce003_replay_root_taint_joins_into_accumulator() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],
@@ -2196,26 +2123,20 @@ fn ce003_replay_lattice_random_respected() -> Result<(), CoreError> {
 
     let plan = make_plan(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         vec![],
         vec![],

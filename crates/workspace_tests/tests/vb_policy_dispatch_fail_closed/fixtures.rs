@@ -38,15 +38,12 @@ pub(crate) fn node(
     next: Option<u16>,
     kind: CompiledNodeKind,
 ) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: (output.map(SlotIdx::new)).into(),
-        routing: NodeRouting {
-            next: (next.map(StepIdx::new)).into(),
-            error: ErrorRouting::None,
-        },
+    vb_core::workflow::node(
+        StepIdx::new(id),
         kind,
-    }
+        output.map(SlotIdx::new),
+        next.map(StepIdx::new),
+    )
 }
 
 pub(crate) fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {

@@ -21,10 +21,7 @@
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 use vb_runtime::primitives::collect::CollectStates;
 use vb_runtime::shard::helpers::timer_registration_required;
 use vb_runtime::shard::types::RunState;
@@ -57,15 +54,7 @@ fn make_run_state(wf: CompiledWorkflow) -> RunState {
 }
 
 fn make_wf_with_kind(kind: CompiledNodeKind, slot_count: u16) -> Option<CompiledWorkflow> {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind,
-    };
+    let node = vb_core::workflow::node(StepIdx::ZERO, kind, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("test_wf"),

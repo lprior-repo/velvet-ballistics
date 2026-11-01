@@ -1,8 +1,7 @@
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
-use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};
+use vb_core::workflow::node;
 use vb_core::{
-    ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx,
-    WorkflowDigest,
+    ActionId, Capability, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest,
 };
 use vb_storage::admission::{AcceptedArtifact, prepare_compiled_artifact};
 
@@ -23,27 +22,21 @@ pub(super) fn accepted_artifact_with_caps(
         let id = u16::try_from(nodes.len()).map_err(|e| e.to_string())?;
         let next = id.checked_add(1).ok_or("fixture step overflow")?;
         let after = next.checked_add(1).ok_or("fixture step overflow")?;
-        nodes.push(CompiledNode {
-            id: StepIdx::new(id),
-            output: NodeOutput::Slot(SlotIdx::new(1)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(next)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Do {
+        nodes.push(node(
+            StepIdx::new(id),
+            CompiledNodeKind::Do {
                 action,
                 input: SlotIdx::new(0),
             },
-        });
-        nodes.push(CompiledNode {
-            id: StepIdx::new(next),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(after)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        });
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(next)),
+        ));
+        nodes.push(node(
+            StepIdx::new(next),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(after)),
+        ));
         contracts.push(ActionContract {
             id: action,
             name: ActionName::new(format!("fixture_{}", action.get()))
@@ -64,17 +57,14 @@ pub(super) fn accepted_artifact_with_caps(
                 .into_boxed_slice(),
         });
     }
-    nodes.push(CompiledNode {
-        id: StepIdx::new(u16::try_from(nodes.len()).map_err(|e| e.to_string())?),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(u16::try_from(nodes.len()).map_err(|e| e.to_string())?),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
     parts.nodes = nodes.into_boxed_slice();
     parts.slot_count = 2;
     parts.digest = WorkflowDigest::from_bytes([0; 32]);
@@ -88,13 +78,8 @@ pub(super) fn accepted_artifact_with_caps(
 
 fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
     use vb_core::value::ConstValue;
-    use vb_core::workflow::{
-        ErrorRouting, NodeContinuation, NodeOutput, NodeRouting, ResourceContract, WorkflowParts,
-    };
-    use vb_core::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx,
-        WorkflowDigest,
-    };
+    use vb_core::workflow::{ResourceContract, WorkflowParts};
+    use vb_core::{CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 
     let mut parts = WorkflowParts {
         name: Box::<str>::from("test_admission"),
@@ -102,28 +87,22 @@ fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
         input_slots: Box::new([]),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
         expressions: Box::new([]),
         accessors: Box::new([]),

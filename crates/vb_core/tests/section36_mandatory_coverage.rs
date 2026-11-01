@@ -11,9 +11,9 @@ use vb_core::ids::{
 use vb_core::value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ContractResource,
-    ErrorRouting, ExprBranch, ExprOp, ExprProgram, NodeContinuation, NodeOutput, NodeRouting,
-    ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
+    AccessorProgram, CompiledNodeKind, CompiledWorkflow, ContractResource, ExprBranch, ExprOp,
+    ExprProgram, NodeContinuation, NodeOutput, ResourceContract, SlotBranch, WorkflowError,
+    WorkflowParts, node,
 };
 use vb_core::{EngineSignal, StepBudget, run_until_blocked, step_once};
 
@@ -502,28 +502,22 @@ fn valid_parts() -> WorkflowParts {
         name: Box::<str>::from("test"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -604,37 +598,23 @@ fn try_from_parts_rejects_unreachable_node() {
         name: Box::<str>::from("unreachable"),
         digest: WorkflowDigest::from_bytes([2; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Nop,
-            },
+                None,
+                None,
+            ),
+            node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -728,29 +708,23 @@ fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
         name: Box::<str>::from("empty_branch"),
         digest: WorkflowDigest::from_bytes([3; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::ChooseSlot {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::ChooseSlot {
                     branches: Box::new([]),
                     otherwise: None,
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -836,28 +810,22 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
         name: Box::<str>::from("copy_fail"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Copy {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -938,28 +906,22 @@ fn missing_output_slot_returns_typed_error() -> Result<(), String> {
         name: Box::<str>::from("missing_output"),
         digest: WorkflowDigest::from_bytes([0xFF; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -1136,17 +1098,14 @@ fn eval_expr_value(
         input_slots: Box::new([]),
         name: Box::<str>::from("section36_expr"),
         digest: WorkflowDigest::from_bytes([0x36; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: vec![expression].into_boxed_slice(),
         accessors: Box::new([]),
@@ -1186,17 +1145,14 @@ fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
         input_slots: Box::new([]),
         name: Box::<str>::from("validate_test"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -1377,17 +1333,14 @@ fn validate_node_bounds_accepts_valid_parts() {
 #[test]
 fn validate_node_bounds_rejects_node_id_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(5),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    parts.nodes = vec![node(
+        StepIdx::new(5),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
     assert!(
@@ -1399,17 +1352,14 @@ fn validate_node_bounds_rejects_node_id_out_of_bounds() {
 #[test]
 fn validate_node_bounds_rejects_next_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::Step(StepIdx::new(99)),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }]
+        None,
+        Some(StepIdx::new(99)),
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
     assert!(
@@ -1422,28 +1372,22 @@ fn validate_node_bounds_rejects_next_out_of_bounds() {
 fn validate_node_bounds_accepts_next_at_last_index() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+            None,
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
+            None,
+            None,
+        ),
     ]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
@@ -1470,17 +1414,14 @@ fn validate_transition_target_accepts_valid_finish() {
 #[test]
 fn validate_transition_target_rejects_jump_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Jump {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Jump {
             target: StepIdx::new(50),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1492,14 +1433,9 @@ fn validate_transition_target_rejects_jump_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Choose {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Choose {
             branches: vec![ExprBranch {
                 condition: ExprIdx::new(0),
                 target: StepIdx::new(99),
@@ -1507,7 +1443,9 @@ fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
             .into_boxed_slice(),
             otherwise: None,
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     parts.expressions = vec![
         ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice())
@@ -1526,18 +1464,15 @@ fn validate_transition_target_rejects_choose_branch_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Choose {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Choose {
             branches: Box::new([]),
             otherwise: Some(StepIdx::new(99)),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1549,14 +1484,9 @@ fn validate_transition_target_rejects_choose_otherwise_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ChooseSlot {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::ChooseSlot {
             branches: vec![SlotBranch {
                 condition: SlotIdx::new(0),
                 target: StepIdx::new(99),
@@ -1564,7 +1494,9 @@ fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
             .into_boxed_slice(),
             otherwise: None,
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1576,21 +1508,18 @@ fn validate_transition_target_rejects_choose_slot_branch_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_for_each_body_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ForEachStart {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(0),
             item_slot: SlotIdx::new(1),
             limit: 0,
             body: StepIdx::new(99),
             done: StepIdx::new(0),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1602,18 +1531,15 @@ fn validate_transition_target_rejects_for_each_body_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_together_start_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::TogetherStart {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherStart {
             branches: vec![StepIdx::new(99)].into_boxed_slice(),
             join: StepIdx::new(0),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1625,18 +1551,15 @@ fn validate_transition_target_rejects_together_start_branch_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_together_start_join_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::TogetherStart {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherStart {
             branches: vec![StepIdx::new(0)].into_boxed_slice(),
             join: StepIdx::new(99),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1648,20 +1571,17 @@ fn validate_transition_target_rejects_together_start_join_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_together_branch_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::TogetherBranch {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherBranch {
             branch: 0,
             entry: StepIdx::new(99),
             join: StepIdx::new(0),
             accumulator: SlotIdx::new(0),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1673,20 +1593,17 @@ fn validate_transition_target_rejects_together_branch_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::TogetherBranch {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherBranch {
             branch: 0,
             entry: StepIdx::new(0),
             join: StepIdx::new(99),
             accumulator: SlotIdx::new(0),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1698,18 +1615,15 @@ fn validate_transition_target_rejects_together_branch_join_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_repeat_check_done_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::RepeatCheck {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::RepeatCheck {
             attempt_slot: SlotIdx::new(0),
             done: StepIdx::new(99),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1721,19 +1635,16 @@ fn validate_transition_target_rejects_repeat_check_done_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_retry_check_body_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::RetryCheck {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(99),
             exhausted: StepIdx::new(0),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1745,19 +1656,16 @@ fn validate_transition_target_rejects_retry_check_body_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ErrorHandler {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(99),
             handler: StepIdx::new(0),
             error_slot: None,
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1769,19 +1677,16 @@ fn validate_transition_target_rejects_error_handler_body_out_of_bounds() {
 #[test]
 fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ErrorHandler {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(0),
             handler: StepIdx::new(99),
             error_slot: None,
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = vb_core::validate_transition_target(&parts);
     assert!(
@@ -1794,28 +1699,22 @@ fn validate_transition_target_rejects_error_handler_handler_out_of_bounds() {
 fn validate_transition_target_accepts_valid_multi_node_workflow() {
     let mut parts = parts_with_contract(ResourceContract::DEFAULT);
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+            None,
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
+            None,
+            None,
+        ),
     ]
     .into_boxed_slice();
     parts.constants = vec![ConstValue::I64(42)].into_boxed_slice();
@@ -1859,20 +1758,16 @@ fn budget_parts_with_steps(step_count: usize, contract: ResourceContract) -> Wor
     let mut nodes = Vec::new();
     for i in 0..step_count {
         let is_last = i == step_count - 1;
-        nodes.push(CompiledNode {
-            id: StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: (if is_last {
-                    None
-                } else {
-                    Some(StepIdx::new(u16::try_from(i + 1).unwrap_or(u16::MAX)))
-                })
-                .into(),
-                error: ErrorRouting::None,
+        nodes.push(node(
+            StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)),
+            CompiledNodeKind::Nop,
+            None,
+            if is_last {
+                None
+            } else {
+                Some(StepIdx::new(u16::try_from(i + 1).unwrap_or(u16::MAX)))
             },
-            kind: CompiledNodeKind::Nop,
-        });
+        ));
     }
     if step_count > 0 {
         nodes[step_count - 1].kind = CompiledNodeKind::Finish {
@@ -2160,37 +2055,23 @@ fn reachability_rejects_unreachable_second_node() {
     let mut parts = valid_parts();
     // Add a third node that is unreachable (node 0 -> node 1, node 2 has no predecessor)
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Nop,
-        },
+            None,
+            None,
+        ),
+        node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
     ]
     .into_boxed_slice();
     parts.resource_contract = ResourceContract {
@@ -2208,39 +2089,30 @@ fn reachability_rejects_unreachable_second_node() {
 fn reachability_accepts_linear_chain() {
     let mut parts = valid_parts();
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Slot(SlotIdx::new(1)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(2)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Copy {
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(2)),
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(1),
             },
-        },
+            None,
+            None,
+        ),
     ]
     .into_boxed_slice();
     parts.slot_count = 2;
@@ -2263,39 +2135,30 @@ fn forward_edge_rejects_backward_next() {
     let mut parts = valid_parts();
     // Node 0 -> Node 2 -> Node 1 (backward edge)
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::SetConst {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Slot(SlotIdx::new(0)),
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(2)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Copy {
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Copy {
                 source: SlotIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::Step(StepIdx::new(1)),
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(2)),
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
+            None,
+            Some(StepIdx::new(1)),
+        ),
     ]
     .into_boxed_slice();
     parts.slot_count = 1;
@@ -2324,18 +2187,15 @@ fn branch_route_rejects_empty_branches_without_otherwise() {
         input_slots: Box::new([]),
         name: Box::<str>::from("empty_branch"),
         digest: WorkflowDigest::from_bytes([3; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ChooseSlot {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::ChooseSlot {
                 branches: Box::new([]),
                 otherwise: None,
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -2364,29 +2224,23 @@ fn branch_route_rejects_empty_branches_without_otherwise() {
 fn branch_route_accepts_empty_branches_with_otherwise() {
     let mut parts = valid_parts();
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ChooseSlot {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::ChooseSlot {
                 branches: Box::new([]),
                 otherwise: Some(StepIdx::new(1)),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+            None,
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
+            None,
+            None,
+        ),
     ]
     .into_boxed_slice();
     parts.slot_count = 1;
@@ -2510,17 +2364,14 @@ fn accessor_validation_accepts_valid_accessor_reference() {
     parts.expressions = vec![expr].into_boxed_slice();
     parts.accessors = vec![accessor].into_boxed_slice();
     // Change node to EvalExpr
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Slot(SlotIdx::new(0)),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }]
+        Some(SlotIdx::new(0)),
+        None,
+    )]
     .into_boxed_slice();
     let result = CompiledWorkflow::try_from_parts(parts);
     assert!(
@@ -2547,17 +2398,14 @@ fn accessor_root_slot_must_be_in_bounds() {
     .unwrap();
     parts.expressions = vec![expr].into_boxed_slice();
     parts.accessors = vec![accessor].into_boxed_slice();
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Finish {
+    parts.nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     let result = CompiledWorkflow::try_from_parts(parts);
     assert!(
@@ -2574,45 +2422,36 @@ fn accessor_root_slot_must_be_in_bounds() {
 fn kind_edges_rejects_backward_done_in_for_each_start() {
     let mut parts = valid_parts();
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ForEachStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::ForEachStart {
                 input: SlotIdx::new(0),
                 item_slot: SlotIdx::new(1),
                 limit: 0,
                 body: StepIdx::new(2),
-                done: StepIdx::new(1), // done points forward (ok for forward edge)
+                done: StepIdx::new(1),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ForEachJoin {
+            None,
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::ForEachJoin {
                 output: SlotIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ForEachNext {
+            None,
+            None,
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::ForEachNext {
                 iterator_slot: SlotIdx::new(0),
                 body: StepIdx::new(2),
                 done: StepIdx::new(1),
             },
-        },
+            None,
+            None,
+        ),
     ]
     .into_boxed_slice();
     parts.slot_count = 2;
@@ -2657,17 +2496,14 @@ fn expression_with_no_ops_is_rejected() {
             if let Ok(prog) = result {
                 let mut parts = valid_parts();
                 parts.expressions = vec![prog].into_boxed_slice();
-                parts.nodes = vec![CompiledNode {
-                    id: StepIdx::new(0),
-                    output: NodeOutput::Slot(SlotIdx::new(0)),
-                    routing: NodeRouting {
-                        next: NodeContinuation::End,
-                        error: ErrorRouting::None,
-                    },
-                    kind: CompiledNodeKind::Finish {
+                parts.nodes = vec![node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
-                }]
+                    Some(SlotIdx::new(0)),
+                    None,
+                )]
                 .into_boxed_slice();
                 CompiledWorkflow::try_from_parts(parts).is_err()
             } else {

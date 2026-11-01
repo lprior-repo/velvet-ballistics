@@ -8,25 +8,19 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
-    ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_storage::RunPolicyPin;
 
 fn workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
         },
-    };
+        None,
+        None,
+    );
     vb_core::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
         name: Box::from("retry-checkpoint"),
         digest: WorkflowDigest::from_bytes([3; 32]),

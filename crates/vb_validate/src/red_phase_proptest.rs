@@ -7,8 +7,7 @@ use crate::gates::validate_gate_08_accessor_path_segments;
 use proptest::prelude::*;
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, PathSegment, ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts, node,
 };
 
 // ---------------------------------------------------------------------------
@@ -25,17 +24,14 @@ fn arb_parts(
         input_slots: Box::new([]),
         name: Box::from("prop"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: Box::new([CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        nodes: Box::new([node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]),
+            None,
+            None,
+        )]),
         expressions: Box::new([]),
         accessors: accessors.into_boxed_slice(),
         constants: Box::new([]),

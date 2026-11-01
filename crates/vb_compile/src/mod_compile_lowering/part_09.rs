@@ -6,6 +6,7 @@ use crate::mod_compile_validation::{
 };
 use saphyr::Yaml;
 use std::collections::HashMap;
+use vb_core::workflow::node;
 use vb_core::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
     ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
@@ -195,15 +196,12 @@ pub(super) fn set_const_node(
     value: ConstIdx,
     next: StepIdx,
 ) -> Result<CompiledNode, CompileError> {
-    Ok(CompiledNode {
+    Ok(node(
         id,
-        output: NodeOutput::Slot(output),
-        routing: NodeRouting {
-            next: NodeContinuation::Step(next),
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::SetConst { value },
-    })
+        CompiledNodeKind::SetConst { value },
+        Some(output),
+        Some(next),
+    ))
 }
 
 #[allow(dead_code)]

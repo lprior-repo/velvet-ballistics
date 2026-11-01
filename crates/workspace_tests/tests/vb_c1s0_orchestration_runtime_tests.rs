@@ -57,15 +57,12 @@ fn relaxed_config() -> ShardConfig {
 }
 
 fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: (output.map(SlotIdx::new)).into(),
-        routing: NodeRouting {
-            next: (next.map(StepIdx::new)).into(),
-            error: ErrorRouting::None,
-        },
+    vb_core::workflow::node(
+        StepIdx::new(id),
         kind,
-    }
+        output.map(SlotIdx::new),
+        next.map(StepIdx::new),
+    )
 }
 
 fn workflow_from_parts(

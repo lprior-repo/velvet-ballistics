@@ -7,8 +7,7 @@ use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeContinuation, NodeOutput,
-    NodeRouting, ResourceContract, WorkflowError, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError, WorkflowParts, node,
 };
 use vb_core::{EngineSignal, StepBudget, run_until_blocked, step_once};
 
@@ -28,28 +27,22 @@ fn simple_workflow() -> Result<CompiledWorkflow, String> {
         name: "behavioral_test".into(),
         digest: WorkflowDigest::from_bytes([0x38; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -231,28 +224,22 @@ fn simple_workflow_parts() -> WorkflowParts {
         name: "budget_test".into(),
         digest: WorkflowDigest::from_bytes([0xB5; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: NodeOutput::Slot(SlotIdx::new(0)),
-                routing: NodeRouting {
-                    next: NodeContinuation::Step(StepIdx::new(1)),
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: NodeOutput::Discard,
-                routing: NodeRouting {
-                    next: NodeContinuation::End,
-                    error: ErrorRouting::None,
-                },
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -279,17 +266,14 @@ fn taint_safety_secret_taint_propagates_to_finish_signal() -> Result<(), String>
         input_slots: Box::new([]),
         name: "taint_runtime".into(),
         digest: WorkflowDigest::from_bytes([0x54; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),

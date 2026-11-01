@@ -8,6 +8,7 @@ use crate::mod_compile_validation::{
 };
 use saphyr::Yaml;
 use std::collections::HashMap;
+use vb_core::workflow::node;
 use vb_core::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
     ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
@@ -38,18 +39,15 @@ pub fn lower_choose(
     }
     let branches = branches.into_boxed_slice();
     validate_branch_route(&branches, otherwise)?;
-    Ok(CompiledNode {
+    Ok(node(
         id,
-        output: NodeOutput::Discard,
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::ChooseSlot {
+        CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
         },
-    })
+        None,
+        None,
+    ))
 }
 
 /// Lowers a `for_each` primitive into `ForEachStart`, body, and `ForEachJoin` nodes.
@@ -66,34 +64,28 @@ pub fn lower_for_each(
     builder.record_slot(item_slot);
     let iterator_slot = item_slot;
     Ok(vec![
-        CompiledNode {
+        node(
             id,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ForEachStart {
+            CompiledNodeKind::ForEachStart {
                 input,
                 item_slot,
                 limit,
                 body,
                 done,
             },
-        },
-        CompiledNode {
-            id: body,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ForEachNext {
+            None,
+            None,
+        ),
+        node(
+            body,
+            CompiledNodeKind::ForEachNext {
                 iterator_slot,
                 body,
                 done,
             },
-        },
+            None,
+            None,
+        ),
     ])
 }
 
@@ -113,30 +105,24 @@ pub fn lower_together(
         }
     })?;
     let accumulator = alloc_accumulator_slot(builder)?;
-    let mut nodes = vec![CompiledNode {
+    let mut nodes = vec![node(
         id,
-        output: NodeOutput::Slot(accumulator),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::TogetherStart {
+        CompiledNodeKind::TogetherStart {
             branches: branches.into_boxed_slice(),
             join,
         },
-    }];
-    nodes.push(CompiledNode {
-        id: join,
-        output: NodeOutput::Slot(accumulator),
-        routing: NodeRouting {
-            next: NodeContinuation::End,
-            error: ErrorRouting::None,
-        },
-        kind: CompiledNodeKind::TogetherJoin {
+        Some(accumulator),
+        None,
+    )];
+    nodes.push(node(
+        join,
+        CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,
         },
-    });
+        Some(accumulator),
+        None,
+    ));
     Ok(nodes)
 }
 
@@ -158,43 +144,34 @@ pub fn lower_collect(
     builder.record_slot(source);
     let collector_slot = source;
     Ok(vec![
-        CompiledNode {
+        node(
             id,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::CollectStart {
+            CompiledNodeKind::CollectStart {
                 source,
                 limit,
                 page_size,
                 body,
                 done,
             },
-        },
-        CompiledNode {
-            id: body,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::CollectPage {
+            None,
+            None,
+        ),
+        node(
+            body,
+            CompiledNodeKind::CollectPage {
                 collector_slot,
                 body,
                 done,
             },
-        },
-        CompiledNode {
-            id: done,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::CollectFinish { collector_slot },
-        },
+            None,
+            None,
+        ),
+        node(
+            done,
+            CompiledNodeKind::CollectFinish { collector_slot },
+            None,
+            None,
+        ),
     ])
 }
 
@@ -212,43 +189,34 @@ pub fn lower_reduce(
     builder.record_slot(accumulator);
     let iterator_slot = accumulator;
     Ok(vec![
-        CompiledNode {
+        node(
             id,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ReduceStart {
+            CompiledNodeKind::ReduceStart {
                 input,
                 accumulator,
                 initial,
                 body,
                 done,
             },
-        },
-        CompiledNode {
-            id: body,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ReduceNext {
+            None,
+            None,
+        ),
+        node(
+            body,
+            CompiledNodeKind::ReduceNext {
                 iterator_slot,
                 accumulator,
                 body,
                 done,
             },
-        },
-        CompiledNode {
-            id: done,
-            output: NodeOutput::Discard,
-            routing: NodeRouting {
-                next: NodeContinuation::End,
-                error: ErrorRouting::None,
-            },
-            kind: CompiledNodeKind::ReduceFinish { accumulator },
-        },
+            None,
+            None,
+        ),
+        node(
+            done,
+            CompiledNodeKind::ReduceFinish { accumulator },
+            None,
+            None,
+        ),
     ])
 }
