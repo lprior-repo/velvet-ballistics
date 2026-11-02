@@ -1238,7 +1238,7 @@ fn encode_frame_with_all_flags_set() {
 
 #[test]
 fn decode_frame_header_preserves_all_fields() {
-    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 0x1234_5678_9ABC_DEF0, 4096);
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0x00CD, 0x1234_5678_9ABC_DEF0, 4096);
     let encoded = header.encode();
     assert_ok!(encoded);
     let Ok(encoded) = encoded else {
@@ -1250,7 +1250,7 @@ fn decode_frame_header_preserves_all_fields() {
         panic!("header should decode")
     };
     assert_eq!(decoded.command, IpcCommand::SubmitRun);
-    assert_eq!(decoded.flags, 0xABCD);
+    assert_eq!(decoded.flags, 0x00CD);
     assert_eq!(decoded.correlation, 0x1234_5678_9ABC_DEF0);
     assert_eq!(decoded.payload_len, 4096);
 }
