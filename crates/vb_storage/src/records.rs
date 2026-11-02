@@ -494,4 +494,36 @@ mod run_header_status_tests {
             Err(UnknownRunHeaderStatus { byte: 9 })
         );
     }
+
+    #[test]
+    fn unknown_status_byte_is_preserved_by_byte_and_u8_accessors() {
+        let unknown = match RunHeaderStatus::from_byte(7).known() {
+            Err(unknown) => unknown,
+            Ok(_) => {
+                assert_eq!(7, 8, "status byte 7 must be unknown");
+                return;
+            }
+        };
+        assert_eq!(unknown.byte(), 7);
+        assert_eq!(u8::from(RunHeaderStatus::from_byte(7)), 7);
+    }
+
+    #[test]
+    fn run_header_record_setter_round_trips_typed_status() {
+        let mut record = super::RunHeaderRecord {
+            run: vb_core::RunId::new(7),
+            workflow_id: vb_core::WorkflowId::new(3),
+            compiled_digest: vb_core::WorkflowDigest::from_bytes(
+                [0xAB; crate::constants::DIGEST_BYTES],
+            ),
+            status: 0,
+            accepted_at_ms: 100,
+        };
+        record.set_run_header_status(RunHeaderStatus::from_byte(2));
+        assert_eq!(record.status, 2);
+        assert_eq!(
+            record.run_header_status().known(),
+            Ok(KnownRunHeaderStatus::Active)
+        );
+    }
 }
