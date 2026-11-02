@@ -7533,56 +7533,40 @@ fn validate_step_ceilings_rejects_transitions_over_limit_by_one() -> Result<(), 
 // =========================================================================
 
 fn ask_node(id: u16, next: Option<u16>) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: None,
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Ask {
+    test_node(
+        id,
+        next,
+        CompiledNodeKind::Ask {
             prompt: SlotIdx::new(0),
             timeout_slot: None,
         },
-    }
+    )
 }
 
 fn wait_event_node(id: u16, next: Option<u16>) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: None,
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::WaitEvent {
+    test_node(
+        id,
+        next,
+        CompiledNodeKind::WaitEvent {
             event: SlotIdx::new(0),
             timeout_slot: None,
         },
-    }
+    )
 }
 
 fn do_node(id: u16, action: u16, next: Option<u16>) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: None,
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    test_node(
+        id,
+        next,
+        CompiledNodeKind::Do {
             action: ActionId::new(action),
             input: SlotIdx::new(0),
         },
-    }
+    )
 }
 
 fn nop_node(id: u16, next: Option<u16>) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: None,
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }
+    test_node(id, next, CompiledNodeKind::Nop)
 }
 
 #[test]
