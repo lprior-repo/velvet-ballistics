@@ -50,14 +50,14 @@
 pub mod action;
 pub mod action_queue;
 pub mod admission;
-pub mod counters;
+pub(crate) mod counters;
 
-pub mod durability_matrix;
+pub(crate) mod durability_matrix;
 pub mod engine;
 mod error;
 pub mod frame_pool;
 pub mod idempotency;
-pub mod ipc_refinement;
+pub(crate) mod ipc_refinement;
 pub mod journal;
 #[cfg(all(kani, feature = "kani-capability-harnesses"))]
 pub mod kani_capability_harnesses;
