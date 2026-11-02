@@ -499,10 +499,7 @@ mod run_header_status_tests {
     fn unknown_status_byte_is_preserved_by_byte_and_u8_accessors() {
         let unknown = match RunHeaderStatus::from_byte(7).known() {
             Err(unknown) => unknown,
-            Ok(_) => {
-                assert_eq!(7, 8, "status byte 7 must be unknown");
-                return;
-            }
+            Ok(_) => panic!("status byte 7 must be unknown"),
         };
         assert_eq!(unknown.byte(), 7);
         assert_eq!(u8::from(RunHeaderStatus::from_byte(7)), 7);
