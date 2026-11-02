@@ -140,19 +140,6 @@ pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) ->
     node(id, CompiledNodeKind::Finish { result }, None, None)
 }
 
-/// Validates compiled workflow IR against structural and resource invariants.
-///
-/// Runs the shared validation pipeline (gates 7-15) via
-/// [`vb_validate::shared::validate`], then delegates to
-/// [`CompiledWorkflow::try_from_parts`] for core structural and budget checks.
-///
-/// Returns the specific validation error so callers can distinguish gate
-/// failures from structural errors.
-pub fn validate_ir(parts: WorkflowParts) -> Result<CompiledWorkflow, CompileErrors> {
-    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
-    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
-}
-
 /// Mutable slot compiler state for building node arrays.
 ///
 /// Tracks slot allocation, constant pool, expression programs, accessor
