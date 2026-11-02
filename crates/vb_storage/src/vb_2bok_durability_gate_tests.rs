@@ -39,8 +39,8 @@ mod durability_gate_tests {
 
     fn minimal_valid_workflow() -> Result<CompiledWorkflow, String> {
         use vb_core::value::ConstValue;
-        use vb_core::workflow::{ResourceContract, WorkflowParts};
-        use vb_core::{CompiledNode, CompiledNodeKind, ConstIdx, SlotIdx, StepIdx};
+        use vb_core::workflow::{ResourceContract, WorkflowParts, node};
+        use vb_core::{CompiledNodeKind, ConstIdx, SlotIdx, StepIdx};
 
         let mut parts = WorkflowParts {
             semantic_source_identity: None,
@@ -48,26 +48,22 @@ mod durability_gate_tests {
             input_slots: Box::new([]),
             digest: WorkflowDigest::from_bytes([0u8; 32]),
             nodes: Box::new([
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
+                    Some(SlotIdx::new(0)),
+                    Some(StepIdx::new(1)),
+                ),
+                node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
-                },
+                    None,
+                    None,
+                ),
             ]),
             expressions: Box::new([]),
             accessors: Box::new([]),

@@ -20,7 +20,7 @@ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_runtime::RuntimeError;
 use vb_runtime::admission::RunAdmission;
@@ -45,27 +45,23 @@ fn canonical_workflow_digest(parts: &WorkflowParts) -> Result<WorkflowDigest, St
 
 /// Workflow with a single action step that can fail.
 fn single_action_workflow() -> Result<CompiledWorkflow, String> {
-    let do_node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    let do_node = node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("policy-pin-recovery"),

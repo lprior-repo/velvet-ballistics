@@ -14,11 +14,12 @@ use vb_core::frame::StepState;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::{ConstValue, SlotValue};
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind};
+use vb_core::workflow::CompiledNodeKind;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn re_011_evidence_capacity_overflow_does_not_mark_step_succeeded() -> Result<(), String> {
@@ -324,14 +325,12 @@ mod tests {
         // reads slot 1, fails with SlotUninitialized, and records a
         // gap. Because the drive reaches a terminal Finished signal,
         // the gap-surfacing path converts it into the typed error.
-        let nop_node = CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        };
+        let nop_node = node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(1)),
+        );
         let wf = mkwfc(
             vec![nop_node, setc(1, 0, 0, 2), fin(2, 0)],
             2,

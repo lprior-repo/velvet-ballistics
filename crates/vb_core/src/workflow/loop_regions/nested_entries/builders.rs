@@ -81,11 +81,12 @@ pub(super) fn install_pair(
 ) -> TestResult {
     let owner = edit(parts, start)?;
     owner.kind = start_kind(family, body, done);
-    owner.output = Some(slot(state));
-    owner.next = None;
+    owner.output = NodeOutput::Slot(slot(state));
+    owner.routing.next = NodeContinuation::End;
     let latch = edit(parts, control)?;
     latch.kind = control_kind(family, state, body, done);
-    latch.next = matches!(family, Family::Repeat).then_some(step(body));
+    latch.routing.next =
+        NodeContinuation::from(matches!(family, Family::Repeat).then_some(step(body)));
     Ok(())
 }
 

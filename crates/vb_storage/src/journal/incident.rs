@@ -189,14 +189,15 @@ pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleS
 
 /// Returns true if the event affects lifecycle state derivation.
 ///
-/// Policy decision and gate decision events are neutral facts and do not
-/// affect lifecycle.
+/// Policy decision, gate decision, and compatibility decision events
+/// are neutral facts and do not affect lifecycle.
 #[inline]
 fn is_lifecycle_affecting(event: &JournalEvent) -> bool {
     !matches!(
         event,
         JournalEvent::PolicyDecisionEvent { .. }
             | JournalEvent::GateDecisionEvent { .. }
+            | JournalEvent::CompatibilityDecisionEvent { .. }
             | JournalEvent::RunContinuation { .. }
     )
 }
@@ -237,6 +238,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::AskTimedOutEvent { .. } => LifecycleState::Active,
         JournalEvent::PolicyDecisionEvent { .. } => LifecycleState::Active,
         JournalEvent::GateDecisionEvent { .. } => LifecycleState::Active,
+        JournalEvent::CompatibilityDecisionEvent { .. } => LifecycleState::Active,
     }
 }
 

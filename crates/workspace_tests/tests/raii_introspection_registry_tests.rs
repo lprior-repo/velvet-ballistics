@@ -19,7 +19,7 @@ use std::num::NonZeroUsize;
 use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{
@@ -48,26 +48,22 @@ fn relaxed_config() -> ShardConfig {
 /// Creates a finished workflow (SetConst -> Finish).
 fn finished_workflow() -> Result<CompiledWorkflow, String> {
     let nodes = Box::from([
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+        node(
+            StepIdx::ZERO,
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::ZERO,
             },
-        },
+            None,
+            None,
+        ),
     ]);
 
     let parts = WorkflowParts {

@@ -12,6 +12,7 @@
 
 use proptest::prelude::*;
 use vb_compile::{SlotCompiler, compile_workflow, lower_collect};
+use vb_core::workflow::NodeContinuation;
 use vb_core::{
     CompiledNodeKind,
     ids::{SlotIdx, StepIdx},
@@ -647,7 +648,10 @@ fn assert_canonical_collect_roles(
             if *done != StepIdx::new(3) {
                 return Err(format!("CollectStart done mismatch: {:?} vs 3", *done));
             }
-            start.output.ok_or("CollectStart has no output slot")?
+            start
+                .output
+                .slot()
+                .ok_or("CollectStart has no output slot")?
         }
         other => return Err(format!("node 0 wrong kind: {:?}", other)),
     };
@@ -660,9 +664,9 @@ fn assert_canonical_collect_roles(
         CompiledNodeKind::SetConst { .. } => {}
         other => return Err(format!("node 1 wrong kind: {:?}", other)),
     }
-    let body_result = body.output.ok_or("SetConst has no output slot")?;
-    if body.next != Some(StepIdx::new(2)) {
-        return Err(format!("node 1 next mismatch: {:?}", body.next));
+    let body_result = body.output.slot().ok_or("SetConst has no output slot")?;
+    if body.routing.next != NodeContinuation::Step(StepIdx::new(2)) {
+        return Err(format!("node 1 next mismatch: {:?}", body.routing.next));
     }
     if SlotIdx::new(source).get() == collector.get() {
         return Err("source and collector slots are not distinct".to_string());
@@ -715,15 +719,18 @@ fn assert_canonical_collect_roles(
         }
         other => return Err(format!("node 3 wrong kind: {:?}", other)),
     }
-    let finish_output = finish.output.ok_or("CollectFinish has no output slot")?;
+    let finish_output = finish
+        .output
+        .slot()
+        .ok_or("CollectFinish has no output slot")?;
     if finish_output == collector {
         return Err("finish output equals collector slot".to_string());
     }
     if finish_output == body_result {
         return Err("finish output equals body output slot".to_string());
     }
-    if finish.next != Some(StepIdx::new(4)) {
-        return Err(format!("node 3 next mismatch: {:?}", finish.next));
+    if finish.routing.next != NodeContinuation::Step(StepIdx::new(4)) {
+        return Err(format!("node 3 next mismatch: {:?}", finish.routing.next));
     }
 
     let term = wf.node(StepIdx::new(4)).ok_or("missing node 4")?;
@@ -738,8 +745,11 @@ fn assert_canonical_collect_roles(
         }
         other => return Err(format!("node 4 wrong kind: {:?}", other)),
     }
-    if term.next != None {
-        return Err(format!("node 4 next should be None, got {:?}", term.next));
+    if term.routing.next != NodeContinuation::End {
+        return Err(format!(
+            "node 4 next should be End, got {:?}",
+            term.routing.next
+        ));
     }
 
     Ok(())

@@ -174,7 +174,10 @@ fn prepare() -> Result<Prepared, String> {
         finish_node.kind,
         CompiledNodeKind::CollectFinish { collector_slot } if collector_slot == collector
     ));
-    assert_eq!(finish_node.next, Some(EXIT));
+    assert_eq!(
+        finish_node.routing.next,
+        vb_core::workflow::NodeContinuation::Step(EXIT)
+    );
     assert_uninitialized(&run, output);
     Ok((run, original, collector, output))
 }

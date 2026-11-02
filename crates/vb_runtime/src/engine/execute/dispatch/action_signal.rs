@@ -55,8 +55,8 @@ fn dispatch_signal(ctx: &mut ActionDispatchContext<'_>) -> RuntimeEngineResult<R
         CompiledNodeKind::AskResume { answer } => handle_ask_resume(
             ctx.run,
             *answer,
-            ctx.node.output,
-            ctx.node.next,
+            ctx.node.output.slot(),
+            ctx.node.routing.next.step(),
             ctx.node.id,
         ),
         _ => Err(family_invariant()),

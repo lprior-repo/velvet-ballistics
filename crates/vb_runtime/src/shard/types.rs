@@ -224,7 +224,9 @@ pub(crate) enum RecoveredAdmissionKind {
         artifact_digest: WorkflowDigest,
     },
     /// Historical admission recovered from durable storage or checkpoint.
-    Historical(crate::admission::RunAdmission),
+    /// Boxed: the admission record is large, and an inline variant would
+    /// make this enum disproportionately large.
+    Historical(Box<crate::admission::RunAdmission>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -296,7 +298,7 @@ impl RecoverRunCommand {
         mut self,
         admission: crate::admission::RunAdmission,
     ) -> Self {
-        self.admission = RecoveredAdmissionKind::Historical(admission);
+        self.admission = RecoveredAdmissionKind::Historical(Box::new(admission));
         self
     }
 
@@ -334,7 +336,7 @@ impl RecoverRunCommand {
                 run_id: checkpoint.run_id,
                 artifact_digest: checkpoint.artifact_digest,
             },
-            RecoveredAdmissionKind::Historical,
+            |admission| RecoveredAdmissionKind::Historical(Box::new(admission)),
         )
     }
 

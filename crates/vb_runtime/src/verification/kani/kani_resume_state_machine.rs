@@ -21,7 +21,7 @@
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 
 use crate::shard::ResumeError;
@@ -151,27 +151,23 @@ fn symbolic_nodes(step_count: u16, slot_count: u16) -> Box<[CompiledNode]> {
 }
 
 fn prefix_node(id: u16, next: u16, slot_count: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: symbolic_optional_slot(slot_count),
-        next: Some(StepIdx::new(next)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }
+    node(
+        StepIdx::new(id),
+        CompiledNodeKind::Nop,
+        symbolic_optional_slot(slot_count),
+        Some(StepIdx::new(next)),
+    )
 }
 
 fn finish_node(id: u16, slot_count: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    node(
+        StepIdx::new(id),
+        CompiledNodeKind::Finish {
             result: symbolic_slot(slot_count),
         },
-    }
+        None,
+        None,
+    )
 }
 
 fn symbolic_slot(slot_count: u16) -> SlotIdx {

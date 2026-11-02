@@ -15,17 +15,15 @@ use crate::gate_12_14_15::{
 use super::super::test_helpers::{finish_node, make_parts, nop_node};
 
 fn do_node(index: u16, action: u16, input: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    vb_core::workflow::node(
+        StepIdx::new(index),
+        CompiledNodeKind::Do {
             action: ActionId::new(action),
             input: SlotIdx::new(input),
         },
-    }
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(index.saturating_add(1))),
+    )
 }
 
 fn make_contract(action_id: u16) -> ActionContract {
@@ -45,16 +43,14 @@ fn make_contract(action_id: u16) -> ActionContract {
 }
 
 fn set_const_node(index: u16, const_idx: u16, output_slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: Some(SlotIdx::new(output_slot)),
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    vb_core::workflow::node(
+        StepIdx::new(index),
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(const_idx),
         },
-    }
+        Some(SlotIdx::new(output_slot)),
+        Some(StepIdx::new(index.saturating_add(1))),
+    )
 }
 
 // ===== Gate 12 tests =====
@@ -220,34 +216,30 @@ fn gate_15_accepts_adjacent_do_nodes() {
 
 #[test]
 fn gate_15_accepts_ask_followed_by_do() {
-    let ask_node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Ask {
+    let ask_node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Ask {
             prompt: SlotIdx::new(0),
             timeout_slot: None,
         },
-    };
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
     let parts = make_parts(vec![ask_node, do_node(1, 1, 0), finish_node(2, 0)], 1);
     assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
 }
 
 #[test]
 fn gate_15_accepts_do_with_no_next() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Do {
             action: ActionId::new(1),
             input: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
 }

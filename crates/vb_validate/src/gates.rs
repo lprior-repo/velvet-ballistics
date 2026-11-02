@@ -246,10 +246,10 @@ fn validate_node_slots(
     node_index: usize,
     slot_count: usize,
 ) -> ValidationResult<()> {
-    if let Some(output) = node.output {
+    if let Some(output) = node.output.slot() {
         check_slot(output, node_index, slot_count)?;
     }
-    if let Some(error_slot) = node.error_slot {
+    if let Some(error_slot) = node.routing.error.error_slot() {
         check_slot(error_slot, node_index, slot_count)?;
     }
     match &node.kind {
@@ -420,10 +420,10 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
     }
     check_step_in_range(parts.entry, node_count, 0, "entry")?;
     for (index, node) in parts.nodes.iter().enumerate() {
-        if let Some(next) = node.next {
+        if let Some(next) = node.routing.next.step() {
             check_next_step_in_range(next, node_count, index)?;
         }
-        if let Some(on_error) = node.on_error {
+        if let Some(on_error) = node.routing.error.handler() {
             check_step_in_range(on_error, node_count, index, "on_error")?;
         }
         match &node.kind {
@@ -897,7 +897,11 @@ fn append_node_edges(
     expressions: &[ExprProgram],
     slot_count: usize,
 ) {
-    if let Some(output) = node.output.filter(|output| output.as_usize() < slot_count) {
+    if let Some(output) = node
+        .output
+        .slot()
+        .filter(|output| output.as_usize() < slot_count)
+    {
         node_reads(node, expressions)
             .into_iter()
             .for_each(|read_slot| {
@@ -1602,7 +1606,7 @@ pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> Validati
             }
             if let Some(constant) = parts.constants.get(const_idx) {
                 let kind = const_value_discriminant(constant);
-                if let Some(slot) = node.output {
+                if let Some(slot) = node.output.slot() {
                     let slot_usize = slot.as_usize();
                     if slot_usize < slot_count {
                         let existing = slot_const_kind

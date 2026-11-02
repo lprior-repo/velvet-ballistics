@@ -4,7 +4,7 @@ use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, Side
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts, node};
 use vb_runtime::admission::{
     AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError, admit_artifact_run,
 };
@@ -35,38 +35,32 @@ fn accepted_artifact(
         .or_else(|| idempotency_actions.first().copied());
     let nodes: Box<[CompiledNode]> = match action {
         Some(action_id) => Box::new([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Do {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Do {
                     action: action_id,
                     input: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
-        None => Box::new([CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        None => Box::new([node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]),
+            None,
+            None,
+        )]),
     };
     let mut parts = WorkflowParts {
         name: Box::from("ssei_admission_fixture"),

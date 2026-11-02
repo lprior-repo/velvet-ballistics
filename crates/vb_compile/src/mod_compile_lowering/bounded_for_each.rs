@@ -154,7 +154,8 @@ fn validate_body(index: usize, config: &ForEachLowering<'_>) -> Result<(), Compi
 }
 
 use super::super::SlotCompiler;
-use vb_core::{CompiledNode, CompiledNodeKind};
+use vb_core::CompiledNodeKind;
+use vb_core::workflow::node;
 
 fn emit_start(
     id: StepIdx,
@@ -165,35 +166,31 @@ fn emit_start(
     edges: &ForEachEdges,
     builder: &mut SlotCompiler,
 ) {
-    builder.push_node(CompiledNode {
+    builder.push_node(node(
         id,
-        output: Some(iterator),
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::ForEachStart {
+        CompiledNodeKind::ForEachStart {
             input,
             item_slot: item,
             limit,
             body: edges.body,
             done: edges.done,
         },
-    });
+        Some(iterator),
+        None,
+    ));
 }
 
 fn emit_next(iterator: SlotIdx, item: SlotIdx, edges: &ForEachEdges, builder: &mut SlotCompiler) {
-    builder.push_node(CompiledNode {
-        id: edges.advance,
-        output: Some(item),
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::ForEachNext {
+    builder.push_node(node(
+        edges.advance,
+        CompiledNodeKind::ForEachNext {
             iterator_slot: iterator,
             body: edges.body,
             done: edges.done,
         },
-    });
+        Some(item),
+        None,
+    ));
 }
 
 fn validate_body_shape(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {

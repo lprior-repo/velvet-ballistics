@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
+use vb_core::workflow::node;
 use vb_core::{
-    ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowParts,
+    ActionId, CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
 };
 
 pub(super) const SOURCE: &[u8] = b"version: velvet-ballistics/v1\nname: artifact_evidence\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";
@@ -30,17 +30,15 @@ pub(super) fn action_workflow() -> Result<CompiledWorkflow, Box<dyn std::error::
     };
     parts.nodes = Box::new([
         first,
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Do {
                 action: ActionId::new(0),
                 input: SlotIdx::new(0),
             },
-        },
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(2)),
+        ),
         last,
     ]);
     parts.slot_count = 2;

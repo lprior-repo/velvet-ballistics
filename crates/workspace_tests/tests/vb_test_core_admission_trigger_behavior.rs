@@ -20,7 +20,8 @@ use vb_core::ids::{ActionId, ConstIdx, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx, 
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ExprOp, ResourceContract, SecretResultPolicy,
+    WorkflowParts, node, node_with_handler,
 };
 use vb_core::{
     EngineSignal, ErrorHandlerOutcome, StepBudget, drive_deterministic, resume_action_completion,
@@ -107,26 +108,22 @@ fn make_simple_workflow() -> Result<CompiledWorkflow, String> {
         name: Box::<str>::from("simple_test"),
         digest: digest(0x01),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -161,36 +158,32 @@ fn workflow_with_error_handler(
         name: Box::<str>::from("error_handler_workflow"),
         digest: digest(0x02),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: Some(handler_target),
-                error_slot: Some(SlotIdx::new(1)),
-                kind: CompiledNodeKind::SetConst {
+            node_with_handler(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+                handler_target,
+                Some(SlotIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: handler_body,
-                output: Some(SlotIdx::new(2)),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+                None,
+                None,
+            ),
+            node(
+                handler_body,
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
-            },
+                Some(SlotIdx::new(2)),
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -212,26 +205,22 @@ fn workflow_without_error_handler() -> Result<CompiledWorkflow, String> {
         name: Box::<str>::from("no_handler_workflow"),
         digest: digest(0x03),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -253,27 +242,23 @@ fn do_node_workflow() -> Result<CompiledWorkflow, String> {
         name: Box::<str>::from("do_node_workflow"),
         digest: digest(0x04),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Do {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -379,6 +364,7 @@ mod admission_policy_enforcement {
 
 mod trigger_condition_evaluation {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn step_once_emit_continue_on_nop() -> Result<(), String> {
@@ -445,16 +431,14 @@ mod trigger_condition_evaluation {
             input_slots: Box::new([]),
             name: Box::<str>::from("wait_test"),
             digest: digest(0x05),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::WaitUntil {
+            nodes: vec![node(
+                StepIdx::new(0),
+                CompiledNodeKind::WaitUntil {
                     deadline_slot: SlotIdx::new(0),
                 },
-            }]
+                None,
+                None,
+            )]
             .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
@@ -486,17 +470,15 @@ mod trigger_condition_evaluation {
             input_slots: Box::new([]),
             name: Box::<str>::from("ask_test"),
             digest: digest(0x06),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Ask {
+            nodes: vec![node(
+                StepIdx::new(0),
+                CompiledNodeKind::Ask {
                     prompt: SlotIdx::new(0),
                     timeout_slot: None,
                 },
-            }]
+                None,
+                None,
+            )]
             .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
@@ -560,6 +542,7 @@ mod trigger_condition_evaluation {
 
 mod fail_closed_vs_fail_open {
     use super::*;
+    use vb_core::workflow::{node, node_with_handler};
 
     #[test]
     fn error_handler_present_routes_to_handler() -> Result<(), String> {
@@ -682,36 +665,32 @@ mod fail_closed_vs_fail_open {
             name: Box::<str>::from("div_zero"),
             digest: digest(0x07),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: Some(StepIdx::new(2)),
-                    error_slot: Some(SlotIdx::new(1)),
-                    kind: CompiledNodeKind::EvalExpr {
+                node_with_handler(
+                    StepIdx::new(0),
+                    CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
+                    Some(SlotIdx::new(0)),
+                    Some(StepIdx::new(1)),
+                    StepIdx::new(2),
+                    Some(SlotIdx::new(1)),
+                ),
+                node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
+                    None,
+                    None,
+                ),
+                node(
+                    StepIdx::new(2),
+                    CompiledNodeKind::Finish {
                         result: SlotIdx::new(1),
                     },
-                },
+                    None,
+                    None,
+                ),
             ]
             .into_boxed_slice(),
             expressions: vec![expr].into_boxed_slice(),
@@ -755,26 +734,22 @@ mod fail_closed_vs_fail_open {
             name: Box::<str>::from("div_zero_no_handler"),
             digest: digest(0x08),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: None, // No handler!
-                    error_slot: None,
-                    kind: CompiledNodeKind::EvalExpr {
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::EvalExpr {
                         expr: ExprIdx::new(0),
                     },
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
+                    Some(SlotIdx::new(0)),
+                    Some(StepIdx::new(1)),
+                ),
+                node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
-                },
+                    None,
+                    None,
+                ),
             ]
             .into_boxed_slice(),
             expressions: vec![expr].into_boxed_slice(),
@@ -1099,6 +1074,7 @@ mod state_transitions {
 
 mod resource_contract_admission {
     use super::*;
+    use vb_core::workflow::node;
 
     #[test]
     fn resource_contract_default_has_conservative_bounds() {
@@ -1111,7 +1087,7 @@ mod resource_contract_admission {
         assert_eq!(contract.max_accessors, 8_192);
         assert_eq!(contract.max_expressions, 4_096);
         assert_eq!(contract.max_expr_stack, 64);
-        assert!(contract.allows_secret_results == false);
+        assert!(contract.allows_secret_results == SecretResultPolicy::Deny);
     }
 
     #[test]
@@ -1136,7 +1112,7 @@ mod resource_contract_admission {
             max_collect_items: u32::MAX,
             max_queue_depth: u32::MAX,
             max_journal_batch_bytes: u32::MAX,
-            allows_secret_results: false,
+            allows_secret_results: SecretResultPolicy::Deny,
         };
 
         // Validation happens in CompiledWorkflow::try_from_parts
@@ -1145,16 +1121,14 @@ mod resource_contract_admission {
             input_slots: Box::new([]),
             name: Box::<str>::from("excessive"),
             digest: digest(0x09),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+            nodes: vec![node(
+                StepIdx::new(0),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            }]
+                None,
+                None,
+            )]
             .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),

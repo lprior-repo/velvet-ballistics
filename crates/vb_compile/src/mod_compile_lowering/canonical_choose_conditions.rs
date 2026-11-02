@@ -1,6 +1,7 @@
 //! Typed expression and legacy numeric-slot Choose conditions.
 
 use super::*;
+use vb_core::workflow::node;
 
 pub(super) fn choose_node(
     id: StepIdx,
@@ -37,17 +38,15 @@ pub(super) fn choose_node(
             target: *target,
         });
     }
-    Ok(CompiledNode {
+    Ok(node(
         id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::Choose {
+        CompiledNodeKind::Choose {
             branches: expressions.into_boxed_slice(),
             otherwise,
         },
-    })
+        None,
+        None,
+    ))
 }
 
 fn choose_condition(

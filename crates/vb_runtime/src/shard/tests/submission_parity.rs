@@ -6,6 +6,7 @@ use vb_core::ids::{ActionId, RunId, SlotIdx};
 
 use super::{Shard, ShardCommand, small_config, suspended_workflow};
 use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal, VolatileRuntimeJournal};
+use vb_core::workflow::node;
 
 #[test]
 fn submit_empty_caps_no_fabrication() -> Result<(), Box<dyn Error>> {
@@ -112,25 +113,21 @@ fn submit_with_contracts_empty_caps_denied() -> Result<(), Box<dyn Error>> {
 }
 
 fn nop_then_do() -> Result<vb_core::workflow::CompiledWorkflow, Box<dyn Error>> {
-    let nop_node = super::CompiledNode {
-        id: vb_core::ids::StepIdx::ZERO,
-        output: None,
-        next: Some(vb_core::ids::StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: super::CompiledNodeKind::Nop,
-    };
-    let do_node = super::CompiledNode {
-        id: vb_core::ids::StepIdx::new(1),
-        output: Some(SlotIdx::ZERO),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: super::CompiledNodeKind::Do {
+    let nop_node = node(
+        vb_core::ids::StepIdx::ZERO,
+        super::CompiledNodeKind::Nop,
+        None,
+        Some(vb_core::ids::StepIdx::new(1)),
+    );
+    let do_node = node(
+        vb_core::ids::StepIdx::new(1),
+        super::CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
         },
-    };
+        Some(SlotIdx::ZERO),
+        None,
+    );
     let parts = super::WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("nop_then_do"),

@@ -46,7 +46,7 @@ pub(crate) fn generate_dot(workflow: &CompiledWorkflow) -> DotGraph {
             None => continue,
         };
 
-        if let Some(next) = node.next {
+        if let Some(next) = node.routing.next.step() {
             dot_lines.push(format!("    node_{i} -> node_{};", next.get()));
             edge_count = saturating_add(edge_count, 1);
         }

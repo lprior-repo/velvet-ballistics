@@ -81,7 +81,7 @@ pub fn encode_contract_bytes(contract: &ResourceContract) -> Vec<u8> {
     buf.extend_from_slice(&contract.max_journal_batch_bytes.to_le_bytes());
 
     buf.extend_from_slice(b"allows_secret_results");
-    buf.push(u8::from(contract.allows_secret_results));
+    buf.push(u8::from(contract.allows_secret_results.allows()));
 
     buf
 }

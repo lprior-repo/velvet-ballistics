@@ -30,6 +30,7 @@ pub mod blobs;
 pub mod codec;
 #[cfg(miri)]
 pub mod codec_miri_tests;
+pub mod compat;
 pub mod constants;
 pub mod continuation_carrier;
 pub use continuation_carrier::{

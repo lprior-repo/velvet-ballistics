@@ -40,7 +40,7 @@ mod tests {
     use crate::EngineSignal;
     use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::{ConstValue, SlotValue, Taint};
-    use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+    use crate::workflow::{CompiledNodeKind, CompiledWorkflow, WorkflowParts, node};
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -60,26 +60,22 @@ mod tests {
             name: Box::<str>::from("run_loop_test"),
             digest: WorkflowDigest::from_bytes([0x99; 32]),
             nodes: vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
+                    Some(SlotIdx::new(0)),
+                    Some(StepIdx::new(1)),
+                ),
+                node(
+                    StepIdx::new(1),
+                    CompiledNodeKind::Finish {
                         result: SlotIdx::new(0),
                     },
-                },
+                    None,
+                    None,
+                ),
             ]
             .into_boxed_slice(),
             expressions: Box::new([]),
@@ -172,17 +168,15 @@ mod tests {
             input_slots: Box::new([]),
             name: Box::<str>::from("do_suspend"),
             digest: WorkflowDigest::from_bytes([0xDD; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Do {
+            nodes: vec![node(
+                StepIdx::new(0),
+                CompiledNodeKind::Do {
                     action: crate::ids::ActionId::new(1),
                     input: SlotIdx::new(0),
                 },
-            }]
+                Some(SlotIdx::new(0)),
+                None,
+            )]
             .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),

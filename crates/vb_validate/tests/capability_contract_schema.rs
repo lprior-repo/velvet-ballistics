@@ -4,7 +4,7 @@ use proptest::prelude::*;
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{CompiledNodeKind, ResourceContract, WorkflowParts, node};
 use vb_validate::ValidationError;
 use vb_validate::diagnostic::diagnostic_from_error;
 use vb_validate::shared::{self, ValidationPipeline};
@@ -15,29 +15,25 @@ fn workflow_with_do_actions(actions: &[u16]) -> WorkflowParts {
     let mut nodes = Vec::new();
     let mut index = 0u16;
     for action in actions {
-        nodes.push(CompiledNode {
-            id: StepIdx::new(index),
-            output: None,
-            next: Some(StepIdx::new(index.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
+        nodes.push(node(
+            StepIdx::new(index),
+            CompiledNodeKind::Do {
                 action: ActionId::new(*action),
                 input: SlotIdx::new(0),
             },
-        });
+            None,
+            Some(StepIdx::new(index.saturating_add(1))),
+        ));
         index = index.saturating_add(1);
     }
-    nodes.push(CompiledNode {
-        id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(index),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
     WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

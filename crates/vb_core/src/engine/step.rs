@@ -58,7 +58,7 @@ fn execute_node(
     store: &mut ValueStore,
 ) -> Result<EngineSignal, EngineError> {
     match &node.kind {
-        CompiledNodeKind::Nop => node_helpers::jump_to_next(run, node.next, node.id),
+        CompiledNodeKind::Nop => node_helpers::jump_to_next(run, node.routing.next, node.id),
         CompiledNodeKind::SetConst { value } => node_helpers::set_const(plan, run, node, *value),
         CompiledNodeKind::Copy { source } => node_helpers::copy_slot(run, node, *source),
         CompiledNodeKind::EvalExpr { expr } => eval_expr_node(plan, run, node, store, *expr),
@@ -131,9 +131,10 @@ fn eval_expr_node(
     let (value, taint) = expr_eval::eval_expr_with_store(plan, run, store, expr)?;
     let output = node
         .output
+        .slot()
         .ok_or(EngineError::MissingOutputSlot { step: node.id })?;
     run.write_slot_with_taint(output, value, taint)?;
-    node_helpers::jump_to_next(run, node.next, node.id)
+    node_helpers::jump_to_next(run, node.routing.next, node.id)
 }
 
 #[inline]
@@ -146,9 +147,10 @@ fn build_object_node(
     let (handle, taint) = object_list::build_object_with_taint(store, run, fields)?;
     let output = node
         .output
+        .slot()
         .ok_or(EngineError::MissingOutputSlot { step: node.id })?;
     run.write_slot_with_taint(output, SlotValue::Object(handle), taint)?;
-    node_helpers::jump_to_next(run, node.next, node.id)
+    node_helpers::jump_to_next(run, node.routing.next, node.id)
 }
 
 #[inline]
@@ -161,9 +163,10 @@ fn build_list_node(
     let (handle, taint) = object_list::build_list_with_taint(store, run, items)?;
     let output = node
         .output
+        .slot()
         .ok_or(EngineError::MissingOutputSlot { step: node.id })?;
     run.write_slot_with_taint(output, SlotValue::List(handle), taint)?;
-    node_helpers::jump_to_next(run, node.next, node.id)
+    node_helpers::jump_to_next(run, node.routing.next, node.id)
 }
 
 #[cfg(test)]

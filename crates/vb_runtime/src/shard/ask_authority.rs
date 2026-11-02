@@ -53,7 +53,7 @@ impl Shard {
         let CompiledNodeKind::Ask { timeout_slot, .. } = &ask.kind else {
             return None;
         };
-        let resume_step = ask.next?;
+        let resume_step = ask.routing.next.step()?;
         match &state.workflow.node(resume_step)?.kind {
             CompiledNodeKind::AskResume { answer } => Some((resume_step, *answer, *timeout_slot)),
             _ => None,

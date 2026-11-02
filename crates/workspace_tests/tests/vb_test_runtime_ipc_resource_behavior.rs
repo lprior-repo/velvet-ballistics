@@ -21,7 +21,7 @@ use vb_core::capability::CapabilitySet;
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue, Taint};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_runtime::RuntimeError;
 use vb_runtime::frame_pool::FramePool;
 use vb_runtime::runtime::Runtime;
@@ -52,26 +52,22 @@ fn make_ticket(run: RunId, seq: u64) -> ActionTicket {
 }
 
 fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let set_const = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    let set_const = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),
@@ -91,17 +87,15 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 }
 
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),
@@ -122,27 +116,23 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 
 #[allow(dead_code)]
 fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let do_node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    let do_node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: ActionId::new(7),
             input: SlotIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

@@ -295,29 +295,10 @@ impl kani::Arbitrary for CompiledNodeKind {
 
 impl kani::Arbitrary for CompiledNode {
     fn any() -> Self {
-        let id = StepIdx::new(kani::any());
         Self {
-            id,
-            output: if kani::any::<bool>() {
-                Some(SlotIdx::new(kani::any()))
-            } else {
-                None
-            },
-            next: if kani::any::<bool>() {
-                Some(StepIdx::new(kani::any()))
-            } else {
-                None
-            },
-            on_error: if kani::any::<bool>() {
-                Some(StepIdx::new(kani::any()))
-            } else {
-                None
-            },
-            error_slot: if kani::any::<bool>() {
-                Some(SlotIdx::new(kani::any()))
-            } else {
-                None
-            },
+            id: StepIdx::new(kani::any()),
+            output: kani::any(),
+            routing: kani::any(),
             kind: kani::any::<CompiledNodeKind>(),
         }
     }

@@ -3,8 +3,9 @@
 //! Proof obligations: PROP-REPEAT-001 through PROP-REPEAT-004.
 //!
 //! These property-based tests provide exhaustive coverage of Repeat digest
-//! properties that the Kani harnesses cannot verify (blocked by blake3
-//! inline ASM -- see BLOCKER-BLAKE3-INLINEASM in kani_digest_repeat.rs).
+//! properties previously also covered by Kani harnesses (retired with the
+//! dead kani fleet, vb-tkcc7; the old kani_digest_repeat.rs noted a
+//! blake3-inline-ASM blocker).
 //!
 //! Properties:
 //! - PROP-REPEAT-001: Same config → same digest (idempotency)

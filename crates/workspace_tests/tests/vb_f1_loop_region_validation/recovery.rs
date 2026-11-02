@@ -5,7 +5,10 @@ use super::support::*;
 #[test]
 fn internal_recovered_error_routes_are_typed_unsupported() -> TestResult {
     let mut route = paired(Family::ForEach)?;
-    edit(&mut route, 2)?.on_error = Some(step(3));
+    edit(&mut route, 2)?.routing.error = ErrorRouting::Handler {
+        handler: step(3),
+        error_slot: None,
+    };
     reject(
         route,
         WorkflowError::LoopRegionUnsupported {
@@ -33,7 +36,10 @@ fn direct_error_exits_to_done_or_finish_are_supported() -> TestResult {
     for target in [5, 7] {
         let mut parts = linear_parts(8)?;
         install_pair(&mut parts, Family::ForEach, 1, 2, 4, 5, 1)?;
-        edit(&mut parts, 2)?.on_error = Some(step(target));
+        edit(&mut parts, 2)?.routing.error = ErrorRouting::Handler {
+            handler: step(target),
+            error_slot: None,
+        };
         assert_region(&accept(parts)?, 1, 2, 4, 5)?;
     }
     Ok(())
@@ -44,11 +50,14 @@ fn direct_error_to_internal_finish_does_not_recover_into_body() -> TestResult {
     let mut parts = linear_parts(7)?;
     install_pair(&mut parts, Family::ForEach, 1, 2, 5, 6, 1)?;
     let body = edit(&mut parts, 2)?;
-    body.next = Some(step(4));
-    body.on_error = Some(step(3));
+    body.routing.next = NodeContinuation::Step(step(4));
+    body.routing.error = ErrorRouting::Handler {
+        handler: step(3),
+        error_slot: None,
+    };
     let terminal = edit(&mut parts, 3)?;
     terminal.kind = CompiledNodeKind::Finish { result: slot(0) };
-    terminal.next = None;
+    terminal.routing.next = NodeContinuation::End;
     assert_region(&accept(parts)?, 1, 2, 5, 6)
 }
 
@@ -56,7 +65,10 @@ fn direct_error_to_internal_finish_does_not_recover_into_body() -> TestResult {
 fn crossing_error_exit_stays_a_geometric_error() -> TestResult {
     let mut parts = linear_parts(8)?;
     install_pair(&mut parts, Family::ForEach, 1, 2, 4, 5, 1)?;
-    edit(&mut parts, 2)?.on_error = Some(step(6));
+    edit(&mut parts, 2)?.routing.error = ErrorRouting::Handler {
+        handler: step(6),
+        error_slot: None,
+    };
     reject(parts, crossing(4, 2, 6))
 }
 
@@ -73,7 +85,7 @@ fn unrelated_error_and_suspend_topology_is_not_blanket_rejected() -> TestResult 
         action: ActionId::new(0),
         input: slot(0),
     };
-    action.next = Some(step(3));
+    action.routing.next = NodeContinuation::Step(step(3));
     edit(&mut parts, 2)?.kind = CompiledNodeKind::AskResume { answer: slot(3) };
     let plan = accept(parts)?;
     for id in 0..4 {

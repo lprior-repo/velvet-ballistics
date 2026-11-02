@@ -5,7 +5,7 @@ use std::hint::black_box;
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{CompiledNodeKind, ResourceContract, WorkflowParts, node};
 
 fn parts() -> WorkflowParts {
     WorkflowParts {
@@ -14,27 +14,23 @@ fn parts() -> WorkflowParts {
         name: Box::from("capability-schema-bench"),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: Box::new([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Do {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
         expressions: Box::new([]),
         accessors: Box::new([]),

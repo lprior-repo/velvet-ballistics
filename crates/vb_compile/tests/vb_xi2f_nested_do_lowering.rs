@@ -494,13 +494,22 @@ fn assert_node(
     let actual = nodes
         .get(usize::from(id))
         .ok_or_else(|| format!("node {} not found", id))?;
+    let error = match (on_error, error_slot) {
+        (Some(handler), error_slot) => vb_core::workflow::ErrorRouting::Handler {
+            handler,
+            error_slot,
+        },
+        (None, None) => vb_core::workflow::ErrorRouting::None,
+        (None, Some(_)) => panic!("error_slot without handler is unrepresentable"),
+    };
     let expected = vb_core::CompiledNode {
         id: vb_core::StepIdx::new(id),
         kind,
-        output,
-        next,
-        error_slot,
-        on_error,
+        output: output.into(),
+        routing: vb_core::workflow::NodeRouting {
+            next: next.into(),
+            error,
+        },
     };
     assert_eq!(*actual, expected);
     Ok(())

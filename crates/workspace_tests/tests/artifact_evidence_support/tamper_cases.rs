@@ -18,7 +18,7 @@ fn malformed_ir_and_trailing_payload_bytes_reject_after_envelope_rehash() -> Tes
     match verify_accepted_artifact(&invalid) {
         Err(JournalError::WorkflowReconstruction(
             vb_core::WorkflowError::ResourceContractExceeded { resource },
-        )) => assert_eq!(resource, "max_steps"),
+        )) => assert_eq!(resource, vb_core::workflow::ContractResource::Steps),
         other => {
             return Err(format!("expected real resource limit rejection, got {other:?}").into());
         }

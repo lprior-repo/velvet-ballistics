@@ -57,10 +57,11 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
     for action in actions {
         nodes.push(CompiledNode {
             id: StepIdx::new(index),
-            output: None,
-            next: Some(StepIdx::new(index.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
+            output: vb_core::workflow::NodeOutput::Discard,
+            routing: vb_core::workflow::NodeRouting {
+                next: (Some(StepIdx::new(index.saturating_add(1)))).into(),
+                error: vb_core::workflow::ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(*action),
                 input: SlotIdx::new(0),
@@ -70,10 +71,11 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
     }
     nodes.push(CompiledNode {
         id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
+        output: vb_core::workflow::NodeOutput::Discard,
+        routing: vb_core::workflow::NodeRouting {
+            next: vb_core::workflow::NodeContinuation::End,
+            error: vb_core::workflow::ErrorRouting::None,
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },

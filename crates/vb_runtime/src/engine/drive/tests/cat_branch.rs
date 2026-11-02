@@ -8,9 +8,7 @@ use crate::engine::types::{RuntimeEngineError, RuntimeSignal};
 use vb_core::engine::StepBudget;
 use vb_core::ids::{StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
 
 #[cfg(test)]
 mod tests {
@@ -118,17 +116,15 @@ mod tests {
             .take(branch_count)
             .collect();
 
-        let node = CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::TogetherStart {
+        let node = vb_core::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
                 branches,
                 join: StepIdx::new(0),
             },
-        };
+            None,
+            None,
+        );
 
         let parts = WorkflowParts {
             semantic_source_identity: None,

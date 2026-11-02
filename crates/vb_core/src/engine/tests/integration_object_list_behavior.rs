@@ -9,7 +9,7 @@ use crate::ids::{ConstIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, 
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::ResourceContract;
-use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+use crate::workflow::{ CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
 use crate::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};
 
@@ -646,26 +646,8 @@ fn set_const_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::Work
         name: Box::<str>::from("set_const_test"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
-                    value: ConstIdx::new(0),
-                },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
-                },
-            },
+            crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1))),
+            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -721,26 +703,8 @@ fn copy_slot_taint_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> 
         name: Box::<str>::from("copy_slot_test"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Copy {
-                    source: SlotIdx::new(0),
-                },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(1),
-                },
-            },
+            crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Copy { source: SlotIdx::new(0), }, Some(SlotIdx::new(1)), Some(StepIdx::new(1))),
+            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -803,89 +767,37 @@ fn copy_slot_clean_taint_preserves_clean() -> Result<(), String> {
 
 #[test]
 fn node_kind_detects_set_const() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-    };
+    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
     assert!(matches!(node.kind, CompiledNodeKind::SetConst { .. }));
 }
 
 #[test]
 fn node_kind_detects_finish() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    };
+    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     assert!(matches!(node.kind, CompiledNodeKind::Finish { .. }));
 }
 
 #[test]
 fn node_kind_detects_copy() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Copy {
-            source: SlotIdx::new(0),
-        },
-    };
+    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Copy { source: SlotIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
     assert!(matches!(node.kind, CompiledNodeKind::Copy { .. }));
 }
 
 #[test]
 fn node_kind_detects_build_list() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::BuildList {
-            items: Box::new([]),
-        },
-    };
+    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::BuildList { items: Box::new([]), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
     assert!(matches!(node.kind, CompiledNodeKind::BuildList { .. }));
 }
 
 #[test]
 fn node_kind_detects_build_object() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::BuildObject {
-            fields: Box::new([]),
-        },
-    };
+    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::BuildObject { fields: Box::new([]), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
     assert!(matches!(node.kind, CompiledNodeKind::BuildObject { .. }));
 }
 
 #[test]
 fn node_kind_detects_nop() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, Some(StepIdx::new(1)));
     assert!(matches!(node.kind, CompiledNodeKind::Nop));
 }
 
@@ -897,36 +809,9 @@ fn three_node_chain_workflow() -> Result<CompiledWorkflow, crate::WorkflowError>
         name: Box::<str>::from("chain_test"),
         digest: WorkflowDigest::from_bytes([0xCC; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
-                    value: ConstIdx::new(0),
-                },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Copy {
-                    source: SlotIdx::new(0),
-                },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(1),
-                },
-            },
+            crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1))),
+            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Copy { source: SlotIdx::new(0), }, Some(SlotIdx::new(1)), Some(StepIdx::new(2))),
+            crate::workflow::node(StepIdx::new(2), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -1004,16 +889,7 @@ fn missing_output_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
         semantic_source_identity: None,
         name: Box::<str>::from("missing_output"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
-                value: ConstIdx::new(0),
-            },
-        }]
+        nodes: vec![crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, None, Some(StepIdx::new(1)))]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -1043,16 +919,7 @@ fn const_oob_workflow() -> Result<CompiledWorkflow, crate::WorkflowError> {
         semantic_source_identity: None,
         name: Box::<str>::from("const_oob"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
-                value: ConstIdx::new(5),
-            },
-        }]
+        nodes: vec![crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(5), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)))]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),

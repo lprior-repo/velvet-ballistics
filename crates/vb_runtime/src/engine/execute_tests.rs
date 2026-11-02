@@ -10,32 +10,30 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, NodeOutput, WorkflowParts,
+};
 
 /// Terminal Finish node. Valid sink for any workflow path.
 fn finish_node(id: u16, slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: Some(SlotIdx::new(slot)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    vb_core::workflow::node(
+        StepIdx::new(id),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(slot),
         },
-    }
+        Some(SlotIdx::new(slot)),
+        None,
+    )
 }
 
 /// Nop node that jumps forward to `next_id`. Used as filler.
 fn nop_forward(id: u16, next_id: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: None,
-        next: Some(StepIdx::new(next_id)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }
+    vb_core::workflow::node(
+        StepIdx::new(id),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(next_id)),
+    )
 }
 
 /// Build a workflow from nodes. Panics on validation failure so tests
@@ -128,16 +126,14 @@ fn execute_nop_returns_continue_or_budget_exhausted() {
 #[test]
 fn execute_jump_falls_through_to_step_once() {
     // Jump at 0 targeting 1 (forward edge). Finish at 1 as sink.
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Jump {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Jump {
             target: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let wf = make_workflow(vec![node0, node1], 4);
     let mut run = make_run(4, 2);
@@ -175,17 +171,15 @@ fn execute_jump_falls_through_to_step_once() {
 fn execute_do_without_contract_rejects_without_ticket() {
     // Do has no kind-specific edges. Single-node workflow with next=None is valid
     // because the validator does not require next for Do (no kind-specific targets).
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Do {
             action: ActionId::new(5),
             input: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let wf = make_workflow(vec![node], 4);
     let mut run = make_run(4, 2);
     // Input slot must be initialized with clean taint for the no-contract path.
@@ -226,17 +220,15 @@ fn execute_do_without_contract_rejects_without_ticket() {
 
 #[test]
 fn execute_do_with_known_contract_returns_awaiting_action() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Do {
             action: ActionId::new(1),
             input: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let wf = make_workflow(vec![node], 4);
     let mut run = make_run(4, 2);
     assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(10)), Ok(()));
@@ -303,17 +295,15 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
 
 #[test]
 fn execute_do_with_unknown_contract_returns_error() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Do {
             action: ActionId::new(99),
             input: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let wf = make_workflow(vec![node], 4);
     let mut run = make_run(4, 2);
     let mut store = ValueStore::new();
@@ -363,17 +353,15 @@ fn execute_do_with_unknown_contract_returns_error() {
 
 #[test]
 fn execute_do_taint_violation_for_deterministic_pure_with_secret_input() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let wf = make_workflow(vec![node], 4);
     let mut run = make_run(4, 2);
     assert_eq!(
@@ -429,18 +417,16 @@ fn execute_do_taint_violation_for_deterministic_pure_with_secret_input() {
 fn execute_retry_check_never_policy_uninitialized_routes_to_body() {
     // Uninitialized policy_slot -> attempt=0, NEVER policy: max_attempts=1
     // 0 < 1, so routes to body (not exhausted).
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::RetryCheck {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(0),
             exhausted: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let wf = make_workflow(vec![node0, node1], 4);
     let mut run = make_run(4, 4);
@@ -473,18 +459,16 @@ fn execute_retry_check_never_policy_uninitialized_routes_to_body() {
 
 #[test]
 fn execute_retry_check_never_policy_attempt_one_routes_to_exhausted() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::RetryCheck {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(0),
             exhausted: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let wf = make_workflow(vec![node0, node1], 4);
     let mut run = make_run(4, 4);
@@ -523,18 +507,16 @@ fn execute_retry_check_never_policy_attempt_one_routes_to_exhausted() {
 
 #[test]
 fn execute_retry_check_default_policy_routes_to_body() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::RetryCheck {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(0),
             exhausted: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let wf = make_workflow(vec![node0, node1], 4);
     let mut run = make_run(4, 4);
@@ -568,18 +550,16 @@ fn execute_retry_check_default_policy_routes_to_body() {
 
 #[test]
 fn execute_retry_check_default_policy_attempt_three_routes_to_exhausted() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::RetryCheck {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::RetryCheck {
             policy_slot: SlotIdx::new(0),
             body: StepIdx::new(0),
             exhausted: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let wf = make_workflow(vec![node0, node1], 4);
     let mut run = make_run(4, 4);
@@ -617,18 +597,16 @@ fn execute_retry_check_default_policy_attempt_three_routes_to_exhausted() {
 
 #[test]
 fn execute_error_handler_routes_to_body_step() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ErrorHandler {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
             error_slot: None,
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
     let wf = make_workflow(vec![node0, node1, node2], 4);
@@ -657,18 +635,18 @@ fn execute_error_handler_routes_to_body_step() {
 
 #[test]
 fn execute_error_handler_with_error_slot_routes_to_body_step() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: Some(SlotIdx::new(3)),
-        kind: CompiledNodeKind::ErrorHandler {
+    let node0 = vb_core::workflow::node_with_handler(
+        StepIdx::new(0),
+        CompiledNodeKind::ErrorHandler {
             body: StepIdx::new(1),
             handler: StepIdx::new(2),
             error_slot: Some(SlotIdx::new(3)),
         },
-    };
+        None,
+        None,
+        StepIdx::new(2),
+        Some(SlotIdx::new(3)),
+    );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
     let wf = make_workflow(vec![node0, node1, node2], 8);
@@ -702,20 +680,18 @@ fn execute_error_handler_with_error_slot_routes_to_body_step() {
 #[test]
 fn execute_for_each_start_errors_on_uninitialized_input() {
     // body=1 (forward, makes node 1 reachable), done=2 (forward)
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ForEachStart {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::new(5),
             item_slot: SlotIdx::new(6),
             limit: 10,
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
     let wf = make_workflow(vec![node0, node1, node2], 8);
@@ -754,16 +730,14 @@ fn execute_for_each_start_errors_on_uninitialized_input() {
 
 #[test]
 fn execute_for_each_join_errors_on_missing_next_step() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ForEachJoin {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachJoin {
             output: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let wf = make_workflow(vec![node0], 4);
     let mut run = make_run(4, 1);
     let mut store = ValueStore::new();
@@ -811,18 +785,16 @@ fn execute_for_each_join_errors_on_missing_next_step() {
 
 #[test]
 fn execute_for_each_next_errors_on_uninitialized_iterator() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ForEachNext {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::ForEachNext {
             iterator_slot: SlotIdx::new(0),
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
     let wf = make_workflow(vec![node0, node1, node2], 4);
@@ -862,17 +834,15 @@ fn execute_for_each_next_errors_on_uninitialized_iterator() {
 #[test]
 fn execute_together_start_empty_branches_no_panic() {
     // join=1 must be forward
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::TogetherStart {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherStart {
             branches: Box::from([]),
             join: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let wf = make_workflow(vec![node0, node1], 4);
     let mut run = make_run(4, 2);
@@ -909,17 +879,15 @@ fn execute_together_start_empty_branches_no_panic() {
 
 #[test]
 fn execute_together_join_errors_on_missing_next_step() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::TogetherJoin {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherJoin {
             branch_count: 2,
             accumulator: SlotIdx::new(1),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let wf = make_workflow(vec![node0], 4);
     let mut run = make_run(4, 1);
     let mut store = ValueStore::new();
@@ -975,20 +943,18 @@ fn execute_together_join_errors_on_missing_next_step() {
 
 #[test]
 fn execute_collect_start_errors_on_uninitialized_source() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::CollectStart {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::CollectStart {
             source: SlotIdx::new(5),
             limit: 10,
             page_size: 5,
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
     let wf = make_workflow(vec![node0, node1, node2], 8);
@@ -1027,18 +993,16 @@ fn execute_collect_start_errors_on_uninitialized_source() {
 
 #[test]
 fn execute_collect_page_errors_on_uninitialized_collector() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::CollectPage {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::CollectPage {
             collector_slot: SlotIdx::new(0),
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
     let wf = make_workflow(vec![node0, node1, node2], 8);
@@ -1077,33 +1041,29 @@ fn execute_collect_page_errors_on_uninitialized_collector() {
 
 #[test]
 fn execute_collect_next_errors_on_uninitialized_collector() -> Result<(), String> {
-    let start = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::CollectStart {
+    let start = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::CollectStart {
             source: SlotIdx::new(1),
             limit: 2,
             page_size: 1,
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let node1 = nop_forward(1, 2);
-    let node2 = CompiledNode {
-        id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::CollectNext {
+    let node2 = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::CollectNext {
             collector_slot: SlotIdx::new(0),
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    };
+        None,
+        None,
+    );
     let node3 = finish_node(3, 0);
     let wf = make_workflow_with_constants(
         vec![start, node1, node2, node3],
@@ -1147,16 +1107,14 @@ fn execute_collect_next_errors_on_uninitialized_collector() -> Result<(), String
 
 #[test]
 fn execute_collect_finish_errors_on_uninitialized_collector() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::CollectFinish {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::CollectFinish {
             collector_slot: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let wf = make_workflow(vec![node0], 4);
     let mut run = make_run(4, 1);
     let mut store = ValueStore::new();
@@ -1193,20 +1151,18 @@ fn execute_collect_finish_errors_on_uninitialized_collector() {
 
 #[test]
 fn execute_reduce_start_errors_on_uninitialized_input() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ReduceStart {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::ReduceStart {
             input: SlotIdx::new(5),
             accumulator: SlotIdx::new(6),
             initial: ConstIdx::new(0),
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let node2 = finish_node(2, 0);
     let constants: Box<[vb_core::value::ConstValue]> =
@@ -1247,34 +1203,30 @@ fn execute_reduce_start_errors_on_uninitialized_input() {
 
 #[test]
 fn execute_reduce_next_errors_on_uninitialized_iterator() -> Result<(), String> {
-    let start = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ReduceStart {
+    let start = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::ReduceStart {
             input: SlotIdx::new(2),
             accumulator: SlotIdx::new(1),
             initial: ConstIdx::new(0),
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let node1 = nop_forward(1, 2);
-    let node2 = CompiledNode {
-        id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ReduceNext {
+    let node2 = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::ReduceNext {
             iterator_slot: SlotIdx::new(0),
             accumulator: SlotIdx::new(1),
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
-    };
+        None,
+        None,
+    );
     let node3 = finish_node(3, 0);
     let wf = make_workflow_with_constants(
         vec![start, node1, node2, node3],
@@ -1318,16 +1270,14 @@ fn execute_reduce_next_errors_on_uninitialized_iterator() -> Result<(), String> 
 
 #[test]
 fn execute_reduce_finish_errors_on_missing_next_step() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ReduceFinish {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::ReduceFinish {
             accumulator: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let wf = make_workflow(vec![node0], 4);
     let mut run = make_run(4, 1);
     if let Err(e) = run.write_slot(SlotIdx::new(0), SlotValue::I64(42)) {
@@ -1368,22 +1318,20 @@ fn execute_reduce_finish_errors_on_missing_next_step() {
 
 #[test]
 fn execute_repeat_start_single_attempt_no_panic() -> Result<(), String> {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        output: Some(SlotIdx::new(0)),
-        kind: CompiledNodeKind::RepeatStart {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::RepeatStart {
             max_attempts: 1,
             body: StepIdx::new(1),
             done: StepIdx::new(2),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let mut node1 = finish_node(1, 0);
-    node1.output = None;
+    node1.output = NodeOutput::Discard;
     let mut node2 = finish_node(2, 0);
-    node2.output = None;
+    node2.output = NodeOutput::Discard;
     let wf = make_workflow(vec![node0, node1, node2], 8);
     let mut run = make_run(8, 4);
     let mut store = ValueStore::new();
@@ -1416,18 +1364,16 @@ fn execute_repeat_start_single_attempt_no_panic() -> Result<(), String> {
 
 #[test]
 fn execute_repeat_attempt_errors_on_uninitialized_attempt_slot() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::RepeatAttempt {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::RepeatAttempt {
             attempt_slot: SlotIdx::new(5),
             body: StepIdx::new(0),
             done: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let wf = make_workflow(vec![node0, node1], 8);
     let mut run = make_run(8, 4);
@@ -1465,16 +1411,14 @@ fn execute_repeat_attempt_errors_on_uninitialized_attempt_slot() {
 
 #[test]
 fn execute_repeat_finish_errors_on_uninitialized_result_slot() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::RepeatFinish {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::RepeatFinish {
             result: SlotIdx::new(5),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let wf = make_workflow(vec![node0], 8);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
@@ -1511,16 +1455,14 @@ fn execute_repeat_finish_errors_on_uninitialized_result_slot() {
 
 #[test]
 fn execute_wait_until_errors_on_uninitialized_deadline() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::WaitUntil {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::WaitUntil {
             deadline_slot: SlotIdx::new(5),
         },
-    };
+        None,
+        None,
+    );
     let wf = make_workflow(vec![node0], 8);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
@@ -1557,17 +1499,15 @@ fn execute_wait_until_errors_on_uninitialized_deadline() {
 
 #[test]
 fn execute_wait_event_errors_on_uninitialized_event() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::WaitEvent {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::WaitEvent {
             event: SlotIdx::new(5),
             timeout_slot: None,
         },
-    };
+        None,
+        None,
+    );
     let wf = make_workflow(vec![node0], 8);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
@@ -1604,17 +1544,15 @@ fn execute_wait_event_errors_on_uninitialized_event() {
 
 #[test]
 fn execute_ask_errors_on_uninitialized_prompt() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Ask {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Ask {
             prompt: SlotIdx::new(5),
             timeout_slot: None,
         },
-    };
+        None,
+        None,
+    );
     let wf = make_workflow(vec![node0], 8);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
@@ -1651,16 +1589,14 @@ fn execute_ask_errors_on_uninitialized_prompt() {
 
 #[test]
 fn execute_ask_resume_errors_on_uninitialized_answer() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::AskResume {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::AskResume {
             answer: SlotIdx::new(5),
         },
-    };
+        Some(SlotIdx::new(0)),
+        None,
+    );
     let wf = make_workflow(vec![node0], 8);
     let mut run = make_run(8, 1);
     let mut store = ValueStore::new();
@@ -1697,17 +1633,15 @@ fn execute_ask_resume_errors_on_uninitialized_answer() {
 
 #[test]
 fn execute_repeat_check_routes_forward_on_done() {
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::RepeatCheck {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::RepeatCheck {
             attempt_slot: SlotIdx::new(0),
             done: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let node1 = finish_node(1, 0);
     let wf = make_workflow(vec![node0, node1], 8);
     let mut run = make_run(8, 4);

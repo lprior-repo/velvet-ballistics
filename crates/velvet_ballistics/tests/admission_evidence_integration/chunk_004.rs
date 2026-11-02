@@ -43,6 +43,13 @@ fn budget_validation_rejects_oversized_workflow() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     // Then: validation rejects the budget
@@ -61,26 +68,8 @@ fn budget_validation_rejects_oversized_workflow() {
 
     // Also verify that compile_workflow rejects a workflow exceeding ResourceContract limits
     // by constructing a WorkflowParts with max_steps=1 but 2 nodes
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-    };
-    let node1 = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    };
+    let node0 = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
+    let node1 = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let mut tight_contract = ResourceContract::DEFAULT;
     tight_contract.max_steps = 1;
     let oversized_parts = WorkflowParts {
@@ -107,16 +96,7 @@ fn budget_validation_rejects_oversized_workflow() {
     );
 
     // Verify slot limit rejection too
-    let single_node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    };
+    let single_node = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let mut slot_contract = ResourceContract::DEFAULT;
     slot_contract.max_slots = 0;
     let slot_parts = WorkflowParts {
@@ -180,6 +160,13 @@ fn budget_validation_rejects_action_ticket_limit_exceeded() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     match tight_policy.validate(&budget) {
@@ -232,6 +219,13 @@ fn budget_validation_accepts_budget_policy_within_limits() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let result = policy.validate(&budget);
@@ -361,6 +355,13 @@ fn budget_validation_rejects_result_bytes_exceeded() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     match tight_policy.validate(&budget) {

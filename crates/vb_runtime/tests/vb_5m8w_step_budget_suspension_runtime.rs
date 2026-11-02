@@ -9,7 +9,7 @@ use vb_core::policy::RuntimePolicy;
 use vb_core::value::{ConstValue, SlotValue};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_runtime::engine::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal, drive_deterministic_full,
@@ -22,15 +22,7 @@ fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<Compiled
         semantic_source_identity: None,
         name: Box::<str>::from("vb_5m8w_runtime_suspension"),
         digest: WorkflowDigest::from_bytes([0x8b; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), kind, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([]),
@@ -50,26 +42,22 @@ fn const_then_finish_workflow(value: ConstValue) -> Result<CompiledWorkflow, Str
         name: Box::<str>::from("vb_5m8w_runtime_completed_then_exhausted"),
         digest: WorkflowDigest::from_bytes([0x5e; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(0)),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                Some(SlotIdx::new(0)),
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),

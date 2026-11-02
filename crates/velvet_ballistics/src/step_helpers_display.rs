@@ -26,7 +26,7 @@ pub(crate) fn build_step_result_json(
 
     // Add output slot if present
     #[allow(clippy::collapsible_if)]
-    if let Some(output_slot) = node.output {
+    if let Some(output_slot) = node.output.slot() {
         if let (Ok(value), Ok(taint)) =
             (frame.read_slot(output_slot), frame.read_taint(output_slot))
         {
@@ -77,11 +77,11 @@ pub(crate) fn print_step_result(
             outln!("step: {}", step.get());
             outln!("kind: {}", node_kind_name(&node.kind));
             print_input_slots(frame);
-            if let Some(output_slot) = node.output {
+            if let Some(output_slot) = node.output.slot() {
                 print_output_slot(frame, output_slot);
             }
             outln!("signal: {}", signal_name(signal));
-            if let Some(output_slot) = node.output {
+            if let Some(output_slot) = node.output.slot() {
                 print_taint(frame, output_slot);
             }
             Ok(())

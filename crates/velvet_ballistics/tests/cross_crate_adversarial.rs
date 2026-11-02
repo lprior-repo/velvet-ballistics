@@ -294,26 +294,22 @@ fn compile_to_core_step_count_matches_yaml_step_count() {
 #[test]
 fn core_to_runtime_simple_set_workflow_runs_deterministic() {
     // Given: a compiled workflow with a single SetConst + Finish node
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::SetConst {
             value: vb_core::ConstIdx::new(0),
         },
-    };
-    let node1 = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let node1 = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("set_finish"),
@@ -362,16 +358,14 @@ fn core_to_runtime_simple_set_workflow_runs_deterministic() {
 #[test]
 fn core_to_runtime_jump_to_out_of_bounds_step_is_rejected() {
     // Given: a workflow with a jump targeting a nonexistent step
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Jump {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Jump {
             target: StepIdx::new(99),
         },
-    };
+        None,
+        None,
+    );
     let parts = minimal_parts(Box::from([node]));
     // When: validating transition targets
     let result = vb_core::engine::validate_transition_target(&parts);
@@ -382,17 +376,15 @@ fn core_to_runtime_jump_to_out_of_bounds_step_is_rejected() {
 #[test]
 fn core_to_runtime_choose_with_empty_branches_is_rejected() {
     // Given: a choose node with no branches and no otherwise
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ChooseSlot {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::ChooseSlot {
             branches: Box::from([]),
             otherwise: None,
         },
-    };
+        None,
+        None,
+    );
     let parts = minimal_parts(Box::from([node]));
     // When: constructing the compiled workflow
     let result = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
@@ -407,36 +399,30 @@ fn core_to_runtime_step_budget_exhaustion_returns_correct_signal() {
     // Node 1: Copy slot 0 -> slot 1, -> node 2
     // Node 2: Finish result=slot 0
     // With budget=2, only nodes 0 and 1 can execute, leaving budget exhausted before node 2.
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::SetConst {
             value: vb_core::ConstIdx::new(0),
         },
-    };
-    let node1 = CompiledNode {
-        id: StepIdx::new(1),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Copy {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let node1 = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
-    };
-    let node2 = CompiledNode {
-        id: StepIdx::new(2),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(2)),
+    );
+    let node2 = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("budget_test"),
@@ -1383,26 +1369,22 @@ fn runtime_submit_and_tick_simple_workflow() {
     use vb_runtime::shard::ShardConfig;
 
     // Given: a compiled set+finish workflow
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    let node0 = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::SetConst {
             value: vb_core::ConstIdx::new(0),
         },
-    };
-    let node1 = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(0)),
+        Some(StepIdx::new(1)),
+    );
+    let node1 = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("rt_test"),
@@ -1480,14 +1462,7 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
     use vb_runtime::runtime::Runtime;
     use vb_runtime::shard::ShardConfig;
 
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, None);
     let parts = minimal_parts(Box::from([node]));
     let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
         Ok(w) => w,

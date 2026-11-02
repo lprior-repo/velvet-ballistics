@@ -57,7 +57,7 @@ fn classify_reduce_start(
     if run.pc() == done {
         Some([Some(accumulator), None, None])
     } else if run.pc() == body {
-        Some([Some(accumulator), Some(input), node.output])
+        Some([Some(accumulator), Some(input), node.output.slot()])
     } else {
         None
     }
@@ -73,7 +73,7 @@ fn classify_reduce_next(
     if run.pc() == done {
         Some([None, None, None])
     } else if run.pc() == body {
-        Some([node.output, Some(iterator_slot), None])
+        Some([node.output.slot(), Some(iterator_slot), None])
     } else {
         None
     }

@@ -3,6 +3,7 @@
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::part_14::emit_scoped_flat_body;
 use crate::mod_compile_lowering::{CanonicalScope, SlotCompiler, body_width, checked_step_offset};
+use vb_core::workflow::{NodeContinuation, NodeOutput, node};
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
 
 pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
@@ -28,18 +29,16 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
     let attempt_slot = builder
         .allocate_slot()
         .map_err(|e| CompileErrors(vec![e]))?;
-    builder.push_node(CompiledNode {
+    builder.push_node(node(
         id,
-        output: Some(attempt_slot),
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::RepeatStart {
+        CompiledNodeKind::RepeatStart {
             max_attempts,
             body: layout.body,
             done: layout.done,
         },
-    });
+        Some(attempt_slot),
+        None,
+    ));
     let result = emit_scoped_flat_body(body, layout.body, layout.check, scope, builder, "repeat")?
         .ok_or_else(|| field_error(index, "steps", "at least one set or do step"))?;
     push_repeat_continuations(layout, attempt_slot, result, next, builder);
@@ -74,25 +73,21 @@ fn push_repeat_continuations(
     next: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) {
-    builder.push_node(CompiledNode {
-        id: layout.check,
-        output: Some(attempt_slot),
-        next: Some(layout.body),
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::RepeatCheck {
+    builder.push_node(node(
+        layout.check,
+        CompiledNodeKind::RepeatCheck {
             attempt_slot,
             done: layout.done,
         },
-    });
-    builder.push_node(CompiledNode {
-        id: layout.done,
-        output: Some(result),
+        Some(attempt_slot),
+        Some(layout.body),
+    ));
+    builder.push_node(node(
+        layout.done,
+        CompiledNodeKind::RepeatFinish { result },
+        Some(result),
         next,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::RepeatFinish { result },
-    });
+    ));
 }
 
 fn field_error(step: usize, field: &'static str, expected: &'static str) -> CompileErrors {

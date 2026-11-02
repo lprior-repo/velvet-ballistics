@@ -3,40 +3,11 @@ use crate::ValidationError;
 #[cfg(test)]
 use crate::shared::{ValidationPipeline, validate};
 #[cfg(test)]
+use crate::test_helpers::{finish_node, make_parts};
+#[cfg(test)]
 use vb_core::ids::{SlotIdx, StepIdx};
 #[cfg(test)]
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
-
-fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> crate::shared::WorkflowParts {
-    crate::shared::WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from("test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: Box::new([]),
-        accessors: Box::new([]),
-        constants: Box::new([]),
-        slot_count,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    }
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-    }
-}
+use vb_core::workflow::CompiledNodeKind;
 
 #[test]
 fn pipeline_default_is_all_gates() {
@@ -74,14 +45,12 @@ fn validate_convenience_passes_valid_parts() {
 
 #[test]
 fn validate_convenience_catches_bad_slot_reference() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     assert!(matches!(
         validate(&parts),
@@ -93,14 +62,12 @@ fn validate_convenience_catches_bad_slot_reference() {
 fn selective_gates_skip_disabled() {
     // Gate 9 catches out-of-range slot refs; disable it and the same
     // parts should pass.
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     let pipeline = ValidationPipeline {
         gate_09_slot_references: false,
@@ -114,14 +81,12 @@ fn pipeline_short_circuits_on_first_error() {
     // Construct parts that fail gate 9 (slot out of range). Gate 7 would
     // also fail if the stack depth is wrong, but we set up a case where
     // only gate 9 fails.
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1);
     let result = ValidationPipeline::default().validate(&parts);
     assert!(matches!(

@@ -52,20 +52,22 @@ fn two_node_parts(constant: vb_core::ConstValue) -> vb_core::WorkflowParts {
         nodes: vec![
             vb_core::CompiledNode {
                 id: vb_core::StepIdx::new(0),
-                output: Some(vb_core::SlotIdx::new(0)),
-                next: Some(vb_core::StepIdx::new(1)),
-                error_slot: None,
-                on_error: None,
+                output: vb_core::workflow::NodeOutput::Slot(vb_core::SlotIdx::new(0)),
+                routing: vb_core::workflow::NodeRouting {
+                    next: (Some(vb_core::StepIdx::new(1))).into(),
+                    error: vb_core::workflow::ErrorRouting::None,
+                },
                 kind: vb_core::CompiledNodeKind::SetConst {
                     value: vb_core::ConstIdx::new(0),
                 },
             },
             vb_core::CompiledNode {
                 id: vb_core::StepIdx::new(1),
-                output: None,
-                next: None,
-                error_slot: None,
-                on_error: None,
+                output: vb_core::workflow::NodeOutput::Discard,
+                routing: vb_core::workflow::NodeRouting {
+                    next: vb_core::workflow::NodeContinuation::End,
+                    error: vb_core::workflow::ErrorRouting::None,
+                },
                 kind: vb_core::CompiledNodeKind::Finish {
                     result: vb_core::SlotIdx::new(0),
                 },
@@ -172,10 +174,11 @@ fn build_fuzz_budget_node(
     };
     vb_core::CompiledNode {
         id: step_idx,
-        output: Some(safe_slot),
-        next: next_step,
-        error_slot: None,
-        on_error: None,
+        output: vb_core::workflow::NodeOutput::Slot(safe_slot),
+        routing: vb_core::workflow::NodeRouting {
+            next: (next_step).into(),
+            error: vb_core::workflow::ErrorRouting::None,
+        },
         kind,
     }
 }

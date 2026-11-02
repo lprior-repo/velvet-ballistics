@@ -122,7 +122,7 @@ fn do_output_slot(state: &RunState, ticket: ActionTicket) -> RuntimeResult<SlotI
     state
         .workflow
         .node(ticket.step)
-        .and_then(|node| node.output)
+        .and_then(|node| node.output.slot())
         .ok_or(RuntimeError::InvalidActionCompletion)
 }
 

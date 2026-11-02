@@ -1,17 +1,20 @@
 #![forbid(unsafe_code)]
 //! Compiled workflow IR.
 
+use crate::budget::BudgetDimension;
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{
     AccessorIdx, ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
 };
 use crate::limits::{
-    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK, MAX_EXPRESSIONS,
-    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH, MAX_SLOTS_PER_WORKFLOW,
-    MAX_STEPS_PER_WORKFLOW,
+    MAX_ACCESSORS, MAX_BLOB_BYTES, MAX_COLLECT_ITEMS, MAX_CONSTANTS, MAX_EXPRESSION_OPS,
+    MAX_EXPRESSION_STACK, MAX_EXPRESSIONS, MAX_FANOUT, MAX_INPUT_BYTES, MAX_IPC_PAYLOAD_BYTES,
+    MAX_JOURNAL_BATCH_BYTES, MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE,
+    MAX_OUTPUT_BYTES, MAX_PATH_DEPTH, MAX_QUEUE_DEPTH, MAX_RETRY_ATTEMPTS, MAX_SLOTS_PER_WORKFLOW,
+    MAX_STEP_BUDGET, MAX_STEPS_PER_WORKFLOW,
 };
 use crate::value::ConstValue;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 /// Immutable compiled workflow.
@@ -282,7 +285,140 @@ pub struct ResourceContract {
     /// Maximum journal batch bytes.
     pub max_journal_batch_bytes: u32,
     /// Whether secret-tainted results are allowed in answer payloads.
-    pub allows_secret_results: bool,
+    pub allows_secret_results: SecretResultPolicy,
+}
+
+/// Resource dimension named by contract validation failures.
+///
+/// Exhaustive classification backing `WorkflowError::ResourceContractExceeded`
+/// and `WorkflowError::ResourceContractTooLarge`. The canonical names are
+/// frozen: diagnostics, tests, and admission mapping match on them, so
+/// renaming a string is a behavior change. Two legacy names break the `max_`
+/// convention (`branch_count`, `loop_regions`); they are preserved exactly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContractResource {
+    /// Step count bound.
+    Steps,
+    /// Slot count bound.
+    Slots,
+    /// Constant-pool entry bound.
+    Constants,
+    /// Accessor program bound.
+    Accessors,
+    /// Expression program bound.
+    Expressions,
+    /// Expression stack bound.
+    ExprStack,
+    /// Per-tick step budget bound.
+    StepBudgetPerTick,
+    /// Per-tick transition bound.
+    TransitionsPerTick,
+    /// Input byte bound.
+    InputBytes,
+    /// Output byte bound.
+    OutputBytes,
+    /// Blob byte bound.
+    BlobBytes,
+    /// IPC payload byte bound.
+    IpcPayloadBytes,
+    /// Retry attempt bound.
+    RetryAttempts,
+    /// Branch fanout bound.
+    Fanout,
+    /// Collection item bound.
+    CollectItems,
+    /// Queue depth bound.
+    QueueDepth,
+    /// Journal batch byte bound.
+    JournalBatchBytes,
+    /// Per-branch node count bound.
+    BranchCount,
+    /// Loop region table bound.
+    LoopRegions,
+    /// Build-list item bound.
+    ListItems,
+    /// Build-object field bound.
+    ObjectFields,
+}
+
+impl ContractResource {
+    /// Canonical resource name. Frozen: diagnostics match on these strings.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Steps => "max_steps",
+            Self::Slots => "max_slots",
+            Self::Constants => "max_constants",
+            Self::Accessors => "max_accessors",
+            Self::Expressions => "max_expressions",
+            Self::ExprStack => "max_expr_stack",
+            Self::StepBudgetPerTick => "max_step_budget_per_tick",
+            Self::TransitionsPerTick => "max_transitions_per_tick",
+            Self::InputBytes => "max_input_bytes",
+            Self::OutputBytes => "max_output_bytes",
+            Self::BlobBytes => "max_blob_bytes",
+            Self::IpcPayloadBytes => "max_ipc_payload_bytes",
+            Self::RetryAttempts => "max_retry_attempts",
+            Self::Fanout => "max_fanout",
+            Self::CollectItems => "max_collect_items",
+            Self::QueueDepth => "max_queue_depth",
+            Self::JournalBatchBytes => "max_journal_batch_bytes",
+            Self::BranchCount => "branch_count",
+            Self::LoopRegions => "loop_regions",
+            Self::ListItems => "list_items",
+            Self::ObjectFields => "object_fields",
+        }
+    }
+}
+
+impl core::fmt::Display for ContractResource {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Policy deciding whether secret-tainted results may appear in answers.
+///
+/// Replaces a bare boolean so call sites name the decision. The encoding is
+/// frozen: it serializes exactly as the legacy boolean (`Allow` as `true`,
+/// `Deny` as `false`) so canonical digests and artifact bytes are unchanged.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SecretResultPolicy {
+    /// Secret-tainted results are allowed in answer payloads.
+    Allow,
+    /// Secret-tainted results are rejected from answer payloads.
+    Deny,
+}
+
+impl SecretResultPolicy {
+    /// Whether secret-tainted results are allowed in answer payloads.
+    #[must_use]
+    pub const fn allows(self) -> bool {
+        match self {
+            Self::Allow => true,
+            Self::Deny => false,
+        }
+    }
+}
+
+impl Serialize for SecretResultPolicy {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_bool(self.allows())
+    }
+}
+
+impl<'de> Deserialize<'de> for SecretResultPolicy {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let allowed = bool::deserialize(deserializer)?;
+        Ok(if allowed { Self::Allow } else { Self::Deny })
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for SecretResultPolicy {
+    fn any() -> Self {
+        if kani::any() { Self::Allow } else { Self::Deny }
+    }
 }
 
 impl ResourceContract {
@@ -305,7 +441,7 @@ impl ResourceContract {
         max_collect_items: 1_024,
         max_queue_depth: 1_024,
         max_journal_batch_bytes: 1_048_576,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 }
 
@@ -475,14 +611,14 @@ pub enum WorkflowError {
     /// Resource contract does not cover the compiled artifact.
     #[error("resource contract exceeded: {resource}")]
     ResourceContractExceeded {
-        /// Resource name.
-        resource: &'static str,
+        /// Resource dimension that exceeded its declared bound.
+        resource: ContractResource,
     },
     /// Resource contract exceeds protocol hard limits.
     #[error("resource contract exceeds hard limit: {resource}")]
     ResourceContractTooLarge {
-        /// Resource name.
-        resource: &'static str,
+        /// Resource dimension that exceeds the protocol hard limit.
+        resource: ContractResource,
     },
     /// Branching node has no branch and no otherwise route.
     #[error("branch table must contain a branch or otherwise target")]
@@ -529,8 +665,8 @@ pub enum WorkflowError {
     /// Whole-workflow budget exceeded the boundedness policy.
     #[error("budget policy exceeded: {detail}")]
     BudgetPolicyExceeded {
-        /// Human-readable detail describing which dimension failed.
-        detail: &'static str,
+        /// Budget dimension that failed the policy bound.
+        detail: BudgetDimension,
     },
     /// Budget step count overflowed during computation.
     #[error("budget step count overflow: {actual} cannot be represented")]
@@ -739,23 +875,201 @@ pub fn check_expr_stack_bound(ops: &[ExprOp], capacity: u8) -> CoreResult<u8> {
 }
 
 /// One compiled state-machine node.
+///
+/// Data routing (`output`) and control routing (`routing`) are separate
+/// planes. Field order is frozen: it defines the canonical postcard
+/// artifact bytes, so fields are never reordered.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompiledNode {
     /// Step index of this node.
     pub id: StepIdx,
-    /// Optional output slot written by this node.
-    pub output: Option<SlotIdx>,
-    /// Optional fallthrough step.
-    pub next: Option<StepIdx>,
-    /// Optional error handler step. When this step fails and `on_error` is
-    /// set, the engine routes PC to this handler instead of failing the run.
-    pub on_error: Option<StepIdx>,
-    /// Optional slot where failure information is written before routing to
-    /// the error handler. The slot receives an object with `code`, `message`,
-    /// and `step` fields describing the failure.
-    pub error_slot: Option<SlotIdx>,
+    /// Where this node writes its result.
+    pub output: NodeOutput,
+    /// Control and error routing for this node.
+    pub routing: NodeRouting,
     /// Node behavior.
     pub kind: CompiledNodeKind,
+}
+
+/// Where a node writes its result, when it writes one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NodeOutput {
+    /// The node writes nothing.
+    Discard,
+    /// The node writes its result into this slot.
+    Slot(SlotIdx),
+}
+
+impl NodeOutput {
+    /// Output slot, when this node writes one.
+    #[must_use]
+    pub const fn slot(self) -> Option<SlotIdx> {
+        match self {
+            Self::Discard => None,
+            Self::Slot(slot) => Some(slot),
+        }
+    }
+}
+
+/// Control-flow routing for a node: fallthrough plus failure handling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodeRouting {
+    /// Fallthrough step after this node completes.
+    pub next: NodeContinuation,
+    /// Where failures of this node are routed.
+    pub error: ErrorRouting,
+}
+
+/// Fallthrough continuation after a node completes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NodeContinuation {
+    /// No fallthrough step; stepping off raises `MissingNextStep`.
+    End,
+    /// Fall through to this step.
+    Step(StepIdx),
+}
+
+impl NodeContinuation {
+    /// Fallthrough target, or `None` when this node ends the path.
+    #[must_use]
+    pub const fn step(self) -> Option<StepIdx> {
+        match self {
+            Self::End => None,
+            Self::Step(step) => Some(step),
+        }
+    }
+}
+
+impl From<Option<StepIdx>> for NodeContinuation {
+    fn from(next: Option<StepIdx>) -> Self {
+        match next {
+            Some(step) => Self::Step(step),
+            None => Self::End,
+        }
+    }
+}
+
+impl From<Option<SlotIdx>> for NodeOutput {
+    fn from(output: Option<SlotIdx>) -> Self {
+        match output {
+            Some(slot) => Self::Slot(slot),
+            None => Self::Discard,
+        }
+    }
+}
+
+/// Failure routing for a node.
+///
+/// The serialized form is the legacy `(on_error, error_slot)` option pair,
+/// not the enum discriminant: `None` encodes as two absent options and
+/// `Handler` as two present values. This keeps postcard bytes identical to
+/// the pre-enum layout so existing artifacts and digests keep verifying.
+/// Reads are lenient in exactly one case: a legacy present-slot-without-handler
+/// pair decodes to `None`, matching the old runtime, which failed the run
+/// without touching the slot when no handler was configured.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorRouting {
+    /// No error handler; failures fail the run.
+    None,
+    /// Route failures to a handler step, optionally recording into a slot.
+    Handler {
+        /// Handler step receiving control on failure.
+        handler: StepIdx,
+        /// Slot receiving failure information before routing.
+        error_slot: Option<SlotIdx>,
+    },
+}
+
+impl Serialize for ErrorRouting {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match *self {
+            Self::None => (None::<StepIdx>, None::<SlotIdx>).serialize(serializer),
+            Self::Handler {
+                handler,
+                error_slot,
+            } => (Some(handler), error_slot).serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ErrorRouting {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let (handler, error_slot) =
+            <(Option<StepIdx>, Option<SlotIdx>)>::deserialize(deserializer)?;
+        Ok(match handler {
+            Some(handler) => Self::Handler {
+                handler,
+                error_slot,
+            },
+            None => Self::None,
+        })
+    }
+}
+
+impl ErrorRouting {
+    /// Handler step, when routing is configured.
+    #[must_use]
+    pub const fn handler(self) -> Option<StepIdx> {
+        match self {
+            Self::None => None,
+            Self::Handler { handler, .. } => Some(handler),
+        }
+    }
+
+    /// Failure-information slot, when configured.
+    #[must_use]
+    pub const fn error_slot(self) -> Option<SlotIdx> {
+        match self {
+            Self::None => None,
+            Self::Handler { error_slot, .. } => error_slot,
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for NodeOutput {
+    fn any() -> Self {
+        if kani::any() {
+            Self::Slot(SlotIdx::new(kani::any()))
+        } else {
+            Self::Discard
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for NodeContinuation {
+    fn any() -> Self {
+        if kani::any() {
+            Self::Step(StepIdx::new(kani::any()))
+        } else {
+            Self::End
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for ErrorRouting {
+    fn any() -> Self {
+        if kani::any() {
+            Self::Handler {
+                handler: StepIdx::new(kani::any()),
+                error_slot: kani::any(),
+            }
+        } else {
+            Self::None
+        }
+    }
+}
+
+#[cfg(kani)]
+impl kani::Arbitrary for NodeRouting {
+    fn any() -> Self {
+        Self {
+            next: kani::any(),
+            error: kani::any(),
+        }
+    }
 }
 
 /// Hot-path node variants. All references are numeric.
@@ -935,6 +1249,9 @@ mod repeat_counter_ownership;
 mod loop_regions;
 pub use loop_regions::CompiledLoopRegion;
 
+mod node_assembly;
+pub use node_assembly::{node, node_with_handler};
+
 fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     if parts.nodes.is_empty() {
         return Err(WorkflowError::EmptyNodes);
@@ -1008,29 +1325,8 @@ fn validate_budget_result(
     match result {
         Ok(()) => Ok(()),
         Err(error) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: budget_error_detail(&error),
+            detail: error.dimension(),
         }),
-    }
-}
-
-fn budget_error_detail(error: &crate::budget::BudgetError) -> &'static str {
-    match error {
-        crate::budget::BudgetError::TotalStepsExceeded { .. } => "max_total_steps",
-        crate::budget::BudgetError::TotalSlotsExceeded { .. } => "max_total_slots",
-        crate::budget::BudgetError::FanoutExceeded { .. } => "max_fanout",
-        crate::budget::BudgetError::NestingDepthExceeded { .. } => "max_nesting_depth",
-        crate::budget::BudgetError::ParallelExceeded { .. } => "max_parallel_in_flight",
-        crate::budget::BudgetError::ActionTicketsExceeded { .. } => "max_action_tickets",
-        crate::budget::BudgetError::RunTimeExceeded { .. } => "max_run_time_seconds",
-        crate::budget::BudgetError::ResultBytesExceeded { .. } => "max_result_bytes",
-        crate::budget::BudgetError::StepsExecutableExceeded { .. } => "max_steps_executable",
-        crate::budget::BudgetError::TimerEntriesExceeded { .. } => "max_timer_entries",
-        crate::budget::BudgetError::TraceEventsExceeded { .. } => "max_trace_events",
-        crate::budget::BudgetError::JournalBatchBytesExceeded { .. } => "max_journal_batch_bytes",
-        crate::budget::BudgetError::QueueDepthExceeded { .. } => "max_queue_depth",
-        crate::budget::BudgetError::IpcPayloadBytesExceeded { .. } => "max_ipc_payload_bytes",
-        crate::budget::BudgetError::BlobBytesExceeded { .. } => "max_blob_bytes",
-        crate::budget::BudgetError::InputBytesExceeded { .. } => "max_input_bytes",
     }
 }
 
@@ -1041,7 +1337,7 @@ fn validate_node_id(node: &CompiledNode, index: usize) -> Result<(), WorkflowErr
         Err(WorkflowError::NodeIdMismatch {
             expected: StepIdx::new(u16::try_from(index).map_err(|_| {
                 WorkflowError::ResourceContractExceeded {
-                    resource: "max_steps",
+                    resource: ContractResource::Steps,
                 }
             })?),
             actual: node.id,
@@ -1049,89 +1345,169 @@ fn validate_node_id(node: &CompiledNode, index: usize) -> Result<(), WorkflowErr
     }
 }
 
-fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowError> {
-    let contract = parts.resource_contract;
-    validate_resource_counts(parts, contract)?;
-    validate_expr_stack_contract(parts.expressions.as_ref(), contract.max_expr_stack)?;
-    validate_transitions_per_tick(contract.max_transitions_per_tick)
-}
-
-/// Validates that `max_transitions_per_tick` is within acceptable bounds.
-/// Must be at least 1 (non-zero) and must not exceed the protocol hard limit.
-fn validate_transitions_per_tick(max_transitions_per_tick: u64) -> Result<(), WorkflowError> {
-    use crate::limits::MAX_STEP_BUDGET;
-    if max_transitions_per_tick == 0 {
-        return Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_transitions_per_tick",
+/// Validates every declared resource-contract limit against its hard limit.
+///
+/// This is the single canonical implementation of the declared-vs-hard-limit
+/// (`TooLarge`) rule shared by admission (`validate_resource_contract`, below)
+/// and the public engine pre-check
+/// (`engine::validate::validate_resource_contract`). Checks run in
+/// `ResourceContract` field order and report the first over-limit dimension.
+/// Actual-usage (`Exceeded`) checks stay with the callers: admission applies
+/// them after this gate, while the engine pre-check is bounds-only by design.
+pub(crate) fn check_resource_contract_limits(
+    contract: &ResourceContract,
+) -> Result<(), WorkflowError> {
+    if usize::from(contract.max_steps) > MAX_STEPS_PER_WORKFLOW {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::Steps,
         });
     }
-    if max_transitions_per_tick > MAX_STEP_BUDGET {
+    if usize::from(contract.max_slots) > MAX_SLOTS_PER_WORKFLOW {
         return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_transitions_per_tick",
+            resource: ContractResource::Slots,
+        });
+    }
+    if usize::from(contract.max_constants) > MAX_CONSTANTS {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::Constants,
+        });
+    }
+    if usize::from(contract.max_accessors) > MAX_ACCESSORS {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::Accessors,
+        });
+    }
+    if usize::from(contract.max_expressions) > MAX_EXPRESSIONS {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::Expressions,
+        });
+    }
+    if contract.max_expr_stack > MAX_EXPRESSION_STACK {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::ExprStack,
+        });
+    }
+    if contract.max_step_budget_per_tick > MAX_STEP_BUDGET {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::StepBudgetPerTick,
+        });
+    }
+    if contract.max_transitions_per_tick > MAX_STEP_BUDGET {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::TransitionsPerTick,
+        });
+    }
+    if contract.max_input_bytes > MAX_INPUT_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::InputBytes,
+        });
+    }
+    if contract.max_output_bytes > MAX_OUTPUT_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::OutputBytes,
+        });
+    }
+    if contract.max_blob_bytes > MAX_BLOB_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::BlobBytes,
+        });
+    }
+    if contract.max_ipc_payload_bytes > MAX_IPC_PAYLOAD_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::IpcPayloadBytes,
+        });
+    }
+    if contract.max_retry_attempts > MAX_RETRY_ATTEMPTS {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::RetryAttempts,
+        });
+    }
+    if contract.max_fanout > MAX_FANOUT {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::Fanout,
+        });
+    }
+    if contract.max_collect_items > MAX_COLLECT_ITEMS {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::CollectItems,
+        });
+    }
+    if contract.max_queue_depth > MAX_QUEUE_DEPTH {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::QueueDepth,
+        });
+    }
+    if contract.max_journal_batch_bytes > MAX_JOURNAL_BATCH_BYTES {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: ContractResource::JournalBatchBytes,
         });
     }
     Ok(())
 }
 
-fn validate_resource_counts(
-    parts: &WorkflowParts,
-    contract: ResourceContract,
-) -> Result<(), WorkflowError> {
-    validate_primary_resource_counts(parts, contract)?;
-    validate_expression_resource_counts(parts, contract)
+fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowError> {
+    let contract = parts.resource_contract;
+    check_resource_contract_limits(&contract)?;
+    validate_resource_usage(parts, contract)?;
+    validate_expr_stack_usage(parts.expressions.as_ref(), contract.max_expr_stack)?;
+    validate_transitions_nonzero(contract.max_transitions_per_tick)
 }
 
-fn validate_primary_resource_counts(
+/// Rejects a zero `max_transitions_per_tick` declaration.
+///
+/// The over-limit half of the old transitions check now lives in the
+/// canonical [`check_resource_contract_limits`] gate above; only the
+/// admission-only non-zero rule remains here.
+fn validate_transitions_nonzero(max_transitions_per_tick: u64) -> Result<(), WorkflowError> {
+    if max_transitions_per_tick == 0 {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: ContractResource::TransitionsPerTick,
+        });
+    }
+    Ok(())
+}
+
+/// Validates actual resource usage against the declared contract.
+///
+/// Runs after the canonical [`check_resource_contract_limits`] gate, so every
+/// `declared` value handled here is already known to sit within its hard
+/// limit; only the actual-vs-declared (`Exceeded`) direction remains.
+fn validate_resource_usage(
     parts: &WorkflowParts,
     contract: ResourceContract,
 ) -> Result<(), WorkflowError> {
-    validate_contract_limit(
-        "max_steps",
+    check_actual_within_declared(
+        ContractResource::Steps,
         parts.nodes.len(),
         usize::from(contract.max_steps),
-        MAX_STEPS_PER_WORKFLOW,
     )?;
-    validate_contract_limit(
-        "max_slots",
+    check_actual_within_declared(
+        ContractResource::Slots,
         usize::from(parts.slot_count),
         usize::from(contract.max_slots),
-        MAX_SLOTS_PER_WORKFLOW,
     )?;
-    validate_contract_limit(
-        "max_constants",
+    check_actual_within_declared(
+        ContractResource::Constants,
         parts.constants.len(),
         usize::from(contract.max_constants),
-        MAX_CONSTANTS,
-    )
-}
-
-fn validate_expression_resource_counts(
-    parts: &WorkflowParts,
-    contract: ResourceContract,
-) -> Result<(), WorkflowError> {
-    validate_contract_limit(
-        "max_accessors",
+    )?;
+    check_actual_within_declared(
+        ContractResource::Accessors,
         parts.accessors.len(),
         usize::from(contract.max_accessors),
-        MAX_ACCESSORS,
     )?;
-    validate_contract_limit(
-        "max_expressions",
+    check_actual_within_declared(
+        ContractResource::Expressions,
         parts.expressions.len(),
         usize::from(contract.max_expressions),
-        MAX_EXPRESSIONS,
     )
 }
 
-fn validate_contract_limit(
-    resource: &'static str,
+fn check_actual_within_declared(
+    resource: ContractResource,
     actual: usize,
     declared: usize,
-    hard_limit: usize,
 ) -> Result<(), WorkflowError> {
-    if declared > hard_limit {
-        return Err(WorkflowError::ResourceContractTooLarge { resource });
-    }
     if actual > declared {
         Err(WorkflowError::ResourceContractExceeded { resource })
     } else {
@@ -1139,21 +1515,16 @@ fn validate_contract_limit(
     }
 }
 
-fn validate_expr_stack_contract(
+fn validate_expr_stack_usage(
     expressions: &[ExprProgram],
     max_expr_stack: u8,
 ) -> Result<(), WorkflowError> {
-    if max_expr_stack > MAX_EXPRESSION_STACK {
-        return Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expr_stack",
-        });
-    }
     if expressions
         .iter()
         .any(|expression| expression.max_stack > max_expr_stack)
     {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_expr_stack",
+            resource: ContractResource::ExprStack,
         })
     } else {
         Ok(())
@@ -1199,10 +1570,10 @@ fn validate_for_each_next_targets(node: &CompiledNode) -> Result<(), WorkflowErr
 }
 
 fn validate_node_common(node: &CompiledNode, parts: &WorkflowParts) -> Result<(), WorkflowError> {
-    validate_optional_slot(node.output, parts.slot_count)?;
-    validate_optional_step(node.next, parts.nodes.len())?;
-    validate_optional_step(node.on_error, parts.nodes.len())?;
-    validate_optional_slot(node.error_slot, parts.slot_count)
+    validate_optional_slot(node.output.slot(), parts.slot_count)?;
+    validate_optional_step(node.routing.next.step(), parts.nodes.len())?;
+    validate_optional_step(node.routing.error.handler(), parts.nodes.len())?;
+    validate_optional_slot(node.routing.error.error_slot(), parts.slot_count)
 }
 
 fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<(), WorkflowError> {
@@ -1251,7 +1622,7 @@ fn validate_node_kind(kind: &CompiledNodeKind, parts: &WorkflowParts) -> Result<
             branch_count,
             accumulator,
         } => {
-            validate_nonzero_u16(*branch_count, "branch_count")?;
+            validate_nonzero_u16(*branch_count, ContractResource::BranchCount)?;
             validate_slot(*accumulator, parts.slot_count)
         }
         CompiledNodeKind::CollectStart {
@@ -1350,7 +1721,7 @@ fn validate_slots(slots: &[SlotIdx], slot_count: u16) -> Result<(), WorkflowErro
 fn validate_build_list(items: &[SlotIdx], slot_count: u16) -> Result<(), WorkflowError> {
     if items.len() > MAX_LIST_ITEMS_PER_VALUE {
         return Err(WorkflowError::ResourceContractExceeded {
-            resource: "list_items",
+            resource: ContractResource::ListItems,
         });
     }
     validate_slots(items, slot_count)
@@ -1362,7 +1733,7 @@ fn validate_build_object(
 ) -> Result<(), WorkflowError> {
     if fields.len() > MAX_OBJECT_FIELDS_PER_VALUE {
         return Err(WorkflowError::ResourceContractExceeded {
-            resource: "object_fields",
+            resource: ContractResource::ObjectFields,
         });
     }
     for (_, slot) in fields {
@@ -1414,7 +1785,7 @@ fn validate_together(
     validate_step(join, parts.nodes.len())
 }
 
-fn validate_nonzero_u16(value: u16, resource: &'static str) -> Result<(), WorkflowError> {
+fn validate_nonzero_u16(value: u16, resource: ContractResource) -> Result<(), WorkflowError> {
     if value == 0 {
         Err(WorkflowError::ResourceContractExceeded { resource })
     } else {
@@ -1454,7 +1825,7 @@ fn validate_repeat_start(
     done: StepIdx,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
-    validate_nonzero_u16(max_attempts, "max_retry_attempts")?;
+    validate_nonzero_u16(max_attempts, ContractResource::RetryAttempts)?;
     validate_two_steps(body, done, parts)
 }
 
@@ -1682,10 +2053,10 @@ fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
             Some(n) => n,
             None => break,
         };
-        if let Some(next) = node.next {
+        if let Some(next) = node.routing.next.step() {
             targets.push(next);
         }
-        if let Some(handler) = node.on_error {
+        if let Some(handler) = node.routing.error.handler() {
             targets.push(handler);
         }
         collect_node_targets(&node.kind, &mut targets);
@@ -1709,7 +2080,7 @@ fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
             return Err(WorkflowError::UnreachableNode {
                 step: StepIdx::new(u16::try_from(index).map_err(|_| {
                     WorkflowError::ResourceContractExceeded {
-                        resource: "max_steps",
+                        resource: ContractResource::Steps,
                     }
                 })?),
             });
@@ -1829,11 +2200,11 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     for (index, node) in parts.nodes.iter().enumerate() {
         let current_id = StepIdx::new(u16::try_from(index).map_err(|_| {
             WorkflowError::ResourceContractExceeded {
-                resource: "max_steps",
+                resource: ContractResource::Steps,
             }
         })?);
 
-        if let Some(next) = node.next {
+        if let Some(next) = node.routing.next.step() {
             if matches!(node.kind, CompiledNodeKind::RepeatCheck { .. }) && next.as_usize() <= index
             {
                 repeat_check_validate::validate(parts, index, node, next)?;
@@ -1842,7 +2213,7 @@ fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
             }
         }
 
-        if let Some(handler) = node.on_error {
+        if let Some(handler) = node.routing.error.handler() {
             validate_forward_target(handler, index, current_id)?;
         }
 
@@ -2031,7 +2402,7 @@ mod repeat_check_validate {
                 });
             }
         };
-        if owner.output != Some(check_attempt) {
+        if owner.output.slot() != Some(check_attempt) {
             return Err(WorkflowError::BackwardEdge {
                 from: check.id,
                 to: back_target,
@@ -2152,12 +2523,12 @@ fn push_loop_span(
             return Err(WorkflowError::ImproperLoopNesting {
                 inner: StepIdx::new(u16::try_from(ci).map_err(|_| {
                     WorkflowError::ResourceContractExceeded {
-                        resource: "max_steps",
+                        resource: ContractResource::Steps,
                     }
                 })?),
                 outer_done: StepIdx::new(u16::try_from(outer_done).map_err(|_| {
                     WorkflowError::ResourceContractExceeded {
-                        resource: "max_steps",
+                        resource: ContractResource::Steps,
                     }
                 })?),
             });

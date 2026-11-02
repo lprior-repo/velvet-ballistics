@@ -1,56 +1,10 @@
 /// Workflow: SetConst(slot0=true) -> Ask(prompt=slot0, timeout=Some(slot1)) -> AskResume(answer=slot2) -> Finish(result=slot2)
 fn ask_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let set_prompt = CompiledNode {
-        id: vb_core::ids::StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: Some(vb_core::ids::StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-    };
-    let set_timeout = CompiledNode {
-        id: vb_core::ids::StepIdx::new(1),
-        output: Some(SlotIdx::new(1)),
-        next: Some(vb_core::ids::StepIdx::new(2)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(1),
-        },
-    };
-    let ask = CompiledNode {
-        id: vb_core::ids::StepIdx::new(2),
-        output: None,
-        next: Some(vb_core::ids::StepIdx::new(3)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Ask {
-            prompt: SlotIdx::ZERO,
-            timeout_slot: Some(SlotIdx::new(1)),
-        },
-    };
-    let resume = CompiledNode {
-        id: vb_core::ids::StepIdx::new(3),
-        output: None,
-        next: Some(vb_core::ids::StepIdx::new(4)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::AskResume {
-            answer: SlotIdx::new(2),
-        },
-    };
-    let finish = CompiledNode {
-        id: vb_core::ids::StepIdx::new(4),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(2),
-        },
-    };
+    let set_prompt = vb_core::workflow::node(vb_core::ids::StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::ZERO), Some(vb_core::ids::StepIdx::new(1)));
+    let set_timeout = vb_core::workflow::node(vb_core::ids::StepIdx::new(1), CompiledNodeKind::SetConst { value: ConstIdx::new(1), }, Some(SlotIdx::new(1)), Some(vb_core::ids::StepIdx::new(2)));
+    let ask = vb_core::workflow::node(vb_core::ids::StepIdx::new(2), CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: Some(SlotIdx::new(1)), }, None, Some(vb_core::ids::StepIdx::new(3)));
+    let resume = vb_core::workflow::node(vb_core::ids::StepIdx::new(3), CompiledNodeKind::AskResume { answer: SlotIdx::new(2), }, None, Some(vb_core::ids::StepIdx::new(4)));
+    let finish = vb_core::workflow::node(vb_core::ids::StepIdx::new(4), CompiledNodeKind::Finish { result: SlotIdx::new(2), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("ask_then_finish"),

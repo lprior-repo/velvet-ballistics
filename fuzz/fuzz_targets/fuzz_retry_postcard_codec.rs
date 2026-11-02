@@ -117,10 +117,11 @@ fn workflow_parts_from_bytes(data: &[u8]) -> Option<WorkflowParts> {
         let action_byte = data.get(action_offset).copied().unwrap_or(0);
         nodes.push(CompiledNode {
             id: StepIdx::new(u16::from(step_byte)),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
+            output: vb_core::workflow::NodeOutput::Discard,
+            routing: vb_core::workflow::NodeRouting {
+                next: vb_core::workflow::NodeContinuation::End,
+                error: vb_core::workflow::ErrorRouting::None,
+            },
             kind: CompiledNodeKind::Do {
                 action: ActionId::new(u16::from(action_byte)),
                 input: vb_core::ids::SlotIdx::new(0),

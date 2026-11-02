@@ -4,7 +4,10 @@
 //! Focused, bounded Kani generators for workflow budget harnesses.
 
 use crate::ids::{ActionId, SlotIdx, StepIdx};
-use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+use crate::workflow::{
+    CompiledNode, CompiledNodeKind, ErrorRouting, NodeContinuation, NodeOutput, NodeRouting,
+    ResourceContract,
+};
 
 pub(crate) struct BudgetWorkflowInputs {
     nodes: BudgetNodes,
@@ -134,8 +137,8 @@ fn entry_is_valid(entry: StepIdx, node_count: usize) -> bool {
 
 fn node_is_focused(node: &CompiledNode, position: u16, node_count: usize) -> bool {
     node.id == StepIdx::new(position)
-        && maybe_step_is_valid(node.next, node_count)
-        && maybe_step_is_valid(node.on_error, node_count)
+        && maybe_step_is_valid(node.routing.next.step(), node_count)
+        && maybe_step_is_valid(node.routing.error.handler(), node_count)
         && kind_is_focused(&node.kind)
 }
 
@@ -191,11 +194,22 @@ fn entry_for_nodes(nodes: &BudgetNodes) -> StepIdx {
 fn budget_node(position: u16, node_count: usize) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(position),
-        output: maybe_slot(),
-        next: maybe_step(node_count),
-        on_error: maybe_step(node_count),
-        error_slot: maybe_slot(),
+        output: NodeOutput::from(maybe_slot()),
+        routing: NodeRouting {
+            next: NodeContinuation::from(maybe_step(node_count)),
+            error: bounded_error_routing(node_count),
+        },
         kind: budget_node_kind(),
+    }
+}
+
+fn bounded_error_routing(node_count: usize) -> ErrorRouting {
+    match maybe_step(node_count) {
+        Some(handler) => ErrorRouting::Handler {
+            handler,
+            error_slot: maybe_slot(),
+        },
+        None => ErrorRouting::None,
     }
 }
 

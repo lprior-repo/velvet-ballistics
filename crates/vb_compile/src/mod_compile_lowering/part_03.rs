@@ -67,29 +67,25 @@ pub(super) fn lower_canonical_parallel(
             limit: usize::from(u16::MAX),
         }])
     })?;
-    builder.push_node(CompiledNode {
+    builder.push_node(node(
         id,
-        output: Some(accumulator),
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::TogetherStart {
+        CompiledNodeKind::TogetherStart {
             branches: branch_targets.into_boxed_slice(),
             join,
         },
-    });
+        Some(accumulator),
+        None,
+    ));
     emit_together_branches(id, branches, join, slots, index, builder)?;
-    builder.push_node(CompiledNode {
-        id: join,
-        output: Some(result),
-        next,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::TogetherJoin {
+    builder.push_node(node(
+        join,
+        CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,
         },
-    });
+        Some(result),
+        next,
+    ));
     Ok(())
 }
 
@@ -148,23 +144,21 @@ pub(super) fn emit_together_branches(
         })?;
         let following = checked_step_offset(base, following_offset, "parallel", "next")
             .map_err(|e| CompileErrors(vec![e]))?;
-        builder.push_node(CompiledNode {
-            id: branch_id,
-            output: if branch_number == 0 {
-                None
-            } else {
-                Some(slots.result)
-            },
-            next: None,
-            error_slot: None,
-            on_error: None,
-            kind: CompiledNodeKind::TogetherBranch {
+        builder.push_node(node(
+            branch_id,
+            CompiledNodeKind::TogetherBranch {
                 branch: branch_number,
                 entry,
                 join,
                 accumulator: slots.accumulator,
             },
-        });
+            if branch_number == 0 {
+                None
+            } else {
+                Some(slots.result)
+            },
+            None,
+        ));
         emit_single_body_set(
             &branch.steps,
             entry,
@@ -213,6 +207,7 @@ pub(super) fn emit_together_branches(
 //     crates/vb_compile/src/mod_compile_lowering/part_03.rs
 // ─────────────────────────────────────────────────────────────────
 
+use vb_core::workflow::node;
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 

@@ -68,7 +68,7 @@ impl SourceRun {
                 CompiledNodeKind::SetConst { value }
                     if self.workflow.constant(*value) == Some(&ConstValue::I64(expected)) =>
                 {
-                    node.output
+                    node.output.slot()
                 }
                 _ => None,
             })

@@ -42,6 +42,7 @@ fn make_minimal_plan(
 #[cfg(kani)]
 mod verification {
     use super::*;
+    use crate::workflow::node;
 
     /// Proves that `replay_choose_slot` never panics for any boolean
     /// combination of two slot conditions, with and without an otherwise
@@ -55,11 +56,9 @@ mod verification {
 
         let plan = make_minimal_plan(
             vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::ChooseSlot {
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::ChooseSlot {
                         branches: vec![
                             SlotBranch {
                                 condition: SlotIdx::new(0),
@@ -77,33 +76,12 @@ mod verification {
                             None
                         },
                     },
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
-                },
+                    None,
+                    None,
+                ),
+                node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
+                node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
+                node(StepIdx::new(3), CompiledNodeKind::Nop, None, None),
             ],
             vec![],
         )
@@ -139,11 +117,9 @@ mod verification {
 
         let plan = make_minimal_plan(
             vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::ChooseSlot {
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::ChooseSlot {
                         branches: vec![
                             SlotBranch {
                                 condition: SlotIdx::new(0),
@@ -157,33 +133,12 @@ mod verification {
                         .into_boxed_slice(),
                         otherwise: Some(StepIdx::new(3)),
                     },
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
-                },
+                    None,
+                    None,
+                ),
+                node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
+                node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
+                node(StepIdx::new(3), CompiledNodeKind::Nop, None, None),
             ],
             vec![],
         )
@@ -226,11 +181,9 @@ mod verification {
 
         let plan = make_minimal_plan(
             vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::ChooseSlot {
+                node(
+                    StepIdx::new(0),
+                    CompiledNodeKind::ChooseSlot {
                         branches: vec![SlotBranch {
                             condition: SlotIdx::new(0),
                             target: StepIdx::new(1),
@@ -238,25 +191,11 @@ mod verification {
                         .into_boxed_slice(),
                         otherwise: Some(StepIdx::new(2)),
                     },
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: None,
-                },
+                    None,
+                    None,
+                ),
+                node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
+                node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
             ],
             vec![],
         )

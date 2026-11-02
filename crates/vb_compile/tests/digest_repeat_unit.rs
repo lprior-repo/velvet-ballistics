@@ -336,13 +336,22 @@ fn check_set_links_and_outputs(
     let set_b = workflow.node(StepIdx::new(2)).ok_or("missing Set at 2")?;
     let set_c = workflow.node(StepIdx::new(3)).ok_or("missing Set at 3")?;
 
-    assert_eq!(set_a.next, Some(StepIdx::new(2)));
-    assert_eq!(set_b.next, Some(StepIdx::new(3)));
-    assert_eq!(set_c.next, Some(StepIdx::new(4)));
+    assert_eq!(
+        set_a.routing.next,
+        vb_core::workflow::NodeContinuation::Step(StepIdx::new(2))
+    );
+    assert_eq!(
+        set_b.routing.next,
+        vb_core::workflow::NodeContinuation::Step(StepIdx::new(3))
+    );
+    assert_eq!(
+        set_c.routing.next,
+        vb_core::workflow::NodeContinuation::Step(StepIdx::new(4))
+    );
 
-    assert!(set_a.output.is_some());
-    assert!(set_b.output.is_some());
-    assert!(set_c.output.is_some());
+    assert!(set_a.output.slot().is_some());
+    assert!(set_b.output.slot().is_some());
+    assert!(set_c.output.slot().is_some());
     assert_ne!(set_a.output, set_b.output);
     assert_ne!(set_b.output, set_c.output);
     assert_ne!(set_a.output, set_c.output);
@@ -359,11 +368,17 @@ fn check_repeat_check(
     let check = workflow
         .node(StepIdx::new(4))
         .ok_or("missing RepeatCheck at 4")?;
-    assert_eq!(check.next, Some(StepIdx::new(1)));
+    assert_eq!(
+        check.routing.next,
+        vb_core::workflow::NodeContinuation::Step(StepIdx::new(1))
+    );
     assert_eq!(check.output, start.output);
     match &check.kind {
         CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
-            assert_eq!(*attempt_slot, start.output.ok_or("missing start output")?);
+            assert_eq!(
+                *attempt_slot,
+                start.output.slot().ok_or("missing start output")?
+            );
             assert_eq!(*done, StepIdx::new(5));
         }
         other => return Err(format!("expected RepeatCheck at 4, got {:?}", other).into()),
@@ -381,12 +396,15 @@ fn check_repeat_finish_and_terminal(
         .ok_or("missing RepeatFinish at 5")?;
     match &repeat_finish.kind {
         CompiledNodeKind::RepeatFinish { result } => {
-            assert_eq!(*result, set_c.output.ok_or("missing set_c output")?);
+            assert_eq!(*result, set_c.output.slot().ok_or("missing set_c output")?);
             assert_eq!(repeat_finish.output, set_c.output);
         }
         other => return Err(format!("expected RepeatFinish at 5, got {:?}", other).into()),
     }
-    assert_eq!(repeat_finish.next, Some(StepIdx::new(6)));
+    assert_eq!(
+        repeat_finish.routing.next,
+        vb_core::workflow::NodeContinuation::Step(StepIdx::new(6))
+    );
 
     let terminal = workflow
         .node(StepIdx::new(6))
@@ -397,7 +415,10 @@ fn check_repeat_finish_and_terminal(
         }
         other => return Err(format!("expected Finish at 6, got {:?}", other).into()),
     }
-    assert_eq!(terminal.next, None);
+    assert_eq!(
+        terminal.routing.next,
+        vb_core::workflow::NodeContinuation::End
+    );
     Ok(())
 }
 

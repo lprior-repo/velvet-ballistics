@@ -24,7 +24,7 @@ fn classify_for_each(
     if run.pc() == done {
         Ok([None, None, None])
     } else if run.pc() == body {
-        Ok([node.output, Some(iterator), None])
+        Ok([node.output.slot(), Some(iterator), None])
     } else {
         Err(RuntimeEngineError::Core(
             EngineError::InvalidCompiledWorkflow {

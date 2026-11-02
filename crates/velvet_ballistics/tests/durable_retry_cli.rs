@@ -20,7 +20,7 @@ use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::SlotValue;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::Runtime;
@@ -40,27 +40,23 @@ fn canonical_workflow_digest(parts: &WorkflowParts) -> Result<WorkflowDigest, St
 }
 
 fn action_workflow() -> Result<CompiledWorkflow, String> {
-    let do_node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
+    let do_node = node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
             action: ActionId::new(0),
             input: SlotIdx::ZERO,
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
+    let finish = node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("cli-retry-action"),
@@ -81,26 +77,22 @@ fn action_workflow() -> Result<CompiledWorkflow, String> {
 }
 
 fn completed_workflow() -> Result<CompiledWorkflow, String> {
-    let set = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    let set = node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let finish = node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    };
+        None,
+        None,
+    );
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("cli-retry-completed"),

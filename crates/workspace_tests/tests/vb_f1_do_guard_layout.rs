@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::compile_workflow;
+use vb_core::workflow::{NodeContinuation, NodeOutput};
 use vb_core::{CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx, WorkflowParts};
 
 const BASELINE: &str = r#"version: velvet-ballistics/v1
@@ -74,7 +75,7 @@ fn check_guard(
         other => return Err(format!("guard node is not Choose: {:?}", other)),
     }
 
-    if guard.output.is_some() {
+    if guard.output.slot().is_some() {
         return Err("guard should have no output slot".to_string());
     }
 
@@ -83,16 +84,16 @@ fn check_guard(
         other => return Err(format!("do node is not Do: {:?}", other)),
     }
 
-    if do_node.output != Some(SlotIdx::new(slot)) {
+    if do_node.output != NodeOutput::Slot(SlotIdx::new(slot)) {
         return Err(format!(
             "do output {:?} != expected Some({})",
             do_node.output, slot
         ));
     }
-    if do_node.next != Some(StepIdx::new(next)) {
+    if do_node.routing.next != NodeContinuation::Step(StepIdx::new(next)) {
         return Err(format!(
-            "do next {:?} != expected Some({})",
-            do_node.next, next
+            "do next {:?} != expected Step({})",
+            do_node.routing.next, next
         ));
     }
 
@@ -153,14 +154,14 @@ fn no_guards_flat_do() -> Result<(), String> {
     if !matches!(&do1.kind, CompiledNodeKind::Do { .. }) {
         return Err("do1 should be Do kind".to_string());
     }
-    if do1.output != Some(SlotIdx::new(1)) {
+    if do1.output != NodeOutput::Slot(SlotIdx::new(1)) {
         return Err(format!("do1 output wrong: {:?}", do1.output));
     }
     let do2 = parts.nodes.get(2).ok_or("missing do2")?;
     if !matches!(&do2.kind, CompiledNodeKind::Do { .. }) {
         return Err("do2 should be Do kind".to_string());
     }
-    if do2.output != Some(SlotIdx::new(2)) {
+    if do2.output != NodeOutput::Slot(SlotIdx::new(2)) {
         return Err(format!("do2 output wrong: {:?}", do2.output));
     }
 

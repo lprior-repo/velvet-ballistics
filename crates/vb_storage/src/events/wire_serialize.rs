@@ -4,6 +4,8 @@
 mod action;
 #[path = "wire_serialize_admission.rs"]
 mod admission;
+#[path = "wire_serialize_compat.rs"]
+mod compat;
 #[path = "wire_serialize_policy.rs"]
 mod policy;
 #[path = "wire_serialize_run.rs"]
@@ -61,6 +63,7 @@ where
         Some(JournalRecordCategory::Action) => action::serialize(event, serializer),
         Some(JournalRecordCategory::WaitAsk) => wait_ask::serialize(event, serializer),
         Some(JournalRecordCategory::Policy) => policy::serialize(event, serializer),
+        Some(JournalRecordCategory::Compat) => compat::serialize(event, serializer),
         None => serialize_routing_error::<S>(),
     }
 }

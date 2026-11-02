@@ -92,7 +92,7 @@ impl Case {
     pub(super) fn output(&self, raw: u16) -> TestResult<SlotIdx> {
         self.workflow
             .node(vb_core::StepIdx::new(raw))
-            .and_then(|node| node.output)
+            .and_then(|node| node.output.slot())
             .ok_or_else(|| "compiled output missing".into())
     }
 }

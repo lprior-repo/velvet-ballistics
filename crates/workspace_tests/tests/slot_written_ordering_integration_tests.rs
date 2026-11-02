@@ -21,7 +21,7 @@
 use tempfile::TempDir;
 use vb_core::capability::CapabilitySet;
 use vb_core::value::{ConstValue, SlotValue};
-use vb_core::workflow::{ResourceContract, WorkflowParts};
+use vb_core::workflow::{ResourceContract, WorkflowParts, node};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RunId, SlotIdx, StepIdx,
     WorkflowDigest,
@@ -68,74 +68,64 @@ fn make_workflow(
 
 /// Creates a SetConst node: writes a constant value to an output slot.
 fn set_const_node(id: u16, const_idx: u16, output: u16, next: Option<u16>) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: Some(SlotIdx::new(output)),
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    node(
+        StepIdx::new(id),
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(const_idx),
         },
-    }
+        Some(SlotIdx::new(output)),
+        next.map(StepIdx::new),
+    )
 }
 
 /// Creates a Nop node: advances PC without writing any slot.
 fn nop_node(id: u16, next: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: None,
-        next: Some(StepIdx::new(next)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }
+    node(
+        StepIdx::new(id),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(next)),
+    )
 }
 
 /// Creates a Finish node: terminates the workflow with a result slot value.
 fn finish_node(id: u16, result: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    node(
+        StepIdx::new(id),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(result),
         },
-    }
+        None,
+        None,
+    )
 }
 
 /// Creates a Copy node: copies a source slot to an output slot.
 fn copy_node(id: u16, source: u16, output: u16, next: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: Some(SlotIdx::new(output)),
-        next: Some(StepIdx::new(next)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Copy {
+    node(
+        StepIdx::new(id),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(source),
         },
-    }
+        Some(SlotIdx::new(output)),
+        Some(StepIdx::new(next)),
+    )
 }
 
 /// Creates a CollectStart node for multi-slot writes.
 fn collect_start_node(id: u16, source: u16, output: u16, body: u16, done: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: Some(SlotIdx::new(output)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::CollectStart {
+    node(
+        StepIdx::new(id),
+        CompiledNodeKind::CollectStart {
             source: SlotIdx::new(source),
             limit: 100,
             page_size: 1,
             body: StepIdx::new(body),
             done: StepIdx::new(done),
         },
-    }
+        Some(SlotIdx::new(output)),
+        None,
+    )
 }
 
 /// Opens a temporary FjallJournal for testing.

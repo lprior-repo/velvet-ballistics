@@ -71,7 +71,10 @@ pub(super) fn build_action_output(
         .workflow
         .node(ticket.step)
         .ok_or(RuntimeError::InvalidActionCompletion)?;
-    let output_slot = node.output.ok_or(RuntimeError::InvalidActionCompletion)?;
+    let output_slot = node
+        .output
+        .slot()
+        .ok_or(RuntimeError::InvalidActionCompletion)?;
     let encoded_len = u32::try_from(encoded.len()).map_err(|_| RuntimeError::EncodeFailed)?;
     Ok(ActionOutputReady {
         output_slot,

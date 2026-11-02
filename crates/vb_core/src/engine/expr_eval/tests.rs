@@ -6,8 +6,8 @@ use crate::limits::MAX_EXPRESSION_STACK;
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
-    WorkflowParts, check_expr_stack_bound,
+    CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract, WorkflowParts,
+    check_expr_stack_bound, node,
 };
 
 use super::eval_expr_with_store;
@@ -31,15 +31,7 @@ fn empty_plan_with_expr(
         input_slots: Box::new([]),
         name: "test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            kind: CompiledNodeKind::Nop,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            output: None,
-        }]
-        .into(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into(),
         expressions: vec![expr].into(),
         accessors: vec![].into(),
         constants,
@@ -1542,8 +1534,8 @@ mod proptests {
     use crate::value::{ConstValue, SlotValue};
     use crate::value_store::ValueStore;
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
-        WorkflowParts, check_expr_stack_bound,
+        CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract, WorkflowParts,
+        check_expr_stack_bound, node,
     };
     use proptest::prelude::*;
 
@@ -1566,15 +1558,7 @@ mod proptests {
             input_slots: Box::new([]),
             name: "proptest".into(),
             digest: WorkflowDigest::from_bytes([0; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::new(0),
-                kind: CompiledNodeKind::Nop,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                output: None,
-            }]
-            .into(),
+            nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into(),
             expressions: vec![expr].into(),
             accessors: vec![].into(),
             constants: constants.into(),

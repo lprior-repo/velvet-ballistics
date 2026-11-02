@@ -11,7 +11,7 @@ use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_runtime::RuntimeError;
 use vb_runtime::admission::{
@@ -140,26 +140,22 @@ fn minimal_workflow() -> Result<CompiledWorkflow, String> {
         name: Box::<str>::from("vb_qi37_4_2_runtime_admission_test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -182,37 +178,31 @@ fn do_workflow() -> Result<CompiledWorkflow, String> {
         name: Box::<str>::from("vb_qi37_4_2_do_admission_test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Do {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Do {
                     action: ActionId::new(0),
                     input: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -873,6 +863,13 @@ fn given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capa
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let available_capacity = AggregateResourceCapacity {
         max_steps_executable: 1,
@@ -892,6 +889,15 @@ fn given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capa
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
 
     let result = admit_run_with_budget(

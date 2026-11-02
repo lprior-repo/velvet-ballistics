@@ -17,18 +17,8 @@ mod part_14;
 mod skipped_outputs;
 mod source_slot_reservation;
 
-// Kani harnesses for ForEach digest coverage (PO-K-FE-01 through PO-K-FE-10).
-// Bead: vb-xi2f.28 | State: 5 (proof-writer)
-// Placed here to access pub(super) items from part_05 (canonical_digest, digest_step_primitive).
-// Disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
-#[cfg(any())]
-mod kani_proofs;
-
-// Kani harnesses for choose lowering fix (PO-KANI-001 through PO-KANI-013).
-// Bead: vb-xi2f.13 | State: 5 (proof-writer)
-// Disabled: stale StepAst refs — see lib.rs:153 BLOCK_GLOBAL follow-up
-#[cfg(any())]
-mod kani;
+// vb-tkcc7: dead always-false-gated kani/ and kani_proofs/ harness dirs deleted outright
+// (stale pre-refactor StepAst refs; no kani CI runner covers vb_compile).
 
 #[cfg(test)]
 mod tests;
@@ -80,3 +70,5 @@ pub(crate) use part_12::*;
 pub(crate) use part_13::*;
 #[allow(unused_imports)]
 pub(crate) use part_14::*;
+#[allow(unused_imports)]
+pub(crate) use vb_core::workflow::{ErrorRouting, NodeContinuation, NodeOutput, NodeRouting};

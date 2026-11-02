@@ -2,6 +2,7 @@
 
 use bytes::Bytes;
 use proptest::prelude::*;
+use vb_core::workflow::node;
 use vb_core::{
     AggregateResourceBudget, BoundednessPolicy, BudgetError, CompiledNode, CompiledNodeKind,
     ConstValue, CoreError, EngineSignal, ObjectField, ResourceContract, RunId, SlotIdx, SlotValue,
@@ -40,6 +41,13 @@ fn policy_limit_budget(policy: BoundednessPolicy) -> WholeWorkflowBudget {
         max_blob_bytes: 0,
         max_input_bytes: 0,
         max_queue_depth: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     }
 }
 
@@ -50,26 +58,22 @@ fn two_step_workflow() -> Result<CompiledWorkflow, WorkflowError> {
         name: Box::<str>::from("vb-qi37-2-5-two-step"),
         digest: WorkflowDigest::from_bytes([37; 32]),
         nodes: Box::from([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: vb_core::ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
         expressions: Box::from([]),
         accessors: Box::from([]),
@@ -102,79 +106,65 @@ fn workflow_parts(name: &'static str, nodes: Box<[CompiledNode]>) -> WorkflowPar
 
 fn finite_nested_nodes(collect_limit: u32) -> Box<[CompiledNode]> {
     Box::from([
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::CollectStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
                 limit: collect_limit,
                 page_size: 2,
                 body: StepIdx::new(1),
                 done: StepIdx::new(6),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::TogetherStart {
+            None,
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::TogetherStart {
                 branches: Box::from([StepIdx::new(2), StepIdx::new(4)]),
                 join: StepIdx::new(5),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::RepeatStart {
+            None,
+            None,
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::RepeatStart {
                 max_attempts: 2,
                 body: StepIdx::new(3),
                 done: StepIdx::new(5),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(3),
-            output: None,
-            next: Some(StepIdx::new(5)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
-        CompiledNode {
-            id: StepIdx::new(4),
-            output: None,
-            next: Some(StepIdx::new(5)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
-        CompiledNode {
-            id: StepIdx::new(5),
-            output: None,
-            next: Some(StepIdx::new(6)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::CollectFinish {
+            None,
+            None,
+        ),
+        node(
+            StepIdx::new(3),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(5)),
+        ),
+        node(
+            StepIdx::new(4),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(5)),
+        ),
+        node(
+            StepIdx::new(5),
+            CompiledNodeKind::CollectFinish {
                 collector_slot: SlotIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(6),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+            None,
+            Some(StepIdx::new(6)),
+        ),
+        node(
+            StepIdx::new(6),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
+            None,
+            None,
+        ),
     ])
 }
 
@@ -185,56 +175,46 @@ fn finite_nested_budget(collect_limit: u32) -> Result<WholeWorkflowBudget, Workf
 
 fn step_count_overflow_nodes() -> Box<[CompiledNode]> {
     Box::from([
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::RepeatStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::RepeatStart {
                 max_attempts: u16::MAX,
                 body: StepIdx::new(1),
                 done: StepIdx::new(4),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::RepeatStart {
+            None,
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::RepeatStart {
                 max_attempts: u16::MAX,
                 body: StepIdx::new(2),
                 done: StepIdx::new(3),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: None,
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
-        CompiledNode {
-            id: StepIdx::new(3),
-            output: None,
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
-        CompiledNode {
-            id: StepIdx::new(4),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+            None,
+            None,
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(3)),
+        ),
+        node(
+            StepIdx::new(3),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(4)),
+        ),
+        node(
+            StepIdx::new(4),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
+            None,
+            None,
+        ),
     ])
 }
 

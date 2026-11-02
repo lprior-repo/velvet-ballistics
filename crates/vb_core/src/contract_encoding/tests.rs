@@ -1,5 +1,5 @@
 use super::*;
-use crate::workflow::ResourceContract;
+use crate::workflow::{ResourceContract, SecretResultPolicy};
 
 // ---------------------------------------------------------------------------
 // I1: Encoding determinism
@@ -21,7 +21,7 @@ fn encode_contract_bytes_is_deterministic_for_random_contract() {
     let mut contract = ResourceContract::DEFAULT;
     contract.max_steps = 500;
     contract.max_slots = 64;
-    contract.allows_secret_results = true;
+    contract.allows_secret_results = SecretResultPolicy::Allow;
     let enc1 = encode_contract_bytes(&contract);
     let enc2 = encode_contract_bytes(&contract);
     assert_eq!(
@@ -229,15 +229,39 @@ fn encode_contract_bytes_is_injective_for_distinct_contracts() {
 #[test]
 fn encode_contract_bytes_differs_when_allows_secret_results_toggled() {
     let mut contract_true = ResourceContract::DEFAULT;
-    contract_true.allows_secret_results = true;
+    contract_true.allows_secret_results = SecretResultPolicy::Allow;
     let mut contract_false = ResourceContract::DEFAULT;
-    contract_false.allows_secret_results = false;
+    contract_false.allows_secret_results = SecretResultPolicy::Deny;
     let enc_true = encode_contract_bytes(&contract_true);
     let enc_false = encode_contract_bytes(&contract_false);
     assert_ne!(
         enc_true, enc_false,
         "Contracts differing only in allows_secret_results must differ in encoding"
     );
+}
+
+#[test]
+fn secret_result_policy_serde_matches_legacy_bool_bytes() {
+    let allow_bytes = postcard::to_allocvec(&SecretResultPolicy::Allow)
+        .expect("postcard encode of Allow must succeed");
+    let true_bytes = postcard::to_allocvec(&true).expect("postcard encode of true must succeed");
+    assert_eq!(
+        allow_bytes, true_bytes,
+        "Allow must serialize exactly as legacy true"
+    );
+    let deny_bytes = postcard::to_allocvec(&SecretResultPolicy::Deny)
+        .expect("postcard encode of Deny must succeed");
+    let false_bytes = postcard::to_allocvec(&false).expect("postcard encode of false must succeed");
+    assert_eq!(
+        deny_bytes, false_bytes,
+        "Deny must serialize exactly as legacy false"
+    );
+    let decoded: SecretResultPolicy =
+        postcard::from_bytes(&allow_bytes).expect("postcard decode of Allow bytes must succeed");
+    assert_eq!(decoded, SecretResultPolicy::Allow);
+    let decoded: SecretResultPolicy =
+        postcard::from_bytes(&deny_bytes).expect("postcard decode of Deny bytes must succeed");
+    assert_eq!(decoded, SecretResultPolicy::Deny);
 }
 
 #[test]
@@ -279,7 +303,7 @@ fn encode_contract_bytes_does_not_panic_for_extreme_contract_values() {
     all_zero.max_collect_items = 0;
     all_zero.max_queue_depth = 0;
     all_zero.max_journal_batch_bytes = 0;
-    all_zero.allows_secret_results = false;
+    all_zero.allows_secret_results = SecretResultPolicy::Deny;
     let _bytes_all_zero = encode_contract_bytes(&all_zero);
 
     // All max values
@@ -301,7 +325,7 @@ fn encode_contract_bytes_does_not_panic_for_extreme_contract_values() {
     all_max.max_collect_items = u32::MAX;
     all_max.max_queue_depth = u32::MAX;
     all_max.max_journal_batch_bytes = u32::MAX;
-    all_max.allows_secret_results = true;
+    all_max.allows_secret_results = SecretResultPolicy::Allow;
     let _bytes_all_max = encode_contract_bytes(&all_max);
 
     // DEFAULT contract must always work

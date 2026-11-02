@@ -1,10 +1,8 @@
 //! A->B->A isolated-source compilation behavior through real Cargo targets,
 //! binding executed artifact identities to source.
 
-use crate::{compile_source, WorkflowSource};
-use vb_yaml::yaml_ast::types::{
-    WorkflowSourceParts, TriggerAst, StepAst, StepPrimitive,
-};
+use crate::{WorkflowSource, compile_source};
+use vb_yaml::yaml_ast::types::{StepAst, StepPrimitive, TriggerAst, WorkflowSourceParts};
 
 fn source_set(name: &str, var: &str, value: u64) -> WorkflowSource {
     let steps = vec![StepAst {
@@ -76,10 +74,10 @@ fn a_b_a_isolated_source_compilation() {
 fn artifact_identity_bound_to_source() {
     let source = source_set("test", "x", 42);
     let compiled = compile_source(&source).expect("compile");
-    
+
     // Verify the semantic_source_identity is set
     assert!(compiled.semantic_source_identity().is_some());
-    
+
     // Verify the identity is a proper BLAKE3 digest (32 bytes)
     let identity = compiled.semantic_source_identity().unwrap();
     assert_eq!(identity.as_bytes().len(), 32);
@@ -90,13 +88,13 @@ fn artifact_identity_bound_to_source() {
 fn identity_changes_with_any_source_change() {
     let source_v1 = source_set("test", "x", 10);
     let source_v2 = source_set("test", "x", 20);
-    
+
     let compiled_v1 = compile_source(&source_v1).expect("compile v1");
     let compiled_v2 = compile_source(&source_v2).expect("compile v2");
-    
+
     let identity_v1 = compiled_v1.semantic_source_identity().unwrap();
     let identity_v2 = compiled_v2.semantic_source_identity().unwrap();
-    
+
     assert_ne!(
         identity_v1, identity_v2,
         "changing one input must change the entire artifact identity"

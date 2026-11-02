@@ -42,10 +42,13 @@
 
 #![forbid(unsafe_code)]
 
+use vb_core::workflow::node;
 use vb_core::{
     budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget},
     ids::{ActionId, SlotIdx, StepIdx},
-    workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError},
+    workflow::{
+        CompiledNode, CompiledNodeKind, ResourceContract, SecretResultPolicy, WorkflowError,
+    },
 };
 
 #[path = "vb_qi37_2_4_integration_budget_errors/depth_fixtures_tests.rs"]
@@ -75,7 +78,7 @@ fn test_contract(max_steps: u16, max_slots: u16) -> ResourceContract {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     }
 }
 
@@ -103,6 +106,13 @@ fn tight_policy(
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     }
 }
 
@@ -117,20 +127,18 @@ fn build_linear_workflow(node_count: u16) -> (Vec<CompiledNode>, StepIdx) {
             None
         };
 
-        nodes.push(CompiledNode {
-            id: StepIdx::new(i),
-            output: None,
-            next,
-            on_error: None,
-            error_slot: None,
-            kind: if i == node_count - 1 {
+        nodes.push(node(
+            StepIdx::new(i),
+            if i == node_count - 1 {
                 CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 }
             } else {
                 CompiledNodeKind::Nop
             },
-        });
+            None,
+            next,
+        ));
     }
 
     (nodes, StepIdx::new(0))
@@ -143,62 +151,54 @@ fn build_collect_workflow(limit: u32, body_node_count: u16) -> (Vec<CompiledNode
 
     let mut nodes = vec![
         // CollectStart
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::CollectStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
                 limit,
                 page_size: 1,
                 body: StepIdx::new(1),
                 done: StepIdx::new(collect_done),
             },
-        },
+            None,
+            None,
+        ),
     ];
 
     // Body nodes
     for i in 1..=body_node_count {
-        nodes.push(CompiledNode {
-            id: StepIdx::new(i),
-            output: None,
-            next: if i < body_node_count {
+        nodes.push(node(
+            StepIdx::new(i),
+            CompiledNodeKind::Nop,
+            None,
+            if i < body_node_count {
                 Some(StepIdx::new(i + 1))
             } else {
                 None
             },
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        });
+        ));
     }
 
     // CollectFinish
-    nodes.push(CompiledNode {
-        id: StepIdx::new(collect_done),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::CollectFinish {
+    nodes.push(node(
+        StepIdx::new(collect_done),
+        CompiledNodeKind::CollectFinish {
             collector_slot: SlotIdx::new(1),
         },
-    });
+        None,
+        None,
+    ));
 
     // Finish
     let finish_idx = collect_done + 1;
-    nodes.push(CompiledNode {
-        id: StepIdx::new(finish_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(finish_idx),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
 
     (nodes, StepIdx::new(0))
 }
@@ -210,60 +210,52 @@ fn build_repeat_workflow(max_attempts: u16, body_node_count: u16) -> (Vec<Compil
 
     let mut nodes = vec![
         // RepeatStart
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::RepeatStart {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::RepeatStart {
                 max_attempts,
                 body: StepIdx::new(1),
                 done: StepIdx::new(repeat_done),
             },
-        },
+            None,
+            None,
+        ),
     ];
 
     // Body nodes
     for i in 1..=body_node_count {
-        nodes.push(CompiledNode {
-            id: StepIdx::new(i),
-            output: None,
-            next: if i < body_node_count {
+        nodes.push(node(
+            StepIdx::new(i),
+            CompiledNodeKind::Nop,
+            None,
+            if i < body_node_count {
                 Some(StepIdx::new(i + 1))
             } else {
                 None
             },
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        });
+        ));
     }
 
     // RepeatFinish
-    nodes.push(CompiledNode {
-        id: StepIdx::new(repeat_done),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::RepeatFinish {
+    nodes.push(node(
+        StepIdx::new(repeat_done),
+        CompiledNodeKind::RepeatFinish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
 
     // Finish
     let finish_idx = repeat_done + 1;
-    nodes.push(CompiledNode {
-        id: StepIdx::new(finish_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(finish_idx),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
 
     (nodes, StepIdx::new(0))
 }
@@ -274,58 +266,45 @@ fn build_together_workflow(branch_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     let join_idx = branch_count + 1;
 
     // TogetherStart
-    nodes.push(CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::TogetherStart {
+    nodes.push(node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherStart {
             branches: (1u16..=branch_count)
                 .map(|i| StepIdx::new(i))
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
             join: StepIdx::new(join_idx),
         },
-    });
+        None,
+        None,
+    ));
 
     // Branch nodes (Nop for each branch)
     for i in 1..=branch_count {
-        nodes.push(CompiledNode {
-            id: StepIdx::new(i),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        });
+        nodes.push(node(StepIdx::new(i), CompiledNodeKind::Nop, None, None));
     }
 
     // TogetherJoin
-    nodes.push(CompiledNode {
-        id: StepIdx::new(join_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::TogetherJoin {
+    nodes.push(node(
+        StepIdx::new(join_idx),
+        CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
 
     // Finish
     let finish_idx = join_idx + 1;
-    nodes.push(CompiledNode {
-        id: StepIdx::new(finish_idx),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(finish_idx),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
 
     (nodes, StepIdx::new(0))
 }
@@ -336,46 +315,40 @@ fn build_workflow_with_do_nodes(do_count: u16) -> (Vec<CompiledNode>, StepIdx) {
     let mut nodes: Vec<CompiledNode> = Vec::with_capacity(do_count_usize + 2);
 
     // First node: Nop to start
-    nodes.push(CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    });
+    nodes.push(node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(1)),
+    ));
 
     // Do nodes
     for i in 0..do_count_usize {
-        nodes.push(CompiledNode {
-            id: StepIdx::new((1 + i) as u16),
-            output: None,
-            next: if i < do_count_usize - 1 {
+        nodes.push(node(
+            StepIdx::new((1 + i) as u16),
+            CompiledNodeKind::Do {
+                action: ActionId::new(i as u16),
+                input: SlotIdx::new(0),
+            },
+            None,
+            if i < do_count_usize - 1 {
                 Some(StepIdx::new((2 + i) as u16))
             } else {
                 None
             },
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
-                action: ActionId::new(i as u16),
-                input: SlotIdx::new(0),
-            },
-        });
+        ));
     }
 
     // Finish node
     let finish_idx = 1 + do_count_usize;
-    nodes.push(CompiledNode {
-        id: StepIdx::new(finish_idx as u16),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(finish_idx as u16),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
 
     (nodes, StepIdx::new(0))
 }
@@ -415,7 +388,7 @@ fn integration_policy_returns_total_slots_exceeded_when_slots_cross_limit() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -490,6 +463,13 @@ fn integration_policy_returns_parallel_exceeded_when_parallel_crosses_limit() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -545,6 +525,13 @@ fn integration_policy_returns_action_tickets_exceeded_when_action_tickets_cross_
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -608,7 +595,7 @@ fn integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -632,6 +619,13 @@ fn integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -684,7 +678,7 @@ fn integration_policy_returns_result_bytes_exceeded_when_result_bytes_cross_limi
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -708,6 +702,13 @@ fn integration_policy_returns_result_bytes_exceeded_when_result_bytes_cross_limi
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -758,6 +759,13 @@ fn integration_policy_returns_steps_executable_exceeded_when_executable_steps_cr
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -997,6 +1005,13 @@ fn integration_action_together_parallel_exceeded() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1041,7 +1056,7 @@ fn integration_result_size_returns_result_bytes_exceeded() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -1065,6 +1080,13 @@ fn integration_result_size_returns_result_bytes_exceeded() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1198,16 +1220,14 @@ fn e2e_workflow_error_budget_policy_exceeded_contains_detail() {
 /// Tests that WholeWorkflowBudget::compute handles single-node Finish workflow
 #[test]
 fn integration_budget_compute_single_finish_node() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    let nodes = vec![node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }];
+        None,
+        None,
+    )];
 
     let contract = test_contract(10, 10);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
@@ -1221,27 +1241,23 @@ fn integration_budget_compute_single_finish_node() {
 #[test]
 fn integration_budget_compute_single_do_node() {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::Do {
                 action: ActionId::new(1),
                 input: SlotIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+            None,
+            None,
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        },
+            None,
+            None,
+        ),
     ];
 
     let contract = test_contract(10, 10);
@@ -1442,6 +1458,13 @@ fn integration_budget_error_total_steps_exceeded_display() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let policy = tight_policy(100, 65_535, 64, 8);
@@ -1489,6 +1512,13 @@ fn integration_budget_error_fanout_exceeded_display() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let policy = tight_policy(1_000_000, 65_535, 50, 8);
@@ -1533,6 +1563,13 @@ fn integration_budget_error_parallel_exceeded_display() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let policy = BoundednessPolicy {
@@ -1552,6 +1589,13 @@ fn integration_budget_error_parallel_exceeded_display() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1622,6 +1666,13 @@ fn integration_policy_checks_fanout_before_parallel() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1852,6 +1903,13 @@ fn integration_policy_validates_steps_executable() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1887,7 +1945,7 @@ fn integration_policy_validates_result_bytes() {
         max_collect_items: u32::MAX,
         max_queue_depth: 100,
         max_journal_batch_bytes: 1024,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     };
 
     let budget =
@@ -1911,6 +1969,13 @@ fn integration_policy_validates_result_bytes() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1962,14 +2027,7 @@ fn integration_budget_compute_empty_workflow_error() {
 /// Tests workflow with single Nop node
 #[test]
 fn integration_budget_compute_single_nop() {
-    let nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }];
+    let nodes = vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)];
 
     let contract = test_contract(10, 10);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)

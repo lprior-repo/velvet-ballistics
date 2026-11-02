@@ -268,7 +268,7 @@ fn recoverable_open_ask(
     else {
         return None;
     };
-    let resume_step = node.next?;
+    let resume_step = node.routing.next.step()?;
     match workflow.node(resume_step).map(|resume| &resume.kind) {
         Some(CompiledNodeKind::AskResume { .. }) => {
             let (boundary_seq, _) = pending_ask_schedule_for_step(events, step)?;

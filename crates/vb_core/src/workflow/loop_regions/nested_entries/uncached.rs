@@ -9,8 +9,8 @@ fn unpaired_nested_loop_starts_are_flagged_without_inventing_bodies() -> TestRes
         let mut parts = outer_parts(9, 7, 8)?;
         let start = edit(&mut parts, 2)?;
         start.kind = start_kind(family, 3, 6);
-        start.output = Some(slot(2));
-        start.next = None;
+        start.output = NodeOutput::Slot(slot(2));
+        start.routing.next = NodeContinuation::End;
         check_flags(parts, &[2])?;
     }
     Ok(())
@@ -22,12 +22,13 @@ fn forward_only_nested_controls_do_not_expand_start_only_flags() -> TestResult {
         let mut parts = outer_parts(10, 8, 9)?;
         let start = edit(&mut parts, 2)?;
         start.kind = start_kind(family, 3, 7);
-        start.output = Some(slot(2));
-        start.next = None;
+        start.output = NodeOutput::Slot(slot(2));
+        start.routing.next = NodeContinuation::End;
         let control = edit(&mut parts, 3)?;
         // A forward-only control is not the Start's validated counter latch.
         control.kind = control_kind(family, 5, 4, 7);
-        control.next = matches!(family, Family::Repeat).then_some(step(4));
+        control.routing.next =
+            NodeContinuation::from(matches!(family, Family::Repeat).then_some(step(4)));
         check_flags(parts, &[2])?;
     }
     Ok(())
@@ -59,8 +60,8 @@ fn uncached_starts_outside_owned_regions_are_not_blocked() -> TestResult {
         let mut parts = linear_parts(6)?;
         let start = edit(&mut parts, 1)?;
         start.kind = start_kind(family, 2, 5);
-        start.output = Some(slot(2));
-        start.next = None;
+        start.output = NodeOutput::Slot(slot(2));
+        start.routing.next = NodeContinuation::End;
         check_flags(parts, &[])?;
     }
     Ok(())

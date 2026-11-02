@@ -1,7 +1,6 @@
 use super::*;
-use vb_core::{
-    CompiledInputSlot, CompiledNode, CompiledNodeKind, InputSlotKind, StepIdx, WorkflowParts,
-};
+use vb_core::workflow::node;
+use vb_core::{CompiledInputSlot, CompiledNodeKind, InputSlotKind, StepIdx, WorkflowParts};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -20,16 +19,14 @@ pub(super) fn workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>>
                 kind: InputSlotKind::I64,
             },
         ]),
-        nodes: Box::from([CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: Box::from([node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]),
+            None,
+            None,
+        )]),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([]),

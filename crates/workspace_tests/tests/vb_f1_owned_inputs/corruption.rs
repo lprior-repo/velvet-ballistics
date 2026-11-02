@@ -65,7 +65,11 @@ fn self_consistent_forged_projection_and_cap_still_revalidate_bundle() -> TestRe
     let f = fixture(7, Taint::DerivedFromSecret, Taint::Secret)?;
     let mut projection = fixture_wire(&f)?;
     projection.body.resources.allows_secret_results =
-        !projection.body.resources.allows_secret_results;
+        if projection.body.resources.allows_secret_results.allows() {
+            vb_core::workflow::SecretResultPolicy::Deny
+        } else {
+            vb_core::workflow::SecretResultPolicy::Allow
+        };
     redigest(&mut projection)?;
     assert!(matches!(
         decode(&f, &encode(&projection, RecordKind::RunOwnedInputs)?),

@@ -2,12 +2,17 @@ version: velvet-ballistics/v1
 name: fuzz_foreach
 when:
   manual: {}
+inputs:
+  items:
+    is: list
+    of: any
+    max: 2
 steps:
   - id: loop
     for_each:
-      variable: element
-      input: "0"
-      at_once: 2
+      variable: entry
+      input: "$input.items"
+      at_once: 1
       steps:
         - id: capture
           set:
@@ -15,4 +20,4 @@ steps:
             value: "1"
   - id: done
     finish:
-      result: 0
+      result: $input.items

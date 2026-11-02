@@ -3,9 +3,10 @@
 //! Bead: vb-xi2f.35 — P1: digest covers resource contract semantics.
 
 use vb_core::ids::ConstIdx;
+use vb_core::workflow::{ContractResource, SecretResultPolicy, node};
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ExprOp, ExprProgram,
-    ResourceContract, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ConstValue, ExprOp, ExprProgram, ResourceContract, StepIdx,
+    WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ fn contract(
         max_collect_items: 1,
         max_queue_depth: 1,
         max_journal_batch_bytes: 256,
-        allows_secret_results: false,
+        allows_secret_results: SecretResultPolicy::Deny,
     }
 }
 
@@ -50,15 +51,7 @@ fn nop_parts(contract: ResourceContract) -> WorkflowParts {
         input_slots: Box::new([]),
         name: Box::<str>::from("validation_test"),
         digest: WorkflowDigest::from_bytes([0xAB; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: vec![ConstValue::Null].into_boxed_slice(),
@@ -116,7 +109,7 @@ fn validation_rejects_nodes_exceeding_max_steps_contract() {
     let parts = nop_parts(contract(0, 10, 10, 10, 10, 10));
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_steps",
+            resource: ContractResource::Steps,
         }) => {}
         other => panic!(
             "Expected ResourceContractExceeded {{ resource: \"max_steps\" }}, got: {other:?}"
@@ -139,7 +132,7 @@ fn validation_rejects_slots_exceeding_max_slots_contract() {
     let parts = slot_parts(contract(10, 0, 10, 10, 10, 10), 1);
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_slots",
+            resource: ContractResource::Slots,
         }) => {}
         other => panic!(
             "Expected ResourceContractExceeded {{ resource: \"max_slots\" }}, got: {other:?}"
@@ -164,7 +157,7 @@ fn validation_rejects_constants_exceeding_max_constants_contract() {
     );
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_constants",
+            resource: ContractResource::Constants,
         }) => {}
         other => panic!(
             "Expected ResourceContractExceeded {{ resource: \"max_constants\" }}, got: {other:?}"
@@ -197,7 +190,7 @@ fn validation_rejects_accessors_exceeding_max_accessors_contract() {
     );
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_accessors",
+            resource: ContractResource::Accessors,
         }) => {}
         other => panic!(
             "Expected ResourceContractExceeded {{ resource: \"max_accessors\" }}, got: {other:?}"
@@ -234,7 +227,7 @@ fn validation_rejects_expressions_exceeding_max_expressions_contract() {
     );
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_expressions",
+            resource: ContractResource::Expressions,
         }) => {}
         other => panic!(
             "Expected ResourceContractExceeded {{ resource: \"max_expressions\" }}, got: {other:?}"
@@ -267,7 +260,7 @@ fn validation_rejects_expr_stack_exceeding_max_expr_stack_contract() {
     );
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_expr_stack",
+            resource: ContractResource::ExprStack,
         }) => {}
         other => panic!(
             "Expected ResourceContractExceeded {{ resource: \"max_expr_stack\" }}, got: {other:?}"
@@ -305,7 +298,7 @@ fn validation_rejects_contract_when_max_expr_stack_exceeds_hard_limit() {
     let parts = nop_parts(contract(10, 10, 10, 10, 10, MAX_EXPRESSION_STACK + 1));
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expr_stack",
+            resource: ContractResource::ExprStack,
         }) => {}
         other => panic!(
             "Expected ResourceContractTooLarge {{ resource: \"max_expr_stack\" }}, got: {other:?}"
@@ -368,7 +361,7 @@ fn validation_rejects_accessors_exceeding_hard_limit() {
     let parts = accessor_parts(contract(10, 10, 10, over, 10, 10), Box::new([]));
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_accessors",
+            resource: ContractResource::Accessors,
         }) => {}
         other => {
             panic!("Expected ResourceContractTooLarge for max_accessors at {over}, got: {other:?}")
@@ -394,7 +387,7 @@ fn validation_rejects_expressions_exceeding_hard_limit() {
     let parts = expr_parts(contract(10, 10, 10, 10, over, 10), Box::new([]));
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expressions",
+            resource: ContractResource::Expressions,
         }) => {}
         other => panic!(
             "Expected ResourceContractTooLarge for max_expressions at {over}, got: {other:?}"
@@ -416,7 +409,7 @@ fn validation_rejects_exceeded_contract_when_declared_at_hard_limit_for_constant
     );
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_constants",
+            resource: ContractResource::Constants,
         }) => {}
         other => panic!(
             "Expected ResourceContractExceeded {{ resource: \"max_constants\" }}, got: {other:?}"
@@ -504,14 +497,14 @@ fn resource_contract_preserves_max_step_budget_per_tick_field() {
 #[test]
 fn validation_errors_carry_specific_resource_identifiers() {
     // Verify all 6 primary dimensions produce the right resource name
-    let test_cases: &[(&str, ResourceContract, Box<[ConstValue]>)] = &[
+    let test_cases: &[(ContractResource, ResourceContract, Box<[ConstValue]>)] = &[
         (
-            "max_steps",
+            ContractResource::Steps,
             contract(0, 10, 10, 10, 10, 10),
             Box::new([ConstValue::Null]),
         ),
         (
-            "max_constants",
+            ContractResource::Constants,
             contract(10, 10, 0, 10, 10, 10),
             Box::new([ConstValue::Null]),
         ),
@@ -564,13 +557,13 @@ fn validation_accepts_when_actual_and_declared_are_both_zero() {
 #[test]
 fn resource_contract_preserves_allows_secret_results_field() {
     let mut c = contract(10, 10, 10, 10, 10, 10);
-    c.allows_secret_results = true;
+    c.allows_secret_results = SecretResultPolicy::Allow;
     let parts = nop_parts(c);
     let workflow = CompiledWorkflow::try_from_parts(parts)
         .expect("valid contract with allows_secret_results=true");
     assert_eq!(
         workflow.resource_contract().allows_secret_results,
-        true,
+        SecretResultPolicy::Allow,
         "allows_secret_results must be preserved through try_from_parts"
     );
 }
@@ -578,13 +571,13 @@ fn resource_contract_preserves_allows_secret_results_field() {
 #[test]
 fn resource_contract_preserves_allows_secret_results_false() {
     let mut c = contract(10, 10, 10, 10, 10, 10);
-    c.allows_secret_results = false;
+    c.allows_secret_results = SecretResultPolicy::Deny;
     let parts = nop_parts(c);
     let workflow = CompiledWorkflow::try_from_parts(parts)
         .expect("valid contract with allows_secret_results=false");
     assert_eq!(
         workflow.resource_contract().allows_secret_results,
-        false,
+        SecretResultPolicy::Deny,
         "allows_secret_results=false must be preserved through try_from_parts"
     );
 }

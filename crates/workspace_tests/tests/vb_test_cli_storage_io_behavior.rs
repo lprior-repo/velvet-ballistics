@@ -15,7 +15,7 @@ use vb_core::RunId;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
 };
 use vb_ipc::server::WorkflowResolutionError;
 use vb_storage::{
@@ -62,26 +62,22 @@ fn make_action_id(v: u16) -> ActionId {
 }
 
 fn finish_workflow() -> Option<CompiledWorkflow> {
-    let set_const = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    let set_const = node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: vb_core::ids::ConstIdx::new(0),
         },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let finish = node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    };
+        None,
+        None,
+    );
     let parts = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

@@ -13,53 +13,15 @@
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, ErrorRouting, ExprOp, ExprProgram,
+    NodeContinuation, NodeOutput, NodeRouting, PathSegment, ResourceContract, WorkflowParts,
 };
 use vb_validate::ValidationError;
 use vb_validate::shared::{ValidationPipeline, validate};
 
-// ---------------------------------------------------------------------------
-// Test fixtures
-// ---------------------------------------------------------------------------
-
-fn make_parts(
-    nodes: Vec<CompiledNode>,
-    slot_count: u16,
-    symbols_count: u32,
-    expressions: Vec<ExprProgram>,
-    accessors: Vec<AccessorProgram>,
-    constants: Vec<ConstValue>,
-) -> WorkflowParts {
-    WorkflowParts {
-        semantic_source_identity: None,
-        name: Box::from("test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: expressions.into_boxed_slice(),
-        accessors: accessors.into_boxed_slice(),
-        constants: constants.into_boxed_slice(),
-        slot_count,
-        symbols_count,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-        input_slots: Box::new([]),
-    }
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-    }
-}
+#[path = "routing_support/support.rs"]
+mod routing_support;
+use routing_support::{finish_node, make_parts_full as make_parts};
 
 fn validate_gate_11_only(parts: &WorkflowParts) -> Result<(), ValidationError> {
     ValidationPipeline {
@@ -309,14 +271,12 @@ fn gate_08_policy_rule_rejects_accessor_path_too_deep() {
 #[test]
 fn gate_09_policy_rule_rejects_output_slot_out_of_range() {
     // Given a node with output slot beyond slot_count
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(99)), // slot_count = 1
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
 
     // When validation runs
@@ -339,10 +299,14 @@ fn gate_09_policy_rule_rejects_error_slot_out_of_range() {
     // Given a node with error_slot beyond slot_count
     let node = CompiledNode {
         id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: Some(SlotIdx::new(50)), // slot_count = 1
+        output: NodeOutput::Discard,
+        routing: NodeRouting {
+            next: NodeContinuation::End,
+            error: ErrorRouting::Handler {
+                handler: StepIdx::ZERO,
+                error_slot: Some(SlotIdx::new(50)), // slot_count = 1
+            },
+        },
         kind: CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
@@ -420,16 +384,14 @@ fn gate_10_policy_rule_rejects_finish_result_out_of_range() {
 #[test]
 fn gate_10_policy_rule_rejects_setconst_const_out_of_range() {
     // Given a SetConst node with const index beyond constant pool
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(99), // Only 1 constant exists
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(99),
         },
-    };
+        Some(SlotIdx::ZERO),
+        None,
+    );
     let parts = make_parts(
         vec![node],
         1,
@@ -456,17 +418,15 @@ fn gate_10_policy_rule_rejects_setconst_const_out_of_range() {
 #[test]
 fn gate_10_policy_rule_rejects_sentinel_action_id() {
     // Given a Do node with sentinel action_id (u16::MAX)
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(u16::MAX), // Sentinel value
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
+            action: ActionId::new(u16::MAX),
             input: SlotIdx::ZERO,
         },
-    };
+        Some(SlotIdx::ZERO),
+        None,
+    );
     let parts = make_parts(
         vec![node],
         1,
@@ -493,21 +453,19 @@ fn gate_10_policy_rule_rejects_sentinel_action_id() {
 #[test]
 fn gate_10_policy_rule_rejects_choose_expr_out_of_range() {
     // Given a Choose node with expression index beyond expression count
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Choose {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Choose {
             branches: vec![vb_core::workflow::ExprBranch {
-                condition: vb_core::ids::ExprIdx::new(99), // Only 1 expression exists
+                condition: vb_core::ids::ExprIdx::new(99),
                 target: StepIdx::new(1),
             }]
             .into_boxed_slice(),
             otherwise: None,
         },
-    };
+        None,
+        None,
+    );
     let parts = make_parts(
         vec![node, finish_node(1, 0)],
         1,
@@ -541,20 +499,18 @@ fn gate_10_policy_rule_rejects_choose_expr_out_of_range() {
 #[test]
 fn gate_11_policy_rule_rejects_for_each_body_out_of_range() {
     // Given a ForEachStart with body step beyond node count
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ForEachStart {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::ZERO,
             item_slot: SlotIdx::new(1),
             limit: 10,
-            body: StepIdx::new(99), // Beyond node count of 1
+            body: StepIdx::new(99),
             done: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let parts = make_parts(
         vec![node, finish_node(1, 0)],
         2,
@@ -583,20 +539,18 @@ fn gate_11_policy_rule_rejects_for_each_body_out_of_range() {
 #[test]
 fn gate_11_policy_rule_rejects_for_each_done_out_of_range() {
     // Given a ForEachStart with done step beyond node count
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ForEachStart {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::ZERO,
             item_slot: SlotIdx::new(1),
             limit: 10,
             body: StepIdx::new(1),
-            done: StepIdx::new(99), // Beyond node count of 1
+            done: StepIdx::new(99),
         },
-    };
+        None,
+        None,
+    );
     let parts = make_parts(
         vec![node, finish_node(1, 0)],
         2,
@@ -625,20 +579,18 @@ fn gate_11_policy_rule_rejects_for_each_done_out_of_range() {
 #[test]
 fn gate_11_policy_rule_rejects_loop_body_before_start() {
     // Given a ForEachStart where body step <= start index
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ForEachStart {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::ZERO,
             item_slot: SlotIdx::new(1),
             limit: 10,
-            body: StepIdx::ZERO, // Same as start, not forward
+            body: StepIdx::ZERO,
             done: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let parts = make_parts(
         vec![node, finish_node(1, 0), finish_node(2, 0)],
         2,
@@ -667,20 +619,18 @@ fn gate_11_policy_rule_rejects_loop_body_before_start() {
 #[test]
 fn gate_11_policy_rule_rejects_for_each_done_before_body() {
     // Given a ForEachStart where done <= body
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::ForEachStart {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::ForEachStart {
             input: SlotIdx::ZERO,
             item_slot: SlotIdx::new(1),
             limit: 10,
             body: StepIdx::new(2),
-            done: StepIdx::new(1), // Done before body
+            done: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let parts = make_parts(
         vec![node, finish_node(1, 0), finish_node(2, 0)],
         2,
@@ -709,17 +659,15 @@ fn gate_11_policy_rule_rejects_for_each_done_before_body() {
 #[test]
 fn gate_11_policy_rule_rejects_together_branch_out_of_range() {
     // Given a TogetherStart with branch step beyond node count
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::TogetherStart {
-            branches: vec![StepIdx::new(99)].into_boxed_slice(), // Beyond node count
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::TogetherStart {
+            branches: vec![StepIdx::new(99)].into_boxed_slice(),
             join: StepIdx::new(1),
         },
-    };
+        None,
+        None,
+    );
     let parts = make_parts(
         vec![node, finish_node(1, 0)],
         1,
@@ -748,17 +696,15 @@ fn gate_11_policy_rule_rejects_together_branch_out_of_range() {
 #[test]
 fn gate_11_policy_rule_rejects_together_join_out_of_range() {
     // Given a TogetherStart with join step beyond node count
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::TogetherStart {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::TogetherStart {
             branches: vec![StepIdx::new(1)].into_boxed_slice(),
-            join: StepIdx::new(99), // Beyond node count
+            join: StepIdx::new(99),
         },
-    };
+        None,
+        None,
+    );
     let parts = make_parts(
         vec![node, finish_node(1, 0)],
         1,
@@ -792,26 +738,22 @@ fn gate_11_policy_rule_rejects_together_join_out_of_range() {
 fn gate_13_policy_rule_rejects_direct_slot_cycle() {
     // Given a direct cycle: slot 0 <- slot 1, slot 1 <- slot 0
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Copy {
+        vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Copy {
                 source: SlotIdx::new(1),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Copy {
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
+        vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::Copy {
                 source: SlotIdx::ZERO,
             },
-        },
+            Some(SlotIdx::new(1)),
+            None,
+        ),
     ];
     let parts = make_parts(nodes, 2, 0, Vec::new(), Vec::new(), Vec::new());
 
@@ -833,36 +775,30 @@ fn gate_13_policy_rule_rejects_direct_slot_cycle() {
 fn gate_13_policy_rule_rejects_three_slot_cycle() {
     // Given a transitive cycle: slot 0 <- slot 1 <- slot 2 <- slot 0
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Copy {
+        vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Copy {
                 source: SlotIdx::new(1),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Copy {
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
+        vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::Copy {
                 source: SlotIdx::new(2),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: Some(SlotIdx::new(2)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Copy {
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(2)),
+        ),
+        vb_core::workflow::node(
+            StepIdx::new(2),
+            CompiledNodeKind::Copy {
                 source: SlotIdx::ZERO,
             },
-        },
+            Some(SlotIdx::new(2)),
+            None,
+        ),
     ];
     let parts = make_parts(nodes, 3, 0, Vec::new(), Vec::new(), Vec::new());
 
@@ -882,16 +818,14 @@ fn gate_13_policy_rule_accepts_self_read_via_expression() {
     // Given an EvalExpr that reads slot 0 and writes to slot 0 (self-read, not cycle)
     let parts = make_parts(
         vec![
-            CompiledNode {
-                id: StepIdx::ZERO,
-                output: Some(SlotIdx::ZERO),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::EvalExpr {
+            vb_core::workflow::node(
+                StepIdx::ZERO,
+                CompiledNodeKind::EvalExpr {
                     expr: vb_core::ids::ExprIdx::new(0),
                 },
-            },
+                Some(SlotIdx::ZERO),
+                Some(StepIdx::new(1)),
+            ),
             finish_node(1, 0),
         ],
         1,
@@ -924,26 +858,22 @@ fn gate_13_policy_rule_accepts_self_read_via_expression() {
 fn gate_14_policy_rule_rejects_slot_type_inconsistency_i64_vs_bool() {
     // Given two SetConst nodes writing same slot with different types
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
-                value: ConstIdx::new(0), // I64
+        vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: Some(SlotIdx::ZERO), // Same slot!
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
-                value: ConstIdx::new(1), // Bool
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
+        vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::SetConst {
+                value: ConstIdx::new(1),
             },
-        },
+            Some(SlotIdx::ZERO),
+            None,
+        ),
     ];
     let parts = make_parts(
         nodes,
@@ -969,26 +899,22 @@ fn gate_14_policy_rule_rejects_slot_type_inconsistency_i64_vs_bool() {
 fn gate_14_policy_rule_accepts_slot_consistent_type() {
     // Given two SetConst nodes writing same slot with same type
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+        vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: Some(SlotIdx::ZERO),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
+        vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
-        },
+            Some(SlotIdx::ZERO),
+            None,
+        ),
     ];
     let parts = make_parts(
         nodes,
@@ -1019,28 +945,24 @@ fn gate_14_policy_rule_accepts_slot_consistent_type() {
 fn gate_15_policy_rule_accepts_consecutive_do_nodes() {
     // Given two consecutive Do nodes (both non-deterministic)
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
+        vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Do {
                 action: ActionId::new(1),
                 input: SlotIdx::ZERO,
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: Some(SlotIdx::ZERO),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
+        vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::Do {
                 action: ActionId::new(2),
                 input: SlotIdx::ZERO,
             },
-        },
+            Some(SlotIdx::ZERO),
+            None,
+        ),
     ];
     let parts = make_parts(
         nodes,
@@ -1060,28 +982,24 @@ fn gate_15_policy_rule_accepts_consecutive_do_nodes() {
 fn gate_15_policy_rule_accepts_consecutive_ask_nodes() {
     // Given two consecutive Ask nodes
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Ask {
+        vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Ask {
                 prompt: SlotIdx::ZERO,
                 timeout_slot: None,
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: Some(SlotIdx::ZERO),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Ask {
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
+        vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::Ask {
                 prompt: SlotIdx::ZERO,
                 timeout_slot: None,
             },
-        },
+            Some(SlotIdx::ZERO),
+            None,
+        ),
     ];
     let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new());
 
@@ -1094,27 +1012,23 @@ fn gate_15_policy_rule_accepts_consecutive_ask_nodes() {
 fn gate_15_policy_rule_accepts_do_followed_by_deterministic() {
     // Given a Do node followed by a deterministic SetConst
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
+        vb_core::workflow::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::Do {
                 action: ActionId::new(1),
                 input: SlotIdx::ZERO,
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
+        vb_core::workflow::node(
+            StepIdx::new(1),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
+            Some(SlotIdx::new(1)),
+            None,
+        ),
     ];
     let parts = make_parts(
         nodes,
@@ -1144,14 +1058,12 @@ fn gate_15_policy_rule_accepts_do_followed_by_deterministic() {
 #[test]
 fn enforcement_action_allows_bypass_when_gate_disabled() {
     // Given parts that would fail gate 9 (slot OOB)
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
 
     // When validated with gate 9 disabled
@@ -1173,14 +1085,12 @@ fn enforcement_action_allows_bypass_when_gate_disabled() {
 #[test]
 fn enforcement_action_enforces_only_enabled_gates() {
     // Given parts that would fail gate 9 (slot OOB)
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
 
     // When validated with ONLY gate 9 enabled
@@ -1239,14 +1149,12 @@ fn enforcement_action_short_circuits_on_first_failure() {
 #[test]
 fn bypass_attempt_rejects_sentinel_slot_index() {
     // Given a node with SlotIdx::MAX
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(u16::MAX)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(u16::MAX)),
+        None,
+    );
     let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
 
     // When validation runs
@@ -1264,14 +1172,7 @@ fn bypass_attempt_rejects_sentinel_slot_index() {
 fn bypass_attempt_rejects_unknown_node_kind() {
     // Given a node with an unknown variant (via non_exhaustive)
     // This is actually caught by the match in gate_09
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop, // Use known kind but structure would fail
-    };
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None);
     let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
 
     // When validation runs with a node that would hit the wildcard
@@ -1287,17 +1188,15 @@ fn bypass_attempt_rejects_reserved_id() {
     // This is a schema-level check - in compiled IR we check via other gates
     // The reserved ID check is in schema validation
     // This test verifies gate 10 catches Do with sentinel action_id
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(u16::MAX), // Reserved sentinel
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
+            action: ActionId::new(u16::MAX),
             input: SlotIdx::ZERO,
         },
-    };
+        Some(SlotIdx::ZERO),
+        None,
+    );
     let parts = make_parts(
         vec![node],
         1,
@@ -1323,26 +1222,22 @@ fn bypass_attempt_rejects_cycle_through_expression() {
     // Given slot 0 depends on expr(slot 1) and slot 1 depends on slot 0
     let parts = make_parts(
         vec![
-            CompiledNode {
-                id: StepIdx::ZERO,
-                output: Some(SlotIdx::ZERO),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::EvalExpr {
+            vb_core::workflow::node(
+                StepIdx::ZERO,
+                CompiledNodeKind::EvalExpr {
                     expr: vb_core::ids::ExprIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Copy {
+                Some(SlotIdx::ZERO),
+                Some(StepIdx::new(1)),
+            ),
+            vb_core::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Copy {
                     source: SlotIdx::ZERO,
                 },
-            },
+                Some(SlotIdx::new(1)),
+                None,
+            ),
         ],
         2,
         0,
@@ -1490,23 +1385,14 @@ fn gate_15_suspension_resume_targets_rejected() {
                                 input: SlotIdx::new(0),
                             }
                         };
-                        CompiledNode {
-                            id: StepIdx::new(i),
-                            output: None,
-                            next: Some(StepIdx::new(target)),
-                            on_error: None,
-                            error_slot: None,
+                        vb_core::workflow::node(
+                            StepIdx::new(i),
                             kind,
-                        }
+                            None,
+                            Some(StepIdx::new(target)),
+                        )
                     } else {
-                        CompiledNode {
-                            id: StepIdx::new(i),
-                            output: None,
-                            next: None,
-                            on_error: None,
-                            error_slot: None,
-                            kind: CompiledNodeKind::Nop,
-                        }
+                        vb_core::workflow::node(StepIdx::new(i), CompiledNodeKind::Nop, None, None)
                     }
                 })
                 .collect();

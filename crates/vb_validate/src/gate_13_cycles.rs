@@ -18,7 +18,7 @@ pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResul
 
     for node in parts.nodes.iter() {
         let reads = node_reads(node, &parts.expressions);
-        if let Some(output) = node.output {
+        if let Some(output) = node.output.slot() {
             let out_usize = output.as_usize();
             if out_usize < slot_count {
                 for read_slot in reads {

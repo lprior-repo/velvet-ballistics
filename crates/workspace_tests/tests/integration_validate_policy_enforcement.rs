@@ -8,62 +8,21 @@ use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, WorkflowParts,
 };
 use vb_validate::ValidationError;
 use vb_validate::shared::{ValidationPipeline, validate};
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-fn make_parts(
-    nodes: Vec<CompiledNode>,
-    slot_count: u16,
-    symbols_count: u32,
-    expressions: Vec<ExprProgram>,
-    accessors: Vec<AccessorProgram>,
-    constants: Vec<ConstValue>,
-) -> WorkflowParts {
-    WorkflowParts {
-        semantic_source_identity: None,
-        input_slots: Box::new([]),
-        name: Box::from("test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: expressions.into_boxed_slice(),
-        accessors: accessors.into_boxed_slice(),
-        constants: constants.into_boxed_slice(),
-        slot_count,
-        symbols_count,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::new([]),
-    }
-}
-
-fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(result_slot),
-        },
-    }
-}
+#[path = "routing_support/support.rs"]
+mod routing_support;
+use routing_support::{finish_node, make_parts_full as make_parts};
 
 fn nop_node(index: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: None,
-        next: Some(StepIdx::new(index.saturating_add(1))),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }
+    vb_core::workflow::node(
+        StepIdx::new(index),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(index.saturating_add(1))),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -228,14 +187,12 @@ fn gate_8_rejects_accessor_symbol_out_of_bounds() {
 #[test]
 fn gate_9_accepts_slot_reference_at_upper_bound() {
     // slot_count = 3, valid slots are 0, 1, 2
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(2)), // Last valid slot
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(2)),
+        None,
+    );
 
     let parts = make_parts(vec![node], 3, 0, Vec::new(), Vec::new(), Vec::new());
     let result = validate(&parts);
@@ -250,14 +207,12 @@ fn gate_9_accepts_slot_reference_at_upper_bound() {
 #[test]
 fn gate_9_rejects_slot_reference_out_of_bounds() {
     // slot_count = 2, slot 3 is OOB
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(3)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(3)),
+        None,
+    );
 
     let parts = make_parts(vec![node], 2, 0, Vec::new(), Vec::new(), Vec::new());
     let result = validate(&parts);
@@ -271,16 +226,16 @@ fn gate_9_rejects_slot_reference_out_of_bounds() {
 #[test]
 fn gate_9_rejects_error_slot_reference_out_of_bounds() {
     // slot_count = 1, error_slot = 5 is OOB
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: Some(SlotIdx::new(5)),
-        kind: CompiledNodeKind::Finish {
+    let node = vb_core::workflow::node_with_handler(
+        StepIdx::ZERO,
+        CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    };
+        None,
+        None,
+        StepIdx::ZERO,
+        Some(SlotIdx::new(5)),
+    );
 
     let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
     let result = validate(&parts);
@@ -333,16 +288,14 @@ fn gate_13_accepts_linear_workflow_with_no_cycles() {
 /// Gate 14: single slot written with consistent type passes.
 #[test]
 fn gate_14_accepts_single_slot_consistent_type() {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    };
+        Some(SlotIdx::ZERO),
+        None,
+    );
 
     let parts = make_parts(
         vec![node],
@@ -364,26 +317,22 @@ fn gate_14_accepts_single_slot_consistent_type() {
 #[test]
 fn gate_14_rejects_slot_written_with_mixed_types() {
     // Two nodes writing the same slot with different types
-    let node_a = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0), // I64
+    let node_a = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
         },
-    };
-    let node_b = CompiledNode {
-        id: StepIdx::new(1),
-        output: Some(SlotIdx::ZERO), // Same slot!
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(1), // Bool (different type)
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let node_b = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(1),
         },
-    };
+        Some(SlotIdx::ZERO),
+        None,
+    );
 
     let parts = make_parts(
         vec![node_a, node_b],
@@ -409,14 +358,12 @@ fn gate_14_rejects_slot_written_with_mixed_types() {
 #[test]
 fn validation_pipeline_selective_gate_disable() {
     // Build parts that would fail gate 9 (slot OOB)
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(99)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(99)),
+        None,
+    );
     let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
 
     // With gate 9 disabled, validation should pass

@@ -12,8 +12,8 @@ use crate::ids::{
 use crate::value::{ConstValue, SlotValue, Taint, join_taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp, ExprProgram,
-    ResourceContract, SlotBranch, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp, ExprProgram, ResourceContract,
+    SlotBranch, WorkflowParts,
 };
 
 use crate::action::{
@@ -311,16 +311,14 @@ fn eval_workflow_with_slots(
         input_slots: Box::new([]),
         name: "taint_eval_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::EvalExpr {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into(),
         expressions: vec![expr].into(),
         accessors: vec![].into(),
@@ -679,13 +677,9 @@ fn choose_expr_branch_does_not_accumulate_taint_from_condition() -> Result<(), S
         name: "choose_taint_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Choose {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Choose {
                     branches: vec![ExprBranch {
                         condition: ExprIdx::new(0),
                         target: StepIdx::new(1),
@@ -693,23 +687,11 @@ fn choose_expr_branch_does_not_accumulate_taint_from_condition() -> Result<(), S
                     .into_boxed_slice(),
                     otherwise: Some(StepIdx::new(2)),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
+                None,
+                None,
+            ),
+            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
+            crate::workflow::node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
         ]
         .into(),
         expressions: vec![expr_true].into(),
@@ -852,16 +834,14 @@ fn copy_slot_preserves_both_value_and_taint() -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
 
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Copy {
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
 
     copy_slot(&mut run, &node, SlotIdx::new(0)).map_err(|e| e.to_string())?;
 
@@ -881,16 +861,14 @@ fn copy_slot_returns_slot_uninitialized_for_uninitialized_source() -> Result<(),
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 3).map_err(|e| e.to_string())?;
 
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Copy {
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(2),
         },
-    };
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
 
     let result = copy_slot(&mut run, &node, SlotIdx::new(2));
 
@@ -914,16 +892,14 @@ fn copy_slot_destination_taint_equals_source_taint_after_copy() -> Result<(), St
     )
     .map_err(|e| e.to_string())?;
 
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(2)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Copy {
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(2)),
+        Some(StepIdx::new(1)),
+    );
 
     copy_slot(&mut run, &node, SlotIdx::new(0)).map_err(|e| e.to_string())?;
 
@@ -944,25 +920,16 @@ fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<
         name: "resume_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Do {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
         ]
         .into(),
         expressions: vec![].into(),
@@ -1245,14 +1212,12 @@ fn eval_expr_returns_expr_out_of_bounds_for_invalid_index() -> Result<(), String
         input_slots: Box::new([]),
         name: "expr_oob_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into(),
         expressions: vec![expr].into(),
         accessors: vec![].into(),
@@ -1344,30 +1309,21 @@ fn choose_expr_branch_returns_missing_next_step_when_no_match_and_no_otherwise()
         name: "choose_missing_test".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Choose {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Choose {
                     branches: vec![ExprBranch {
                         condition: ExprIdx::new(0),
                         target: StepIdx::new(1),
                     }]
                     .into_boxed_slice(),
-                    otherwise: None, // No otherwise!
+                    otherwise: None,
                 },
-            },
+                None,
+                None,
+            ),
             // This node exists so StepIdx(1) is a valid target
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
+            crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
         ]
         .into(),
         expressions: vec![expr_false].into(),
@@ -1447,16 +1403,14 @@ fn copy_slot_returns_slot_uninitialized_for_slot_zero_source() -> Result<(), Str
 
     let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 3).map_err(|e| e.to_string())?;
 
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Copy {
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
 
     // Don't write to slot 0 - it's uninitialized
     let result = copy_slot(&mut run, &node, SlotIdx::new(0));
@@ -1802,16 +1756,14 @@ fn copy_slot_preserves_random_taint() -> Result<(), String> {
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::Random)
         .map_err(|e| e.to_string())?;
 
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Copy {
+    let node = crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(0),
         },
-    };
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(1)),
+    );
 
     copy_slot(&mut run, &node, SlotIdx::new(0)).map_err(|e| e.to_string())?;
 
@@ -1828,27 +1780,23 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
         name: "resume_random".into(),
         digest: WorkflowDigest::from_bytes([0; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Do {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Do {
                     action: ActionId::new(1),
                     input: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into(),
         expressions: vec![].into(),

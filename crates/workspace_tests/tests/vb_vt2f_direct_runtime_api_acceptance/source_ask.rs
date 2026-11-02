@@ -33,7 +33,10 @@ steps:
 
     let node_question = compiled.node(StepIdx::new(2)).ok_or("node 2 missing")?;
     assert_eq!(node_question.id, StepIdx::new(2));
-    assert_eq!(node_question.next, Some(StepIdx::new(3)));
+    assert_eq!(
+        node_question.routing.next,
+        NodeContinuation::Step(StepIdx::new(3))
+    );
 
     let CompiledNodeKind::Ask {
         prompt,
@@ -47,13 +50,16 @@ steps:
 
     let node_resume = compiled.node(StepIdx::new(3)).ok_or("node 3 missing")?;
     assert_eq!(node_resume.id, StepIdx::new(3));
-    assert_eq!(node_resume.next, Some(StepIdx::new(4)));
+    assert_eq!(
+        node_resume.routing.next,
+        NodeContinuation::Step(StepIdx::new(4))
+    );
     let CompiledNodeKind::AskResume { answer } = &node_resume.kind else {
         return Err("node 3 should be AskResume".into());
     };
     let answer_slot = *answer;
-    assert_eq!(node_question.output, Some(answer_slot));
-    assert_eq!(node_resume.output, Some(answer_slot));
+    assert_eq!(node_question.output, NodeOutput::Slot(answer_slot));
+    assert_eq!(node_resume.output, NodeOutput::Slot(answer_slot));
 
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new(shard_count(1)?, relaxed_config(), journal.clone());

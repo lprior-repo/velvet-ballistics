@@ -8,31 +8,27 @@ use vb_core::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, W
 use vb_core::value::SlotValue;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, WorkflowParts,
+    ResourceContract, WorkflowParts, node,
 };
 
 fn finish_node(step: u16, result: u16) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(step),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    node(
+        StepIdx::new(step),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(result),
         },
-    }
+        None,
+        None,
+    )
 }
 
 fn nop_node(step: u16, next: Option<u16>) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(step),
-        output: None,
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }
+    node(
+        StepIdx::new(step),
+        CompiledNodeKind::Nop,
+        None,
+        next.map(StepIdx::new),
+    )
 }
 
 fn base_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
@@ -250,16 +246,14 @@ fn run_compiled_rejects_handcrafted_backward_edge_ir() {
 #[test]
 fn run_compiled_rejects_handcrafted_bad_constant_reference_ir() {
     let mut parts = base_parts(Box::from([
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+        node(
+            StepIdx::ZERO,
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
         finish_node(1, 0),
     ]));
     parts.constants = Box::from([]);
@@ -280,16 +274,14 @@ fn run_compiled_rejects_handcrafted_bad_accessor_reference_ir() {
         Err(_) => std::process::abort(),
     };
     let mut parts = base_parts(Box::from([
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::EvalExpr {
+        node(
+            StepIdx::ZERO,
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
-        },
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
         finish_node(1, 0),
     ]));
     parts.expressions = Box::from([expression]);
@@ -330,16 +322,14 @@ fn must_tempdir() -> tempfile::TempDir {
 #[test]
 fn run_compiled_rejects_handcrafted_bad_build_object_symbol_ir() {
     let mut parts = base_parts(Box::from([
-        CompiledNode {
-            id: StepIdx::ZERO,
-            output: Some(SlotIdx::ZERO),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::BuildObject {
+        node(
+            StepIdx::ZERO,
+            CompiledNodeKind::BuildObject {
                 fields: Box::from([(SymbolId::new(0), SlotIdx::ZERO)]),
             },
-        },
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
         finish_node(1, 0),
     ]));
     parts.symbols_count = 0;

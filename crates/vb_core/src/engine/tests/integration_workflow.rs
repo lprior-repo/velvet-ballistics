@@ -7,7 +7,7 @@ use crate::ids::{ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId,
 use crate::value::{ConstValue, SlotValue, Taint, join_taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, WorkflowParts, node,
 };
 
 use crate::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked, step_once};
@@ -53,15 +53,7 @@ fn nop_without_next_returns_missing_next_step() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("nop_no_next"),
         digest: WorkflowDigest::from_bytes([0xAA; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::new(0), CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([]),
@@ -91,26 +83,22 @@ fn set_const_without_output_slot_returns_missing_output_slot() -> Result<(), Str
         name: Box::<str>::from("set_const_no_output"),
         digest: WorkflowDigest::from_bytes([0xBB; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -144,16 +132,14 @@ fn finish_with_uninitialized_result_slot_returns_slot_uninitialized() -> Result<
         input_slots: Box::new([]),
         name: Box::<str>::from("finish_empty_slot"),
         digest: WorkflowDigest::from_bytes([0xCC; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -238,17 +224,15 @@ fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("do_node"),
         digest: WorkflowDigest::from_bytes([0xDD; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Do {
                 action: ActionId::new(1),
                 input: SlotIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -277,16 +261,14 @@ fn drive_deterministic_stops_on_awaiting_wait_signal() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("wait_node"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::WaitUntil {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::WaitUntil {
                 deadline_slot: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -315,17 +297,15 @@ fn drive_deterministic_stops_on_awaiting_ask_signal() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("ask_node"),
         digest: WorkflowDigest::from_bytes([0xFF; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Ask {
+        nodes: vec![node(
+            StepIdx::new(0),
+            CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
                 timeout_slot: None,
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -360,26 +340,22 @@ fn eval_expr_with_secret_tainted_slot_produces_derived_from_secret_taint() -> Re
         name: Box::<str>::from("taint_eval_expr"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::EvalExpr {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: vec![expression].into_boxed_slice(),
@@ -416,26 +392,22 @@ fn eval_expr_with_clean_slot_produces_clean_taint() -> Result<(), String> {
         name: Box::<str>::from("taint_eval_clean"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::EvalExpr {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::EvalExpr {
                     expr: ExprIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: vec![expression].into_boxed_slice(),
@@ -469,50 +441,42 @@ fn build_object_joins_taint_from_all_field_slots() -> Result<(), String> {
         name: Box::<str>::from("taint_build_object"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: Some(SlotIdx::new(2)),
-                next: Some(StepIdx::new(3)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::BuildObject {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            node(
+                StepIdx::new(2),
+                CompiledNodeKind::BuildObject {
                     fields: vec![
                         (SymbolId::new(1), SlotIdx::new(0)),
                         (SymbolId::new(2), SlotIdx::new(1)),
                     ]
                     .into_boxed_slice(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(2)),
+                Some(StepIdx::new(3)),
+            ),
+            node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(2),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -567,50 +531,42 @@ fn build_object_with_all_clean_slots_produces_clean_taint() -> Result<(), String
         name: Box::<str>::from("taint_build_object_clean"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: Some(SlotIdx::new(2)),
-                next: Some(StepIdx::new(3)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::BuildObject {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            node(
+                StepIdx::new(2),
+                CompiledNodeKind::BuildObject {
                     fields: vec![
                         (SymbolId::new(1), SlotIdx::new(0)),
                         (SymbolId::new(2), SlotIdx::new(1)),
                     ]
                     .into_boxed_slice(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(2)),
+                Some(StepIdx::new(3)),
+            ),
+            node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(2),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -642,46 +598,38 @@ fn build_list_joins_taint_from_all_item_slots() -> Result<(), String> {
         name: Box::<str>::from("taint_build_list"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: Some(SlotIdx::new(2)),
-                next: Some(StepIdx::new(3)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::BuildList {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            node(
+                StepIdx::new(2),
+                CompiledNodeKind::BuildList {
                     items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(2)),
+                Some(StepIdx::new(3)),
+            ),
+            node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(2),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -740,46 +688,38 @@ fn build_list_with_all_secret_slots_produces_secret_taint() -> Result<(), String
         name: Box::<str>::from("taint_build_list_all_secret"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(1)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: Some(SlotIdx::new(2)),
-                next: Some(StepIdx::new(3)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::BuildList {
+                Some(SlotIdx::new(1)),
+                Some(StepIdx::new(2)),
+            ),
+            node(
+                StepIdx::new(2),
+                CompiledNodeKind::BuildList {
                     items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(2)),
+                Some(StepIdx::new(3)),
+            ),
+            node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(2),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -938,26 +878,22 @@ fn tiny_workflow(value: ConstValue) -> Result<CompiledWorkflow, crate::WorkflowE
         name: Box::<str>::from("tiny"),
         digest: WorkflowDigest::from_bytes([1; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -978,26 +914,22 @@ fn copy_workflow(output: Option<SlotIdx>) -> Result<CompiledWorkflow, crate::Wor
         name: Box::<str>::from("copy"),
         digest: WorkflowDigest::from_bytes([9; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Copy {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Copy {
                     source: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                output,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),

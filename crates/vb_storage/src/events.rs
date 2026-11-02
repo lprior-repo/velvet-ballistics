@@ -12,6 +12,7 @@ use vb_core::{RunId, SlotValue};
 mod event;
 mod wire;
 
+pub use wire::classify_journal_envelope;
 pub(crate) use wire::{
     decode_journal_event_payload_for_envelope, is_schema_one_shared_envelope_compatible,
 };
@@ -52,6 +53,7 @@ impl JournalEvent {
             | Self::AskTimedOutEvent { run, .. }
             | Self::PolicyDecisionEvent { run, .. }
             | Self::GateDecisionEvent { run, .. } => *run,
+            Self::CompatibilityDecisionEvent { run, .. } => *run,
         }
     }
 
@@ -91,6 +93,7 @@ impl JournalEvent {
             | Self::AskTimedOutEvent { seq, .. }
             | Self::PolicyDecisionEvent { seq, .. }
             | Self::GateDecisionEvent { seq, .. } => *seq,
+            Self::CompatibilityDecisionEvent { seq, .. } => *seq,
         }
     }
 
@@ -146,6 +149,7 @@ impl JournalEvent {
             Self::AskTimedOutEvent { .. } => RecordKind::AskTimedOut,
             Self::PolicyDecisionEvent { .. } => RecordKind::PolicyDecision,
             Self::GateDecisionEvent { .. } => RecordKind::GateDecision,
+            Self::CompatibilityDecisionEvent { .. } => RecordKind::CompatibilityDecision,
         }
     }
 
@@ -224,6 +228,7 @@ impl JournalEvent {
             | Self::RunAnswered { .. }
             | Self::PolicyDecisionEvent { .. }
             | Self::GateDecisionEvent { .. } => None,
+            Self::CompatibilityDecisionEvent { .. } => None,
         }
     }
 
@@ -277,6 +282,7 @@ impl JournalEvent {
             | Self::RunAnswered { .. }
             | Self::PolicyDecisionEvent { .. }
             | Self::GateDecisionEvent { .. } => true,
+            Self::CompatibilityDecisionEvent { .. } => true,
         }
     }
 }

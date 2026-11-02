@@ -1,7 +1,9 @@
 use vb_core::ids::{SlotIdx, WorkflowDigest};
 use vb_core::root_bundle::OwnedRootBundle;
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, CompiledWorkflow, InputSlotKind, ResourceContract};
+use vb_core::workflow::{
+    CompiledInputSlot, CompiledWorkflow, InputSlotKind, ResourceContract, SecretResultPolicy,
+};
 
 use super::support::{TestResult, checkpoint, fixture};
 
@@ -147,7 +149,7 @@ fn resource_contract_field_independence() -> TestResult<()> {
         (
             "allows_secret_results",
             ResourceContract {
-                allows_secret_results: true,
+                allows_secret_results: SecretResultPolicy::Allow,
                 ..base_contract
             },
         ),

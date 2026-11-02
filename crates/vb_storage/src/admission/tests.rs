@@ -6,7 +6,7 @@
 )]
 use crate::admission::*;
 use crate::error::JournalError;
-use vb_core::workflow::ResourceContract;
+use vb_core::workflow::{ResourceContract, SecretResultPolicy, node};
 #[path = "evidence_test_support.rs"]
 mod evidence_test_support;
 use evidence_test_support::{action_workflow, assert_checked, assert_declarations};
@@ -193,10 +193,7 @@ fn temp_journal() -> Result<TestJournal, JournalError> {
 fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
     use vb_core::value::ConstValue;
     use vb_core::workflow::{ResourceContract, WorkflowParts};
-    use vb_core::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx,
-        WorkflowDigest,
-    };
+    use vb_core::{CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 
     let mut parts = WorkflowParts {
         semantic_source_identity: None,
@@ -204,26 +201,22 @@ fn minimal_workflow() -> Result<vb_core::CompiledWorkflow, String> {
         input_slots: Box::new([]),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -1017,7 +1010,7 @@ fn policy_buffer_fits_canonical_resource_contract() {
         max_collect_items: u32::MAX,
         max_queue_depth: u32::MAX,
         max_journal_batch_bytes: u32::MAX,
-        allows_secret_results: true,
+        allows_secret_results: SecretResultPolicy::Allow,
     };
 
     let bound = resource_contract_policy_bytes_bound();

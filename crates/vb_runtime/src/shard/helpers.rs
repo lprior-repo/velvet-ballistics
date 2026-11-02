@@ -6,7 +6,7 @@ use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, NodeContinuation};
 
 use crate::primitives::collect::CollectStates;
 
@@ -124,7 +124,7 @@ pub fn action_output_slot(
     state
         .workflow
         .node(step)
-        .and_then(|node| node.output)
+        .and_then(|node| node.output.slot())
         .ok_or(RuntimeError::InvalidActionCompletion)
 }
 
@@ -193,7 +193,7 @@ pub fn advance_after_action_completion(
     let Some(node) = state.workflow.node(step) else {
         return Err(RuntimeError::InvalidActionCompletion);
     };
-    match node.next {
+    match node.routing.next.step() {
         Some(next) => {
             state
                 .frame
@@ -227,7 +227,7 @@ pub fn advance_after_timer_fire(
     let next = state
         .workflow
         .node(timer.step)
-        .and_then(|node| node.next)
+        .and_then(|node| node.routing.next.step())
         .ok_or(RuntimeError::InvalidTimerFire)?;
     state
         .frame
@@ -260,7 +260,7 @@ pub fn validate_timer_fire(
         | (PendingTimerKind::Ask, CompiledNodeKind::Ask { .. }) => {}
         _ => return Err(RuntimeError::InvalidTimerFire),
     }
-    if node.next.is_none() {
+    if matches!(node.routing.next, NodeContinuation::End) {
         return Err(RuntimeError::InvalidTimerFire);
     }
     Ok(())
@@ -318,7 +318,7 @@ pub fn retry_metadata_exists(state: &crate::shard::types::RunState, step: StepId
     let Some(node) = state.workflow.node(step) else {
         return false;
     };
-    let Some(next) = node.next else {
+    let Some(next) = node.routing.next.step() else {
         return false;
     };
     matches!(
@@ -335,7 +335,7 @@ pub fn retry_policy_after_action(
     let Some(node) = state.workflow.node(step) else {
         return Err(RuntimeError::InvalidActionCompletion);
     };
-    let Some(next) = node.next else {
+    let Some(next) = node.routing.next.step() else {
         return Err(RuntimeError::UnsupportedOperation {
             operation: "retry_metadata_missing",
         });

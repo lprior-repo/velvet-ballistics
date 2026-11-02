@@ -7,9 +7,10 @@
 
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
+use vb_core::workflow::node;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ExprOp, ExprProgram,
-    ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+    CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ExprOp, ExprProgram, ResourceContract,
+    SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
 };
 
 /// Metadata string for all benchmarks in this group.
@@ -28,28 +29,24 @@ fn chain_workflow(count: u16) -> Option<CompiledWorkflow> {
     let mut nodes = Vec::with_capacity(usize::from(count).saturating_add(1));
     let mut step = 0_u16;
     while step < count {
-        nodes.push(CompiledNode {
-            id: StepIdx::new(step),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(step.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+        nodes.push(node(
+            StepIdx::new(step),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        });
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(step.saturating_add(1))),
+        ));
         step = step.saturating_add(1);
     }
-    nodes.push(CompiledNode {
-        id: StepIdx::new(count),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(count),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),
@@ -71,66 +68,54 @@ fn chain_workflow(count: u16) -> Option<CompiledWorkflow> {
 /// Builds a mixed-node workflow with various node kinds.
 fn mixed_workflow() -> Option<CompiledWorkflow> {
     let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: Some(SlotIdx::new(1)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+            Some(SlotIdx::new(0)),
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(1),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: Some(SlotIdx::new(2)),
-            next: Some(StepIdx::new(3)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::EvalExpr {
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(2)),
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(0),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(3),
-            output: Some(SlotIdx::new(3)),
-            next: Some(StepIdx::new(4)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::BuildObject {
+            Some(SlotIdx::new(2)),
+            Some(StepIdx::new(3)),
+        ),
+        node(
+            StepIdx::new(3),
+            CompiledNodeKind::BuildObject {
                 fields: Box::from([]),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(4),
-            output: Some(SlotIdx::new(4)),
-            next: Some(StepIdx::new(5)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::BuildList {
+            Some(SlotIdx::new(3)),
+            Some(StepIdx::new(4)),
+        ),
+        node(
+            StepIdx::new(4),
+            CompiledNodeKind::BuildList {
                 items: Box::from([SlotIdx::new(0), SlotIdx::new(1)]),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(5),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+            Some(SlotIdx::new(4)),
+            Some(StepIdx::new(5)),
+        ),
+        node(
+            StepIdx::new(5),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(4),
             },
-        },
+            None,
+            None,
+        ),
     ];
     let ops: Box<[ExprOp]> = Box::from([
         ExprOp::LoadSlot(SlotIdx::new(0)),
@@ -170,28 +155,24 @@ fn expression_workflow(expr_count: u16) -> Option<CompiledWorkflow> {
         if let Ok(expr) = ExprProgram::try_from_parts(ops, 2) {
             exprs.push(expr);
         }
-        nodes.push(CompiledNode {
-            id: StepIdx::new(step),
-            output: Some(SlotIdx::new(step)),
-            next: Some(StepIdx::new(step.saturating_add(1))),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::EvalExpr {
+        nodes.push(node(
+            StepIdx::new(step),
+            CompiledNodeKind::EvalExpr {
                 expr: ExprIdx::new(step),
             },
-        });
+            Some(SlotIdx::new(step)),
+            Some(StepIdx::new(step.saturating_add(1))),
+        ));
         step = step.saturating_add(1);
     }
-    nodes.push(CompiledNode {
-        id: StepIdx::new(step),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    nodes.push(node(
+        StepIdx::new(step),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    });
+        None,
+        None,
+    ));
     // Pad expressions to match
     while exprs.len() < usize::from(expr_count) {
         let ops: Box<[ExprOp]> = Box::from([ExprOp::LoadSlot(SlotIdx::new(0))]);
@@ -228,7 +209,7 @@ fn count_nodes_df(workflow: &CompiledWorkflow) -> usize {
         if let Some(node) = workflow.node(step) {
             count = count.saturating_add(1);
             // Push next nodes in reverse order to maintain left-to-right
-            if let Some(next) = node.next {
+            if let Some(next) = node.routing.next.step() {
                 stack.push(next);
             }
             // For ChooseSlot, also push branch targets
@@ -260,7 +241,7 @@ fn count_nodes_bfs(workflow: &CompiledWorkflow) -> usize {
     while let Some(step) = queue.pop() {
         if let Some(node) = workflow.node(step) {
             count = count.saturating_add(1);
-            if let Some(next) = node.next {
+            if let Some(next) = node.routing.next.step() {
                 queue.push(next);
             }
             if let CompiledNodeKind::ChooseSlot { branches, .. } = &node.kind {

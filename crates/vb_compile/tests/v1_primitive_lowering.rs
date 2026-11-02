@@ -3,6 +3,7 @@ use vb_compile::{
     CompileError, CompileErrors, YamlCompiler, compile_source, compile_workflow, lower_choose,
     lower_steps_to_ir, lower_together,
 };
+use vb_core::workflow::{NodeContinuation, NodeOutput, node};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, SlotBranch, SlotIdx, StepIdx,
     WorkflowError,
@@ -403,10 +404,10 @@ fn assert_two_set_repeat_contract(workflow: &CompiledWorkflow) -> Result<(), Str
     }
     assert_finish_node(&parts.nodes, 5, 0)?;
     for node in &parts.nodes {
-        if node.error_slot.is_some() {
+        if node.routing.error.error_slot().is_some() {
             return Err(format!("node {} has error_slot", node.id.get()));
         }
-        if node.on_error.is_some() {
+        if node.routing.error.handler().is_some() {
             return Err(format!("node {} has on_error", node.id.get()));
         }
     }
@@ -446,14 +447,12 @@ fn assert_two_set_repeat_control(nodes: &[CompiledNode]) -> Result<(), String> {
     ];
     for (id, kind, output, next) in specs {
         let actual = node_at(nodes, usize::from(id))?;
-        let expected = CompiledNode {
-            id: StepIdx::new(id),
+        let expected = node(
+            StepIdx::new(id),
             kind,
-            output: output.map(SlotIdx::new),
-            next: next.map(StepIdx::new),
-            error_slot: None,
-            on_error: None,
-        };
+            output.map(SlotIdx::new),
+            next.map(StepIdx::new),
+        );
         if actual != &expected {
             return Err(format!(
                 "node {} mismatch: actual={:?} expected={:?}",
@@ -751,18 +750,21 @@ fn assert_repeat_raw_allocation_contract() -> Result<(), String> {
         }
 
         for node in [start, attempt, finish] {
-            if node.next.is_some() || node.error_slot.is_some() || node.on_error.is_some() {
+            if node.routing.next.step().is_some()
+                || node.routing.error.error_slot().is_some()
+                || node.routing.error.handler().is_some()
+            {
                 return Err("unexpected next/error_slot/on_error".to_string());
             }
         }
 
-        if start.output != Some(SlotIdx::new(counter)) {
+        if start.output != NodeOutput::Slot(SlotIdx::new(counter)) {
             return Err("start output mismatch".to_string());
         }
-        if attempt.output != None {
+        if attempt.output != NodeOutput::Discard {
             return Err("attempt output should be None".to_string());
         }
-        if finish.output != Some(SlotIdx::new(result)) {
+        if finish.output != NodeOutput::Slot(SlotIdx::new(result)) {
             return Err("finish output mismatch".to_string());
         }
 
@@ -883,16 +885,14 @@ fn public_helpers_return_exact_step_index_slot_index_limit_and_workflow_error_va
     }
 
     match lower_steps_to_ir(
-        vec![CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
-            kind: CompiledNodeKind::Finish {
+        vec![node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
                 result: vb_core::SlotIdx::new(0),
             },
-        }],
+            None,
+            None,
+        )],
         Vec::new(),
         Vec::new(),
         Vec::new(),
@@ -2058,8 +2058,8 @@ fn assert_exact_for_each(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
         }
         other => return Err(format!("expected ForEachStart, got {other:?}")),
     }
-    assert_eq!(node0.output, Some(SlotIdx::new(1)));
-    assert_eq!(node0.next, None);
+    assert_eq!(node0.output, NodeOutput::Slot(SlotIdx::new(1)));
+    assert_eq!(node0.routing.next, NodeContinuation::End);
 
     let node2 = node_at(nodes, 2)?;
     match &node2.kind {
@@ -2072,7 +2072,7 @@ fn assert_exact_for_each(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
         }
         other => return Err(format!("expected ForEachNext, got {other:?}")),
     }
-    assert_eq!(node2.output, Some(SlotIdx::new(2)));
+    assert_eq!(node2.output, NodeOutput::Slot(SlotIdx::new(2)));
 
     Ok(())
 }
@@ -2091,8 +2091,8 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
         }
         other => return Err(format!("expected TogetherStart, got {other:?}")),
     }
-    assert_eq!(node0.output, Some(SlotIdx::new(1)));
-    assert_eq!(node0.next, None);
+    assert_eq!(node0.output, NodeOutput::Slot(SlotIdx::new(1)));
+    assert_eq!(node0.routing.next, NodeContinuation::End);
 
     let node5 = node_at(nodes, 5)?;
     match &node5.kind {
@@ -2104,11 +2104,11 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
         }
         other => return Err(format!("expected TogetherJoin, got {other:?}")),
     }
-    assert_eq!(node5.output, Some(SlotIdx::new(2)));
-    assert_eq!(node5.next, Some(StepIdx::new(6)));
+    assert_eq!(node5.output, NodeOutput::Slot(SlotIdx::new(2)));
+    assert_eq!(node5.routing.next, NodeContinuation::Step(StepIdx::new(6)));
 
     let node1 = node_at(nodes, 1)?;
-    assert_eq!(node1.output, None);
+    assert_eq!(node1.output, NodeOutput::Discard);
     match &node1.kind {
         CompiledNodeKind::TogetherBranch {
             branch,
@@ -2125,7 +2125,7 @@ fn assert_exact_together(nodes: &[CompiledNode], constants: &[ConstValue]) -> Re
     }
 
     let node3 = node_at(nodes, 3)?;
-    assert_eq!(node3.output, Some(SlotIdx::new(2)));
+    assert_eq!(node3.output, NodeOutput::Slot(SlotIdx::new(2)));
     match &node3.kind {
         CompiledNodeKind::TogetherBranch {
             branch,
@@ -2164,8 +2164,8 @@ fn assert_exact_collect(nodes: &[CompiledNode], constants: &[ConstValue]) -> Res
         }
         other => return Err(format!("expected CollectStart, got {other:?}")),
     }
-    assert_eq!(node0.output, Some(SlotIdx::new(1)));
-    assert_eq!(node0.next, None);
+    assert_eq!(node0.output, NodeOutput::Slot(SlotIdx::new(1)));
+    assert_eq!(node0.routing.next, NodeContinuation::End);
 
     let node2 = node_at(nodes, 2)?;
     match &node2.kind {
@@ -2186,8 +2186,8 @@ fn assert_exact_collect(nodes: &[CompiledNode], constants: &[ConstValue]) -> Res
         }
         other => return Err(format!("expected CollectFinish, got {other:?}")),
     }
-    assert_eq!(node3.output, Some(SlotIdx::new(2)));
-    assert_eq!(node3.next, Some(StepIdx::new(4)));
+    assert_eq!(node3.output, NodeOutput::Slot(SlotIdx::new(2)));
+    assert_eq!(node3.routing.next, NodeContinuation::Step(StepIdx::new(4)));
 
     Ok(())
 }
@@ -2204,8 +2204,8 @@ fn assert_exact_reduce(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
         }
         other => return Err(format!("expected Copy, got {other:?}")),
     }
-    assert_eq!(node0.output, Some(SlotIdx::new(1)));
-    assert_eq!(node0.next, Some(StepIdx::new(1)));
+    assert_eq!(node0.output, NodeOutput::Slot(SlotIdx::new(1)));
+    assert_eq!(node0.routing.next, NodeContinuation::Step(StepIdx::new(1)));
 
     let node1 = node_at(nodes, 1)?;
     match &node1.kind {
@@ -2229,7 +2229,7 @@ fn assert_exact_reduce(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
         }
         other => return Err(format!("expected ReduceStart, got {other:?}")),
     }
-    assert_eq!(node1.output, Some(SlotIdx::new(3)));
+    assert_eq!(node1.output, NodeOutput::Slot(SlotIdx::new(3)));
 
     let node3 = node_at(nodes, 3)?;
     match &node3.kind {
@@ -2251,7 +2251,7 @@ fn assert_exact_reduce(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
         }
         other => return Err(format!("expected ReduceNext, got {other:?}")),
     }
-    assert_eq!(node3.output, Some(SlotIdx::new(2)));
+    assert_eq!(node3.output, NodeOutput::Slot(SlotIdx::new(2)));
 
     let node4 = node_at(nodes, 4)?;
     match &node4.kind {
@@ -2260,8 +2260,8 @@ fn assert_exact_reduce(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
         }
         other => return Err(format!("expected ReduceFinish, got {other:?}")),
     }
-    assert_eq!(node4.output, Some(SlotIdx::new(4)));
-    assert_eq!(node4.next, Some(StepIdx::new(5)));
+    assert_eq!(node4.output, NodeOutput::Slot(SlotIdx::new(4)));
+    assert_eq!(node4.routing.next, NodeContinuation::Step(StepIdx::new(5)));
 
     Ok(())
 }
@@ -2281,8 +2281,8 @@ fn assert_exact_repeat(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
         }
         other => return Err(format!("expected RepeatStart, got {other:?}")),
     }
-    assert_eq!(node0.output, Some(SlotIdx::new(1)));
-    assert_eq!(node0.next, None);
+    assert_eq!(node0.output, NodeOutput::Slot(SlotIdx::new(1)));
+    assert_eq!(node0.routing.next, NodeContinuation::End);
 
     let node2 = node_at(nodes, 2)?;
     match &node2.kind {
@@ -2291,8 +2291,8 @@ fn assert_exact_repeat(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
         }
         other => return Err(format!("expected RepeatCheck, got {other:?}")),
     }
-    assert_eq!(node2.output, Some(SlotIdx::new(1)));
-    assert_eq!(node2.next, Some(StepIdx::new(1)));
+    assert_eq!(node2.output, NodeOutput::Slot(SlotIdx::new(1)));
+    assert_eq!(node2.routing.next, NodeContinuation::Step(StepIdx::new(1)));
 
     let node3 = node_at(nodes, 3)?;
     match &node3.kind {
@@ -2301,8 +2301,8 @@ fn assert_exact_repeat(nodes: &[CompiledNode], constants: &[ConstValue]) -> Resu
         }
         other => return Err(format!("expected RepeatFinish, got {other:?}")),
     }
-    assert_eq!(node3.output, Some(SlotIdx::new(2)));
-    assert_eq!(node3.next, Some(StepIdx::new(4)));
+    assert_eq!(node3.output, NodeOutput::Slot(SlotIdx::new(2)));
+    assert_eq!(node3.routing.next, NodeContinuation::Step(StepIdx::new(4)));
 
     Ok(())
 }
@@ -2352,12 +2352,12 @@ fn assert_set_const_node(
 ) -> Result<(), String> {
     let node = node_at(nodes, index)?;
     assert_eq!(
-        node.output.map(|slot| slot.get()),
+        node.output.slot().map(|slot| slot.get()),
         expected_output,
         "SetConst node {index} output slot"
     );
     assert_eq!(
-        node.next.map(|step| step.get()),
+        node.routing.next.step().map(|step| step.get()),
         expected_next,
         "SetConst node {index} next target"
     );
@@ -2391,10 +2391,15 @@ fn assert_finish_node(
 ) -> Result<(), String> {
     let node = node_at(nodes, index)?;
     assert_eq!(
-        node.output, None,
+        node.output,
+        NodeOutput::Discard,
         "Finish node {index} must not write output"
     );
-    assert_eq!(node.next, None, "Finish node {index} must not fall through");
+    assert_eq!(
+        node.routing.next,
+        NodeContinuation::End,
+        "Finish node {index} must not fall through"
+    );
     match &node.kind {
         CompiledNodeKind::Finish { result } => assert_eq!(
             result.get(),
@@ -2423,8 +2428,13 @@ fn assert_all_targets_in_range(workflow: &CompiledWorkflow, case_name: &str) -> 
     let parts = workflow.to_parts();
     let node_count = parts.nodes.len();
     for node in parts.nodes.as_ref() {
-        assert_optional_target(node.next, node_count, case_name, "next")?;
-        assert_optional_target(node.on_error, node_count, case_name, "on_error")?;
+        assert_optional_target(node.routing.next.step(), node_count, case_name, "next")?;
+        assert_optional_target(
+            node.routing.error.handler(),
+            node_count,
+            case_name,
+            "on_error",
+        )?;
         assert_kind_targets_in_range(&node.kind, node_count, case_name)?;
     }
     Ok(())
@@ -2833,10 +2843,10 @@ fn assert_two_set_collect_contract(workflow: &CompiledWorkflow) -> Result<(), St
         }
         other => return Err(format!("expected CollectStart, got {other:?}")),
     }
-    if node0.output != Some(SlotIdx::new(1)) {
+    if node0.output != NodeOutput::Slot(SlotIdx::new(1)) {
         return Err("node0.output mismatch".to_string());
     }
-    if node0.next != None {
+    if node0.routing.next != NodeContinuation::End {
         return Err("node0.next mismatch".to_string());
     }
 
@@ -2863,10 +2873,10 @@ fn assert_two_set_collect_contract(workflow: &CompiledWorkflow) -> Result<(), St
         }
         other => return Err(format!("expected CollectFinish, got {other:?}")),
     }
-    if node4.output != Some(SlotIdx::new(2)) {
+    if node4.output != NodeOutput::Slot(SlotIdx::new(2)) {
         return Err("node4.output mismatch".to_string());
     }
-    if node4.next != Some(StepIdx::new(5)) {
+    if node4.routing.next != NodeContinuation::Step(StepIdx::new(5)) {
         return Err("node4.next mismatch".to_string());
     }
 
@@ -2894,8 +2904,16 @@ fn assert_two_set_for_each_contract(
         assert_set_const_node(nodes, constants, 0, Some(0), Some(1), 0, 1)?;
 
         let node = node_at(nodes, 1)?;
-        assert_eq!(node.output.map(|s| s.get()), Some(2), "Start output slot");
-        assert_eq!(node.next, None, "Start must not fall through");
+        assert_eq!(
+            node.output.slot().map(|s| s.get()),
+            Some(2),
+            "Start output slot"
+        );
+        assert_eq!(
+            node.routing.next,
+            NodeContinuation::End,
+            "Start must not fall through"
+        );
         match &node.kind {
             CompiledNodeKind::ForEachStart {
                 input,
@@ -2917,8 +2935,16 @@ fn assert_two_set_for_each_contract(
         assert_set_const_node(nodes, constants, 3, Some(5), Some(4), 2, 2)?;
 
         let node = node_at(nodes, 4)?;
-        assert_eq!(node.output.map(|s| s.get()), Some(3), "Next output slot");
-        assert_eq!(node.next, None, "Next must not fall through");
+        assert_eq!(
+            node.output.slot().map(|s| s.get()),
+            Some(3),
+            "Next output slot"
+        );
+        assert_eq!(
+            node.routing.next,
+            NodeContinuation::End,
+            "Next must not fall through"
+        );
         match &node.kind {
             CompiledNodeKind::ForEachNext {
                 iterator_slot,
@@ -2943,8 +2969,16 @@ fn assert_two_set_for_each_contract(
         );
 
         let node = node_at(nodes, 0)?;
-        assert_eq!(node.output.map(|s| s.get()), Some(1), "Start output slot");
-        assert_eq!(node.next, None, "Start must not fall through");
+        assert_eq!(
+            node.output.slot().map(|s| s.get()),
+            Some(1),
+            "Start output slot"
+        );
+        assert_eq!(
+            node.routing.next,
+            NodeContinuation::End,
+            "Start must not fall through"
+        );
         match &node.kind {
             CompiledNodeKind::ForEachStart {
                 input,
@@ -2966,8 +3000,16 @@ fn assert_two_set_for_each_contract(
         assert_set_const_node(nodes, constants, 2, Some(4), Some(3), 1, 2)?;
 
         let node = node_at(nodes, 3)?;
-        assert_eq!(node.output.map(|s| s.get()), Some(2), "Next output slot");
-        assert_eq!(node.next, None, "Next must not fall through");
+        assert_eq!(
+            node.output.slot().map(|s| s.get()),
+            Some(2),
+            "Next output slot"
+        );
+        assert_eq!(
+            node.routing.next,
+            NodeContinuation::End,
+            "Next must not fall through"
+        );
         match &node.kind {
             CompiledNodeKind::ForEachNext {
                 iterator_slot,

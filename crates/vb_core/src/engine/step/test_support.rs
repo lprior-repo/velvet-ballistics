@@ -7,7 +7,8 @@ use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::ConstValue;
 use crate::value::{SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ErrorRouting, NodeOutput, NodeRouting,
+    ResourceContract, WorkflowParts, node,
 };
 
 pub(super) fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
@@ -38,24 +39,20 @@ pub(super) fn nop_then_finish_workflow() -> Result<CompiledWorkflow, String> {
         name: Box::<str>::from("nop_finish"),
         digest: WorkflowDigest::from_bytes([0x11; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -234,10 +231,17 @@ fn do_node(
 ) -> CompiledNode {
     CompiledNode {
         id,
-        output: Some(SlotIdx::new(0)),
-        next,
-        on_error,
-        error_slot,
+        output: NodeOutput::Slot(SlotIdx::new(0)),
+        routing: NodeRouting {
+            next: next.into(),
+            error: match on_error {
+                Some(handler) => ErrorRouting::Handler {
+                    handler,
+                    error_slot,
+                },
+                None => ErrorRouting::None,
+            },
+        },
         kind: CompiledNodeKind::Do {
             action,
             input: SlotIdx::new(0),
@@ -245,15 +249,13 @@ fn do_node(
     }
 }
 
-fn finish_node(id: StepIdx) -> CompiledNode {
-    CompiledNode {
+pub(super) fn finish_node(id: StepIdx) -> CompiledNode {
+    node(
         id,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }
+        None,
+        None,
+    )
 }

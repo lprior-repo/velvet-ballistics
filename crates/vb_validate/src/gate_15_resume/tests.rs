@@ -5,13 +5,9 @@ use vb_core::ids::{ActionId, SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 
 fn node(index: u16, next: Option<u16>, ask: bool) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: Some(SlotIdx::new(0)),
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
-        kind: if ask {
+    vb_core::workflow::node(
+        StepIdx::new(index),
+        if ask {
             CompiledNodeKind::Ask {
                 prompt: SlotIdx::new(0),
                 timeout_slot: None,
@@ -22,7 +18,9 @@ fn node(index: u16, next: Option<u16>, ask: bool) -> CompiledNode {
                 input: SlotIdx::new(0),
             }
         },
-    }
+        Some(SlotIdx::new(0)),
+        next.map(StepIdx::new),
+    )
 }
 
 fn validators() -> [fn(&WorkflowParts) -> crate::ValidationResult<()>; 3] {

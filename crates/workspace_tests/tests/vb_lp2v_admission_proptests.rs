@@ -16,7 +16,7 @@ use proptest::prelude::*;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use vb_core::value::ConstValue;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{CompiledNodeKind, ResourceContract, WorkflowParts, node};
 use vb_core::{CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::FjallJournal;
 use vb_storage::admission::VerificationWarning;
@@ -34,26 +34,22 @@ fn minimal_workflow(value: i64) -> Result<CompiledWorkflow, String> {
         name: Box::<str>::from("pi_test"),
         digest: WorkflowDigest::from_bytes([0u8; 32]),
         nodes: Box::new([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -318,26 +314,22 @@ fn pi_02_antiinvariant_tampered_digest_rejected() {
         name: Box::from("tampered"),
         digest: WorkflowDigest::from_bytes([0xFFu8; 32]), // intentionally wrong
         nodes: Box::new([
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]),
         expressions: Box::new([]),
         accessors: Box::new([]),

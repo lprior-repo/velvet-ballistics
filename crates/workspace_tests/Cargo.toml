@@ -136,6 +136,10 @@ name = "vb_test_validate_diagnostic_behavior"
 path = "tests/vb_test_validate_diagnostic_behavior.rs"
 
 [[test]]
+name = "vb_test_diagnostic_registry_unification"
+path = "tests/vb_test_diagnostic_registry_unification.rs"
+
+[[test]]
 name = "restate_adapter_contamination_guard"
 path = "tests/restate_adapter_contamination_guard.rs"
 

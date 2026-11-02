@@ -20,7 +20,7 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::workflow::{ CompiledNodeKind, ResourceContract, WorkflowParts};
 
 use crate::RuntimeError;
 use crate::counters::ShardCounters;
@@ -32,17 +32,7 @@ use crate::shard::{Shard, ShardCommand, ShardConfig, ShardDirective};
 // =============================================================================
 
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::ZERO),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(0),
-            input: SlotIdx::new(0),
-        },
-    };
+    let node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(0), }, Some(SlotIdx::ZERO), None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("suspended"),
@@ -64,27 +54,8 @@ fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 /// Workflow with Do action + Finish (exactly 2 steps).
 /// Used to verify exact step counting.
 fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let do_node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Do {
-            action: ActionId::new(7),
-            input: SlotIdx::new(0),
-        },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(1),
-        },
-    };
+    let do_node = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::Do { action: ActionId::new(7), input: SlotIdx::new(0), }, Some(SlotIdx::new(1)), Some(StepIdx::new(1)));
+    let finish = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(1), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("action_then_finish"),
@@ -105,26 +76,8 @@ fn action_then_finish_workflow() -> Option<vb_core::workflow::CompiledWorkflow> 
 
 /// Workflow that finishes immediately (SetConst -> Finish).
 fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
-    let set_const = CompiledNode {
-        id: StepIdx::ZERO,
-        output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
-        },
-    };
+    let set_const = vb_core::workflow::node(StepIdx::ZERO, CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(0)), Some(StepIdx::new(1)));
+    let finish = vb_core::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None);
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("finished"),

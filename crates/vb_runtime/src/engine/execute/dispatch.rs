@@ -160,7 +160,7 @@ fn dispatch_for_each<P: BodyEntryPolicy>(
             *limit,
             *body,
             *done,
-            ctx.node.output,
+            ctx.node.output.slot(),
         ),
         CompiledNodeKind::ForEachNext {
             iterator_slot,
@@ -172,13 +172,13 @@ fn dispatch_for_each<P: BodyEntryPolicy>(
             *iterator_slot,
             *body,
             *done,
-            ctx.node.output,
+            ctx.node.output.slot(),
         ),
         CompiledNodeKind::ForEachJoin { output } => handle_for_each_join(
             ctx.run,
             *output,
-            ctx.node.output,
-            ctx.node.next,
+            ctx.node.output.slot(),
+            ctx.node.routing.next.step(),
             ctx.node.id,
         ),
         _ => Err(family_invariant()),
@@ -188,7 +188,7 @@ fn dispatch_for_each<P: BodyEntryPolicy>(
 fn dispatch_together(ctx: NodeDispatchContext<'_>) -> RuntimeEngineResult<RuntimeSignal> {
     match &ctx.node.kind {
         CompiledNodeKind::TogetherStart { branches, join } => {
-            handle_together_start(ctx.run, ctx.store, branches, *join, ctx.node.output)
+            handle_together_start(ctx.run, ctx.store, branches, *join, ctx.node.output.slot())
         }
         CompiledNodeKind::TogetherBranch {
             branch,
@@ -202,7 +202,7 @@ fn dispatch_together(ctx: NodeDispatchContext<'_>) -> RuntimeEngineResult<Runtim
             *entry,
             *join,
             *accumulator,
-            ctx.node.output,
+            ctx.node.output.slot(),
         ),
         CompiledNodeKind::TogetherJoin {
             branch_count,
@@ -212,8 +212,8 @@ fn dispatch_together(ctx: NodeDispatchContext<'_>) -> RuntimeEngineResult<Runtim
             ctx.store,
             *branch_count,
             *accumulator,
-            ctx.node.output,
-            ctx.node.next,
+            ctx.node.output.slot(),
+            ctx.node.routing.next.step(),
             ctx.node.id,
         ),
         _ => Err(family_invariant()),

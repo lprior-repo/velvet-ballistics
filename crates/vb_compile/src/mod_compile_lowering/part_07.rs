@@ -6,6 +6,7 @@ use crate::mod_compile_validation::{
 };
 use saphyr::Yaml;
 use std::collections::HashMap;
+use vb_core::workflow::node;
 use vb_core::{
     AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
     ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
@@ -23,40 +24,34 @@ pub fn lower_repeat(
     let attempt_slot = builder.allocate_slot()?;
     let result = builder.allocate_slot()?;
     Ok(vec![
-        CompiledNode {
+        node(
             id,
-            output: Some(attempt_slot),
-            next: None,
-            error_slot: None,
-            on_error: None,
-            kind: CompiledNodeKind::RepeatStart {
+            CompiledNodeKind::RepeatStart {
                 max_attempts,
                 body,
                 done,
             },
-        },
-        CompiledNode {
-            id: body,
-            output: None,
-            next: None,
-            error_slot: None,
-            on_error: None,
-            kind: CompiledNodeKind::RepeatAttempt {
+            Some(attempt_slot),
+            None,
+        ),
+        node(
+            body,
+            CompiledNodeKind::RepeatAttempt {
                 attempt_slot,
                 body,
                 done,
             },
-        },
-        CompiledNode {
-            id: done,
-            output: Some(result),
-            next: None,
-            error_slot: None,
-            on_error: None,
-            kind: CompiledNodeKind::RepeatFinish {
+            None,
+            None,
+        ),
+        node(
+            done,
+            CompiledNodeKind::RepeatFinish {
                 result: attempt_slot,
             },
-        },
+            Some(result),
+            None,
+        ),
     ])
 }
 
@@ -96,14 +91,7 @@ pub fn lower_wait(id: StepIdx, kind: WaitKind, builder: &mut SlotCompiler) -> Co
             }
         }
     };
-    CompiledNode {
-        id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: compiled_kind,
-    }
+    node(id, compiled_kind, None, None)
 }
 
 /// Lowers an `ask` primitive into `Ask` and `AskResume` IR nodes.
@@ -128,39 +116,28 @@ pub fn lower_ask(
             limit: usize::from(u16::MAX),
         })?;
     Ok(vec![
-        CompiledNode {
+        node(
             id,
-            output: Some(answer),
-            next: None,
-            error_slot: None,
-            on_error: None,
-            kind: CompiledNodeKind::Ask {
+            CompiledNodeKind::Ask {
                 prompt,
                 timeout_slot,
             },
-        },
-        CompiledNode {
-            id: resume,
-            output: Some(answer),
-            next: None,
-            error_slot: None,
-            on_error: None,
-            kind: CompiledNodeKind::AskResume { answer },
-        },
+            Some(answer),
+            None,
+        ),
+        node(
+            resume,
+            CompiledNodeKind::AskResume { answer },
+            Some(answer),
+            None,
+        ),
     ])
 }
 
 /// Lowers a `finish` primitive into a terminal `Finish` node.
 pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) -> CompiledNode {
     builder.record_slot(result);
-    CompiledNode {
-        id,
-        output: None,
-        next: None,
-        error_slot: None,
-        on_error: None,
-        kind: CompiledNodeKind::Finish { result },
-    }
+    node(id, CompiledNodeKind::Finish { result }, None, None)
 }
 
 /// Validates compiled workflow IR against structural and resource invariants.

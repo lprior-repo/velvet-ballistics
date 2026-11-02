@@ -233,7 +233,7 @@ fn choose_body_reads_parent_declarations_and_shadows_without_leaking() -> Result
         .rev()
         .find_map(|node| {
             matches!(node.kind, CompiledNodeKind::EvalExpr { .. })
-                .then_some(node.output)
+                .then_some(node.output.slot())
                 .flatten()
         })
         .ok_or("missing second body expression output")?;
@@ -261,7 +261,7 @@ fn false_choose_does_not_execute_its_body() -> Result<(), String> {
     )?;
     for node in &workflow.to_parts().nodes {
         if matches!(node.kind, CompiledNodeKind::EvalExpr { .. }) {
-            let slot = node.output.ok_or("expression output missing")?;
+            let slot = node.output.slot().ok_or("expression output missing")?;
             assert!(
                 frame.read_slot(slot).is_err(),
                 "unselected body wrote an output"
@@ -366,7 +366,7 @@ fn execute_action(
     let CompiledNodeKind::Do { action, input } = node.kind else {
         return Err("not Do".to_owned());
     };
-    let output = node.output.ok_or("missing action output")?;
+    let output = node.output.slot().ok_or("missing action output")?;
     assert_eq!(input, port);
     assert_ne!(input, output);
     let step = node.id;
@@ -477,7 +477,7 @@ fn do_after_repeat_cannot_alias_private_counter_or_input() -> Result<(), String>
         .iter()
         .find_map(|node| {
             matches!(node.kind, CompiledNodeKind::RepeatStart { .. })
-                .then_some(node.output)
+                .then_some(node.output.slot())
                 .flatten()
         })
         .ok_or("no Repeat counter")?;
@@ -486,7 +486,7 @@ fn do_after_repeat_cannot_alias_private_counter_or_input() -> Result<(), String>
         .iter()
         .find_map(|node| {
             matches!(node.kind, CompiledNodeKind::Do { .. })
-                .then_some(node.output)
+                .then_some(node.output.slot())
                 .flatten()
         })
         .ok_or("no Do output")?;
@@ -571,7 +571,7 @@ fn selected_branch_do_completes_before_local_expression() -> Result<(), String> 
         .iter()
         .find_map(|node| {
             matches!(node.kind, CompiledNodeKind::EvalExpr { .. })
-                .then_some(node.output)
+                .then_some(node.output.slot())
                 .flatten()
         })
         .ok_or("missing body expression output")?;
@@ -597,7 +597,7 @@ fn unselected_branch_never_dispatches_do() -> Result<(), String> {
         if let CompiledNodeKind::Do { .. } = node.kind {
             assert!(
                 frame
-                    .read_slot(node.output.ok_or("missing action output")?)
+                    .read_slot(node.output.slot().ok_or("missing action output")?)
                     .is_err()
             );
         }
@@ -707,7 +707,7 @@ fn declared_input_expression_preserves_derived_taint() -> Result<(), String> {
         .iter()
         .find_map(|node| {
             matches!(node.kind, CompiledNodeKind::EvalExpr { .. })
-                .then_some(node.output)
+                .then_some(node.output.slot())
                 .flatten()
         })
         .ok_or("missing expression result")?;

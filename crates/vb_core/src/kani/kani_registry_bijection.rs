@@ -5,10 +5,11 @@
 //! numeric codes, symbolic↔numeric round-trip identity.
 //! PO-010: No diagnostic code has numeric value 0x0000.
 //!
-//! Bound: Registry size ~90 entries (unwind=200 for pairwise, unwind=100 for non-zero).
+//! Bound: Production registry size (unwind=300 for pairwise, unwind=300 for non-zero).
 
-// Re-use the types declared in kani_symbolic_code_validation
-use super::kani_symbolic_code_validation::CODE_REGISTRY;
+// Bind to the production registry: this harness proves properties of
+// crate::diagnostic::CODE_REGISTRY, not a shadow copy.
+use crate::diagnostic::CODE_REGISTRY;
 
 /// Const helper: check if a u16 value appears exactly once in the registry's numeric fields.
 const fn count_numeric(value: u16) -> usize {
@@ -29,7 +30,7 @@ mod harnesses {
 
     /// PO-002 H1: No duplicate symbolic names in CODE_REGISTRY.
     #[kani::proof]
-    #[kani::unwind(200)]
+    #[kani::unwind(300)]
     fn kani_registry_bijection_unique_symbolic() {
         for i in 0..CODE_REGISTRY.len() {
             for j in (i + 1)..CODE_REGISTRY.len() {
@@ -43,7 +44,7 @@ mod harnesses {
 
     /// PO-002 H2: No duplicate numeric codes in CODE_REGISTRY.
     #[kani::proof]
-    #[kani::unwind(200)]
+    #[kani::unwind(300)]
     fn kani_registry_bijection_unique_numeric() {
         for i in 0..CODE_REGISTRY.len() {
             for j in (i + 1)..CODE_REGISTRY.len() {
@@ -58,14 +59,13 @@ mod harnesses {
     /// PO-002 H3: For every entry, if we look up by symbolic name, we get
     /// the correct numeric code, and vice versa (bijection).
     #[kani::proof]
-    #[kani::unwind(200)]
+    #[kani::unwind(300)]
     fn kani_registry_bijection_roundtrip_symbolic_to_numeric() {
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];
             // The symbolic→numeric lookup should find this entry
-            // This is verified by construction — the const function scans the registry.
-            let found =
-                super::super::kani_symbolic_code_validation::symbolic_to_numeric(entry.symbolic);
+            // in the production registry.
+            let found = crate::diagnostic::symbolic_to_numeric(entry.symbolic);
             assert!(
                 found.is_some(),
                 "Every registered symbolic name must resolve"
@@ -81,7 +81,7 @@ mod harnesses {
     /// PO-002 H4: Every numeric code in the registry maps to exactly one
     /// symbolic name (verified via the count_numeric invariant).
     #[kani::proof]
-    #[kani::unwind(200)]
+    #[kani::unwind(300)]
     fn kani_registry_bijection() {
         // Combined harness: verify uniqueness of symbolic and numeric,
         // and round-trip property
@@ -92,7 +92,7 @@ mod harnesses {
 
     /// PO-010: No entry has numeric code 0x0000 (reserved sentinel).
     #[kani::proof]
-    #[kani::unwind(100)]
+    #[kani::unwind(300)]
     fn kani_registry_nonzero() {
         for i in 0..CODE_REGISTRY.len() {
             assert!(

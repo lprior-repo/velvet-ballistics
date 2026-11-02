@@ -20,14 +20,12 @@ fn u16_sub(a: u16, b: u16) -> Result<u16, Box<dyn std::error::Error>> {
 }
 
 fn node(id: u16, kind: CompiledNodeKind, next: Option<u16>, output: Option<u16>) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
+    vb_core::workflow::node(
+        StepIdx::new(id),
         kind,
-        next: next.map(StepIdx::new),
-        output: output.map(SlotIdx::new),
-        on_error: None,
-        error_slot: None,
-    }
+        output.map(SlotIdx::new),
+        next.map(StepIdx::new),
+    )
 }
 
 fn validate(nodes: &[CompiledNode], expected: u16) -> Result<(), Box<dyn std::error::Error>> {

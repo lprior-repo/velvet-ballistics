@@ -22,8 +22,8 @@ pub(super) fn validate_region_edges(
     }
     for node in &parts.nodes {
         for (target, origin) in [
-            (node.next, EdgeOrigin::Next),
-            (node.on_error, EdgeOrigin::Error),
+            (node.routing.next.step(), EdgeOrigin::Next),
+            (node.routing.error.handler(), EdgeOrigin::Error),
         ] {
             if let Some(target) = target {
                 validate_edge(parts, region, regions, node, target, origin)?;
@@ -114,7 +114,9 @@ fn validate_recovery_support(
         return Ok(());
     }
     let internal_handler = node
-        .on_error
+        .routing
+        .error
+        .handler()
         .is_some_and(|target| region.contains(target) && !is_finish(parts, target));
     if internal_handler || matches!(node.kind, CompiledNodeKind::ErrorHandler { .. }) {
         return Err(WorkflowError::LoopRegionUnsupported {

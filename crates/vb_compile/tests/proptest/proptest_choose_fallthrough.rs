@@ -59,7 +59,7 @@ proptest! {
                                 match &bn.kind {
                                     CompiledNodeKind::Finish { .. } => break,
                                     _ => {
-                                        prop_assert!(bn.next.is_some(),
+                                        prop_assert!(bn.routing.next.step().is_some(),
                                             "body node {} must have next pointer", j);
                                     }
                                 }

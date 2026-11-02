@@ -3,7 +3,7 @@
 //! These exercise the public IR budget walker; the unchanged compiler ten-branch
 //! oracle separately covers source compilation and deterministic artifact identity.
 
-use vb_core::budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
+use vb_core::budget::{BoundednessPolicy, BudgetDimension, BudgetError, WholeWorkflowBudget};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError};
 use vb_core::{ConstIdx, SlotIdx, StepIdx};
 
@@ -20,14 +20,7 @@ fn offset(base: usize, amount: usize) -> TestResult<StepIdx> {
 }
 
 fn node(id: StepIdx, kind: CompiledNodeKind, next: Option<StepIdx>) -> CompiledNode {
-    CompiledNode {
-        id,
-        kind,
-        next,
-        output: None,
-        error_slot: None,
-        on_error: None,
-    }
+    vb_core::workflow::node(id, kind, None, next)
 }
 
 fn finish(nodes: &mut Vec<CompiledNode>) -> TestResult {
@@ -832,7 +825,7 @@ fn genuinely_nested_loop_constructor_preserves_depth_policy() -> TestResult {
             assert!(matches!(
                 result,
                 Err(WorkflowError::BudgetPolicyExceeded {
-                    detail: "max_nesting_depth"
+                    detail: BudgetDimension::NestingDepth
                 })
             ));
         }

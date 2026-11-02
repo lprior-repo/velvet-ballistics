@@ -27,16 +27,14 @@ steps:
 ";
 
 fn input_slot_parts() -> WorkflowParts {
-    let finish = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    let finish = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    };
+        None,
+        None,
+    );
     WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("cli-input"),
@@ -1143,14 +1141,7 @@ fn expr_variable_reference() {
 
 #[test]
 fn core_workflow_rejects_out_of_bounds_step() {
-    let bad_node = CompiledNode {
-        id: StepIdx::new(99),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let bad_node = vb_core::workflow::node(StepIdx::new(99), CompiledNodeKind::Nop, None, None);
     let parts = minimal_parts(Box::from([bad_node]));
     let result = vb_core::engine::validate_compiled_workflow(&parts);
     assert!(result.is_err(), "out-of-bounds step should fail");
@@ -1158,16 +1149,14 @@ fn core_workflow_rejects_out_of_bounds_step() {
 
 #[test]
 fn core_workflow_rejects_invalid_jump_target() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Jump {
+    let node = vb_core::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Jump {
             target: StepIdx::new(50),
         },
-    };
+        None,
+        None,
+    );
     let parts = minimal_parts(Box::from([node]));
     let result = vb_core::engine::validate_transition_target(&parts);
     assert!(result.is_err(), "invalid jump target should fail");

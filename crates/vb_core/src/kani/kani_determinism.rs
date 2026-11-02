@@ -1,19 +1,13 @@
 #![forbid(unsafe_code)]
 //! PO-013: Kani harness for symbolic_code determinism and panic-freedom.
 //!
-//! Proves: For any error value implementing HasSymbolicCode, calling
-//! symbolic_code() twice returns the same SymbolicCode; never panics;
-//! no I/O side effects.
+//! Proves: For any production DiagnosticCode, calling symbolic_code() twice
+//! returns the same SymbolicCode; never panics; no I/O side effects.
 //!
-//! Bound: Each HasSymbolicCode implementor — arbitrary instance (kani::any);
-//! For DiagnosticCode::symbolic_code(): 90-entry registry scan (unwind=100).
+//! Bound: DiagnosticCode — arbitrary instance (kani::any);
+//! For DiagnosticCode::symbolic_code(): production registry scan (unwind=300).
 
-use super::kani_symbolic_code_validation::{CODE_REGISTRY, DiagnosticCode, SymbolicCode};
-
-/// Trait for types that carry a symbolic diagnostic code.
-pub trait HasSymbolicCode {
-    fn symbolic_code(&self) -> SymbolicCode;
-}
+use crate::diagnostic::{CODE_REGISTRY, DiagnosticCode};
 
 #[cfg(kani)]
 mod harnesses {
@@ -22,7 +16,7 @@ mod harnesses {
     /// PO-013 H1: For arbitrary DiagnosticCode values (kani::any), calling
     /// symbolic_code() twice returns the same result; never panics.
     #[kani::proof]
-    #[kani::unwind(100)]
+    #[kani::unwind(300)]
     fn kani_symbolic_code_determinism() {
         // Generate arbitrary u16 value (any possible DiagnosticCode)
         let raw: u16 = kani::any();
@@ -63,7 +57,7 @@ mod harnesses {
 
     /// Verify that symbolic_code() is consistent across all registry entries.
     #[kani::proof]
-    #[kani::unwind(100)]
+    #[kani::unwind(300)]
     fn kani_symbolic_code_consistency() {
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];

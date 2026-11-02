@@ -18,6 +18,7 @@ use vb_core::value::{ConstValue, SlotValue};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, SlotBranch, WorkflowParts,
+    node,
 };
 
 pub(crate) fn cn(
@@ -26,14 +27,12 @@ pub(crate) fn cn(
     next: Option<u16>,
     kind: CompiledNodeKind,
 ) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: output.map(SlotIdx::new),
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
+    node(
+        StepIdx::new(id),
         kind,
-    }
+        output.map(SlotIdx::new),
+        next.map(StepIdx::new),
+    )
 }
 
 pub(crate) fn fin(id: u16, result: u16) -> CompiledNode {

@@ -4,7 +4,7 @@
 
 use vb_core::budget::WholeWorkflowBudget;
 use vb_core::ids::{SlotIdx, StepIdx};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, NodeContinuation, ResourceContract};
 
 fn step(n: u16) -> StepIdx {
     StepIdx::new(n)
@@ -14,19 +14,12 @@ fn slot(n: u16) -> SlotIdx {
 }
 
 fn node(id: u16, kind: CompiledNodeKind) -> CompiledNode {
-    CompiledNode {
-        id: step(id),
-        kind,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-    }
+    vb_core::workflow::node(step(id), kind, None, None)
 }
 
 fn nop(id: u16, next: u16) -> CompiledNode {
     let mut n = node(id, CompiledNodeKind::Nop);
-    n.next = Some(step(next));
+    n.routing.next = NodeContinuation::Step(step(next));
     n
 }
 

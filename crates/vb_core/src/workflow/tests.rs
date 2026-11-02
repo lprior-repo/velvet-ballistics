@@ -1,4 +1,4 @@
-use crate::budget::BudgetError;
+use crate::budget::{BudgetDimension, BudgetError};
 use crate::ids::{
     AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
 };
@@ -6,8 +6,9 @@ use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_P
 use crate::value::ConstValue;
 use crate::workflow::{
     AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-    CoreError, ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract,
-    SlotBranch, WorkflowError, WorkflowParts, check_expr_stack_bound, validate_budget_result,
+    ContractResource, CoreError, ErrorRouting, ExprBranch, ExprOp, ExprProgram, InputSlotKind,
+    NodeContinuation, NodeOutput, PathSegment, ResourceContract, SlotBranch, WorkflowError,
+    WorkflowParts, check_expr_stack_bound, validate_budget_result,
 };
 use std::fmt::Debug;
 
@@ -97,12 +98,15 @@ fn workflow_parts_accept_resource_contract_at_exact_usage_bounds() -> Result<(),
 
 #[test]
 fn workflow_parts_reject_nodes_exceeding_resource_contract() -> Result<(), String> {
-    expect_resource_error(resource_contract(0, 0, 1, 0, 0), "max_steps")
+    expect_resource_error(resource_contract(0, 0, 1, 0, 0), ContractResource::Steps)
 }
 
 #[test]
 fn workflow_parts_reject_constants_exceeding_resource_contract() -> Result<(), String> {
-    expect_resource_error(resource_contract(1, 0, 0, 0, 0), "max_constants")
+    expect_resource_error(
+        resource_contract(1, 0, 0, 0, 0),
+        ContractResource::Constants,
+    )
 }
 
 #[test]
@@ -112,7 +116,7 @@ fn workflow_parts_reject_slot_count_exceeding_resource_contract() -> Result<(), 
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_slots",
+            resource: ContractResource::Slots,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -129,7 +133,7 @@ fn workflow_parts_reject_expressions_exceeding_resource_contract() -> Result<(),
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_expressions",
+            resource: ContractResource::Expressions,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -147,7 +151,7 @@ fn workflow_parts_reject_expression_stack_exceeding_resource_contract() -> Resul
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_expr_stack",
+            resource: ContractResource::ExprStack,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -166,7 +170,7 @@ fn workflow_parts_reject_hard_limit_exceeding_contract() -> Result<(), String> {
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expressions",
+            resource: ContractResource::Expressions,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -185,7 +189,7 @@ fn workflow_parts_reject_accessors_hard_limit_exceeding_contract() -> Result<(),
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_accessors",
+            resource: ContractResource::Accessors,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -204,7 +208,7 @@ fn workflow_parts_reject_expression_stack_hard_limit_exceeding_contract() -> Res
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_expr_stack",
+            resource: ContractResource::ExprStack,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -213,16 +217,14 @@ fn workflow_parts_reject_expression_stack_hard_limit_exceeding_contract() -> Res
 #[test]
 fn workflow_parts_reject_node_id_mismatch() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 0, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
 
     match CompiledWorkflow::try_from_parts(parts) {
@@ -401,7 +403,7 @@ fn workflow_parts_reject_build_list_over_item_limit() -> Result<(), String> {
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "list_items",
+            resource: ContractResource::ListItems,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -445,7 +447,7 @@ fn workflow_parts_reject_build_object_over_field_limit() -> Result<(), String> {
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "object_fields",
+            resource: ContractResource::ObjectFields,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -516,14 +518,12 @@ fn construction_parts_with_symbols(
         input_slots: Box::new([]),
         name: Box::<str>::from("construction_validation"),
         digest: WorkflowDigest::from_bytes([0x42; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
             kind,
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -536,7 +536,10 @@ fn construction_parts_with_symbols(
     }
 }
 
-fn expect_resource_error(contract: ResourceContract, resource: &'static str) -> Result<(), String> {
+fn expect_resource_error(
+    contract: ResourceContract,
+    resource: ContractResource,
+) -> Result<(), String> {
     let parts = finish_const_parts_with(contract, Box::new([]));
 
     match CompiledWorkflow::try_from_parts(parts) {
@@ -563,14 +566,12 @@ fn finish_const_parts_with(
         input_slots: Box::new([]),
         name: Box::<str>::from("resource_case"),
         digest: WorkflowDigest::from_bytes([3; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions,
         accessors: Box::new([]),
@@ -602,14 +603,12 @@ fn workflow_input_slots_accept_valid_increasing_indices() -> Result<(), String> 
         ]),
         name: Box::<str>::from("input_slot_case"),
         digest: WorkflowDigest::from_bytes([5; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -634,14 +633,12 @@ fn workflow_input_slots_accept_empty() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("input_slot_empty"),
         digest: WorkflowDigest::from_bytes([6; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -669,14 +666,12 @@ fn workflow_input_slots_reject_out_of_bounds() -> Result<(), String> {
         }]),
         name: Box::<str>::from("input_slot_oob"),
         digest: WorkflowDigest::from_bytes([7; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -710,14 +705,12 @@ fn workflow_input_slots_reject_duplicate() -> Result<(), String> {
         ]),
         name: Box::<str>::from("input_slot_dup"),
         digest: WorkflowDigest::from_bytes([8; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -751,14 +744,12 @@ fn workflow_input_slots_reject_non_canonical_order() -> Result<(), String> {
         ]),
         name: Box::<str>::from("input_slot_order"),
         digest: WorkflowDigest::from_bytes([9; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -792,14 +783,12 @@ fn workflow_input_slots_out_of_bounds_before_duplicate() -> Result<(), String> {
         ]),
         name: Box::<str>::from("input_slot_prec"),
         digest: WorkflowDigest::from_bytes([10; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -855,34 +844,23 @@ fn branch_parts(
         name: Box::<str>::from("branch_case"),
         digest: WorkflowDigest::from_bytes([4; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: branch_kind,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(StepIdx::new(0), branch_kind, None, None),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions,
@@ -958,14 +936,12 @@ fn workflow_error_entry_out_of_bounds_exact_variant() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("entry_oob"),
         digest: WorkflowDigest::from_bytes([0; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -990,14 +966,12 @@ fn workflow_error_step_out_of_bounds_exact_variant() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("step_oob"),
         digest: WorkflowDigest::from_bytes([0; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(99)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(99)),
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -1018,14 +992,12 @@ fn workflow_error_step_out_of_bounds_exact_variant() -> Result<(), String> {
 #[test]
 fn workflow_error_slot_out_of_bounds_exact_variant() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(5)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }]
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(5)),
+        None,
+    )]
     .into_boxed_slice();
     parts.slot_count = 1;
 
@@ -1038,16 +1010,14 @@ fn workflow_error_slot_out_of_bounds_exact_variant() -> Result<(), String> {
 #[test]
 fn workflow_error_const_out_of_bounds_exact_variant() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 0, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(50),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
 
     match CompiledWorkflow::try_from_parts(parts) {
@@ -1061,14 +1031,12 @@ fn workflow_error_const_out_of_bounds_exact_variant() -> Result<(), String> {
 #[test]
 fn workflow_error_node_id_mismatch_exact_variant() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 0, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(7),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }]
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(7),
+        CompiledNodeKind::Nop,
+        None,
+        None,
+    )]
     .into_boxed_slice();
 
     match CompiledWorkflow::try_from_parts(parts) {
@@ -1155,14 +1123,12 @@ fn workflow_entry_step_at_node_count_rejected_with_entry_out_of_bounds() -> Resu
         input_slots: Box::new([]),
         name: Box::<str>::from("entry_at_boundary"),
         digest: WorkflowDigest::from_bytes([1; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -1185,16 +1151,14 @@ fn workflow_entry_step_at_node_count_rejected_with_entry_out_of_bounds() -> Resu
 #[test]
 fn workflow_set_const_out_of_bounds_constant_returns_const_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::SetConst {
             value: ConstIdx::new(99),
         },
-    }]
+        Some(SlotIdx::new(0)),
+        None,
+    )]
     .into_boxed_slice();
     parts.slot_count = 1;
 
@@ -1211,16 +1175,14 @@ fn workflow_set_const_out_of_bounds_constant_returns_const_out_of_bounds() -> Re
 #[test]
 fn workflow_copy_out_of_bounds_source_slot_returns_slot_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Copy {
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Copy {
             source: SlotIdx::new(5),
         },
-    }]
+        Some(SlotIdx::new(0)),
+        None,
+    )]
     .into_boxed_slice();
     parts.slot_count = 1;
 
@@ -1235,16 +1197,14 @@ fn workflow_copy_out_of_bounds_source_slot_returns_slot_out_of_bounds() -> Resul
 #[test]
 fn workflow_eval_expr_out_of_bounds_returns_expression_wrapped_error() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::EvalExpr {
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::EvalExpr {
             expr: ExprIdx::new(99),
         },
-    }]
+        Some(SlotIdx::new(0)),
+        None,
+    )]
     .into_boxed_slice();
     parts.slot_count = 1;
 
@@ -1263,14 +1223,12 @@ fn workflow_eval_expr_out_of_bounds_returns_expression_wrapped_error() -> Result
 #[test]
 fn workflow_node_output_slot_out_of_bounds_returns_slot_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(5)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }]
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(5)),
+        None,
+    )]
     .into_boxed_slice();
     parts.slot_count = 1;
 
@@ -1285,16 +1243,14 @@ fn workflow_node_output_slot_out_of_bounds_returns_slot_out_of_bounds() -> Resul
 #[test]
 fn workflow_jump_target_out_of_bounds_returns_step_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 0, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Jump {
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Jump {
             target: StepIdx::new(50),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
 
     match CompiledWorkflow::try_from_parts(parts) {
@@ -1308,16 +1264,14 @@ fn workflow_jump_target_out_of_bounds_returns_step_out_of_bounds() -> Result<(),
 #[test]
 fn workflow_finish_result_slot_out_of_bounds_returns_slot_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Finish {
             result: SlotIdx::new(10),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     parts.slot_count = 1;
 
@@ -1332,14 +1286,12 @@ fn workflow_finish_result_slot_out_of_bounds_returns_slot_out_of_bounds() -> Res
 #[test]
 fn workflow_nop_next_step_out_of_bounds_returns_step_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 0, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: Some(StepIdx::new(200)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    }]
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::Nop,
+        None,
+        Some(StepIdx::new(200)),
+    )]
     .into_boxed_slice();
 
     match CompiledWorkflow::try_from_parts(parts) {
@@ -1358,14 +1310,12 @@ fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded() ->
         input_slots: Box::new([]),
         name: Box::<str>::from("zero_max_steps"),
         digest: WorkflowDigest::from_bytes([2; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -1379,7 +1329,7 @@ fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded() ->
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_steps",
+            resource: ContractResource::Steps,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -1390,16 +1340,14 @@ fn workflow_zero_max_steps_with_one_node_returns_resource_contract_exceeded() ->
 #[test]
 fn workflow_build_list_slot_out_of_bounds_returns_slot_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(0)),
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::BuildList {
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::BuildList {
             items: vec![SlotIdx::new(0), SlotIdx::new(5)].into_boxed_slice(),
         },
-    }]
+        Some(SlotIdx::new(0)),
+        None,
+    )]
     .into_boxed_slice();
     parts.slot_count = 1;
 
@@ -1415,33 +1363,17 @@ fn workflow_build_list_slot_out_of_bounds_returns_slot_out_of_bounds() -> Result
 fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(3, 0, 1, 0, 0), Box::new([]));
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::TogetherStart {
+        crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
                 branches: vec![StepIdx::new(1), StepIdx::new(99)].into_boxed_slice(),
                 join: StepIdx::new(2),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
+            None,
+            None,
+        ),
+        crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
+        crate::workflow::node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
     ]
     .into_boxed_slice();
     parts.resource_contract.max_steps = 3;
@@ -1458,25 +1390,16 @@ fn workflow_together_start_branch_out_of_bounds_returns_step_out_of_bounds() -> 
 fn workflow_together_start_join_out_of_bounds_returns_step_out_of_bounds() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(2, 0, 1, 0, 0), Box::new([]));
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::TogetherStart {
+        crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::TogetherStart {
                 branches: vec![StepIdx::new(1)].into_boxed_slice(),
                 join: StepIdx::new(50),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
+            None,
+            None,
+        ),
+        crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
     ]
     .into_boxed_slice();
     parts.resource_contract.max_steps = 2;
@@ -1492,23 +1415,21 @@ fn workflow_together_start_join_out_of_bounds_returns_step_out_of_bounds() -> Re
 #[test]
 fn workflow_together_join_zero_branch_count_returns_resource_exceeded() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(1, 1, 1, 0, 0), Box::new([]));
-    parts.nodes = vec![CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::TogetherJoin {
+    parts.nodes = vec![crate::workflow::node(
+        StepIdx::new(0),
+        CompiledNodeKind::TogetherJoin {
             branch_count: 0,
             accumulator: SlotIdx::new(0),
         },
-    }]
+        None,
+        None,
+    )]
     .into_boxed_slice();
     parts.slot_count = 1;
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "branch_count",
+            resource: ContractResource::BranchCount,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -1520,41 +1441,25 @@ fn workflow_together_join_zero_branch_count_returns_resource_exceeded() -> Resul
 fn workflow_repeat_start_zero_max_attempts_returns_resource_exceeded() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(3, 0, 1, 0, 0), Box::new([]));
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::RepeatStart {
+        crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::RepeatStart {
                 max_attempts: 0,
                 body: StepIdx::new(1),
                 done: StepIdx::new(2),
             },
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
+            None,
+            None,
+        ),
+        crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Nop, None, None),
+        crate::workflow::node(StepIdx::new(2), CompiledNodeKind::Nop, None, None),
     ]
     .into_boxed_slice();
     parts.resource_contract.max_steps = 3;
 
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_retry_attempts",
+            resource: ContractResource::RetryAttempts,
         }) => Ok(()),
         other => Err(format!("unexpected result: {other:?}")),
     }
@@ -1566,22 +1471,13 @@ fn workflow_repeat_start_zero_max_attempts_returns_resource_exceeded() -> Result
 fn workflow_second_node_id_mismatch_returns_node_id_mismatch() -> Result<(), String> {
     let mut parts = finish_const_parts_with(resource_contract(2, 0, 1, 0, 0), Box::new([]));
     parts.nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
-        CompiledNode {
-            id: StepIdx::new(5), // should be 1
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
+        crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(1)),
+        ),
+        crate::workflow::node(StepIdx::new(5), CompiledNodeKind::Nop, None, None),
     ]
     .into_boxed_slice();
     parts.resource_contract.max_steps = 2;
@@ -1707,34 +1603,28 @@ fn phase46_parts_with_nodes(nodes: Vec<CompiledNode>, slot_count: u16) -> Workfl
 fn phase46_rejects_unreachable_node() -> Result<(), String> {
     let parts = phase46_parts_with_nodes(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         1,
     );
@@ -1748,32 +1638,26 @@ fn phase46_rejects_unreachable_node() -> Result<(), String> {
 fn phase46_accepts_reachable_chain() -> Result<(), String> {
     let parts = phase46_parts_with_nodes(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         1,
     );
@@ -1786,24 +1670,20 @@ fn phase46_accepts_reachable_chain() -> Result<(), String> {
 fn phase46_rejects_backward_next() -> Result<(), String> {
     let parts = phase46_parts_with_nodes(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: Some(StepIdx::new(0)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                Some(StepIdx::new(0)),
+            ),
         ],
         1,
     );
@@ -1823,24 +1703,20 @@ fn phase46_rejects_backward_next() -> Result<(), String> {
 fn phase46_rejects_jump_backward() -> Result<(), String> {
     let parts = phase46_parts_with_nodes(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Jump {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Jump {
                     target: StepIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         1,
     );
@@ -1865,30 +1741,26 @@ fn loop_start_body_must_be_forward_edge() -> Result<(), String> {
     // rejects the backward `body` edge with WorkflowError::BackwardEdge.
     let parts = phase46_parts_with_nodes(
         vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachStart {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
                     limit: 1,
                     body: StepIdx::new(0),
                     done: StepIdx::new(1),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ],
         2,
     );
@@ -1910,50 +1782,42 @@ fn phase46_accepts_foreach_forward() -> Result<(), String> {
         name: Box::<str>::from("phase46_foreach"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(2)),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachStart {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
                     limit: 10,
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: Some(StepIdx::new(2)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachNext {
+                Some(SlotIdx::new(2)),
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(2)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(2),
                     body: StepIdx::new(1),
                     done: StepIdx::new(3),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(3),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -1978,76 +1842,64 @@ fn phase46_rejects_improper_nesting() -> Result<(), String> {
         name: Box::<str>::from("phase46_nesting"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachStart {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
                     limit: 10,
                     body: StepIdx::new(1),
                     done: StepIdx::new(4),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachStart {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(1),
                     item_slot: SlotIdx::new(2),
                     limit: 10,
                     body: StepIdx::new(2),
                     done: StepIdx::new(5),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: None,
-                next: Some(StepIdx::new(3)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachNext {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(3)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(3),
+                CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(3),
                     body: StepIdx::new(2),
                     done: StepIdx::new(5),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(4),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachNext {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(4),
+                CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(4),
                     body: StepIdx::new(1),
                     done: StepIdx::new(5),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(5),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(5),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -2081,76 +1933,64 @@ fn phase46_accepts_proper_nesting() -> Result<(), String> {
         name: Box::<str>::from("phase46_proper"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(4)),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachStart {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(0),
                     item_slot: SlotIdx::new(1),
                     limit: 10,
                     body: StepIdx::new(1),
                     done: StepIdx::new(5),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(3)),
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachStart {
+                Some(SlotIdx::new(4)),
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::ForEachStart {
                     input: SlotIdx::new(1),
                     item_slot: SlotIdx::new(2),
                     limit: 10,
                     body: StepIdx::new(2),
                     done: StepIdx::new(4),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                output: None,
-                next: Some(StepIdx::new(3)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            },
-            CompiledNode {
-                id: StepIdx::new(3),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachNext {
+                Some(SlotIdx::new(3)),
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(2),
+                CompiledNodeKind::Nop,
+                None,
+                Some(StepIdx::new(3)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(3),
+                CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(3),
                     body: StepIdx::new(2),
                     done: StepIdx::new(4),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(4),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachNext {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(4),
+                CompiledNodeKind::ForEachNext {
                     iterator_slot: SlotIdx::new(4),
                     body: StepIdx::new(1),
                     done: StepIdx::new(5),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(5),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(5),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -2180,16 +2020,14 @@ fn phase46_accepts_accessor_field() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("phase46_acc_field"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -2218,16 +2056,14 @@ fn phase46_accepts_accessor_index() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("phase46_acc_index"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -2255,27 +2091,22 @@ fn phase46_rejects_cycle_via_backward_next_edge() -> Result<(), String> {
         name: Box::<str>::from("cycle_next"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: Some(SlotIdx::new(0)),
-                // Backward edge: node 1 -> node 0 creates a cycle.
-                next: Some(StepIdx::new(0)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(0)),
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -2307,27 +2138,23 @@ fn phase46_rejects_duplicate_step_idx_via_node_id_mismatch() -> Result<(), Strin
         name: Box::<str>::from("dup_step_idx"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
             // Second node at index 1 but claims to be step 0 (duplicate id).
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -2358,16 +2185,14 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_finish() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("slot_oob_finish"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(99),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -2392,16 +2217,14 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_build_list() -> Result<(), String> 
         input_slots: Box::new([]),
         name: Box::<str>::from("slot_oob_list"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::BuildList {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::BuildList {
                 items: vec![SlotIdx::new(0), SlotIdx::new(50)].into_boxed_slice(),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -2426,17 +2249,14 @@ fn phase46_rejects_slot_idx_out_of_bounds_in_output() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("slot_oob_output"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            // Output slot 200 is out of bounds for slot_count=1.
-            output: Some(SlotIdx::new(200)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(200)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -2463,26 +2283,22 @@ fn phase46_rejects_unreachable_node_from_entry() -> Result<(), String> {
         name: Box::<str>::from("unreachable"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
+                None,
+                None,
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -2520,16 +2336,14 @@ fn phase46_rejects_accessor_field_symbol_out_of_bounds() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_sym_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -2561,16 +2375,14 @@ fn phase46_accepts_accessor_field_symbol_at_boundary() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_sym_boundary"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -2600,16 +2412,14 @@ fn phase46_rejects_accessor_field_symbol_zero_when_no_symbols() -> Result<(), St
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_sym_zero_no_syms"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -2645,16 +2455,14 @@ fn phase46_rejects_accessor_path_too_deep() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_deep"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -2694,16 +2502,14 @@ fn phase46_accepts_accessor_path_at_max_depth() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_max_depth"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -2733,16 +2539,14 @@ fn phase46_accepts_accessor_empty_path() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_empty_path"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -2768,16 +2572,14 @@ fn phase46_rejects_constant_symbol_out_of_bounds() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("const_sym_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -2802,16 +2604,14 @@ fn phase46_accepts_constant_symbol_at_boundary() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("const_sym_boundary"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -2835,16 +2635,14 @@ fn phase46_rejects_constant_symbol_when_zero_symbols() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("const_sym_no_syms"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::SetConst {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::SetConst {
                 value: ConstIdx::new(0),
             },
-        }]
+            Some(SlotIdx::new(0)),
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -2920,16 +2718,14 @@ fn phase46_rejects_accessor_index_u32_max() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_u32max"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -2973,16 +2769,14 @@ fn phase46_accepts_accessor_mixed_path() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_mixed"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -3017,16 +2811,14 @@ fn phase46_rejects_mixed_path_with_bad_symbol() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_mixed_bad"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -3053,16 +2845,14 @@ fn phase46_symbols_count_roundtrip() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("sym_roundtrip"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
@@ -3100,26 +2890,22 @@ fn phase46_rejects_second_constant_symbol_out_of_bounds() -> Result<(), String> 
         name: Box::<str>::from("const_mixed_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
         nodes: vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+            crate::workflow::node(
+                StepIdx::new(0),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(0),
                 },
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
+                Some(SlotIdx::new(0)),
+                Some(StepIdx::new(1)),
+            ),
+            crate::workflow::node(
+                StepIdx::new(1),
+                CompiledNodeKind::SetConst {
                     value: ConstIdx::new(1),
                 },
-            },
+                None,
+                None,
+            ),
         ]
         .into_boxed_slice(),
         expressions: Box::new([]),
@@ -3157,16 +2943,14 @@ fn phase46_rejects_accessor_root_slot_out_of_bounds() -> Result<(), String> {
         input_slots: Box::new([]),
         name: Box::<str>::from("acc_root_oob"),
         digest: WorkflowDigest::from_bytes([0x46; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: vec![crate::workflow::node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }]
+            None,
+            None,
+        )]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: vec![accessor].into_boxed_slice(),
@@ -3191,14 +2975,7 @@ fn phase46_rejects_accessor_root_slot_out_of_bounds() -> Result<(), String> {
 #[test]
 fn compiled_node_kind_nop_constructs() {
     let kind = CompiledNodeKind::Nop;
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind,
-    };
+    let node = crate::workflow::node(StepIdx::new(0), kind, None, None);
     assert!(matches!(node.kind, CompiledNodeKind::Nop));
 }
 
@@ -3900,35 +3677,36 @@ fn path_segment_field_and_index_are_distinct() {
 
 #[test]
 fn compiled_node_constructs_with_all_fields() {
-    let node = CompiledNode {
-        id: StepIdx::new(5),
-        output: Some(SlotIdx::new(3)),
-        next: Some(StepIdx::new(6)),
-        on_error: Some(StepIdx::new(10)),
-        error_slot: Some(SlotIdx::new(7)),
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = crate::workflow::node_with_handler(
+        StepIdx::new(5),
+        CompiledNodeKind::Nop,
+        Some(SlotIdx::new(3)),
+        Some(StepIdx::new(6)),
+        StepIdx::new(10),
+        Some(SlotIdx::new(7)),
+    );
     assert_eq!(node.id, StepIdx::new(5));
-    assert_eq!(node.output, Some(SlotIdx::new(3)));
-    assert_eq!(node.next, Some(StepIdx::new(6)));
-    assert_eq!(node.on_error, Some(StepIdx::new(10)));
-    assert_eq!(node.error_slot, Some(SlotIdx::new(7)));
+    assert_eq!(node.output, NodeOutput::Slot(SlotIdx::new(3)));
+    assert_eq!(node.routing.next, NodeContinuation::Step(StepIdx::new(6)));
+    assert_eq!(
+        node.routing.error,
+        ErrorRouting::Handler {
+            handler: StepIdx::new(10),
+            error_slot: Some(SlotIdx::new(7)),
+        }
+    );
 }
 
 #[test]
 fn compiled_node_optional_fields_can_be_none() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
-    assert!(node.output.is_none());
-    assert!(node.next.is_none());
-    assert!(node.on_error.is_none());
-    assert!(node.error_slot.is_none());
+    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, None);
+    assert!(node.output.slot().is_none());
+    assert!(matches!(node.routing.next, NodeContinuation::End));
+    assert!(matches!(
+        node.routing.error,
+        crate::workflow::ErrorRouting::None
+    ));
+    assert!(node.routing.error.error_slot().is_none());
 }
 
 // =========================================================================
@@ -4100,9 +3878,78 @@ fn workflow_error_empty_branch_table_display() {
 #[test]
 fn workflow_error_budget_policy_exceeded_display() {
     let error = WorkflowError::BudgetPolicyExceeded {
-        detail: "max_total_steps",
+        detail: BudgetDimension::TotalSteps,
     };
     assert!(error.to_string().contains("max_total_steps"));
+}
+
+#[test]
+fn budget_dimension_names_are_frozen() {
+    let cases = [
+        (BudgetDimension::TotalSteps, "max_total_steps"),
+        (BudgetDimension::TotalSlots, "max_total_slots"),
+        (BudgetDimension::Fanout, "max_fanout"),
+        (BudgetDimension::NestingDepth, "max_nesting_depth"),
+        (BudgetDimension::Parallel, "max_parallel_in_flight"),
+        (BudgetDimension::ActionTickets, "max_action_tickets"),
+        (BudgetDimension::RunTime, "max_run_time_seconds"),
+        (BudgetDimension::ResultBytes, "max_result_bytes"),
+        (BudgetDimension::StepsExecutable, "max_steps_executable"),
+        (BudgetDimension::TimerEntries, "max_timer_entries"),
+        (BudgetDimension::TraceEvents, "max_trace_events"),
+        (
+            BudgetDimension::JournalBatchBytes,
+            "max_journal_batch_bytes",
+        ),
+        (BudgetDimension::QueueDepth, "max_queue_depth"),
+        (BudgetDimension::IpcPayloadBytes, "max_ipc_payload_bytes"),
+        (BudgetDimension::BlobBytes, "max_blob_bytes"),
+        (BudgetDimension::InputBytes, "max_input_bytes"),
+    ];
+    for (dimension, name) in cases {
+        assert_eq!(dimension.as_str(), name);
+        assert_eq!(dimension.to_string(), name);
+    }
+}
+
+#[test]
+fn contract_resource_names_are_frozen() {
+    let cases = [
+        (ContractResource::Steps, "max_steps"),
+        (ContractResource::Slots, "max_slots"),
+        (ContractResource::Constants, "max_constants"),
+        (ContractResource::Accessors, "max_accessors"),
+        (ContractResource::Expressions, "max_expressions"),
+        (ContractResource::ExprStack, "max_expr_stack"),
+        (
+            ContractResource::StepBudgetPerTick,
+            "max_step_budget_per_tick",
+        ),
+        (
+            ContractResource::TransitionsPerTick,
+            "max_transitions_per_tick",
+        ),
+        (ContractResource::InputBytes, "max_input_bytes"),
+        (ContractResource::OutputBytes, "max_output_bytes"),
+        (ContractResource::BlobBytes, "max_blob_bytes"),
+        (ContractResource::IpcPayloadBytes, "max_ipc_payload_bytes"),
+        (ContractResource::RetryAttempts, "max_retry_attempts"),
+        (ContractResource::Fanout, "max_fanout"),
+        (ContractResource::CollectItems, "max_collect_items"),
+        (ContractResource::QueueDepth, "max_queue_depth"),
+        (
+            ContractResource::JournalBatchBytes,
+            "max_journal_batch_bytes",
+        ),
+        (ContractResource::BranchCount, "branch_count"),
+        (ContractResource::LoopRegions, "loop_regions"),
+        (ContractResource::ListItems, "list_items"),
+        (ContractResource::ObjectFields, "object_fields"),
+    ];
+    for (resource, name) in cases {
+        assert_eq!(resource.as_str(), name);
+        assert_eq!(resource.to_string(), name);
+    }
 }
 
 #[test]
@@ -4132,36 +3979,36 @@ fn workflow_error_jump_cycle_exact_variant_fields() -> Result<(), String> {
 
 #[test]
 fn validate_budget_maps_every_budget_error_variant_to_exact_detail() -> Result<(), String> {
-    assert_budget_detail(total_steps_error(), "max_total_steps")?;
-    assert_budget_detail(total_slots_error(), "max_total_slots")?;
-    assert_budget_detail(fanout_error(), "max_fanout")?;
-    assert_budget_detail(nesting_depth_error(), "max_nesting_depth")?;
-    assert_budget_detail(parallel_error(), "max_parallel_in_flight")?;
-    assert_budget_detail(action_tickets_error(), "max_action_tickets")?;
-    assert_budget_detail(run_time_error(), "max_run_time_seconds")?;
-    assert_budget_detail(result_bytes_error(), "max_result_bytes")?;
-    assert_budget_detail(steps_executable_error(), "max_steps_executable")?;
+    assert_budget_detail(total_steps_error(), BudgetDimension::TotalSteps)?;
+    assert_budget_detail(total_slots_error(), BudgetDimension::TotalSlots)?;
+    assert_budget_detail(fanout_error(), BudgetDimension::Fanout)?;
+    assert_budget_detail(nesting_depth_error(), BudgetDimension::NestingDepth)?;
+    assert_budget_detail(parallel_error(), BudgetDimension::Parallel)?;
+    assert_budget_detail(action_tickets_error(), BudgetDimension::ActionTickets)?;
+    assert_budget_detail(run_time_error(), BudgetDimension::RunTime)?;
+    assert_budget_detail(result_bytes_error(), BudgetDimension::ResultBytes)?;
+    assert_budget_detail(steps_executable_error(), BudgetDimension::StepsExecutable)?;
     Ok(())
 }
 
 #[test]
 fn workflow_budget_validation_reports_total_steps_detail() -> Result<(), String> {
-    assert_workflow_budget_detail(total_steps_budget_parts(), "max_total_steps")
+    assert_workflow_budget_detail(total_steps_budget_parts(), BudgetDimension::TotalSteps)
 }
 
 #[test]
 fn workflow_budget_validation_reports_fanout_detail() -> Result<(), String> {
-    assert_workflow_budget_detail(fanout_budget_parts(), "max_fanout")
+    assert_workflow_budget_detail(fanout_budget_parts(), BudgetDimension::Fanout)
 }
 
 #[test]
 fn workflow_budget_validation_reports_nesting_depth_detail() -> Result<(), String> {
-    assert_workflow_budget_detail(nesting_depth_budget_parts(), "max_nesting_depth")
+    assert_workflow_budget_detail(nesting_depth_budget_parts(), BudgetDimension::NestingDepth)
 }
 
 #[test]
 fn workflow_budget_validation_reports_result_bytes_detail() -> Result<(), String> {
-    assert_workflow_budget_detail(result_bytes_budget_parts(), "max_result_bytes")
+    assert_workflow_budget_detail(result_bytes_budget_parts(), BudgetDimension::ResultBytes)
 }
 
 fn total_steps_error() -> BudgetError {
@@ -4227,14 +4074,17 @@ fn steps_executable_error() -> BudgetError {
     }
 }
 
-fn assert_budget_detail(error: BudgetError, detail: &'static str) -> Result<(), String> {
+fn assert_budget_detail(error: BudgetError, detail: BudgetDimension) -> Result<(), String> {
     match validate_budget_result(Err(error)) {
         Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => Ok(()),
         other => Err(format!("unexpected budget validation result: {other:?}")),
     }
 }
 
-fn assert_workflow_budget_detail(parts: WorkflowParts, detail: &'static str) -> Result<(), String> {
+fn assert_workflow_budget_detail(
+    parts: WorkflowParts,
+    detail: BudgetDimension,
+) -> Result<(), String> {
     match CompiledWorkflow::try_from_parts(parts) {
         Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => Ok(()),
         other => Err(format!("unexpected workflow validation result: {other:?}")),
@@ -4360,21 +4210,14 @@ fn budget_parts(
 }
 
 fn budget_node(index: u16, kind: CompiledNodeKind) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(index),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind,
-    }
+    crate::workflow::node(StepIdx::new(index), kind, None, None)
 }
 
 #[cfg(test)]
 mod proptests {
     use super::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ResourceContract,
-        WorkflowError, WorkflowParts,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ContractResource,
+        ResourceContract, WorkflowError, WorkflowParts,
     };
     use crate::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
     use proptest::prelude::*;
@@ -4410,28 +4253,24 @@ mod proptests {
         let mut nodes: Vec<CompiledNode> = (0..last)
             .map(|i| {
                 let next_step = u16::try_from(i.saturating_add(1)).map_or(u16::MAX, |v| v);
-                CompiledNode {
-                    id: StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v)),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(next_step)),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
+                crate::workflow::node(
+                    StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v)),
+                    CompiledNodeKind::SetConst {
                         value: ConstIdx::new(0),
                     },
-                }
+                    Some(SlotIdx::new(0)),
+                    Some(StepIdx::new(next_step)),
+                )
             })
             .collect();
-        nodes.push(CompiledNode {
-            id: StepIdx::new(u16::try_from(last).map_or(u16::MAX, |v| v)),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes.push(crate::workflow::node(
+            StepIdx::new(u16::try_from(last).map_or(u16::MAX, |v| v)),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        });
+            None,
+            None,
+        ));
         let max_steps = u16::try_from(nodes.len()).map_or(u16::MAX, |v| v);
         WorkflowParts {
             semantic_source_identity: None,
@@ -4468,14 +4307,12 @@ mod proptests {
                 value: ConstIdx::new(0),
             }
         };
-        CompiledNode {
-            id: StepIdx::new(u16::try_from(index).map_or(u16::MAX, |v| v)),
-            output: Some(SlotIdx::new(0)),
-            next,
-            on_error: None,
-            error_slot: None,
+        crate::workflow::node(
+            StepIdx::new(u16::try_from(index).map_or(u16::MAX, |v| v)),
             kind,
-        }
+            Some(SlotIdx::new(0)),
+            next,
+        )
     }
 
     fn duplicate_step_node(index: usize, total: usize, duplicate_position: usize) -> CompiledNode {
@@ -4491,16 +4328,14 @@ mod proptests {
     }
 
     fn unreachable_finish_node(index: usize) -> CompiledNode {
-        CompiledNode {
-            id: StepIdx::new(u16::try_from(index).map_or(u16::MAX, |v| v)),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        crate::workflow::node(
+            StepIdx::new(u16::try_from(index).map_or(u16::MAX, |v| v)),
+            CompiledNodeKind::Finish {
                 result: SlotIdx::new(0),
             },
-        }
+            None,
+            None,
+        )
     }
 
     proptest! {
@@ -4535,16 +4370,7 @@ mod proptests {
                 input_slots: Box::new([]),
                 name: Box::<str>::from("prop_b_finish_oob"),
                 digest: WorkflowDigest::from_bytes([0xBB; 32]),
-                nodes: vec![CompiledNode {
-                    id: StepIdx::new(0),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(bad_slot),
-                    },
-                }]
+                nodes: vec![crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Finish { result: SlotIdx::new(bad_slot), }, None, None)]
                 .into_boxed_slice(),
                 expressions: Box::new([]),
                 accessors: Box::new([]),
@@ -4582,26 +4408,8 @@ mod proptests {
                 name: Box::<str>::from("prop_b_output_oob"),
                 digest: WorkflowDigest::from_bytes([0xBC; 32]),
                 nodes: vec![
-                    CompiledNode {
-                        id: StepIdx::new(0),
-                        output: Some(SlotIdx::new(bad_slot)),
-                        next: Some(StepIdx::new(1)),
-                        on_error: None,
-                        error_slot: None,
-                        kind: CompiledNodeKind::SetConst {
-                            value: ConstIdx::new(0),
-                        },
-                    },
-                    CompiledNode {
-                        id: StepIdx::new(1),
-                        output: None,
-                        next: None,
-                        on_error: None,
-                        error_slot: None,
-                        kind: CompiledNodeKind::Finish {
-                            result: SlotIdx::new(0),
-                        },
-                    },
+                    crate::workflow::node(StepIdx::new(0), CompiledNodeKind::SetConst { value: ConstIdx::new(0), }, Some(SlotIdx::new(bad_slot)), Some(StepIdx::new(1))),
+                    crate::workflow::node(StepIdx::new(1), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None),
                 ]
                 .into_boxed_slice(),
                 expressions: Box::new([]),
@@ -4750,7 +4558,7 @@ mod proptests {
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
                 Err(WorkflowError::ResourceContractExceeded { resource }) => {
-                    prop_assert_eq!(resource, "max_steps");
+                    prop_assert_eq!(resource, ContractResource::Steps);
                 }
                 other => {
                     return Err(proptest::test_runner::TestCaseError::Fail(
@@ -4774,16 +4582,7 @@ mod proptests {
                 input_slots: Box::new([]),
                 name: Box::<str>::from("prop_e_slots"),
                 digest: WorkflowDigest::from_bytes([0xEE; 32]),
-                nodes: vec![CompiledNode {
-                    id: StepIdx::new(0),
-                    output: None,
-                    next: None,
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                }]
+                nodes: vec![crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Finish { result: SlotIdx::new(0), }, None, None)]
                 .into_boxed_slice(),
                 expressions: Box::new([]),
                 accessors: Box::new([]),
@@ -4797,7 +4596,7 @@ mod proptests {
             let result = CompiledWorkflow::try_from_parts(parts);
             match result {
                 Err(WorkflowError::ResourceContractExceeded { resource }) => {
-                    prop_assert_eq!(resource, "max_slots");
+                    prop_assert_eq!(resource, ContractResource::Slots);
                 }
                 other => {
                     return Err(proptest::test_runner::TestCaseError::Fail(
@@ -4889,22 +4688,8 @@ mod proptests {
 
 #[test]
 fn compiled_node_nop_construction_equality_and_debug() {
-    let node = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
-    let node2 = CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Nop,
-    };
+    let node = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, None);
+    let node2 = crate::workflow::node(StepIdx::new(0), CompiledNodeKind::Nop, None, None);
     assert_eq!(node, node2, "identical Nop nodes must be equal");
     let debug_str = format!("{node:?}");
     assert!(
@@ -5171,16 +4956,14 @@ fn make_minimal_workflow_parts(name: &str, entry: StepIdx, slot_count: u16) -> W
         input_slots: Box::new([]),
         name: name.into(),
         digest,
-        nodes: Box::new([CompiledNode {
-            id: entry,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
+        nodes: Box::new([crate::workflow::node(
+            entry,
+            CompiledNodeKind::Finish {
                 result: SlotIdx::ZERO,
             },
-        }]),
+            None,
+            None,
+        )]),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: Box::new([]),
@@ -5225,16 +5008,14 @@ fn blake3_digest_differs_when_name_differs() {
 #[test]
 fn blake3_digest_differs_when_node_count_differs() {
     let digest = WorkflowDigest::from_bytes([0u8; 32]);
-    let node = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    let node = crate::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    };
+        None,
+        None,
+    );
     let parts1 = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),
@@ -5250,16 +5031,14 @@ fn blake3_digest_differs_when_node_count_differs() {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let node2 = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
+    let node2 = crate::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Finish {
             result: SlotIdx::ZERO,
         },
-    };
+        None,
+        None,
+    );
     let parts2 = WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

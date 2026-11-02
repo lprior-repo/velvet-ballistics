@@ -44,7 +44,7 @@ pub(super) fn dispatch_collect<P: BodyEntryPolicy>(
             *page_size,
             *body,
             *done,
-            node.output,
+            node.output.slot(),
         ),
         CompiledNodeKind::CollectPage {
             collector_slot,
@@ -60,8 +60,8 @@ pub(super) fn dispatch_collect<P: BodyEntryPolicy>(
             run,
             collect_states,
             *collector_slot,
-            node.output,
-            node.next,
+            node.output.slot(),
+            node.routing.next.step(),
             node.id,
         ),
         _ => Err(family_invariant()),
@@ -90,7 +90,7 @@ pub(super) fn dispatch_reduce<P: BodyEntryPolicy>(
             *initial,
             *body,
             *done,
-            node.output,
+            node.output.slot(),
         ),
         CompiledNodeKind::ReduceNext {
             iterator_slot,
@@ -104,11 +104,15 @@ pub(super) fn dispatch_reduce<P: BodyEntryPolicy>(
             *accumulator,
             *body,
             *done,
-            node.output,
+            node.output.slot(),
         ),
-        CompiledNodeKind::ReduceFinish { accumulator } => {
-            handle_reduce_finish(run, *accumulator, node.output, node.next, node.id)
-        }
+        CompiledNodeKind::ReduceFinish { accumulator } => handle_reduce_finish(
+            run,
+            *accumulator,
+            node.output.slot(),
+            node.routing.next.step(),
+            node.id,
+        ),
         _ => Err(family_invariant()),
     }
 }
@@ -122,18 +126,22 @@ pub(super) fn dispatch_repeat<P: BodyEntryPolicy>(
             max_attempts,
             body,
             done,
-        } => handle_repeat_start(run, *max_attempts, *body, *done, node.output),
+        } => handle_repeat_start(run, *max_attempts, *body, *done, node.output.slot()),
         CompiledNodeKind::RepeatAttempt {
             attempt_slot,
             body,
             done,
         } => handle_repeat_attempt(run, *attempt_slot, *body, *done),
         CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
-            handle_repeat_check::<P>(run, *attempt_slot, *done, node.next, node.id)
+            handle_repeat_check::<P>(run, *attempt_slot, *done, node.routing.next.step(), node.id)
         }
-        CompiledNodeKind::RepeatFinish { result } => {
-            handle_repeat_finish(run, *result, node.output, node.next, node.id)
-        }
+        CompiledNodeKind::RepeatFinish { result } => handle_repeat_finish(
+            run,
+            *result,
+            node.output.slot(),
+            node.routing.next.step(),
+            node.id,
+        ),
         _ => Err(family_invariant()),
     }
 }

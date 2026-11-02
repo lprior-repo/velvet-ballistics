@@ -1,5 +1,6 @@
 use vb_core::action::{ActionTicket, action_ticket_has_valid_key};
 use vb_core::ids::{ActionId, RunId, SlotIdx, WorkflowDigest};
+use vb_core::workflow::NodeOutput;
 use vb_core::{CompiledNodeKind, CompiledWorkflow};
 use vb_storage::recovery::RecoveredPendingAction;
 
@@ -195,7 +196,10 @@ fn validate_pending_action_slots(
         CompiledNodeKind::Do {
             action,
             input: expected_input,
-        } if action == ticket.action && expected_input == input && node.output == Some(output) => {
+        } if action == ticket.action
+            && expected_input == input
+            && node.output == NodeOutput::Slot(output) =>
+        {
             Ok(())
         }
         _ => Err(cannot_resume_error("pending_actions")),

@@ -16,6 +16,7 @@ pub mod action_pack;
 pub mod artifact;
 pub mod budget;
 pub mod capability;
+pub mod compat;
 pub mod contract_encoding;
 pub mod diagnostic;
 pub mod engine;
@@ -102,10 +103,15 @@ pub use action::{
 };
 pub use budget::{
     AggregateBudgetError, AggregateReservation, AggregateResourceBudget, AggregateResourceCapacity,
-    AggregateResourceUsage, BoundednessPolicy, BudgetError, WholeWorkflowBudget,
+    AggregateResourceUsage, BoundednessPolicy, BudgetError, BudgetExhaustionOutcome,
+    RemainingBudget, RemainingBudgetError, WholeWorkflowBudget, check_tenant_quota,
     validate_aggregate_budget,
 };
 pub use capability::{Capability, CapabilitySet};
+pub use compat::{
+    Classification, CompatBoundary, CompatDecision, CompatDecisionCode, CompatDigests, CompatError,
+    CompatInputs, CompatRule, CompatibilityClass, SchemaVersion, classify,
+};
 pub use diagnostic::{
     CODE_REGISTRY, CodeCategory, CodeEntry, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,
     HasSymbolicCode, Severity, SymbolicCode, SymbolicCodeParseError,
@@ -131,5 +137,5 @@ pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
     AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
     ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract, SlotBranch,
-    WorkflowError, WorkflowParts, check_expr_stack_bound,
+    WorkflowError, WorkflowParts, check_expr_stack_bound, node, node_with_handler,
 };

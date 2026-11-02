@@ -302,22 +302,14 @@ fn vb_y4pa_006_repeat_check_reentry() {
 fn minimal_workflow() -> vb_core::workflow::CompiledWorkflow {
     use vb_core::value::ConstValue;
     use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+        CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
     };
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("reentry_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([7; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: vec![ConstValue::I64(0)].into_boxed_slice(),
@@ -1205,22 +1197,14 @@ fn gwt_re6_succeeded_to_running_rejected() {
 fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
     use vb_core::value::ConstValue;
     use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+        CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
     };
 
     let parts = WorkflowParts {
         semantic_source_identity: None,
         name: Box::from("reentry_test"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([7; 32]),
-        nodes: vec![CompiledNode {
-            id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]
-        .into_boxed_slice(),
+        nodes: vec![node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: vec![ConstValue::I64(cv)].into_boxed_slice(),
@@ -1269,22 +1253,14 @@ mod proptest_reentry {
     fn minimal_workflow_with_const(cv: i64) -> vb_core::workflow::CompiledWorkflow {
         use vb_core::value::ConstValue;
         use vb_core::workflow::{
-            CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+            CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts, node,
         };
 
         let parts = WorkflowParts {
             semantic_source_identity: None,
             name: Box::from("proptest_reduce"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([9; 32]),
-            nodes: vec![CompiledNode {
-                id: StepIdx::ZERO,
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-            }]
-            .into_boxed_slice(),
+            nodes: vec![node(StepIdx::ZERO, CompiledNodeKind::Nop, None, None)].into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: vec![ConstValue::I64(cv)].into_boxed_slice(),

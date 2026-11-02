@@ -13,7 +13,7 @@
 mod tests {
     use proptest::prelude::*;
     use vb_core::contract_encoding::encode_contract_bytes;
-    use vb_core::workflow::ResourceContract;
+    use vb_core::workflow::{ResourceContract, SecretResultPolicy};
 
     // PO-P03: Toggling allows_secret_results changes encoding at scale.
     proptest! {
@@ -27,10 +27,10 @@ mod tests {
             contract.max_slots = max_slots;
 
             let mut contract_true = contract;
-            contract_true.allows_secret_results = true;
+            contract_true.allows_secret_results = SecretResultPolicy::Allow;
 
             let mut contract_false = contract;
-            contract_false.allows_secret_results = false;
+            contract_false.allows_secret_results = SecretResultPolicy::Deny;
 
             let enc_true = encode_contract_bytes(&contract_true);
             let enc_false = encode_contract_bytes(&contract_false);

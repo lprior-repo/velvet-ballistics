@@ -11,7 +11,7 @@ use crate::{ValidationError, gates::validate_gate_08_accessor_path_segments};
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprProgram, PathSegment, ResourceContract,
-    WorkflowParts,
+    WorkflowParts, node,
 };
 
 #[kani::proof]
@@ -201,22 +201,20 @@ fn workflow_parts_with_accessors(
 fn bounded_nodes() -> Box<[CompiledNode]> {
     if kani::any::<bool>() {
         let result: SlotIdx = kani::any();
-        Box::new([CompiledNode {
-            id: kani::any::<StepIdx>(),
-            output: if kani::any::<bool>() {
+        Box::new([node(
+            kani::any::<StepIdx>(),
+            CompiledNodeKind::Finish { result },
+            if kani::any::<bool>() {
                 Some(kani::any::<SlotIdx>())
             } else {
                 None
             },
-            next: if kani::any::<bool>() {
+            if kani::any::<bool>() {
                 Some(kani::any::<StepIdx>())
             } else {
                 None
             },
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish { result },
-        }])
+        )])
     } else {
         Box::new([])
     }

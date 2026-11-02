@@ -18,7 +18,7 @@ pub fn fuzz_compiled_ir(data: &[u8]) {
                 let Some(node) = workflow.node(step) else {
                     continue;
                 };
-                if let Some(output) = node.output {
+                if let Some(output) = node.output.slot() {
                     assert!(output.get() < slot_count);
                 }
                 check_node_slots(&node.kind, slot_count, i);

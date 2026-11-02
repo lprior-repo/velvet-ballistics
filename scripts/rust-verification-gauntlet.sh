@@ -82,19 +82,10 @@ case "$MODE" in
     run_cargo "cargo test -p vb_compile --lib slot_compiler -- --nocapture" "UNIT-SLOT-COMPILER-001" || FAILED=1
     run_cargo "cargo test -p vb_compile --lib lower -- --nocapture" "UNIT-LOWER-DO-001" || FAILED=1
     run_cargo "cargo test -p vb_compile --lib lower_steps -- --nocapture" "POST-009-VALIDATE-001" || FAILED=1
-    # Kani — expression bytecode overflow
-    run_cargo "cargo kani --package vb_compile --harness compile_expr_to_bytecode_overflow --quiet" "KANI-EXPR-BYTECODE-001" || FAILED=1
-    # Kani — slot reference lowering
-    run_cargo "cargo kani --package vb_compile --harness lower_slot_reference_valid --quiet" "KANI-SLOT-REF-001" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness lower_slot_reference_with_path_creates_accessor --quiet" "KANI-SLOT-REF-001b" || FAILED=1
-    # Kani — constant pool overflow
-    run_cargo "cargo kani --package vb_compile --harness push_constant_overflow --quiet" "KANI-CONSTANT-POOL-001" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness push_constant_isolation --quiet" "KANI-CONSTANT-POOL-001b" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness slot_count_overflow_at_max --quiet" "KANI-CONSTANT-POOL-001c" || FAILED=1
-    # Kani — accessor reference lowering
-    run_cargo "cargo kani --package vb_compile --harness lower_accessor_reference_numeric --quiet" "KANI-ACCESSOR-REF-001" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness accessor_index_assignment --quiet" "KANI-ACCESSOR-REF-001b" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness rejects_non_numeric_accessor_path --quiet" "KANI-ACCESSOR-REF-001c" || FAILED=1
+    # vb_compile Kani harnesses RETIRED (vb-5jdaz, ex vb-tkcc7): the harness
+    # files were deleted as stale pre-refactor StepAst refs with zero definitions,
+    # so these gates were unwinnable harness-not-found failures. Re-harness against
+    # the current AST to re-enable.
     ;;
 
   deep)
@@ -103,9 +94,8 @@ case "$MODE" in
     cargo test -p vb_compile --lib expression_bytecode -- --nocapture > /dev/null 2>&1 || FAILED=1
     cargo test -p vb_compile --lib slot_compiler -- --nocapture > /dev/null 2>&1 || FAILED=1
     cargo test -p vb_compile --lib lower -- --nocapture > /dev/null 2>&1 || FAILED=1
-    # Kani — node dedup
-    run_cargo "cargo kani --package vb_compile --harness node_id_uniqueness --quiet" "INV-007-NODEDUP-001" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness step_idx_ordering_preserved --quiet" "INV-007-NODEDUP-001b" || FAILED=1
+    # vb_compile Kani node-dedup harnesses RETIRED (vb-5jdaz, ex vb-tkcc7):
+    # harness files deleted, zero definitions. Re-harness to re-enable.
     ;;
 
   proof|all)
@@ -113,11 +103,8 @@ case "$MODE" in
     # StepState matrix drift check (vb-o4zx)
     run_cargo "bash scripts/check-stepstate-matrix.sh" "DRIFT-STEPSTATE-001" || FAILED=1
     # Currently: same as deep. Full Verus proofs deferred until toolchain installed.
-    run_cargo "cargo kani --package vb_compile --harness compile_expr_to_bytecode_overflow --quiet" "KANI-EXPR-BYTECODE-001" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness lower_slot_reference_valid --quiet" "KANI-SLOT-REF-001" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness push_constant_overflow --quiet" "KANI-CONSTANT-POOL-001" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness lower_accessor_reference_numeric --quiet" "KANI-ACCESSOR-REF-001" || FAILED=1
-    run_cargo "cargo kani --package vb_compile --harness node_id_uniqueness --quiet" "INV-007-NODEDUP-001" || FAILED=1
+    # vb_compile Kani harnesses RETIRED here too (vb-5jdaz, ex vb-tkcc7).
+    # vb_runtime harnesses below are live and untouched.
     run_cargo "cargo kani --package vb_runtime --harness strict_admission_invalid_artifact_cases_reject --default-unwind 1 --quiet" "KANI-ADMISSION-001-MALFORMED-GATE-PROOF-REJECT" || FAILED=1
     run_cargo "cargo kani --package vb_runtime --harness strict_admission_invalid_capability_rejects --default-unwind 1 --quiet" "KANI-ADMISSION-001-CAPABILITY-REJECT" || FAILED=1
     run_cargo "cargo kani --package vb_runtime --harness strict_admission_valid_artifact_admits --default-unwind 1 --quiet" "KANI-ADMISSION-001-VALID-ACCEPT" || FAILED=1

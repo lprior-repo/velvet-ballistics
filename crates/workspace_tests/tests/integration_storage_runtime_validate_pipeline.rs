@@ -7,6 +7,7 @@
 //! - Runtime recovery hydration produces frames compatible with validation
 //! - Validation gates run on workflow parts derived from storage/recovery
 
+use vb_core::workflow::node;
 use vb_core::{
     ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, RunId, SlotIdx,
     SlotValue, StepIdx, Taint, WorkflowDigest, WorkflowParts, action::ActionContract,
@@ -30,19 +31,19 @@ fn encoded(value: SlotValue) -> Result<Vec<u8>, postcard::Error> {
 
 fn make_compiled_workflow(name: &str, node_count: u16, slot_count: u16) -> CompiledWorkflow {
     let nodes: Vec<CompiledNode> = (0..node_count)
-        .map(|i| CompiledNode {
-            id: StepIdx::new(i),
-            output: None,
-            next: if i < node_count - 1 {
-                Some(StepIdx::new(i + 1))
-            } else {
-                None
-            },
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::ZERO,
-            },
+        .map(|i| {
+            node(
+                StepIdx::new(i),
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::ZERO,
+                },
+                None,
+                if i < node_count - 1 {
+                    Some(StepIdx::new(i + 1))
+                } else {
+                    None
+                },
+            )
         })
         .collect();
 

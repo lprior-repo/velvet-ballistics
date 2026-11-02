@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use vb_compile::compile_workflow;
+use vb_core::workflow::{NodeContinuation, NodeOutput};
 use vb_core::{CompiledNodeKind, CompiledWorkflow, SlotIdx, StepIdx, WorkflowParts};
 
 fn compile(source: &str) -> Result<CompiledWorkflow, String> {
@@ -58,7 +59,7 @@ fn check_guard(
         other => return Err(format!("guard node is not Choose: {:?}", other)),
     }
 
-    if guard.output.is_some() {
+    if guard.output.slot().is_some() {
         return Err("guard should have no output slot".to_string());
     }
 
@@ -67,16 +68,16 @@ fn check_guard(
         other => return Err(format!("do node is not Do: {:?}", other)),
     }
 
-    if do_node.output != Some(SlotIdx::new(slot)) {
+    if do_node.output != NodeOutput::Slot(SlotIdx::new(slot)) {
         return Err(format!(
-            "do output {:?} != expected Some({})",
+            "do output {:?} != expected Slot({})",
             do_node.output, slot
         ));
     }
-    if do_node.next != Some(StepIdx::new(next)) {
+    if do_node.routing.next != NodeContinuation::Step(StepIdx::new(next)) {
         return Err(format!(
-            "do next {:?} != expected Some({})",
-            do_node.next, next
+            "do next {:?} != expected Step({})",
+            do_node.routing.next, next
         ));
     }
 
@@ -150,7 +151,7 @@ fn bounded_guard_table() -> Result<(), String> {
             if errors.0
                 != vec![vb_compile::CompileError::Workflow(
                     vb_core::WorkflowError::ResourceContractExceeded {
-                        resource: "max_slots",
+                        resource: vb_core::workflow::ContractResource::Slots,
                     },
                 )]
             {
@@ -233,10 +234,10 @@ steps:
     }
 
     let repeat_finish = parts.nodes.get(7).ok_or("missing repeat finish")?;
-    if repeat_finish.next != Some(StepIdx::new(8)) {
+    if repeat_finish.routing.next != NodeContinuation::Step(StepIdx::new(8)) {
         return Err(format!(
-            "repeat finish next {:?} != expected Some(8)",
-            repeat_finish.next
+            "repeat finish next {:?} != expected Step(8)",
+            repeat_finish.routing.next
         ));
     }
 

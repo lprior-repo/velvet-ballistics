@@ -42,14 +42,12 @@ fn strict_config() -> ShardConfig {
 }
 
 fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
-    CompiledNode {
-        id: StepIdx::new(id),
-        output: output.map(SlotIdx::new),
-        next: next.map(StepIdx::new),
-        on_error: None,
-        error_slot: None,
+    vb_core::workflow::node(
+        StepIdx::new(id),
         kind,
-    }
+        output.map(SlotIdx::new),
+        next.map(StepIdx::new),
+    )
 }
 
 fn action_then_finish_workflow() -> Result<CompiledWorkflow, String> {

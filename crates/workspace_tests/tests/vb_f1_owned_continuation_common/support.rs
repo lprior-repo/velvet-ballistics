@@ -76,7 +76,7 @@ impl Fixture {
         self.state
             .workflow
             .node(step)
-            .and_then(|node| node.output)
+            .and_then(|node| node.output.slot())
             .ok_or_else(|| "compiled output missing".into())
     }
 }
@@ -86,13 +86,27 @@ pub(super) fn fixture() -> TestResult<Fixture> {
 }
 
 pub(super) fn fixture_source(authored: &str) -> TestResult<Fixture> {
-    fixture_source_with_blob(authored, 3)
+    let workflow =
+        vb_compile::compile_workflow(authored.as_bytes()).map_err(|error| format!("{error:?}"))?;
+    let (store, input) = super::arenas::original(&workflow)?;
+    finish_fixture(authored, workflow, store, input)
 }
 
+// Shared with the transport suite; this binary may not call every helper.
+#[allow(dead_code)]
 pub(super) fn fixture_source_with_blob(authored: &str, blob_bytes: usize) -> TestResult<Fixture> {
     let workflow =
         vb_compile::compile_workflow(authored.as_bytes()).map_err(|error| format!("{error:?}"))?;
     let (store, input) = super::arenas::original_with_blob(&workflow, blob_bytes)?;
+    finish_fixture(authored, workflow, store, input)
+}
+
+fn finish_fixture(
+    authored: &str,
+    workflow: vb_core::CompiledWorkflow,
+    store: vb_core::ValueStore,
+    input: SlotIdx,
+) -> TestResult<Fixture> {
     let source = WorkflowSourceRecord {
         digest: WorkflowDigest::from_bytes(blake3::hash(authored.as_bytes()).into()),
         source: authored.as_bytes().to_vec(),
@@ -187,6 +201,8 @@ fn initial_state(
     })
 }
 
+// Shared with the transport suite; this binary may not call every helper.
+#[allow(dead_code)]
 pub(super) fn at_cut_with_blob(after: bool, blob_bytes: usize) -> TestResult<Fixture> {
     let mut fixture = fixture_source_with_blob(SOURCE, blob_bytes)?;
     let (signal, events) = drive(&mut fixture.state, if after { 11 } else { 10 })?;
