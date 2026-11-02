@@ -87,7 +87,10 @@ fn is_wait_or_ask_record(kind: RecordKind) -> bool {
 }
 
 fn is_policy_record(kind: RecordKind) -> bool {
-    matches!(kind, RecordKind::PolicyDecision | RecordKind::GateDecision)
+    matches!(
+        kind,
+        RecordKind::PolicyDecision | RecordKind::GateDecision | RecordKind::CapabilityGrant
+    )
 }
 
 fn is_compat_record(kind: RecordKind) -> bool {

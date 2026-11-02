@@ -50,6 +50,7 @@
 pub mod action;
 pub mod action_queue;
 pub mod admission;
+pub mod capability_grant;
 pub mod counters;
 
 pub mod durability_matrix;

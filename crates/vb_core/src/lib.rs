@@ -16,6 +16,7 @@ pub mod action_pack;
 pub mod artifact;
 pub mod budget;
 pub mod capability;
+pub mod capability_grant;
 pub mod compat;
 pub mod contract_encoding;
 pub mod diagnostic;
@@ -108,6 +109,11 @@ pub use budget::{
     validate_aggregate_budget,
 };
 pub use capability::{Capability, CapabilitySet};
+pub use capability_grant::{
+    AdmissionOutcome, CapabilityGrant, GrantAdmissionMode, GrantDigest, GrantId, GrantIdentity,
+    GrantSignature, NarrowedToken, ResourceScope, RevocationEpoch, evaluate_admission,
+    narrow_tokens, replay_grant_is_structurally_valid,
+};
 pub use compat::{
     Classification, CompatBoundary, CompatDecision, CompatDecisionCode, CompatDigests, CompatError,
     CompatInputs, CompatRule, CompatibilityClass, SchemaVersion, classify,

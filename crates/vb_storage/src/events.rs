@@ -53,7 +53,8 @@ impl JournalEvent {
             | Self::AskTimedOutEvent { run, .. }
             | Self::PolicyDecisionEvent { run, .. }
             | Self::GateDecisionEvent { run, .. } => *run,
-            Self::CompatibilityDecisionEvent { run, .. } => *run,
+            Self::CompatibilityDecisionEvent { run, .. }
+            | Self::CapabilityGrantEvent { run, .. } => *run,
         }
     }
 
@@ -93,7 +94,8 @@ impl JournalEvent {
             | Self::AskTimedOutEvent { seq, .. }
             | Self::PolicyDecisionEvent { seq, .. }
             | Self::GateDecisionEvent { seq, .. } => *seq,
-            Self::CompatibilityDecisionEvent { seq, .. } => *seq,
+            Self::CompatibilityDecisionEvent { seq, .. }
+            | Self::CapabilityGrantEvent { seq, .. } => *seq,
         }
     }
 
@@ -150,6 +152,7 @@ impl JournalEvent {
             Self::PolicyDecisionEvent { .. } => RecordKind::PolicyDecision,
             Self::GateDecisionEvent { .. } => RecordKind::GateDecision,
             Self::CompatibilityDecisionEvent { .. } => RecordKind::CompatibilityDecision,
+            Self::CapabilityGrantEvent { .. } => RecordKind::CapabilityGrant,
         }
     }
 
@@ -228,7 +231,7 @@ impl JournalEvent {
             | Self::RunAnswered { .. }
             | Self::PolicyDecisionEvent { .. }
             | Self::GateDecisionEvent { .. } => None,
-            Self::CompatibilityDecisionEvent { .. } => None,
+            Self::CompatibilityDecisionEvent { .. } | Self::CapabilityGrantEvent { .. } => None,
         }
     }
 
@@ -282,7 +285,7 @@ impl JournalEvent {
             | Self::RunAnswered { .. }
             | Self::PolicyDecisionEvent { .. }
             | Self::GateDecisionEvent { .. } => true,
-            Self::CompatibilityDecisionEvent { .. } => true,
+            Self::CompatibilityDecisionEvent { .. } | Self::CapabilityGrantEvent { .. } => true,
         }
     }
 }

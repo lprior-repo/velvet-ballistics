@@ -400,4 +400,16 @@ pub enum JournalEvent {
         /// Complete compatibility decision record.
         decision: vb_core::compat::CompatDecision,
     },
+    /// Journaled MASTER §77.10 capability grant. Appended at the end
+    /// of the enum so no existing variant changes position. Carries
+    /// historical grant evidence only: replay validates the grant's
+    /// structure and never authorizes a new live effect from it.
+    CapabilityGrantEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Complete capability grant record.
+        grant: vb_core::capability_grant::CapabilityGrant,
+    },
 }
