@@ -25,6 +25,7 @@ pub mod errors;
 pub mod frame;
 pub mod ids;
 pub mod limits;
+pub mod manual_gate;
 pub mod policy;
 pub mod replay;
 pub mod root_bundle;

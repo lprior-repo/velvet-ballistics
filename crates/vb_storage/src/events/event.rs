@@ -376,6 +376,18 @@ pub enum JournalEvent {
         /// Validated scalar identity and shared immutable complete component.
         carrier: crate::OwnedContinuationCarrier,
     },
+    /// Manual gate outcome record (MASTER §77.15). Appended at the end
+    /// of the enum; no existing variant was renumbered. Carries the
+    /// durable gate decision or escalation without minting new effect
+    /// authority: approval receipts inside the record bind digests only.
+    GateDecisionEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Complete gate outcome record, boxed to keep the enum small.
+        record: Box<vb_core::manual_gate::GateOutcomeRecord>,
+    },
     /// Journaled MASTER §77.17 compatibility decision. Appended at the end
     /// of the enum so no existing variant changes position. Carries no
     /// effect authority: replay treats it as informational, and live-effect

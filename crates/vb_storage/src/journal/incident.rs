@@ -150,9 +150,10 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 ///
 /// Scans events in reverse and returns the lifecycle state implied by the
 /// last non-neutral event. Policy decision events (`PolicyDecisionEvent`)
-/// are neutral facts that do not affect lifecycle; they are skipped during
-/// derivation so a terminal state such as `Failed`, `Cancelled`, or
-/// `Completed` is not overwritten by a subsequent policy decision.
+/// and gate decision events (`GateDecisionEvent`) are neutral facts that
+/// do not affect lifecycle; they are skipped during derivation so a
+/// terminal state such as `Failed`, `Cancelled`, or `Completed` is not
+/// overwritten by a subsequent policy or gate decision.
 ///
 /// Every known `JournalEvent` variant is enumerated explicitly in the
 /// `event_to_lifecycle` mapping:
@@ -188,13 +189,14 @@ pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleS
 
 /// Returns true if the event affects lifecycle state derivation.
 ///
-/// Policy decision and compatibility decision events are neutral facts
-/// and do not affect lifecycle.
+/// Policy decision, gate decision, and compatibility decision events
+/// are neutral facts and do not affect lifecycle.
 #[inline]
 fn is_lifecycle_affecting(event: &JournalEvent) -> bool {
     !matches!(
         event,
         JournalEvent::PolicyDecisionEvent { .. }
+            | JournalEvent::GateDecisionEvent { .. }
             | JournalEvent::CompatibilityDecisionEvent { .. }
             | JournalEvent::RunContinuation { .. }
     )
@@ -235,6 +237,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
         JournalEvent::AskTimedOutEvent { .. } => LifecycleState::Active,
         JournalEvent::PolicyDecisionEvent { .. } => LifecycleState::Active,
+        JournalEvent::GateDecisionEvent { .. } => LifecycleState::Active,
         JournalEvent::CompatibilityDecisionEvent { .. } => LifecycleState::Active,
     }
 }
