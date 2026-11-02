@@ -6,7 +6,7 @@ use bytes::Bytes;
 use std::io::Cursor;
 
 use crate::bounded::{BoundedPayload, MaxPayloadBytes};
-use crate::commands::IpcCommand;
+use crate::commands::{CommandFlags, IpcCommand};
 use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
 use crate::error::IpcError;
 
@@ -110,6 +110,7 @@ impl IpcFrameHeader {
                 limit: max_payload.get(),
             });
         }
+        CommandFlags::validate(command, flags)?;
 
         Ok(Self {
             command,

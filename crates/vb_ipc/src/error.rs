@@ -4,6 +4,8 @@
 use thiserror::Error;
 use vb_core::DiagnosticCode;
 
+use crate::commands::IpcCommand;
+
 /// IPC/memory ingress failures.
 #[derive(Debug, Error, PartialEq, Eq)]
 #[non_exhaustive]
@@ -37,6 +39,26 @@ pub enum IpcError {
     /// Command id is not part of the v1 command set.
     #[error("unknown IPC command: {0}")]
     UnknownCommand(u16),
+    /// Command flags contain bits outside the command's valid mask.
+    #[error("invalid flags for IPC command {command:?}: flags={flags:#06x}")]
+    InvalidCommandFlags {
+        /// Command the flags were supplied for.
+        command: IpcCommand,
+        /// Raw flags value.
+        flags: u16,
+    },
+    /// Command flags contain bits in the global reserved mask.
+    #[error(
+        "reserved flag bits set for IPC command {command:?}: actual={actual:#06x}, reserved_mask={reserved_mask:#06x}"
+    )]
+    ReservedBitsSet {
+        /// Command the flags were supplied for.
+        command: IpcCommand,
+        /// Raw flags value.
+        actual: u16,
+        /// Mask of reserved bits.
+        reserved_mask: u16,
+    },
     /// Reserved header field must remain zero.
     #[error("IPC reserved header field is non-zero: actual={actual}")]
     ReservedNonZero {
@@ -110,6 +132,10 @@ impl IpcError {
     pub const PAYLOAD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300D);
     /// Diagnostic code for response decode failed.
     pub const RESPONSE_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300E);
+    /// Diagnostic code for invalid command flags.
+    pub const INVALID_COMMAND_FLAGS_CODE: DiagnosticCode = DiagnosticCode::new(0x300F);
+    /// Diagnostic code for reserved flag bits set.
+    pub const RESERVED_BITS_SET_CODE: DiagnosticCode = DiagnosticCode::new(0x3010);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -129,6 +155,8 @@ impl IpcError {
             Self::PayloadEncodeFailed => Self::PAYLOAD_ENCODE_FAILED_CODE,
             Self::PayloadDecodeFailed => Self::PAYLOAD_DECODE_FAILED_CODE,
             Self::ResponseDecodeFailed => Self::RESPONSE_DECODE_FAILED_CODE,
+            Self::InvalidCommandFlags { .. } => Self::INVALID_COMMAND_FLAGS_CODE,
+            Self::ReservedBitsSet { .. } => Self::RESERVED_BITS_SET_CODE,
         }
     }
 
@@ -143,6 +171,8 @@ impl IpcError {
             Self::InvalidMagic { .. }
             | Self::UnsupportedVersion { .. }
             | Self::UnknownCommand(_)
+            | Self::InvalidCommandFlags { .. }
+            | Self::ReservedBitsSet { .. }
             | Self::ReservedNonZero { .. }
             | Self::PayloadLengthMismatch { .. }
             | Self::HeaderDecodeFailed
