@@ -40,7 +40,7 @@ pub mod kani_flag_validation;
 pub use crate::action_output::IpcActionOutputPayload;
 pub use crate::bounded::{BoundedPayload, MaxPayloadBytes, QueueCapacity};
 pub use crate::codec::{decode_payload, encode_payload};
-pub use crate::commands::IpcCommand;
+pub use crate::commands::{CommandFlags, IpcCommand};
 pub use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
 pub use crate::error::IpcError;
 #[cfg(test)]

@@ -36,6 +36,69 @@ pub enum IpcCommand {
     UnknownCommand(u16) = 12,
 }
 
+/// Validated command flags for a single IPC command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CommandFlags {
+    command: IpcCommand,
+    raw: u16,
+}
+
+impl CommandFlags {
+    /// Bits no command may set.
+    #[must_use]
+    pub const fn reserved_global_mask() -> u16 {
+        0xFF00
+    }
+
+    /// Bits a command may set.
+    #[must_use]
+    pub const fn valid_mask(command: IpcCommand) -> u16 {
+        match command {
+            IpcCommand::SubmitRun | IpcCommand::SubmitRunInline | IpcCommand::ListEvents => 0x00FF,
+            IpcCommand::InspectRun => 0x0003,
+            IpcCommand::DrainTrace => 0x0007,
+            IpcCommand::CancelRun
+            | IpcCommand::AnswerAsk
+            | IpcCommand::CompleteAction
+            | IpcCommand::FailAction
+            | IpcCommand::Health
+            | IpcCommand::Shutdown
+            | IpcCommand::UnknownCommand(_) => 0x0000,
+        }
+    }
+
+    /// Validates raw flags for a command, checking reserved bits before
+    /// the command-specific mask.
+    pub fn validate(command: IpcCommand, raw: u16) -> Result<Self, IpcError> {
+        if (raw & Self::reserved_global_mask()) != 0 {
+            return Err(IpcError::ReservedBitsSet {
+                command,
+                actual: raw,
+                reserved_mask: Self::reserved_global_mask(),
+            });
+        }
+        if (raw & !Self::valid_mask(command)) != 0 {
+            return Err(IpcError::InvalidCommandFlags {
+                command,
+                flags: raw,
+            });
+        }
+        Ok(Self { command, raw })
+    }
+
+    /// Returns the command these flags were validated for.
+    #[must_use]
+    pub const fn command(self) -> IpcCommand {
+        self.command
+    }
+
+    /// Returns the validated raw flags value.
+    #[must_use]
+    pub const fn as_u16(self) -> u16 {
+        self.raw
+    }
+}
+
 impl IpcCommand {
     /// Parses a wire command identifier.
     pub fn from_u16(value: u16) -> Result<Self, IpcError> {
