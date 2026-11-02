@@ -863,6 +863,13 @@ fn given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capa
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let available_capacity = AggregateResourceCapacity {
         max_steps_executable: 1,
@@ -882,6 +889,15 @@ fn given_budget_over_capacity_when_admission_with_budget_runs_then_resource_capa
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
 
     let result = admit_run_with_budget(

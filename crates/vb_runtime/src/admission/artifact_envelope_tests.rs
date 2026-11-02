@@ -384,6 +384,13 @@ mod artifact_envelope_bdd_tests {
             max_input_bytes: 1024,
             max_step_budget_per_tick: 100,
             max_transitions_per_tick: 200,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         // Capacity that is smaller than requested for max_steps_executable.
@@ -405,6 +412,15 @@ mod artifact_envelope_bdd_tests {
             max_input_bytes: 2048,
             max_step_budget_per_tick: 200,
             max_transitions_per_tick: 400,
+            max_open_gates: u64::MAX,
+            max_signal_subscriptions: u64::MAX,
+            max_incident_emissions: u64::MAX,
+            max_transitions: u64::MAX,
+            max_journal_bytes_total: u64::MAX,
+            max_value_store_entries: u64::MAX,
+            max_cost_units: u64::MAX,
+            tenant_quota_cost_units: u64::MAX,
+            global_quota_cost_units: u64::MAX,
         };
 
         let result = admit_run_with_budget(

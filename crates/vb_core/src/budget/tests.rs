@@ -1,8 +1,10 @@
 //! Budget module integration tests.
 
 use crate::budget::{
-    AggregateBudgetError, AggregateResourceBudget, AggregateResourceUsage, BoundednessPolicy,
-    BudgetError, WholeWorkflowBudget,
+    AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,
+    AggregateResourceUsage, BoundednessPolicy, BudgetError, BudgetExhaustionOutcome,
+    RemainingBudget, RemainingBudgetError, WholeWorkflowBudget, check_tenant_quota,
+    validate_aggregate_budget,
 };
 use crate::engine::StepBudget;
 use crate::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx};
@@ -877,6 +879,13 @@ fn blackhat_steps_executable_saturates_on_large_total() {
         max_blob_bytes: 10,
         max_input_bytes: 11,
         max_queue_depth: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let saturated = u32::try_from(budget.max_total_steps).unwrap_or(u32::MAX);
@@ -1247,6 +1256,13 @@ const fn test_budget(
         max_blob_bytes: 6,
         max_input_bytes: 7,
         max_queue_depth: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     }
 }
 
@@ -2928,6 +2944,13 @@ fn whole_workflow_budget_max_fields() -> Result<(), String> {
         max_blob_bytes: 0,
         max_input_bytes: 0,
         max_queue_depth: u32::MAX,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     ensure_equal(budget.max_total_steps, u64::MAX)?;
     ensure_equal(budget.max_total_slots, u64::MAX)?;
@@ -3145,6 +3168,13 @@ fn ut_budget_add_never_overflows() {
         max_input_bytes: 16,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget_adds_2 = AggregateResourceBudget {
         max_steps_executable: 2,
@@ -3168,6 +3198,13 @@ fn ut_budget_add_never_overflows() {
         max_input_bytes: 11,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let result = usage_near_max.try_add_budget(&budget_adds_2);
@@ -3210,6 +3247,13 @@ fn ut_budget_add_never_overflows() {
         max_input_bytes: 7,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let result = zero_usage.try_add_budget(&small_budget);
     assert!(
@@ -3246,6 +3290,13 @@ fn ut_budget_sub_never_underflows() {
         max_input_bytes: 11,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let result = zero_usage.try_subtract_budget(&budget);
@@ -3278,6 +3329,13 @@ fn ut_budget_sub_never_underflows() {
         max_input_bytes: 22,
         max_step_budget_per_tick: 5,
         max_transitions_per_tick: 5,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 3,
@@ -3301,6 +3359,13 @@ fn ut_budget_sub_never_underflows() {
         max_input_bytes: 0,
         max_step_budget_per_tick: 3,
         max_transitions_per_tick: 3,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let result = usage.try_subtract_budget(&budget);
@@ -3351,6 +3416,13 @@ proptest::proptest! {
         max_blob_bytes: 0,
         max_input_bytes: 0,
             max_queue_depth: 0,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         };
 
         // If all dimensions are within policy defaults, validation should pass
@@ -3750,6 +3822,13 @@ fn aggregate_resource_usage_try_add_budget_overflow() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 1,
@@ -3773,6 +3852,13 @@ fn aggregate_resource_usage_try_add_budget_overflow() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -3807,6 +3893,13 @@ fn aggregate_resource_usage_try_subtract_budget_underflow() -> Result<(), String
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource: _ }) => Ok(()),
@@ -3834,6 +3927,13 @@ fn aggregate_resource_usage_fits_within_capacity() -> Result<(), String> {
         max_input_bytes: 11,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 200,
@@ -3853,6 +3953,15 @@ fn aggregate_resource_usage_fits_within_capacity() -> Result<(), String> {
         max_input_bytes: 22,
         max_step_budget_per_tick: 2000,
         max_transitions_per_tick: 1000,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     ensure_equal(usage.fits_within(&capacity), Ok(()))
 }
@@ -3877,6 +3986,13 @@ fn aggregate_resource_usage_fits_within_rejects_insufficient() -> Result<(), Str
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 200,
@@ -3896,6 +4012,15 @@ fn aggregate_resource_usage_fits_within_rejects_insufficient() -> Result<(), Str
         max_input_bytes: 0,
         max_step_budget_per_tick: 2000,
         max_transitions_per_tick: 1000,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -3925,6 +4050,13 @@ fn fits_within_capacity_exceeded_action_tickets() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -3944,6 +4076,15 @@ fn fits_within_capacity_exceeded_action_tickets() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -3973,6 +4114,13 @@ fn fits_within_capacity_exceeded_parallel_in_flight() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -3992,6 +4140,15 @@ fn fits_within_capacity_exceeded_parallel_in_flight() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -4021,6 +4178,13 @@ fn fits_within_capacity_exceeded_gather_pages() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -4040,6 +4204,15 @@ fn fits_within_capacity_exceeded_gather_pages() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -4069,6 +4242,13 @@ fn fits_within_capacity_exceeded_gather_items() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -4088,6 +4268,15 @@ fn fits_within_capacity_exceeded_gather_items() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -4117,6 +4306,13 @@ fn fits_within_capacity_exceeded_result_bytes() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -4136,6 +4332,15 @@ fn fits_within_capacity_exceeded_result_bytes() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded {
@@ -4167,6 +4372,13 @@ fn fits_within_capacity_exceeded_total_slots_written() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -4186,6 +4398,15 @@ fn fits_within_capacity_exceeded_total_slots_written() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -4215,6 +4436,13 @@ fn fits_within_capacity_exceeded_active_runs() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -4234,6 +4462,15 @@ fn fits_within_capacity_exceeded_active_runs() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -4263,6 +4500,13 @@ fn fits_within_capacity_exceeded_queue_depth() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -4282,6 +4526,15 @@ fn fits_within_capacity_exceeded_queue_depth() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -4311,6 +4564,13 @@ fn fits_within_capacity_exceeded_journal_batch_bytes() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -4330,6 +4590,15 @@ fn fits_within_capacity_exceeded_journal_batch_bytes() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -4359,6 +4628,13 @@ fn fits_within_capacity_exceeded_step_budget_per_tick() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 2000,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -4378,6 +4654,15 @@ fn fits_within_capacity_exceeded_step_budget_per_tick() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -4407,6 +4692,13 @@ fn fits_within_capacity_exceeded_transitions_per_tick() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 1000,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = crate::budget::AggregateResourceCapacity {
         max_steps_executable: 100,
@@ -4426,6 +4718,15 @@ fn fits_within_capacity_exceeded_transitions_per_tick() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     match usage.fits_within(&capacity) {
         Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
@@ -4463,6 +4764,13 @@ fn validate_aggregate_budget_accepts_valid_budget() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let policy = BoundednessPolicy::DEFAULT;
     ensure_equal(
@@ -4505,6 +4813,13 @@ fn validate_aggregate_budget_reports_extended_payload_dimensions() -> Result<(),
         max_input_bytes: 18,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let mut over = base;
@@ -4612,6 +4927,13 @@ fn validate_aggregate_budget_rejects_exceeded_steps() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
@@ -4646,6 +4968,13 @@ fn validate_aggregate_budget_rejects_exceeded_action_tickets() -> Result<(), Str
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
@@ -4680,6 +5009,13 @@ fn validate_aggregate_budget_rejects_exceeded_parallel_in_flight() -> Result<(),
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
@@ -4714,6 +5050,13 @@ fn validate_aggregate_budget_rejects_exceeded_run_time() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
@@ -4748,6 +5091,13 @@ fn validate_aggregate_budget_rejects_exceeded_result_bytes() -> Result<(), Strin
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
@@ -4784,6 +5134,13 @@ fn validate_aggregate_budget_rejects_exceeded_total_slots() -> Result<(), String
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let policy = BoundednessPolicy {
         max_total_steps: 1_000_000,
@@ -4829,6 +5186,13 @@ fn validate_aggregate_budget_rejects_exceeded_together_branches() -> Result<(), 
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let policy = BoundednessPolicy {
         max_total_steps: 1_000_000,
@@ -4878,6 +5242,13 @@ fn validate_step_ceilings_accepts_valid() -> Result<(), String> {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     ensure_equal(crate::budget::validate_step_ceilings(&budget), Ok(()))
 }
@@ -4906,6 +5277,13 @@ fn validate_step_ceilings_rejects_zero_step_budget() -> Result<(), String> {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::StepCeilingExceeded { requested: 0, .. }) => Ok(()),
@@ -4937,6 +5315,13 @@ fn validate_step_ceilings_rejects_zero_transitions() -> Result<(), String> {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::PerTickCeilingExceeded { requested: 0, .. }) => Ok(()),
@@ -4971,6 +5356,13 @@ fn validate_step_ceilings_rejects_step_over_hard_limit() -> Result<(), String> {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::StepCeilingExceeded {
@@ -5005,6 +5397,13 @@ fn validate_step_ceilings_rejects_transitions_over_hard_limit() -> Result<(), St
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::PerTickCeilingExceeded {
@@ -5039,6 +5438,15 @@ fn aggregate_resource_capacity_is_copy() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     let copy = cap;
     ensure_equal(cap.max_steps_executable, copy.max_steps_executable)
@@ -5077,6 +5485,13 @@ fn aggregate_reservation_debug_format() -> Result<(), String> {
             max_input_bytes: 0,
             max_step_budget_per_tick: 1000,
             max_transitions_per_tick: 500,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         },
     };
     let debug = format!("{:?}", reservation);
@@ -5229,6 +5644,13 @@ fn try_add_budget_exercises_multiple_dimensions() -> Result<(), String> {
         max_input_bytes: 11,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 500,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 50,
@@ -5252,6 +5674,13 @@ fn try_add_budget_exercises_multiple_dimensions() -> Result<(), String> {
         max_input_bytes: 7,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let result = usage.try_add_budget(&budget);
     let added = result.map_err(|e| format!("{:?}", e))?;
@@ -5294,6 +5723,13 @@ fn try_subtract_budget_exercises_multiple_dimensions() -> Result<(), String> {
         max_input_bytes: 18,
         max_step_budget_per_tick: 1500,
         max_transitions_per_tick: 750,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 50,
@@ -5317,6 +5753,13 @@ fn try_subtract_budget_exercises_multiple_dimensions() -> Result<(), String> {
         max_input_bytes: 7,
         max_step_budget_per_tick: 500,
         max_transitions_per_tick: 250,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let result = usage.try_subtract_budget(&budget);
     let subtracted = result.map_err(|e| format!("{:?}", e))?;
@@ -5359,6 +5802,13 @@ fn try_add_budget_overflow_action_tickets_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5382,6 +5832,13 @@ fn try_add_budget_overflow_action_tickets_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5411,6 +5868,13 @@ fn try_add_budget_overflow_parallel_in_flight_dimension() -> Result<(), String> 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5434,6 +5898,13 @@ fn try_add_budget_overflow_parallel_in_flight_dimension() -> Result<(), String> 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5463,6 +5934,13 @@ fn try_add_budget_overflow_gather_pages_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5486,6 +5964,13 @@ fn try_add_budget_overflow_gather_pages_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5515,6 +6000,13 @@ fn try_add_budget_overflow_gather_items_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5538,6 +6030,13 @@ fn try_add_budget_overflow_gather_items_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5567,6 +6066,13 @@ fn try_add_budget_overflow_result_bytes_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5590,6 +6096,13 @@ fn try_add_budget_overflow_result_bytes_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5619,6 +6132,13 @@ fn try_add_budget_overflow_total_slots_written_dimension() -> Result<(), String>
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5642,6 +6162,13 @@ fn try_add_budget_overflow_total_slots_written_dimension() -> Result<(), String>
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5671,6 +6198,13 @@ fn try_add_budget_overflow_queue_depth_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5694,6 +6228,13 @@ fn try_add_budget_overflow_queue_depth_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5723,6 +6264,13 @@ fn try_add_budget_overflow_journal_batch_bytes_dimension() -> Result<(), String>
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5746,6 +6294,13 @@ fn try_add_budget_overflow_journal_batch_bytes_dimension() -> Result<(), String>
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5775,6 +6330,13 @@ fn try_add_budget_overflow_step_budget_per_tick_dimension() -> Result<(), String
         max_input_bytes: 0,
         max_step_budget_per_tick: u64::MAX - 1,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5798,6 +6360,13 @@ fn try_add_budget_overflow_step_budget_per_tick_dimension() -> Result<(), String
         max_input_bytes: 0,
         max_step_budget_per_tick: 2,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5827,6 +6396,13 @@ fn try_add_budget_overflow_transitions_per_tick_dimension() -> Result<(), String
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: u64::MAX - 1,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5850,6 +6426,13 @@ fn try_add_budget_overflow_transitions_per_tick_dimension() -> Result<(), String
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 2,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Err(AggregateBudgetError::Overflow { resource }) => {
@@ -5879,6 +6462,13 @@ fn try_subtract_budget_underflow_action_tickets_dimension() -> Result<(), String
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5902,6 +6492,13 @@ fn try_subtract_budget_underflow_action_tickets_dimension() -> Result<(), String
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -5931,6 +6528,13 @@ fn try_subtract_budget_underflow_parallel_in_flight_dimension() -> Result<(), St
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -5954,6 +6558,13 @@ fn try_subtract_budget_underflow_parallel_in_flight_dimension() -> Result<(), St
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -5983,6 +6594,13 @@ fn try_subtract_budget_underflow_gather_pages_dimension() -> Result<(), String> 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -6006,6 +6624,13 @@ fn try_subtract_budget_underflow_gather_pages_dimension() -> Result<(), String> 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -6035,6 +6660,13 @@ fn try_subtract_budget_underflow_gather_items_dimension() -> Result<(), String> 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -6058,6 +6690,13 @@ fn try_subtract_budget_underflow_gather_items_dimension() -> Result<(), String> 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -6087,6 +6726,13 @@ fn try_subtract_budget_underflow_result_bytes_dimension() -> Result<(), String> 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -6110,6 +6756,13 @@ fn try_subtract_budget_underflow_result_bytes_dimension() -> Result<(), String> 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -6139,6 +6792,13 @@ fn try_subtract_budget_underflow_total_slots_written_dimension() -> Result<(), S
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -6162,6 +6822,13 @@ fn try_subtract_budget_underflow_total_slots_written_dimension() -> Result<(), S
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -6191,6 +6858,13 @@ fn try_subtract_budget_underflow_queue_depth_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -6214,6 +6888,13 @@ fn try_subtract_budget_underflow_queue_depth_dimension() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -6243,6 +6924,13 @@ fn try_subtract_budget_underflow_journal_batch_bytes_dimension() -> Result<(), S
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -6266,6 +6954,13 @@ fn try_subtract_budget_underflow_journal_batch_bytes_dimension() -> Result<(), S
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -6295,6 +6990,13 @@ fn try_subtract_budget_underflow_step_budget_per_tick_dimension() -> Result<(), 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -6318,6 +7020,13 @@ fn try_subtract_budget_underflow_step_budget_per_tick_dimension() -> Result<(), 
         max_input_bytes: 0,
         max_step_budget_per_tick: 1,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -6347,6 +7056,13 @@ fn try_subtract_budget_underflow_transitions_per_tick_dimension() -> Result<(), 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let budget = AggregateResourceBudget {
         max_steps_executable: 0,
@@ -6370,6 +7086,13 @@ fn try_subtract_budget_underflow_transitions_per_tick_dimension() -> Result<(), 
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 1,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_subtract_budget(&budget) {
         Err(AggregateBudgetError::Underflow { resource }) => {
@@ -6415,6 +7138,13 @@ fn validate_step_ceilings_accepts_exact_hard_limit() -> Result<(), String> {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     ensure_equal(crate::budget::validate_step_ceilings(&budget), Ok(()))
 }
@@ -6446,6 +7176,13 @@ fn whole_workflow_budget_add_at_exact_limit() -> Result<(), String> {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let mut usage = AggregateResourceUsage::default();
     // Set usage to exactly the limit
@@ -6469,6 +7206,13 @@ fn whole_workflow_budget_add_at_exact_limit() -> Result<(), String> {
         max_blob_bytes: 0,
         max_input_bytes: 0,
         max_active_runs: 1,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Ok(actual) => ensure_equal(actual, expected),
@@ -6517,6 +7261,13 @@ fn whole_workflow_budget_policy_at_exact_limit() -> Result<(), String> {
         max_input_bytes: 23,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 1000,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     // Usage at exact limit should pass (>= comparison, not >)
     ensure_equal(usage.check_policy(&policy), Ok(()))
@@ -6558,6 +7309,13 @@ fn whole_workflow_budget_policy_exceeds_limit() -> Result<(), String> {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1000,
         max_transitions_per_tick: 1000,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.check_policy(&policy) {
         Err(AggregateBudgetError::PolicyExceeded {
@@ -6599,6 +7357,13 @@ fn whole_workflow_budget_capacity_at_exact_limit() -> Result<(), String> {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let mut usage = AggregateResourceUsage::default();
     // Set requested to exactly match limit
@@ -6622,6 +7387,13 @@ fn whole_workflow_budget_capacity_at_exact_limit() -> Result<(), String> {
         max_blob_bytes: 0,
         max_input_bytes: 0,
         max_active_runs: 1,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match usage.try_add_budget(&budget) {
         Ok(actual) => ensure_equal(actual, expected),
@@ -6656,6 +7428,13 @@ fn validate_step_ceilings_rejects_step_over_limit_by_one() -> Result<(), String>
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::StepCeilingExceeded {
@@ -6694,6 +7473,13 @@ fn validate_step_ceilings_accepts_exact_transition_hard_limit() -> Result<(), St
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     ensure_equal(crate::budget::validate_step_ceilings(&budget), Ok(()))
 }
@@ -6723,6 +7509,13 @@ fn validate_step_ceilings_rejects_transitions_over_limit_by_one() -> Result<(), 
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::PerTickCeilingExceeded {
@@ -6734,4 +7527,523 @@ fn validate_step_ceilings_rejects_transitions_over_limit_by_one() -> Result<(), 
             other
         )),
     }
+}
+// =========================================================================
+// §77.18 resource budget dimensions (vb/budget-dims)
+// =========================================================================
+
+fn ask_node(id: u16, next: Option<u16>) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(id),
+        output: None,
+        next: next.map(StepIdx::new),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Ask {
+            prompt: SlotIdx::new(0),
+            timeout_slot: None,
+        },
+    }
+}
+
+fn wait_event_node(id: u16, next: Option<u16>) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(id),
+        output: None,
+        next: next.map(StepIdx::new),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::WaitEvent {
+            event: SlotIdx::new(0),
+            timeout_slot: None,
+        },
+    }
+}
+
+fn do_node(id: u16, action: u16, next: Option<u16>) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(id),
+        output: None,
+        next: next.map(StepIdx::new),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(action),
+            input: SlotIdx::new(0),
+        },
+    }
+}
+
+fn nop_node(id: u16, next: Option<u16>) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(id),
+        output: None,
+        next: next.map(StepIdx::new),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    }
+}
+
+#[test]
+fn budget_dimensions_count_ask_and_wait_event_nodes() {
+    let nodes = vec![
+        nop_node(0, Some(1)),
+        ask_node(1, Some(2)),
+        wait_event_node(2, Some(3)),
+        finish_node(3),
+    ];
+    let contract = test_contract(4, 2);
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .expect("budget compute must succeed");
+    assert_eq!(budget.max_open_gates, 1, "one Ask node is one open gate");
+    assert_eq!(
+        budget.max_signal_subscriptions, 1,
+        "one WaitEvent node is one signal subscription"
+    );
+    assert_eq!(
+        budget.max_timer_entries, 2,
+        "Ask and WaitEvent still count as timer entries"
+    );
+}
+
+#[test]
+fn budget_dimensions_small_linear_counts_gates_and_signals() {
+    let nodes = vec![ask_node(0, Some(1)), wait_event_node(1, None)];
+    let contract = test_contract(2, 1);
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .expect("small-linear budget compute must succeed");
+    assert_eq!(budget.max_open_gates, 1);
+    assert_eq!(budget.max_signal_subscriptions, 1);
+}
+
+#[test]
+fn budget_dimensions_transitions_include_retry_factor() {
+    let contract = ResourceContract {
+        max_retry_attempts: 3,
+        ..test_contract(1, 1)
+    };
+    let nodes = vec![finish_node(0)];
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .expect("budget compute must succeed");
+    assert_eq!(
+        budget.max_transitions, 4,
+        "one step times the retry factor (1 + 3) is four transitions"
+    );
+}
+
+#[test]
+fn budget_dimensions_journal_total_is_batch_times_steps() {
+    let contract = ResourceContract {
+        max_journal_batch_bytes: 100,
+        ..test_contract(3, 1)
+    };
+    let nodes = vec![nop_node(0, Some(1)), nop_node(1, Some(2)), finish_node(2)];
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .expect("budget compute must succeed");
+    assert_eq!(
+        budget.max_journal_bytes_total, 300,
+        "three steps at a 100-byte batch cap is 300 cumulative bytes"
+    );
+}
+
+#[test]
+fn budget_dimensions_cost_units_equal_action_tickets() {
+    let nodes = vec![
+        do_node(0, 0, Some(1)),
+        do_node(1, 1, Some(2)),
+        finish_node(2),
+    ];
+    let contract = test_contract(3, 1);
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .expect("budget compute must succeed");
+    assert_eq!(budget.max_action_tickets, 2);
+    assert_eq!(budget.max_cost_units, 2, "one cost unit per action ticket");
+}
+
+#[test]
+fn budget_dimensions_incidents_and_value_entries_bounded_by_steps() {
+    let contract = test_contract(3, 2);
+    let nodes = vec![nop_node(0, Some(1)), nop_node(1, Some(2)), finish_node(2)];
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .expect("budget compute must succeed");
+    assert_eq!(
+        budget.max_incident_emissions, 3,
+        "one incident per step at most"
+    );
+    assert_eq!(
+        budget.max_value_store_entries, 6,
+        "three steps plus two input slots plus one constant"
+    );
+}
+
+#[test]
+fn budget_dimensions_policy_rejects_each_new_dimension_over_cap() {
+    let over_gates = test_budget(1, 1, 0, 0);
+    let over_gates = WholeWorkflowBudget {
+        max_open_gates: 2,
+        ..over_gates
+    };
+    assert_eq!(
+        BoundednessPolicy {
+            absolute_max_open_gates: 1,
+            ..BoundednessPolicy::DEFAULT
+        }
+        .validate(&over_gates),
+        Err(BudgetError::OpenGatesExceeded {
+            actual: 2,
+            limit: 1
+        })
+    );
+
+    let over_signals = WholeWorkflowBudget {
+        max_signal_subscriptions: 2,
+        ..test_budget(1, 1, 0, 0)
+    };
+    assert_eq!(
+        BoundednessPolicy {
+            absolute_max_signal_subscriptions: 1,
+            ..BoundednessPolicy::DEFAULT
+        }
+        .validate(&over_signals),
+        Err(BudgetError::SignalSubscriptionsExceeded {
+            actual: 2,
+            limit: 1
+        })
+    );
+
+    let over_incidents = WholeWorkflowBudget {
+        max_incident_emissions: 2,
+        ..test_budget(1, 1, 0, 0)
+    };
+    assert_eq!(
+        BoundednessPolicy {
+            absolute_max_incident_emissions: 1,
+            ..BoundednessPolicy::DEFAULT
+        }
+        .validate(&over_incidents),
+        Err(BudgetError::IncidentEmissionsExceeded {
+            actual: 2,
+            limit: 1
+        })
+    );
+
+    let over_transitions = WholeWorkflowBudget {
+        max_transitions: 2,
+        ..test_budget(1, 1, 0, 0)
+    };
+    assert_eq!(
+        BoundednessPolicy {
+            absolute_max_transitions: 1,
+            ..BoundednessPolicy::DEFAULT
+        }
+        .validate(&over_transitions),
+        Err(BudgetError::TransitionsExceeded {
+            actual: 2,
+            limit: 1
+        })
+    );
+
+    let over_journal = WholeWorkflowBudget {
+        max_journal_bytes_total: 2,
+        ..test_budget(1, 1, 0, 0)
+    };
+    assert_eq!(
+        BoundednessPolicy {
+            absolute_max_journal_bytes_total: 1,
+            ..BoundednessPolicy::DEFAULT
+        }
+        .validate(&over_journal),
+        Err(BudgetError::JournalBytesTotalExceeded {
+            actual: 2,
+            limit: 1
+        })
+    );
+
+    let over_entries = WholeWorkflowBudget {
+        max_value_store_entries: 2,
+        ..test_budget(1, 1, 0, 0)
+    };
+    assert_eq!(
+        BoundednessPolicy {
+            absolute_max_value_store_entries: 1,
+            ..BoundednessPolicy::DEFAULT
+        }
+        .validate(&over_entries),
+        Err(BudgetError::ValueStoreEntriesExceeded {
+            actual: 2,
+            limit: 1
+        })
+    );
+
+    let over_cost = WholeWorkflowBudget {
+        max_cost_units: 2,
+        ..test_budget(1, 1, 0, 0)
+    };
+    assert_eq!(
+        BoundednessPolicy {
+            absolute_max_cost_units: 1,
+            ..BoundednessPolicy::DEFAULT
+        }
+        .validate(&over_cost),
+        Err(BudgetError::CostUnitsExceeded {
+            actual: 2,
+            limit: 1
+        })
+    );
+}
+
+fn ample_capacity() -> AggregateResourceCapacity {
+    AggregateResourceCapacity {
+        max_steps_executable: u64::MAX,
+        max_action_tickets: u64::MAX,
+        max_parallel_in_flight: u32::MAX,
+        max_gather_pages: u64::MAX,
+        max_gather_items: u64::MAX,
+        max_result_bytes: u64::MAX,
+        max_total_slots_written: u64::MAX,
+        max_timer_entries: u64::MAX,
+        max_trace_events: u64::MAX,
+        max_active_runs: u64::MAX,
+        max_queue_depth: u64::MAX,
+        max_journal_batch_bytes: u64::MAX,
+        max_ipc_payload_bytes: u64::MAX,
+        max_blob_bytes: u64::MAX,
+        max_input_bytes: u64::MAX,
+        max_step_budget_per_tick: u64::MAX,
+        max_transitions_per_tick: u64::MAX,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
+    }
+}
+
+fn new_dimension_budget() -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 0,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+        max_open_gates: 1,
+        max_signal_subscriptions: 1,
+        max_incident_emissions: 1,
+        max_transitions: 1,
+        max_journal_bytes_total: 1,
+        max_value_store_entries: 1,
+        max_cost_units: 1,
+    }
+}
+
+#[test]
+fn budget_dimensions_aggregate_add_subtract_round_trip() {
+    let budget = new_dimension_budget();
+    let usage = AggregateResourceUsage::default()
+        .try_add_budget(&budget)
+        .expect("add must succeed");
+    assert_eq!(usage.max_open_gates, 1);
+    assert_eq!(usage.max_signal_subscriptions, 1);
+    assert_eq!(usage.max_incident_emissions, 1);
+    assert_eq!(usage.max_transitions, 1);
+    assert_eq!(usage.max_journal_bytes_total, 1);
+    assert_eq!(usage.max_value_store_entries, 1);
+    assert_eq!(usage.max_cost_units, 1);
+    assert_eq!(usage.max_active_runs, 1);
+    let back = usage
+        .try_subtract_budget(&budget)
+        .expect("subtract must succeed");
+    assert_eq!(back, AggregateResourceUsage::default());
+}
+
+#[test]
+fn budget_dimensions_aggregate_fits_rejects_new_dimensions() {
+    let budget = new_dimension_budget();
+    let usage = AggregateResourceUsage::default()
+        .try_add_budget(&budget)
+        .expect("add must succeed");
+    let mut capacity = ample_capacity();
+    capacity.max_open_gates = 0;
+    assert_eq!(
+        usage.fits_within(&capacity),
+        Err(AggregateBudgetError::CapacityExceeded {
+            resource: "max_open_gates",
+            requested: 1,
+            available: 0,
+        })
+    );
+    let mut capacity = ample_capacity();
+    capacity.global_quota_cost_units = 0;
+    assert_eq!(
+        usage.fits_within(&capacity),
+        Err(AggregateBudgetError::CapacityExceeded {
+            resource: "global_quota_cost_units",
+            requested: 1,
+            available: 0,
+        })
+    );
+    assert!(
+        usage.fits_within(&ample_capacity()).is_ok(),
+        "ample capacity fits all new dimensions"
+    );
+}
+
+#[test]
+fn budget_dimensions_aggregate_policy_rejects_new_dimensions() {
+    let budget = new_dimension_budget();
+    let mut policy = BoundednessPolicy::DEFAULT;
+    policy.absolute_max_cost_units = 0;
+    assert_eq!(
+        validate_aggregate_budget(&budget, &policy),
+        Err(AggregateBudgetError::PolicyExceeded {
+            resource: "max_cost_units",
+            actual: 1,
+            limit: 0,
+        })
+    );
+    assert!(
+        validate_aggregate_budget(&budget, &BoundednessPolicy::DEFAULT).is_ok(),
+        "default policy admits the small new-dimension budget"
+    );
+}
+
+#[test]
+fn budget_dimensions_tenant_quota_checked_add_and_cap() {
+    assert_eq!(
+        check_tenant_quota(5, 6, 10),
+        Err(AggregateBudgetError::CapacityExceeded {
+            resource: "tenant_quota_cost_units",
+            requested: 11,
+            available: 10,
+        })
+    );
+    assert!(check_tenant_quota(5, 5, 10).is_ok(), "at-quota admits");
+    assert_eq!(
+        check_tenant_quota(u64::MAX, 1, u64::MAX),
+        Err(AggregateBudgetError::Overflow {
+            resource: "tenant_quota_cost_units",
+        })
+    );
+}
+
+#[test]
+fn budget_dimensions_remaining_gates_release_cycle() {
+    let mut counters = RemainingBudget::from_budget(&AggregateResourceBudget {
+        max_open_gates: 1,
+        ..new_dimension_budget()
+    });
+    assert!(counters.try_open_gate().is_ok());
+    let err = counters
+        .try_open_gate()
+        .expect_err("second gate must exhaust the single slot");
+    assert_eq!(err, RemainingBudgetError::OpenGatesExhausted);
+    assert_eq!(err.outcome(), BudgetExhaustionOutcome::Suspend);
+    assert!(counters.release_gate().is_ok());
+    assert_eq!(counters.remaining_open_gates(), 1);
+    assert_eq!(
+        counters.release_gate(),
+        Err(RemainingBudgetError::ReleaseAboveLimit {
+            resource: "max_open_gates",
+        })
+    );
+}
+
+#[test]
+fn budget_dimensions_remaining_signals_release_cycle() {
+    let mut counters = RemainingBudget::from_budget(&AggregateResourceBudget {
+        max_signal_subscriptions: 1,
+        ..new_dimension_budget()
+    });
+    assert!(counters.try_subscribe_signal().is_ok());
+    let err = counters
+        .try_subscribe_signal()
+        .expect_err("second subscription must exhaust the single slot");
+    assert_eq!(err, RemainingBudgetError::SignalSubscriptionsExhausted);
+    assert_eq!(err.outcome(), BudgetExhaustionOutcome::Suspend);
+    assert!(counters.release_signal().is_ok());
+    assert_eq!(
+        counters.release_signal(),
+        Err(RemainingBudgetError::ReleaseAboveLimit {
+            resource: "max_signal_subscriptions",
+        })
+    );
+}
+
+#[test]
+fn budget_dimensions_remaining_monotonic_dimensions_fail_on_exhaustion() {
+    let mut counters = RemainingBudget::from_budget(&AggregateResourceBudget {
+        max_transitions: 2,
+        max_journal_bytes_total: 10,
+        max_value_store_entries: 3,
+        max_incident_emissions: 1,
+        max_cost_units: 5,
+        ..new_dimension_budget()
+    });
+    assert!(counters.try_consume_transition().is_ok());
+    assert!(counters.try_consume_transition().is_ok());
+    let err = counters
+        .try_consume_transition()
+        .expect_err("third transition must exhaust");
+    assert_eq!(err, RemainingBudgetError::TransitionsExhausted);
+    assert_eq!(err.outcome(), BudgetExhaustionOutcome::Fail);
+
+    assert!(counters.try_append_journal_bytes(6).is_ok());
+    assert_eq!(counters.remaining_journal_bytes_total(), 4);
+    assert_eq!(
+        counters.try_append_journal_bytes(5),
+        Err(RemainingBudgetError::JournalBytesExhausted {
+            requested: 5,
+            remaining: 4,
+        })
+    );
+    assert_eq!(
+        counters.remaining_journal_bytes_total(),
+        4,
+        "a failed append consumes nothing"
+    );
+
+    assert!(counters.try_create_value_store_entries(3).is_ok());
+    assert_eq!(
+        counters.try_create_value_store_entries(1),
+        Err(RemainingBudgetError::ValueStoreEntriesExhausted {
+            requested: 1,
+            remaining: 0,
+        })
+    );
+
+    assert!(counters.try_emit_incident().is_ok());
+    assert_eq!(
+        counters.try_emit_incident(),
+        Err(RemainingBudgetError::IncidentEmissionsExhausted)
+    );
+
+    assert!(counters.try_spend_cost_units(5).is_ok());
+    assert_eq!(
+        counters.try_spend_cost_units(1),
+        Err(RemainingBudgetError::CostUnitsExhausted {
+            requested: 1,
+            remaining: 0,
+        })
+    );
 }

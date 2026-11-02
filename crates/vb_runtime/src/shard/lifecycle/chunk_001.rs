@@ -486,7 +486,7 @@ impl Shard {
             let max_slots = workflow.resource_contract().max_slots;
             self.prepare_run_slots(run)?;
             let state_admission = match admission {
-                crate::shard::types::RecoveredAdmissionKind::Historical(h) => Some(h),
+                crate::shard::types::RecoveredAdmissionKind::Historical(h) => Some(*h),
                 crate::shard::types::RecoveredAdmissionKind::Unverified { .. } => {
                     unverified_admission
                 }

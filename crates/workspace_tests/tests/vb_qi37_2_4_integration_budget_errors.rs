@@ -106,6 +106,13 @@ fn tight_policy(
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     }
 }
 
@@ -456,6 +463,13 @@ fn integration_policy_returns_parallel_exceeded_when_parallel_crosses_limit() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -511,6 +525,13 @@ fn integration_policy_returns_action_tickets_exceeded_when_action_tickets_cross_
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -598,6 +619,13 @@ fn integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -674,6 +702,13 @@ fn integration_policy_returns_result_bytes_exceeded_when_result_bytes_cross_limi
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -724,6 +759,13 @@ fn integration_policy_returns_steps_executable_exceeded_when_executable_steps_cr
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -963,6 +1005,13 @@ fn integration_action_together_parallel_exceeded() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1031,6 +1080,13 @@ fn integration_result_size_returns_result_bytes_exceeded() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1402,6 +1458,13 @@ fn integration_budget_error_total_steps_exceeded_display() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let policy = tight_policy(100, 65_535, 64, 8);
@@ -1449,6 +1512,13 @@ fn integration_budget_error_fanout_exceeded_display() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let policy = tight_policy(1_000_000, 65_535, 50, 8);
@@ -1493,6 +1563,13 @@ fn integration_budget_error_parallel_exceeded_display() {
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     let policy = BoundednessPolicy {
@@ -1512,6 +1589,13 @@ fn integration_budget_error_parallel_exceeded_display() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1582,6 +1666,13 @@ fn integration_policy_checks_fanout_before_parallel() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1812,6 +1903,13 @@ fn integration_policy_validates_steps_executable() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);
@@ -1871,6 +1969,13 @@ fn integration_policy_validates_result_bytes() {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: u32::MAX,
+        absolute_max_signal_subscriptions: u32::MAX,
+        absolute_max_incident_emissions: u64::MAX,
+        absolute_max_transitions: u64::MAX,
+        absolute_max_journal_bytes_total: u64::MAX,
+        absolute_max_value_store_entries: u64::MAX,
+        absolute_max_cost_units: u64::MAX,
     };
 
     let result = policy.validate(&budget);

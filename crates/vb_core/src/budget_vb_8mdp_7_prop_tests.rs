@@ -75,6 +75,13 @@ fn arb_usage() -> impl Strategy<Value = AggregateResourceUsage> {
                 max_input_bytes: c3,
                 max_step_budget_per_tick: c4,
                 max_transitions_per_tick: c5,
+                max_open_gates: 0,
+                max_signal_subscriptions: 0,
+                max_incident_emissions: 0,
+                max_transitions: 0,
+                max_journal_bytes_total: 0,
+                max_value_store_entries: 0,
+                max_cost_units: 0,
             }
         },
     )
@@ -138,6 +145,13 @@ fn arb_budget() -> impl Strategy<Value = AggregateResourceBudget> {
                 max_input_bytes: c5,
                 max_step_budget_per_tick: c6,
                 max_transitions_per_tick: c7,
+                max_open_gates: 0,
+                max_signal_subscriptions: 0,
+                max_incident_emissions: 0,
+                max_transitions: 0,
+                max_journal_bytes_total: 0,
+                max_value_store_entries: 0,
+                max_cost_units: 0,
             }
         },
     )
@@ -169,6 +183,15 @@ fn arb_capacity_larger_than(usage: &AggregateResourceUsage) -> AggregateResource
         max_input_bytes: usage.max_input_bytes.saturating_add(1_000_000),
         max_step_budget_per_tick: usage.max_step_budget_per_tick.saturating_add(1_000_000),
         max_transitions_per_tick: usage.max_transitions_per_tick.saturating_add(1_000_000),
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     }
 }
 
@@ -192,6 +215,15 @@ fn arb_capacity_smaller_than(usage: &AggregateResourceUsage) -> AggregateResourc
         max_input_bytes: usage.max_input_bytes,
         max_step_budget_per_tick: usage.max_step_budget_per_tick,
         max_transitions_per_tick: usage.max_transitions_per_tick,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     }
 }
 
@@ -219,6 +251,13 @@ fn budget_zero() -> AggregateResourceBudget {
         max_input_bytes: 0,
         max_step_budget_per_tick: 1,
         max_transitions_per_tick: 1,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     }
 }
 
@@ -494,6 +533,15 @@ fn fits_within_capacity_exceeded_exact_fields() {
         max_input_bytes: u64::MAX,
         max_step_budget_per_tick: u64::MAX,
         max_transitions_per_tick: u64::MAX,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
     let result = usage.fits_within(&capacity);
     assert_eq!(
@@ -565,6 +613,13 @@ fn budget_from_contract_default_is_constant() {
             max_ipc_payload_bytes: 0,
             max_blob_bytes: 0,
             max_input_bytes: 0,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         },
         ResourceContract::DEFAULT,
     );
@@ -593,6 +648,13 @@ fn budget_from_contract_default_is_constant() {
             max_ipc_payload_bytes: 0,
             max_blob_bytes: 0,
             max_input_bytes: 0,
+            max_open_gates: 0,
+            max_signal_subscriptions: 0,
+            max_incident_emissions: 0,
+            max_transitions: 0,
+            max_journal_bytes_total: 0,
+            max_value_store_entries: 0,
+            max_cost_units: 0,
         },
         ResourceContract::DEFAULT,
     );

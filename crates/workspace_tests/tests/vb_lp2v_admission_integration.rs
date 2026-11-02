@@ -206,6 +206,13 @@ fn given_excessive_budget_when_strict_admit_run_with_budget_then_capacity_exceed
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = AggregateResourceCapacity {
         max_steps_executable: 0, // zero capacity — budget exceeds immediately
@@ -225,6 +232,15 @@ fn given_excessive_budget_when_strict_admit_run_with_budget_then_capacity_exceed
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
 
     let result = admit_run_with_budget(
@@ -287,6 +303,13 @@ fn given_budget_within_capacity_and_artifact_missing_when_strict_then_artifact_n
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = AggregateResourceCapacity {
         max_steps_executable: 1000,
@@ -306,6 +329,15 @@ fn given_budget_within_capacity_and_artifact_missing_when_strict_then_artifact_n
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
 
     let result = admit_run_with_budget(
@@ -371,6 +403,13 @@ fn given_excessive_budget_when_relaxed_admit_run_with_budget_then_capacity_excee
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
     let capacity = AggregateResourceCapacity {
         max_steps_executable: 0,
@@ -390,6 +429,15 @@ fn given_excessive_budget_when_relaxed_admit_run_with_budget_then_capacity_excee
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: u64::MAX,
+        max_signal_subscriptions: u64::MAX,
+        max_incident_emissions: u64::MAX,
+        max_transitions: u64::MAX,
+        max_journal_bytes_total: u64::MAX,
+        max_value_store_entries: u64::MAX,
+        max_cost_units: u64::MAX,
+        tenant_quota_cost_units: u64::MAX,
+        global_quota_cost_units: u64::MAX,
     };
 
     let result = admit_run_with_budget(

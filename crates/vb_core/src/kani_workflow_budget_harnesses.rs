@@ -35,6 +35,13 @@ impl kani::Arbitrary for AggregateResourceUsage {
             max_input_bytes: kani::any(),
             max_step_budget_per_tick: kani::any(),
             max_transitions_per_tick: kani::any(),
+            max_open_gates: kani::any(),
+            max_signal_subscriptions: kani::any(),
+            max_incident_emissions: kani::any(),
+            max_transitions: kani::any(),
+            max_journal_bytes_total: kani::any(),
+            max_value_store_entries: kani::any(),
+            max_cost_units: kani::any(),
         }
     }
 }
@@ -64,6 +71,13 @@ impl kani::Arbitrary for AggregateResourceBudget {
             max_input_bytes: kani::any(),
             max_step_budget_per_tick: kani::any(),
             max_transitions_per_tick: kani::any(),
+            max_open_gates: kani::any(),
+            max_signal_subscriptions: kani::any(),
+            max_incident_emissions: kani::any(),
+            max_transitions: kani::any(),
+            max_journal_bytes_total: kani::any(),
+            max_value_store_entries: kani::any(),
+            max_cost_units: kani::any(),
         }
     }
 }
@@ -89,6 +103,15 @@ impl kani::Arbitrary for AggregateResourceCapacity {
             max_input_bytes: kani::any(),
             max_step_budget_per_tick: kani::any(),
             max_transitions_per_tick: kani::any(),
+            max_open_gates: kani::any(),
+            max_signal_subscriptions: kani::any(),
+            max_incident_emissions: kani::any(),
+            max_transitions: kani::any(),
+            max_journal_bytes_total: kani::any(),
+            max_value_store_entries: kani::any(),
+            max_cost_units: kani::any(),
+            tenant_quota_cost_units: kani::any(),
+            global_quota_cost_units: kani::any(),
         }
     }
 }
@@ -160,6 +183,13 @@ fn kani_harness_boundedness_policy_validate() {
         max_ipc_payload_bytes: kani::any(),
         max_blob_bytes: kani::any(),
         max_input_bytes: kani::any(),
+        max_open_gates: kani::any(),
+        max_signal_subscriptions: kani::any(),
+        max_incident_emissions: kani::any(),
+        max_transitions: kani::any(),
+        max_journal_bytes_total: kani::any(),
+        max_value_store_entries: kani::any(),
+        max_cost_units: kani::any(),
     };
     let result = policy.validate(&budget);
     match result {
