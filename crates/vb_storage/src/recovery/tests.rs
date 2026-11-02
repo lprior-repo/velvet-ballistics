@@ -1101,7 +1101,8 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 | JournalEvent::RunRetried { .. }
                 | JournalEvent::RunAnswered { .. }
                 | JournalEvent::ActionAbandoned { .. }
-                | JournalEvent::PolicyDecisionEvent { .. } => {}
+                | JournalEvent::PolicyDecisionEvent { .. }
+                | JournalEvent::CompatibilityDecisionEvent { .. } => {}
             }
             summary
         })

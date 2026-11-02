@@ -12,6 +12,7 @@ use vb_core::{RunId, SlotValue};
 mod event;
 mod wire;
 
+pub use wire::classify_journal_envelope;
 pub(crate) use wire::{
     decode_journal_event_payload_for_envelope, is_schema_one_shared_envelope_compatible,
 };
@@ -50,7 +51,8 @@ impl JournalEvent {
             | Self::RunRetried { run, .. }
             | Self::RunAnswered { run, .. }
             | Self::AskTimedOutEvent { run, .. }
-            | Self::PolicyDecisionEvent { run, .. } => *run,
+            | Self::PolicyDecisionEvent { run, .. }
+            | Self::CompatibilityDecisionEvent { run, .. } => *run,
         }
     }
 
@@ -88,7 +90,8 @@ impl JournalEvent {
             | Self::RunRetried { seq, .. }
             | Self::RunAnswered { seq, .. }
             | Self::AskTimedOutEvent { seq, .. }
-            | Self::PolicyDecisionEvent { seq, .. } => *seq,
+            | Self::PolicyDecisionEvent { seq, .. }
+            | Self::CompatibilityDecisionEvent { seq, .. } => *seq,
         }
     }
 
@@ -143,6 +146,7 @@ impl JournalEvent {
             Self::RunAnswered { .. } => RecordKind::RunAnswered,
             Self::AskTimedOutEvent { .. } => RecordKind::AskTimedOut,
             Self::PolicyDecisionEvent { .. } => RecordKind::PolicyDecision,
+            Self::CompatibilityDecisionEvent { .. } => RecordKind::CompatibilityDecision,
         }
     }
 
@@ -219,7 +223,8 @@ impl JournalEvent {
             | Self::RunResumed { .. }
             | Self::RunRetried { .. }
             | Self::RunAnswered { .. }
-            | Self::PolicyDecisionEvent { .. } => None,
+            | Self::PolicyDecisionEvent { .. }
+            | Self::CompatibilityDecisionEvent { .. } => None,
         }
     }
 
@@ -271,7 +276,8 @@ impl JournalEvent {
             | Self::RunResumed { .. }
             | Self::RunRetried { .. }
             | Self::RunAnswered { .. }
-            | Self::PolicyDecisionEvent { .. } => true,
+            | Self::PolicyDecisionEvent { .. }
+            | Self::CompatibilityDecisionEvent { .. } => true,
         }
     }
 }

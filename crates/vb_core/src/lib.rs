@@ -16,6 +16,7 @@ pub mod action_pack;
 pub mod artifact;
 pub mod budget;
 pub mod capability;
+pub mod compat;
 pub mod contract_encoding;
 pub mod diagnostic;
 pub mod engine;
@@ -106,6 +107,10 @@ pub use budget::{
     validate_aggregate_budget,
 };
 pub use capability::{Capability, CapabilitySet};
+pub use compat::{
+    Classification, CompatBoundary, CompatDecision, CompatDecisionCode, CompatDigests, CompatError,
+    CompatInputs, CompatRule, CompatibilityClass, SchemaVersion, classify,
+};
 pub use diagnostic::{
     CODE_REGISTRY, CodeCategory, CodeEntry, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,
     HasSymbolicCode, Severity, SymbolicCode, SymbolicCodeParseError,
