@@ -4094,10 +4094,8 @@ fn header_encode_decode_consistency_for_all_magics() -> Result<(), JournalError>
     Ok(())
 }
 
-fn mismatch_step_started_under_slot_written_envelope() -> (
-    crate::types::RecordEnvelope,
-    JournalEvent,
-) {
+fn mismatch_step_started_under_slot_written_envelope()
+-> (crate::types::RecordEnvelope, JournalEvent) {
     let event = JournalEvent::StepStarted {
         run: RunId::new(7),
         seq: EventSeq::new(9),
