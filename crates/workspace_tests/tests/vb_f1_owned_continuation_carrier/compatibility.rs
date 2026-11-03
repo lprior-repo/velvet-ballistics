@@ -57,7 +57,7 @@ fn kind43_is_journal_only_and_every_old_ordinal_id_stays_literal() -> TestResult
         validate_record_kind_family(vb_storage::MAGIC_INDEX_RECORD, 43),
         Err(JournalError::RecordKindFamilyMismatch { kind: 43, .. })
     ));
-    assert_eq!(RecordKind::from_id(44), None);
+    assert_eq!(RecordKind::from_id(44), Some(RecordKind::GateDecision));
     Ok(())
 }
 

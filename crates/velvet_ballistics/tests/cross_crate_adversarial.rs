@@ -613,9 +613,11 @@ fn runtime_to_storage_fjall_journal_open_and_close_temp_dir() {
 
 #[test]
 fn runtime_to_ipc_frame_header_roundtrip_preserves_all_fields() {
+    // Flags must avoid the reserved global mask (0xFF00); 0x34 keeps a
+    // non-trivial unreserved payload for the roundtrip assertion.
     let header = vb_ipc::IpcFrameHeader::new(
         vb_ipc::IpcCommand::SubmitRun,
-        0x1234,
+        0x34,
         0xDEAD_BEEF_CAFE_1234u64,
         0,
     );
@@ -632,7 +634,7 @@ fn runtime_to_ipc_frame_header_roundtrip_preserves_all_fields() {
     match vb_ipc::IpcFrameHeader::decode(&encoded, max_payload) {
         Ok(decoded) => {
             assert_eq!(decoded.command, vb_ipc::IpcCommand::SubmitRun);
-            assert_eq!(decoded.flags, 0x1234);
+            assert_eq!(decoded.flags, 0x34);
             assert_eq!(decoded.correlation, 0xDEAD_BEEF_CAFE_1234u64);
             assert_eq!(decoded.payload_len, 0);
         }
