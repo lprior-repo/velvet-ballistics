@@ -11,7 +11,7 @@ impl Shard {
             .as_ref()
             .map(|a| a.granted_capabilities())
             .unwrap_or(&empty_caps);
-        drive_deterministic_full(
+        let signal = drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
             &mut budget,
@@ -22,7 +22,40 @@ impl Shard {
             &mut state.collect_states,
             granted,
             state.run_attempt.get(),
-        )
+        )?;
+        Self::check_cost_budget(state, &signal)?;
+        Ok(signal)
+    }
+
+    fn check_cost_budget(state: &RunState, signal: &RuntimeSignal) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let mut issued: u64 = 0;
+        for attempts in state.action_attempts.iter() {
+            issued = issued.saturating_add(u64::from(*attempts));
+        }
+        if let RuntimeSignal::AwaitingAction(ticket) = signal {
+            let recorded = match state.action_attempts.get(ticket.step.as_usize()) {
+                Some(value) => *value,
+                None => 0,
+            };
+            issued = issued
+                .saturating_sub(u64::from(recorded))
+                .saturating_add(u64::from(recorded.max(ticket.attempt)));
+        }
+        if issued > budget.max_cost_units {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "cost_units",
+                    limit: budget.max_cost_units,
+                },
+            ));
+        }
+        Ok(())
     }
 
     fn apply_drive_result(
