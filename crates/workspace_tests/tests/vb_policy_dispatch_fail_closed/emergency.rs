@@ -100,12 +100,16 @@ fn get_ticket_and_grant(
 ) -> CaseResult<(
     vb_core::action::ActionTicket,
     vb_storage::executor::RegisterGrant,
+    vb_core::ScopedGrant,
+    vb_core::GrantDispatchContext,
 )> {
     let ticket = runtime
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
-    Ok((ticket, grant))
+    let (scoped, dispatch) =
+        crate::scoped_grant_fixture::issue_scoped(catalog, artifact, &grant, ticket, scope(), 32)?;
+    Ok((ticket, grant, scoped, dispatch))
 }
 
 fn compute_expected_emergency_decision(
@@ -135,8 +139,16 @@ fn execute_with_adapter(
     adapter: &mut FjallRegister,
     run: RunId,
     grant: &vb_storage::executor::RegisterGrant,
+    scoped: &vb_core::ScopedGrant,
+    dispatch: &vb_core::GrantDispatchContext,
 ) -> Result<vb_storage::executor::RegisterReceipt, RegisteredExecutionError> {
-    runtime.execute_registered_action(adapter, run, u64::from(StepIdx::ZERO.get()), grant)
+    runtime.execute_registered_action(
+        adapter,
+        run,
+        u64::from(StepIdx::ZERO.get()),
+        grant,
+        vb_core::ScopedDispatch::new(scoped, dispatch, &[]),
+    )
 }
 
 fn assert_emergency_denied_full_record(
@@ -225,14 +237,21 @@ fn run_first_emergency_attempt(
     case: &mut EmergencyTestCase,
     allowed_digest: PolicyDigest,
 ) -> CaseResult<DecisionRecord> {
-    let (ticket, grant) =
+    let (ticket, grant, scoped, dispatch) =
         get_ticket_and_grant(&case.runtime, &case.catalog, &case.artifact, case.run)?;
     case.runtime.activate_emergency_deny()?;
     let expected = compute_expected_emergency_decision(&case.artifact, &ticket, allowed_digest)?;
     let pending_before = case.runtime.pending_boundary_snapshot(8);
     let register_path = case.dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
-    let result = execute_with_adapter(&mut case.runtime, &mut adapter, case.run, &grant);
+    let result = execute_with_adapter(
+        &mut case.runtime,
+        &mut adapter,
+        case.run,
+        &grant,
+        &scoped,
+        &dispatch,
+    );
     assert_emergency_denied_full_record(result, &expected)?;
     assert_zero_effects(&adapter)?;
     assert_pending_unchanged(&case.runtime, case.run, pending_before, &ticket)?;
@@ -244,14 +263,21 @@ fn run_second_emergency_attempt(
     later_allowed_digest: PolicyDigest,
 ) -> CaseResult<DecisionRecord> {
     configure_allowed_policy(&mut case.runtime, case.action, later_allowed_digest)?;
-    let (ticket, grant) =
+    let (ticket, grant, scoped, dispatch) =
         get_ticket_and_grant(&case.runtime, &case.catalog, &case.artifact, case.run)?;
     let expected =
         compute_expected_emergency_decision(&case.artifact, &ticket, later_allowed_digest)?;
     let pending_before = case.runtime.pending_boundary_snapshot(8);
     let register_path = case.dir.path().join("register2");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
-    let result = execute_with_adapter(&mut case.runtime, &mut adapter, case.run, &grant);
+    let result = execute_with_adapter(
+        &mut case.runtime,
+        &mut adapter,
+        case.run,
+        &grant,
+        &scoped,
+        &dispatch,
+    );
     assert_emergency_denied_full_record(result, &expected)?;
     assert_zero_effects(&adapter)?;
     assert_pending_unchanged(&case.runtime, case.run, pending_before, &ticket)?;

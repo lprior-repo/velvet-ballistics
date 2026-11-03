@@ -14,6 +14,8 @@ struct TestCase {
     runtime: Runtime,
     ticket: ActionTicket,
     grant: RegisterGrant,
+    scoped: ScopedGrant,
+    dispatch: GrantDispatchContext,
     allowed_digest: PolicyDigest,
 }
 
@@ -32,7 +34,8 @@ fn build_test_case() -> CaseResult<TestCase> {
             code: DecisionCode::Allowed,
         },
     )?;
-    let (ticket, grant) = get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
+    let (ticket, grant, scoped, dispatch) =
+        get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
     Ok(TestCase {
         dir,
         run,
@@ -41,6 +44,8 @@ fn build_test_case() -> CaseResult<TestCase> {
         runtime,
         ticket,
         grant,
+        scoped,
+        dispatch,
         allowed_digest,
     })
 }
@@ -101,12 +106,19 @@ fn get_ticket_and_grant(
     artifact: &AcceptedArtifact,
     runtime: &Runtime,
     run: RunId,
-) -> CaseResult<(ActionTicket, RegisterGrant)> {
+) -> CaseResult<(
+    ActionTicket,
+    RegisterGrant,
+    ScopedGrant,
+    GrantDispatchContext,
+)> {
     let ticket = runtime
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
-    Ok((ticket, grant))
+    let (scoped, dispatch) =
+        crate::scoped_grant_fixture::issue_scoped(catalog, artifact, &grant, ticket, scope(), 13)?;
+    Ok((ticket, grant, scoped, dispatch))
 }
 
 fn execute_allowed(case: &mut TestCase) -> CaseResult<RegisterReceipt> {
@@ -117,6 +129,7 @@ fn execute_allowed(case: &mut TestCase) -> CaseResult<RegisterReceipt> {
         case.run,
         u64::from(StepIdx::ZERO.get()),
         &case.grant,
+        vb_core::ScopedDispatch::new(&case.scoped, &case.dispatch, &[]),
     )?;
     assert_eq!(adapter.effect_count()?, 1);
     Ok(receipt)
@@ -170,6 +183,8 @@ fn reconcile_action(case: &mut TestCase) -> CaseResult<RegisterReceipt> {
         case.run,
         u64::from(StepIdx::ZERO.get()),
         &case.grant,
+        &case.scoped,
+        &case.dispatch,
     )?;
     Ok(reconciled)
 }
