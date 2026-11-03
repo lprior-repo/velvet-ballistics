@@ -14,6 +14,10 @@ pub mod yaml_source_map;
 #[cfg(kani)]
 pub mod yaml_kani;
 
+#[cfg(test)]
+#[path = "yaml_proptest.rs"]
+mod yaml_proptest;
+
 // Re-exports for compatibility
 pub use yaml_error::{YamlError, YamlResult};
 pub use yaml_events::{EventSpan, ScalarStyle, YamlEvent, collect_events, convert_event};
