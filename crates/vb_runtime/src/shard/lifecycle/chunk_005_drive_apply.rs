@@ -11,7 +11,7 @@ impl Shard {
             .as_ref()
             .map(|a| a.granted_capabilities())
             .unwrap_or(&empty_caps);
-        drive_deterministic_full(
+        let signal = drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
             &mut budget,
@@ -22,7 +22,37 @@ impl Shard {
             &mut state.collect_states,
             granted,
             state.run_attempt.get(),
-        )
+        )?;
+        Self::check_timer_entry_budget(state)?;
+        Ok(signal)
+    }
+
+    fn check_timer_entry_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let mut timer_entries: u64 = 0;
+        for index in 0..state.frame.step_count() {
+            let step = vb_core::ids::StepIdx::new(index);
+            if matches!(
+                state.frame.step_state(step),
+                Ok(vb_core::frame::StepState::Waiting) | Ok(vb_core::frame::StepState::Asking)
+            ) {
+                timer_entries = timer_entries.saturating_add(1);
+            }
+        }
+        if timer_entries > u64::from(budget.max_timer_entries) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "timer_entries",
+                    limit: u64::from(budget.max_timer_entries),
+                },
+            ));
+        }
+        Ok(())
     }
 
     fn apply_drive_result(
