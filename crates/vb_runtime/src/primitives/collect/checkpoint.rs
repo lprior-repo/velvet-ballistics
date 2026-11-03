@@ -13,6 +13,11 @@ pub struct CollectStatesCheckpointV1 {
     pub entries: Vec<CollectPaginationState>,
     /// Previous and stale page lineage in canonical key order.
     pub lineages: Vec<CollectPageLineageCheckpointV1>,
+    /// Items consumed by every collect page delivered so far, including
+    /// collects whose pagination state was already removed at completion.
+    /// Checkpoints written before this field existed do not decode;
+    /// that failure is loud, never a silent reinterpretation.
+    pub total_items_consumed: u64,
 }
 
 /// V1 checkpoint entry for one collector's page lineage.
@@ -60,7 +65,11 @@ impl CollectStates {
             .collect();
         lineages.sort_by_key(|lineage| (lineage.run_id, lineage.collector_slot));
 
-        CollectStatesCheckpointV1 { entries, lineages }
+        CollectStatesCheckpointV1 {
+            entries,
+            lineages,
+            total_items_consumed: self.total_items_consumed,
+        }
     }
 
     /// Restores checkpoint state only when keys are unique and every lineage is owned.
@@ -89,7 +98,11 @@ impl CollectStates {
                 return Err(CollectStatesCheckpointV1Error::DuplicateLineage);
             }
         }
-        Ok(Self { entries, lineages })
+        Ok(Self {
+            entries,
+            lineages,
+            total_items_consumed: checkpoint.total_items_consumed,
+        })
     }
 }
 
@@ -152,6 +165,7 @@ mod tests {
     fn collect_checkpoint_rejects_orphan_lineage() {
         let checkpoint = CollectStatesCheckpointV1 {
             entries: Vec::new(),
+            total_items_consumed: 0,
             lineages: vec![super::CollectPageLineageCheckpointV1 {
                 run_id: RunId::new(1),
                 collector_slot: SlotIdx::new(0),
@@ -164,5 +178,68 @@ mod tests {
             CollectStates::from_checkpoint_v1(checkpoint),
             Err(CollectStatesCheckpointV1Error::OrphanLineage)
         );
+    }
+}
+
+#[cfg(test)]
+mod total_tests {
+    use super::super::CollectPaginationState;
+    use super::{CollectStates, CollectStatesCheckpointV1};
+    use vb_core::ids::{ListId, RunId, SlotIdx};
+
+    fn state(run: RunId, collector_slot: SlotIdx, cursor: usize) -> CollectPaginationState {
+        CollectPaginationState {
+            run_id: run,
+            collector_slot,
+            source: ListId::new(1),
+            current_page: ListId::new(3),
+            cursor,
+            page_size: 5,
+            item_count: 10,
+            limit: 20,
+            time_limit_ms: None,
+            start_millis: 77,
+        }
+    }
+
+    #[test]
+    fn collect_checkpoint_roundtrips_total_items_consumed() -> Result<(), String> {
+        let mut states = CollectStates::new();
+        states
+            .upsert(state(RunId::new(7), SlotIdx::new(2), 4))
+            .map_err(|error| format!("first upsert failed: {error}"))?;
+        states
+            .upsert(state(RunId::new(3), SlotIdx::new(1), 6))
+            .map_err(|error| format!("second upsert failed: {error}"))?;
+        states.remove(RunId::new(3), SlotIdx::new(1));
+        let checkpoint = states.checkpoint_v1();
+        assert_eq!(checkpoint.total_items_consumed, 10);
+        let bytes = postcard::to_allocvec(&checkpoint)
+            .map_err(|error| format!("checkpoint encode failed: {error}"))?;
+        let decoded = postcard::from_bytes(&bytes)
+            .map_err(|error| format!("checkpoint decode failed: {error}"))?;
+        let restored = CollectStates::from_checkpoint_v1(decoded)
+            .map_err(|error| format!("checkpoint restore failed: {error:?}"))?;
+        assert_eq!(restored.total_items_consumed(), 10);
+        assert_eq!(restored.checkpoint_v1(), checkpoint);
+        Ok(())
+    }
+
+    #[test]
+    fn collect_checkpoint_without_total_field_fails_closed() -> Result<(), String> {
+        #[derive(serde::Serialize)]
+        struct OldCheckpoint {
+            entries: Vec<CollectPaginationState>,
+            lineages: Vec<super::CollectPageLineageCheckpointV1>,
+        }
+        let old = OldCheckpoint {
+            entries: vec![state(RunId::new(7), SlotIdx::new(2), 4)],
+            lineages: Vec::new(),
+        };
+        let bytes = postcard::to_allocvec(&old)
+            .map_err(|error| format!("old checkpoint encode failed: {error}"))?;
+        let decoded: Result<CollectStatesCheckpointV1, _> = postcard::from_bytes(&bytes);
+        assert!(decoded.is_err());
+        Ok(())
     }
 }

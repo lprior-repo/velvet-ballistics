@@ -511,3 +511,203 @@ fn handle_action_failure_rejects_when_step_out_of_bounds() {
     // validate_action_completion catches the out-of-bounds step
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
 }
+
+fn gather_items_budget(
+    max_gather_items: u32,
+) -> vb_core::budget::AggregateResourceBudget {
+    vb_core::budget::AggregateResourceBudget {
+        max_steps_executable: 100,
+        max_action_tickets: 10,
+        max_parallel_in_flight: 10,
+        max_retries_per_action: 10,
+        max_gather_pages: 10,
+        max_gather_items,
+        max_for_each_iterations: 10,
+        max_together_branches: 10,
+        max_repeat_attempts: 10,
+        max_run_time_seconds: 100,
+        max_result_bytes: 100,
+        max_total_slots_written: 100,
+        max_timer_entries: 100,
+        max_trace_events: 100,
+        max_queue_depth: 100,
+        max_journal_batch_bytes: 100,
+        max_ipc_payload_bytes: 100,
+        max_blob_bytes: 100,
+        max_input_bytes: 100,
+        max_step_budget_per_tick: 100,
+        max_transitions_per_tick: 100,
+        max_open_gates: 10,
+        max_signal_subscriptions: 10,
+        max_incident_emissions: 100,
+        max_transitions: 100,
+        max_journal_bytes_total: 100,
+        max_value_store_entries: 100,
+        max_cost_units: 100,
+    }
+}
+
+fn gather_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let first = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let second = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(2)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(1),
+        },
+        None,
+        None,
+    );
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("gather_budget"),
+        digest: WorkflowDigest::from_bytes([13; 32]),
+        nodes: Box::from([first, second, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(10)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn gather_collect_state(
+    run: RunId,
+    collector_slot: SlotIdx,
+    cursor: usize,
+) -> crate::primitives::collect::CollectPaginationState {
+    crate::primitives::collect::CollectPaginationState {
+        run_id: run,
+        collector_slot,
+        source: vb_core::ids::ListId::new(1),
+        current_page: vb_core::ids::ListId::new(3),
+        cursor,
+        page_size: 5,
+        item_count: 10,
+        limit: 20,
+        time_limit_ms: None,
+        start_millis: 77,
+    }
+}
+
+#[test]
+fn drive_state_fails_when_consumed_items_exceed_gather_limit() {
+    let workflow = gather_workflow().expect("gather workflow builds");
+    let run = RunId::new(760);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    state
+        .collect_states
+        .upsert(gather_collect_state(run, SlotIdx::ZERO, 3))
+        .expect("collect state upsert builds");
+    state.admission = Some(crate::admission::RunAdmission::with_budget(
+        digest,
+        run,
+        vb_core::capability::CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        gather_items_budget(2),
+    ));
+    let mut evidence = crate::engine::types::EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(crate::engine::types::RuntimeEngineError::Core(
+            vb_core::engine::EngineError::BudgetExceeded {
+                budget: "gather_items",
+                limit: 2,
+            }
+        ))
+    ));
+}
+
+#[test]
+fn drive_state_at_gather_limit_finishes() {
+    let workflow = gather_workflow().expect("gather workflow builds");
+    let run = RunId::new(761);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    state
+        .collect_states
+        .upsert(gather_collect_state(run, SlotIdx::ZERO, 3))
+        .expect("collect state upsert builds");
+    state.admission = Some(crate::admission::RunAdmission::with_budget(
+        digest,
+        run,
+        vb_core::capability::CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        gather_items_budget(3),
+    ));
+    let mut evidence = crate::engine::types::EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Ok(crate::engine::types::RuntimeSignal::Finished(_))
+    ));
+}
+
+#[test]
+fn drive_state_without_admitted_budget_ignores_gather_limit() {
+    let workflow = gather_workflow().expect("gather workflow builds");
+    let run = RunId::new(762);
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    state
+        .collect_states
+        .upsert(gather_collect_state(run, SlotIdx::ZERO, 100))
+        .expect("collect state upsert builds");
+    let mut evidence = crate::engine::types::EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Ok(crate::engine::types::RuntimeSignal::Finished(_))
+    ));
+}
+
+#[test]
+fn drive_state_counts_consumed_items_after_collect_removal() {
+    let workflow = gather_workflow().expect("gather workflow builds");
+    let run = RunId::new(763);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    state
+        .collect_states
+        .upsert(gather_collect_state(run, SlotIdx::ZERO, 5))
+        .expect("collect state upsert builds");
+    state.collect_states.remove(run, SlotIdx::ZERO);
+    state.admission = Some(crate::admission::RunAdmission::with_budget(
+        digest,
+        run,
+        vb_core::capability::CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        gather_items_budget(2),
+    ));
+    let mut evidence = crate::engine::types::EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(crate::engine::types::RuntimeEngineError::Core(
+            vb_core::engine::EngineError::BudgetExceeded {
+                budget: "gather_items",
+                limit: 2,
+            }
+        ))
+    ));
+}

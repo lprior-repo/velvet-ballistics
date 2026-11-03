@@ -11,7 +11,7 @@ impl Shard {
             .as_ref()
             .map(|a| a.granted_capabilities())
             .unwrap_or(&empty_caps);
-        drive_deterministic_full(
+        let signal = drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
             &mut budget,
@@ -22,7 +22,27 @@ impl Shard {
             &mut state.collect_states,
             granted,
             state.run_attempt.get(),
-        )
+        )?;
+        Self::check_gather_items_budget(state)?;
+        Ok(signal)
+    }
+
+    fn check_gather_items_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        if state.collect_states.total_items_consumed() > u64::from(budget.max_gather_items) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "gather_items",
+                    limit: u64::from(budget.max_gather_items),
+                },
+            ));
+        }
+        Ok(())
     }
 
     fn apply_drive_result(
