@@ -42,6 +42,7 @@ fn input_slot_parts() -> WorkflowParts {
         input_slots: Box::from([vb_core::workflow::CompiledInputSlot {
             slot: SlotIdx::ZERO,
             kind: vb_core::workflow::InputSlotKind::I64,
+            constraint: vb_core::workflow::CompiledInputConstraint::unconstrained(),
         }]),
         nodes: Box::from([finish]),
         expressions: Box::from([]),

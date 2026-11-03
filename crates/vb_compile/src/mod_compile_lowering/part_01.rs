@@ -96,7 +96,7 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
 
 #[path = "input_schema.rs"]
 mod input_schema;
-use input_schema::kind_from_input_schema;
+use input_schema::{constraint_from_input_schema, kind_from_input_schema};
 
 #[derive(Clone, Copy)]
 pub(super) struct CanonicalStepLayout {

@@ -60,6 +60,247 @@ fn test_schema_kind_mapping() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn full_source(inputs_yaml: &str) -> String {
+    format!(
+        "version: velvet-ballistics/v1\nname: schema_full\nwhen:\n  manual: {{}}\ninputs:\n{inputs_yaml}steps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n"
+    )
+}
+
+fn single_constraint(
+    schema: &str,
+) -> Result<vb_core::CompiledInputConstraint, Box<dyn std::error::Error>> {
+    let compiled = vb_compile::compile_workflow(source(schema).as_bytes())?;
+    let slot = compiled.input_slots().first().ok_or("missing slot")?;
+    Ok(slot.constraint)
+}
+
+#[test]
+fn shorthand_schema_is_required() -> Result<(), Box<dyn std::error::Error>> {
+    let constraint = single_constraint("number")?;
+    assert_eq!(constraint, vb_core::CompiledInputConstraint::required());
+    Ok(())
+}
+
+#[test]
+fn longform_keywords_are_retained() -> Result<(), Box<dyn std::error::Error>> {
+    let constraint = single_constraint(
+        "{is: number, min: 1, max: 10, optional: true, nullable: true, default: 5, secret: true}",
+    )?;
+    assert_eq!(
+        constraint,
+        vb_core::CompiledInputConstraint {
+            optional: true,
+            nullable: true,
+            default_value: Some(vb_core::SlotValue::I64(5)),
+            min: Some(1),
+            max: Some(10),
+            min_length: None,
+            max_length: None,
+            element: None,
+            allow_extra: None,
+            secret: true,
+        }
+    );
+    let list = single_constraint("{is: list, of: number, min: 0, max: 4}")?;
+    assert_eq!(list.element, Some(vb_core::InputSlotKind::I64));
+    assert_eq!((list.min, list.max), (Some(0), Some(4)));
+    assert!(list.requires_value());
+    let text = single_constraint("{is: text, min_length: 1, max_length: 8}")?;
+    assert_eq!((text.min_length, text.max_length), (Some(1), Some(8)));
+    let object = single_constraint("{is: object, fields: {enabled: boolean}, extra: reject}")?;
+    assert_eq!(object.allow_extra, Some(false));
+    let boolean = single_constraint("{is: boolean, default: true, optional: true}")?;
+    assert_eq!(boolean.default_value, Some(vb_core::SlotValue::Bool(true)));
+    assert!(!boolean.requires_value());
+    Ok(())
+}
+
+#[test]
+fn digest_is_sensitive_to_each_keyword() -> Result<(), Box<dyn std::error::Error>> {
+    let base = "{is: number, min: 1, max: 10}";
+    let base_digest = vb_compile::compile_workflow(source(base).as_bytes())?.digest();
+    for variant in [
+        "{is: number, min: 2, max: 10}",
+        "{is: number, min: 1, max: 9}",
+        "{is: number, min: 1, max: 10, optional: true}",
+        "{is: number, min: 1, max: 10, nullable: true}",
+        "{is: number, min: 1, max: 10, default: 5}",
+        "{is: number, min: 1, max: 10, secret: true}",
+    ] {
+        let digest = vb_compile::compile_workflow(source(variant).as_bytes())?.digest();
+        assert_ne!(
+            digest, base_digest,
+            "keyword change must alter digest: {variant}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn roundtrip_preserves_constraints() -> Result<(), Box<dyn std::error::Error>> {
+    let compiled = vb_compile::compile_workflow(
+        source("{is: number, min: 1, max: 10, optional: true, default: 5}").as_bytes(),
+    )?;
+    let parts = compiled.to_parts();
+    let bytes = postcard::to_allocvec(&parts)?;
+    let restored_parts = postcard::from_bytes::<vb_core::WorkflowParts>(&bytes)?;
+    let restored = vb_core::CompiledWorkflow::try_from_parts(restored_parts)?;
+    assert_eq!(restored.to_parts(), parts);
+    let slot = restored.input_slots().first().ok_or("missing slot")?;
+    assert_eq!(slot.constraint.min, Some(1));
+    assert_eq!(slot.constraint.max, Some(10));
+    assert_eq!(
+        slot.constraint.default_value,
+        Some(vb_core::SlotValue::I64(5))
+    );
+    Ok(())
+}
+
+#[test]
+fn dangling_from_reference_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = full_source("  b: {is: number, from: ghost}\n");
+    let errors = vb_compile::compile_workflow(yaml.as_bytes()).expect_err("must reject");
+    assert!(
+        errors
+            .0
+            .iter()
+            .any(|e| e.to_string().contains("inputs.from")),
+        "unexpected errors: {errors:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn declared_from_reference_accepted() -> Result<(), Box<dyn std::error::Error>> {
+    let yaml = full_source("  a: number\n  b: {is: number, from: a}\n");
+    let compiled = vb_compile::compile_workflow(yaml.as_bytes())?;
+    assert_eq!(compiled.input_slots().len(), 2);
+    let with_var = format!(
+        "version: velvet-ballistics/v1\nname: schema_from_var\nwhen:\n  manual: {{}}\nvars:\n  v: 1\ninputs:\n  b: {{is: number, from: v}}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n"
+    );
+    let compiled = vb_compile::compile_workflow(with_var.as_bytes())?;
+    assert_eq!(compiled.input_slots().len(), 1);
+    Ok(())
+}
+
+#[test]
+fn invalid_constraint_combinations_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    for schema in [
+        "{is: text, min: 1}",
+        "{is: number, of: number}",
+        "{is: list, of: number, extra: allow}",
+        "{is: number, min_length: 1}",
+        "{is: number, min: 10, max: 1}",
+        "{is: list, of: number, max: -1}",
+        "{is: number, min: 1, max: 10, default: 99}",
+        "{is: number, pattern: x}",
+        "{is: list}",
+        "{is: number, optional: 1}",
+    ] {
+        assert!(
+            vb_compile::compile_workflow(source(schema).as_bytes()).is_err(),
+            "schema must be rejected: {schema}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn direct_api_parity_with_compiled_constraints() -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{RunId, SlotIdx, SlotValue, WorkflowDigest};
+    let run = RunId::new(41);
+    let artifact = WorkflowDigest::from_bytes([3; 32]);
+    let source_digest = WorkflowDigest::from_bytes([4; 32]);
+    let build = |schema: &str| vb_compile::compile_workflow(source(schema).as_bytes());
+    let port = |compiled: &vb_core::CompiledWorkflow| {
+        compiled
+            .input_slots()
+            .first()
+            .map(|slot| slot.slot)
+            .ok_or("missing slot")
+    };
+
+    // Required: missing rejected, supplied accepted.
+    let required = build("number")?;
+    let slot = port(&required)?;
+    assert!(matches!(
+        vb_storage::RunInputsRecord::new(run, artifact, source_digest, &required, Box::new([])),
+        Err(vb_storage::JournalError::InputSchemaMismatch)
+    ));
+    let retained = vb_storage::RunInputsRecord::new(
+        run,
+        artifact,
+        source_digest,
+        &required,
+        Box::from([(slot, SlotValue::I64(2))]),
+    )?;
+    assert_eq!(retained.inputs(), &[(slot, SlotValue::I64(2))]);
+
+    // Optional: missing accepted.
+    let optional = build("{is: number, optional: true}")?;
+    let retained =
+        vb_storage::RunInputsRecord::new(run, artifact, source_digest, &optional, Box::new([]))?;
+    assert!(retained.inputs().is_empty());
+
+    // Default: missing filled.
+    let defaulted = build("{is: number, min: 1, max: 10, default: 5}")?;
+    let slot = port(&defaulted)?;
+    let retained =
+        vb_storage::RunInputsRecord::new(run, artifact, source_digest, &defaulted, Box::new([]))?;
+    assert_eq!(retained.inputs(), &[(slot, SlotValue::I64(5))]);
+
+    // Null only when nullable; range enforced on supplied values.
+    let nullable = build("{is: number, nullable: true}")?;
+    let null_slot = port(&nullable)?;
+    let retained = vb_storage::RunInputsRecord::new(
+        run,
+        artifact,
+        source_digest,
+        &nullable,
+        Box::from([(null_slot, SlotValue::Null)]),
+    )?;
+    assert_eq!(retained.inputs(), &[(null_slot, SlotValue::Null)]);
+    let range_slot = port(&defaulted)?;
+    assert!(matches!(
+        vb_storage::RunInputsRecord::new(
+            run,
+            artifact,
+            source_digest,
+            &defaulted,
+            Box::from([(range_slot, SlotValue::I64(99))]),
+        ),
+        Err(vb_storage::JournalError::InputSchemaMismatch)
+    ));
+    Ok(())
+}
+
+#[test]
+fn declared_handles_stay_rejected_for_scalar_wire() -> Result<(), Box<dyn std::error::Error>> {
+    use vb_core::{RunId, SlotIdx, SlotValue, WorkflowDigest};
+    let compiled = vb_compile::compile_workflow(source("{is: list, of: any, max: 4}").as_bytes())?;
+    let slot = compiled.input_slots().first().ok_or("missing slot")?;
+    assert_eq!(slot.kind, vb_core::InputSlotKind::List);
+    assert_eq!(slot.constraint.element, Some(vb_core::InputSlotKind::Any));
+    let port = slot.slot;
+    for value in [
+        SlotValue::List(vb_core::ListId::new(0)),
+        SlotValue::Object(vb_core::ObjectId::new(0)),
+        SlotValue::Blob(vb_core::BlobId::new(0)),
+    ] {
+        assert!(matches!(
+            vb_storage::RunInputsRecord::new(
+                RunId::new(43),
+                WorkflowDigest::from_bytes([5; 32]),
+                WorkflowDigest::from_bytes([6; 32]),
+                &compiled,
+                Box::from([(port, value)]),
+            ),
+            Err(vb_storage::JournalError::InputSchemaMismatch)
+        ));
+    }
+    Ok(())
+}
+
 #[test]
 fn test_digest_stability_and_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
     let src = source("{is: number}");
