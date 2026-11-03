@@ -511,3 +511,31 @@ fn handle_action_failure_rejects_when_step_out_of_bounds() {
     // validate_action_completion catches the out-of-bounds step
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
 }
+
+#[test]
+fn submit_attaches_workflow_derived_budget_to_admission() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("suspended", suspended_workflow())?;
+    let expected = vb_core::budget::AggregateResourceBudget::from_workflow(&wf)
+        .map_err(|error| format!("workflow budget must compute: {error:?}"))?;
+    let run = RunId::new(760);
+    submit_run(&mut shard, run, wf);
+    let state = shard.run_state_get(run).ok_or("run should exist")?;
+    let admission = state
+        .admission
+        .as_ref()
+        .ok_or("admission should exist")?;
+    assert_eq!(admission.budget(), Some(expected));
+    let events = require_snapshot(&journal)?;
+    assert!(
+        events.iter().any(|event| matches!(
+            event,
+            RuntimeJournalEvent::RunAdmission { admission }
+                if admission.budget() == Some(expected)
+        )),
+        "journaled admission should carry the budget: {events:?}"
+    );
+    Ok(())
+}

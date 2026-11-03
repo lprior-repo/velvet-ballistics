@@ -113,7 +113,7 @@ impl Shard {
             });
         }
         let digest = workflow.digest();
-        let admission = self.build_admission(run, digest, caps)?;
+        let admission = self.build_admission_with_budget(run, &workflow, caps)?;
         execution_binding::validate(
             self.artifact_store.as_ref(),
             self.policy,
@@ -256,6 +256,27 @@ impl Shard {
                 required_count,
                 granted_count,
             }),
+        }
+    }
+
+    pub(crate) fn build_admission_with_budget(
+        &self,
+        run: RunId,
+        workflow: &CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
+        let admission = self.build_admission(run, workflow.digest(), caps)?;
+        match admission {
+            Some(adm) => {
+                let budget =
+                    vb_core::budget::AggregateResourceBudget::from_workflow(workflow).map_err(
+                        |_| RuntimeError::AdmissionArtifactInvalid {
+                            digest: workflow.digest(),
+                        },
+                    )?;
+                Ok(Some(adm.with_attached_budget(budget)))
+            }
+            None => Ok(None),
         }
     }
 
