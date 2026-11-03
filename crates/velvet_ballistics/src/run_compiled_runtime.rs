@@ -39,7 +39,7 @@ pub(crate) fn run_compiled_workflow(
     db: Option<&std::path::Path>,
     output: OutputFormat,
 ) -> ExitCode {
-    let run_id = vb_core::RunId::new(1);
+    let run_id = fresh_durable_run_id(db, durability);
     let Some(shard_count) = NonZeroUsize::new(1) else {
         report_runtime_error(
             format_args!("runtime configuration error: shard count must be non-zero"),
@@ -121,6 +121,50 @@ pub(crate) fn run_compiled_workflow(
     }
 
     ExitCode::SUCCESS
+}
+
+/// Selects the run id for `run` / `run-compiled`.
+///
+/// Ephemeral (`none`) executions always use run 1: nothing is persisted, so
+/// the id cannot collide. Durable executions also use run 1 on a fresh
+/// database, but fall back to a submit-style time-based id when the database
+/// already holds records for run 1 — otherwise the second run into the same
+/// database fails at admission persistence (the re-emitted run-1 events
+/// collide with the stored ones).
+fn fresh_durable_run_id(
+    db: Option<&std::path::Path>,
+    durability: DurabilityMode,
+) -> vb_core::RunId {
+    let base = vb_core::RunId::new(1);
+    if durability == DurabilityMode::None {
+        return base;
+    }
+    let Some(path) = db else {
+        return base;
+    };
+    if run_records_exist(path, base) {
+        vb_core::RunId::new(crate::submit::generate_submit_run_id())
+    } else {
+        base
+    }
+}
+
+/// Mirrors the `commit_run_submission` occupancy check: the direct `run`
+/// execution path persists events but no header record, so events alone must
+/// count as "taken". Any probe failure returns false so the later stages
+/// report the real error instead of this heuristic masking it.
+fn run_records_exist(db: &std::path::Path, run: vb_core::RunId) -> bool {
+    let Ok(journal) = vb_storage::FjallJournal::open(db, None) else {
+        return false;
+    };
+    match journal.run_header(run) {
+        Ok(header) if header.is_some() => true,
+        Ok(_) => match journal.events_for_run(run) {
+            Ok(events) => !events.is_empty(),
+            Err(_) => false,
+        },
+        Err(_) => false,
+    }
 }
 
 pub(crate) fn store_compiled_artifact(

@@ -29,7 +29,7 @@ pub(crate) mod prelude {
     };
     pub(crate) use crate::exit_code::CliExitCode;
     pub(crate) use crate::file_io::{
-        parse_run_id, read_file, read_journal_events, report_storage_open_error,
+        check_journal_dir, parse_run_id, read_file, read_journal_events, report_storage_open_error,
     };
     pub(crate) use crate::io_helpers::unique_doctor_run_id;
     pub(crate) use crate::output::{
