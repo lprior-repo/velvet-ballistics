@@ -207,7 +207,7 @@ fn invalid_constraint_combinations_rejected() -> Result<(), Box<dyn std::error::
 
 #[test]
 fn direct_api_parity_with_compiled_constraints() -> Result<(), Box<dyn std::error::Error>> {
-    use vb_core::{RunId, SlotIdx, SlotValue, WorkflowDigest};
+    use vb_core::{RunId, SlotValue, WorkflowDigest};
     let run = RunId::new(41);
     let artifact = WorkflowDigest::from_bytes([3; 32]);
     let source_digest = WorkflowDigest::from_bytes([4; 32]);
@@ -276,7 +276,7 @@ fn direct_api_parity_with_compiled_constraints() -> Result<(), Box<dyn std::erro
 
 #[test]
 fn declared_handles_stay_rejected_for_scalar_wire() -> Result<(), Box<dyn std::error::Error>> {
-    use vb_core::{RunId, SlotIdx, SlotValue, WorkflowDigest};
+    use vb_core::{RunId, SlotValue, WorkflowDigest};
     let compiled = vb_compile::compile_workflow(source("{is: list, of: any, max: 4}").as_bytes())?;
     let slot = compiled.input_slots().first().ok_or("missing slot")?;
     assert_eq!(slot.kind, vb_core::InputSlotKind::List);
