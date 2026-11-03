@@ -317,7 +317,18 @@ tasks:
       set -euo pipefail
       mkdir -p target/moon-locks
       mkdir -p target/tmp
-      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet --workspace --all-features
+      # Isolated scratch: Fjall-backed storage tests stall on disk-backed
+      # target/tmp, so run them in a fresh unique dir under the system
+      # TMPDIR instead. An ambient user-supplied TMPDIR selects the parent.
+      scratch_base="${TMPDIR:-/tmp}"
+      scratch="$(mktemp -d "${scratch_base}/moon-test-XXXXXX")"
+      cleanup_scratch() {
+        if [ -n "${scratch:-}" ]; then
+          rm -rf "$scratch"
+        fi
+      }
+      trap cleanup_scratch EXIT
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$scratch" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet --workspace --all-features
     deps:
       - 'check'
     toolchains:
