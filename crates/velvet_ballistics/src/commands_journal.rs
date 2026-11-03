@@ -298,6 +298,113 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
                 ("answer", serde_json::Value::from(format!("{:?}", answer))),
             ],
         },
+        JournalEvent::RetryCheckpoint {
+            seq, step, attempt, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "RetryCheckpoint",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("attempt", serde_json::Value::from(*attempt))],
+        },
+        JournalEvent::StepFailed {
+            seq, step, attempt, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "StepFailed",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Failed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("attempt", serde_json::Value::from(*attempt))],
+        },
+        JournalEvent::ActionScheduledTicket {
+            seq,
+            ticket,
+            input,
+            output,
+            ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "ActionScheduledTicket",
+            step: Some(ticket.step.get()),
+            status: Some(TraceStatus::Active),
+            action: Some(ticket.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("input", serde_json::Value::from(input.get())),
+                ("output", serde_json::Value::from(output.get())),
+            ],
+        },
+        JournalEvent::ActionCompletedEnvelope {
+            seq,
+            ticket,
+            output,
+            outcome,
+            ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "ActionCompletedEnvelope",
+            step: Some(ticket.step.get()),
+            status: Some(TraceStatus::Completed),
+            action: Some(ticket.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("output", serde_json::Value::from(output.get())),
+                ("outcome", serde_json::Value::from(format!("{outcome:?}"))),
+            ],
+        },
+        JournalEvent::ActionAbandoned { seq, ticket, .. } => TraceEntry {
+            index: idx,
+            event_type: "ActionAbandoned",
+            step: Some(ticket.step.get()),
+            status: Some(TraceStatus::Cancelled),
+            action: Some(ticket.action.get()),
+            seq: seq.get(),
+            extra_json: vec![],
+        },
+        JournalEvent::WaitResolvedEvent {
+            seq, step, attempt, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "WaitResolved",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("attempt", serde_json::Value::from(*attempt))],
+        },
+        JournalEvent::AskTimedOutEvent {
+            seq, step, attempt, ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "AskTimedOut",
+            step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![("attempt", serde_json::Value::from(*attempt))],
+        },
+        JournalEvent::PolicyDecisionEvent { seq, decision, .. } => TraceEntry {
+            index: idx,
+            event_type: "PolicyDecision",
+            step: Some(decision.ticket.step.get()),
+            status: None,
+            action: Some(decision.ticket.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                (
+                    "outcome",
+                    serde_json::Value::from(format!("{:?}", decision.outcome)),
+                ),
+                (
+                    "layer",
+                    serde_json::Value::from(format!("{:?}", decision.layer)),
+                ),
+            ],
+        },
         _ => TraceEntry {
             index: idx,
             event_type: "Unknown",
