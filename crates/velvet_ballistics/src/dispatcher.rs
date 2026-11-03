@@ -16,9 +16,10 @@ pub(crate) fn run_from_env() -> ExitCode {
     let parsed = parse_args(&args);
 
     match parsed {
-        Ok(Command::Help { command }) => {
-            exit_from_io(&write_subcommand_help(command.as_deref()), ExitCode::SUCCESS)
-        }
+        Ok(Command::Help { command }) => exit_from_io(
+            &write_subcommand_help(command.as_deref()),
+            ExitCode::SUCCESS,
+        ),
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
         Ok(Command::AgentContext { deliver }) => {
             crate::agent_io::cmd_agent_context(deliver.as_deref())

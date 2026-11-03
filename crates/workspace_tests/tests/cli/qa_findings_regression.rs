@@ -31,8 +31,7 @@ fn first_stdout_line(stdout: &str) -> &str {
 }
 
 #[test]
-fn run_twice_into_same_db_succeeds_with_distinct_ids(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn run_twice_into_same_db_succeeds_with_distinct_ids() -> Result<(), Box<dyn std::error::Error>> {
     let base = tempdir()?;
     let workflow = base.path().join("minimal.yaml");
     fs::write(&workflow, MINIMAL_YAML)?;
@@ -57,7 +56,10 @@ fn run_twice_into_same_db_succeeds_with_distinct_ids(
     };
 
     let (first_ok, first_out, first_err) = run_once();
-    assert!(first_ok, "first run failed: stdout={first_out} stderr={first_err}");
+    assert!(
+        first_ok,
+        "first run failed: stdout={first_out} stderr={first_err}"
+    );
     let first_line = first_stdout_line(&first_out).to_string();
     assert!(
         first_line.starts_with("run 1: submitted=1 completed=1 failed=0 steps=2"),
@@ -103,7 +105,10 @@ fn read_commands_reject_missing_db_directory() -> Result<(), Box<dyn std::error:
 #[test]
 fn subcommand_help_is_scoped_to_command() -> Result<(), Box<dyn std::error::Error>> {
     let (ok, stdout, stderr) = cli(&["validate", "--help"]);
-    assert!(ok, "validate --help failed: stdout={stdout} stderr={stderr}");
+    assert!(
+        ok,
+        "validate --help failed: stdout={stdout} stderr={stderr}"
+    );
     assert!(
         stdout.contains("validate   <workflow.yaml>"),
         "scoped help must show the validate usage line, got: {stdout}"
