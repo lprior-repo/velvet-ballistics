@@ -558,6 +558,13 @@ tasks:
         echo "cargo fuzz list returned no targets" >&2
         exit 1
       fi
+      required_targets=(yaml_events ipc_frame_fuzz journal_event_fuzz compiled_ir_fuzz)
+      for required_target in "${required_targets[@]}"; do
+        if ! printf '%s\n' "${fuzz_targets[@]}" | grep -qx "${required_target}"; then
+          echo "fuzz-smoke: required target ${required_target} not listed by cargo fuzz list" >&2
+          exit 1
+        fi
+      done
       bin_dir="target/fuzz-asan/build/x86_64-unknown-linux-gnu/release"
       for fuzz_target in "${fuzz_targets[@]}"; do
         bin="${bin_dir}/${fuzz_target}"
