@@ -1216,6 +1216,7 @@ mod tests {
                 JournalEvent::RetryScheduledEvent { .. } => Ok(true),
                 JournalEvent::RunAccepted { .. } => Ok(false),
                 JournalEvent::RunAdmission { .. } => Ok(false),
+                JournalEvent::RunAdmissionBudget { .. } => Ok(false),
                 JournalEvent::RetryCheckpoint { .. } => Ok(false),
                 JournalEvent::RunCancelled { .. } => Ok(false),
                 JournalEvent::RunKilled { .. } => Ok(false),

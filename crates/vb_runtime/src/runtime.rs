@@ -666,7 +666,13 @@ impl Runtime {
         let admission_event = prefix
             .events
             .iter()
-            .find(|e| matches!(e, vb_storage::JournalEvent::RunAdmission { .. }))
+            .find(|e| {
+                matches!(
+                    e,
+                    vb_storage::JournalEvent::RunAdmission { .. }
+                        | vb_storage::JournalEvent::RunAdmissionBudget { .. }
+                )
+            })
             .ok_or(RuntimeError::Recovery {
                 error: "recovery: admission event not found in journal events".to_string(),
             })?;

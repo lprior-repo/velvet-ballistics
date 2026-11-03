@@ -39,13 +39,22 @@ pub fn hydrate_run_admission_from_events(
 ) -> Option<crate::admission::RunAdmission> {
     vb_storage::recovery::replay::summary::recover_run_admission_from_events(events).map(
         |admission| {
-            crate::admission::RunAdmission::new(
-                admission.artifact_digest,
-                admission.run_id,
-                admission.granted_capabilities,
-                admission.policy,
-            )
-            .with_policy_pin(admission.policy_pin)
+            let base = match admission.budget {
+                Some(budget) => crate::admission::RunAdmission::with_budget(
+                    admission.artifact_digest,
+                    admission.run_id,
+                    admission.granted_capabilities,
+                    admission.policy,
+                    budget,
+                ),
+                None => crate::admission::RunAdmission::new(
+                    admission.artifact_digest,
+                    admission.run_id,
+                    admission.granted_capabilities,
+                    admission.policy,
+                ),
+            };
+            base.with_policy_pin(admission.policy_pin)
         },
     )
 }

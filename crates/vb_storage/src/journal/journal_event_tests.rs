@@ -4,6 +4,7 @@
 //! checks as defined in LETHAL-7.
 
 use crate::{
+    RunInputBinding, RunPolicyPin,
     codec::encode_record,
     constants::{
         CRC_OFFSET, CURRENT_SCHEMA_VERSION, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
@@ -15,7 +16,10 @@ use crate::{
     journal::parse_event,
     types::EventSeq,
 };
-use vb_core::{ActionId, CapabilitySet, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::{
+    ActionId, AggregateResourceBudget, CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx,
+    WorkflowDigest,
+};
 
 // =========================================================================
 // parse_event — happy path tests
@@ -755,5 +759,90 @@ fn parse_event_rejects_payload_exceeding_max() {
             assert_eq!(max, 1, "max must be 1");
         }
         other => panic!("expected PayloadTooLarge, got {:?}", other),
+    }
+}
+
+#[test]
+fn parse_event_round_trips_budgeted_run_admission() {
+    let budget = AggregateResourceBudget {
+        max_steps_executable: 11,
+        max_action_tickets: 7,
+        max_parallel_in_flight: 3,
+        max_retries_per_action: 2,
+        max_gather_pages: 5,
+        max_gather_items: 6,
+        max_for_each_iterations: 9,
+        max_together_branches: 4,
+        max_repeat_attempts: 8,
+        max_run_time_seconds: 3600,
+        max_result_bytes: 1024,
+        max_total_slots_written: 64,
+        max_timer_entries: 12,
+        max_trace_events: 100,
+        max_queue_depth: 16,
+        max_journal_batch_bytes: 4096,
+        max_ipc_payload_bytes: 2048,
+        max_blob_bytes: 8192,
+        max_input_bytes: 512,
+        max_step_budget_per_tick: 1000,
+        max_transitions_per_tick: 50,
+        max_open_gates: 2,
+        max_signal_subscriptions: 3,
+        max_incident_emissions: 4,
+        max_transitions: 500,
+        max_journal_bytes_total: 65536,
+        max_value_store_entries: 128,
+        max_cost_units: 9000,
+    };
+    let event = JournalEvent::RunAdmissionBudget {
+        run: RunId::new(77),
+        seq: EventSeq::new(1),
+        artifact_digest: WorkflowDigest::from_bytes([0xAB; 32]),
+        input_digest: RunInputBinding::Digest(WorkflowDigest::from_bytes([0xCD; 32])),
+        policy_pin: RunPolicyPin::Pinned(WorkflowDigest::from_bytes([0xEF; 32])),
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Strict,
+        budget,
+    };
+    assert_eq!(event.record_kind().id(), 46);
+    assert_eq!(event.run_id(), RunId::new(77));
+    assert_eq!(event.seq(), EventSeq::new(1));
+    assert!(event.is_valid());
+    assert_eq!(event.attempt(), None);
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        event.record_kind(),
+        event.seq().get(),
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )
+    .unwrap();
+    let parsed = parse_event(&bytes).unwrap();
+    match parsed {
+        JournalEvent::RunAdmissionBudget {
+            run,
+            seq,
+            artifact_digest,
+            input_digest,
+            policy_pin,
+            policy,
+            budget: parsed_budget,
+            ..
+        } => {
+            assert_eq!(run, RunId::new(77));
+            assert_eq!(seq, EventSeq::new(1));
+            assert_eq!(artifact_digest, WorkflowDigest::from_bytes([0xAB; 32]));
+            assert_eq!(
+                input_digest,
+                RunInputBinding::Digest(WorkflowDigest::from_bytes([0xCD; 32]))
+            );
+            assert_eq!(
+                policy_pin,
+                RunPolicyPin::Pinned(WorkflowDigest::from_bytes([0xEF; 32]))
+            );
+            assert_eq!(policy, RuntimePolicy::Strict);
+            assert_eq!(parsed_budget, budget);
+        }
+        other => panic!("expected RunAdmissionBudget, got {other:?}"),
     }
 }

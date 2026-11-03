@@ -7,9 +7,12 @@ pub(super) fn load(
     journal: &FjallJournal,
     admission: &JournalEvent,
 ) -> RuntimeResult<AcceptedArtifact> {
-    let JournalEvent::RunAdmission {
+    let (JournalEvent::RunAdmission {
         artifact_digest, ..
-    } = admission
+    }
+    | JournalEvent::RunAdmissionBudget {
+        artifact_digest, ..
+    }) = admission
     else {
         return Err(super::identity::mismatch());
     };

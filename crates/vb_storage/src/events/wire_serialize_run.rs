@@ -16,6 +16,9 @@ where
         JournalEvent::RunAdmission { .. } => {
             super::admission::serialize_admission(event, serializer)
         }
+        JournalEvent::RunAdmissionBudget { .. } => {
+            super::admission::serialize_budget_admission(event, serializer)
+        }
         JournalEvent::RunAccepted { .. } => serialize_accepted(event, serializer),
         JournalEvent::RetryCheckpoint { .. } => serialize_retry_checkpoint(event, serializer),
         JournalEvent::RunCancelled { .. } => serialize_cancelled(event, serializer),
