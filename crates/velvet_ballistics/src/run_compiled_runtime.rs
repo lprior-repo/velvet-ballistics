@@ -2,6 +2,10 @@
 
 use crate::app_impl::prelude::*;
 
+pub(crate) mod completion_output;
+#[cfg(test)]
+mod completion_output_tests;
+
 pub(crate) fn open_storage_runtime_journal(
     db: Option<&std::path::Path>,
     strict: bool,
