@@ -11,7 +11,7 @@ impl Shard {
             .as_ref()
             .map(|a| a.granted_capabilities())
             .unwrap_or(&empty_caps);
-        drive_deterministic_full(
+        let signal = drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
             &mut budget,
@@ -22,7 +22,59 @@ impl Shard {
             &mut state.collect_states,
             granted,
             state.run_attempt.get(),
-        )
+        )?;
+        Self::check_suspension_budgets(state)?;
+        Ok(signal)
+    }
+
+    fn check_suspension_budgets(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let mut open_gates: u64 = 0;
+        let mut signal_subscriptions: u64 = 0;
+        for index in 0..state.frame.step_count() {
+            let step = vb_core::ids::StepIdx::new(index);
+            let Some(node) = state.workflow.node(step) else {
+                continue;
+            };
+            if matches!(
+                state.frame.step_state(step),
+                Ok(vb_core::frame::StepState::Asking)
+            ) && matches!(node.kind, vb_core::workflow::CompiledNodeKind::Ask { .. })
+            {
+                open_gates = open_gates.saturating_add(1);
+            }
+            if matches!(
+                state.frame.step_state(step),
+                Ok(vb_core::frame::StepState::Waiting)
+            ) && matches!(
+                node.kind,
+                vb_core::workflow::CompiledNodeKind::WaitEvent { .. }
+            ) {
+                signal_subscriptions = signal_subscriptions.saturating_add(1);
+            }
+        }
+        if open_gates > u64::from(budget.max_open_gates) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "open_gates",
+                    limit: u64::from(budget.max_open_gates),
+                },
+            ));
+        }
+        if signal_subscriptions > u64::from(budget.max_signal_subscriptions) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "signal_subscriptions",
+                    limit: u64::from(budget.max_signal_subscriptions),
+                },
+            ));
+        }
+        Ok(())
     }
 
     fn apply_drive_result(
