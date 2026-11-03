@@ -298,6 +298,10 @@ path = "tests/vb_doc_taint_regression.rs"
 name = "e2e_yaml_sweep"
 path = "tests/e2e_yaml_sweep.rs"
 
+[[test]]
+name = "ps007_bridge_binding_tests"
+path = "tests/ps007_bridge_binding_tests.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false
