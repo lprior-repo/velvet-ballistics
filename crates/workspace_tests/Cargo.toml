@@ -294,6 +294,10 @@ path = "tests/legacy_wire_decoder.rs"
 name = "vb_doc_taint_regression"
 path = "tests/vb_doc_taint_regression.rs"
 
+[[test]]
+name = "e2e_yaml_sweep"
+path = "tests/e2e_yaml_sweep.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false
