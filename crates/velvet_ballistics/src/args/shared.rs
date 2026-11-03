@@ -164,7 +164,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<super::types::Command, Par
         .ok_or(ParseError::NoCommand)?;
 
     match subcommand {
-        "help" | "--help" | "-h" => Ok(super::types::Command::Help),
+        "help" | "--help" | "-h" => Ok(super::types::Command::Help { command: None }),
         "version" | "--version" | "-V" => Ok(super::types::Command::Version),
         "agent-context" | "ai-context" | "status" | "system" | "action" | "verify" | "validate"
         | "explain" | "compile" | "run" | "run-compiled" | "ipc-serve" | "inspect" | "events"
@@ -172,7 +172,9 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<super::types::Command, Par
         | "diff" | "incident" | "simulate" | "submit" | "cancel"
             if has_subcommand_help(args) =>
         {
-            Ok(super::types::Command::Help)
+            Ok(super::types::Command::Help {
+                command: Some(subcommand.into()),
+            })
         }
         "agent-context" => super::other::parse_agent_context(args),
         "ai-context" => super::other::parse_ai_context(args),

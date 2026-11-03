@@ -2307,7 +2307,14 @@ fn cli_inspect_nonexistent_run_shows_no_events() {
             return;
         }
     };
+    // An existing but empty database: a missing run must report "no events
+    // found". A missing database directory is a distinct error covered by
+    // qa_findings_regression::read_commands_reject_missing_db_directory.
     let db_path = dir.path().join("empty-db");
+    if std::fs::create_dir_all(&db_path).is_err() {
+        assert!(forced_assertion_failure(), "db dir setup failed");
+        return;
+    }
 
     let inspect_output = match run_cli(&[
         std::ffi::OsStr::new("inspect"),
@@ -2737,7 +2744,13 @@ fn cli_validate_help_short_circuits_missing_workflow_io() {
 
     assert_cli_success(&output, "validate --help");
     assert_eq!(output_stderr(&output), "");
-    assert!(output_stdout(&output).contains("commands:"));
+    // Scoped per-command help (vb-c5wp6): usage for validate only, not the
+    // full command list. Full help remains available via bare `help`.
+    assert!(
+        output_stdout(&output).contains("validate   <workflow.yaml>"),
+        "stdout={}",
+        output_stdout(&output)
+    );
 }
 
 #[test]

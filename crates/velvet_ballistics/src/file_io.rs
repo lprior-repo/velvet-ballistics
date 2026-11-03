@@ -58,6 +58,27 @@ pub(crate) fn parse_run_id(raw: &str, output: OutputFormat) -> Result<vb_core::R
     }
 }
 
+/// Rejects read commands aimed at a database directory that does not exist.
+///
+/// Opening a missing path would silently create an empty journal and report
+/// "no events found", hiding a typo'd `--db`. Writer commands (submit, run,
+/// ipc-serve) must keep creating, so they do not use this guard.
+pub(crate) fn check_journal_dir(
+    db: &std::path::Path,
+    output: OutputFormat,
+) -> Result<(), ExitCode> {
+    if db.exists() {
+        return Ok(());
+    }
+    let msg = format!("journal directory does not exist: {}", db.display());
+    if output != OutputFormat::Text {
+        write_failure_message(&msg, output, CliExitCode::StorageError);
+    } else {
+        errln!("{msg}");
+    }
+    Err(CliExitCode::StorageError.into())
+}
+
 pub(crate) fn report_storage_open_error(
     e: &vb_storage::JournalError,
     db: &std::path::Path,

@@ -17,6 +17,10 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
         Err(code) => return code,
     };
 
+    if let Err(code) = check_journal_dir(db, output) {
+        return code;
+    }
+
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
@@ -91,6 +95,10 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
         Ok(id) => id,
         Err(code) => return code,
     };
+
+    if let Err(code) = check_journal_dir(db, output) {
+        return code;
+    }
 
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(journal) => journal,

@@ -9,6 +9,7 @@ use serde_json::{Map, Value};
 use crate::args::OutputFormat;
 use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
+use crate::file_io::check_journal_dir;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RunStatus {
@@ -23,6 +24,9 @@ pub(crate) fn handle(run_id: &str, db: &std::path::Path, output: OutputFormat) -
         Ok(id) => id,
         Err(code) => return code,
     };
+    if let Err(code) = check_journal_dir(db, output) {
+        return code;
+    }
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(journal) => journal,
         Err(e) => {
