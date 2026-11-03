@@ -11,7 +11,7 @@ impl Shard {
             .as_ref()
             .map(|a| a.granted_capabilities())
             .unwrap_or(&empty_caps);
-        drive_deterministic_full(
+        let signal = drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
             &mut budget,
@@ -22,7 +22,45 @@ impl Shard {
             &mut state.collect_states,
             granted,
             state.run_attempt.get(),
-        )
+        )?;
+        Self::check_action_ticket_budget(state, &signal)?;
+        Ok(signal)
+    }
+
+    fn check_action_ticket_budget(
+        state: &RunState,
+        signal: &RuntimeSignal,
+    ) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let mut distinct: u64 = 0;
+        for attempts in state.action_attempts.iter() {
+            if *attempts > 0 {
+                distinct = distinct.saturating_add(1);
+            }
+        }
+        if let RuntimeSignal::AwaitingAction(ticket) = signal {
+            let recorded = match state.action_attempts.get(ticket.step.as_usize()) {
+                Some(value) => *value,
+                None => 0,
+            };
+            if recorded == 0 {
+                distinct = distinct.saturating_add(1);
+            }
+        }
+        if distinct > u64::from(budget.max_action_tickets) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "action_tickets",
+                    limit: u64::from(budget.max_action_tickets),
+                },
+            ));
+        }
+        Ok(())
     }
 
     fn apply_drive_result(
