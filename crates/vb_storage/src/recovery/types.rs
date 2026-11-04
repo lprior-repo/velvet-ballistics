@@ -1615,6 +1615,25 @@ impl ActionReplayTracker {
         .map(|_| ())
     }
 
+    /// Checks per-action attempt identity when a full schedule is retained.
+    /// Pair-only legacy histories retain their existing resolution behavior.
+    pub(crate) fn require_failed_attempt_matches_schedule(
+        &self,
+        action: ActionId,
+        step: StepIdx,
+        attempt: u16,
+    ) -> RecoveryResult<()> {
+        if let Some(schedule) = self.scheduled_tickets.get(&(action, step))
+            && schedule.ticket.attempt != attempt
+        {
+            return Err(RecoveryError::ReplayDivergence {
+                step,
+                detail: String::from("action failure attempt does not match schedule ticket"),
+            });
+        }
+        Ok(())
+    }
+
     /// Records that an action failed during normal execution.
     pub fn mark_failed(&mut self, action: ActionId, step: StepIdx) {
         self.failed.insert((action, step));
