@@ -4,7 +4,7 @@ use bytes::Bytes;
 use vb_core::ids::{BlobId, ListId, SlotIdx, SymbolId};
 use vb_core::root_bundle::OwnedRootBundle;
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 fn cached_leaf_depth_case(
     leaf_kind: InputSlotKind,
@@ -17,10 +17,12 @@ fn cached_leaf_depth_case(
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: leaf_kind,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(1),
                 kind: InputSlotKind::List,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         128,

@@ -36,6 +36,9 @@ pub(crate) fn cmd_run(
             return CliExitCode::CompileFailed.into();
         }
     };
+    if let Err(code) = reject_unknown_actions(&compiled, output, CliExitCode::CompileFailed) {
+        return code;
+    }
 
     let inputs = match map_runtime_inputs(&compiled, &input_data) {
         Ok(inputs) => inputs,

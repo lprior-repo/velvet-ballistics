@@ -90,13 +90,15 @@ pub fn compile_source(source: &WorkflowSource) -> Result<CompiledWorkflow, Compi
     let encoded_parts = postcard::to_allocvec(&parts)
         .map_err(|error| CompileErrors(vec![CompileError::CompiledIrEncode(error)]))?;
     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&encoded_parts).into());
-    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
-    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+    vb_validate::shared::validate(&parts)
+        .map_err(|e| CompileErrors(vec![named_workflow_error(e.into(), steps, &layout)]))?;
+    CompiledWorkflow::try_from_parts(parts)
+        .map_err(|e| CompileErrors(vec![named_workflow_error(e.into(), steps, &layout)]))
 }
 
 #[path = "input_schema.rs"]
 mod input_schema;
-use input_schema::kind_from_input_schema;
+use input_schema::{constraint_from_input_schema, kind_from_input_schema};
 
 #[derive(Clone, Copy)]
 pub(super) struct CanonicalStepLayout {
@@ -236,6 +238,41 @@ pub(super) fn layout_width(
         .get(index)
         .map(|entry| entry.width)
         .ok_or(CompileError::StepIndexOutOfRange { value: index })
+}
+
+/// Name steps in backward-edge errors by walking the source layout; no
+/// compiled parts are cloned to build the diagnostic.
+pub(super) fn named_workflow_error(
+    error: CompileError,
+    steps: &[crate::StepAst],
+    layout: &[CanonicalStepLayout],
+) -> CompileError {
+    let CompileError::Workflow(vb_core::WorkflowError::BackwardEdge { from, to }) = &error else {
+        return error;
+    };
+    CompileError::BackwardEdgeNamed {
+        from: from.as_usize(),
+        to: to.as_usize(),
+        from_name: Box::from(step_id_at(steps, layout, from.as_usize())),
+        to_name: Box::from(step_id_at(steps, layout, to.as_usize())),
+    }
+}
+
+fn step_id_at<'a>(
+    steps: &'a [crate::StepAst],
+    layout: &[CanonicalStepLayout],
+    index: usize,
+) -> &'a str {
+    let mut cursor = 0_usize;
+    for (position, step) in steps.iter().enumerate() {
+        let width = layout.get(position).map_or(1, |entry| entry.width);
+        let end = cursor.saturating_add(width);
+        if index >= cursor && index < end {
+            return step.id.as_str();
+        }
+        cursor = end;
+    }
+    "?"
 }
 
 pub(super) fn next_layout_start(

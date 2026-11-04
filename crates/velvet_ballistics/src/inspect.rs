@@ -9,6 +9,10 @@ pub(crate) fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputForm
         Err(code) => return code,
     };
 
+    if let Err(code) = check_journal_dir(db, output) {
+        return code;
+    }
+
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {

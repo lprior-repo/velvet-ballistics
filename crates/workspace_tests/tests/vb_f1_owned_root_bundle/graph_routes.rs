@@ -3,7 +3,7 @@ use super::support::{TestResult, checkpoint, fixture};
 use vb_core::ids::{ListId, SlotIdx};
 use vb_core::root_bundle::{ArenaNode, OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 #[test]
 fn direct_self_cycle_detected() -> TestResult<()> {
@@ -17,6 +17,7 @@ fn direct_self_cycle_detected() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::List,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         4,
@@ -66,10 +67,12 @@ fn shared_dag_longer_later_path_rejected() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::List,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(1),
                 kind: InputSlotKind::List,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         128,

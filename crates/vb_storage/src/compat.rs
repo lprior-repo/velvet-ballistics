@@ -19,11 +19,14 @@
 //! - Every decision is journaled before enforcement, including blocked
 //!   ones, so a refusal is itself on the durable record.
 
-use crate::{EventSeq, error::JournalError, events::JournalEvent, journal::FjallJournal};
+use crate::{
+    EventSeq, constants::CURRENT_SCHEMA_VERSION, error::JournalError, events::JournalEvent,
+    journal::FjallJournal,
+};
 use vb_core::RunId;
 use vb_core::compat::{
     CompatBoundary, CompatDecision, CompatDigests, CompatError, CompatInputs, CompatRule,
-    CompatibilityClass,
+    CompatibilityClass, SchemaVersion, classify,
 };
 
 /// Domain separation for deciding-rule digests.
@@ -57,7 +60,7 @@ pub fn decide_boundary(
     old_schema_digest: [u8; 32],
     new_schema_digest: [u8; 32],
 ) -> CompatDecision {
-    let classification = vb_core::compat::classify(inputs);
+    let classification = classify(inputs);
     CompatDecision::decide(
         inputs,
         CompatDigests {
@@ -130,6 +133,90 @@ pub fn gate_admission(
 /// live effect. Callers pass the decision journaled at admission.
 pub fn gate_live_dispatch(decision: CompatDecision) -> Result<(), CompatError> {
     decision.authorize_live_effect()
+}
+
+/// One shared seam mapping u16 wire versions onto the §77.17 algebra.
+///
+/// `held` is the version on the bytes at hand; `required` is the version
+/// the consumer understands. Both map through
+/// [`SchemaVersion::from_major`]: single-number wire versions are major
+/// lines with minor and patch zero. Every version barrier in this crate
+/// routes through here instead of re-implementing the comparison, so
+/// unknown versions fail closed in exactly one place.
+#[must_use]
+pub const fn wire_version_inputs(
+    boundary: CompatBoundary,
+    held: u16,
+    required: u16,
+    migration_available: bool,
+    replay_only: bool,
+) -> CompatInputs {
+    CompatInputs {
+        boundary,
+        held: SchemaVersion::from_major(held),
+        required: SchemaVersion::from_major(required),
+        migration_available,
+        replay_only,
+    }
+}
+
+/// Inputs for absent or inactive SDK metadata at the
+/// [`CompatBoundary::SdkAbi`] boundary.
+///
+/// V1-min declares no SDK version line and activates no SDK, codegen, or
+/// UI, so there is no migration path and no replay allowance: absent
+/// metadata (held 0.0.0, no declared version) classifies
+/// [`CompatibilityClass::Rejected`] and fails closed. Future SDK metadata
+/// (a major line no consumer understands, no declared path) fails closed
+/// the same way; callers encode it with [`wire_version_inputs`] at the
+/// `SdkAbi` boundary.
+#[must_use]
+pub const fn sdk_absent_inputs() -> CompatInputs {
+    CompatInputs {
+        boundary: CompatBoundary::SdkAbi,
+        held: SchemaVersion::from_major(0),
+        required: SchemaVersion::from_major(CURRENT_SCHEMA_VERSION),
+        migration_available: false,
+        replay_only: false,
+    }
+}
+
+/// Reads back every journaled compatibility decision for a run, in full
+/// journal order. Full history, not snapshot+tail: admission-time
+/// decisions below a durable snapshot must stay visible to enforcement.
+pub fn compat_decisions_for_run(
+    journal: &FjallJournal,
+    run: RunId,
+) -> Result<Vec<CompatDecision>, JournalError> {
+    let mut decisions = Vec::new();
+    for event in journal.events_for_run_full(run)? {
+        if let JournalEvent::CompatibilityDecisionEvent { decision, .. } = event {
+            decisions.push(decision);
+        }
+    }
+    Ok(decisions)
+}
+
+/// Run-start enforcement seam: re-checks the run's journaled decisions
+/// and blocks starting (or resuming for new live effects) when any of
+/// them forbids live effects.
+///
+/// A fresh run with no journaled decisions passes unchanged. A run whose
+/// history holds a replay-only decision cannot start new live effects;
+/// replay of that history stays governed by `authorize_replay`, not by
+/// this gate. Migration-required and rejected decisions block outright
+/// with their typed errors. Migration never silently substitutes
+/// defaults: the caller must migrate explicitly and journal a new
+/// decision before this gate passes.
+pub fn gate_run_start(
+    journal: &FjallJournal,
+    run: RunId,
+) -> Result<Vec<CompatDecision>, CompatGateError> {
+    let decisions = compat_decisions_for_run(journal, run)?;
+    for decision in decisions.iter().copied() {
+        gate_live_dispatch(decision)?;
+    }
+    Ok(decisions)
 }
 
 #[cfg(test)]
@@ -504,5 +591,230 @@ mod tests {
             classify_journal_envelope(&mismatched, &event),
             CompatibilityClass::Rejected
         );
+    }
+
+    #[test]
+    fn wire_seam_preserves_journal_barrier_errors() {
+        use crate::codec::validation::validate_schema_version;
+        assert!(validate_schema_version(CURRENT_SCHEMA_VERSION).is_ok());
+        assert!(matches!(
+            validate_schema_version(0),
+            Err(JournalError::MigrationRequired {
+                from: 0,
+                to: CURRENT_SCHEMA_VERSION
+            })
+        ));
+        for unknown in [2, 3, 99, u16::MAX] {
+            assert!(
+                matches!(
+                    validate_schema_version(unknown),
+                    Err(JournalError::UnsupportedSchemaVersion { version })
+                    if version == unknown
+                ),
+                "unknown wire version {unknown} must fail closed"
+            );
+        }
+    }
+
+    #[test]
+    fn evidence_routing_maps_legacy_to_migration_and_unknown_to_reject() {
+        use crate::admission::verification::{EVIDENCE_VERSION, classify_evidence_held};
+        assert!(matches!(
+            classify_evidence_held(1),
+            JournalError::MigrationRequired {
+                from: 1,
+                to: EVIDENCE_VERSION
+            }
+        ));
+        assert!(matches!(
+            classify_evidence_held(2),
+            JournalError::MigrationRequired {
+                from: 2,
+                to: EVIDENCE_VERSION
+            }
+        ));
+        for unknown in [0, 4, 99, u16::MAX] {
+            assert!(
+                matches!(
+                    classify_evidence_held(unknown),
+                    JournalError::UnsupportedSchemaVersion { version }
+                    if version == unknown
+                ),
+                "unknown evidence version {unknown} must fail closed"
+            );
+        }
+    }
+
+    #[test]
+    fn sdk_absent_and_future_metadata_fail_closed() {
+        use vb_core::compat::{CompatInputs, classify};
+        let absent = CompatDecision::decide(
+            super::sdk_absent_inputs(),
+            CompatDigests {
+                rule_digest: super::compat_rule_digest(
+                    CompatBoundary::SdkAbi,
+                    CompatRule::MajorChangeUnsupported,
+                ),
+                old_schema_digest: [0u8; 32],
+                new_schema_digest: [0u8; 32],
+            },
+        );
+        assert_eq!(absent.class, CompatibilityClass::Rejected);
+        assert_eq!(absent.boundary, CompatBoundary::SdkAbi);
+        assert!(absent.blocks_dispatch());
+        assert!(absent.authorize_live_effect().is_err());
+        assert!(absent.authorize_replay().is_err());
+        // Future SDK metadata: a major line no consumer understands, with
+        // no declared migration or replay path, fails closed identically.
+        for future in [2, 99, u16::MAX] {
+            let inputs = CompatInputs {
+                boundary: CompatBoundary::SdkAbi,
+                held: SchemaVersion::from_major(future),
+                required: SchemaVersion::from_major(CURRENT_SCHEMA_VERSION),
+                migration_available: false,
+                replay_only: false,
+            };
+            assert_eq!(
+                classify(inputs).class,
+                CompatibilityClass::Rejected,
+                "future SDK major {future} must fail closed"
+            );
+        }
+    }
+
+    #[test]
+    fn gate_run_start_blocks_journaled_replay_only_and_migration()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let (_temp, journal) = temp_journal()?;
+        let run = RunId::new(31);
+        // Fresh runs with no journaled decisions pass unchanged.
+        assert!(super::gate_run_start(&journal, run)?.is_empty());
+        // A journaled replay-only decision passes admission (storage for
+        // replay) but blocks run start for new live effects.
+        let replay_only = super::gate_admission(
+            &journal,
+            run,
+            EventSeq::new(0),
+            inputs(
+                CompatBoundary::ArtifactEnvelope,
+                v(1, 0, 0),
+                v(2, 0, 0),
+                false,
+                true,
+            ),
+            [1u8; 32],
+            [2u8; 32],
+        )?;
+        assert_eq!(replay_only.class, CompatibilityClass::ReplayOnly);
+        assert!(
+            matches!(
+                super::gate_run_start(&journal, run),
+                Err(CompatGateError::Compat(
+                    CompatError::ReplayOnlyLiveEffect { boundary }
+                )) if boundary == CompatBoundary::ArtifactEnvelope
+            ),
+            "journaled replay-only decision must block run start"
+        );
+        // Replay of that history is still allowed: the start gate governs
+        // new live effects only.
+        assert!(replay_only.authorize_replay().is_ok());
+        // A journaled migration-required decision blocks run start with
+        // its typed error; nothing is silently defaulted.
+        let migration_run = RunId::new(32);
+        assert!(
+            super::gate_admission(
+                &journal,
+                migration_run,
+                EventSeq::new(0),
+                inputs(
+                    CompatBoundary::IrVersion,
+                    v(1, 0, 0),
+                    v(2, 0, 0),
+                    true,
+                    false,
+                ),
+                [1u8; 32],
+                [2u8; 32],
+            )
+            .is_err()
+        );
+        assert!(
+            matches!(
+                super::gate_run_start(&journal, migration_run),
+                Err(CompatGateError::Compat(CompatError::MigrationRequired {
+                    boundary
+                })) if boundary == CompatBoundary::IrVersion
+            ),
+            "journaled migration-required decision must block run start"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn reopen_preserves_decision_rule_and_schema_digests() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let temp = tempfile::tempdir()?;
+        let run = RunId::new(41);
+        let wanted: [(CompatBoundary, SchemaVersion, SchemaVersion, bool, bool); 4] = [
+            (
+                CompatBoundary::IrVersion,
+                v(1, 0, 0),
+                v(1, 0, 0),
+                false,
+                false,
+            ),
+            (
+                CompatBoundary::ActionAbi,
+                v(1, 0, 0),
+                v(2, 0, 0),
+                true,
+                false,
+            ),
+            (CompatBoundary::SdkAbi, v(1, 0, 0), v(2, 0, 0), false, true),
+            (
+                CompatBoundary::ArtifactEnvelope,
+                v(1, 0, 0),
+                v(2, 0, 0),
+                false,
+                false,
+            ),
+        ];
+        let mut seq_no = 0u64;
+        {
+            let journal = FjallJournal::open(temp.path(), None)?;
+            for (boundary, held, required, migration, replay) in wanted {
+                let seq = EventSeq::new(seq_no);
+                seq_no = seq_no.saturating_add(1);
+                // Blocked decisions are journaled before enforcement
+                // refuses them, so even the refusal is on the record.
+                let _ = super::gate_admission(
+                    &journal,
+                    run,
+                    seq,
+                    inputs(boundary, held, required, migration, replay),
+                    [0xABu8; 32],
+                    [0xCDu8; 32],
+                );
+            }
+        }
+        let reopened = FjallJournal::open(temp.path(), None)?;
+        let found = super::compat_decisions_for_run(&reopened, run)?;
+        assert_eq!(found.len(), wanted.len());
+        for (decision, (boundary, held, required, migration, replay)) in found.iter().zip(wanted) {
+            let expected = super::decide_boundary(
+                inputs(boundary, held, required, migration, replay),
+                [0xABu8; 32],
+                [0xCDu8; 32],
+            );
+            assert_eq!(*decision, expected);
+            assert_eq!(decision.boundary, boundary);
+            assert_eq!(decision.old_schema_digest, [0xABu8; 32]);
+            assert_eq!(decision.new_schema_digest, [0xCDu8; 32]);
+            assert_eq!(
+                decision.rule_digest,
+                super::compat_rule_digest(boundary, decision.rule)
+            );
+        }
+        Ok(())
     }
 }

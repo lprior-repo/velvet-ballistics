@@ -30,6 +30,9 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
             return CliExitCode::CompileFailed.into();
         }
     };
+    if let Err(code) = reject_unknown_actions(&compiled, output, CliExitCode::CompileFailed) {
+        return code;
+    }
     let compile_elapsed = compile_start.elapsed();
 
     let run_start = Instant::now();
