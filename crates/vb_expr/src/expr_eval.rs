@@ -19,3 +19,6 @@ pub use vb_core::limits::MAX_EXPRESSION_STACK;
 #[cfg(test)]
 #[path = "expr_eval_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod stack_primitive_tests;
