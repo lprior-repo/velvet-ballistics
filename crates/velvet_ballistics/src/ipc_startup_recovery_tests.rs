@@ -164,7 +164,11 @@ fn startup_header_overflow_preflights_before_recovery_or_journal_changes() -> Te
     let result = recover_startup(&service, &mut runtime, 2);
     assert!(matches!(
         result,
-        Err(vb_storage::headers::RunHeaderScanError::LimitExceeded { limit: 2 })
+        Err(
+            vb_storage::journal::startup_discovery::StartupDiscoveryError::RowLimitExceeded {
+                limit: 2
+            }
+        )
     ));
     assert_eq!(service.journal.events_for_run_full(RunId::new(1))?, before);
     assert_eq!(service.queue.pending_profile_counts()?.journaled, 0);
@@ -180,7 +184,7 @@ fn startup_skips_current_terminal_history_without_using_stale_header_status() ->
     assert!(seed_startup_run(&service, run, false)?.is_none());
     let before = service.journal.events_for_run_full(run)?;
     let mut runtime = startup_runtime(&service)?;
-    recover_startup(&service, &mut runtime, 1)?;
+    recover_startup(&service, &mut runtime, STARTUP_HEADER_SCAN_LIMIT)?;
     assert_eq!(service.journal.events_for_run_full(run)?, before);
     assert!(!matches!(
         runtime.snapshot_run(run, 1)?,
@@ -198,7 +202,7 @@ fn startup_processes_enqueued_recover_before_returning_pending_ticket() -> TestR
     let before = service.journal.events_for_run_full(run)?;
     let mut runtime = startup_runtime(&service)?;
     assert!(runtime.lookup_pending_action_ticket(run, 0).is_none());
-    recover_startup(&service, &mut runtime, 1)?;
+    recover_startup(&service, &mut runtime, STARTUP_HEADER_SCAN_LIMIT)?;
     assert_eq!(runtime.lookup_pending_action_ticket(run, 0), Some(ticket));
     assert_eq!(service.journal.events_for_run_full(run)?, before);
     assert_eq!(service.queue.pending_profile_counts()?.journaled, 0);
@@ -223,13 +227,43 @@ fn startup_preserves_admission_refusal_and_leaves_history_unchanged() -> TestRes
         })?;
     let before = service.journal.events_for_run_full(run)?;
     let mut runtime = startup_runtime(&service)?;
-    let result = recover_startup(&service, &mut runtime, 1);
+    let result = recover_startup(&service, &mut runtime, STARTUP_HEADER_SCAN_LIMIT);
     assert!(matches!(result,
-        Err(vb_storage::headers::RunHeaderScanError::Visitor(
+        Err(vb_storage::journal::startup_discovery::StartupDiscoveryError::Visitor(
             vb_runtime::RuntimeError::RecoveryCannotResume { reason }
         )) if reason == "admission_missing"
     ));
     assert_eq!(service.journal.events_for_run_full(run)?, before);
+    assert!(!matches!(
+        runtime.snapshot_run(run, 1)?,
+        vb_runtime::shard::InspectResponse::Found(_)
+    ));
+    Ok(())
+}
+
+#[test]
+fn startup_discovers_acceptance_only_without_header_and_preserves_refusal() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let service = startup_service(dir.path())?;
+    let run = RunId::new(44);
+    service
+        .journal
+        .append_strict(&vb_storage::JournalEvent::RunAccepted {
+            run,
+            seq: vb_storage::EventSeq::ZERO,
+            workflow: WorkflowDigest::from_bytes([8; 32]),
+        })?;
+    assert!(service.journal.run_header(run)?.is_none());
+    let before = service.journal.events_for_run_full(run)?;
+    let mut runtime = startup_runtime(&service)?;
+    let result = recover_startup(&service, &mut runtime, STARTUP_HEADER_SCAN_LIMIT);
+    assert!(matches!(result,
+        Err(vb_storage::journal::startup_discovery::StartupDiscoveryError::Visitor(
+            vb_runtime::RuntimeError::RecoveryCannotResume { reason }
+        )) if reason == "admission_missing"
+    ));
+    assert_eq!(service.journal.events_for_run_full(run)?, before);
+    assert_eq!(service.queue.pending_profile_counts()?.journaled, 0);
     assert!(!matches!(
         runtime.snapshot_run(run, 1)?,
         vb_runtime::shard::InspectResponse::Found(_)
