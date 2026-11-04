@@ -441,7 +441,7 @@ mod kani_harnesses {
 
         match store.insert_blob(bytes::Bytes::new()) {
             Ok(_) => {}
-            Err(_) => assert!(false),
+            Err(_) => kani::assert(false, "insert into empty store must succeed"),
         }
         assert!(store.total_arena_count() == 1);
 
@@ -451,8 +451,8 @@ mod kani_harnesses {
                 assert!(same_static_str(budget, "max_slots"));
                 assert!(*limit == 1);
             }
-            Ok(_) => assert!(false),
-            Err(_) => assert!(false),
+            Ok(_) => kani::assert(false, "second insert into capped store must fail"),
+            Err(_) => kani::assert(false, "only BudgetExceeded valid here"),
         }
         core::mem::forget(result);
         assert!(store.total_arena_count() == 1);
