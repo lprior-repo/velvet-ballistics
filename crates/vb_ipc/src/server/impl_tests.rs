@@ -41,8 +41,7 @@ fn temp_socket_path(name: &str) -> PathBuf {
     //
     // Per-test uniqueness is guaranteed by the process id (parallel cargo
     // test workers) and a static monotonic counter (successive invocations
-    // within the same process). Any stale socket file from a prior run is
-    // removed by `IpcServer::bind` via `remove_file`.
+    // within the same process). Each test owns cleanup of its socket path.
     use std::sync::atomic::{AtomicU64, Ordering};
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let pid = std::process::id();
@@ -124,20 +123,16 @@ fn bind_creates_server_at_new_socket_path() {
 }
 
 #[test]
-fn bind_removes_existing_socket_file() {
-    let path = temp_socket_path("bind_replaces");
+fn bind_preserves_existing_regular_file() -> Result<(), Box<dyn std::error::Error>> {
+    let path = temp_socket_path("bind_preserves_file");
     let _cleanup = CleanupPath(&path);
-
-    // Create a stale socket file.
-    std::fs::write(&path, b"stale").expect("write stale file");
-    assert!(path.exists(), "stale file should be present");
-
-    let result = IpcServer::bind(&path);
-
-    assert!(
-        result.is_ok(),
-        "bind should remove stale socket and succeed"
-    );
+    std::fs::write(&path, b"owned contents")?;
+    assert!(matches!(
+        IpcServer::bind(&path),
+        Err(IpcServerError::BindFailed { .. })
+    ));
+    assert_eq!(std::fs::read(&path)?, b"owned contents");
+    Ok(())
 }
 
 #[test]
