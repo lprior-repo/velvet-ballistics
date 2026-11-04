@@ -46,3 +46,7 @@ runtime_core/bench_engine_run_save_chain_1000_steps;profile=bench;tool=criterion
 ```
 
 That sub-nanosecond result is not credible for a 1,001-transition workflow. Treat it as harness-invalid until the benchmark proves the full run cannot be optimized away. It must not support any performance claim.
+
+## Evidence: 2026-11-04 (main `260ad7c4`)
+
+Full per-bench tables, including p50/p95/p99, throughput where set, and declared fixture metadata, are in `benchmark-evidence-2026-11-04.md`. All 17 bench targets build (`cargo bench -p vb_core -p vb_validate -p velvet-ballistics-workspace-tests --no-run`, exit 0) and all 128 benchmarks ran with exit 0 under criterion defaults (3 s warmup, 100 samples, ~5 s measurement; durability mixed, mode ir). This closes the 2026-11-01 gaps on current main: the 7 formerly build-failed targets, the 3 missing timer_wheel_tick benches, and the capability_schema bench (which now registers 1 benchmark) all measure, following merged PR #29. Flagged: `action_dispatch_resolve_compile_time` at 1.77 ns mean is below a plausible measurement floor and must not support claims without a `black_box` audit; `timer_wheel_fire_empty` throughput `[0, 0, 0] elem/s` is expected (the bench sets zero elements). Still missing for a full §44 Pt 22 close: instruction counts, allocation counts, and bytes allocated, which criterion does not measure and which need a separate counter harness; 5 benches also do not declare a fixture size (listed in the evidence file).
