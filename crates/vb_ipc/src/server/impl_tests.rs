@@ -1096,27 +1096,32 @@ fn workflow_resolution_error_invalid_artifact_display() {
 // Additional edge-case tests
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── 1. bind: re-binding after server drop frees the socket ────────────────────
+// ── 1. bind: fixture owner removes its stale socket before re-binding ─────────
 
 #[test]
-fn bind_succeeds_after_previous_server_dropped() {
+fn bind_requires_owner_cleanup_after_previous_server_dropped()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::{FileTypeExt, MetadataExt};
     let path = temp_socket_path("bind_rebind");
     let _cleanup = CleanupPath(&path);
-
-    // Bind once, then drop the server.
     {
-        let _server = IpcServer::bind(&path).expect("first bind should succeed");
-        assert!(path.exists(), "socket should exist while server is alive");
+        let _server = IpcServer::bind(&path)?;
+        assert!(path.exists());
     }
-
-    // The socket file may or may not be cleaned up by mio on drop.
-    // IpcServer::bind handles a stale file, so re-binding must succeed.
-    let result = IpcServer::bind(&path);
-    assert!(
-        result.is_ok(),
-        "re-binding after server drop should succeed, got {:?}",
-        result.err()
-    );
+    let before = std::fs::symlink_metadata(&path)?;
+    assert!(before.file_type().is_socket());
+    assert!(matches!(
+        IpcServer::bind(&path),
+        Err(IpcServerError::BindFailed { .. })
+    ));
+    let after = std::fs::symlink_metadata(&path)?;
+    assert!(after.file_type().is_socket());
+    assert_eq!((after.dev(), after.ino()), (before.dev(), before.ino()));
+    std::fs::remove_file(&path)?;
+    assert!(!path.try_exists()?);
+    let _rebound = IpcServer::bind(&path)?;
+    assert!(std::fs::symlink_metadata(&path)?.file_type().is_socket());
+    Ok(())
 }
 
 // ── 2. bind: path is a directory, not a file ─────────────────────────────────
