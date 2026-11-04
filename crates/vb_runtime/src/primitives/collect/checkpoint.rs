@@ -44,6 +44,19 @@ pub enum CollectStatesCheckpointV1Error {
     OrphanLineage,
 }
 
+fn restore_unique_entries(
+    states: Vec<CollectPaginationState>,
+) -> Result<super::Map<(RunId, SlotIdx), CollectPaginationState>, CollectStatesCheckpointV1Error> {
+    let mut entries = super::Map::new();
+    for state in states {
+        let key = (state.run_id, state.collector_slot);
+        if entries.insert(key, state).is_some() {
+            return Err(CollectStatesCheckpointV1Error::DuplicateEntry);
+        }
+    }
+    Ok(entries)
+}
+
 impl CollectStates {
     /// Copies pagination state in stable key order for deterministic encoding.
     #[must_use]
@@ -76,13 +89,7 @@ impl CollectStates {
     pub fn from_checkpoint_v1(
         checkpoint: CollectStatesCheckpointV1,
     ) -> Result<Self, CollectStatesCheckpointV1Error> {
-        let mut entries = super::Map::new();
-        for state in checkpoint.entries {
-            let key = (state.run_id, state.collector_slot);
-            if entries.insert(key, state).is_some() {
-                return Err(CollectStatesCheckpointV1Error::DuplicateEntry);
-            }
-        }
+        let entries = restore_unique_entries(checkpoint.entries)?;
 
         let mut lineages = super::Map::new();
         for entry in checkpoint.lineages {
