@@ -124,7 +124,6 @@ impl RunAdmission {
         self.tenant = Some(tenant);
         self
     }
-
     /// Returns the artifact digest for this admission.
     #[must_use]
     pub fn artifact_digest(&self) -> WorkflowDigest {
