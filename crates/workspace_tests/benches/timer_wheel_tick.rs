@@ -75,21 +75,6 @@ fn wheel_100_mixed(now: Instant) -> TimerWheel {
     wheel
 }
 
-/// Creates a wheel with 100 timers (all future).
-fn wheel_100(now: Instant) -> TimerWheel {
-    let mut wheel = TimerWheel::new();
-    let future_deadline = now + Duration::from_millis(100);
-    let mut i = 0u64;
-    while i < 100 {
-        assert_eq!(
-            wheel.insert(RunId::new(i), future_deadline, PendingTimerKind::Wait),
-            Ok(())
-        );
-        i = i.saturating_add(1);
-    }
-    wheel
-}
-
 /// Creates a wheel with 10 future timers.
 fn wheel_10(now: Instant) -> TimerWheel {
     let mut wheel = TimerWheel::new();

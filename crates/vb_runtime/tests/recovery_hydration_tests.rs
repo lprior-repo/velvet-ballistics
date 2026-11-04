@@ -2555,6 +2555,7 @@ fn budgeted_admission_hydrates_with_budget() {
     let events = vec![JournalEvent::RunAdmissionBudget {
         run,
         seq: EventSeq::new(1),
+        grant: None,
         artifact_digest: test_digest(5),
         input_digest: vb_storage::RunInputBinding::LegacyUnbound,
         policy_pin: vb_storage::RunPolicyPin::Pinned(test_digest(6)),

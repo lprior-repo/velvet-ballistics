@@ -70,11 +70,12 @@ fn deserialize_budget_admission<'de, A>(variant: A) -> Result<JournalEvent, A::E
 where
     A: VariantAccess<'de>,
 {
-    let (run, seq, artifact_digest, input_digest, policy_pin, granted_capabilities, policy, budget) =
+    let (run, seq, grant, artifact_digest, input_digest, policy_pin, granted_capabilities, policy, budget) =
         variant.newtype_variant()?;
     Ok(JournalEvent::RunAdmissionBudget {
         run,
         seq,
+        grant,
         artifact_digest,
         input_digest,
         policy_pin,

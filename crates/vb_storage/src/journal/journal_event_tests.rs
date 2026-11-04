@@ -797,6 +797,7 @@ fn parse_event_round_trips_budgeted_run_admission() {
     let event = JournalEvent::RunAdmissionBudget {
         run: RunId::new(77),
         seq: EventSeq::new(1),
+        grant: None,
         artifact_digest: WorkflowDigest::from_bytes([0xAB; 32]),
         input_digest: RunInputBinding::Digest(WorkflowDigest::from_bytes([0xCD; 32])),
         policy_pin: RunPolicyPin::Pinned(WorkflowDigest::from_bytes([0xEF; 32])),

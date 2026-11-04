@@ -72,6 +72,7 @@ where
         JournalEvent::RunAdmissionBudget {
             run,
             seq,
+            grant,
             artifact_digest,
             input_digest,
             policy_pin,
@@ -85,6 +86,7 @@ where
             &(
                 run,
                 seq,
+                grant,
                 artifact_digest,
                 input_digest,
                 policy_pin,

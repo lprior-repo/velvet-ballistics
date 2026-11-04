@@ -35,7 +35,11 @@ where
             grant.run.get()
         )));
     }
-    Ok(JournalEvent::CapabilityGrantEvent { run, seq, grant })
+    Ok(JournalEvent::CapabilityGrantEvent {
+        run,
+        seq,
+        grant: Box::new(grant),
+    })
 }
 
 fn deserialize_gate_decision<'de, A>(variant: A) -> Result<JournalEvent, A::Error>

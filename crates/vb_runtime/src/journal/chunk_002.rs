@@ -99,6 +99,8 @@ impl StorageRuntimeJournal {
                         input_digest: vb_storage::RunInputBinding::LegacyUnbound,
                         run: admission.run_id(),
                         seq,
+                        // No §77.10 grant flows through admission yet.
+                        grant: None,
                         artifact_digest: admission.artifact_digest(),
                         policy_pin: admission.policy_pin(),
                         granted_capabilities: admission.granted_capabilities().clone(),

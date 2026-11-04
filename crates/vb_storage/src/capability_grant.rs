@@ -22,7 +22,11 @@ pub fn journal_capability_grant(
     seq: EventSeq,
     grant: CapabilityGrant,
 ) -> Result<(), JournalError> {
-    journal.append_strict(&JournalEvent::CapabilityGrantEvent { run, seq, grant })
+    journal.append_strict(&JournalEvent::CapabilityGrantEvent {
+        run,
+        seq,
+        grant: Box::new(grant),
+    })
 }
 
 #[cfg(test)]
@@ -60,7 +64,7 @@ mod tests {
         let event = JournalEvent::CapabilityGrantEvent {
             run: grant.run,
             seq: EventSeq::new(1),
-            grant: grant.clone(),
+            grant: Box::new(grant.clone()),
         };
         assert_eq!(event.record_kind(), crate::RecordKind::CapabilityGrant);
         assert_eq!(event.seq(), EventSeq::new(1));
@@ -75,7 +79,7 @@ mod tests {
         let event = JournalEvent::CapabilityGrantEvent {
             run: RunId::new(99),
             seq: EventSeq::new(1),
-            grant,
+            grant: Box::new(grant),
         };
         assert!(postcard::to_allocvec(&event).is_err());
     }
