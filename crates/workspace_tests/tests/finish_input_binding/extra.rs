@@ -9,7 +9,8 @@ fn test_longform_schema() -> Result<(), Box<dyn std::error::Error>> {
         workflow.input_slots(),
         &[CompiledInputSlot {
             slot: SlotIdx::new(0),
-            kind: InputSlotKind::I64
+            kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::required()
         }]
     );
     let signal = run(&workflow, &[123])?;
@@ -58,7 +59,8 @@ fn test_no_finish_compile_fallback() -> Result<(), Box<dyn std::error::Error>> {
         workflow.input_slots(),
         &[CompiledInputSlot {
             slot: SlotIdx::new(1),
-            kind: InputSlotKind::I64
+            kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::required()
         }]
     );
     Ok(())
@@ -76,6 +78,7 @@ fn test_input_expression_save_preserves_value_and_secret() -> Result<(), Box<dyn
         &[CompiledInputSlot {
             slot: SlotIdx::new(1),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::required(),
         }]
     );
 

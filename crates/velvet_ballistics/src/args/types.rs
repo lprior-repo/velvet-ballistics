@@ -66,7 +66,9 @@ impl EventStatus {
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Command {
-    Help,
+    Help {
+        command: Option<String>,
+    },
     Version,
     AgentContext {
         deliver: Option<String>,

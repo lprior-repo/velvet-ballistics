@@ -280,4 +280,93 @@ mod snapshot_tests {
         assert_eq!(loaded.workflow, digest);
         assert_eq!(loaded.slots, vec![0x01, 0x02, 0x03]);
     }
+
+    /// Hand-forges a snapshot record with the given envelope schema
+    /// version: encodes honestly, then overwrites the little-endian u16
+    /// at header offset 4. The writer never emits these versions, so the
+    /// bytes are adversarial by construction, not encoder output.
+    fn forged_version_snapshot_value(
+        run: RunId,
+        seq: u64,
+        digest: WorkflowDigest,
+        version: u16,
+    ) -> Vec<u8> {
+        use crate::constants::{MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES};
+        let snapshot = make_snapshot(run, seq, digest);
+        let mut value = crate::codec::encode_record(
+            MAGIC_SNAPSHOT,
+            crate::RecordKind::Snapshot,
+            seq,
+            &snapshot,
+            MAX_SNAPSHOT_BYTES,
+        )
+        .expect("honest snapshot envelope should encode");
+        let slot = value
+            .get_mut(4..6)
+            .expect("snapshot header must carry the version field");
+        slot.copy_from_slice(&version.to_le_bytes());
+        value
+    }
+
+    fn insert_raw_snapshot(journal: &FjallJournal, run: RunId, seq: u64, value: Vec<u8>) {
+        let key =
+            crate::keys::run_snapshot_key(run, EventSeq::new(seq)).expect("snapshot key encodes");
+        journal
+            .run_snapshot
+            .insert(key.to_vec(), value)
+            .expect("raw snapshot insert should succeed");
+    }
+
+    // vb-f8lko: unknown/future envelope schema versions fail closed at
+    // the snapshot trust boundary through the shared §77.17 seam. The
+    // schema check precedes the header CRC, so the forged version (not a
+    // checksum error) decides the outcome.
+    #[test]
+    fn snapshot_load_fails_closed_on_unknown_schema_version() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(91);
+        let digest = WorkflowDigest::from_bytes([0x91; DIGEST_BYTES]);
+        for (seq, version) in [10u64, 11, 12, 13].into_iter().zip([2u16, 3, 99, u16::MAX]) {
+            insert_raw_snapshot(
+                &journal,
+                run,
+                seq,
+                forged_version_snapshot_value(run, seq, digest, version),
+            );
+            let result = journal.snapshot(run, EventSeq::new(seq));
+            assert!(
+                matches!(
+                    result,
+                    Err(crate::error::JournalError::UnsupportedSchemaVersion {
+                        version: found
+                    }) if found == version
+                ),
+                "snapshot with forged schema version {version} must fail closed, got {result:?}"
+            );
+        }
+    }
+
+    // vb-f8lko: an older major line needs explicit migration at the
+    // snapshot boundary; it is never silently accepted as current.
+    #[test]
+    fn snapshot_load_requires_explicit_migration_for_older_schema() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(92);
+        let digest = WorkflowDigest::from_bytes([0x92; DIGEST_BYTES]);
+        let seq = 7u64;
+        insert_raw_snapshot(
+            &journal,
+            run,
+            seq,
+            forged_version_snapshot_value(run, seq, digest, 0),
+        );
+        let result = journal.snapshot(run, EventSeq::new(seq));
+        assert!(
+            matches!(
+                result,
+                Err(crate::error::JournalError::MigrationRequired { from: 0, to: 1 })
+            ),
+            "snapshot with older schema version must require explicit migration, got {result:?}"
+        );
+    }
 }

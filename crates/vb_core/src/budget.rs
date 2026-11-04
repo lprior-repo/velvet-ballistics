@@ -1626,6 +1626,24 @@ pub fn check_tenant_quota(
     check_capacity("tenant_quota_cost_units", total, tenant_quota)
 }
 
+/// Checks a shard-wide cost quota: the shard's already-admitted cost
+/// plus the requested run's cost must not exceed the global quota.
+/// The shard usage snapshot carries no summed global cost, so
+/// global-scoped admission passes the shard's summed cost explicitly.
+pub fn check_global_quota(
+    global_cost_usage: u64,
+    requested_cost: u64,
+    global_quota: u64,
+) -> Result<(), AggregateBudgetError> {
+    let total =
+        global_cost_usage
+            .checked_add(requested_cost)
+            .ok_or(AggregateBudgetError::Overflow {
+                resource: "global_quota_cost_units",
+            })?;
+    check_capacity("global_quota_cost_units", total, global_quota)
+}
+
 pub fn validate_aggregate_budget(
     budget: &AggregateResourceBudget,
     policy: &BoundednessPolicy,

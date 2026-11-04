@@ -9,6 +9,10 @@ const NO_PORTS_YAML: &str = "version: velvet-ballistics/v1\nname: submit_boundar
 
 const NUMBER_PORT_YAML: &str = "version: velvet-ballistics/v1\nname: submit_number\nwhen:\n  manual: {}\ninputs:\n  count: number\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
 
+const RANGED_PORT_YAML: &str = "version: velvet-ballistics/v1\nname: submit_ranged\nwhen:\n  manual: {}\ninputs:\n  count: {is: number, min: 1, max: 10}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+
+const DEFAULTED_PORT_YAML: &str = "version: velvet-ballistics/v1\nname: submit_defaulted\nwhen:\n  manual: {}\ninputs:\n  count: {is: number, min: 1, max: 10, default: 5}\nsteps:\n  - id: build_result\n    save:\n      output: saved\n      value: '42'\n  - id: done\n    finish:\n      result: saved\n";
+
 fn subprocess(wf: &str, inp: &str, db: &str, mode: &str) -> std::io::Result<std::process::Output> {
     Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
         .args([
@@ -231,6 +235,79 @@ fn test_submit_controls() -> Result<(), Box<dyn std::error::Error>> {
                     ]
                 );
             }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn missing_required_input_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+    let compiled = vb_compile::compile_workflow(RANGED_PORT_YAML.as_bytes())?;
+    let slot = compiled.input_slots().first().ok_or("no input slot")?;
+    assert!(slot.constraint.requires_value());
+    for mode in ["none", "journaled", "strict"] {
+        let dir = tempdir()?;
+        let wf = write_file(&dir, "wf.yaml", RANGED_PORT_YAML.as_bytes())?;
+        let inp = write_file(&dir, "in.bin", &[])?;
+        let db = db_path(&dir);
+        let out = subprocess(&wf, &inp, &db, mode)?;
+        assert_eq!(out.status.code(), Some(2));
+        assert_eq!(out.stdout, b"");
+        let expected = format!(
+            "INPUT_MAPPING_FAILED: missing required input for slot {:?}\n",
+            slot.slot
+        );
+        assert_eq!(out.stderr, expected.as_bytes());
+        assert!(!Path::new(&db).try_exists()?);
+    }
+    Ok(())
+}
+
+#[test]
+fn out_of_range_input_fails_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+    let encoded = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(99)]))?;
+    for mode in ["none", "journaled", "strict"] {
+        let dir = tempdir()?;
+        let wf = write_file(&dir, "wf.yaml", RANGED_PORT_YAML.as_bytes())?;
+        let inp = write_file(&dir, "in.bin", &encoded)?;
+        let db = db_path(&dir);
+        let out = subprocess(&wf, &inp, &db, mode)?;
+        assert_eq!(out.status.code(), Some(2));
+        assert_eq!(out.stdout, b"");
+        assert_eq!(out.stderr, b"runtime input schema mismatch\n");
+        assert!(!Path::new(&db).try_exists()?);
+    }
+    Ok(())
+}
+
+#[test]
+fn default_fills_missing_input_all_durabilities() -> Result<(), Box<dyn std::error::Error>> {
+    use vb_storage::FjallJournal;
+    let compiled = vb_compile::compile_workflow(DEFAULTED_PORT_YAML.as_bytes())?;
+    let slot = compiled.input_slots().first().ok_or("no input slot")?.slot;
+    for mode in ["none", "journaled", "strict"] {
+        let dir = tempdir()?;
+        let wf = write_file(&dir, "wf.yaml", DEFAULTED_PORT_YAML.as_bytes())?;
+        let inp = write_file(&dir, "inp.bin", &[])?;
+        let db = db_path(&dir);
+        let out = subprocess(&wf, &inp, &db, mode)?;
+        assert_eq!(out.status.code(), Some(0));
+        assert!(out.stderr.is_empty());
+        let journal = FjallJournal::open(&db, None)?;
+        let headers = journal.run_headers()?;
+        assert_eq!(headers.len(), 1);
+        let header = headers.first().ok_or("missing header")?;
+        let retained = journal
+            .run_inputs(header.run)?
+            .ok_or("missing retained inputs")?;
+        assert_eq!(retained.inputs(), &[(slot, SlotValue::I64(5))]);
+        if mode != "none" {
+            let events = journal.events_for_run(header.run)?;
+            assert!(
+                events
+                    .iter()
+                    .any(|event| matches!(event, vb_storage::JournalEvent::RunAccepted { .. }))
+            );
         }
     }
     Ok(())

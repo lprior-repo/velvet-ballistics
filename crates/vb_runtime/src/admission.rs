@@ -32,8 +32,8 @@ use std::sync::Arc;
 use thiserror::Error;
 use vb_core::budget::{
     AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,
-    AggregateResourceUsage, BoundednessPolicy, RemainingBudget, check_tenant_quota,
-    validate_aggregate_budget,
+    AggregateResourceUsage, BoundednessPolicy, RemainingBudget, check_global_quota,
+    check_tenant_quota, validate_aggregate_budget,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, WorkflowDigest};
@@ -119,6 +119,32 @@ pub fn admit_run_with_budget_and_tenant_quota(
         tenant_cost_usage,
         budget.requested.max_cost_units,
         tenant_quota,
+    )
+    .map_err(map_budget_error)?;
+    admit_run_with_budget_policy(store, policy, digest, run_id, caps, budget)
+}
+
+/// Performs artifact admission plus shard-wide cost quota admission,
+/// then the usual policy and aggregate capacity admission.
+///
+/// The global quota caps the shard's already-admitted cost plus this run's
+/// cost; the shard usage snapshot carries no summed global cost, so the
+/// shard's summed cost is passed explicitly.
+#[allow(clippy::too_many_arguments)]
+pub fn admit_run_with_budget_and_global_quota(
+    store: &dyn ArtifactStore,
+    policy: RuntimePolicy,
+    digest: WorkflowDigest,
+    run_id: RunId,
+    caps: CapabilitySet,
+    budget: AdmissionBudgetRequest,
+    global_cost_usage: u64,
+    global_quota: u64,
+) -> Result<RunAdmission, AdmissionError> {
+    check_global_quota(
+        global_cost_usage,
+        budget.requested.max_cost_units,
+        global_quota,
     )
     .map_err(map_budget_error)?;
     admit_run_with_budget_policy(store, policy, digest, run_id, caps, budget)

@@ -2,7 +2,7 @@ use super::support::{TestResult, checkpoint, fixture};
 use vb_core::ids::SlotIdx;
 use vb_core::root_bundle::{OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 fn make_roots(indices: &[u16]) -> Vec<(SlotIdx, SlotValue, Taint)> {
     indices
@@ -19,10 +19,12 @@ fn root_slot_out_of_range() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(2),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         8,
@@ -64,10 +66,12 @@ fn root_slot_duplicate() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(2),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         8,
@@ -107,10 +111,12 @@ fn root_slot_extra() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(2),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         8,

@@ -1652,3 +1652,67 @@ fn admit_run_with_budget_rejects_over_global_quota() {
         })
     );
 }
+
+#[test]
+fn admit_run_with_budget_and_global_quota_rejects_summed_over_quota() {
+    struct AlwaysPresentStore;
+    impl ArtifactStore for AlwaysPresentStore {
+        fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+            true
+        }
+    }
+    let result = admit_run_with_budget_and_global_quota(
+        &AlwaysPresentStore,
+        RuntimePolicy::Strict,
+        test_digest(),
+        RunId::new(4),
+        CapabilitySet::empty(),
+        AdmissionBudgetRequest {
+            requested: requested_budget_77_18(10, 1),
+            available: ample_capacity_77_18(),
+            policy: BoundednessPolicy::DEFAULT,
+        },
+        5,
+        10,
+    );
+    assert_eq!(
+        result,
+        Err(AdmissionError::ResourceCapacityExceeded {
+            resource: "global_quota_cost_units",
+            requested: 15,
+            available: 10,
+        })
+    );
+}
+
+#[test]
+fn admit_run_with_budget_and_global_quota_admits_at_quota_and_exposes_remaining() {
+    struct AlwaysPresentStore;
+    impl ArtifactStore for AlwaysPresentStore {
+        fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+            true
+        }
+    }
+    let admission = admit_run_with_budget_and_global_quota(
+        &AlwaysPresentStore,
+        RuntimePolicy::Strict,
+        test_digest(),
+        RunId::new(5),
+        CapabilitySet::empty(),
+        AdmissionBudgetRequest {
+            requested: requested_budget_77_18(10, 2),
+            available: ample_capacity_77_18(),
+            policy: BoundednessPolicy::DEFAULT,
+        },
+        0,
+        10,
+    )
+    .expect("at-quota admission must succeed");
+    let mut remaining = admission
+        .remaining_budget()
+        .expect("budget admission carries remaining counters");
+    assert_eq!(remaining.remaining_open_gates(), 2);
+    assert!(remaining.try_open_gate().is_ok());
+    assert_eq!(remaining.remaining_open_gates(), 1);
+    assert_eq!(remaining.remaining_cost_units(), 10);
+}

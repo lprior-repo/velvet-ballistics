@@ -8,7 +8,7 @@ use std::process::ExitCode;
 use crate::args::{Command, parse_args};
 use crate::exit_code::CliExitCode;
 use crate::io_helpers::{
-    exit_from_io, write_help_stdout, write_parse_error_stderr, write_version_stdout,
+    exit_from_io, write_parse_error_stderr, write_subcommand_help, write_version_stdout,
 };
 
 pub(crate) fn run_from_env() -> ExitCode {
@@ -16,7 +16,10 @@ pub(crate) fn run_from_env() -> ExitCode {
     let parsed = parse_args(&args);
 
     match parsed {
-        Ok(Command::Help) => exit_from_io(&write_help_stdout(), ExitCode::SUCCESS),
+        Ok(Command::Help { command }) => exit_from_io(
+            &write_subcommand_help(command.as_deref()),
+            ExitCode::SUCCESS,
+        ),
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
         Ok(Command::AgentContext { deliver }) => {
             crate::agent_io::cmd_agent_context(deliver.as_deref())

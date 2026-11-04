@@ -14,8 +14,4 @@ pub use step::{
 };
 pub use workflow::WorkflowSource;
 
-#[cfg(any(test, feature = "test-util"))]
 pub use workflow::WorkflowSourceParts;
-
-#[cfg(not(any(test, feature = "test-util")))]
-pub(crate) use workflow::WorkflowSourceParts;

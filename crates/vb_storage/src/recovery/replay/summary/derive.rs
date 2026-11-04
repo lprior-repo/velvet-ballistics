@@ -114,6 +114,25 @@ pub fn recover_run_admission_from_events(events: &[JournalEvent]) -> Option<Reco
             run_id: *run,
             granted_capabilities: granted_capabilities.clone(),
             policy: *policy,
+            budget: None,
+        }),
+        JournalEvent::RunAdmissionBudget {
+            run,
+            artifact_digest,
+            input_digest,
+            policy_pin,
+            granted_capabilities,
+            policy,
+            budget,
+            ..
+        } => Some(RecoveredRunAdmission {
+            input_digest: *input_digest,
+            policy_pin: *policy_pin,
+            artifact_digest: *artifact_digest,
+            run_id: *run,
+            granted_capabilities: granted_capabilities.clone(),
+            policy: *policy,
+            budget: Some(*budget),
         }),
         _ => None,
     })

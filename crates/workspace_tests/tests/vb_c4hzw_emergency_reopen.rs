@@ -10,6 +10,9 @@ mod oracle;
 #[path = "vb_c4hzw_emergency_reopen/fixtures.rs"]
 mod fixtures;
 
+#[path = "vb_hk1j8_fixture/scoped_grant_fixture.rs"]
+mod scoped_grant_fixture;
+
 use std::sync::Arc;
 
 use vb_core::ActionTicket;
@@ -157,6 +160,8 @@ fn emergency_deny_survives_journal_reopen() -> TestResult {
         .ok_or("expected pending action ticket")?;
 
     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
+    let (scoped, dispatch) =
+        scoped_grant_fixture::issue_scoped(&catalog, &artifact, &grant, ticket, scope(), 22)?;
     let register_path = dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
 
@@ -167,6 +172,7 @@ fn emergency_deny_survives_journal_reopen() -> TestResult {
         run,
         u64::from(StepIdx::ZERO.get()),
         &grant,
+        vb_core::ScopedDispatch::new(&scoped, &dispatch, &[]),
     );
 
     let decision = match result {

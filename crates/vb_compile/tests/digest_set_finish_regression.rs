@@ -181,9 +181,8 @@ fn canonical_digest_produces_distinct_digests_when_step_order_differs_set_vs_fin
     // Given: source with Set then Finish
     let source_a = set_finish_source();
     // And: source with Finish then Set (reversed order)
-    use vb_compile::{
-        ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
-    };
+    use vb_compile::{ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource};
+    use vb_yaml::yaml_ast::types::WorkflowSourceParts;
     let source_b = WorkflowSource::new(WorkflowSourceParts {
         version: "velvet-ballistics/v1".to_string(),
         name: "test_set_finish_workflow".to_string(),

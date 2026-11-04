@@ -132,3 +132,7 @@ pub const MAX_JOURNAL_BATCH_BYTES: u32 = 16_777_216;
 #[cfg(test)]
 #[path = "limits/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "limits/proptest_bounds.rs"]
+mod proptest_bounds;

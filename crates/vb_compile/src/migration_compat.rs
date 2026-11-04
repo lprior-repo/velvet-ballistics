@@ -130,7 +130,7 @@ mod yaml_module_paths {
         let result = yaml_profile::validate_yaml_profile("version: a\nversion: b\n");
         assert!(
             matches!(result,
-                Err(yaml_error::YamlError::DuplicateKey { ref key }) if key.as_ref() == "version"
+                Err(yaml_error::YamlError::DuplicateKeyAt { ref key, .. }) if key.as_ref() == "version"
             ),
             "Expected DuplicateKey for version, got {result:?}"
         );
