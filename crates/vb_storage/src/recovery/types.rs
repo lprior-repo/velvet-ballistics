@@ -603,6 +603,8 @@ pub struct RecoveredRunAdmission {
     pub granted_capabilities: CapabilitySet,
     /// Admission policy that governed this admission decision.
     pub policy: RuntimePolicy,
+    /// Aggregate budget admitted for this run, when the receipt carries one.
+    pub budget: Option<vb_core::AggregateResourceBudget>,
 }
 
 /// Explicit recovery product. Supports summary-only recovery or a typed

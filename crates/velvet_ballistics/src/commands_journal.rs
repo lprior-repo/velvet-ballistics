@@ -243,6 +243,15 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             seq: seq.get(),
             extra_json: vec![],
         },
+        JournalEvent::RunKilled { seq, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunKilled",
+            step: None,
+            status: Some(TraceStatus::Cancelled),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
         JournalEvent::RunFinished { seq, result, .. } => TraceEntry {
             index: idx,
             event_type: "RunFinished",
@@ -296,6 +305,60 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
                 ("run", serde_json::Value::from(run.get())),
                 ("slot_idx", serde_json::Value::from(slot_idx.get())),
                 ("answer", serde_json::Value::from(format!("{:?}", answer))),
+            ],
+        },
+        JournalEvent::GateDecisionEvent { seq, run, record } => TraceEntry {
+            index: idx,
+            event_type: "GateDecision",
+            step: None,
+            status: Some(match record.outcome {
+                vb_core::manual_gate::GateOutcome::Approved
+                | vb_core::manual_gate::GateOutcome::BreakGlassApproved => TraceStatus::Completed,
+                vb_core::manual_gate::GateOutcome::Denied => TraceStatus::Failed,
+                vb_core::manual_gate::GateOutcome::MoreEvidenceRequested
+                | vb_core::manual_gate::GateOutcome::Escalated => TraceStatus::WaitingAnswer,
+                vb_core::manual_gate::GateOutcome::Delegated => TraceStatus::Active,
+            }),
+            action: Some(record.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("gate", serde_json::Value::from(record.gate.get())),
+                (
+                    "decision",
+                    serde_json::Value::from(format!("{:?}", record.decision)),
+                ),
+                (
+                    "outcome",
+                    serde_json::Value::from(format!("{:?}", record.outcome)),
+                ),
+            ],
+        },
+        JournalEvent::CompatibilityDecisionEvent { seq, run, decision } => TraceEntry {
+            index: idx,
+            event_type: "CompatibilityDecision",
+            step: None,
+            status: None,
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                (
+                    "boundary",
+                    serde_json::Value::from(format!("{:?}", decision.boundary)),
+                ),
+                (
+                    "class",
+                    serde_json::Value::from(format!("{:?}", decision.class)),
+                ),
+                (
+                    "rule",
+                    serde_json::Value::from(format!("{:?}", decision.rule)),
+                ),
+                (
+                    "decision_code",
+                    serde_json::Value::from(format!("{:?}", decision.decision_code)),
+                ),
             ],
         },
         _ => TraceEntry {

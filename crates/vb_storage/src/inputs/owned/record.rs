@@ -107,6 +107,17 @@ impl OwnedRunInputsRecordV1 {
             {
                 Ok(())
             }
+            JournalEvent::RunAdmissionBudget {
+                run,
+                artifact_digest,
+                input_digest: RunInputBinding::Digest(digest),
+                ..
+            } if *run == self.run()
+                && *artifact_digest == self.artifact_digest()
+                && *digest == self.input_digest() =>
+            {
+                Ok(())
+            }
             _ => Err(OwnedInputError::AdmissionMismatch.into()),
         }
     }

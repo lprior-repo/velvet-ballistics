@@ -51,3 +51,11 @@ path = "../workspace_tests/tests/cli/verify_budget_profiles.rs"
 [[test]]
 name = "submit_retained_inputs"
 path = "../workspace_tests/tests/cli/submit_retained_inputs.rs"
+
+[[test]]
+name = "qa_findings_regression"
+path = "../workspace_tests/tests/cli/qa_findings_regression.rs"
+
+[[test]]
+name = "qa_permutation_matrix"
+path = "../workspace_tests/tests/cli/qa_permutation_matrix.rs"

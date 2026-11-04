@@ -31,8 +31,53 @@ pub fn validate_yaml_profile(text: &str) -> YamlResult<()> {
     validate_yaml_profile_with_limits(text, &limits)
 }
 
+/// Strip one leading UTF-8 byte order mark, if present.
+pub(crate) fn strip_bom(text: &str) -> &str {
+    text.strip_prefix('\u{feff}').unwrap_or(text)
+}
+
+/// Reject UTF-16-looking sources: a UTF-16 BOM decoded as Latin, or ASCII
+/// text interleaved with NUL bytes.
+pub(crate) fn check_encoding(text: &str) -> YamlResult<()> {
+    if text.starts_with('\u{fffd}')
+        || text.as_bytes().starts_with(b"\xff\xfe")
+        || text.as_bytes().starts_with(b"\xfe\xff")
+    {
+        return Err(YamlError::UnsupportedEncoding);
+    }
+    if text.contains('\x00') {
+        let nul = text.bytes().filter(|b| *b == 0).count();
+        // UTF-16LE/BE ASCII has a NUL in roughly every second byte.
+        if nul.saturating_mul(4) >= text.len() && nul >= 2 {
+            return Err(YamlError::UnsupportedEncoding);
+        }
+    }
+    Ok(())
+}
+
+/// Reject YAML directives (`%YAML`, `%TAG`, any `%...`) ahead of the first
+/// document content; the strict profile defines no directive semantics.
+pub(crate) fn reject_directives(text: &str) -> YamlResult<()> {
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        if trimmed.starts_with('%') {
+            return Err(YamlError::ForbiddenFeature {
+                detail: "yaml_directive",
+            });
+        }
+        break;
+    }
+    Ok(())
+}
+
 /// Validate with explicit limits.
 pub(crate) fn validate_yaml_profile_with_limits(text: &str, limits: &YamlLimits) -> YamlResult<()> {
+    let text = strip_bom(text);
+    check_encoding(text)?;
+    reject_directives(text)?;
     check_source_size(text, limits.max_source_bytes)?;
     check_null_bytes_in_source(text)?;
     let events = collect_and_validate_events(text, limits)?;

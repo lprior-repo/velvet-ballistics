@@ -2,7 +2,8 @@ use vb_core::ids::{SlotIdx, WorkflowDigest};
 use vb_core::root_bundle::OwnedRootBundle;
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{
-    CompiledInputSlot, CompiledWorkflow, InputSlotKind, ResourceContract, SecretResultPolicy,
+    CompiledInputConstraint, CompiledInputSlot, CompiledWorkflow, InputSlotKind, ResourceContract,
+    SecretResultPolicy,
 };
 
 use super::support::{TestResult, checkpoint, fixture};
@@ -15,6 +16,7 @@ fn resource_contract_field_independence() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         1024,
@@ -178,6 +180,7 @@ fn exact_projection_probes() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         1024,
@@ -206,6 +209,7 @@ fn exact_projection_probes() -> TestResult<()> {
     parts.input_slots = Box::from([CompiledInputSlot {
         slot: SlotIdx::new(1),
         kind: InputSlotKind::I64,
+        constraint: CompiledInputConstraint::unconstrained(),
     }]);
     let slot_moved = CompiledWorkflow::try_from_parts(parts)?;
     assert_eq!(base_wf.digest(), slot_moved.digest());
@@ -216,6 +220,7 @@ fn exact_projection_probes() -> TestResult<()> {
     parts.input_slots = Box::from([CompiledInputSlot {
         slot: SlotIdx::new(0),
         kind: InputSlotKind::Bool,
+        constraint: CompiledInputConstraint::unconstrained(),
     }]);
     let kind_changed = CompiledWorkflow::try_from_parts(parts)?;
     assert_eq!(base_wf.digest(), kind_changed.digest());
@@ -232,6 +237,7 @@ fn name_change_retains_match() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         1024,

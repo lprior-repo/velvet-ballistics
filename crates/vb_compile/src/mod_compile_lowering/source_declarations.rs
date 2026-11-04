@@ -1,6 +1,8 @@
 //! Allocate declarations before lowering any source expression or scratch state.
 
-use super::{ForEachInputs, SlotCompiler, kind_from_input_schema, step_idx};
+use super::{
+    ForEachInputs, SlotCompiler, constraint_from_input_schema, kind_from_input_schema, step_idx,
+};
 use crate::{AuthorValue, CompileError, WorkflowSource};
 use std::collections::HashMap;
 use vb_core::workflow::node;
@@ -16,15 +18,17 @@ pub(super) fn prepare_source_declarations(
 ) -> Result<Vec<Box<str>>, CompileError> {
     for input in source.inputs() {
         let kind = kind_from_input_schema(&input.value)?;
+        let constraint = constraint_from_input_schema(&input.value)?;
+        reject_dangling_schema_source(source, &input.value)?;
         let slot = builder.allocate_slot()?;
-        builder.record_input_slot(slot, kind);
+        builder.record_input_slot(slot, kind, constraint);
         bind_declaration(outputs, format!("$input.{}", input.key), slot)?;
         types.insert(slot, input_type(kind));
         for_each_inputs.record(slot, &input.key, &input.value);
     }
     let mut names = Vec::with_capacity(source.vars().len());
     for variable in source.vars() {
-        let (value, ty) = scalar_variable(&variable.value)?;
+        let (value, ty) = scalar_variable(&variable.key, &variable.value)?;
         let slot = builder.allocate_slot()?;
         emit_variable(value, slot, builder)?;
         bind_declaration(outputs, format!("$vars.{}", variable.key), slot)?;
@@ -32,6 +36,47 @@ pub(super) fn prepare_source_declarations(
         names.push(format!("$vars.{}", variable.key).into_boxed_str());
     }
     Ok(names)
+}
+
+/// Rejects a `from` schema reference that names no declared input, variable,
+/// or secret. Only provably dangling references fail closed here.
+fn reject_dangling_schema_source(
+    source: &WorkflowSource,
+    schema: &AuthorValue,
+) -> Result<(), CompileError> {
+    let AuthorValue::Mapping(entries) = schema else {
+        return Ok(());
+    };
+    let Some(target) = entries
+        .iter()
+        .find(|entry| entry.key == "from")
+        .map(|entry| &entry.value)
+    else {
+        return Ok(());
+    };
+    let AuthorValue::Text(name) = target else {
+        return Err(CompileError::InvalidInputSchema {
+            field: "inputs.from",
+            expected: "a non-empty string",
+        });
+    };
+    if name.is_empty() {
+        return Err(CompileError::InvalidInputSchema {
+            field: "inputs.from",
+            expected: "a non-empty string",
+        });
+    }
+    let declared = source.inputs().iter().any(|field| field.key == *name)
+        || source.vars().iter().any(|field| field.key == *name)
+        || source.secrets().iter().any(|field| field.key == *name);
+    if declared {
+        Ok(())
+    } else {
+        Err(CompileError::InvalidInputSchema {
+            field: "inputs.from",
+            expected: "a declared input, variable, or secret name",
+        })
+    }
 }
 
 fn bind_declaration(
@@ -65,13 +110,16 @@ fn emit_variable(
     Ok(())
 }
 
-fn scalar_variable(value: &AuthorValue) -> Result<(ConstValue, ExprType), CompileError> {
+fn scalar_variable(key: &str, value: &AuthorValue) -> Result<(ConstValue, ExprType), CompileError> {
     match value {
         AuthorValue::Null => Ok((ConstValue::Null, ExprType::Null)),
         AuthorValue::Bool(value) => Ok((ConstValue::Bool(*value), ExprType::Bool)),
         AuthorValue::I64(value) => Ok((ConstValue::I64(*value), ExprType::I64)),
         _ => Err(CompileError::ExpressionLoweringUnsupported {
-            feature: Box::from("vars currently require null, boolean, or integer static literals"),
+            feature: format!(
+                "vars.{key} currently requires a null, boolean, or integer static literal"
+            )
+            .into_boxed_str(),
         }),
     }
 }

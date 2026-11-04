@@ -70,7 +70,8 @@ pub fn validate_input_record_artifact(
 /// Checks if the admission event is new-bound (has input digest) or legacy unbound.
 pub fn admission_is_new_bound(event: &JournalEvent) -> bool {
     match event {
-        JournalEvent::RunAdmission { input_digest, .. } => {
+        JournalEvent::RunAdmission { input_digest, .. }
+        | JournalEvent::RunAdmissionBudget { input_digest, .. } => {
             matches!(input_digest, vb_storage::RunInputBinding::Digest(_))
         }
         _ => false,

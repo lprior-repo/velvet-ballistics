@@ -1,8 +1,8 @@
 use std::error::Error;
 use vb_core::ids::{StepIdx, WorkflowDigest};
 use vb_core::workflow::{
-    CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, InputSlotKind, ResourceContract,
-    WorkflowParts,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, InputSlotKind,
+    ResourceContract, WorkflowParts,
 };
 use vb_core::{SlotIdx, SlotValue};
 
@@ -45,6 +45,7 @@ fn test_any_slot_accepts_all_values() -> Result<(), Box<dyn std::error::Error>> 
     let wf = fixture(Box::from([CompiledInputSlot {
         slot: SlotIdx::new(2),
         kind: InputSlotKind::Any,
+        constraint: CompiledInputConstraint::unconstrained(),
     }]))?;
     let values = [
         vb_core::SlotValue::Null,
@@ -74,6 +75,7 @@ fn test_i64_slot_rejects_bool() -> Result<(), Box<dyn std::error::Error>> {
     let wf = fixture(Box::from([CompiledInputSlot {
         slot: SlotIdx::new(2),
         kind: InputSlotKind::I64,
+        constraint: CompiledInputConstraint::unconstrained(),
     }]))?;
     let mut frame = RunFrame::new(RunId::new(1), wf.entry(), wf.node_count(), wf.slot_count())?;
     let before = frame.read_slot(SlotIdx::new(2)).copied();

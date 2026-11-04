@@ -52,6 +52,15 @@ impl RunFrame {
         self.slots.to_vec()
     }
 
+    #[must_use]
+    pub fn written_slot_count(&self) -> u64 {
+        self.slots
+            .iter()
+            .fold(0, |count, slot| {
+                count.saturating_add(u64::from(slot.is_some()))
+            })
+    }
+
     /// Returns a snapshot of all taint markers.
     #[must_use]
     pub fn taint_snapshot(&self) -> Vec<Taint> {

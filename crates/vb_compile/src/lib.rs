@@ -57,7 +57,6 @@ pub use vb_yaml::{
     span_for_node, validate_yaml_profile,
 };
 
-#[cfg(any(test, feature = "test-util"))]
 pub use vb_yaml::WorkflowSourceParts;
 
 // Proptest properties for Finish digest verification (vb-xi2f.34).

@@ -16,9 +16,37 @@ use crate::ids::{
 };
 use crate::value::{ConstValue, FiniteF64, SlotValue, Taint};
 use crate::workflow::{
-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, ExprBranch, ExprOp,
-    ExprProgram, InputSlotKind, PathSegment, ResourceContract, SlotBranch, WorkflowParts,
+    AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
+    ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract, SlotBranch,
+    WorkflowParts,
 };
+
+/// Ordered optional i64 bounds with `min <= max` whenever both are present.
+fn ordered_optional_bounds() -> (Option<i64>, Option<i64>) {
+    let (first, second): (i64, i64) = (kani::any(), kani::any());
+    let (present_first, present_second): (bool, bool) = (kani::any(), kani::any());
+    let (low, high) = if first <= second {
+        (first, second)
+    } else {
+        (second, first)
+    };
+    (present_first.then_some(low), present_second.then_some(high))
+}
+
+/// Ordered optional non-negative i64 bounds for length constraints.
+fn ordered_optional_length_bounds() -> (Option<i64>, Option<i64>) {
+    let (first, second): (u32, u32) = (kani::any(), kani::any());
+    let (present_first, present_second): (bool, bool) = (kani::any(), kani::any());
+    let (low, high) = if first <= second {
+        (first, second)
+    } else {
+        (second, first)
+    };
+    (
+        present_first.then_some(i64::from(low)),
+        present_second.then_some(i64::from(high)),
+    )
+}
 
 impl kani::Arbitrary for FiniteF64 {
     fn any() -> Self {
@@ -351,19 +379,35 @@ impl kani::Arbitrary for WorkflowParts {
         kani::assume(input_slot_count <= 4);
         let mut input_slots: Vec<CompiledInputSlot> =
             Vec::with_capacity(usize::from(input_slot_count));
-        input_slots.extend((0..input_slot_count).map(|index| CompiledInputSlot {
-            slot: SlotIdx::new(u16::from(index)),
-            kind: match kani::any::<u8>() {
-                0 => InputSlotKind::Null,
-                1 => InputSlotKind::Bool,
-                2 => InputSlotKind::I64,
-                3 => InputSlotKind::F64,
-                4 => InputSlotKind::Symbol,
-                5 => InputSlotKind::List,
-                6 => InputSlotKind::Object,
-                7 => InputSlotKind::Blob,
-                _ => InputSlotKind::Any,
-            },
+        input_slots.extend((0..input_slot_count).map(|index| {
+            let (min, max) = ordered_optional_bounds();
+            let (min_length, max_length) = ordered_optional_length_bounds();
+            CompiledInputSlot {
+                slot: SlotIdx::new(u16::from(index)),
+                kind: match kani::any::<u8>() {
+                    0 => InputSlotKind::Null,
+                    1 => InputSlotKind::Bool,
+                    2 => InputSlotKind::I64,
+                    3 => InputSlotKind::F64,
+                    4 => InputSlotKind::Symbol,
+                    5 => InputSlotKind::List,
+                    6 => InputSlotKind::Object,
+                    7 => InputSlotKind::Blob,
+                    _ => InputSlotKind::Any,
+                },
+                constraint: CompiledInputConstraint {
+                    optional: kani::any(),
+                    nullable: kani::any(),
+                    default_value: None,
+                    min,
+                    max,
+                    min_length,
+                    max_length,
+                    element: None,
+                    allow_extra: None,
+                    secret: kani::any(),
+                },
+            }
         }));
         Self {
             name: Box::from("kani_workflow"),

@@ -12,6 +12,8 @@ struct TestCase {
     runtime: Runtime,
     ticket: ActionTicket,
     grant: RegisterGrant,
+    scoped: ScopedGrant,
+    dispatch: GrantDispatchContext,
     allowed_digest: PolicyDigest,
 }
 
@@ -30,7 +32,8 @@ fn build_test_case() -> Result<TestCase, Box<dyn std::error::Error>> {
             code: DecisionCode::Allowed,
         },
     )?;
-    let (ticket, grant) = get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
+    let (ticket, grant, scoped, dispatch) =
+        get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
     Ok(TestCase {
         dir,
         run,
@@ -39,6 +42,8 @@ fn build_test_case() -> Result<TestCase, Box<dyn std::error::Error>> {
         runtime,
         ticket,
         grant,
+        scoped,
+        dispatch,
         allowed_digest,
     })
 }
@@ -101,12 +106,22 @@ fn get_ticket_and_grant(
     artifact: &AcceptedArtifact,
     runtime: &Runtime,
     run: RunId,
-) -> Result<(ActionTicket, RegisterGrant), Box<dyn std::error::Error>> {
+) -> Result<
+    (
+        ActionTicket,
+        RegisterGrant,
+        ScopedGrant,
+        GrantDispatchContext,
+    ),
+    Box<dyn std::error::Error>,
+> {
     let ticket = runtime
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
-    Ok((ticket, grant))
+    let (scoped, dispatch) =
+        crate::scoped_grant_fixture::issue_scoped(catalog, artifact, &grant, ticket, scope(), 11)?;
+    Ok((ticket, grant, scoped, dispatch))
 }
 
 fn execute_action(case: &mut TestCase) -> Result<RegisterReceipt, Box<dyn std::error::Error>> {
@@ -117,6 +132,7 @@ fn execute_action(case: &mut TestCase) -> Result<RegisterReceipt, Box<dyn std::e
         case.run,
         u64::from(StepIdx::ZERO.get()),
         &case.grant,
+        vb_core::ScopedDispatch::new(&case.scoped, &case.dispatch, &[]),
     )?;
     Ok(receipt)
 }

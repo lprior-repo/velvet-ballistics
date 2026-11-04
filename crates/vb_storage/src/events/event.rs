@@ -8,8 +8,8 @@
 use crate::EventSeq;
 use chrono::{DateTime, Utc};
 use vb_core::{
-    ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, StepIdx,
-    Taint, WorkflowDigest,
+    ActionId, ActionTicket, AggregateResourceBudget, CapabilitySet, ConstValue, RunId,
+    RuntimePolicy, SlotIdx, StepIdx, Taint, WorkflowDigest,
 };
 
 /// Terminal action outcome captured by durable completion envelopes.
@@ -399,5 +399,29 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Complete compatibility decision record.
         decision: vb_core::compat::CompatDecision,
+    },
+    /// Run admission receipt carrying the admitted aggregate budget
+    /// (MASTER §77.18). Appended at the end of the enum; no existing
+    /// variant was renumbered. Identical in meaning to `RunAdmission`
+    /// plus the budget, so journal-replay recovery reconstructs the
+    /// admitted budget instead of dropping it. Old `RunAdmission`
+    /// receipts keep their meaning: no admitted budget.
+    RunAdmissionBudget {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Compiled artifact digest admitted for this run.
+        artifact_digest: WorkflowDigest,
+        /// Canonical typed input identity, or explicit historical absence.
+        input_digest: crate::RunInputBinding,
+        /// Actual policy identity from the accepted artifact, or explicit historical absence.
+        policy_pin: crate::RunPolicyPin,
+        /// Capabilities granted for this run.
+        granted_capabilities: CapabilitySet,
+        /// Policy used to admit this run.
+        policy: RuntimePolicy,
+        /// Aggregate budget admitted for this run.
+        budget: AggregateResourceBudget,
     },
 }

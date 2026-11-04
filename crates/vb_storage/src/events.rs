@@ -27,6 +27,7 @@ impl JournalEvent {
             Self::RunContinuation { carrier } => carrier.header().run(),
             Self::RunAccepted { run, .. }
             | Self::RunAdmission { run, .. }
+            | Self::RunAdmissionBudget { run, .. }
             | Self::RetryCheckpoint { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }
@@ -67,6 +68,7 @@ impl JournalEvent {
             Self::RunContinuation { carrier } => carrier.header().own_seq(),
             Self::RunAccepted { seq, .. }
             | Self::RunAdmission { seq, .. }
+            | Self::RunAdmissionBudget { seq, .. }
             | Self::RetryCheckpoint { seq, .. }
             | Self::StepStarted { seq, .. }
             | Self::StepSucceeded { seq, .. }
@@ -150,6 +152,7 @@ impl JournalEvent {
             Self::PolicyDecisionEvent { .. } => RecordKind::PolicyDecision,
             Self::GateDecisionEvent { .. } => RecordKind::GateDecision,
             Self::CompatibilityDecisionEvent { .. } => RecordKind::CompatibilityDecision,
+            Self::RunAdmissionBudget { .. } => RecordKind::RunAdmissionBudget,
         }
     }
 
@@ -222,6 +225,7 @@ impl JournalEvent {
             | Self::ActionAbandoned { ticket, .. } => Some(ticket.run_attempt),
             Self::RunAccepted { .. }
             | Self::RunAdmission { .. }
+            | Self::RunAdmissionBudget { .. }
             | Self::StepSucceeded { .. }
             | Self::RunResumed { .. }
             | Self::RunRetried { .. }
@@ -276,6 +280,7 @@ impl JournalEvent {
             | Self::ActionAbandoned { ticket, .. } => ticket.attempt != 0,
             Self::RunAccepted { .. }
             | Self::RunAdmission { .. }
+            | Self::RunAdmissionBudget { .. }
             | Self::StepSucceeded { .. }
             | Self::RunResumed { .. }
             | Self::RunRetried { .. }

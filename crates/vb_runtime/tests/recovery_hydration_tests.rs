@@ -17,7 +17,8 @@ use std::sync::{Mutex, MutexGuard};
 
 use tempfile::TempDir;
 use vb_core::{
-    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
+    ActionId, AggregateResourceBudget, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue,
+    StepIdx, WorkflowDigest,
 };
 use vb_runtime::recovery::{RecoveryResumeStatus, RuntimeRecoveryBoundary};
 use vb_storage::recovery::{
@@ -2516,4 +2517,63 @@ mod kani_recovery {
             _ => panic!("empty events must produce NoRecoveryData"),
         }
     }
+}
+
+#[test]
+fn budgeted_admission_hydrates_with_budget() {
+    let run = RunId::new(314);
+    let budget = AggregateResourceBudget {
+        max_steps_executable: 6,
+        max_action_tickets: 3,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 30,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 17,
+    };
+    let events = vec![JournalEvent::RunAdmissionBudget {
+        run,
+        seq: EventSeq::new(1),
+        artifact_digest: test_digest(5),
+        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+        policy_pin: vb_storage::RunPolicyPin::Pinned(test_digest(6)),
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Strict,
+        budget,
+    }];
+    let admission = vb_runtime::recovery::hydrate_run_admission_from_events(&events)
+        .expect("budgeted admission hydrates");
+    assert_eq!(admission.budget(), Some(budget));
+    assert_eq!(admission.run_id(), run);
+    assert_eq!(admission.artifact_digest(), test_digest(5));
+    assert_eq!(admission.policy(), RuntimePolicy::Strict);
+    assert_eq!(
+        admission.policy_pin(),
+        vb_storage::RunPolicyPin::Pinned(test_digest(6))
+    );
+    let plain = vec![test_admission_event(run, EventSeq::new(1), test_digest(5))];
+    let admission = vb_runtime::recovery::hydrate_run_admission_from_events(&plain)
+        .expect("plain admission hydrates");
+    assert_eq!(admission.budget(), None);
 }

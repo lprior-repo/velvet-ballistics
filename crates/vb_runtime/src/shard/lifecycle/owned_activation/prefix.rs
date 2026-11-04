@@ -62,22 +62,29 @@ fn pristine(journal: &FjallJournal, run: RunId) -> RuntimeResult<(WorkflowDigest
     if events.is_empty() {
         return Err(RuntimeError::RunNotFound);
     }
-    let [
-        JournalEvent::RunAccepted {
-            run: accepted_run,
-            seq: accepted_seq,
-            workflow,
-        },
-        admission @ JournalEvent::RunAdmission {
-            run: admitted_run,
-            seq: admitted_seq,
-            ..
-        },
-    ] = events.as_slice()
+    let [accepted, admission] = events.as_slice() else {
+        return Err(RuntimeError::UnsupportedOperation {
+            operation: "owned_activation_requires_pristine_prefix",
+        });
+    };
+    let JournalEvent::RunAccepted {
+        run: accepted_run,
+        seq: accepted_seq,
+        workflow,
+    } = accepted
     else {
         return Err(RuntimeError::UnsupportedOperation {
             operation: "owned_activation_requires_pristine_prefix",
         });
+    };
+    let (admitted_run, admitted_seq) = match admission {
+        JournalEvent::RunAdmission { run, seq, .. }
+        | JournalEvent::RunAdmissionBudget { run, seq, .. } => (run, seq),
+        _ => {
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "owned_activation_requires_pristine_prefix",
+            });
+        }
     };
     if *accepted_run != run
         || *admitted_run != run

@@ -12,7 +12,12 @@ pub(crate) fn cmd_explain(workflow: &Path, output: OutputFormat) -> ExitCode {
     };
 
     match vb_compile::compile_workflow(&bytes) {
-        Ok(compiled) => explain_valid(&compiled, output),
+        Ok(compiled) => {
+            match reject_unknown_actions(&compiled, output, CliExitCode::ValidationFailed) {
+                Ok(()) => explain_valid(&compiled, output),
+                Err(code) => code,
+            }
+        }
         Err(errors) => explain_compile_errors(&errors.0, output),
     }
 }
