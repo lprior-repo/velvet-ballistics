@@ -28,6 +28,7 @@ impl Shard {
         Self::check_cost_budget(state, &signal)?;
         Self::check_action_ticket_budget(state, &signal)?;
         Self::check_retry_budget(state, &signal)?;
+        Self::check_incident_budget(state)?;
         Ok(signal)
     }
 
@@ -235,6 +236,24 @@ impl Shard {
                 vb_core::engine::EngineError::BudgetExceeded {
                     budget: "retries_per_action",
                     limit: u64::from(limit),
+                },
+            ));
+        }
+        Ok(())
+    }
+
+    fn check_incident_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        if state.frame.executed() > budget.max_incident_emissions {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "incident_emissions",
+                    limit: budget.max_incident_emissions,
                 },
             ));
         }

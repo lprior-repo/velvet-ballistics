@@ -517,6 +517,140 @@ use vb_core::engine::EngineError;
 use crate::admission::RunAdmission;
 use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeSignal};
 
+fn incident_budget(max_incident_emissions: u64) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 10,
+        max_action_tickets: 10,
+        max_parallel_in_flight: 10,
+        max_retries_per_action: 10,
+        max_gather_pages: 10,
+        max_gather_items: 10,
+        max_for_each_iterations: 10,
+        max_together_branches: 10,
+        max_repeat_attempts: 10,
+        max_run_time_seconds: 1000,
+        max_result_bytes: 1024,
+        max_total_slots_written: 10,
+        max_timer_entries: 10,
+        max_trace_events: 1000,
+        max_queue_depth: 10,
+        max_journal_batch_bytes: 1024,
+        max_ipc_payload_bytes: 1024,
+        max_blob_bytes: 1024,
+        max_input_bytes: 1024,
+        max_step_budget_per_tick: 100,
+        max_transitions_per_tick: 100,
+        max_open_gates: 10,
+        max_signal_subscriptions: 10,
+        max_incident_emissions,
+        max_transitions: 1000,
+        max_journal_bytes_total: 100_000,
+        max_value_store_entries: 1000,
+        max_cost_units: 1000,
+    }
+}
+
+fn incident_state(
+    run_id: u64,
+    max_incident_emissions: u64,
+    executed: u64,
+) -> Option<crate::shard::types::RunState> {
+    let Some(workflow) = suspended_workflow() else {
+        return None;
+    };
+    let run = RunId::new(run_id);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)?;
+    let _ = state.frame.write_slot(SlotIdx::ZERO, SlotValue::I64(0));
+    state.action_contracts =
+        crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0));
+    for _ in 0..executed {
+        let _ = state.frame.increment_executed();
+    }
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        incident_budget(max_incident_emissions),
+    ));
+    Some(state)
+}
+
+#[test]
+fn drive_state_within_incident_limit_issues_action() {
+    let Some(mut state) = incident_state(750, 10, 0) else {
+        return;
+    };
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
+    ));
+}
+
+#[test]
+fn drive_state_fails_when_executed_steps_exceed_incident_limit() {
+    let Some(mut state) = incident_state(751, 2, 3) else {
+        return;
+    };
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "incident_emissions",
+            limit: 2,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_fails_on_exceeded_incidents_without_new_steps() {
+    let Some(mut state) = incident_state(752, 2, 3) else {
+        return;
+    };
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 0, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "incident_emissions",
+            limit: 2,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_ignores_incident_check_without_budget() {
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = RunId::new(753);
+    let digest = workflow.digest();
+    let Some(mut state) = crate::shard::helpers::make_run_state(workflow, run) else {
+        return;
+    };
+    let _ = state.frame.write_slot(SlotIdx::ZERO, SlotValue::I64(0));
+    state.action_contracts =
+        crate::shard::tests::test_fixtures::contracts_through(ActionId::new(0));
+    for _ in 0..50 {
+        let _ = state.frame.increment_executed();
+    }
+    state.admission = Some(RunAdmission::new(
+        digest,
+        run,
+        crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        vb_core::policy::RuntimePolicy::Relaxed,
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Ok(RuntimeSignal::AwaitingAction(ticket)) if ticket.step == StepIdx::ZERO
+    ));
+}
 fn retry_budget(max_retries_per_action: u16) -> AggregateResourceBudget {
     AggregateResourceBudget {
         max_steps_executable: 10,
@@ -979,7 +1113,7 @@ fn suspension_budget(max_open_gates: u32, max_signal_subscriptions: u32) -> Aggr
         max_transitions_per_tick: 1,
         max_open_gates,
         max_signal_subscriptions,
-        max_incident_emissions: 1,
+        max_incident_emissions: 100,
         max_transitions: 10,
         max_journal_bytes_total: 1,
         max_value_store_entries: 1,
@@ -1190,7 +1324,7 @@ fn value_store_budget(max_value_store_entries: u64) -> AggregateResourceBudget {
         max_transitions_per_tick: 1,
         max_open_gates: 1,
         max_signal_subscriptions: 1,
-        max_incident_emissions: 1,
+        max_incident_emissions: 100,
         max_transitions: 10,
         max_journal_bytes_total: 1,
         max_value_store_entries,
@@ -1333,7 +1467,7 @@ fn transition_budget(max_transitions: u64) -> AggregateResourceBudget {
         max_transitions_per_tick: 1,
         max_open_gates: 1,
         max_signal_subscriptions: 1,
-        max_incident_emissions: 1,
+        max_incident_emissions: 100,
         max_transitions,
         max_journal_bytes_total: 1,
         max_value_store_entries: 1,
