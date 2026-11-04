@@ -27,6 +27,7 @@ impl Shard {
         Self::check_value_store_budget(state)?;
         Self::check_cost_budget(state, &signal)?;
         Self::check_action_ticket_budget(state, &signal)?;
+        Self::check_retry_budget(state, &signal)?;
         Ok(signal)
     }
 
@@ -200,6 +201,40 @@ impl Shard {
                 vb_core::engine::EngineError::BudgetExceeded {
                     budget: "action_tickets",
                     limit: u64::from(budget.max_action_tickets),
+                },
+            ));
+        }
+        Ok(())
+    }
+
+    fn check_retry_budget(
+        state: &RunState,
+        signal: &RuntimeSignal,
+    ) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let limit = budget.max_retries_per_action;
+        for attempts in state.action_attempts.iter() {
+            if attempts.saturating_sub(1) > limit {
+                return Err(crate::engine::types::RuntimeEngineError::Core(
+                    vb_core::engine::EngineError::BudgetExceeded {
+                        budget: "retries_per_action",
+                        limit: u64::from(limit),
+                    },
+                ));
+            }
+        }
+        if let RuntimeSignal::AwaitingAction(ticket) = signal
+            && ticket.attempt.saturating_sub(1) > limit
+        {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "retries_per_action",
+                    limit: u64::from(limit),
                 },
             ));
         }
