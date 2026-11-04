@@ -283,7 +283,7 @@ fn div_by_zero_returns_error() -> Result<(), String> {
         &mut store,
     );
     match result {
-        Err(msg) if msg.contains("DivisionByZero") || msg.contains("division") => Ok(()),
+        Err(msg) if msg == EngineError::DivisionByZero.to_string() => Ok(()),
         Err(msg) => Err(format!("wrong error: {msg}")),
         Ok(val) => Err(format!("expected error, got {val:?}")),
     }
