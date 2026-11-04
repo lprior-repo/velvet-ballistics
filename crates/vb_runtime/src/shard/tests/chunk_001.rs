@@ -157,6 +157,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         action_attempts: super::new_action_attempts(1),
         admission: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     };
     let ticket = vb_core::action::ActionTicket {

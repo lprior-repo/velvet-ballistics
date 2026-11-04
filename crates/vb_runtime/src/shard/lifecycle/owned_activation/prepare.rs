@@ -28,6 +28,7 @@ impl Shard {
             action_attempts: crate::shard::helpers::new_action_attempts(step_count),
             admission: Some(accepted.admission),
             collect_states: crate::primitives::collect::CollectStates::new(),
+            journal_bytes_written: 0,
             action_contracts: accepted.contracts,
         })
     }

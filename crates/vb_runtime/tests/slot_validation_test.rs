@@ -49,6 +49,7 @@ fn make_run_state(wf: CompiledWorkflow) -> RunState {
         action_attempts: new_action_attempts(step_count),
         admission: None,
         collect_states: CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     }
 }

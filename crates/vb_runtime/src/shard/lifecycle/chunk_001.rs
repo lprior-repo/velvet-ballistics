@@ -153,6 +153,7 @@ impl Shard {
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
             collect_states: CollectStates::new(),
+            journal_bytes_written: 0,
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
         self.terminal_runs_remove(run);
@@ -521,6 +522,7 @@ impl Shard {
                 action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
                 admission: state_admission,
                 collect_states,
+                journal_bytes_written: 0,
                 action_contracts: artifact.action_contracts.clone(),
             }
         };

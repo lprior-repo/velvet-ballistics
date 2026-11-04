@@ -65,6 +65,7 @@ fn state(
         action_attempts: Box::from([0, 0]),
         admission: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     })
 }

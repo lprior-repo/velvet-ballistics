@@ -215,6 +215,7 @@ fn symbolic_run_state(run: RunId) -> Option<RunState> {
         action_attempts: crate::shard::helpers::new_action_attempts(step_count),
         admission: None,
         collect_states: Default::default(),
+        journal_bytes_written: 0,
         action_contracts: Vec::new().into_boxed_slice(),
     })
 }

@@ -126,6 +126,7 @@ fn make_do_run_state(step_count: u16) -> RunState {
         action_attempts: new_action_attempts(step_count),
         admission: None,
         collect_states: CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     }
 }

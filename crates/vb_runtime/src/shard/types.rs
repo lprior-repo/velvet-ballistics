@@ -506,6 +506,8 @@ pub struct RunState {
     pub admission: Option<crate::admission::RunAdmission>,
     /// Per-run collect pagination state side table.
     pub collect_states: CollectStates,
+    /// Cumulative drive-path journal bytes charged before append, carried in checkpoints.
+    pub journal_bytes_written: u64,
     /// Validated action contracts used by Do execution.
     pub action_contracts: Box<[ActionContract]>,
 }
