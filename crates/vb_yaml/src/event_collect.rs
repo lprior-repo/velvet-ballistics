@@ -178,6 +178,7 @@ impl EventCollectionState {
         self.in_mapping.pop();
         self.expecting_key.pop();
         self.depth = self.depth.saturating_sub(1);
+        self.complete_parent_mapping_value();
         Ok(())
     }
 
@@ -194,7 +195,16 @@ impl EventCollectionState {
         self.seq_counters.pop();
         self.in_mapping.pop();
         self.depth = self.depth.saturating_sub(1);
+        self.complete_parent_mapping_value();
         Ok(())
+    }
+
+    fn complete_parent_mapping_value(&mut self) {
+        if self.in_mapping.last() == Some(&true)
+            && let Some(expecting_key) = self.expecting_key.last_mut()
+        {
+            *expecting_key = true;
+        }
     }
 
     fn record_node(&mut self, limits: &YamlLimits) -> YamlResult<()> {

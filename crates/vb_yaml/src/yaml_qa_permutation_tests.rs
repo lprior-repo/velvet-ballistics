@@ -234,3 +234,44 @@ fn qa_schedule_cron_wrong_type_is_type_error() {
         })
     );
 }
+
+fn mapping_with_container_values(entries: usize) -> String {
+    let mut source = String::new();
+    let mut mapping = true;
+    for index in 0..entries {
+        let value = if mapping { "{}" } else { "[]" };
+        source.push_str(&format!("k{index:04}: {value}\n"));
+        mapping = !mapping;
+    }
+    source
+}
+
+#[test]
+fn qa_mapping_limit_counts_completed_container_values() -> Result<(), YamlError> {
+    let at = mapping_with_container_values(1024);
+    assert_eq!(validate_yaml_profile(&at), Ok(()));
+    let events = crate::parse_yaml_events(&at)?;
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| event.as_scalar().is_some())
+            .count(),
+        1024
+    );
+    let over = mapping_with_container_values(1025);
+    let expected = YamlError::MappingTooLarge {
+        count: 1025,
+        max: 1024,
+    };
+    assert_eq!(validate_yaml_profile(&over), Err(expected.clone()));
+    assert_eq!(crate::parse_yaml_events(&over).map(|_| ()), Err(expected));
+    Ok(())
+}
+
+#[test]
+fn qa_container_value_completion_preserves_duplicate_key_rejection() {
+    for source in ["same: {}\nsame: []\n", "same: []\nsame: {}\n"] {
+        assert!(matches!(crate::parse_yaml_events(source),
+            Err(YamlError::DuplicateKeyAt { key, .. }) if key.as_ref() == "same"));
+    }
+}
