@@ -192,7 +192,9 @@ pub(crate) fn verify_success_report(
 
 pub(crate) fn verify_error_message(err: &VerifyError) -> String {
     match err {
-        VerifyError::YamlParse(msg) => format!("YAML parse error: {msg}"),
+        // NOTE: YamlParse already carries the "YAML parse error: " prefix from
+        // run_verification; do not add it again (structured-emit honesty).
+        VerifyError::YamlParse(msg) => msg.clone(),
         VerifyError::Compile(errors) => {
             let mut s = String::from("compilation failed:\n");
             for e in errors {
@@ -209,4 +211,17 @@ pub(crate) fn verify_error_message(err: &VerifyError) -> String {
 
 fn cli_exit_code_number(code: CliExitCode) -> u8 {
     code.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn yaml_parse_message_keeps_single_prefix() {
+        let message = verify_error_message(&VerifyError::YamlParse(
+            "YAML parse error: empty source".into(),
+        ));
+        assert_eq!(message, "YAML parse error: empty source");
+    }
 }

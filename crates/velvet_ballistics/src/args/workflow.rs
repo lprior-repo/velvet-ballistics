@@ -90,7 +90,7 @@ fn parse_optional_step(args: &[OsString]) -> Result<Option<StepTarget>, ParseErr
     };
     let step_id = step_raw
         .parse::<u16>()
-        .map_err(|_| ParseError::MissingArgument("--step"))?;
+        .map_err(|_| ParseError::InvalidStep(step_raw.clone()))?;
     let step_input =
         named_flag(args, "--step-input").ok_or(ParseError::MissingArgument("--step-input"))?;
     Ok(Some(StepTarget {
