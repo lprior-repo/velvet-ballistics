@@ -55,6 +55,7 @@ pub struct CollectStates {
     entries: Map<(RunId, SlotIdx), CollectPaginationState>,
     lineages: Map<(RunId, SlotIdx), CollectPageLineage>,
     total_items_consumed: u64,
+    total_pages_delivered: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -81,6 +82,13 @@ impl CollectStates {
         self.total_items_consumed
     }
 
+    /// Pages delivered by every collect so far, including collects whose
+    /// pagination state was already removed at completion.
+    #[must_use]
+    pub fn total_pages_delivered(&self) -> u64 {
+        self.total_pages_delivered
+    }
+
     /// Insert or replace the state for the given key.
     pub fn upsert(&mut self, state: CollectPaginationState) -> Result<(), EngineError> {
         let key = (state.run_id, state.collector_slot);
@@ -96,9 +104,20 @@ impl CollectStates {
             .ok_or(EngineError::InternalInvariantViolation {
                 reason: "collect item counter overflow",
             })?;
+        let pages_delivered = match self.entries.get(&key) {
+            None => 1,
+            Some(prior) => u64::from(prior.current_page != state.current_page),
+        };
+        let pages_total = self
+            .total_pages_delivered
+            .checked_add(pages_delivered)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "collect page counter overflow",
+            })?;
         self.record_lineage(key, state.current_page)?;
         self.entries.insert(key, state);
         self.total_items_consumed = total;
+        self.total_pages_delivered = pages_total;
         Ok(())
     }
 
