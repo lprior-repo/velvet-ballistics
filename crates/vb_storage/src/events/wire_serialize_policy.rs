@@ -48,6 +48,11 @@ where
                     grant.run.get()
                 )));
             }
+            if !grant.is_valid() {
+                return Err(serde::ser::Error::custom(
+                    "CapabilityGrantEvent grant is structurally invalid",
+                ));
+            }
             serialize_record_kind_variant(
                 serializer,
                 TAG_CAPABILITY_GRANT,

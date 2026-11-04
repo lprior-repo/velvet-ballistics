@@ -55,7 +55,7 @@ mod tests {
     }
 
     #[test]
-    fn grant_event_wire_round_trip() {
+    fn grant_event_wire_round_trip() -> Result<(), Box<dyn std::error::Error>> {
         let grant = grant();
         let event = JournalEvent::CapabilityGrantEvent {
             run: grant.run,
@@ -64,9 +64,22 @@ mod tests {
         };
         assert_eq!(event.record_kind(), crate::RecordKind::CapabilityGrant);
         assert_eq!(event.seq(), EventSeq::new(1));
-        let encoded = postcard::to_allocvec(&event).unwrap();
-        let decoded: JournalEvent = postcard::from_bytes(&encoded).unwrap();
+        let payload = postcard::to_allocvec(&event)?;
+        assert!(postcard::from_bytes::<JournalEvent>(&payload).is_err());
+        let encoded = crate::codec::encode_record(
+            crate::constants::MAGIC_JOURNAL_EVENT,
+            crate::RecordKind::CapabilityGrant,
+            1,
+            &event,
+            crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        let (_, decoded) = crate::codec::decode_record::<JournalEvent>(
+            &encoded,
+            crate::constants::MAGIC_JOURNAL_EVENT,
+            crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
         assert_eq!(decoded, event);
+        Ok(())
     }
 
     #[test]

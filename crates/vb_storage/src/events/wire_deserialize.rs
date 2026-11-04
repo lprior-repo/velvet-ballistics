@@ -4,6 +4,8 @@
 mod action;
 #[path = "wire_deserialize_compat.rs"]
 mod compat;
+#[path = "wire_deserialize_grant.rs"]
+mod grant;
 #[path = "wire_deserialize_policy.rs"]
 mod policy;
 #[path = "wire_deserialize_run.rs"]
@@ -54,6 +56,9 @@ fn deserialize_known_kind<'de, A>(kind: RecordKind, variant: A) -> Result<Journa
 where
     A: de::VariantAccess<'de>,
 {
+    if kind == RecordKind::CapabilityGrant {
+        return Err(de::Error::custom("bounded grant context required"));
+    }
     match journal_record_category(kind) {
         Some(JournalRecordCategory::Continuation) => {
             Err(de::Error::custom("bounded carrier context required"))
@@ -83,6 +88,25 @@ pub(crate) fn decode_journal_event_payload_for_envelope<'payload>(
     envelope: &RecordEnvelope,
     payload: &'payload [u8],
 ) -> Result<(JournalEvent, &'payload [u8]), JournalError> {
+    // Tag 46 has one contextual path and must never enter legacy fallback.
+    match postcard::take_from_bytes::<u16>(payload) {
+        Ok((payload_kind, _))
+            if envelope.record_kind == RecordKind::CapabilityGrant.id()
+                || payload_kind == RecordKind::CapabilityGrant.id() =>
+        {
+            if payload_kind != envelope.record_kind {
+                return Err(JournalError::RecordKindPayloadMismatch {
+                    envelope_kind: envelope.record_kind,
+                    payload_kind,
+                });
+            }
+            return grant::decode(envelope, payload);
+        }
+        Err(error) if envelope.record_kind == RecordKind::CapabilityGrant.id() => {
+            return Err(JournalError::PostcardDecodeFailed(error));
+        }
+        _ => {}
+    }
     if envelope.record_kind == RecordKind::RunContinuation.id() {
         return Err(JournalError::InvalidEvent);
     }

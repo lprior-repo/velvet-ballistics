@@ -246,10 +246,11 @@ impl JournalEvent {
     /// - A sequence number within reasonable bounds (not u64::MAX)
     /// - Attempt numbers, when present, are non-zero (zero is ambiguous in replay)
     ///
-    /// Note: This does NOT validate cryptographic digests or semantic consistency.
-    /// Those are enforced by the codec round-trip and replay validation.
+    /// Capability-grant payloads must be structurally valid and match the outer run.
+    /// This post-construction check verifies neither cryptography nor live authority.
+    /// It supplies no preallocation bound for decoding untrusted bytes.
     #[must_use]
-    pub const fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         // RunId(0) is the zero/placeholder value - valid events must have a real run
         if self.run_id().get() == 0 {
             return false;
@@ -290,7 +291,8 @@ impl JournalEvent {
             | Self::RunAnswered { .. }
             | Self::PolicyDecisionEvent { .. }
             | Self::GateDecisionEvent { .. } => true,
-            Self::CompatibilityDecisionEvent { .. } | Self::CapabilityGrantEvent { .. } => true,
+            Self::CompatibilityDecisionEvent { .. } => true,
+            Self::CapabilityGrantEvent { run, grant, .. } => *run == grant.run && grant.is_valid(),
         }
     }
 }
