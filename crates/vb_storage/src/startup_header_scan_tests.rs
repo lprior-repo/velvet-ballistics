@@ -134,3 +134,48 @@ fn startup_scan_rejects_wrong_kind_before_any_visitor() -> TestResult {
     assert_eq!(callbacks, 0);
     Ok(())
 }
+
+fn assert_corrupt_key_prevents_visitors(key: Vec<u8>) -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(dir.path(), None)?;
+    journal.put_run_header(&header(1))?;
+    let bytes = crate::encode_record(
+        MAGIC_INDEX_RECORD,
+        crate::RecordKind::RunHeader,
+        2,
+        &header(2),
+        crate::constants::MAX_RUN_HEADER_BYTES,
+    )?;
+    let key_len = key.len();
+    journal.run_header.insert(key, bytes)?;
+    let mut callbacks = 0usize;
+    let result = journal.try_for_each_run_header_bounded(limit()?, |_item| {
+        callbacks = callbacks
+            .checked_add(1)
+            .ok_or(JournalError::SequenceOverflow)?;
+        Ok::<(), JournalError>(())
+    });
+    assert!(matches!(result,
+        Err(RunHeaderScanError::Storage(JournalError::MalformedKeyspaceRow {
+            prefix,
+            expected_len,
+            actual_len,
+        })) if prefix == PREFIX_RUN_HEADER
+            && expected_len == RUN_ONLY_KEY_BYTES
+            && actual_len == key_len
+    ));
+    assert_eq!(callbacks, 0);
+    Ok(())
+}
+
+#[test]
+fn startup_scan_rejects_short_key_before_any_visitor() -> TestResult {
+    // Fjall rejects empty keys before they reach the scan, so the smallest
+    // corrupt key that can exist in the keyspace is one byte.
+    assert_corrupt_key_prevents_visitors(vec![0x7f])
+}
+
+#[test]
+fn startup_scan_rejects_wrong_prefix_after_valid_header_before_any_visitor() -> TestResult {
+    assert_corrupt_key_prevents_visitors(vec![0xff; RUN_ONLY_KEY_BYTES])
+}
