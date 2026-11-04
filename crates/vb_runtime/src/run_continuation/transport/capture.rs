@@ -22,6 +22,7 @@ pub(super) fn capture(
     let collect = CollectStatesCheckpointV1 {
         entries: Vec::new(),
         lineages: Vec::new(),
+        total_items_consumed: state.collect_states.total_items_consumed(),
     };
     let body = BodyRef::new(state, authority, &frame, boundary, &collect)?;
     let bytes = encode_body(&body, limits.component)?;

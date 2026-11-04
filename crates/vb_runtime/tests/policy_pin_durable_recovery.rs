@@ -147,8 +147,8 @@ fn forge_admission_with_pin(
         granted_capabilities: original.granted_capabilities().clone(),
         policy: original.policy(),
         policy_pin: RunPolicyPin::Pinned(forged_pin),
-        budget: None,
-        idempotency_attested: Box::new([]),
+        budget: original.budget(),
+        idempotency_attested: original.idempotency_attested().to_vec().into_boxed_slice(),
     };
     let bytes = postcard::to_allocvec(&dto)
         .map_err(|e| format!("forged admission serialization failed: {e}"))?;

@@ -105,6 +105,12 @@ impl RunAdmission {
         self
     }
 
+    /// Attaches the workflow-derived aggregate budget to this admission.
+    pub(crate) fn with_attached_budget(mut self, budget: AggregateResourceBudget) -> Self {
+        self.budget = Some(budget);
+        self
+    }
+
     /// Returns the artifact digest for this admission.
     #[must_use]
     pub fn artifact_digest(&self) -> WorkflowDigest {

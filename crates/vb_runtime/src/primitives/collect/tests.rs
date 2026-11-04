@@ -3858,3 +3858,49 @@ fn collect_page_succeeds_with_heterogeneous_list_items() {
     let result = collect_page(&mut run, &mut store, &mut states, collector, body, done);
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
 }
+
+#[test]
+fn collect_total_items_consumed_survives_completion() -> Result<(), String> {
+    let mut scenario = CollectScenario::start(
+        vec![
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(3),
+            SlotValue::I64(4),
+            SlotValue::I64(5),
+        ],
+        5,
+        2,
+    )?;
+    assert_eq!(scenario.states.total_items_consumed(), 2);
+    scenario.next()?;
+    assert_eq!(scenario.states.total_items_consumed(), 4);
+    scenario.next()?;
+    assert_eq!(scenario.states.total_items_consumed(), 5);
+    scenario.next()?;
+    assert_eq!(
+        scenario
+            .states
+            .capture_state(scenario.run.run_id(), scenario.collector),
+        None
+    );
+    assert_eq!(scenario.states.total_items_consumed(), 5);
+    Ok(())
+}
+
+#[test]
+fn collect_total_items_consumed_ignores_duplicate_upsert() -> Result<(), String> {
+    let mut scenario = CollectScenario::start(vec![SlotValue::I64(1), SlotValue::I64(2)], 2, 2)?;
+    assert_eq!(scenario.states.total_items_consumed(), 2);
+    let page = scenario.current_page()?;
+    let live = scenario
+        .states
+        .find(scenario.run.run_id(), scenario.collector, page)
+        .ok_or("live state missing for re-upsert".to_owned())?;
+    scenario
+        .states
+        .upsert(live)
+        .map_err(|error| format!("re-upsert: {error:?}"))?;
+    assert_eq!(scenario.states.total_items_consumed(), 2);
+    Ok(())
+}
