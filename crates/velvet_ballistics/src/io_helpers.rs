@@ -33,6 +33,35 @@ pub(crate) fn write_help_stdout() -> io::Result<()> {
     writeln!(handle, "{HELP}")
 }
 
+/// Prints scoped usage for `<command> --help`.
+///
+/// Only the `HELP` lines whose leading command token matches `command` are
+/// shown. `None` or a name with no usage line falls back to the full help so
+/// debug surfaces without a documented line (e.g. `status`) keep working.
+pub(crate) fn write_subcommand_help(command: Option<&str>) -> io::Result<()> {
+    let Some(name) = command else {
+        return write_help_stdout();
+    };
+    let usage: Vec<&str> = HELP
+        .lines()
+        .filter(|line| usage_line_for_command(line, name))
+        .collect();
+    if usage.is_empty() {
+        return write_help_stdout();
+    }
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+    writeln!(handle, "velvet-ballistics usage for '{name}':")?;
+    usage
+        .iter()
+        .try_for_each(|line| writeln!(handle, "{line}"))?;
+    writeln!(handle, "\nrun `velvet-ballistics help` for all commands")
+}
+
+fn usage_line_for_command(line: &str, command: &str) -> bool {
+    line.split_whitespace().next() == Some(command)
+}
+
 pub(crate) fn write_version_stdout() -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();

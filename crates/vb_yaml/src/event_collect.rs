@@ -82,6 +82,7 @@ impl EventCollectionState {
     }
 
     fn start_mapping(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+        self.record_sequence_element(limits)?;
         self.increment_depth(limits)?;
         self.in_mapping.push(true);
         self.expecting_key.push(true);
@@ -91,6 +92,7 @@ impl EventCollectionState {
     }
 
     fn start_sequence(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+        self.record_sequence_element(limits)?;
         self.increment_depth(limits)?;
         self.in_mapping.push(false);
         self.seq_counters.push(0);
@@ -163,36 +165,27 @@ impl EventCollectionState {
         Ok(())
     }
 
-    fn end_mapping(&mut self, limits: &YamlLimits) -> YamlResult<()> {
-        if let Some((count, parent_count)) =
-            self.map_counters.pop().zip(self.map_counters.last_mut())
-        {
-            *parent_count =
-                parent_count
-                    .checked_add(count)
-                    .ok_or(YamlError::NodeLimitExceeded {
-                        count: u32::MAX,
-                        max: limits.max_nodes,
-                    })?;
-        }
+    fn end_mapping(&mut self, _limits: &YamlLimits) -> YamlResult<()> {
+        // Mapping entries count per mapping only; a child mapping must not
+        // inflate its parent's entry count.
+        self.map_counters.pop();
         self.in_mapping.pop();
         self.expecting_key.pop();
         self.depth = self.depth.saturating_sub(1);
         Ok(())
     }
 
-    fn end_sequence(&mut self, limits: &YamlLimits) -> YamlResult<()> {
-        if let Some((count, parent_count)) =
-            self.seq_counters.pop().zip(self.seq_counters.last_mut())
-        {
-            *parent_count =
-                parent_count
-                    .checked_add(count)
-                    .ok_or(YamlError::NodeLimitExceeded {
-                        count: u32::MAX,
-                        max: limits.max_nodes,
-                    })?;
+    fn record_sequence_element(&mut self, limits: &YamlLimits) -> YamlResult<()> {
+        // A mapping or sequence nested in a sequence is one element of the
+        // parent sequence, counted like a scalar element.
+        if self.in_mapping.last() == Some(&false) {
+            self.record_sequence_scalar(limits)?;
         }
+        Ok(())
+    }
+
+    fn end_sequence(&mut self, _limits: &YamlLimits) -> YamlResult<()> {
+        self.seq_counters.pop();
         self.in_mapping.pop();
         self.depth = self.depth.saturating_sub(1);
         Ok(())

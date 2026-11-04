@@ -31,4 +31,9 @@ impl RegisterGrant {
     pub const fn artifact_digest(&self) -> WorkflowDigest {
         self.artifact
     }
+
+    /// Exact resource scope authorized by the local operator.
+    pub const fn scope(&self) -> CapabilityScopeSpec {
+        self.scope
+    }
 }

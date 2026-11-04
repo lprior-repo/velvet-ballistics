@@ -2,7 +2,7 @@ use vb_core::errors::CoreError;
 use vb_core::ids::{BlobId, ListId, ObjectId, SlotIdx, SymbolId};
 use vb_core::root_bundle::{OwnedRootBundle, OwnedRootBundleError, ValueKind};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 use super::support::{TestResult, checkpoint, fixture};
 
@@ -24,6 +24,7 @@ fn any_root_invalid_references() -> TestResult<()> {
             vec![CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::Any,
+                constraint: CompiledInputConstraint::unconstrained(),
             }],
             8,
             4,
@@ -79,6 +80,7 @@ fn i64_root_kind_mismatch_before_reference() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         4,

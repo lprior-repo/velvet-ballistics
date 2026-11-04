@@ -2,7 +2,9 @@ use super::support::{TestResult, checkpoint, fixture};
 use vb_core::ids::{ListId, ObjectId, SlotIdx, SymbolId};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::{ObjectField, ValueStoreCheckpointV1};
-use vb_core::workflow::{CompiledInputSlot, CompiledWorkflow, InputSlotKind};
+use vb_core::workflow::{
+    CompiledInputConstraint, CompiledInputSlot, CompiledWorkflow, InputSlotKind,
+};
 
 fn object_fixture(
     add_list: bool,
@@ -30,6 +32,7 @@ fn object_fixture(
         input_slots.push(CompiledInputSlot {
             slot,
             kind: InputSlotKind::Object,
+            constraint: CompiledInputConstraint::unconstrained(),
         });
     }
 
@@ -41,6 +44,7 @@ fn object_fixture(
         input_slots.push(CompiledInputSlot {
             slot,
             kind: InputSlotKind::List,
+            constraint: CompiledInputConstraint::unconstrained(),
         });
     }
 

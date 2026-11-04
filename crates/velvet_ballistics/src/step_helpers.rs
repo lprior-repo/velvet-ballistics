@@ -42,7 +42,10 @@ pub(crate) fn compile_bytes_json(
     output: OutputFormat,
 ) -> Result<vb_core::CompiledWorkflow, ExitCode> {
     match vb_compile::compile_workflow(bytes) {
-        Ok(c) => Ok(c),
+        Ok(c) => {
+            crate::action_specs::reject_unknown_actions(&c, output, CliExitCode::ValidationFailed)
+                .map(|()| c)
+        }
         Err(errors) => {
             if output != OutputFormat::Text {
                 write_failure_message(

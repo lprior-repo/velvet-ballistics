@@ -47,14 +47,25 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
 
 /// Simple workflow for testing.
 fn simple_workflow() -> CompiledWorkflow {
-    let nodes = vec![node(
-        StepIdx::new(0),
+    let mut nodes = Vec::new();
+    let mut i = 0u16;
+    while i < 50 {
+        nodes.push(node(
+            StepIdx::new(i),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(i.saturating_add(1))),
+        ));
+        i = i.saturating_add(1);
+    }
+    nodes.push(node(
+        StepIdx::new(50),
         CompiledNodeKind::Finish {
             result: SlotIdx::new(0),
         },
         None,
         None,
-    )];
+    ));
     CompiledWorkflow::try_from_parts(WorkflowParts {
         semantic_source_identity: None,
         input_slots: Box::new([]),

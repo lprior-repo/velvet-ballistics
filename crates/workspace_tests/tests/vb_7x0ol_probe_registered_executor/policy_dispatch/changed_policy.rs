@@ -14,6 +14,8 @@ struct TestCase {
     runtime: Runtime,
     ticket: ActionTicket,
     grant: RegisterGrant,
+    scoped: ScopedGrant,
+    dispatch: GrantDispatchContext,
     denied_digest: PolicyDigest,
 }
 
@@ -24,7 +26,8 @@ fn build_test_case() -> CaseResult<TestCase> {
     let (catalog, pack) = create_catalog_and_pack(action)?;
     let (journal, artifact) = create_journal_and_artifact(&dir, &catalog, &pack)?;
     let mut runtime = create_and_submit_runtime(&journal, &catalog, run)?;
-    let (ticket, grant) = get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
+    let (ticket, grant, scoped, dispatch) =
+        get_ticket_and_grant(&catalog, &artifact, &runtime, run)?;
     let denied_digest = PolicyDigest::from_bytes([0x22u8; 32]);
     runtime.configure_live_policy(
         denied_digest,
@@ -41,6 +44,8 @@ fn build_test_case() -> CaseResult<TestCase> {
         runtime,
         ticket,
         grant,
+        scoped,
+        dispatch,
         denied_digest,
     })
 }
@@ -101,12 +106,19 @@ fn get_ticket_and_grant(
     artifact: &AcceptedArtifact,
     runtime: &Runtime,
     run: RunId,
-) -> CaseResult<(ActionTicket, RegisterGrant)> {
+) -> CaseResult<(
+    ActionTicket,
+    RegisterGrant,
+    ScopedGrant,
+    GrantDispatchContext,
+)> {
     let ticket = runtime
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
-    Ok((ticket, grant))
+    let (scoped, dispatch) =
+        crate::scoped_grant_fixture::issue_scoped(catalog, artifact, &grant, ticket, scope(), 12)?;
+    Ok((ticket, grant, scoped, dispatch))
 }
 
 fn execute_deny(case: &mut TestCase) -> CaseResult<DecisionRecord> {
@@ -117,6 +129,7 @@ fn execute_deny(case: &mut TestCase) -> CaseResult<DecisionRecord> {
         case.run,
         u64::from(StepIdx::ZERO.get()),
         &case.grant,
+        vb_core::ScopedDispatch::new(&case.scoped, &case.dispatch, &[]),
     );
     match result {
         Err(RegisteredExecutionError::PolicyDenied(decision)) => Ok(*decision),

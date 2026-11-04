@@ -17,6 +17,10 @@ pub(crate) fn cmd_diff(
         Err(code) => return code,
     };
 
+    if let Err(code) = check_journal_dir(db, output) {
+        return code;
+    }
+
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {

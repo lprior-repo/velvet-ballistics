@@ -27,17 +27,8 @@ pub struct WorkflowSource {
 }
 
 impl WorkflowSource {
-    /// Production-visible constructor: restricted to crate-internal use.
+    /// Construct from a parts bundle.
     #[doc(hidden)]
-    #[cfg(not(any(test, feature = "test-util")))]
-    pub(crate) fn new(parts: WorkflowSourceParts) -> Self {
-        Self::from_parts(parts)
-    }
-
-    /// Test-visible constructor: publicly exported when the `test-util`
-    /// feature is active or `cfg(test)` is enabled.
-    #[doc(hidden)]
-    #[cfg(any(test, feature = "test-util"))]
     pub fn new(parts: WorkflowSourceParts) -> Self {
         Self::from_parts(parts)
     }
@@ -104,30 +95,6 @@ impl WorkflowSource {
 
 /// Parts bundle for constructing a [`WorkflowSource`].
 #[doc(hidden)]
-#[cfg(not(any(test, feature = "test-util")))]
-pub(crate) struct WorkflowSourceParts {
-    /// Language version string.
-    pub(crate) version: String,
-    /// Workflow name.
-    pub(crate) name: String,
-    /// Trigger declaration.
-    pub(crate) trigger: TriggerAst,
-    /// Declared input fields.
-    pub(crate) inputs: Vec<InputField>,
-    /// Declared workflow-level variables.
-    pub(crate) vars: Vec<VarField>,
-    /// Declared secret references.
-    pub(crate) secrets: Vec<SecretField>,
-    /// Ordered step list.
-    pub(crate) steps: Vec<StepAst>,
-    /// Optional result mapping.
-    pub(crate) result: Option<ResultMapping>,
-    /// Inline examples / test cases.
-    pub(crate) examples: Vec<ExampleAst>,
-}
-
-#[doc(hidden)]
-#[cfg(any(test, feature = "test-util"))]
 pub struct WorkflowSourceParts {
     /// Language version string.
     pub version: String,
