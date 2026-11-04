@@ -13,6 +13,12 @@ pub(crate) const EVIDENCE_VERSION: u16 = 3;
 mod executor_profile;
 pub(crate) use executor_profile::ExecutorProfile;
 
+#[path = "verification/historical_schema3.rs"]
+mod historical_schema3;
+#[cfg(test)]
+#[path = "verification/historical_schema3_tests.rs"]
+mod historical_schema3_tests;
+
 /// Prepare a checked envelope without writing a journal or claiming a durable ack.
 /// External assumptions in the ledger remain assumptions, not executed evidence.
 pub fn prepare_compiled_artifact(
@@ -141,12 +147,11 @@ pub(crate) fn verify_expected_bindings(
     actual: &AcceptedArtifact,
     expected: &AcceptedArtifact,
 ) -> Result<(), JournalError> {
-    let mut proof = actual.verification.clone();
-    proof.digest = expected.verification.digest;
+    let proof = historical_schema3::expected_proof(actual, expected)?;
     if actual.source_digest != expected.source_digest
         || actual.policy_digest != expected.policy_digest
         || actual.ir != expected.ir
-        || proof != expected.verification
+        || actual.verification != proof
         || actual.required_capabilities != expected.required_capabilities
     {
         return Err(JournalError::ArtifactMalformed);
@@ -285,5 +290,6 @@ fn verifier_digest() -> WorkflowDigest {
     hasher.update(include_bytes!("../../../vb_core/src/action/registry.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/shared.rs"));
     hasher.update(include_bytes!("../../../vb_validate/src/gates.rs"));
+    hasher.update(include_bytes!("verification/historical_schema3.rs"));
     WorkflowDigest::from_bytes(hasher.finalize().into())
 }
