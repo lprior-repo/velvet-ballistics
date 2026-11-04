@@ -538,8 +538,26 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "vb_rpch_full_journal_recovery_fuzz"
+path = "fuzz_targets/vb_rpch_full_journal_recovery_fuzz.rs"
+test = false
+doc = false
+bench = false
 
+[[bin]]
+name = "vb_rpch_snapshot_tail_recovery_fuzz"
+path = "fuzz_targets/vb_rpch_snapshot_tail_recovery_fuzz.rs"
+test = false
+doc = false
+bench = false
 
+[[bin]]
+name = "vb_rpch_close_reopen_durability_fuzz"
+path = "fuzz_targets/vb_rpch_close_reopen_durability_fuzz.rs"
+test = false
+doc = false
+bench = false
 
 [[bin]]
 name = "fuzz_storage_codec_roundtrip"
@@ -675,32 +693,36 @@ doc = false
 bench = false
 
 # vb-82snf: SlotWritten extra decoding and collect hydration fuzz targets
-
-
-
 [[bin]]
-name = "byte_flip_storage_codec"
-path = "fuzz_targets/byte_flip_storage_codec.rs"
+name = "slot_written_extra_decode"
+path = "fuzz_targets/slot_written_extra_decode.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "byte_flip_postcard_envelope"
-path = "fuzz_targets/byte_flip_postcard_envelope.rs"
+name = "collect_hydrate_events"
+path = "fuzz_targets/collect_hydrate_events.rs"
 test = false
 doc = false
 bench = false
 
+# vb-82snf: Structured compiled IR arbitrary generator fuzz target
 [[bin]]
-name = "byte_flip_ipc_frame"
-path = "fuzz_targets/byte_flip_ipc_frame.rs"
+name = "compiled_ir_arbitrary"
+path = "fuzz_targets/compiled_ir_arbitrary.rs"
 test = false
 doc = false
 bench = false
 
-
-
+# The two `capability_*_schema` bins below were deleted in commit 437a51f20
+# (vb-4b0mk) when their .rs sources were moved from `src/bin/` to
+# `stdin_smoke/`, but the test in
+# `crates/workspace_tests/tests/vb_qi37_6_state8_setup.rs`
+# (`state8_fuzz_schema_setup_registers_required_capability_bins`) still
+# requires both names to be registered under `autobins = false`. Re-registered
+# here with the post-move paths so the static-source assertion holds. This
+# adds zero dependencies, so `fuzz/Cargo.lock` is unchanged.
 
 [[bin]]
 name = "capability_contract_schema"

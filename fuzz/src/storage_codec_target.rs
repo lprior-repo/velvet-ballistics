@@ -10,6 +10,73 @@ use crate::storage_codec_mutation::{
     assert_old_schema_rejected, assert_payload_byte_rejected, assert_unknown_kind_rejected,
 };
 
+fn observe_decode_result(
+    result: Result<(vb_storage::RecordEnvelope, vb_storage::JournalEvent), vb_storage::JournalError>,
+) {
+    match result {
+        Ok((_, event)) => {
+            assert!(
+                event.is_valid(),
+                "successful decode must produce a valid event"
+            );
+        }
+        Err(error) => assert_decode_result_error(error),
+    }
+}
+
+fn assert_decode_result_error(error: vb_storage::JournalError) {
+    assert!(
+        matches!(
+            error,
+            vb_storage::JournalError::UnexpectedEof
+                | vb_storage::JournalError::HeaderChecksumMismatch
+                | vb_storage::JournalError::PayloadDigestMismatch
+                | vb_storage::JournalError::PostcardDecodeFailed(_)
+                | vb_storage::JournalError::InvalidEvent
+                | vb_storage::JournalError::BadMagic { .. }
+                | vb_storage::JournalError::PayloadTooLarge { .. }
+                | vb_storage::JournalError::RecordKindFamilyMismatch { .. }
+                | vb_storage::JournalError::UnknownRecordKind { .. }
+                | vb_storage::JournalError::UnsupportedSchemaVersion { .. }
+                | vb_storage::JournalError::MigrationRequired { .. }
+                | vb_storage::JournalError::HeaderLengthMismatch { .. }
+                | vb_storage::JournalError::RecordKindPayloadMismatch { .. }
+                | vb_storage::JournalError::ReplayEnvelopeSequenceMismatch { .. }
+        ),
+        "journal event decode must fail with a typed storage codec error, got {error:?}"
+    );
+}
+
+fn observe_header_decode(result: Result<vb_storage::RecordHeader, vb_storage::JournalError>) {
+    match result {
+        Ok(header) => {
+            assert!(
+                header.payload_len <= vb_storage::MAX_BLOB_BYTES,
+                "decoded header payload length must remain inside the largest storage bound"
+            );
+        }
+        Err(error) => assert_header_decode_error(error),
+    }
+}
+
+fn assert_header_decode_error(error: vb_storage::JournalError) {
+    assert!(
+        matches!(
+            error,
+            vb_storage::JournalError::UnexpectedEof
+                | vb_storage::JournalError::BadMagic { .. }
+                | vb_storage::JournalError::UnsupportedSchemaVersion { .. }
+                | vb_storage::JournalError::MigrationRequired { .. }
+                | vb_storage::JournalError::UnknownRecordKind { .. }
+                | vb_storage::JournalError::RecordKindFamilyMismatch { .. }
+                | vb_storage::JournalError::HeaderLengthMismatch { .. }
+                | vb_storage::JournalError::PayloadTooLarge { .. }
+                | vb_storage::JournalError::HeaderChecksumMismatch
+        ),
+        "header decoder must return only header-class JournalError variants, got {error:?}"
+    );
+}
+
 pub fn fuzz_vb_storage_codec(data: &[u8]) {
     fuzz_codec_encode_decode_path(data);
     fuzz_codec_header_decode_path(data);
@@ -27,7 +94,7 @@ fn fuzz_codec_encode_decode_path(data: &[u8]) {
     let max_payload = vb_storage::MAX_JOURNAL_EVENT_PAYLOAD_BYTES;
     let magic = vb_storage::MAGIC_JOURNAL_EVENT;
 
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, max_payload);
+    observe_decode_result(vb_storage::decode_record::<vb_storage::JournalEvent>(data, magic, max_payload));
     decode_with_alternate_magics(data);
 
     if let Ok((envelope, event)) =
@@ -57,31 +124,31 @@ fn fuzz_codec_encode_decode_path(data: &[u8]) {
 }
 
 fn decode_with_alternate_magics(data: &[u8]) {
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    observe_decode_result(vb_storage::decode_record::<vb_storage::JournalEvent>(
         data,
         vb_storage::MAGIC_BLOB,
         vb_storage::MAX_BLOB_BYTES,
-    );
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    ));
+    observe_decode_result(vb_storage::decode_record::<vb_storage::JournalEvent>(
         data,
         vb_storage::MAGIC_COMPILED_ARTIFACT,
         vb_storage::MAX_COMPILED_IR_BYTES,
-    );
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    ));
+    observe_decode_result(vb_storage::decode_record::<vb_storage::JournalEvent>(
         data,
         vb_storage::MAGIC_SNAPSHOT,
         vb_storage::MAX_SNAPSHOT_BYTES,
-    );
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    ));
+    observe_decode_result(vb_storage::decode_record::<vb_storage::JournalEvent>(
         data,
         vb_storage::MAGIC_WORKFLOW_SOURCE,
         vb_storage::MAX_WORKFLOW_SOURCE_BYTES,
-    );
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(
+    ));
+    observe_decode_result(vb_storage::decode_record::<vb_storage::JournalEvent>(
         data,
         vb_storage::MAGIC_INDEX_RECORD,
         vb_storage::MAX_RUN_HEADER_BYTES,
-    );
+    ));
 }
 
 fn assert_reencodable_event(event: &vb_storage::JournalEvent, magic: u32, max_payload: u32) {
@@ -99,15 +166,15 @@ fn assert_reencodable_event(event: &vb_storage::JournalEvent, magic: u32, max_pa
 }
 
 fn fuzz_codec_header_decode_path(data: &[u8]) {
-    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, 1024);
-    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_BLOB, 65536);
-    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_COMPILED_ARTIFACT, 16_777_216);
-    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_SNAPSHOT, 67_108_864);
-    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_WORKFLOW_SOURCE, 1_048_576);
-    let _ = vb_storage::decode_record_header(data, 0xDEAD_BEEF, 1024);
-    let _ = vb_storage::decode_record_header(data, 0x0000_0000, 65536);
-    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, 1);
-    let _ = vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, 0);
+    observe_header_decode(vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, 1024));
+    observe_header_decode(vb_storage::decode_record_header(data, vb_storage::MAGIC_BLOB, 65536));
+    observe_header_decode(vb_storage::decode_record_header(data, vb_storage::MAGIC_COMPILED_ARTIFACT, 16_777_216));
+    observe_header_decode(vb_storage::decode_record_header(data, vb_storage::MAGIC_SNAPSHOT, 67_108_864));
+    observe_header_decode(vb_storage::decode_record_header(data, vb_storage::MAGIC_WORKFLOW_SOURCE, 1_048_576));
+    observe_header_decode(vb_storage::decode_record_header(data, 0xDEAD_BEEF, 1024));
+    observe_header_decode(vb_storage::decode_record_header(data, 0x0000_0000, 65536));
+    observe_header_decode(vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, 1));
+    observe_header_decode(vb_storage::decode_record_header(data, vb_storage::MAGIC_JOURNAL_EVENT, 0));
 }
 
 fn fuzz_codec_payload_corruption(data: &[u8]) {
@@ -209,7 +276,7 @@ fn fuzz_codec_schema_version_boundary(data: &[u8]) {
 }
 
 fn fuzz_codec_digest_verification(data: &[u8]) {
-    drop(vb_storage::verify_digest_match(data, [0u8; 32]));
+    assert_digest_mismatch(vb_storage::verify_digest_match(data, [0u8; 32]));
     assert_digest_mismatch(vb_storage::verify_digest_match(&[], [0u8; 32]));
 
     let hash: [u8; 32] = blake3::hash(data).into();
