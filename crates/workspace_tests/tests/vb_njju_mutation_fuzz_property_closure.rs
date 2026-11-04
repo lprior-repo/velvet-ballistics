@@ -6,8 +6,12 @@ use std::path::{Path, PathBuf};
 
 use velvet_ballistics_workspace_tests::acceptance_catalog::{catalog, validate_catalog};
 
-const REQUIRED_FUZZ_TARGETS: &[&str] =
-    &["yaml_events", "ipc_frame", "journal_event", "compiled_ir"];
+const REQUIRED_FUZZ_TARGETS: &[&str] = &[
+    "yaml_events",
+    "ipc_frame_fuzz",
+    "journal_event_fuzz",
+    "compiled_ir_fuzz",
+];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum EvidenceError {
@@ -78,9 +82,7 @@ fn test_mutation_gate_fails_when_admission_branch_removed() {
     );
 }
 
-// Fuzz smoke task configuration issue - pre-existing
 #[test]
-#[ignore]
 fn test_fuzz_smoke_runs_yaml_ipc_journal_compiled_ir_targets() -> io::Result<()> {
     let root = workspace_root()?;
     let moon_tasks = fs::read_to_string(root.join(".moon/tasks/all.yml"))?;
@@ -102,7 +104,7 @@ fn test_fuzz_smoke_runs_yaml_ipc_journal_compiled_ir_targets() -> io::Result<()>
     assert_eq!(
         validate_required_fuzz_smoke(FuzzSmokeEvidence {
             built_targets: REQUIRED_FUZZ_TARGETS.to_vec(),
-            run_targets: vec!["yaml_events", "ipc_frame", "journal_event"],
+            run_targets: vec!["yaml_events", "ipc_frame_fuzz", "journal_event_fuzz"],
         }),
         Err(EvidenceError::MissingFuzzTarget)
     );
@@ -263,7 +265,10 @@ fn assert_fuzz_smoke_task_runs_required_targets(tasks: &str) -> Result<(), Evide
     if !tasks.contains("cargo fuzz build") {
         return Err(EvidenceError::MissingFuzzTarget);
     }
-    if !tasks.contains("cargo fuzz run") {
+    if !tasks.contains("cargo fuzz list") {
+        return Err(EvidenceError::BuildOnlyFuzzSmoke);
+    }
+    if !tasks.contains("timeout 30s \"${bin}\"") {
         return Err(EvidenceError::BuildOnlyFuzzSmoke);
     }
     for target in REQUIRED_FUZZ_TARGETS {
