@@ -517,6 +517,182 @@ use vb_core::engine::EngineError;
 use crate::admission::RunAdmission;
 use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeSignal};
 
+fn parallel_in_flight_budget(max_parallel_in_flight: u16) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 100,
+        max_action_tickets: 10,
+        max_parallel_in_flight,
+        max_retries_per_action: 10,
+        max_gather_pages: 10,
+        max_gather_items: 10,
+        max_for_each_iterations: 10,
+        max_together_branches: 10,
+        max_repeat_attempts: 10,
+        max_run_time_seconds: 100,
+        max_result_bytes: 100,
+        max_total_slots_written: 100,
+        max_timer_entries: 100,
+        max_trace_events: 100,
+        max_queue_depth: 100,
+        max_journal_batch_bytes: 100,
+        max_ipc_payload_bytes: 100,
+        max_blob_bytes: 100,
+        max_input_bytes: 100,
+        max_step_budget_per_tick: 100,
+        max_transitions_per_tick: 100,
+        max_open_gates: 10,
+        max_signal_subscriptions: 10,
+        max_incident_emissions: 100,
+        max_transitions: 100,
+        max_journal_bytes_total: 100,
+        max_value_store_entries: 100,
+        max_cost_units: 100,
+    }
+}
+
+fn parallel_together_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let set_deadline = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let together = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::TogetherStart {
+            branches: Box::from([StepIdx::new(2), StepIdx::new(4)]),
+            join: StepIdx::new(6),
+        },
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    let branch_one = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::TogetherBranch {
+            branch: 0,
+            entry: StepIdx::new(3),
+            join: StepIdx::new(6),
+            accumulator: SlotIdx::new(1),
+        },
+        Some(SlotIdx::new(2)),
+        None,
+    );
+    let wait = vb_core::workflow::node(
+        StepIdx::new(3),
+        CompiledNodeKind::WaitUntil { deadline_slot: SlotIdx::ZERO },
+        None,
+        Some(StepIdx::new(4)),
+    );
+    let branch_two = vb_core::workflow::node(
+        StepIdx::new(4),
+        CompiledNodeKind::TogetherBranch {
+            branch: 1,
+            entry: StepIdx::new(5),
+            join: StepIdx::new(6),
+            accumulator: SlotIdx::new(1),
+        },
+        Some(SlotIdx::new(2)),
+        None,
+    );
+    let set_branch_result = vb_core::workflow::node(
+        StepIdx::new(5),
+        CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+        Some(SlotIdx::new(2)),
+        Some(StepIdx::new(6)),
+    );
+    let join = vb_core::workflow::node(
+        StepIdx::new(6),
+        CompiledNodeKind::TogetherJoin { branch_count: 2, accumulator: SlotIdx::new(1) },
+        Some(SlotIdx::new(2)),
+        Some(StepIdx::new(7)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(7),
+        CompiledNodeKind::Finish { result: SlotIdx::new(2) },
+        None,
+        None,
+    );
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("parallel_in_flight_budget"),
+        digest: WorkflowDigest::from_bytes([7; 32]),
+        nodes: Box::from([
+            set_deadline,
+            together,
+            branch_one,
+            wait,
+            branch_two,
+            set_branch_result,
+            join,
+            finish,
+        ]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(10)]),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+#[test]
+fn drive_state_fails_when_parallel_in_flight_exceeds_admitted_limit() {
+    let workflow = parallel_together_workflow().expect("parallel together workflow builds");
+    let run = RunId::new(730);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        parallel_in_flight_budget(1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "parallel_in_flight",
+            limit: 1,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_at_parallel_in_flight_limit_suspends_on_wait() {
+    let workflow = parallel_together_workflow().expect("parallel together workflow builds");
+    let run = RunId::new(731);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        parallel_in_flight_budget(2),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
+}
+
+#[test]
+fn drive_state_without_admitted_budget_ignores_parallel_count() {
+    let workflow = parallel_together_workflow().expect("parallel together workflow builds");
+    let run = RunId::new(732);
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
+}
 fn timer_entry_budget(max_timer_entries: u32) -> AggregateResourceBudget {
     AggregateResourceBudget {
         max_steps_executable: 100,

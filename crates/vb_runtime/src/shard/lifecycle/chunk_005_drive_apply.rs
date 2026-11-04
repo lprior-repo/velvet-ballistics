@@ -30,6 +30,7 @@ impl Shard {
         Self::check_retry_budget(state, &signal)?;
         Self::check_incident_budget(state)?;
         Self::check_timer_entry_budget(state)?;
+        Self::check_parallel_in_flight_budget(state)?;
         Ok(signal)
     }
 
@@ -283,6 +284,25 @@ impl Shard {
                 vb_core::engine::EngineError::BudgetExceeded {
                     budget: "timer_entries",
                     limit: u64::from(budget.max_timer_entries),
+                },
+            ));
+        }
+        Ok(())
+    }
+
+    fn check_parallel_in_flight_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let in_flight = u64::from(state.frame.parallel_in_flight());
+        if in_flight > u64::from(budget.max_parallel_in_flight) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "parallel_in_flight",
+                    limit: u64::from(budget.max_parallel_in_flight),
                 },
             ));
         }
