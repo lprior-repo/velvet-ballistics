@@ -193,6 +193,27 @@ fn parse_run_with_step_flags() {
 }
 
 #[test]
+fn parse_run_rejects_non_numeric_step_with_invalid_step() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "run",
+        "workflow.yaml",
+        "--input-bin",
+        "input.bin",
+        "--durability",
+        "none",
+        "--step",
+        "abc",
+        "--step-input",
+        "step-data.bin",
+    ]));
+    assert!(
+        matches!(parsed, Err(ParseError::InvalidStep(ref step)) if step == "abc"),
+        "expected InvalidStep(abc), got {parsed:?}"
+    );
+}
+
+#[test]
 fn parse_run_rejects_unknown_durability_with_exact_variant() {
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
