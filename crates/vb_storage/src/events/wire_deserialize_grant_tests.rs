@@ -480,3 +480,122 @@ fn envelope_sequence_check_stays_specific_to_journal_decode() -> TestResult {
     ));
     Ok(())
 }
+
+#[test]
+fn present_receipt_and_signature_truncations_never_materialize() -> TestResult {
+    for (receipt, signature_length) in [
+        (true, None),
+        (false, Some(128_usize)),
+        (true, Some(1024_usize)),
+    ] {
+        let mut value = grant();
+        value.approval_receipt_digest = receipt.then(|| GateDigest::from_bytes([31; 32]));
+        value.signature = signature_length.map(|length| HistoricalGrantSignature {
+            bytes: vec![0xa1; length].into_boxed_slice(),
+        });
+        let raw = payload(&value)?;
+        assert_accepted(value)?;
+        if let Some(length) = signature_length {
+            let body_start = raw
+                .len()
+                .checked_sub(length)
+                .ok_or("missing signature body")?;
+            assert_rejected(
+                raw.get(..body_start).ok_or("invalid signature offset")?,
+                "in-bound signature length with absent body",
+            )?;
+            let short_end = raw.len().checked_sub(1).ok_or("empty signature fixture")?;
+            assert_rejected(
+                raw.get(..short_end).ok_or("invalid short signature")?,
+                "in-bound signature length with body one byte short",
+            )?;
+        }
+        for end in 0..raw.len() {
+            assert_rejected(
+                raw.get(..end)
+                    .ok_or("truncation outside optional-field fixture")?,
+                "truncated present receipt or signature fixture",
+            )?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn huge_advertised_text_lengths_never_materialize() -> TestResult {
+    let value = grant();
+    let raw = payload(&value)?;
+    assert_accepted(value)?;
+    for marker in [b"issuer".as_slice(), b"subject", b"read", b"repo-a"] {
+        let offset = raw
+            .windows(marker.len())
+            .position(|window| window == marker)
+            .ok_or("missing text marker")?;
+        // These four fixture strings have one-byte length prefixes. Confirm the
+        // field boundary with borrowed decoding before replacing only its length.
+        let length_offset = offset.checked_sub(1).ok_or("missing text length")?;
+        let (text, _) = postcard::take_from_bytes::<&str>(
+            raw.get(length_offset..).ok_or("invalid text boundary")?,
+        )?;
+        assert_eq!(text.as_bytes(), marker);
+        let mut malformed = raw.get(..length_offset).ok_or("invalid prefix")?.to_vec();
+        malformed.extend_from_slice(&postcard::to_allocvec(&u64::MAX)?);
+        assert_rejected(&malformed, std::str::from_utf8(marker)?)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn in_bound_collection_counts_with_missing_elements_never_materialize() -> TestResult {
+    let value = grant();
+    let before_collections = (
+        46_u16,
+        RunId::new(3),
+        EventSeq::new(5),
+        value.id,
+        &value.issuer,
+        &value.subject,
+        value.artifact_digest,
+        value.run,
+        value.action,
+    );
+    let before_capabilities = postcard::to_allocvec(&before_collections)?;
+    let before_resources = postcard::to_allocvec(&(before_collections, &value.capabilities))?;
+    let capability = value
+        .capabilities
+        .first()
+        .ok_or("missing capability control")?;
+    let resource = value
+        .resources
+        .patterns
+        .first()
+        .ok_or("missing resource control")?;
+    for (capabilities, prefix, element) in [
+        (
+            true,
+            before_capabilities,
+            postcard::to_allocvec(capability)?,
+        ),
+        (false, before_resources, postcard::to_allocvec(resource)?),
+    ] {
+        for (count, present) in [(1_usize, 0_usize), (2, 1), (256, 255)] {
+            let mut positive = value.clone();
+            if capabilities {
+                positive.capabilities = vec![capability.clone(); count].into_boxed_slice();
+            } else {
+                positive.resources.patterns = vec![resource.clone(); count].into_boxed_slice();
+            }
+            let mut malformed = prefix.clone();
+            malformed.extend_from_slice(&postcard::to_allocvec(&count)?);
+            // Confirm the count against a complete valid DTO. The malformed
+            // prefix ends at the missing element, before any later fields.
+            assert!(payload(&positive)?.starts_with(&malformed));
+            assert_accepted(positive)?;
+            for _ in 0..present {
+                malformed.extend_from_slice(&element);
+            }
+            assert_rejected(&malformed, "in-bound collection missing its final element")?;
+        }
+    }
+    Ok(())
+}
