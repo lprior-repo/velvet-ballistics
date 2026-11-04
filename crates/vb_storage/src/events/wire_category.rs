@@ -38,6 +38,7 @@ fn is_run_record(kind: RecordKind) -> bool {
         kind,
         RecordKind::RunAccepted
             | RecordKind::RunAdmission
+            | RecordKind::RunAdmissionBudget
             | RecordKind::RunAdmissionBound
             | RecordKind::RunAdmissionPinned
             | RecordKind::RunAdmissionBoundPinned
@@ -87,7 +88,10 @@ fn is_wait_or_ask_record(kind: RecordKind) -> bool {
 }
 
 fn is_policy_record(kind: RecordKind) -> bool {
-    matches!(kind, RecordKind::PolicyDecision | RecordKind::GateDecision)
+    matches!(
+        kind,
+        RecordKind::PolicyDecision | RecordKind::GateDecision | RecordKind::CapabilityGrant
+    )
 }
 
 fn is_compat_record(kind: RecordKind) -> bool {

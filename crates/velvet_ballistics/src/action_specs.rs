@@ -78,6 +78,56 @@ pub(crate) fn write_no_registered_actions(output: OutputFormat) -> ExitCode {
     }
 }
 
+/// First `do` action ID in the compiled workflow that the CLI registry
+/// does not provide, if any. The CLI registry is the deployment registry
+/// for every CLI execution path, so unknown IDs fail at validate time.
+pub(crate) fn unknown_action_id(compiled: &vb_core::CompiledWorkflow) -> Option<u16> {
+    let known: Vec<u16> = cli_action_specs().iter().map(|spec| spec.id).collect();
+    (0..compiled.node_count()).find_map(|index| {
+        let node = compiled.node(vb_core::StepIdx::new(index))?;
+        match node.kind {
+            vb_core::CompiledNodeKind::Do { action, .. } if !known.contains(&action.get()) => {
+                Some(action.get())
+            }
+            _ => None,
+        }
+    })
+}
+
+/// Reject a compiled workflow that calls an unregistered action.
+pub(crate) fn reject_unknown_actions(
+    compiled: &vb_core::CompiledWorkflow,
+    output: crate::args::OutputFormat,
+    exit_code: crate::exit_code::CliExitCode,
+) -> Result<(), std::process::ExitCode> {
+    match unknown_action_id(compiled) {
+        Some(id) => {
+            crate::file_io::write_failure_message(
+                &format!(
+                    "unknown action id: {id} (registered: {})",
+                    cli_action_specs()
+                        .iter()
+                        .map(|spec| spec.id.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                output,
+                exit_code,
+            );
+            Err(exit_code.into())
+        }
+        None => Ok(()),
+    }
+}
+
+/// Registered action name for a numeric registry ID, if any.
+pub(crate) fn action_name_for_id(id: u16) -> Option<&'static str> {
+    cli_action_specs()
+        .iter()
+        .find(|spec| spec.id == id)
+        .map(|spec| spec.name)
+}
+
 pub(crate) fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRegistry> {
     cli_action_specs()
         .iter()

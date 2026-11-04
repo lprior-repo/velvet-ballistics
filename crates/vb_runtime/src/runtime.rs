@@ -18,6 +18,7 @@ use crate::shard::{
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
+pub mod completion_observation;
 mod owned_activation;
 mod shutdown;
 pub use shutdown::{ShutdownFailure, ShutdownPhase, ShutdownReport};
@@ -666,7 +667,13 @@ impl Runtime {
         let admission_event = prefix
             .events
             .iter()
-            .find(|e| matches!(e, vb_storage::JournalEvent::RunAdmission { .. }))
+            .find(|e| {
+                matches!(
+                    e,
+                    vb_storage::JournalEvent::RunAdmission { .. }
+                        | vb_storage::JournalEvent::RunAdmissionBudget { .. }
+                )
+            })
             .ok_or(RuntimeError::Recovery {
                 error: "recovery: admission event not found in journal events".to_string(),
             })?;
@@ -1027,6 +1034,61 @@ impl Runtime {
             }
         }
         Ok(alive)
+    }
+
+    /// Processes one command per shard with opt-in, caller-owned observations.
+    ///
+    /// Preflight rejects a short buffer first, then the lowest occupied required
+    /// slot, before processing any shard. Extra tail slots are untouched.
+    /// Each required slot captures its shard's first actual run/attempt; callers
+    /// must filter that identity. Any second capture marks a sticky conflict,
+    /// including a repeated identity, without replacing the first receipt.
+    /// Execution errors preserve earlier receipts and stop later shards. A
+    /// receipt can coexist with cleanup failure; absence on error does not prove
+    /// that no terminal event was accepted. Neither error implies retry safety.
+    pub fn tick_all_observed(
+        &mut self,
+        slots: &mut [completion_observation::CompletionObservationSlot],
+    ) -> Result<
+        completion_observation::ObservedTickOutcome,
+        completion_observation::ObservationPreflightError,
+    > {
+        use completion_observation::{
+            ObservationConflict, ObservationPreflightError, ObservedTickOutcome,
+        };
+
+        let required = self.shards.len();
+        let provided = slots.len();
+        let required_slots = slots
+            .get_mut(..required)
+            .ok_or(ObservationPreflightError::BufferTooShort { required, provided })?;
+        for (index, slot) in required_slots.iter().enumerate() {
+            if slot.first.is_some() || slot.conflict {
+                return Err(ObservationPreflightError::SlotNotEmpty { index });
+            }
+        }
+        let mut alive = true;
+        let mut observation = Ok(());
+        for (shard, slot) in self.shards.iter_mut().zip(required_slots.iter_mut()) {
+            let (execution, captured) = shard.tick_observed();
+            *slot = captured;
+            if slot.conflict {
+                observation = Err(ObservationConflict::MultipleCompletions);
+            }
+            match execution {
+                Ok(shard_alive) => alive &= shard_alive,
+                Err(error) => {
+                    return Ok(ObservedTickOutcome {
+                        execution: Err(error),
+                        observation,
+                    });
+                }
+            }
+        }
+        Ok(ObservedTickOutcome {
+            execution: Ok(alive),
+            observation,
+        })
     }
 
     /// Processes one tick on a specific shard with the given directive.

@@ -99,6 +99,7 @@ fn input_slot_do_workflow(action_id: u16) -> Result<CompiledWorkflow, Box<dyn st
         input_slots: Box::from([CompiledInputSlot {
             slot: SlotIdx::ZERO,
             kind: InputSlotKind::I64,
+            constraint: vb_core::CompiledInputConstraint::unconstrained(),
         }]),
     })
     .map_err(|e| format!("workflow must compile: {}", e).into())

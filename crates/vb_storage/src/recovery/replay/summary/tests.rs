@@ -4,8 +4,8 @@ use crate::recovery::types::RecoveryTerminalState;
 use vb_core::SlotValue;
 use vb_core::replay::{ReplayError, SuspensionKind};
 use vb_core::{
-    ActionId, CapabilitySet, FiniteF64, ListId, ObjectId, RunId, RuntimePolicy, SlotIdx, StepIdx,
-    Taint, WorkflowDigest,
+    ActionId, AggregateResourceBudget, CapabilitySet, FiniteF64, ListId, ObjectId, RunId,
+    RuntimePolicy, SlotIdx, StepIdx, Taint, WorkflowDigest,
 };
 
 /// Deterministic 32-byte digest used as a sample action ABI digest in
@@ -818,4 +818,66 @@ fn crash_after_schedule_then_recover_hydrates_resume_queue() {
         crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(&events)
             .expect("summary recoverable");
     let _ = frame_recovery;
+}
+
+#[test]
+fn budgeted_admission_recovery_carries_budget_and_latest_wins() {
+    let run = RunId::new(9);
+    let budget = AggregateResourceBudget {
+        max_steps_executable: 3,
+        max_action_tickets: 2,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 1,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 60,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 42,
+    };
+    let plain = JournalEvent::RunAdmission {
+        input_digest: crate::RunInputBinding::LegacyUnbound,
+        run,
+        seq: EventSeq::new(1),
+        artifact_digest: sample_digest(1),
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Relaxed,
+        policy_pin: crate::RunPolicyPin::Unverified,
+    };
+    let budgeted = JournalEvent::RunAdmissionBudget {
+        run,
+        seq: EventSeq::new(2),
+        artifact_digest: sample_digest(2),
+        input_digest: crate::RunInputBinding::LegacyUnbound,
+        policy_pin: crate::RunPolicyPin::Unverified,
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Journaled,
+        budget,
+    };
+    let recovered = recover_run_admission_from_events(&[plain.clone(), budgeted.clone()])
+        .expect("budgeted admission recovers");
+    assert_eq!(recovered.budget, Some(budget));
+    assert_eq!(recovered.artifact_digest, sample_digest(2));
+    let recovered_plain =
+        recover_run_admission_from_events(&[budgeted, plain]).expect("plain admission recovers");
+    assert_eq!(recovered_plain.budget, None);
+    assert_eq!(recovered_plain.artifact_digest, sample_digest(1));
 }

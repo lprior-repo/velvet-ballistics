@@ -598,6 +598,8 @@ mod tests {
         let Some(wf) = finished_workflow() else {
             return Err(String::from("expected finished workflow fixture"));
         };
+        let expected_budget = vb_core::budget::AggregateResourceBudget::from_workflow(&wf)
+            .map_err(|error| format!("finished workflow budget must compute: {error:?}"))?;
         let run = vb_core::ids::RunId::new(31);
         assert_eq!(runtime.submit_direct(run, wf), Ok(()));
 
@@ -618,7 +620,8 @@ mod tests {
                         run,
                         CapabilitySet::empty(),
                         RuntimePolicy::Relaxed,
-                    ),
+                    )
+                    .with_attached_budget(expected_budget),
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,

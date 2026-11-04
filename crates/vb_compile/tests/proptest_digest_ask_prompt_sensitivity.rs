@@ -15,7 +15,8 @@
 
 use proptest::prelude::*;
 use vb_compile::canonical_digest;
-use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource};
+use vb_yaml::yaml_ast::types::WorkflowSourceParts;
 
 fn source_with_ask_prompt(prompt: String) -> WorkflowSource {
     let steps = vec![StepAst {

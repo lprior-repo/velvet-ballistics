@@ -2,7 +2,7 @@ use vb_core::ids::{ListId, ObjectId, SlotIdx, SymbolId};
 use vb_core::root_bundle::{ArenaNode, OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ObjectField;
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 use super::support::{TestResult, checkpoint, fixture};
 
@@ -15,10 +15,12 @@ fn key_reuse_across_objects_accepted() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::Object,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(1),
                 kind: InputSlotKind::Object,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         8,
@@ -87,6 +89,7 @@ fn indirect_mixed_cycle_rejected() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::List,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         4,
