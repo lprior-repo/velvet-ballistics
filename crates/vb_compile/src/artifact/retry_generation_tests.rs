@@ -288,3 +288,53 @@ fn bounded_single_byte_mutations_either_refuse_or_reencode_exactly() -> TestResu
     }
     Ok(())
 }
+
+#[test]
+fn checked_historical_retry_check_profile_is_refused_by_both_planning_paths() -> TestResult {
+    let ordinary = checked(false, 1000, "retry_plan")?;
+    let record = policy(2, 1, 3)?;
+    assert!(encode_retry_planning(&ordinary, &[record]).is_ok());
+    assert!(decode_retry_planning(&ordinary, &golden(&ordinary)).is_ok());
+    // Base426 ordinal30, then policy_slot/body/exhausted declaration order.
+    // Historical fixed bytes, not produced by the current variant encoder.
+    let historical_kind: CompiledNodeKind = postcard::from_bytes(&[30, 0, 2, 2])?;
+    assert_eq!(
+        historical_kind,
+        CompiledNodeKind::RetryCheck {
+            policy_slot: SlotIdx::new(0),
+            body: StepIdx::new(2),
+            exhausted: StepIdx::new(2),
+        }
+    );
+    let mut parts = ordinary.workflow().to_parts();
+    *parts.nodes.get_mut(1).ok_or("missing retry position")? = node(
+        StepIdx::new(1),
+        historical_kind,
+        None,
+        Some(StepIdx::new(2)),
+    );
+    parts.digest = WorkflowDigest::from_bytes([0; 32]);
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+    let workflow = CompiledWorkflow::try_from_parts(parts)?;
+    // Replacing the action-0 Do leaves that contract unreferenced, and the
+    // compiler rejects orphan contracts; keep only the action the legacy
+    // RetryCheck body still reaches.
+    let legacy_contracts: Vec<ActionContract> = ordinary
+        .contracts()
+        .iter()
+        .filter(|contract| contract.id == ActionId::new(1))
+        .cloned()
+        .collect();
+    let legacy = verify_compiled_artifact(&workflow, &legacy_contracts)?;
+    assert!(
+        matches!(legacy.workflow().node(record.owner()).map(|node| &node.kind),
+        Some(CompiledNodeKind::Do { action, .. }) if *action == record.action())
+    );
+    assert_eq!(
+        encode_retry_planning(&legacy, &[record]),
+        Err(RetryPlanningError::Profile)
+    );
+    // Independent golden words retain a real Do owner and both checked bindings.
+    refusal(&legacy, &golden(&legacy), RetryPlanningError::Profile);
+    Ok(())
+}
