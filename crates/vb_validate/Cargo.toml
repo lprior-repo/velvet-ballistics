@@ -18,3 +18,7 @@ verus = []
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "capability_schema"
+harness = false

@@ -180,6 +180,14 @@ fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
         .ok_or("recovered Do action must issue its ticket")?;
 
     let grant = catalog.issue_register_grant(&artifact, action_ticket, scope())?;
+    let (scoped, dispatch) = crate::scoped_grant_fixture::issue_scoped(
+        &catalog,
+        &artifact,
+        &grant,
+        action_ticket,
+        scope(),
+        24,
+    )?;
 
     recovered.configure_live_policy(
         allowed_digest,
@@ -198,6 +206,7 @@ fn legacy_unverified_admission_blocks_new_live_effect() -> TestResult {
         run,
         u64::from(StepIdx::new(2).get()),
         &grant,
+        vb_core::ScopedDispatch::new(&scoped, &dispatch, &[]),
     );
     let decision = match result {
         Err(RegisteredExecutionError::PolicyDenied(dec)) => *dec,

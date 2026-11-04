@@ -86,6 +86,12 @@ pub enum CompileError {
     UnsupportedTopLevelDeclaration { field: &'static str },
     #[error("duplicate set output name: {name}")]
     DuplicateOutputName { name: Box<str> },
+    #[error("set output shadows declared input: {name}")]
+    SetOutputShadowsInput { name: Box<str> },
+    #[error("integer scalar out of range: {value}")]
+    IntegerScalarOutOfRange { value: Box<str> },
+    #[error("constant expression faults at compile time: {reason}")]
+    ConstantFault { step: usize, reason: Box<str> },
     #[error("unknown finish output name: {name}")]
     UnknownOutputName { name: Box<str> },
     #[error("workflow steps must not be empty")]
@@ -124,6 +130,13 @@ pub enum CompileError {
     BranchTargetOutOfRange { value: i64 },
     #[error("branch target {target} at step {step} must point forward")]
     BackwardBranchTarget { step: usize, target: usize },
+    #[error("backward edge from step {from} ({from_name}) to step {to} ({to_name})")]
+    BackwardEdgeNamed {
+        from: usize,
+        to: usize,
+        from_name: Box<str>,
+        to_name: Box<str>,
+    },
     #[error("step primitive {primitive} field {field} value {value} exceeds limit {limit}")]
     PrimitiveLoweringLimitExceeded { primitive: &'static str, field: &'static str, value: usize, limit: usize },
     #[error("last workflow step must be finish")]

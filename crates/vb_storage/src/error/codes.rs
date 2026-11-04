@@ -202,7 +202,7 @@ impl JournalError {
         let s: &'static str = match self {
             Self::Fjall(_) => "FJALL_ERROR",
             Self::Encode(_) => "JOURNAL_ENCODE_FAILED",
-            Self::KeyCapacity => "KEY_CAPACITY_EXCEEDED",
+            Self::KeyCapacity => "JOURNAL_KEY_CAPACITY",
             Self::DuplicateEvent { .. } => "DUPLICATE_EVENT",
             Self::DuplicateStagedKey { .. } => "JOURNAL_DUPLICATE_STAGED_KEY",
             Self::WriteLockPoisoned => "WRITE_LOCK_POISONED",
@@ -275,9 +275,8 @@ impl JournalError {
             return code;
         }
         // Fallback for the historical string arms whose symbolic names
-        // are not registered in `CODE_REGISTRY` (e.g. "FJALL_ERROR",
-        // "KEY_CAPACITY_EXCEEDED"). Keeps the pre-existing fallback
-        // contract for non-SC-009 variants.
+        // are not registered in `CODE_REGISTRY` (e.g. "FJALL_ERROR").
+        // Keeps the pre-existing fallback contract for non-SC-009 variants.
         SymbolicCode::INTERNAL_INVARIANT
     }
 }

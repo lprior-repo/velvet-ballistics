@@ -56,31 +56,49 @@ pub(super) fn validate_one_node<'a>(
     match node {
         Yaml::Mapping(mapping) => push_mapping(mapping, depth, limits, stack),
         Yaml::Sequence(sequence) => push_sequence(sequence, depth, limits, stack),
-        Yaml::Tagged(_, _) => Err(CompileError::TagForbidden {
-            mark: SourceMark::unavailable(),
-        }),
+        Yaml::Tagged(tag, inner) => {
+            if is_core_yaml_tag(tag) {
+                stack.push((inner, depth));
+                Ok(())
+            } else {
+                Err(CompileError::TagForbidden {
+                    mark: SourceMark::unavailable(),
+                })
+            }
+        }
         Yaml::Alias(_) => Err(CompileError::AliasForbidden {
             mark: SourceMark::unavailable(),
         }),
         Yaml::BadValue => Err(CompileError::BadValue),
         Yaml::Value(value) => validate_scalar(value, limits),
         Yaml::Representation(value, _, tag) => {
-            validate_representation(value.as_ref(), tag.is_some(), limits)
+            validate_representation(value.as_ref(), tag.as_deref(), limits)
         }
     }
 }
 
 pub(super) fn validate_representation(
     value: &str,
-    has_tag: bool,
+    tag: Option<&saphyr::Tag>,
     limits: YamlLimits,
 ) -> Result<(), CompileError> {
-    if has_tag {
+    if let Some(tag) = tag
+        && !is_core_yaml_tag(tag)
+    {
         return Err(CompileError::TagForbidden {
             mark: SourceMark::unavailable(),
         });
     }
     validate_scalar_len(value, limits)
+}
+
+/// YAML core-schema tags are allowed, matching the `vb_yaml` profile.
+pub(super) fn is_core_yaml_tag(tag: &saphyr::Tag) -> bool {
+    (tag.handle == "tag:yaml.org,2002:" || tag.handle == "!!")
+        && matches!(
+            tag.suffix.as_str(),
+            "str" | "int" | "float" | "bool" | "null" | "seq" | "map"
+        )
 }
 
 pub(super) fn push_mapping<'a>(
@@ -171,7 +189,26 @@ pub(super) fn validate_scalar(
 ) -> Result<(), CompileError> {
     match value {
         saphyr::Scalar::String(value) => validate_scalar_len(value.as_ref(), limits),
-        saphyr::Scalar::FloatingPoint(_) => Err(CompileError::FloatForbidden),
+        saphyr::Scalar::FloatingPoint(text) => {
+            // An integer-shaped scalar too large for i64 is parsed as a
+            // float by the YAML layer; report the real fault.
+            let text = text.to_string();
+            let trimmed = text.trim();
+            let integer_shaped = trimmed
+                .strip_prefix('-')
+                .unwrap_or(trimmed)
+                .chars()
+                .all(|c| c.is_ascii_digit())
+                && !trimmed.is_empty();
+            if integer_shaped {
+                let shown: String = trimmed.chars().take(80).collect();
+                Err(CompileError::IntegerScalarOutOfRange {
+                    value: Box::from(shown),
+                })
+            } else {
+                Err(CompileError::FloatForbidden)
+            }
+        }
         saphyr::Scalar::Null | saphyr::Scalar::Boolean(_) | saphyr::Scalar::Integer(_) => Ok(()),
     }
 }

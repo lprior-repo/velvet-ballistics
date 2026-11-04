@@ -48,7 +48,16 @@ fn parse_inspect_includes_output_format() {
 #[test]
 fn parse_help_command() {
     let parsed = parse_args(&args(&["velvet-ballistics", "help"]));
-    assert!(matches!(parsed, Ok(Command::Help)));
+    assert!(matches!(parsed, Ok(Command::Help { command: None })));
+}
+
+#[test]
+fn parse_subcommand_help_carries_command_name() {
+    let parsed = parse_args(&args(&["velvet-ballistics", "validate", "--help"]));
+    assert!(
+        matches!(parsed, Ok(Command::Help { command: Some(ref name) }) if name == "validate"),
+        "expected Help for validate, got {parsed:?}"
+    );
 }
 
 #[test]

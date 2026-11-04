@@ -39,6 +39,11 @@ mod proptest_error_parity;
 #[cfg(test)]
 #[path = "proptest_step_offset.rs"]
 mod proptest_step_offset;
+// vb-8eocj.9.1: rebound from dead part_03 caller API to the lexical
+// N-step bounded_collect production lowering.
+#[cfg(test)]
+#[path = "mod_compile_lowering/vb_8mdp_7_collect.rs"]
+mod vb_8mdp_7_collect;
 
 #[allow(unused_imports)]
 pub(crate) use part_01::*;

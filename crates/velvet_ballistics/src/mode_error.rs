@@ -65,7 +65,7 @@ pub(crate) fn command_mode(command: &Command) -> CommandMode {
         | Command::SystemStatus { .. }
         | Command::ActionList { .. }
         | Command::ActionInspect { .. }
-        | Command::Help
+        | Command::Help { .. }
         | Command::Version => CommandMode::Pure,
         Command::Run { .. }
         | Command::RunCompiled { .. }
@@ -146,7 +146,10 @@ mod tests {
 
     #[test]
     fn command_mode_returns_pure_for_help() {
-        assert_eq!(command_mode(&Command::Help), CommandMode::Pure);
+        assert_eq!(
+            command_mode(&Command::Help { command: None }),
+            CommandMode::Pure
+        );
     }
 
     #[test]
