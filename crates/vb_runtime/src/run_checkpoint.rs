@@ -39,6 +39,8 @@ pub struct RunCheckpointV1 {
     pub action_attempts: Box<[u16]>,
     /// Admission authority captured with the state.
     pub admission: Option<RunAdmission>,
+    /// Wall-clock run start in milliseconds since the UNIX epoch, as recorded on the run state.
+    pub run_started_millis: Option<u64>,
     /// Pagination state and page lineage captured with the state.
     pub collect_states: CollectStatesCheckpointV1,
     /// Validated action contracts bound to the accepted artifact.
@@ -130,7 +132,7 @@ impl RunCheckpointV1 {
         *retry_state = CheckpointStepState::Pending;
         frame.pc = retry_step;
         let checkpoint = Self {
-            version: 2,
+            version: 3,
             run_id,
             artifact_digest,
             workflow_digest: state.workflow.digest(),
@@ -141,6 +143,7 @@ impl RunCheckpointV1 {
             value_store: state.store.checkpoint_v1(),
             action_attempts,
             admission: state.admission.clone(),
+            run_started_millis: state.run_started_millis,
             collect_states: state.collect_states.checkpoint_v1(),
             action_contracts: state.action_contracts.clone(),
         };
@@ -155,7 +158,7 @@ impl RunCheckpointV1 {
         artifact_digest: WorkflowDigest,
         accepted_action_contracts: &[ActionContract],
     ) -> Result<(), RunCheckpointV1Error> {
-        if self.version != 2 {
+        if self.version != 3 {
             return Err(RunCheckpointV1Error::UnsupportedVersion);
         }
         if self.workflow_digest != workflow.digest() {
@@ -222,6 +225,7 @@ impl RunCheckpointV1 {
             store,
             action_attempts: self.action_attempts,
             admission: self.admission,
+            run_started_millis: self.run_started_millis,
             collect_states,
             action_contracts: self.action_contracts,
         };
@@ -247,7 +251,8 @@ fn validate_admission(
 ///
 /// Reads the VARINT-encoded version field first to determine the checkpoint
 /// format version before decoding the full payload. Rejects historical version
-/// 1 checkpoints that lack the policy_pin field, which cannot be safely decoded
+/// 1 checkpoints that lack the policy_pin field and version 2 checkpoints
+/// that lack the run_started_millis field, which cannot be safely decoded
 /// as the current RunCheckpointV1 layout.
 pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunCheckpointV1Error> {
     if payload.is_empty() {
@@ -261,7 +266,8 @@ pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunC
         .map_err(|_| RunCheckpointV1Error::UnsupportedVersion)?;
     match version {
         1 => Err(RunCheckpointV1Error::UnsupportedVersion),
-        2 => postcard::from_bytes(payload).map_err(|_| RunCheckpointV1Error::DecodeError),
+        2 => Err(RunCheckpointV1Error::UnsupportedVersion),
+        3 => postcard::from_bytes(payload).map_err(|_| RunCheckpointV1Error::DecodeError),
         _ => Err(RunCheckpointV1Error::UnsupportedVersion),
     }
 }

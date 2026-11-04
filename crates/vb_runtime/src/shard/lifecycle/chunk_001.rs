@@ -152,6 +152,7 @@ impl Shard {
             store: ValueStore::with_max_slots(max_slots),
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
+            run_started_millis: crate::shard::helpers::wall_clock_millis_since_epoch(),
             collect_states: CollectStates::new(),
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
@@ -520,6 +521,7 @@ impl Shard {
                 store: vb_core::value_store::ValueStore::with_max_slots(max_slots),
                 action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
                 admission: state_admission,
+                run_started_millis: None,
                 collect_states,
                 action_contracts: artifact.action_contracts.clone(),
             }

@@ -2629,3 +2629,116 @@ fn drive_state_fails_when_delivered_pages_exceed_limit_after_removal() {
         }))
     ));
 }
+
+fn run_time_budget(max_run_time_seconds: u64) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 100,
+        max_action_tickets: 10,
+        max_parallel_in_flight: 10,
+        max_retries_per_action: 10,
+        max_gather_pages: 10,
+        max_gather_items: 10,
+        max_for_each_iterations: 10,
+        max_together_branches: 10,
+        max_repeat_attempts: 10,
+        max_run_time_seconds,
+        max_result_bytes: 100,
+        max_total_slots_written: 100,
+        max_timer_entries: 100,
+        max_trace_events: 100,
+        max_queue_depth: 100,
+        max_journal_batch_bytes: 100,
+        max_ipc_payload_bytes: 100,
+        max_blob_bytes: 100,
+        max_input_bytes: 100,
+        max_step_budget_per_tick: 100,
+        max_transitions_per_tick: 100,
+        max_open_gates: 10,
+        max_signal_subscriptions: 10,
+        max_incident_emissions: 100,
+        max_transitions: 100,
+        max_journal_bytes_total: 100,
+        max_value_store_entries: 100,
+        max_cost_units: 100,
+    }
+}
+
+#[test]
+fn drive_state_fails_when_run_time_exceeds_admitted_limit() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(744);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(10),
+    ));
+    state.run_started_millis = Some(0);
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "run_time",
+            limit: 10,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_within_run_time_limit_finishes() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(745);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(1000),
+    ));
+    state.run_started_millis =
+        crate::shard::helpers::wall_clock_millis_since_epoch();
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_without_recorded_start_records_wall_clock_on_first_drive() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(746);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        run_time_budget(1000),
+    ));
+    assert_eq!(state.run_started_millis, None);
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+    assert!(state.run_started_millis.is_some());
+}
+
+#[test]
+fn drive_state_without_admitted_budget_ignores_run_time() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(747);
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.run_started_millis = Some(0);
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}

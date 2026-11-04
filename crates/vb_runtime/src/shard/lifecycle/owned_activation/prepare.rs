@@ -27,6 +27,7 @@ impl Shard {
             store,
             action_attempts: crate::shard::helpers::new_action_attempts(step_count),
             admission: Some(accepted.admission),
+            run_started_millis: None,
             collect_states: crate::primitives::collect::CollectStates::new(),
             action_contracts: accepted.contracts,
         })

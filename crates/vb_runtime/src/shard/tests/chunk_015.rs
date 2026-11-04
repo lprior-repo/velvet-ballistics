@@ -429,6 +429,7 @@ fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Resu
         store: vb_core::value_store::ValueStore::new(),
         action_attempts: super::new_action_attempts(1),
         admission: None,
+        run_started_millis: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
     };

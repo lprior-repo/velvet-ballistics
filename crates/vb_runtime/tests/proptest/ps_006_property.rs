@@ -58,6 +58,7 @@ fn make_state(wf: CompiledWorkflow) -> RunState {
         store: vb_core::value_store::ValueStore::new(),
         action_attempts: vec![0u16; 1].into_boxed_slice(),
         admission: None,
+        run_started_millis: None,
         collect_states: vb_runtime::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
     }

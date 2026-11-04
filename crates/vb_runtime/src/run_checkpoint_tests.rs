@@ -56,6 +56,7 @@ fn failed_state(workflow: vb_core::workflow::CompiledWorkflow, run_id: RunId) ->
             CapabilitySet::empty(),
             RuntimePolicy::Strict,
         )),
+        run_started_millis: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
     })
@@ -157,9 +158,23 @@ fn versioned_decoder_rejects_version_1_header_before_layout_decode() -> Result<(
 }
 
 #[test]
+fn versioned_decoder_rejects_version_2_header_before_layout_decode() -> Result<(), String> {
+    let payload = [2, 0, 0, 0];
+    let result = decode_checkpoint_payload(&payload);
+    match result {
+        Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
+        Err(other) => Err(format!("expected UnsupportedVersion, got {other}")),
+        Ok(cp) => Err(format!(
+            "expected version rejection, got checkpoint with version {}",
+            cp.version
+        )),
+    }
+}
+
+#[test]
 fn versioned_decoder_rejects_unrecognized_future_version() -> Result<(), String> {
     // Construct a payload with VARINT-encoded version 99 (unrecognized future).
-    // The decoder must reject any version other than the currently supported 2.
+    // The decoder must reject any version other than the currently supported 3.
     let payload = [99, 0, 0, 0];
     let result = decode_checkpoint_payload(&payload);
     match result {
@@ -174,7 +189,7 @@ fn versioned_decoder_rejects_unrecognized_future_version() -> Result<(), String>
 
 #[test]
 fn versioned_decoder_rejects_truncated_valid_checkpoint() -> Result<(), String> {
-    // Construct a real valid version 2 checkpoint, serialize it, then truncate
+    // Construct a real valid version 3 checkpoint, serialize it, then truncate
     // the valid bytes to test decoding of incomplete payload.
     let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
     let run_id = RunId::new(200);
@@ -190,8 +205,8 @@ fn versioned_decoder_rejects_truncated_valid_checkpoint() -> Result<(), String> 
     )
     .map_err(|error| format!("capture failed: {error}"))?;
 
-    // Verify this is a version 2 checkpoint before serializing.
-    assert_eq!(checkpoint.version, 2);
+    // Verify this is a version 3 checkpoint before serializing.
+    assert_eq!(checkpoint.version, 3);
 
     // Serialize the valid checkpoint.
     let bytes = postcard::to_allocvec(&checkpoint)
@@ -227,9 +242,9 @@ fn versioned_decoder_rejects_truncated_valid_checkpoint() -> Result<(), String> 
 
 #[test]
 fn versioned_decoder_rejects_malformed_payload() -> Result<(), String> {
-    // Version 2 header (VARINT 2) but garbage body that cannot decode as RunCheckpointV1.
+    // Version 3 header (VARINT 3) but garbage body that cannot decode as RunCheckpointV1.
     let payload = [
-        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0,
     ];
@@ -279,7 +294,7 @@ fn versioned_decoder_rejects_truncated_varint_version() -> Result<(), String> {
 }
 
 #[test]
-fn versioned_checkpoint_roundtrips_version_2_through_decoder() -> Result<(), String> {
+fn versioned_checkpoint_roundtrips_version_3_through_decoder() -> Result<(), String> {
     let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
     let run_id = RunId::new(101);
     let state =
@@ -294,8 +309,8 @@ fn versioned_checkpoint_roundtrips_version_2_through_decoder() -> Result<(), Str
     )
     .map_err(|error| format!("capture failed: {error}"))?;
 
-    // Verify the new checkpoint uses version 2.
-    assert_eq!(checkpoint.version, 2);
+    // Verify the new checkpoint uses version 3.
+    assert_eq!(checkpoint.version, 3);
 
     // Serialize through postcard and decode through the version-aware decoder.
     let bytes = postcard::to_allocvec(&checkpoint)
@@ -303,7 +318,33 @@ fn versioned_checkpoint_roundtrips_version_2_through_decoder() -> Result<(), Str
     let decoded = decode_checkpoint_payload(&bytes)
         .map_err(|error| format!("version-aware decode failed: {error}"))?;
     assert_eq!(decoded, checkpoint);
-    assert_eq!(decoded.version, 2);
+    assert_eq!(decoded.version, 3);
+    Ok(())
+}
+
+#[test]
+fn versioned_checkpoint_roundtrips_run_started_millis_through_decoder() -> Result<(), String> {
+    let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
+    let run_id = RunId::new(102);
+    let mut state =
+        failed_state(workflow, run_id).ok_or_else(|| "failed state setup failed".to_string())?;
+    state.run_started_millis = Some(1_700_000_000_000);
+    let checkpoint = RunCheckpointV1::capture(
+        run_id,
+        WorkflowDigest::from_bytes([7; 32]),
+        NonZeroU16::new(2).ok_or_else(|| "invalid attempt".to_string())?,
+        StepIdx::ZERO,
+        9,
+        &state,
+    )
+    .map_err(|error| format!("capture failed: {error}"))?;
+    assert_eq!(checkpoint.run_started_millis, Some(1_700_000_000_000));
+    let bytes = postcard::to_allocvec(&checkpoint)
+        .map_err(|error| format!("checkpoint encode failed: {error}"))?;
+    let decoded = decode_checkpoint_payload(&bytes)
+        .map_err(|error| format!("version-aware decode failed: {error}"))?;
+    assert_eq!(decoded, checkpoint);
+    assert_eq!(decoded.run_started_millis, Some(1_700_000_000_000));
     Ok(())
 }
 

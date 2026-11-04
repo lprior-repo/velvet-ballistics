@@ -177,6 +177,7 @@ fn initial_state(
         action_attempts: vec![0; usize::from(workflow.node_count())].into_boxed_slice(),
         workflow,
         admission: Some(admission),
+        run_started_millis: None,
         collect_states: CollectStates::new(),
         action_contracts: receipt.artifact.action_contracts.clone(),
     })

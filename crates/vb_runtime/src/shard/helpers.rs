@@ -266,7 +266,15 @@ pub fn validate_timer_fire(
     Ok(())
 }
 
-/// Creates a new action attempts tracker.
+/// Current wall-clock time in milliseconds since the UNIX epoch, or None when
+/// the system clock is before the epoch or the value does not fit in a u64.
+pub fn wall_clock_millis_since_epoch() -> Option<u64> {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok())
+}
+
 pub fn new_action_attempts(step_count: u16) -> Box<[u16]> {
     vec![0; usize::from(step_count)].into_boxed_slice()
 }
@@ -286,6 +294,7 @@ pub fn make_run_state(
         store: ValueStore::new(),
         action_attempts: new_action_attempts(step_count),
         admission: None,
+        run_started_millis: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
     })

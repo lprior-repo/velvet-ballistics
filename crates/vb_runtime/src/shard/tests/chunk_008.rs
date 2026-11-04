@@ -295,7 +295,7 @@ fn shard_enqueue_enforces_admitted_per_run_queue_depth() {
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
-    let mut shard = Shard::new(config);
+    let shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
