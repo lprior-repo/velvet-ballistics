@@ -19,14 +19,27 @@ use vb_runtime::shard::ShardConfig;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-struct Resolver(CompiledWorkflow);
+struct Resolver {
+    workflow: CompiledWorkflow,
+    calls: usize,
+}
+
+impl Resolver {
+    fn new(workflow: CompiledWorkflow) -> Self {
+        Self { workflow, calls: 0 }
+    }
+}
 impl WorkflowResolver for Resolver {
     fn resolve_workflow(
         &mut self,
         digest: WorkflowDigest,
     ) -> Result<CompiledWorkflow, WorkflowResolutionError> {
-        if digest == self.0.digest() {
-            Ok(self.0.clone())
+        self.calls = self
+            .calls
+            .checked_add(1)
+            .ok_or(WorkflowResolutionError::InvalidArtifact)?;
+        if digest == self.workflow.digest() {
+            Ok(self.workflow.clone())
         } else {
             Err(WorkflowResolutionError::NotFound)
         }
@@ -113,7 +126,7 @@ fn submit(
 ) -> TestResult<IpcResponse> {
     let body = SubmitRunPayload {
         run_id: run,
-        workflow: resolver.0.digest(),
+        workflow: resolver.workflow.digest(),
         input,
     };
     let payload = match command {
@@ -163,7 +176,7 @@ fn assert_copied_inputs(events: &[RuntimeJournalEvent], run: RunId) -> TestResul
 fn both_submit_commands_preserve_positional_values_in_sparse_compiled_slots() -> TestResult {
     for command in [IpcCommand::SubmitRun, IpcCommand::SubmitRunInline] {
         let (mut runtime, journal) = runtime();
-        let mut resolver = Resolver(workflow(false)?);
+        let mut resolver = Resolver::new(workflow(false)?);
         let run = RunId::new(71);
         let values: Box<[SlotValue]> = Box::from([SlotValue::I64(37), SlotValue::Bool(true)]);
         assert_eq!(
@@ -186,7 +199,7 @@ fn both_submit_commands_preserve_positional_values_in_sparse_compiled_slots() ->
 fn both_submit_commands_fill_omitted_scalar_defaults() -> TestResult {
     for command in [IpcCommand::SubmitRun, IpcCommand::SubmitRunInline] {
         let (mut runtime, journal) = runtime();
-        let mut resolver = Resolver(workflow(true)?);
+        let mut resolver = Resolver::new(workflow(true)?);
         let run = RunId::new(72);
         let values: Box<[SlotValue]> = Box::from([SlotValue::I64(37)]);
         assert_eq!(
@@ -203,6 +216,91 @@ fn both_submit_commands_fill_omitted_scalar_defaults() -> TestResult {
         assert_copied_inputs(&journal.snapshot()?, run)?;
     }
     Ok(())
+}
+
+fn payload_decode_error() -> IpcResponse {
+    let error = vb_ipc::IpcError::PayloadDecodeFailed;
+    IpcResponse::PayloadError {
+        diagnostic: error.diagnostic_code().code(),
+        message: error.to_string(),
+    }
+}
+
+fn assert_input_refusal(
+    command: IpcCommand,
+    workflow: CompiledWorkflow,
+    input: &[u8],
+    good: &[SlotValue],
+    expected: IpcResponse,
+    expected_resolutions: usize,
+) -> TestResult<Vec<RuntimeJournalEvent>> {
+    let (mut runtime, journal) = runtime();
+    let mut resolver = Resolver::new(workflow);
+    let run = RunId::new(73);
+    let before = runtime.pending_boundary_snapshot(4);
+    let before_events = journal.snapshot()?;
+    assert_eq!(
+        submit(command, run, input.to_vec(), &mut runtime, &mut resolver)?,
+        expected
+    );
+    assert_eq!(resolver.calls, expected_resolutions);
+    assert_eq!(runtime.pending_boundary_snapshot(4), before);
+    assert_eq!(journal.snapshot()?, before_events);
+    assert!(runtime.tick_all()?);
+    assert_eq!(runtime.pending_boundary_snapshot(4), before);
+    assert_eq!(journal.snapshot()?, before_events);
+    assert_eq!(
+        submit(
+            command,
+            run,
+            postcard::to_allocvec(&good)?,
+            &mut runtime,
+            &mut resolver
+        )?,
+        IpcResponse::AcceptedRun { run_id: run.get() }
+    );
+    assert_eq!(
+        resolver.calls,
+        expected_resolutions
+            .checked_add(1)
+            .ok_or("resolver count overflow")?
+    );
+    assert!(runtime.tick_all()?);
+    Ok(journal.snapshot()?)
+}
+
+fn authority_workflow(kind: InputSlotKind) -> TestResult<CompiledWorkflow> {
+    let mut parts = workflow(false)?.to_parts();
+    parts.input_slots = Box::from([CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind,
+        constraint: if kind == InputSlotKind::Symbol {
+            CompiledInputConstraint::required()
+        } else {
+            CompiledInputConstraint::unconstrained()
+        },
+    }]);
+    parts.symbols_count = 1;
+    parts.constants = Box::from([vb_core::ConstValue::I64(91)]);
+    parts.nodes = Box::from([
+        vb_core::node(
+            StepIdx::ZERO,
+            CompiledNodeKind::SetConst {
+                value: vb_core::ConstIdx::new(0),
+            },
+            Some(SlotIdx::new(5)),
+            Some(StepIdx::new(1)),
+        ),
+        vb_core::node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(5),
+            },
+            None,
+            None,
+        ),
+    ]);
+    Ok(CompiledWorkflow::try_from_parts(parts)?)
 }
 
 #[test]
@@ -226,40 +324,75 @@ fn malformed_inputs_fail_before_any_submission_is_enqueued_or_journaled() -> Tes
     ] {
         cases.push(postcard::to_allocvec(&values.into_boxed_slice())?);
     }
-    let good: Box<[SlotValue]> = Box::from([SlotValue::I64(37), SlotValue::Bool(true)]);
-    let mut trailing = postcard::to_allocvec(&good)?;
+    let good = [SlotValue::I64(37), SlotValue::Bool(true)];
+    let mut trailing = postcard::to_allocvec(&good.as_slice())?;
     trailing.push(0);
     cases.extend([
         Vec::new(),
         vec![0xff],
         trailing,
-        vec![0; 65_537],
         postcard::to_allocvec(&usize::MAX)?,
     ]);
+    let oversized = postcard::to_allocvec(&vec![SlotValue::Null; 65_536].into_boxed_slice())?;
+    assert!(oversized.len() > 65_536);
     for command in [IpcCommand::SubmitRun, IpcCommand::SubmitRunInline] {
         for bytes in &cases {
-            let (mut runtime, journal) = runtime();
-            let mut resolver = Resolver(workflow(false)?);
-            let run = RunId::new(73);
-            assert!(matches!(
-                submit(command, run, bytes.clone(), &mut runtime, &mut resolver)?,
-                IpcResponse::PayloadError { .. }
-            ));
-            assert!(journal.snapshot()?.is_empty());
-            assert!(runtime.tick_all()?);
-            assert!(journal.snapshot()?.is_empty());
-            assert_eq!(
-                submit(
-                    command,
-                    run,
-                    postcard::to_allocvec(&good)?,
-                    &mut runtime,
-                    &mut resolver
-                )?,
-                IpcResponse::AcceptedRun { run_id: run.get() }
-            );
-            assert!(runtime.tick_all()?);
-            assert_copied_inputs(&journal.snapshot()?, run)?;
+            let events = assert_input_refusal(
+                command,
+                workflow(false)?,
+                bytes,
+                &good,
+                payload_decode_error(),
+                1,
+            )?;
+            assert_copied_inputs(&events, RunId::new(73))?;
+        }
+        let error = vb_ipc::IpcError::PayloadDecodeFailed;
+        let events = assert_input_refusal(
+            command,
+            workflow(false)?,
+            &oversized,
+            &good,
+            IpcResponse::PayloadError {
+                diagnostic: error.diagnostic_code().code(),
+                message: String::from("submit input exceeds maximum allowed size"),
+            },
+            0,
+        )?;
+        assert_copied_inputs(&events, RunId::new(73))?;
+        for (kind, value, accepted) in [
+            (
+                InputSlotKind::Symbol,
+                SlotValue::Symbol(vb_core::SymbolId::new(1)),
+                vec![SlotValue::Symbol(vb_core::SymbolId::new(0))],
+            ),
+            (
+                InputSlotKind::List,
+                SlotValue::List(vb_core::ListId::new(1)),
+                vec![],
+            ),
+            (
+                InputSlotKind::Object,
+                SlotValue::Object(vb_core::ObjectId::new(1)),
+                vec![],
+            ),
+            (
+                InputSlotKind::Blob,
+                SlotValue::Blob(vb_core::BlobId::new(1)),
+                vec![],
+            ),
+        ] {
+            let events = assert_input_refusal(
+                command,
+                authority_workflow(kind)?,
+                &postcard::to_allocvec(&[value].as_slice())?,
+                &accepted,
+                payload_decode_error(),
+                1,
+            )?;
+            assert!(events.iter().any(|event| matches!(event,
+                RuntimeJournalEvent::RunFinished { run, result, attempt }
+                    if *run == RunId::new(73) && *result == SlotIdx::new(5) && *attempt == 1)));
         }
     }
     Ok(())
@@ -436,7 +569,7 @@ fn socket_submit(
     client.set_write_timeout(Some(Duration::from_millis(250)))?;
     let submit = SubmitRunPayload {
         run_id: run,
-        workflow: resolver.0.digest(),
+        workflow: resolver.workflow.digest(),
         input,
     };
     let payload = match command {
@@ -512,7 +645,7 @@ fn real_socket_both_submit_commands_preserve_three_scalar_kinds_and_finish_outpu
     let float = SlotValue::F64(vb_core::FiniteF64::new(4.5)?);
     for command in [IpcCommand::SubmitRun, IpcCommand::SubmitRunInline] {
         let (mut runtime, journal) = runtime();
-        let mut resolver = Resolver(transport_workflow()?);
+        let mut resolver = Resolver::new(transport_workflow()?);
         let run = RunId::new(81);
         let values: Box<[SlotValue]> =
             Box::from([SlotValue::I64(37), SlotValue::Bool(true), float]);
@@ -599,14 +732,14 @@ fn real_socket_rejects_malformed_trailing_type_and_range_before_admission() -> T
     for command in [IpcCommand::SubmitRun, IpcCommand::SubmitRunInline] {
         for input in &cases {
             let (mut runtime, journal) = runtime();
-            let mut resolver = Resolver(transport_workflow()?);
+            let mut resolver = Resolver::new(transport_workflow()?);
             let before = runtime.pending_boundary_snapshot(4);
             let before_events = journal.snapshot()?;
             let run = RunId::new(82);
-            assert!(matches!(
+            assert_eq!(
                 socket_submit(command, run, input.clone(), &mut runtime, &mut resolver)?,
-                IpcResponse::PayloadError { .. }
-            ));
+                payload_decode_error()
+            );
             assert_eq!(runtime.pending_boundary_snapshot(4), before);
             assert_eq!(journal.snapshot()?, before_events);
             assert!(runtime.tick_all()?);
