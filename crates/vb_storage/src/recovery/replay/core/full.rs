@@ -29,9 +29,12 @@ pub fn recover_full_journal(
         return Err(RecoveryError::NoRecoveryData { run });
     }
 
-    let has_run_admission = events
-        .iter()
-        .any(|e| matches!(e, JournalEvent::RunAdmission { .. }));
+    let has_run_admission = events.iter().any(|e| {
+        matches!(
+            e,
+            JournalEvent::RunAdmission { .. } | JournalEvent::RunAdmissionBudget { .. }
+        )
+    });
 
     if !has_run_admission && !expected_policy_digests.is_empty() {
         return Err(RecoveryError::PolicyDigestMismatch {

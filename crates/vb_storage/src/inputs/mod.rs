@@ -89,6 +89,17 @@ impl RunInputsRecord {
             {
                 Ok(())
             }
+            crate::JournalEvent::RunAdmissionBudget {
+                run,
+                artifact_digest,
+                input_digest: RunInputBinding::Digest(input_digest),
+                ..
+            } if *run == self.run
+                && *artifact_digest == self.artifact_digest
+                && *input_digest == self.input_digest =>
+            {
+                Ok(())
+            }
             _ => Err(JournalError::PayloadDigestMismatch),
         }
     }
