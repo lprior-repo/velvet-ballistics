@@ -423,11 +423,6 @@ pub enum JournalEvent {
         run: RunId,
         /// Per-run sequence.
         seq: EventSeq,
-        /// Complete capability grant record, or explicit absence: no
-        /// §77.10 grant flows through admission yet, so producers record
-        /// `None` until the admission record carries one. Boxed to bound
-        /// the event size.
-        grant: Option<Box<vb_core::capability_grant::CapabilityGrant>>,
         /// Compiled artifact digest admitted for this run.
         artifact_digest: WorkflowDigest,
         /// Canonical typed input identity, or explicit historical absence.

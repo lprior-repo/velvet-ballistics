@@ -865,7 +865,6 @@ fn budgeted_admission_recovery_carries_budget_and_latest_wins() {
     let budgeted = JournalEvent::RunAdmissionBudget {
         run,
         seq: EventSeq::new(2),
-        grant: None,
         artifact_digest: sample_digest(2),
         input_digest: crate::RunInputBinding::LegacyUnbound,
         policy_pin: crate::RunPolicyPin::Unverified,

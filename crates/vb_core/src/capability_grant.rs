@@ -17,9 +17,9 @@
 use crate::action::action_ticket_has_valid_key;
 use crate::action_pack::CapabilityScopeSpec;
 use crate::capability::Capability;
+use crate::ids::{ActionId, RunId};
 use crate::manual_gate::{ApproverId, GateDigest};
 use crate::{ActionTicket, WorkflowDigest};
-use crate::ids::{ActionId, RunId};
 use serde::{Deserialize, Serialize};
 
 /// Maximum revoked grant ids accepted in one dispatch view.
@@ -104,17 +104,54 @@ impl RevocationEpoch {
     }
 }
 
+/// Opaque approval signature bytes. Recorded, never verified in this wedge.
+/// Stored as two halves because serde derives cover arrays only to 32.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct GrantSignature {
+    high: [u8; 32],
+    low: [u8; 32],
+}
+
+impl GrantSignature {
+    /// Wraps verified signature bytes; this does not establish authority.
+    #[must_use]
+    pub fn from_bytes(bytes: [u8; 64]) -> Self {
+        let mut high = [0u8; 32];
+        let mut low = [0u8; 32];
+        let mut source = bytes.into_iter();
+        for slot in high.iter_mut().chain(low.iter_mut()) {
+            if let Some(byte) = source.next() {
+                *slot = byte;
+            }
+        }
+        Self { high, low }
+    }
+
+    /// Returns the raw signature bytes.
+    #[must_use]
+    pub fn as_bytes(self) -> [u8; 64] {
+        let mut out = [0u8; 64];
+        let mut source = [self.high, self.low].into_iter().flatten();
+        for slot in out.iter_mut() {
+            if let Some(byte) = source.next() {
+                *slot = byte;
+            }
+        }
+        out
+    }
+}
+
 /// Opaque grant signature bytes, present only when the issuing profile
 /// requires a signature. A grant with no signature is not invalid by
 /// itself; a profile that requires signatures rejects it at its layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GrantSignature {
+pub struct HistoricalGrantSignature {
     /// Signature bytes; empty and over-long values are rejected by
-    /// [`GrantSignature::new`].
+    /// [`HistoricalGrantSignature::new`].
     pub bytes: Box<[u8]>,
 }
 
-impl GrantSignature {
+impl HistoricalGrantSignature {
     /// Creates a signature, or `None` when the bytes are empty or over-long.
     #[must_use]
     pub fn new(bytes: Box<[u8]>) -> Option<Self> {
@@ -608,7 +645,7 @@ pub struct CapabilityGrant {
     /// carry `Some`.
     pub approval_receipt_digest: Option<GateDigest>,
     /// Signature, present only when the issuing profile requires one.
-    pub signature: Option<GrantSignature>,
+    pub signature: Option<HistoricalGrantSignature>,
 }
 
 impl CapabilityGrant {
@@ -855,3 +892,7 @@ pub fn narrow_tokens(
 #[cfg(test)]
 #[path = "capability_grant_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "capability_grant_signature_tests.rs"]
+mod signature_tests;
