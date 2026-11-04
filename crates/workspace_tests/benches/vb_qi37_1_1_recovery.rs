@@ -1,6 +1,17 @@
 use criterion::{Criterion, criterion_group, criterion_main};
+use std::hint::black_box;
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{EventSeq, JournalEvent};
+
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence";
+
+fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
+    format!(
+        "{name};{BENCH_METADATA};{extra};fixture_bytes={fixture_bytes}",
+        name = name,
+        fixture_bytes = fixture_bytes
+    )
+}
 
 fn bench_no_output_recovery(c: &mut Criterion) {
     let events = vec![
@@ -23,8 +34,17 @@ fn bench_no_output_recovery(c: &mut Criterion) {
         },
     ];
 
-    c.bench_function("vb_qi37_1_1_no_output_recovery", |b| {
-        b.iter(|| vb_storage::recovery::recover_runtime_frame_seed_from_events(&events))
+    let id = metadata(
+        "vb_qi37_1_1_no_output_recovery",
+        events.len(),
+        "fixture=events_3;surface=no_output_recovery",
+    );
+    c.bench_function(&id, |b| {
+        b.iter(|| {
+            black_box(
+                vb_storage::recovery::recover_runtime_frame_seed_from_events(black_box(&events)),
+            )
+        })
     });
 }
 
