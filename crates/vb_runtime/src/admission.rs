@@ -32,11 +32,11 @@ use std::sync::Arc;
 use thiserror::Error;
 use vb_core::budget::{
     AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,
-    AggregateResourceUsage, BoundednessPolicy, RemainingBudget, check_global_quota,
-    check_tenant_quota, validate_aggregate_budget,
+    AggregateResourceUsage, BoundednessPolicy, RemainingBudget, ShardUsageSnapshot,
+    check_global_quota, check_tenant_quota, validate_aggregate_budget,
 };
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_core::ids::{ActionId, RunId, WorkflowDigest};
+use vb_core::ids::{ActionId, RunId, TenantId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_storage::EventSeq;
 use vb_storage::RunPolicyPin;
@@ -102,8 +102,9 @@ pub fn admit_run_with_budget_policy(
 /// then the usual policy and aggregate capacity admission.
 ///
 /// The tenant quota caps the tenant's already-admitted cost plus this run's
-/// cost; the shard usage snapshot carries no tenant identity, so the
-/// tenant's summed cost is passed explicitly.
+/// cost. This explicit-sum path is retained for callers without a shard
+/// usage snapshot; snapshot holders use
+/// [`admit_run_with_budget_and_tenant_quota_from_snapshot`].
 #[allow(clippy::too_many_arguments)]
 pub fn admit_run_with_budget_and_tenant_quota(
     store: &dyn ArtifactStore,
@@ -122,6 +123,37 @@ pub fn admit_run_with_budget_and_tenant_quota(
     )
     .map_err(map_budget_error)?;
     admit_run_with_budget_policy(store, policy, digest, run_id, caps, budget)
+}
+
+/// Performs artifact admission plus tenant-scoped cost quota admission
+/// summed from a shard usage snapshot, then the usual policy and aggregate
+/// capacity admission.
+///
+/// The tenant's already-admitted cost is summed from `usage` for
+/// `tenant`; no caller-supplied sum is trusted. The returned admission
+/// records the tenant, so the shard can record this run's cost against
+/// it in the snapshot with [`ShardUsageSnapshot::record_tenant_cost`].
+#[allow(clippy::too_many_arguments)]
+pub fn admit_run_with_budget_and_tenant_quota_from_snapshot(
+    store: &dyn ArtifactStore,
+    policy: RuntimePolicy,
+    digest: WorkflowDigest,
+    run_id: RunId,
+    caps: CapabilitySet,
+    budget: AdmissionBudgetRequest,
+    tenant: TenantId,
+    usage: &ShardUsageSnapshot,
+    tenant_quota: u64,
+) -> Result<RunAdmission, AdmissionError> {
+    let tenant_cost_usage = usage.tenant_cost_usage(tenant).map_err(map_budget_error)?;
+    check_tenant_quota(
+        tenant_cost_usage,
+        budget.requested.max_cost_units,
+        tenant_quota,
+    )
+    .map_err(map_budget_error)?;
+    let admission = admit_run_with_budget_policy(store, policy, digest, run_id, caps, budget)?;
+    Ok(admission.with_tenant(tenant))
 }
 
 /// Performs artifact admission plus shard-wide cost quota admission,

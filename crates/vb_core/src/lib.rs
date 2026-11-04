@@ -105,8 +105,8 @@ pub use action::{
 pub use budget::{
     AggregateBudgetError, AggregateReservation, AggregateResourceBudget, AggregateResourceCapacity,
     AggregateResourceUsage, BoundednessPolicy, BudgetError, BudgetExhaustionOutcome,
-    RemainingBudget, RemainingBudgetError, WholeWorkflowBudget, check_tenant_quota,
-    validate_aggregate_budget,
+    RemainingBudget, RemainingBudgetError, ShardUsageSnapshot, WholeWorkflowBudget,
+    check_tenant_quota, validate_aggregate_budget,
 };
 pub use capability::{Capability, CapabilitySet};
 pub use capability_grant::{
@@ -133,7 +133,7 @@ pub use frame::{RunFrame, StepState};
 pub use ids::{
     AccessorIdx, ActionId, BlobId, BranchCount, BranchIdx, ConstIdx, EventSeq, ExprIdx,
     FanoutLimit, ListId, MaxAttempts, ObjectId, RetryCount, RunId, SeqNo, SlotIdx, StepIdx,
-    SymbolId, WorkflowDigest, WorkflowId,
+    SymbolId, TenantId, WorkflowDigest, WorkflowId,
 };
 pub use policy::RuntimePolicy;
 pub use span::{Located, SourceMap, Span, SpanError, Spanned};

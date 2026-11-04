@@ -3,7 +3,7 @@
 
 //! Whole-workflow budget computation and boundedness policy enforcement.
 
-use crate::ids::{RunId, StepIdx};
+use crate::ids::{RunId, StepIdx, TenantId};
 use crate::workflow::{
     CompiledNodeKind, CompiledWorkflow, NodeContinuation, ResourceContract, WorkflowError,
 };
@@ -954,8 +954,8 @@ pub struct AggregateResourceCapacity {
     /// Maximum cost units capacity.
     pub max_cost_units: u64,
     /// Maximum aggregate cost units attributable to a single tenant.
-    /// Enforced by [`check_tenant_quota`] at tenant-scoped admission; the
-    /// shard usage snapshot carries no tenant identity.
+    /// Enforced by [`check_tenant_quota`] at tenant-scoped admission;
+    /// per-tenant usage is recorded in [`ShardUsageSnapshot`].
     pub tenant_quota_cost_units: u64,
     /// Maximum aggregate cost units shard-wide. Distinct from
     /// `max_cost_units` capacity: both cap summed cost, and both must hold.
@@ -998,6 +998,70 @@ pub struct AggregateResourceUsage {
     pub max_value_store_entries: u64,
     /// Current cost units usage.
     pub max_cost_units: u64,
+}
+
+/// Shard usage snapshot: aggregate usage plus per-tenant cost usage.
+///
+/// The aggregate field mirrors [`AggregateResourceUsage`]; the tenant
+/// entries record admitted cost per caller-supplied [`TenantId`], so
+/// tenant-scoped admission sums from this snapshot instead of trusting a
+/// caller-supplied sum. The tenant identity is opaque: this type assigns
+/// it no meaning and performs no authentication.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ShardUsageSnapshot {
+    /// Active shard aggregate usage.
+    pub aggregate: AggregateResourceUsage,
+    /// Admitted cost units per tenant, at most one entry per tenant.
+    tenant_costs: Box<[(TenantId, u64)]>,
+}
+
+impl ShardUsageSnapshot {
+    /// Sums the recorded cost for one tenant across the snapshot.
+    ///
+    /// A tenant with no entry has zero recorded cost.
+    pub fn tenant_cost_usage(&self, tenant: TenantId) -> Result<u64, AggregateBudgetError> {
+        let mut total = 0u64;
+        for (entry_tenant, cost) in self.tenant_costs.iter() {
+            if *entry_tenant == tenant {
+                total = total
+                    .checked_add(*cost)
+                    .ok_or(AggregateBudgetError::Overflow {
+                        resource: "tenant_quota_cost_units",
+                    })?;
+            }
+        }
+        Ok(total)
+    }
+
+    /// Returns the recorded per-tenant cost entries.
+    #[must_use]
+    pub fn tenant_entries(&self) -> &[(TenantId, u64)] {
+        &self.tenant_costs
+    }
+
+    /// Records admitted cost for a tenant, merging into its entry.
+    pub fn record_tenant_cost(
+        &mut self,
+        tenant: TenantId,
+        cost: u64,
+    ) -> Result<(), AggregateBudgetError> {
+        let mut entries: Vec<(TenantId, u64)> = self.tenant_costs.to_vec();
+        for entry in entries.iter_mut() {
+            if entry.0 == tenant {
+                entry.1 = entry
+                    .1
+                    .checked_add(cost)
+                    .ok_or(AggregateBudgetError::Overflow {
+                        resource: "tenant_quota_cost_units",
+                    })?;
+                self.tenant_costs = entries.into_boxed_slice();
+                return Ok(());
+            }
+        }
+        entries.push((tenant, cost));
+        self.tenant_costs = entries.into_boxed_slice();
+        Ok(())
+    }
 }
 
 /// Exact budget reservation associated with a run.
@@ -1610,8 +1674,9 @@ impl AggregateResourceUsage {
 
 /// Checks a tenant-scoped cost quota: the tenant's already-admitted cost
 /// plus the requested run's cost must not exceed the tenant quota.
-/// The shard usage snapshot carries no tenant identity, so tenant-scoped
-/// admission passes the tenant's summed cost explicitly.
+/// This is the explicit-sum path: callers that hold a [`ShardUsageSnapshot`]
+/// should sum from it with [`ShardUsageSnapshot::tenant_cost_usage`]
+/// instead of passing a sum computed elsewhere.
 pub fn check_tenant_quota(
     tenant_cost_usage: u64,
     requested_cost: u64,

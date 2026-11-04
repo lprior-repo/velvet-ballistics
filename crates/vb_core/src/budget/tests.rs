@@ -3,11 +3,11 @@
 use crate::budget::{
     AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,
     AggregateResourceUsage, BoundednessPolicy, BudgetError, BudgetExhaustionOutcome,
-    RemainingBudget, RemainingBudgetError, WholeWorkflowBudget, check_global_quota,
-    check_tenant_quota, validate_aggregate_budget,
+    RemainingBudget, RemainingBudgetError, ShardUsageSnapshot, WholeWorkflowBudget,
+    check_global_quota, check_tenant_quota, validate_aggregate_budget,
 };
 use crate::engine::StepBudget;
-use crate::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx};
+use crate::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, TenantId};
 use crate::workflow::{
     CompiledNode, CompiledNodeKind, ExprBranch, NodeContinuation, ResourceContract, SlotBranch,
     WorkflowError, node,
@@ -7925,6 +7925,57 @@ fn budget_dimensions_tenant_quota_checked_add_and_cap() {
     assert!(check_tenant_quota(5, 5, 10).is_ok(), "at-quota admits");
     assert_eq!(
         check_tenant_quota(u64::MAX, 1, u64::MAX),
+        Err(AggregateBudgetError::Overflow {
+            resource: "tenant_quota_cost_units",
+        })
+    );
+}
+
+#[test]
+fn shard_usage_snapshot_records_and_sums_per_tenant() {
+    let mut snapshot = ShardUsageSnapshot::default();
+    assert_eq!(
+        snapshot.tenant_cost_usage(TenantId::new(7)),
+        Ok(0),
+        "unrecorded tenant has zero usage"
+    );
+    snapshot
+        .record_tenant_cost(TenantId::new(7), 5)
+        .expect("first record fits");
+    snapshot
+        .record_tenant_cost(TenantId::new(7), 6)
+        .expect("second record merges into the same entry");
+    snapshot
+        .record_tenant_cost(TenantId::new(8), 3)
+        .expect("other tenant records independently");
+    assert_eq!(snapshot.tenant_cost_usage(TenantId::new(7)), Ok(11));
+    assert_eq!(snapshot.tenant_cost_usage(TenantId::new(8)), Ok(3));
+    assert_eq!(snapshot.tenant_entries().len(), 2);
+    assert_eq!(
+        snapshot.tenant_cost_usage(TenantId::new(9)),
+        Ok(0),
+        "unrecorded tenant stays zero after other tenants record"
+    );
+    assert!(
+        check_tenant_quota(
+            snapshot
+                .tenant_cost_usage(TenantId::new(7))
+                .expect("summed usage"),
+            0,
+            11,
+        )
+        .is_ok()
+    );
+}
+
+#[test]
+fn shard_usage_snapshot_record_overflow_is_typed() {
+    let mut snapshot = ShardUsageSnapshot::default();
+    snapshot
+        .record_tenant_cost(TenantId::new(7), u64::MAX)
+        .expect("max value itself records");
+    assert_eq!(
+        snapshot.record_tenant_cost(TenantId::new(7), 1),
         Err(AggregateBudgetError::Overflow {
             resource: "tenant_quota_cost_units",
         })

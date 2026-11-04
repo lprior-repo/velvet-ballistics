@@ -1,8 +1,14 @@
 use super::*;
 use chrono::Utc;
 use proptest::proptest;
-use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::policy::{
+    CurrentPolicyIdentity, DecisionCode, DecisionRecord, InfluenceState, PinnedAdmissionPolicy,
+    PolicyDigest, PolicyLayer,
+};
 use vb_core::value::ConstValue;
+use vb_core::{ActionTicket, Taint};
+use vb_storage::DurableActionOutcome;
 use vb_storage::JournalEvent;
 use vb_storage::types::EventSeq;
 
@@ -643,6 +649,222 @@ fn trace_one_run_answered_uses_event_seq() {
     assert_eq!(entry.seq, 22);
     assert_eq!(entry.step, None);
     assert_eq!(entry.index, 17);
+}
+
+fn make_run_continuation_event() -> Result<JournalEvent, Box<dyn std::error::Error>> {
+    let mut body = vec![1_u8];
+    body.extend_from_slice(&[0_u8; 40]);
+    let digest = blake3::derive_key("velvet-ballistics/run-continuation/v1", &body);
+    let mut component = body;
+    component.extend_from_slice(&digest);
+    let header = vb_storage::ContinuationCarrierHeader::new(
+        make_run_id(1),
+        make_event_seq(23),
+        2,
+        make_event_seq(22),
+        digest,
+    )?;
+    let mut encode_budget =
+        vb_storage::ContinuationCarrierBudget::new(1_048_576, 67_108_864, 16_777_216)?;
+    let encoded = vb_storage::encode_owned_continuation(header, &component, &mut encode_budget)?;
+    let key = vb_storage::keys::run_event_key(make_run_id(1), make_event_seq(23))?;
+    let mut decode_budget =
+        vb_storage::ContinuationCarrierBudget::new(1_048_576, 67_108_864, 16_777_216)?;
+    let view = vb_storage::decode_owned_continuation(
+        &key,
+        make_run_id(1),
+        encoded.as_bytes(),
+        &mut decode_budget,
+    )?;
+    Ok(view.into_event(&mut decode_budget)?)
+}
+
+#[test]
+fn trace_one_run_continuation_uses_carrier_header() -> Result<(), Box<dyn std::error::Error>> {
+    let event = make_run_continuation_event()?;
+    let entry = trace_one(18, &event);
+    assert_eq!(entry.event_type, "RunContinuation");
+    assert_eq!(entry.seq, 23);
+    assert_eq!(entry.step, None);
+    assert_eq!(entry.index, 18);
+    assert_eq!(entry.status, Some(TraceStatus::Active));
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| { *key == "run" && *value == serde_json::Value::from(1_u64) })
+    );
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| { *key == "attempt" && *value == serde_json::Value::from(2_u16) })
+    );
+    assert!(
+        entry.extra_json.iter().any(|(key, value)| {
+            *key == "prior_seq" && *value == serde_json::Value::from(22_u64)
+        })
+    );
+    Ok(())
+fn make_ticket() -> ActionTicket {
+    ActionTicket {
+        run: make_run_id(1),
+        step: make_step_idx(2),
+        seq: SeqNo::new(4),
+        action: make_action_id(7),
+        run_attempt: 1,
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    }
+}
+
+fn make_decision() -> DecisionRecord {
+    DecisionRecord {
+        ticket: make_ticket(),
+        admission: PinnedAdmissionPolicy::Artifact(PolicyDigest::from_bytes([3; 32])),
+        current_live: CurrentPolicyIdentity::Configured {
+            digest: PolicyDigest::from_bytes([2; 32]),
+        },
+        input_digest: PolicyDigest::from_bytes([1; 32]),
+        taint: Taint::Clean,
+        outcome: DecisionCode::Allowed,
+        layer: PolicyLayer::Live,
+        emergency_influence: InfluenceState::NotEvaluated,
+        compat_influence: InfluenceState::NotEvaluated,
+    }
+}
+
+#[test]
+fn trace_one_retry_checkpoint_maps_correct_fields() {
+    let event = JournalEvent::RetryCheckpoint {
+        run: make_run_id(1),
+        seq: make_event_seq(23),
+        attempt: 2,
+        step: make_step_idx(3),
+        payload_digest: [0; 32],
+        payload: vec![],
+    };
+    let entry = trace_one(18, &event);
+    assert_eq!(entry.event_type, "RetryCheckpoint");
+    assert_eq!(entry.seq, 23);
+    assert_eq!(entry.step, Some(3));
+    assert_eq!(entry.index, 18);
+}
+
+#[test]
+fn trace_one_step_failed_maps_correct_fields() {
+    let event = JournalEvent::StepFailed {
+        run: make_run_id(1),
+        seq: make_event_seq(24),
+        step: make_step_idx(3),
+        attempt: 1,
+    };
+    let entry = trace_one(19, &event);
+    assert_eq!(entry.event_type, "StepFailed");
+    assert_eq!(entry.seq, 24);
+    assert_eq!(entry.step, Some(3));
+    assert_eq!(entry.index, 19);
+}
+
+#[test]
+fn trace_one_action_scheduled_ticket_maps_correct_fields() {
+    let event = JournalEvent::ActionScheduledTicket {
+        run: make_run_id(1),
+        seq: make_event_seq(25),
+        ticket: make_ticket(),
+        input: make_slot_idx(1),
+        output: make_slot_idx(2),
+        action_abi_digest: dummy_digest(),
+    };
+    let entry = trace_one(20, &event);
+    assert_eq!(entry.event_type, "ActionScheduledTicket");
+    assert_eq!(entry.seq, 25);
+    assert_eq!(entry.step, Some(2));
+    assert_eq!(entry.action, Some(7));
+    assert_eq!(entry.index, 20);
+}
+
+#[test]
+fn trace_one_action_completed_envelope_maps_correct_fields() {
+    let event = JournalEvent::ActionCompletedEnvelope {
+        run: make_run_id(1),
+        seq: make_event_seq(26),
+        ticket: make_ticket(),
+        output: make_slot_idx(2),
+        outcome: DurableActionOutcome::Ready,
+        value: vec![],
+        encoded_len: 0,
+        taint: Taint::Clean,
+        value_digest: [0; 32],
+        action_abi_digest: dummy_digest(),
+    };
+    let entry = trace_one(21, &event);
+    assert_eq!(entry.event_type, "ActionCompletedEnvelope");
+    assert_eq!(entry.seq, 26);
+    assert_eq!(entry.step, Some(2));
+    assert_eq!(entry.action, Some(7));
+    assert_eq!(entry.index, 21);
+}
+
+#[test]
+fn trace_one_action_abandoned_maps_correct_fields() {
+    let event = JournalEvent::ActionAbandoned {
+        run: make_run_id(1),
+        seq: make_event_seq(27),
+        ticket: make_ticket(),
+    };
+    let entry = trace_one(22, &event);
+    assert_eq!(entry.event_type, "ActionAbandoned");
+    assert_eq!(entry.seq, 27);
+    assert_eq!(entry.step, Some(2));
+    assert_eq!(entry.action, Some(7));
+    assert_eq!(entry.index, 22);
+}
+
+#[test]
+fn trace_one_wait_resolved_maps_correct_fields() {
+    let event = JournalEvent::WaitResolvedEvent {
+        run: make_run_id(1),
+        seq: make_event_seq(28),
+        step: make_step_idx(3),
+        attempt: 1,
+    };
+    let entry = trace_one(23, &event);
+    assert_eq!(entry.event_type, "WaitResolved");
+    assert_eq!(entry.seq, 28);
+    assert_eq!(entry.step, Some(3));
+    assert_eq!(entry.index, 23);
+}
+
+#[test]
+fn trace_one_ask_timed_out_maps_correct_fields() {
+    let event = JournalEvent::AskTimedOutEvent {
+        run: make_run_id(1),
+        seq: make_event_seq(29),
+        step: make_step_idx(5),
+        attempt: 1,
+    };
+    let entry = trace_one(24, &event);
+    assert_eq!(entry.event_type, "AskTimedOut");
+    assert_eq!(entry.seq, 29);
+    assert_eq!(entry.step, Some(5));
+    assert_eq!(entry.index, 24);
+}
+
+#[test]
+fn trace_one_policy_decision_maps_correct_fields() {
+    let event = JournalEvent::PolicyDecisionEvent {
+        run: make_run_id(1),
+        seq: make_event_seq(30),
+        decision: make_decision(),
+    };
+    let entry = trace_one(25, &event);
+    assert_eq!(entry.event_type, "PolicyDecision");
+    assert_eq!(entry.seq, 30);
+    assert_eq!(entry.step, Some(2));
+    assert_eq!(entry.action, Some(7));
+    assert_eq!(entry.index, 25);
 }
 
 // -------------------------------------------------------------------------

@@ -7,7 +7,7 @@
 //! - Generic numeric IDs produced by the `numeric_id!` macro and its
 //!   `checked_index!` extension (WorkflowId, StepIdx, SlotIdx, ExprIdx,
 //!   ActionId, AccessorIdx, ConstIdx, SymbolId, ListId, ObjectId, BlobId,
-//!   RunId, EventSeq, SeqNo).
+//!   RunId, EventSeq, SeqNo, TenantId).
 //! - Hand-written domain identifiers (BranchIdx, FanoutLimit, MaxAttempts,
 //!   RetryCount, BranchCount) and the `WorkflowDigest` content hash.
 //! - Kani harnesses for ID boundary and proof obligations
@@ -80,6 +80,7 @@ numeric_id!(BlobId, u64, get);
 numeric_id!(RunId, u64, get);
 numeric_id!(EventSeq, u64, get);
 numeric_id!(SeqNo, u64, get);
+numeric_id!(TenantId, u64, get);
 
 checked_index!(StepIdx);
 checked_index!(SlotIdx);
