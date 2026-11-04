@@ -44,6 +44,18 @@ impl FjallJournal {
             return Err(TrimError::NoDurableSnapshot { run });
         };
 
+        // Crash-consistency: the cutoff key alone does not prove the snapshot
+        // is readable. A corrupt snapshot VALUE behind a valid key would
+        // otherwise let trim delete the pre-snapshot events the snapshot was
+        // supposed to cover, leaving an unreadable snapshot plus a
+        // SequenceGap on full replay (unrecoverable loss). Fail closed here,
+        // before deleting anything. A present key with no readable value is
+        // treated as no durable snapshot.
+        match self.snapshot(run, cutoff_seq)? {
+            Some(_) => {}
+            None => return Err(TrimError::NoDurableSnapshot { run }),
+        }
+
         self.check_retention_policy(run, &policy)?;
 
         let prefix_key = crate::keys::run_prefix_key(run)?;
