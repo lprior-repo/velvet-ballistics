@@ -10,6 +10,8 @@ use crate::workflow::{CompiledWorkflow, ExprOp};
 
 use super::{ReplayError, ReplayExprStack};
 
+mod has;
+
 pub fn eval_replay_op(
     plan: &CompiledWorkflow,
     run: &RunFrame,
@@ -37,6 +39,7 @@ pub fn eval_replay_op(
         ExprOp::Gte => eval_gte(stack),
         ExprOp::Lt => eval_lt(stack),
         ExprOp::Lte => eval_lte(stack),
+        ExprOp::Has => has::eval_has(stack, store),
         _ => Err(ReplayError::Internal {
             reason: "unsupported expression op for replay",
         }),
@@ -274,3 +277,7 @@ fn expect_i64_replay(value: SlotValue) -> Result<i64, ReplayError> {
 #[cfg(test)]
 #[path = "ops/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "ops/has_contract_tests.rs"]
+mod has_contract_tests;
