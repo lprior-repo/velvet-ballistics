@@ -511,3 +511,135 @@ fn handle_action_failure_rejects_when_step_out_of_bounds() {
     // validate_action_completion catches the out-of-bounds step
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
 }
+
+use vb_core::budget::AggregateResourceBudget;
+use vb_core::engine::EngineError;
+use crate::admission::RunAdmission;
+use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeSignal};
+
+fn transition_budget(max_transitions: u64) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 10,
+        max_action_tickets: 1,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 1,
+        max_gather_pages: 1,
+        max_gather_items: 1,
+        max_for_each_iterations: 1,
+        max_together_branches: 1,
+        max_repeat_attempts: 1,
+        max_run_time_seconds: 10,
+        max_result_bytes: 1,
+        max_total_slots_written: 1,
+        max_timer_entries: 1,
+        max_trace_events: 1,
+        max_queue_depth: 1,
+        max_journal_batch_bytes: 1,
+        max_ipc_payload_bytes: 1,
+        max_blob_bytes: 1,
+        max_input_bytes: 1,
+        max_step_budget_per_tick: 1,
+        max_transitions_per_tick: 1,
+        max_open_gates: 1,
+        max_signal_subscriptions: 1,
+        max_incident_emissions: 1,
+        max_transitions,
+        max_journal_bytes_total: 1,
+        max_value_store_entries: 1,
+        max_cost_units: 1,
+    }
+}
+
+fn transition_budget_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let mut nodes = Vec::new();
+    nodes.push(vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    ));
+    let mut index = 1;
+    while index < 10 {
+        nodes.push(vb_core::workflow::node(
+            StepIdx::new(index),
+            CompiledNodeKind::Nop,
+            None,
+            Some(StepIdx::new(index + 1)),
+        ));
+        index += 1;
+    }
+    nodes.push(vb_core::workflow::node(
+        StepIdx::new(10),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+        None,
+        None,
+    ));
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("transition_budget"),
+        digest: WorkflowDigest::from_bytes([9; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::Bool(true)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+#[test]
+fn drive_state_caps_tick_at_admitted_total_transitions_and_fails_on_exhaustion() {
+    let Some(workflow) = transition_budget_workflow() else {
+        return;
+    };
+    let run = RunId::new(700);
+    let digest = workflow.digest();
+    let Some(mut state) = crate::shard::helpers::make_run_state(workflow, run) else {
+        return;
+    };
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        transition_budget(3),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::StepBudgetExhausted)));
+    assert_eq!(state.frame.executed(), 3);
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "transitions",
+            limit: 3,
+        }))
+    ));
+    assert_eq!(state.frame.executed(), 3);
+}
+
+#[test]
+fn drive_state_without_admitted_budget_drives_to_finish() {
+    let Some(workflow) = transition_budget_workflow() else {
+        return;
+    };
+    let run = RunId::new(701);
+    let Some(mut state) = crate::shard::helpers::make_run_state(workflow, run) else {
+        return;
+    };
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+    assert_eq!(state.frame.executed(), 11);
+}
