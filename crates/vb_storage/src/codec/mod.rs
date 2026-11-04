@@ -210,6 +210,10 @@ pub(crate) fn validate_replayed_event(
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+#[path = "proptest_roundtrip.rs"]
+mod proptest_roundtrip;
+
 // Flux-rs compiler-injected refinement models for codec validation.
 // `flux_rs` is injected by `cargo flux` compiler plugin; no Cargo dependency.
 #[cfg(flux)]

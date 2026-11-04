@@ -4,10 +4,14 @@
 mod event_to_json;
 #[cfg(test)]
 mod event_to_json_tests;
+mod pristine_resume;
+#[cfg(test)]
+mod pristine_resume_tests;
 
 use crate::app_impl::prelude::*;
 use crate::events::print_event;
 use crate::inspect::write_vb_kyyf_trace;
+use pristine_resume::{pristine_resume_candidate, run_pristine_resume, select_pristine_resume};
 
 pub(crate) use event_to_json::event_to_json;
 
@@ -16,6 +20,10 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
         Ok(id) => id,
         Err(code) => return code,
     };
+
+    if let Err(code) = check_journal_dir(db, output) {
+        return code;
+    }
 
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
@@ -92,6 +100,10 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
         Err(code) => return code,
     };
 
+    if let Err(code) = check_journal_dir(db, output) {
+        return code;
+    }
+
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(journal) => journal,
         Err(error) => {
@@ -116,6 +128,14 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
             ),
         },
         Err(error) => {
+            let error = if pristine_resume_candidate(&error) {
+                match select_pristine_resume(rid, error, journal.events_for_run_full(rid)) {
+                    Ok(()) => return run_pristine_resume(run_id, rid, journal, output),
+                    Err(original) => original,
+                }
+            } else {
+                error
+            };
             let message = format!("error resuming run {run_id}: {error}");
             if output == OutputFormat::Text {
                 errln!("{message}");

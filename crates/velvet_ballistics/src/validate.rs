@@ -38,6 +38,15 @@ pub(crate) fn cmd_validate(workflow: &Path, output: OutputFormat) -> ExitCode {
         Err(code) => return code,
     };
 
+    if bytes.starts_with(b"\xff\xfe") || bytes.starts_with(b"\xfe\xff") {
+        write_failure_message(
+            "unsupported encoding: UTF-16 (save the workflow as UTF-8)",
+            output,
+            CliExitCode::ValidationFailed,
+        );
+        return CliExitCode::ValidationFailed.into();
+    }
+
     let text = match std::str::from_utf8(&bytes) {
         Ok(t) => t,
         Err(e) => {
@@ -64,13 +73,20 @@ pub(crate) fn cmd_validate(workflow: &Path, output: OutputFormat) -> ExitCode {
     }
 
     // Phase 2: full compilation pipeline (schema, references, control flow, type/taint)
-    match vb_compile::compile_workflow(&bytes) {
-        Ok(_compiled) => {}
+    let compiled = match vb_compile::compile_workflow(&bytes) {
+        Ok(c) => c,
         Err(errors) => {
             let message = compile_errors_message(&errors.0);
             write_failure_message(&message, output, CliExitCode::ValidationFailed);
             return CliExitCode::ValidationFailed.into();
         }
+    };
+    if let Err(code) = crate::action_specs::reject_unknown_actions(
+        &compiled,
+        output,
+        CliExitCode::ValidationFailed,
+    ) {
+        return code;
     }
 
     if output == OutputFormat::Text {
@@ -84,7 +100,18 @@ pub(crate) fn cmd_validate(workflow: &Path, output: OutputFormat) -> ExitCode {
 pub(crate) fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
     let mut msg = String::from("compilation failed:\n");
     for e in errors {
-        msg.push_str(&format!("  compile error: {e}\n"));
+        // Error text can echo user input (expressions, names); bound it.
+        let text = e.to_string();
+        const MAX_ERROR_CHARS: usize = 240;
+        if text.chars().count() > MAX_ERROR_CHARS {
+            let head: String = text.chars().take(MAX_ERROR_CHARS).collect();
+            msg.push_str(&format!(
+                "  compile error: {head}... (truncated, {} chars total)\n",
+                text.chars().count()
+            ));
+        } else {
+            msg.push_str(&format!("  compile error: {text}\n"));
+        }
     }
     msg
 }

@@ -3,7 +3,7 @@
 use super::super::super::JournalEvent;
 use super::super::tags::{
     TAG_RUN_ADMISSION, TAG_RUN_ADMISSION_BOUND, TAG_RUN_ADMISSION_BOUND_PINNED,
-    TAG_RUN_ADMISSION_PINNED,
+    TAG_RUN_ADMISSION_BUDGET, TAG_RUN_ADMISSION_PINNED,
 };
 use super::{serialize_record_kind_variant, serialize_routing_error};
 use serde::Serializer;
@@ -58,6 +58,42 @@ where
         (_, crate::RunPolicyPin::Pinned(policy_digest)) => {
             serialize_pinned_admission_payload(serializer, fields, binding, policy_digest)
         }
+    }
+}
+
+pub(super) fn serialize_budget_admission<S>(
+    event: &JournalEvent,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match event {
+        JournalEvent::RunAdmissionBudget {
+            run,
+            seq,
+            artifact_digest,
+            input_digest,
+            policy_pin,
+            granted_capabilities: caps,
+            policy,
+            budget,
+        } => serialize_record_kind_variant(
+            serializer,
+            TAG_RUN_ADMISSION_BUDGET,
+            "RunAdmissionBudget",
+            &(
+                run,
+                seq,
+                artifact_digest,
+                input_digest,
+                policy_pin,
+                caps,
+                policy,
+                budget,
+            ),
+        ),
+        _ => serialize_routing_error::<S>(),
     }
 }
 

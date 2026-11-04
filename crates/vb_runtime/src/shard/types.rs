@@ -1219,6 +1219,7 @@ pub struct Shard {
     pub(crate) shutting_down: bool,
     pub(crate) current_tick: TimerTick,
     pub(crate) journal: SharedRuntimeJournal,
+    pub(crate) completion_capture: crate::runtime::completion_observation::CompletionCapture,
 }
 
 /// Read-only shard health snapshot for operator status reporting.

@@ -38,6 +38,7 @@ fn is_run_record(kind: RecordKind) -> bool {
         kind,
         RecordKind::RunAccepted
             | RecordKind::RunAdmission
+            | RecordKind::RunAdmissionBudget
             | RecordKind::RunAdmissionBound
             | RecordKind::RunAdmissionPinned
             | RecordKind::RunAdmissionBoundPinned

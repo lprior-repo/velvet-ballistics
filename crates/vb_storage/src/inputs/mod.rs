@@ -26,6 +26,10 @@ pub struct RunInputsRecord {
 
 impl RunInputsRecord {
     /// Constrains typed input mappings against the numeric workflow schema.
+    ///
+    /// Missing slots with a retained scalar default are filled before the
+    /// input digest is computed, so defaults are part of admission identity.
+    /// Missing required slots are rejected before any `RunAccepted` event.
     pub fn new(
         run: RunId,
         artifact_digest: WorkflowDigest,
@@ -34,14 +38,15 @@ impl RunInputsRecord {
         inputs: Box<[(SlotIdx, SlotValue)]>,
     ) -> Result<Self, JournalError> {
         crate::keys::run_header_key(run)?;
-        validation::validate_inputs(workflow, &inputs)?;
+        let filled = validation::prepare_inputs(workflow, &inputs)?;
+        validation::validate_inputs(workflow, &filled)?;
         Ok(Self {
             run,
             artifact_digest,
             workflow_digest: workflow.digest(),
             source_digest,
-            input_digest: compute_input_digest(&inputs)?,
-            inputs,
+            input_digest: compute_input_digest(&filled)?,
+            inputs: filled.into_boxed_slice(),
         })
     }
 
@@ -74,6 +79,17 @@ impl RunInputsRecord {
     pub fn validate_admission(&self, event: &crate::JournalEvent) -> Result<(), JournalError> {
         match event {
             crate::JournalEvent::RunAdmission {
+                run,
+                artifact_digest,
+                input_digest: RunInputBinding::Digest(input_digest),
+                ..
+            } if *run == self.run
+                && *artifact_digest == self.artifact_digest
+                && *input_digest == self.input_digest =>
+            {
+                Ok(())
+            }
+            crate::JournalEvent::RunAdmissionBudget {
                 run,
                 artifact_digest,
                 input_digest: RunInputBinding::Digest(input_digest),

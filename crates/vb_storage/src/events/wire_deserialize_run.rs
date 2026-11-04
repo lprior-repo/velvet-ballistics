@@ -11,6 +11,7 @@ where
     match kind {
         RecordKind::RunAccepted => deserialize_accepted(variant),
         RecordKind::RunAdmission => deserialize_admission(variant),
+        RecordKind::RunAdmissionBudget => deserialize_budget_admission(variant),
         RecordKind::RunAdmissionBound => deserialize_bound_admission(variant),
         RecordKind::RunAdmissionPinned => deserialize_pinned_admission(variant),
         RecordKind::RunAdmissionBoundPinned => deserialize_pinned_admission_bound(variant),
@@ -62,6 +63,24 @@ where
         policy_pin: crate::RunPolicyPin::Unverified,
         granted_capabilities,
         policy,
+    })
+}
+
+fn deserialize_budget_admission<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
+where
+    A: VariantAccess<'de>,
+{
+    let (run, seq, artifact_digest, input_digest, policy_pin, granted_capabilities, policy, budget) =
+        variant.newtype_variant()?;
+    Ok(JournalEvent::RunAdmissionBudget {
+        run,
+        seq,
+        artifact_digest,
+        input_digest,
+        policy_pin,
+        granted_capabilities,
+        policy,
+        budget,
     })
 }
 

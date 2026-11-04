@@ -39,13 +39,20 @@ pub(super) fn admission(
     artifact: &AcceptedArtifact,
     event: &JournalEvent,
 ) -> RuntimeResult<RunAdmission> {
-    let JournalEvent::RunAdmission {
-        policy,
-        policy_pin: RunPolicyPin::Pinned(pin),
-        ..
-    } = event
-    else {
-        return Err(mismatch());
+    let (policy, pin) = match event {
+        JournalEvent::RunAdmission {
+            policy,
+            policy_pin: RunPolicyPin::Pinned(pin),
+            ..
+        }
+        | JournalEvent::RunAdmissionBudget {
+            policy,
+            policy_pin: RunPolicyPin::Pinned(pin),
+            ..
+        } => (policy, pin),
+        _ => {
+            return Err(mismatch());
+        }
     };
     if *policy != RuntimePolicy::Strict || *pin != artifact.policy_digest {
         return Err(mismatch());

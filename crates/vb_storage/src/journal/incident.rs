@@ -213,6 +213,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::RunContinuation { .. } => LifecycleState::Active,
         JournalEvent::RunAccepted { .. } => LifecycleState::Active,
         JournalEvent::RunAdmission { .. } => LifecycleState::Active,
+        JournalEvent::RunAdmissionBudget { .. } => LifecycleState::Active,
         JournalEvent::RetryCheckpoint { .. } => LifecycleState::Active,
         JournalEvent::StepStarted { .. } => LifecycleState::Active,
         JournalEvent::StepSucceeded { .. } => LifecycleState::Active,

@@ -520,7 +520,7 @@ fn assert_expected_shape_error(
         ) => {
             assert_eq!(
                 (*step, *field, *expected),
-                (0, expected_field, "non-empty primitive field"),
+                (0, expected_field, "a value of at least 1 (got 0)"),
                 "primitive {primitive} returned wrong compile field-shape payload"
             );
             Ok(())
@@ -626,7 +626,7 @@ fn compile_source_returns_exact_error_variants_for_contract_taxonomy() -> Result
             ExpectedCompileError::StepFieldShape {
                 step: 0,
                 field: "repeat.max_attempts",
-                expected: "non-empty primitive field",
+                expected: "a value of at least 1 (got 0)",
             },
         ),
         (
@@ -703,7 +703,7 @@ fn public_compile_apis_return_exact_error_variants_for_contract_taxonomy() -> Re
             ExpectedCompileError::StepFieldShape {
                 step: 0,
                 field: "repeat.max_attempts",
-                expected: "non-empty primitive field",
+                expected: "a value of at least 1 (got 0)",
             },
         ),
         (

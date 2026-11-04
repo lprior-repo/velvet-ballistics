@@ -9,9 +9,9 @@ use crate::mod_compile_validation::{
 use saphyr::Yaml;
 use std::collections::HashMap;
 use vb_core::{
-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
-    ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract, SlotBranch, SlotIdx,
-    StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
+    AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
+    CompiledWorkflow, ConstIdx, ConstValue, ExprIdx, ExprProgram, InputSlotKind, ResourceContract,
+    SlotBranch, SlotIdx, StepIdx, WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 impl SlotCompiler {
@@ -116,9 +116,18 @@ impl SlotCompiler {
         });
     }
 
-    /// Records an input slot with its kind classification.
-    pub fn record_input_slot(&mut self, slot: SlotIdx, kind: InputSlotKind) {
-        self.input_slots.push(CompiledInputSlot { slot, kind });
+    /// Records an input slot with its kind classification and retained constraints.
+    pub fn record_input_slot(
+        &mut self,
+        slot: SlotIdx,
+        kind: InputSlotKind,
+        constraint: CompiledInputConstraint,
+    ) {
+        self.input_slots.push(CompiledInputSlot {
+            slot,
+            kind,
+            constraint,
+        });
     }
 
     /// Pushes a compiled node into the node array.

@@ -60,6 +60,11 @@ pub(crate) fn run_verification(
             return Err(VerifyError::Compile(error_msgs));
         }
     };
+    if let Some(id) = crate::action_specs::unknown_action_id(&compiled) {
+        return Err(VerifyError::Compile(vec![format!(
+            "unknown action id: {id} (not in the CLI action registry)"
+        )]));
+    }
 
     let digest = compiled.digest();
     let digest_hex: String = digest

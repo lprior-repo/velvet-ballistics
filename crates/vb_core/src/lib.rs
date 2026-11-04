@@ -110,9 +110,8 @@ pub use budget::{
 };
 pub use capability::{Capability, CapabilitySet};
 pub use capability_grant::{
-    AdmissionOutcome, CapabilityGrant, GrantAdmissionMode, GrantDigest, GrantId, GrantIdentity,
-    GrantSignature, NarrowedToken, ResourceScope, RevocationEpoch, evaluate_admission,
-    narrow_tokens, replay_grant_is_structurally_valid,
+    GrantAdmissionMode, GrantDispatchContext, GrantError, GrantId, GrantSignature, GrantTimeMs,
+    MAX_REVOKED_IDS, RevocationEpoch, ScopedDispatch, ScopedGrant, ScopedGrantParams,
 };
 pub use compat::{
     Classification, CompatBoundary, CompatDecision, CompatDecisionCode, CompatDigests, CompatError,
@@ -141,7 +140,8 @@ pub use span::{Located, SourceMap, Span, SpanError, Spanned};
 pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};
 pub use value_store::{ObjectField, ValueStore};
 pub use workflow::{
-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-    ExprBranch, ExprOp, ExprProgram, InputSlotKind, PathSegment, ResourceContract, SlotBranch,
-    WorkflowError, WorkflowParts, check_expr_stack_bound, node, node_with_handler,
+    AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
+    CompiledWorkflow, ExprBranch, ExprOp, ExprProgram, InputConstraintIssue, InputSlotKind,
+    PathSegment, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
+    check_expr_stack_bound, node, node_with_handler,
 };
