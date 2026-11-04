@@ -98,6 +98,14 @@ pub(super) fn eval_ends_with(stack: &mut ExprStack, store: &ValueStore) -> Resul
 
 pub(super) fn eval_has(stack: &mut ExprStack, store: &ValueStore) -> Result<(), EngineError> {
     let (list, item) = pop_pair(stack)?;
+    if let SlotValue::Object(object) = list {
+        let key = expect_symbol(item)?;
+        let fields = store
+            .object(object)
+            .map_err(|_| EngineError::ObjectOutOfBounds { object })?;
+        let found = fields.iter().any(|field| field.key == key);
+        return push_value(stack, SlotValue::Bool(found));
+    }
     let list_id = expect_list(list)?;
     let items = store
         .list(list_id)
