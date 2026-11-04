@@ -517,6 +517,186 @@ use vb_core::engine::EngineError;
 use crate::admission::RunAdmission;
 use crate::engine::types::{EvidenceCollector, RuntimeEngineError, RuntimeSignal};
 
+fn total_slots_written_budget(max_total_slots_written: u32) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 100,
+        max_action_tickets: 10,
+        max_parallel_in_flight: 10,
+        max_retries_per_action: 10,
+        max_gather_pages: 10,
+        max_gather_items: 10,
+        max_for_each_iterations: 10,
+        max_together_branches: 10,
+        max_repeat_attempts: 10,
+        max_run_time_seconds: 100,
+        max_result_bytes: 100,
+        max_total_slots_written,
+        max_timer_entries: 100,
+        max_trace_events: 100,
+        max_queue_depth: 100,
+        max_journal_batch_bytes: 100,
+        max_ipc_payload_bytes: 100,
+        max_blob_bytes: 100,
+        max_input_bytes: 100,
+        max_step_budget_per_tick: 100,
+        max_transitions_per_tick: 100,
+        max_open_gates: 10,
+        max_signal_subscriptions: 10,
+        max_incident_emissions: 100,
+        max_transitions: 100,
+        max_journal_bytes_total: 100,
+        max_value_store_entries: 100,
+        max_cost_units: 100,
+    }
+}
+
+fn two_slot_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let first = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let second = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(2)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::Finish { result: SlotIdx::new(1) },
+        None,
+        None,
+    );
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("two_slot_budget"),
+        digest: WorkflowDigest::from_bytes([11; 32]),
+        nodes: Box::from([first, second, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(10)]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn rewrite_slot_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let first = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let second = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(2)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::Finish { result: SlotIdx::ZERO },
+        None,
+        None,
+    );
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("rewrite_slot_budget"),
+        digest: WorkflowDigest::from_bytes([12; 32]),
+        nodes: Box::from([first, second, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(10)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+#[test]
+fn drive_state_fails_when_written_slots_exceed_admitted_limit() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(740);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        total_slots_written_budget(1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "total_slots_written",
+            limit: 1,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_at_written_slots_limit_finishes() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(741);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        total_slots_written_budget(2),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_rewriting_one_slot_stays_within_limit() {
+    let workflow = rewrite_slot_workflow().expect("rewrite slot workflow builds");
+    let run = RunId::new(742);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        total_slots_written_budget(1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_without_admitted_budget_ignores_written_slots() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(743);
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
 fn parallel_in_flight_budget(max_parallel_in_flight: u16) -> AggregateResourceBudget {
     AggregateResourceBudget {
         max_steps_executable: 100,
@@ -1490,7 +1670,7 @@ fn suspension_budget(max_open_gates: u32, max_signal_subscriptions: u32) -> Aggr
         max_repeat_attempts: 1,
         max_run_time_seconds: 10,
         max_result_bytes: 1,
-        max_total_slots_written: 1,
+        max_total_slots_written: 100,
         max_timer_entries: 1,
         max_trace_events: 1,
         max_queue_depth: 1,
@@ -1701,7 +1881,7 @@ fn value_store_budget(max_value_store_entries: u64) -> AggregateResourceBudget {
         max_repeat_attempts: 1,
         max_run_time_seconds: 10,
         max_result_bytes: 1,
-        max_total_slots_written: 1,
+        max_total_slots_written: 100,
         max_timer_entries: 1,
         max_trace_events: 1,
         max_queue_depth: 1,

@@ -31,6 +31,7 @@ impl Shard {
         Self::check_incident_budget(state)?;
         Self::check_timer_entry_budget(state)?;
         Self::check_parallel_in_flight_budget(state)?;
+        Self::check_total_slots_written_budget(state)?;
         Ok(signal)
     }
 
@@ -303,6 +304,25 @@ impl Shard {
                 vb_core::engine::EngineError::BudgetExceeded {
                     budget: "parallel_in_flight",
                     limit: u64::from(budget.max_parallel_in_flight),
+                },
+            ));
+        }
+        Ok(())
+    }
+
+    fn check_total_slots_written_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let written = state.frame.written_slot_count();
+        if written > u64::from(budget.max_total_slots_written) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "total_slots_written",
+                    limit: u64::from(budget.max_total_slots_written),
                 },
             ));
         }
