@@ -158,10 +158,7 @@ impl FjallJournal {
             .ok_or(RunHeaderScanError::InvalidLimit)?;
         let snapshot = self.database.snapshot();
         let mut count = 0usize;
-        for item in snapshot
-            .prefix(&self.run_header, [PREFIX_RUN_HEADER])
-            .take(probe)
-        {
+        for item in snapshot.iter(&self.run_header).take(probe) {
             count = count
                 .checked_add(1)
                 .ok_or(RunHeaderScanError::InvalidLimit)?;
@@ -175,10 +172,7 @@ impl FjallJournal {
             decode_scanned_header(key.as_ref(), value.as_ref())
                 .map_err(RunHeaderScanError::Storage)?;
         }
-        for item in snapshot
-            .prefix(&self.run_header, [PREFIX_RUN_HEADER])
-            .take(limit.get())
-        {
+        for item in snapshot.iter(&self.run_header).take(limit.get()) {
             let (key, value) = item
                 .into_inner()
                 .map_err(JournalError::from)
