@@ -166,6 +166,25 @@ fn append_if_wrong_types_rejected() -> ExprResult<()> {
 }
 
 #[test]
+fn append_if_first_type_error_precedes_third_type_error() -> ExprResult<()> {
+    mismatch(check("append_if(42, 1, \"not-bool\")"), ("list", "i64"))?;
+    mismatch(
+        known("append_if($items, 1, \"not-bool\")", "$items", List),
+        ("boolean", "text"),
+    )
+}
+
+#[test]
+fn append_if_unknown_third_preserves_first_argument_checks() -> ExprResult<()> {
+    returns(
+        known("append_if($items, 42, $condition)", "$items", List),
+        List,
+    )?;
+    returns(check("append_if($items, 42, $condition)"), List)?;
+    mismatch(check("append_if(42, 1, $condition)"), ("list", "i64"))
+}
+
+#[test]
 fn merge_wrong_types_rejected() -> ExprResult<()> {
     mismatch(check("merge(42, $b)"), ("object", "i64"))?;
     mismatch(check("merge(\"not-obj\", $b)"), ("object", "text"))?;

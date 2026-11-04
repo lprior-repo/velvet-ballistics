@@ -52,16 +52,7 @@ fn check_first_list(helper: ExprHelper, arg_types: &[ExprType]) -> ExprResult<()
 }
 
 fn check_append_if(helper: ExprHelper, arg_types: &[ExprType]) -> ExprResult<()> {
-    match arg_types.first() {
-        Some(ExprType::List) | Some(ExprType::Unknown) => {}
-        Some(ty) => {
-            return Err(ExprError::TypeMismatch {
-                expected: "list".into(),
-                found: type_name(*ty),
-            });
-        }
-        None => return Err(helper_arity_error(helper, 0)),
-    }
+    check_first_list(helper, arg_types)?;
     match arg_types.get(2) {
         Some(ExprType::Bool) | Some(ExprType::Unknown) => Ok(()),
         Some(ty) => Err(ExprError::TypeMismatch {
