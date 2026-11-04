@@ -494,7 +494,11 @@ fn given_bounded_workflow_within_policy_when_computed_and_validated_then_budget_
         budget.max_total_slots,
         u64::from(ResourceContract::DEFAULT.max_slots)
     );
-    assert_eq!(budget.max_steps_executable, 20);
+    assert_eq!(
+        budget.max_steps_executable,
+        WholeWorkflowBudget::MAX_STEPS_EXECUTABLE
+    );
+    assert_eq!(budget.max_steps_executable, 32_768);
     assert_eq!(BoundednessPolicy::DEFAULT.validate(&budget), Ok(()));
     Ok(())
 }

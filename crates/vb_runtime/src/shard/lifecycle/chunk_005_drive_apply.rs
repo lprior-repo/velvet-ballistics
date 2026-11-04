@@ -32,6 +32,7 @@ impl Shard {
         Self::check_timer_entry_budget(state)?;
         Self::check_parallel_in_flight_budget(state)?;
         Self::check_total_slots_written_budget(state)?;
+        Self::check_steps_executable_budget(state)?;
         Ok(signal)
     }
 
@@ -211,10 +212,7 @@ impl Shard {
         Ok(())
     }
 
-    fn check_retry_budget(
-        state: &RunState,
-        signal: &RuntimeSignal,
-    ) -> RuntimeEngineResult<()> {
+    fn check_retry_budget(state: &RunState, signal: &RuntimeSignal) -> RuntimeEngineResult<()> {
         let Some(admission) = state.admission.as_ref() else {
             return Ok(());
         };
@@ -323,6 +321,24 @@ impl Shard {
                 vb_core::engine::EngineError::BudgetExceeded {
                     budget: "total_slots_written",
                     limit: u64::from(budget.max_total_slots_written),
+                },
+            ));
+        }
+        Ok(())
+    }
+
+    fn check_steps_executable_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        if state.frame.executed() > u64::from(budget.max_steps_executable) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "steps_executable",
+                    limit: u64::from(budget.max_steps_executable),
                 },
             ));
         }

@@ -2714,7 +2714,7 @@ fn policy_reports_first_violation_steps_over_slots_over() -> Result<(), String> 
 // -------------------------------------------------------------------------
 
 #[test]
-fn max_steps_executable_equals_total_steps_when_under_u32_max() -> Result<(), String> {
+fn max_steps_executable_is_fixed_ceiling_independent_of_total_steps() -> Result<(), String> {
     let nodes = vec![
         node(
             StepIdx::new(0),
@@ -2734,9 +2734,12 @@ fn max_steps_executable_equals_total_steps_when_under_u32_max() -> Result<(), St
     let contract = test_contract(2, 1);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| e.to_string())?;
-    let expected_executable = u32::try_from(budget.max_total_steps).unwrap_or(u32::MAX);
-    ensure_equal(budget.max_steps_executable, expected_executable)?;
-    ensure_equal(budget.max_steps_executable, 2)
+    ensure_equal(budget.max_total_steps, 2)?;
+    ensure_equal(
+        budget.max_steps_executable,
+        WholeWorkflowBudget::MAX_STEPS_EXECUTABLE,
+    )?;
+    ensure_equal(budget.max_steps_executable, 32_768)
 }
 
 // -------------------------------------------------------------------------

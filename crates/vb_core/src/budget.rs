@@ -87,6 +87,8 @@ pub struct WholeWorkflowBudget {
 }
 
 impl WholeWorkflowBudget {
+    pub const MAX_STEPS_EXECUTABLE: u32 = 32_768;
+
     /// Walks the compiled IR starting from `entry` and computes all
     /// budget dimensions.
     pub fn compute(
@@ -122,6 +124,7 @@ impl WholeWorkflowBudget {
             let mut visited: Vec<bool> = vec![false; node_count];
             let mut in_path: Vec<u16> = bounded_tracking_vec(node_count);
             let max_total_steps = count_total_steps(nodes, entry, node_count)?;
+            check_total_steps_representable(max_total_steps)?;
 
             let mut max_fanout: u16 = 0;
             let mut max_action_tickets: u32 = 0;
@@ -166,14 +169,7 @@ impl WholeWorkflowBudget {
                 max_total_slots,
                 max_fanout,
                 max_nesting_depth,
-                max_steps_executable: match u32::try_from(max_total_steps) {
-                    Ok(value) => value,
-                    Err(_) => {
-                        return Err(BudgetTraversalError::StepCountOverflow {
-                            actual: max_total_steps,
-                        });
-                    }
-                },
+                max_steps_executable: Self::MAX_STEPS_EXECUTABLE,
                 max_action_tickets,
                 max_parallel_in_flight,
                 max_retries_per_action: contract.max_retry_attempts,
@@ -202,6 +198,13 @@ impl WholeWorkflowBudget {
             })
         }
     }
+}
+
+fn check_total_steps_representable(total: u64) -> Result<(), BudgetTraversalError> {
+    if total > u64::from(u32::MAX) {
+        return Err(BudgetTraversalError::StepCountOverflow { actual: total });
+    }
+    Ok(())
 }
 
 /// Dimensions derived from the step and ticket bounds plus the contract.
@@ -300,14 +303,7 @@ fn compute_small_linear_budget(
         max_total_slots: u64::from(contract.max_slots),
         max_fanout: 0,
         max_nesting_depth: 0,
-        max_steps_executable: match u32::try_from(metrics.steps) {
-            Ok(value) => value,
-            Err(_) => {
-                return Err(BudgetTraversalError::StepCountOverflow {
-                    actual: metrics.steps,
-                });
-            }
-        },
+        max_steps_executable: WholeWorkflowBudget::MAX_STEPS_EXECUTABLE,
         max_action_tickets: metrics.actions,
         max_parallel_in_flight: 0,
         max_retries_per_action: contract.max_retry_attempts,
