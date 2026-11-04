@@ -258,6 +258,12 @@ fn durable_fixture(deficient_cost: bool) -> TestResult<DurableFixture> {
             .max_cost_units
             .checked_sub(1)
             .ok_or("positive action cost required")?;
+    } else {
+        recorded.max_cost_units = recorded
+            .max_cost_units
+            .checked_add(1)
+            .ok_or("larger recorded cost must remain bounded")?;
+        validate_descriptor(&recorded)?;
     }
     let seq = vb_core::SeqNo::new(2);
     let ticket = vb_core::ActionTicket {
@@ -331,10 +337,27 @@ fn sufficient_budget_recovery_query_is_a_nonmutating_artifact_control() -> TestR
     let fixture = durable_fixture(false)?;
     let before = fixture.journal.events_for_run_full(fixture.run)?;
     let state = fixture.runtime.pending_boundary_snapshot(4);
-    assert!(matches!(
-        fixture.runtime.recover_product(fixture.run)?,
-        crate::recovery::RuntimeRecoveryProduct::Resumable(_)
-    ));
+    let required = AggregateResourceBudget::from_workflow(&workflow()?)?;
+    assert!(fixture.recorded.max_cost_units > required.max_cost_units);
+    let original = crate::recovery::hydrate_run_admission_from_events(&before)
+        .ok_or("original durable admission missing")?;
+    assert_eq!(original.budget(), Some(fixture.recorded));
+    let original_bytes = postcard::to_allocvec(&original)?;
+    let product = match fixture.runtime.recover_product(fixture.run)? {
+        crate::recovery::RuntimeRecoveryProduct::Resumable(product) => product,
+        other => return Err(format!("expected artifact recovery control, got {other:?}").into()),
+    };
+    let command = product.into_recover_command();
+    let carried = match &command.admission {
+        crate::shard::types::RecoveredAdmissionKind::Historical(admission) => admission,
+        _ => return Err("recovery command lost historical admission".into()),
+    };
+    assert_eq!(carried.as_ref(), &original);
+    assert_eq!(carried.budget(), Some(fixture.recorded));
+    assert_ne!(carried.budget(), Some(required));
+    assert_eq!(postcard::to_allocvec(carried.as_ref())?, original_bytes);
+    assert_eq!(command.run, fixture.run);
+    assert_eq!(command.artifact_digest, original.artifact_digest());
     assert_eq!(fixture.runtime.pending_boundary_snapshot(4), state);
     assert_eq!(fixture.journal.events_for_run_full(fixture.run)?, before);
     Ok(())
@@ -359,5 +382,109 @@ fn underfunded_cost_refuses_public_recovery_before_enqueue_or_state_mutation() -
     ));
     assert!(fixture.journal.events_for_run_full(fixture.run)?.iter().any(|event| matches!(event,
         vb_storage::JournalEvent::RunAdmissionBudget { budget, .. } if *budget == fixture.recorded)));
+    Ok(())
+}
+
+fn validate_descriptor(budget: &AggregateResourceBudget) -> TestResult {
+    vb_core::budget::validate_aggregate_budget(budget, &vb_core::BoundednessPolicy::DEFAULT)?;
+    vb_core::budget::validate_step_ceilings(budget)?;
+    Ok(())
+}
+
+#[test]
+fn one_hot_required_dimensions_bind_their_own_recorded_limits() -> TestResult {
+    let raise: [(&str, fn(&mut AggregateResourceBudget)); 28] = [
+        ("max_steps_executable", |required| {
+            required.max_steps_executable = 3
+        }),
+        ("max_action_tickets", |required| {
+            required.max_action_tickets = 3
+        }),
+        ("max_parallel_in_flight", |required| {
+            required.max_parallel_in_flight = 3
+        }),
+        ("max_retries_per_action", |required| {
+            required.max_retries_per_action = 3
+        }),
+        ("max_gather_pages", |required| required.max_gather_pages = 3),
+        ("max_gather_items", |required| required.max_gather_items = 3),
+        ("max_for_each_iterations", |required| {
+            required.max_for_each_iterations = 3
+        }),
+        ("max_together_branches", |required| {
+            required.max_together_branches = 3
+        }),
+        ("max_repeat_attempts", |required| {
+            required.max_repeat_attempts = 3
+        }),
+        ("max_run_time_seconds", |required| {
+            required.max_run_time_seconds = 3
+        }),
+        ("max_result_bytes", |required| required.max_result_bytes = 3),
+        ("max_total_slots_written", |required| {
+            required.max_total_slots_written = 3
+        }),
+        ("max_timer_entries", |required| {
+            required.max_timer_entries = 3
+        }),
+        ("max_trace_events", |required| required.max_trace_events = 3),
+        ("max_queue_depth", |required| required.max_queue_depth = 3),
+        ("max_journal_batch_bytes", |required| {
+            required.max_journal_batch_bytes = 3
+        }),
+        ("max_ipc_payload_bytes", |required| {
+            required.max_ipc_payload_bytes = 3
+        }),
+        ("max_blob_bytes", |required| required.max_blob_bytes = 3),
+        ("max_input_bytes", |required| required.max_input_bytes = 3),
+        ("max_step_budget_per_tick", |required| {
+            required.max_step_budget_per_tick = 3
+        }),
+        ("max_transitions_per_tick", |required| {
+            required.max_transitions_per_tick = 3
+        }),
+        ("max_open_gates", |required| required.max_open_gates = 3),
+        ("max_signal_subscriptions", |required| {
+            required.max_signal_subscriptions = 3
+        }),
+        ("max_incident_emissions", |required| {
+            required.max_incident_emissions = 3
+        }),
+        ("max_transitions", |required| required.max_transitions = 3),
+        ("max_journal_bytes_total", |required| {
+            required.max_journal_bytes_total = 3
+        }),
+        ("max_value_store_entries", |required| {
+            required.max_value_store_entries = 3
+        }),
+        ("max_cost_units", |required| required.max_cost_units = 3),
+    ];
+    let uniform_two = descriptor(2);
+    let larger = descriptor(3);
+    validate_descriptor(&uniform_two)?;
+    validate_descriptor(&larger)?;
+    for (name, raise) in raise {
+        let mut required = descriptor(1);
+        raise(&mut required);
+        validate_descriptor(&required)?;
+        let exact = required;
+        assert_eq!(
+            validate_recorded_budget_limits(&exact, &required),
+            Ok(()),
+            "{name}: sufficient exact control"
+        );
+        assert_eq!(
+            validate_recorded_budget_limits(&larger, &required),
+            Ok(()),
+            "{name}: sufficient larger control"
+        );
+        let before = postcard::to_allocvec(&uniform_two)?;
+        assert_eq!(
+            validate_recorded_budget_limits(&uniform_two, &required),
+            Err(cannot_resume_error("admission_budget_insufficient")),
+            "{name}: only the elevated required dimension exceeds recorded limits"
+        );
+        assert_eq!(postcard::to_allocvec(&uniform_two)?, before, "{name}");
+    }
     Ok(())
 }
