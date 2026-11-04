@@ -12,6 +12,7 @@
 #![allow(clippy::len_zero)]
 
 pub mod bin_common;
+pub mod byte_flip_mutation;
 
 pub mod boundary_target;
 pub mod expression_target;
