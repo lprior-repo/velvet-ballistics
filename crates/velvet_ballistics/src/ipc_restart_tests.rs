@@ -199,7 +199,9 @@ fn assert_open_ask_history(events: &[vb_storage::JournalEvent]) {
 
 #[test]
 fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> TestResult {
-    let dir = tempfile::tempdir()?;
+    let dir = tempfile::Builder::new()
+        .prefix("vb68-")
+        .tempdir_in("/tmp")?;
     let db = dir.path().join("journal");
     let first_socket = dir.path().join("first.sock");
     let second_socket = dir.path().join("second.sock");
@@ -235,9 +237,11 @@ fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> Tes
             Some(ticket)
         );
         assert_eq!(session.service.journal.events_for_run(run)?, history);
+        assert!(session.service.journal.run_header(run)?.is_none());
         (ticket, history)
     };
     let mut session = RestartSession::open(&db, &second_socket)?;
+    assert!(session.service.journal.run_header(run)?.is_none());
     assert_eq!(
         session.service.journal.events_for_run(run)?,
         original_history
@@ -305,6 +309,37 @@ fn socket_submitted_scalar_ask_survives_graceful_close_and_fjall_reopen() -> Tes
         if *slot == original_ticket.answer_slot()
             && value.as_deref() == Some(expected_answer.as_slice())
     )));
+    let (finish_index, result_slot) = completed
+        .iter()
+        .enumerate()
+        .find_map(|(index, event)| match event {
+            vb_storage::JournalEvent::RunFinished { result, .. } => Some((index, *result)),
+            _ => None,
+        })
+        .ok_or("run completion missing")?;
+    assert_eq!(result_slot, SlotIdx::new(1));
+    let final_result_write = completed
+        .get(..finish_index)
+        .ok_or("completion position missing")?
+        .iter()
+        .rev()
+        .find_map(|event| match event {
+            vb_storage::JournalEvent::SlotWrittenEvent { slot, value, .. }
+                if *slot == result_slot =>
+            {
+                Some(value)
+            }
+            _ => None,
+        })
+        .ok_or("result slot was not written before completion")?;
+    let final_result = final_result_write
+        .as_deref()
+        .ok_or("final result slot write did not capture a value")?;
+    assert_eq!(final_result, expected_answer.as_slice());
+    assert_eq!(
+        postcard::from_bytes::<SlotValue>(final_result)?,
+        SlotValue::I64(77)
+    );
     session.shutdown(104)?;
     assert_eq!(session.service.journal.events_for_run(run)?, completed);
     Ok(())
