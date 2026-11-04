@@ -1279,7 +1279,6 @@ mod tests {
                 JournalEvent::PolicyDecisionEvent { .. } => Ok(false),
                 JournalEvent::GateDecisionEvent { .. } => Ok(false),
                 JournalEvent::CompatibilityDecisionEvent { .. } => Ok(false),
-                JournalEvent::CapabilityGrantEvent { .. } => Ok(false),
             }
         }
     };

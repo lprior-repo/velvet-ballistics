@@ -706,6 +706,8 @@ fn trace_one_run_continuation_uses_carrier_header() -> Result<(), Box<dyn std::e
         })
     );
     Ok(())
+}
+
 fn make_ticket() -> ActionTicket {
     ActionTicket {
         run: make_run_id(1),

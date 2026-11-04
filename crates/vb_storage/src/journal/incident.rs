@@ -200,7 +200,6 @@ fn is_lifecycle_affecting(event: &JournalEvent) -> bool {
         JournalEvent::PolicyDecisionEvent { .. }
             | JournalEvent::GateDecisionEvent { .. }
             | JournalEvent::CompatibilityDecisionEvent { .. }
-            | JournalEvent::CapabilityGrantEvent { .. }
             | JournalEvent::RunContinuation { .. }
     )
 }
@@ -243,7 +242,6 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::PolicyDecisionEvent { .. } => LifecycleState::Active,
         JournalEvent::GateDecisionEvent { .. } => LifecycleState::Active,
         JournalEvent::CompatibilityDecisionEvent { .. } => LifecycleState::Active,
-        JournalEvent::CapabilityGrantEvent { .. } => LifecycleState::Active,
     }
 }
 

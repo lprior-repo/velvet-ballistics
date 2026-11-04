@@ -11,31 +11,16 @@ where
     match kind {
         RecordKind::PolicyDecision => deserialize_policy_decision(variant),
         RecordKind::GateDecision => deserialize_gate_decision(variant),
-        RecordKind::CapabilityGrant => deserialize_capability_grant(variant),
+        // Retired: pre-migration grant records decode to an explicit
+        // error instead of a resurrected variant. Tag 46 stays reserved
+        // in RecordKind so old records fail loudly, never silently.
+        RecordKind::CapabilityGrant => Err(de::Error::custom(
+            "capability grant records are retired; reissue under the scoped grant lifecycle",
+        )),
         _ => Err(de::Error::custom(
             "record kind is not a policy decision event",
         )),
     }
-}
-
-fn deserialize_capability_grant<'de, A>(variant: A) -> Result<JournalEvent, A::Error>
-where
-    A: VariantAccess<'de>,
-{
-    let payload: (
-        vb_core::RunId,
-        crate::EventSeq,
-        vb_core::capability_grant::CapabilityGrant,
-    ) = variant.newtype_variant()?;
-    let (run, seq, grant) = payload;
-    if grant.run != run {
-        return Err(de::Error::custom(format_args!(
-            "CapabilityGrantEvent outer run {} must equal grant.run {}",
-            run.get(),
-            grant.run.get()
-        )));
-    }
-    Ok(JournalEvent::CapabilityGrantEvent { run, seq, grant })
 }
 
 fn deserialize_gate_decision<'de, A>(variant: A) -> Result<JournalEvent, A::Error>

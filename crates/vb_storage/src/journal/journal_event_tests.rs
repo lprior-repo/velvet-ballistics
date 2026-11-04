@@ -459,6 +459,44 @@ fn parse_event_rejects_unknown_record_kind() {
 }
 
 // =========================================================================
+// parse_event — error variant: retired CapabilityGrant (tag 46)
+// =========================================================================
+
+#[test]
+fn parse_event_rejects_retired_capability_grant_record() {
+    // Given: a current-schema record whose envelope AND payload tag both
+    // name the retired capability-grant kind (46). Tag 46 stays reserved
+    // in RecordKind so pre-migration records fail loudly instead of
+    // decoding into a resurrected variant. The payload tag is the
+    // postcard varint for 46 followed by opaque retired body bytes; the
+    // retired policy arm errors before reading the body.
+    let mut payload_bytes = postcard::to_allocvec(&46u16).unwrap();
+    payload_bytes.extend_from_slice(&[0u8; 8]);
+    let bytes = crate::codec::payload::encode_record_payload(
+        MAGIC_JOURNAL_EVENT,
+        crate::RecordKind::CapabilityGrant,
+        0,
+        &payload_bytes,
+        payload_bytes.len() as u32,
+    )
+    .unwrap();
+
+    // When: parse_event is called
+    let result = parse_event(&bytes);
+
+    // Then: returns Err, never a resurrected event. postcard 1.x erases
+    // serde custom messages (`Error::SerdeDeCustom`), so the retired
+    // wording in the policy arm is source-level documentation only; the
+    // runtime contract pinned here is that tag-46 records always fail.
+    // If a live grant variant is ever re-added, this decodes Ok and the
+    // test below fails.
+    match result {
+        Err(JournalError::PostcardDecodeFailed(_)) => {}
+        other => panic!("expected PostcardDecodeFailed, got {:?}", other),
+    }
+}
+
+// =========================================================================
 // parse_event — boundary: minimum and maximum payload
 // =========================================================================
 

@@ -400,11 +400,6 @@ pub enum JournalEvent {
         /// Complete compatibility decision record.
         decision: vb_core::compat::CompatDecision,
     },
-    /// Journaled MASTER §77.10 capability grant. Appended at the end
-    /// of the enum so no existing variant changes position. Carries
-    /// historical grant evidence only: replay validates the grant's
-    /// structure and never authorizes a new live effect from it.
-    CapabilityGrantEvent {
     /// Run admission receipt carrying the admitted aggregate budget
     /// (MASTER §77.18). Appended at the end of the enum; no existing
     /// variant was renumbered. Identical in meaning to `RunAdmission`
@@ -416,8 +411,6 @@ pub enum JournalEvent {
         run: RunId,
         /// Per-run sequence.
         seq: EventSeq,
-        /// Complete capability grant record.
-        grant: vb_core::capability_grant::CapabilityGrant,
         /// Compiled artifact digest admitted for this run.
         artifact_digest: WorkflowDigest,
         /// Canonical typed input identity, or explicit historical absence.

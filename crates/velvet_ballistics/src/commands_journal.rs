@@ -323,6 +323,9 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
                 (
                     "prior_seq",
                     serde_json::Value::from(carrier.header().prior_seq().get()),
+                ),
+            ],
+        },
         JournalEvent::RetryCheckpoint {
             seq, step, attempt, ..
         } => TraceEntry {
@@ -427,6 +430,9 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
                 (
                     "layer",
                     serde_json::Value::from(format!("{:?}", decision.layer)),
+                ),
+            ],
+        },
         JournalEvent::GateDecisionEvent { seq, run, record } => TraceEntry {
             index: idx,
             event_type: "GateDecision",
