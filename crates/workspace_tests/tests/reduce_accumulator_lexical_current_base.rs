@@ -144,7 +144,9 @@ fn local_accumulator_precedes_outer_step_id_without_hiding_explicit_steps() -> T
 fn global_output_and_step_name_ambiguity_remains_an_error() -> TestResult {
     let prefix = "  - id: total\n    set:\n      output: increment\n      value: \"7\"\n  - id: seed\n    set:\n      output: total\n      value: \"99\"\n";
     let suffix = "  - id: done\n    finish:\n      result: \"$total\"\n";
-    let errors = match compile_workflow(source(prefix, "$total + 1", suffix).as_bytes()) {
+    let expression = "$total + 1";
+    assert_run(&source(prefix, expression, FINISH), &[2, 9], 12)?;
+    let errors = match compile_workflow(source(prefix, expression, suffix).as_bytes()) {
         Err(errors) => errors,
         Ok(_) => return Err("global ambiguous reference was accepted".into()),
     };
