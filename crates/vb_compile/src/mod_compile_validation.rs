@@ -10,6 +10,7 @@ mod part_06;
 mod part_07;
 mod part_08;
 mod part_09;
+mod part_10;
 
 pub(crate) use canonical_guarded_shape::*;
 pub(crate) use part_01::*;

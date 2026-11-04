@@ -6,6 +6,9 @@ mod fixtures;
 #[path = "vb_c4hzw_historical_replay/policy_dispatch.rs"]
 mod policy_dispatch;
 
+#[path = "vb_hk1j8_fixture/scoped_grant_fixture.rs"]
+mod scoped_grant_fixture;
+
 use std::sync::Arc;
 
 use vb_core::ids::{ActionId, RunId, SlotIdx};
@@ -73,10 +76,24 @@ fn run_historical_replay_test() -> Result<(), Box<dyn std::error::Error>> {
         .lookup_pending_action_ticket(run, 0)
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(&artifact, ticket.clone(), scope())?;
+    let (scoped, dispatch) = scoped_grant_fixture::issue_scoped(
+        &catalog,
+        &artifact,
+        &grant,
+        ticket.clone(),
+        scope(),
+        23,
+    )?;
 
     let register_path = dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
-    let receipt = runtime.execute_registered_action(&mut adapter, run, 0, &grant)?;
+    let receipt = runtime.execute_registered_action(
+        &mut adapter,
+        run,
+        0,
+        &grant,
+        vb_core::ScopedDispatch::new(&scoped, &dispatch, &[]),
+    )?;
 
     assert_eq!(receipt.value(), 100);
     assert_eq!(adapter.effect_count()?, 1);

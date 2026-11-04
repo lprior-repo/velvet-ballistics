@@ -2,7 +2,7 @@ use super::support::{TestResult, checkpoint, fixture};
 use vb_core::ids::SlotIdx;
 use vb_core::root_bundle::{OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 #[test]
 fn cap_mismatch_checkpoint_less_than_workflow() -> TestResult<()> {
@@ -11,6 +11,7 @@ fn cap_mismatch_checkpoint_less_than_workflow() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         4,
@@ -43,6 +44,7 @@ fn cap_mismatch_checkpoint_zero() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         4,
@@ -74,6 +76,7 @@ fn arena_limit_exceeded_symbols() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         4,
