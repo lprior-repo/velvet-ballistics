@@ -16,87 +16,9 @@ use vb_core::{
     WorkflowError, WorkflowParts,
 };
 
-pub(super) fn lower_canonical_aggregate(
-    index: usize,
-    id: StepIdx,
-    input: &str,
-    initial: &str,
-    body: &[crate::StepAst],
-    next: Option<StepIdx>,
-    builder: &mut SlotCompiler,
-) -> Result<(), CompileErrors> {
-    let input = slot_from_text(input, index, "aggregate.input")?;
-    builder.record_slot(input);
-    let initial_input = builder
-        .allocate_slot()
-        .map_err(|e| CompileErrors(vec![e]))?;
-    let next_item = builder
-        .allocate_slot()
-        .map_err(|e| CompileErrors(vec![e]))?;
-    let iterator_slot = builder
-        .allocate_slot()
-        .map_err(|e| CompileErrors(vec![e]))?;
-    let accumulator = builder
-        .allocate_slot()
-        .map_err(|e| CompileErrors(vec![e]))?;
-    let initial = parse_i64_field(initial, index, "aggregate.initial")?;
-    let initial = builder
-        .push_constant(ConstValue::I64(initial))
-        .map_err(|e| CompileErrors(vec![e]))?;
-    let start =
-        checked_step_offset(id, 1, "aggregate", "start").map_err(|e| CompileErrors(vec![e]))?;
-    let body_step =
-        checked_step_offset(id, 2, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
-    let next_step =
-        checked_step_offset(id, 3, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
-    let done =
-        checked_step_offset(id, 4, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
-    builder.push_node(node(
-        id,
-        CompiledNodeKind::Copy { source: input },
-        Some(initial_input),
-        Some(start),
-    ));
-    builder.push_node(node(
-        start,
-        CompiledNodeKind::ReduceStart {
-            input: initial_input,
-            accumulator,
-            initial,
-            body: body_step,
-            done,
-        },
-        Some(iterator_slot),
-        None,
-    ));
-    emit_single_body_set(
-        body,
-        body_step,
-        index,
-        accumulator,
-        Some(next_step),
-        builder,
-        false,
-    )?;
-    builder.push_node(node(
-        next_step,
-        CompiledNodeKind::ReduceNext {
-            iterator_slot,
-            accumulator,
-            body: body_step,
-            done,
-        },
-        Some(next_item),
-        None,
-    ));
-    builder.push_node(node(
-        done,
-        CompiledNodeKind::ReduceFinish { accumulator },
-        Some(accumulator),
-        next,
-    ));
-    Ok(())
-}
+#[path = "canonical_reduce.rs"]
+mod canonical_reduce;
+pub(super) use canonical_reduce::{ReduceLowering, lower_canonical_aggregate};
 
 #[path = "canonical_repeat.rs"]
 mod canonical_repeat;
