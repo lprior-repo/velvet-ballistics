@@ -15,10 +15,26 @@ pub(crate) fn read_file(
     match std::fs::read(path) {
         Ok(bytes) => Ok(bytes),
         Err(e) => {
-            let message = format!("error reading {}: {e}", path.display());
+            let message = format!(
+                "error reading {}: {}: {e}",
+                path.display(),
+                io_error_kind(&e)
+            );
             write_failure_message(&message, output, exit_code);
             Err(exit_code.into())
         }
+    }
+}
+
+/// Stable machine-readable kind for an IO error, ahead of the OS detail.
+pub(crate) fn io_error_kind(error: &std::io::Error) -> &'static str {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => "file_not_found",
+        std::io::ErrorKind::IsADirectory => "is_directory",
+        std::io::ErrorKind::PermissionDenied => "permission_denied",
+        // ELOOP (40 on Linux) has no stable ErrorKind yet.
+        _ if error.raw_os_error() == Some(40) => "too_many_symlinks",
+        _ => "io_error",
     }
 }
 
@@ -56,6 +72,27 @@ pub(crate) fn parse_run_id(raw: &str, output: OutputFormat) -> Result<vb_core::R
             Err(CliExitCode::ValidationFailed.into())
         }
     }
+}
+
+/// Rejects read commands aimed at a database directory that does not exist.
+///
+/// Opening a missing path would silently create an empty journal and report
+/// "no events found", hiding a typo'd `--db`. Writer commands (submit, run,
+/// ipc-serve) must keep creating, so they do not use this guard.
+pub(crate) fn check_journal_dir(
+    db: &std::path::Path,
+    output: OutputFormat,
+) -> Result<(), ExitCode> {
+    if db.exists() {
+        return Ok(());
+    }
+    let msg = format!("journal directory does not exist: {}", db.display());
+    if output != OutputFormat::Text {
+        write_failure_message(&msg, output, CliExitCode::StorageError);
+    } else {
+        errln!("{msg}");
+    }
+    Err(CliExitCode::StorageError.into())
 }
 
 pub(crate) fn report_storage_open_error(

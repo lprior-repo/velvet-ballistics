@@ -9,7 +9,7 @@ use super::support::{TestResult, checkpoint, fixture};
 use vb_core::ids::SlotIdx;
 use vb_core::root_bundle::OwnedRootBundle;
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 fn canonical_case(values: Vec<i64>) -> TestResult<()> {
     let frame_count = u16::try_from(values.len())?;
@@ -22,6 +22,7 @@ fn canonical_case(values: Vec<i64>) -> TestResult<()> {
                 Ok(CompiledInputSlot {
                     slot,
                     kind: InputSlotKind::I64,
+                    constraint: CompiledInputConstraint::unconstrained(),
                 })
             },
         )

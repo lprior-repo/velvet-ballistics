@@ -36,11 +36,20 @@ pub(super) fn positional_str(
 
 pub(super) fn named_flag(args: &[OsString], flag: &str) -> Option<String> {
     for (i, arg) in args.iter().enumerate() {
-        if arg == flag {
+        let Some(token) = arg.to_str() else {
+            continue;
+        };
+        if token == flag {
             return args
                 .get(i.checked_add(1)?)
                 .and_then(|v| v.to_str())
                 .map(String::from);
+        }
+        if let Some(value) = token
+            .strip_prefix(flag)
+            .and_then(|rest| rest.strip_prefix('='))
+        {
+            return Some(String::from(value));
         }
     }
     None
@@ -77,29 +86,99 @@ pub(super) fn has_subcommand_help(args: &[OsString]) -> bool {
     }
 }
 
+/// Maximum positional arguments accepted per command, when the command's
+/// parser is positional-countable. Commands with bespoke parsers return None.
+fn max_positionals(command: &str) -> Option<usize> {
+    match command {
+        "validate" | "verify" | "explain" | "compile" | "bench-run" | "graph" | "simulate"
+        | "run" | "run-compiled" | "submit" | "inspect" | "events" | "replay" | "resume"
+        | "incident" | "retry" | "trace" | "cancel" | "answer" | "ai-context" => Some(1),
+        "diff" => Some(2),
+        "ipc-serve" | "doctor" => Some(0),
+        _ => None,
+    }
+}
+
+/// Value flags whose value is a filesystem path and must not be empty.
+const PATH_VALUE_FLAGS: &[&str] = &[
+    "--db",
+    "--out",
+    "--input-bin",
+    "--socket",
+    "--value-file",
+    "--step-input",
+];
+
 pub(super) fn validate_known_flags(
     args: &[OsString],
     command: &'static str,
 ) -> Result<(), ParseError> {
     let mut index = 2_usize;
+    let mut seen_value_flags: Vec<&str> = Vec::new();
+    let mut positionals = 0_usize;
     while index < args.len() {
         let raw = args.get(index).ok_or_else(argument_index_overflow)?;
         let token = raw
             .to_str()
             .ok_or_else(|| ParseError::InvalidArgument("invalid UTF-8 argument".into()))?;
         if token.starts_with('-') {
-            let spec = super::flag_spec::known_flag_spec(command, token).ok_or_else(|| {
+            let (flag_name, attached) = match token.split_once('=') {
+                Some((name, value)) => (name, Some(value)),
+                None => (token, None),
+            };
+            let spec = super::flag_spec::known_flag_spec(command, flag_name).ok_or_else(|| {
                 ParseError::UnknownFlag {
                     command,
                     flag: token.into(),
                 }
             })?;
+            if let super::flag_spec::FlagSpec::Value(name) = spec {
+                if seen_value_flags.contains(&name) {
+                    return Err(ParseError::InvalidArgument(format!(
+                        "duplicate flag: {name}"
+                    )));
+                }
+                seen_value_flags.push(name);
+                if let Some(value) = attached {
+                    if attached_value_invalid(name, value) {
+                        return Err(invalid_flag_value(command, name, value));
+                    }
+                    validate_flag_value_domain(command, name, value)?;
+                    index = advance_arg_index(index, 1_usize)?;
+                    continue;
+                }
+            } else if attached.is_some() {
+                return Err(ParseError::InvalidArgument(format!(
+                    "flag {flag_name} does not take a value"
+                )));
+            }
             index = validate_flag_value(args, index, command, spec)?;
         } else {
+            positionals = positionals
+                .checked_add(1)
+                .ok_or_else(argument_index_overflow)?;
+            if let Some(max) = max_positionals(command)
+                && positionals > max
+            {
+                return Err(ParseError::InvalidArgument(format!(
+                    "unexpected argument: {token}"
+                )));
+            }
             index = advance_arg_index(index, 1_usize)?;
         }
     }
     Ok(())
+}
+
+fn attached_value_invalid(name: &str, value: &str) -> bool {
+    value.is_empty() && PATH_VALUE_FLAGS.contains(&name)
+}
+
+fn invalid_flag_value(command: &str, name: &str, value: &str) -> ParseError {
+    let _ = command;
+    ParseError::InvalidArgument(format!(
+        "empty value for {name}: a non-empty value is required (got {value:?})"
+    ))
 }
 
 fn validate_flag_value(
@@ -118,6 +197,9 @@ fn validate_flag_value(
                 .ok_or(ParseError::MissingArgument(name))?;
             if value.starts_with("--") {
                 return Err(ParseError::MissingArgument(name));
+            }
+            if value.is_empty() && PATH_VALUE_FLAGS.contains(&name) {
+                return Err(invalid_flag_value(command, name, value));
             }
             validate_flag_value_domain(command, name, value)?;
             advance_arg_index(index, 2_usize)
@@ -164,7 +246,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<super::types::Command, Par
         .ok_or(ParseError::NoCommand)?;
 
     match subcommand {
-        "help" | "--help" | "-h" => Ok(super::types::Command::Help),
+        "help" | "--help" | "-h" => Ok(super::types::Command::Help { command: None }),
         "version" | "--version" | "-V" => Ok(super::types::Command::Version),
         "agent-context" | "ai-context" | "status" | "system" | "action" | "verify" | "validate"
         | "explain" | "compile" | "run" | "run-compiled" | "ipc-serve" | "inspect" | "events"
@@ -172,7 +254,9 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<super::types::Command, Par
         | "diff" | "incident" | "simulate" | "submit" | "cancel"
             if has_subcommand_help(args) =>
         {
-            Ok(super::types::Command::Help)
+            Ok(super::types::Command::Help {
+                command: Some(subcommand.into()),
+            })
         }
         "agent-context" => super::other::parse_agent_context(args),
         "ai-context" => super::other::parse_ai_context(args),

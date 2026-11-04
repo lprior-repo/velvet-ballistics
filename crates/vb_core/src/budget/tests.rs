@@ -3,8 +3,8 @@
 use crate::budget::{
     AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,
     AggregateResourceUsage, BoundednessPolicy, BudgetError, BudgetExhaustionOutcome,
-    RemainingBudget, RemainingBudgetError, WholeWorkflowBudget, check_tenant_quota,
-    validate_aggregate_budget,
+    RemainingBudget, RemainingBudgetError, WholeWorkflowBudget, check_global_quota,
+    check_tenant_quota, validate_aggregate_budget,
 };
 use crate::engine::StepBudget;
 use crate::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx};
@@ -7927,6 +7927,25 @@ fn budget_dimensions_tenant_quota_checked_add_and_cap() {
         check_tenant_quota(u64::MAX, 1, u64::MAX),
         Err(AggregateBudgetError::Overflow {
             resource: "tenant_quota_cost_units",
+        })
+    );
+}
+
+#[test]
+fn budget_dimensions_global_quota_checked_add_and_cap() {
+    assert_eq!(
+        check_global_quota(5, 6, 10),
+        Err(AggregateBudgetError::CapacityExceeded {
+            resource: "global_quota_cost_units",
+            requested: 11,
+            available: 10,
+        })
+    );
+    assert!(check_global_quota(5, 5, 10).is_ok(), "at-quota admits");
+    assert_eq!(
+        check_global_quota(u64::MAX, 1, u64::MAX),
+        Err(AggregateBudgetError::Overflow {
+            resource: "global_quota_cost_units",
         })
     );
 }

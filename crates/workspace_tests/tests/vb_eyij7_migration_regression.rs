@@ -260,7 +260,7 @@ fn vb_yaml_parse_yaml_events_is_ok_for_valid_yaml() -> Result<(), Box<dyn std::e
 fn vb_yaml_rejects_duplicate_keys_with_specific_error() -> Result<(), Box<dyn std::error::Error>> {
     let yaml = "version: a\nversion: b\n";
     match vb_yaml::validate_yaml_profile(yaml) {
-        Err(vb_yaml::YamlError::DuplicateKey { key }) => {
+        Err(vb_yaml::YamlError::DuplicateKeyAt { key, .. }) => {
             if key.as_ref() != "version" {
                 return Err(format!("Expected DuplicateKey for 'version', got key={}", key).into());
             }

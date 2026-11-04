@@ -19,7 +19,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_repeat(
         return Err(field_error(
             index,
             "repeat.max_attempts",
-            "non-empty primitive field",
+            "a value of at least 1 (got 0)",
         ));
     }
     if body.is_empty() {

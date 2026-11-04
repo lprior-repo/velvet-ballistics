@@ -7,6 +7,9 @@
 #[path = "vb_7x0ol_probe_registered_executor/policy_dispatch.rs"]
 mod policy_dispatch;
 
+#[path = "vb_hk1j8_fixture/scoped_grant_fixture.rs"]
+mod scoped_grant_fixture;
+
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
@@ -19,6 +22,7 @@ use vb_core::value::SlotValue;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
+use vb_core::{GrantDispatchContext, ScopedGrant};
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
@@ -169,6 +173,8 @@ fn execute_registered_action_commits_one_effect_and_completes_run() -> TestResul
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
+    let (scoped, dispatch) =
+        scoped_grant_fixture::issue_scoped(&catalog, &artifact, &grant, ticket, scope(), 1)?;
 
     let register_path = dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
@@ -177,6 +183,7 @@ fn execute_registered_action_commits_one_effect_and_completes_run() -> TestResul
         run,
         u64::from(StepIdx::ZERO.get()),
         &grant,
+        vb_core::ScopedDispatch::new(&scoped, &dispatch, &[]),
     )?;
 
     assert_eq!(receipt.value(), 42);
@@ -245,6 +252,8 @@ fn reconcile_registered_action_reads_receipt_without_new_effect() -> TestResult 
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
+    let (scoped, dispatch) =
+        scoped_grant_fixture::issue_scoped(&catalog, &artifact, &grant, ticket, scope(), 2)?;
 
     let register_path = dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
@@ -253,6 +262,7 @@ fn reconcile_registered_action_reads_receipt_without_new_effect() -> TestResult 
         run,
         u64::from(StepIdx::ZERO.get()),
         &grant,
+        vb_core::ScopedDispatch::new(&scoped, &dispatch, &[]),
     )?;
     assert_eq!(adapter.effect_count()?, 1);
 
@@ -262,6 +272,8 @@ fn reconcile_registered_action_reads_receipt_without_new_effect() -> TestResult 
         run,
         u64::from(StepIdx::ZERO.get()),
         &grant,
+        &scoped,
+        &dispatch,
     )?;
     assert_eq!(reconciled, first);
     assert_eq!(
@@ -336,6 +348,14 @@ fn execute_registered_action_rejects_mismatched_grant_artifact() -> TestResult {
         &[other_pack],
     )?;
     let forged_grant = catalog.issue_register_grant(&other_artifact, ticket, scope())?;
+    let (forged_scoped, forged_dispatch) = scoped_grant_fixture::issue_scoped(
+        &catalog,
+        &other_artifact,
+        &forged_grant,
+        ticket,
+        scope(),
+        3,
+    )?;
 
     // Configure live allowed policy so policy layer permits execution;
     // grant artifact mismatch is the intended rejection point.
@@ -354,6 +374,7 @@ fn execute_registered_action_rejects_mismatched_grant_artifact() -> TestResult {
         run,
         u64::from(StepIdx::ZERO.get()),
         &forged_grant,
+        vb_core::ScopedDispatch::new(&forged_scoped, &forged_dispatch, &[]),
     );
     assert!(matches!(
         result,

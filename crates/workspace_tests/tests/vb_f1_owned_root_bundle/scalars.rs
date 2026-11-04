@@ -1,7 +1,9 @@
 use vb_core::ids::{ListId, SlotIdx};
 use vb_core::root_bundle::OwnedRootBundle;
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, CompiledWorkflow, InputSlotKind};
+use vb_core::workflow::{
+    CompiledInputConstraint, CompiledInputSlot, CompiledWorkflow, InputSlotKind,
+};
 
 use super::support::{TestResult, checkpoint, fixture};
 
@@ -13,6 +15,7 @@ fn scalar_i64_root_clean_exact_retention() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         1,
         1024,
@@ -54,10 +57,12 @@ fn scalar_list_mixed_roots_valid() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(1),
                 kind: InputSlotKind::List,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         4,
@@ -113,10 +118,12 @@ fn unsorted_root_permutations_same_bundle() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(1),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         2,
@@ -164,6 +171,7 @@ fn different_resource_contract_fails_matches() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         1,
         1024,

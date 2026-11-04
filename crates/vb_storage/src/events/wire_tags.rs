@@ -7,6 +7,7 @@ pub(super) const TAG_RUN_ADMISSION: u16 = RecordKind::RunAdmission.id();
 pub(super) const TAG_RUN_ADMISSION_BOUND: u16 = RecordKind::RunAdmissionBound.id();
 pub(super) const TAG_RUN_ADMISSION_PINNED: u16 = RecordKind::RunAdmissionPinned.id();
 pub(super) const TAG_RUN_ADMISSION_BOUND_PINNED: u16 = RecordKind::RunAdmissionBoundPinned.id();
+pub(super) const TAG_RUN_ADMISSION_BUDGET: u16 = RecordKind::RunAdmissionBudget.id();
 pub(super) const TAG_RETRY_CHECKPOINT: u16 = RecordKind::RetryCheckpoint.id();
 pub(super) const TAG_STEP_STARTED: u16 = RecordKind::StepStarted.id();
 pub(super) const TAG_STEP_SUCCEEDED: u16 = RecordKind::StepSucceeded.id();
@@ -34,6 +35,7 @@ pub(super) const TAG_ASK_TIMED_OUT: u16 = RecordKind::AskTimedOut.id();
 pub(super) const TAG_POLICY_DECISION: u16 = RecordKind::PolicyDecision.id();
 pub(super) const TAG_GATE_DECISION: u16 = RecordKind::GateDecision.id();
 pub(super) const TAG_COMPATIBILITY_DECISION: u16 = RecordKind::CompatibilityDecision.id();
+pub(super) const TAG_CAPABILITY_GRANT: u16 = RecordKind::CapabilityGrant.id();
 
 pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "RunAccepted",
@@ -66,4 +68,6 @@ pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "RunContinuation",
     "GateDecisionEvent",
     "CompatibilityDecisionEvent",
+    "CapabilityGrantEvent",
+    "RunAdmissionBudget",
 ];

@@ -565,6 +565,20 @@ fn trace_one_run_cancelled_maps_correct_fields() {
 }
 
 #[test]
+fn trace_one_run_killed_maps_correct_fields() {
+    let event = JournalEvent::RunKilled {
+        run: make_run_id(1),
+        seq: make_event_seq(19),
+        attempt: 2,
+    };
+    let entry = trace_one(12, &event);
+    assert_eq!(entry.event_type, "RunKilled");
+    assert_eq!(entry.seq, 19);
+    assert_eq!(entry.step, None);
+    assert_eq!(entry.index, 12);
+}
+
+#[test]
 fn trace_one_run_finished_maps_correct_fields() {
     let event = JournalEvent::RunFinished {
         run: make_run_id(1),
@@ -973,4 +987,115 @@ fn analyze_retry_empty_events_cannot_retry() {
     let events: Vec<JournalEvent> = vec![];
     let analysis = analyze_retry(&events);
     assert!(!analysis.can_retry);
+}
+
+fn gate_record(
+    decision: vb_core::manual_gate::GateDecision,
+    outcome: vb_core::manual_gate::GateOutcome,
+) -> Box<vb_core::manual_gate::GateOutcomeRecord> {
+    Box::new(vb_core::manual_gate::GateOutcomeRecord {
+        gate: vb_core::manual_gate::GateId::new(7),
+        run: make_run_id(1),
+        action: make_action_id(3),
+        decision: Some(decision),
+        outcome,
+        approver: None,
+        approver_role: None,
+        requester: vb_core::manual_gate::ApproverId {
+            value: "bob".to_string(),
+        },
+        reason: None,
+        evidence_shown: false,
+        evidence_bundle_digest: vb_core::manual_gate::GateDigest::from_bytes([1u8; 32]),
+        prompt_digest: vb_core::manual_gate::GateDigest::from_bytes([2u8; 32]),
+        escalation_policy_digest: vb_core::manual_gate::GateDigest::from_bytes([3u8; 32]),
+        delegated_to: None,
+        break_glass: false,
+        break_glass_justification: None,
+        opened_at_ms: 0,
+        decided_at_ms: 100,
+        receipt: None,
+    })
+}
+
+#[test]
+fn trace_one_gate_decision_approved_maps_correct_fields() {
+    let event = JournalEvent::GateDecisionEvent {
+        run: make_run_id(1),
+        seq: make_event_seq(9),
+        record: gate_record(
+            vb_core::manual_gate::GateDecision::Approve,
+            vb_core::manual_gate::GateOutcome::Approved,
+        ),
+    };
+    let entry = trace_one(4, &event);
+    assert_eq!(entry.event_type, "GateDecision");
+    assert_eq!(entry.seq, 9);
+    assert_eq!(entry.step, None);
+    assert_eq!(entry.action, Some(3));
+    assert_eq!(entry.status, Some(TraceStatus::Completed));
+    assert_eq!(entry.index, 4);
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| *key == "gate" && *value == serde_json::Value::from(7u64))
+    );
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| *key == "outcome" && *value == serde_json::Value::from("Approved"))
+    );
+}
+
+#[test]
+fn trace_one_gate_decision_denied_maps_failed_status() {
+    let event = JournalEvent::GateDecisionEvent {
+        run: make_run_id(1),
+        seq: make_event_seq(10),
+        record: gate_record(
+            vb_core::manual_gate::GateDecision::Deny,
+            vb_core::manual_gate::GateOutcome::Denied,
+        ),
+    };
+    let entry = trace_one(5, &event);
+    assert_eq!(entry.event_type, "GateDecision");
+    assert_eq!(entry.seq, 10);
+    assert_eq!(entry.status, Some(TraceStatus::Failed));
+}
+
+#[test]
+fn trace_one_compatibility_decision_maps_correct_fields() {
+    let decision = vb_core::CompatDecision::decide(
+        vb_core::CompatInputs {
+            boundary: vb_core::CompatBoundary::IrVersion,
+            held: vb_core::SchemaVersion::new(1, 0, 0),
+            required: vb_core::SchemaVersion::new(1, 0, 0),
+            migration_available: false,
+            replay_only: false,
+        },
+        vb_core::CompatDigests {
+            rule_digest: [7u8; 32],
+            old_schema_digest: [1u8; 32],
+            new_schema_digest: [2u8; 32],
+        },
+    );
+    let event = JournalEvent::CompatibilityDecisionEvent {
+        run: make_run_id(2),
+        seq: make_event_seq(11),
+        decision,
+    };
+    let entry = trace_one(6, &event);
+    assert_eq!(entry.event_type, "CompatibilityDecision");
+    assert_eq!(entry.seq, 11);
+    assert_eq!(entry.step, None);
+    assert_eq!(entry.status, None);
+    assert_eq!(entry.index, 6);
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| *key == "class" && *value == serde_json::Value::from("Identical"))
+    );
 }

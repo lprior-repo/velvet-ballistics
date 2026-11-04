@@ -25,4 +25,7 @@ mod issuance_tests;
 mod issuance_failure_tests;
 
 #[cfg(test)]
+mod issuance_scoped_tests;
+
+#[cfg(test)]
 mod issuance_boundary_tests;

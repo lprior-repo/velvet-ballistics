@@ -15,7 +15,8 @@
 
 use proptest::prelude::*;
 use vb_compile::canonical_digest;
-use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
+use vb_compile::{StepAst, StepPrimitive, TriggerAst, WorkflowSource};
+use vb_yaml::yaml_ast::types::WorkflowSourceParts;
 
 /// Strategy for generating a WorkflowSource with 1-5 steps including Ask variants.
 fn workflow_source_strategy() -> BoxedStrategy<WorkflowSource> {

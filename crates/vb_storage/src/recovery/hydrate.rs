@@ -808,7 +808,8 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
         | JournalEvent::RetryScheduledEvent { .. }
         | JournalEvent::PolicyDecisionEvent { .. }
         | JournalEvent::GateDecisionEvent { .. } => Ok(true),
-        JournalEvent::CompatibilityDecisionEvent { .. } => Ok(true),
+        JournalEvent::CompatibilityDecisionEvent { .. }
+        | JournalEvent::CapabilityGrantEvent { .. } => Ok(true),
         JournalEvent::ActionScheduled { .. }
         | JournalEvent::ActionScheduledTicket { .. }
         | JournalEvent::ActionCompletedEvent { .. }
@@ -817,6 +818,7 @@ fn classify_metadata_event(event: &JournalEvent) -> RecoveryResult<bool> {
         | JournalEvent::ActionAbandoned { .. }
         | JournalEvent::RunAccepted { .. }
         | JournalEvent::RunAdmission { .. }
+        | JournalEvent::RunAdmissionBudget { .. }
         | JournalEvent::RetryCheckpoint { .. }
         | JournalEvent::RunCancelled { .. }
         | JournalEvent::RunKilled { .. }

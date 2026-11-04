@@ -26,7 +26,9 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::RunAccepted { workflow, .. } => {
             summary.workflow = Some(*workflow);
         }
-        JournalEvent::RunAdmission { .. } | JournalEvent::RetryCheckpoint { .. } => {}
+        JournalEvent::RunAdmission { .. }
+        | JournalEvent::RunAdmissionBudget { .. }
+        | JournalEvent::RetryCheckpoint { .. } => {}
         JournalEvent::StepStarted { .. } => {
             summary.steps_started = summary.steps_started.saturating_add(1);
         }
@@ -87,7 +89,8 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         | JournalEvent::RunAnswered { .. }
         | JournalEvent::PolicyDecisionEvent { .. }
         | JournalEvent::GateDecisionEvent { .. } => {}
-        JournalEvent::CompatibilityDecisionEvent { .. } => {}
+        JournalEvent::CompatibilityDecisionEvent { .. }
+        | JournalEvent::CapabilityGrantEvent { .. } => {}
     }
 }
 

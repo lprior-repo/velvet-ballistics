@@ -9,8 +9,8 @@ mod tests {
     };
     use crate::recovery::types::{
         ActionReplayTracker, RecoveredPendingAction, RecoveredStepEntry, RecoveredStepState,
-        RecoveryCannotResumeState, RecoveryError, RecoveryFrameSeed, RecoveryRuntimeSummary,
-        RecoveryTerminalState, UnsupportedRecoveryState,
+        RecoveryCannotResumeState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
+        RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
     };
     use crate::{EventSeq, JournalEvent};
     use vb_core::value::ConstValue;
@@ -348,6 +348,57 @@ mod tests {
         assert!(state.pending_actions);
         assert!(state.pending_asks);
         assert_eq!(state.unsupported_reason(), "pending_actions");
+    }
+
+    // =========================================================================
+    // RecoveryHydration::summary tests (PO-VB-NEW-4/5 behavioral pins)
+    // =========================================================================
+
+    fn sample_summary(run: RunId) -> RecoveryRuntimeSummary {
+        RecoveryRuntimeSummary {
+            run,
+            first_seq: EventSeq::ZERO,
+            last_seq: EventSeq::new(3),
+            workflow: Some(sample_digest(11)),
+            steps_started: 2,
+            steps_succeeded: 1,
+            actions_scheduled: 2,
+            actions_resolved: 1,
+            suspensions: 0,
+            slots_written: 1,
+            terminal: Some(RecoveryTerminalState::Finished {
+                result: SlotIdx::new(0),
+            }),
+        }
+    }
+
+    fn sample_seed(summary: RecoveryRuntimeSummary) -> RecoveryFrameSeed {
+        RecoveryFrameSeed {
+            summary,
+            first_step: StepIdx::ZERO,
+            step_count: 2,
+            slot_count: 1,
+            pc: StepIdx::new(1),
+            steps: Vec::new(),
+            slots: Vec::new(),
+            pending_actions: Vec::new(),
+            unsupported: UnsupportedRecoveryState::SUPPORTED,
+        }
+    }
+
+    #[test]
+    fn hydration_summary_for_summary_returns_payload() {
+        let summary = sample_summary(RunId::new(200));
+        let hydration = RecoveryHydration::from_summary(summary);
+        assert_eq!(hydration.summary(), summary);
+    }
+
+    #[test]
+    fn hydration_summary_for_frame_seed_returns_seed_summary() {
+        let summary = sample_summary(RunId::new(201));
+        let seed = sample_seed(summary);
+        let hydration = RecoveryHydration::from_frame_seed(seed);
+        assert_eq!(hydration.summary(), summary);
     }
 
     // =========================================================================
@@ -1216,6 +1267,7 @@ mod tests {
                 JournalEvent::RetryScheduledEvent { .. } => Ok(true),
                 JournalEvent::RunAccepted { .. } => Ok(false),
                 JournalEvent::RunAdmission { .. } => Ok(false),
+                JournalEvent::RunAdmissionBudget { .. } => Ok(false),
                 JournalEvent::RetryCheckpoint { .. } => Ok(false),
                 JournalEvent::RunCancelled { .. } => Ok(false),
                 JournalEvent::RunKilled { .. } => Ok(false),
@@ -1227,6 +1279,7 @@ mod tests {
                 JournalEvent::PolicyDecisionEvent { .. } => Ok(false),
                 JournalEvent::GateDecisionEvent { .. } => Ok(false),
                 JournalEvent::CompatibilityDecisionEvent { .. } => Ok(false),
+                JournalEvent::CapabilityGrantEvent { .. } => Ok(false),
             }
         }
     };

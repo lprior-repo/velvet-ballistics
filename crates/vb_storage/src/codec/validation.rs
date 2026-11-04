@@ -1,4 +1,8 @@
-use crate::{constants::CURRENT_SCHEMA_VERSION, error::JournalError, records::RecordKind};
+use crate::{
+    compat::wire_version_inputs, constants::CURRENT_SCHEMA_VERSION, error::JournalError,
+    records::RecordKind,
+};
+use vb_core::compat::{CompatBoundary, CompatibilityClass, classify};
 
 const SCHEMA_ONE_VERSION: u16 = 1;
 
@@ -7,15 +11,29 @@ pub(crate) const fn is_schema_one_version(version: u16) -> bool {
 }
 
 pub(crate) fn validate_schema_version(version: u16) -> Result<(), JournalError> {
-    if version == CURRENT_SCHEMA_VERSION || is_schema_one_version(version) {
-        Ok(())
-    } else if version < CURRENT_SCHEMA_VERSION {
-        Err(JournalError::MigrationRequired {
+    // One shared §77.17 seam at the journal-event boundary: an older
+    // major line needs explicit migration, the current line reads as-is,
+    // and anything newer or unknown fails closed. No replay allowance is
+    // declared on this path, so `ReplayOnly` is unreachable; the wildcard
+    // arm fails it closed with every unknown future class.
+    let inputs = wire_version_inputs(
+        CompatBoundary::JournalEventVersion,
+        version,
+        CURRENT_SCHEMA_VERSION,
+        version < CURRENT_SCHEMA_VERSION,
+        false,
+    );
+    match classify(inputs).class {
+        CompatibilityClass::Identical
+        | CompatibilityClass::BackwardCompatible
+        | CompatibilityClass::ForwardCompatible => Ok(()),
+        CompatibilityClass::MigrationRequired => Err(JournalError::MigrationRequired {
             from: version,
             to: CURRENT_SCHEMA_VERSION,
-        })
-    } else {
-        Err(JournalError::UnsupportedSchemaVersion { version })
+        }),
+        CompatibilityClass::ReplayOnly | CompatibilityClass::Rejected | _ => {
+            Err(JournalError::UnsupportedSchemaVersion { version })
+        }
     }
 }
 

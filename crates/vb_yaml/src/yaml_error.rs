@@ -18,6 +18,19 @@ pub enum YamlError {
     #[error("duplicate key found: {key}")]
     DuplicateKey { key: Box<str> },
 
+    #[error("duplicate key found: {key} at line {line}, column {column}")]
+    DuplicateKeyAt {
+        key: Box<str>,
+        line: usize,
+        column: usize,
+    },
+
+    #[error("merge key forbidden at line {line}, column {column}")]
+    MergeKeyForbidden { line: usize, column: usize },
+
+    #[error("unsupported encoding: UTF-16 (save the workflow as UTF-8)")]
+    UnsupportedEncoding,
+
     #[error("anchor/alias/merge key rejected")]
     AnchorAliasMerge,
 
@@ -94,11 +107,13 @@ impl YamlError {
     #[must_use]
     pub fn code(&self) -> SymbolicCode {
         let s: &'static str = match self {
-            Self::DuplicateKey { .. } => "DUPLICATE_KEY",
+            Self::DuplicateKey { .. } | Self::DuplicateKeyAt { .. } => "DUPLICATE_KEY",
             Self::ForbiddenFeature { .. }
             | Self::AnchorAliasMerge
             | Self::CustomTag { .. }
             | Self::BinaryScalar
+            | Self::MergeKeyForbidden { .. }
+            | Self::UnsupportedEncoding
             | Self::MultipleDocuments { .. }
             | Self::AmbiguousScalar { .. }
             | Self::UnsupportedFeature { .. }
@@ -136,11 +151,13 @@ impl HasSymbolicCode for YamlError {
     /// YAML constructs rejected by the strict profile.
     fn symbolic_code(&self) -> SymbolicCode {
         let s: &'static str = match self {
-            YamlError::DuplicateKey { .. } => "DUPLICATE_KEY",
+            YamlError::DuplicateKey { .. } | YamlError::DuplicateKeyAt { .. } => "DUPLICATE_KEY",
             YamlError::ForbiddenFeature { .. }
             | YamlError::AnchorAliasMerge
             | YamlError::CustomTag { .. }
             | YamlError::BinaryScalar
+            | YamlError::MergeKeyForbidden { .. }
+            | YamlError::UnsupportedEncoding
             | YamlError::MultipleDocuments { .. }
             | YamlError::AmbiguousScalar { .. }
             | YamlError::ParseError { .. }
