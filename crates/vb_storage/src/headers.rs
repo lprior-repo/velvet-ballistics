@@ -185,7 +185,10 @@ impl FjallJournal {
     }
 }
 
-fn decode_scanned_header(key: &[u8], value: &[u8]) -> Result<RunHeaderRecord, JournalError> {
+pub(crate) fn decode_scanned_header(
+    key: &[u8],
+    value: &[u8],
+) -> Result<RunHeaderRecord, JournalError> {
     let run = run_from_header_key(key)?;
     let (envelope, header) = decode_record(
         value,

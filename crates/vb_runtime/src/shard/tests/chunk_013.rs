@@ -275,11 +275,7 @@ fn shard_submit_run_admission_append_failure_maps_to_admission_header_persistenc
     assert_eq!(shard.counters().snapshot().runs_submitted, 0);
     match journal.snapshot() {
         Ok(events) => {
-            assert_eq!(events.len(), 1);
-            assert!(matches!(
-                events.first(),
-                Some(RuntimeJournalEvent::RunSubmitted { .. })
-            ));
+            assert!(events.is_empty());
         }
         Err(error) => panic!("journal snapshot failed: {error:?}"),
     }

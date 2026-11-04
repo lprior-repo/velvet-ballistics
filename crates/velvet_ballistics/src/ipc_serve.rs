@@ -215,20 +215,26 @@ fn decode_workflow_parts(
         .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)
 }
 
-// Startup bounds historical headers independently of live-run capacity.
+// Proposed startup work ceilings cover retained headers and journal rows.
 const STARTUP_HEADER_SCAN_LIMIT: usize = 65_536;
+const STARTUP_ENCODED_BYTE_SCAN_LIMIT: usize = 67_108_864;
 
 fn recover_startup(
     service: &IpcJournalService,
     runtime: &mut vb_runtime::runtime::Runtime,
-    max_headers: usize,
-) -> Result<(), vb_storage::headers::RunHeaderScanError<vb_runtime::RuntimeError>> {
-    use vb_storage::headers::RunHeaderScanError;
-    let limit = NonZeroUsize::new(max_headers).ok_or(RunHeaderScanError::InvalidLimit)?;
-    service
-        .journal
-        .try_for_each_run_header_bounded(limit, |header| {
-            match runtime.recover_and_resume(header.run) {
+    max_rows: usize,
+) -> Result<
+    (),
+    vb_storage::journal::startup_discovery::StartupDiscoveryError<vb_runtime::RuntimeError>,
+> {
+    use vb_storage::journal::startup_discovery::StartupDiscoveryError;
+    let limit = NonZeroUsize::new(max_rows).ok_or(StartupDiscoveryError::InvalidLimit)?;
+    service.journal.try_for_each_startup_run_bounded(
+        limit,
+        NonZeroUsize::new(STARTUP_ENCODED_BYTE_SCAN_LIMIT)
+            .ok_or(StartupDiscoveryError::InvalidLimit)?,
+        |run| {
+            match runtime.recover_and_resume(run) {
                 Err(vb_runtime::RuntimeError::RecoveryCannotResume { reason })
                     if reason == "terminal_state" =>
                 {
@@ -240,7 +246,8 @@ fn recover_startup(
                 return Err(vb_runtime::RuntimeError::ShutdownInProgress);
             }
             service.flush_startup_journal()
-        })
+        },
+    )
 }
 
 impl IpcJournalService {
@@ -269,3 +276,7 @@ impl IpcJournalService {
 #[cfg(test)]
 #[path = "ipc_startup_recovery_tests.rs"]
 mod startup_recovery_tests;
+
+#[cfg(test)]
+#[path = "ipc_restart_tests.rs"]
+mod ipc_restart_tests;
