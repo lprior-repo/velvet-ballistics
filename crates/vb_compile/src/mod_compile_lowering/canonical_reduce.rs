@@ -3,7 +3,7 @@
 use super::emit_single_body_set;
 use crate::mod_compile_errors::{CompileError, CompileErrors};
 use crate::mod_compile_lowering::{
-    CanonicalScope, SlotCompiler, checked_step_offset, lower_canonical_set_expression,
+    CanonicalScope, SlotCompiler, checked_step_offset, lower_canonical_set_expression_with_binding,
     parse_i64_field, slot_from_text,
 };
 use vb_core::workflow::node;
@@ -119,20 +119,19 @@ fn lower_body(
         )?;
         return Ok(ExprType::Unknown);
     };
-    let mut outputs = config.scope.outputs.clone();
-    outputs.insert(config.variable.to_owned(), accumulator);
     let mut types = config.scope.slot_types.clone();
     types.insert(accumulator, ExprType::I64);
-    let inferred = lower_canonical_set_expression(
+    let inferred = lower_canonical_set_expression_with_binding(
         id,
         accumulator,
         value,
         Some(next),
         CanonicalScope {
-            outputs: &outputs,
+            outputs: config.scope.outputs,
             step_outputs: config.scope.step_outputs,
             slot_types: &types,
         },
+        config.variable,
         builder,
     )?;
     if inferred != ExprType::I64 {

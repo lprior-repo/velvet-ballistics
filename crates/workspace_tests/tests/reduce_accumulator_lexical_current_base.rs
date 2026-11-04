@@ -30,7 +30,11 @@ fn assert_run(source: &str, input: &[i64], expected: i64) -> TestResult {
         .insert_list(values.clone())
         .map_err(|error| format!("input list allocation failed: {error:?}"))?;
     frame
-        .write_slot_with_taint(SlotIdx::new(8), SlotValue::List(list), Taint::Clean)
+        .write_slot_with_taint(
+            SlotIdx::new(8),
+            SlotValue::List(list),
+            Taint::DerivedFromSecret,
+        )
         .map_err(|error| format!("input binding failed: {error:?}"))?;
     let signal = drive_deterministic_full(
         &workflow,
@@ -56,7 +60,7 @@ fn assert_run(source: &str, input: &[i64], expected: i64) -> TestResult {
         frame
             .read_taint(SlotIdx::new(8))
             .map_err(|error| format!("input taint: {error:?}"))?,
-        Taint::Clean
+        Taint::DerivedFromSecret
     );
     assert_eq!(
         store
@@ -121,6 +125,33 @@ fn accumulator_expression_preserves_the_initial_integer_type() -> TestResult {
             field: "reduce.steps",
             ..
         }
+    )));
+    Ok(())
+}
+
+#[test]
+fn local_accumulator_precedes_outer_step_id_without_hiding_explicit_steps() -> TestResult {
+    let prefix = "  - id: total\n    set:\n      output: increment\n      value: \"7\"\n";
+    let suffix = "  - id: after\n    set:\n      output: answer\n      value: \"$steps.folded + $total + $steps.total + $increment\"\n  - id: done\n    finish:\n      result: \"$steps.after\"\n";
+    assert_run(
+        &source(prefix, "$total + $steps.total", suffix),
+        &[2, 9],
+        45,
+    )
+}
+
+#[test]
+fn global_output_and_step_name_ambiguity_remains_an_error() -> TestResult {
+    let prefix = "  - id: total\n    set:\n      output: increment\n      value: \"7\"\n  - id: seed\n    set:\n      output: total\n      value: \"99\"\n";
+    let suffix = "  - id: done\n    finish:\n      result: \"$total\"\n";
+    let errors = match compile_workflow(source(prefix, "$total + 1", suffix).as_bytes()) {
+        Err(errors) => errors,
+        Ok(_) => return Err("global ambiguous reference was accepted".into()),
+    };
+    assert!(errors.0.iter().any(|error| matches!(
+        error,
+        CompileError::ExpressionLoweringUnsupported { feature }
+            if feature.contains("ambiguous reference")
     )));
     Ok(())
 }
