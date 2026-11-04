@@ -7,6 +7,15 @@ use proptest::prelude::*;
 
 use crate::{parse_yaml_events, validate_yaml_profile};
 
+/// Mirrors the profile's ambiguous-scalar set so generators can exclude
+/// words the profile rejects by design.
+fn is_ambiguous_word(word: &str) -> bool {
+    matches!(
+        word.to_ascii_lowercase().as_str(),
+        "yes" | "no" | "on" | "off" | "y" | "n"
+    )
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Property: Valid simple YAML mapping parses
 // ─────────────────────────────────────────────────────────────────
@@ -14,9 +23,15 @@ use crate::{parse_yaml_events, validate_yaml_profile};
 proptest! {
     #[test]
     fn simple_yaml_mapping_parses(key in "[a-zA-Z][a-zA-Z0-9_]{1,9}", value in "[a-zA-Z][a-zA-Z0-9]{2,10}") {
+        // The profile rejects ambiguous scalars as keys and values by
+        // design; only unambiguous pairs exercise the parse path. The
+        // excluded set is 28 fixed strings against an enormous key space,
+        // so rejects are negligible at any case count.
+        prop_assume!(!is_ambiguous_word(&key));
+        prop_assume!(!is_ambiguous_word(&value));
         let yaml = format!("{}: {}\n", key, value);
         let result = parse_yaml_events(&yaml);
-        assert!(result.is_ok(), "Simple YAML mapping should parse: {}", yaml);
+        prop_assert!(result.is_ok(), "Simple YAML mapping should parse: {}", yaml);
     }
 }
 
@@ -79,18 +94,29 @@ proptest! {
 
 proptest! {
     #[test]
-    fn ambiguous_booleans_rejected(key in "[a-zA-Z][a-zA-Z0-9_]{0,5}", val in "[a-z]{2,4}") {
+    fn ambiguous_booleans_rejected(
+        key in "[a-zA-Z][a-zA-Z0-9_]{0,5}",
+        // Exactly the implementation's ambiguous set: `true`/`false` are
+        // legitimate core-schema bools and must be accepted.
+        val in prop_oneof![
+            Just("yes"),
+            Just("no"),
+            Just("on"),
+            Just("off"),
+            Just("y"),
+            Just("n"),
+        ],
+    ) {
+        // Every generated case executes the assertion: the value strategy
+        // draws only from the reachable ambiguous set, so no case passes
+        // vacuously without asserting.
         let yaml = format!("{}: {}\n", key, val);
-        if ["yes", "no", "on", "off", "true", "false", "True", "False", "TRUE", "FALSE"]
-            .contains(&val.as_str())
-        {
-            let result = validate_yaml_profile(&yaml);
-            assert!(
-                result.is_err(),
-                "YAML 1.1 ambiguous scalar '{}' should be rejected",
-                val
-            );
-        }
+        let result = validate_yaml_profile(&yaml);
+        prop_assert!(
+            result.is_err(),
+            "YAML 1.1 ambiguous scalar '{}' should be rejected",
+            val
+        );
     }
 }
 

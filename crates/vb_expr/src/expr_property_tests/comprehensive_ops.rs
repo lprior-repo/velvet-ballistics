@@ -277,8 +277,10 @@ proptest! {
 // Property: Less-than is antisymmetric.
 proptest! {
     #[test]
-    fn lt_is_antisymmetric(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64) {
-        prop_assume!(a < b);
+    fn lt_is_antisymmetric(b in -1000000i64..=1000000i64, a_gap in 0i64..=1000000i64) {
+        // Ordered by construction: a < b always, zero rejects at any case
+        // count. Values stay within ±3e6, far from i64 overflow.
+        let a = b - a_gap - 1;
         let result_ab = eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(b));
         let result_ba = eval_binary_op(BinaryOp::Lt, SlotValue::I64(b), SlotValue::I64(a));
         prop_assert_eq!(result_ab, Ok(SlotValue::Bool(true)));
@@ -289,12 +291,27 @@ proptest! {
 // Property: Less-than is transitive.
 proptest! {
     #[test]
-    fn lt_is_transitive(a in -1000000i64..=1000000i64, b in -1000000i64..=1000000i64, c in -1000000i64..=1000000i64) {
-        let result_ab = eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(b));
-        let result_bc = eval_binary_op(BinaryOp::Lt, SlotValue::I64(b), SlotValue::I64(c));
-        let result_ac = eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(c));
-        if let (Ok(SlotValue::Bool(true)), Ok(SlotValue::Bool(true))) = (result_ab, result_bc) {
-            assert_eq!(result_ac, Ok(SlotValue::Bool(true)));
-        }
+    fn lt_is_transitive(
+        a in -1000000i64..=1000000i64,
+        b_gap in 0i64..=1000000i64,
+        c_gap in 0i64..=1000000i64,
+    ) {
+        // Ordered by construction, so every case executes the assertions
+        // below with zero rejects. All sums stay within ±4e6, far from
+        // i64 overflow.
+        let b = a + b_gap + 1;
+        let c = b + c_gap + 1;
+        prop_assert_eq!(
+            eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(b)),
+            Ok(SlotValue::Bool(true))
+        );
+        prop_assert_eq!(
+            eval_binary_op(BinaryOp::Lt, SlotValue::I64(b), SlotValue::I64(c)),
+            Ok(SlotValue::Bool(true))
+        );
+        prop_assert_eq!(
+            eval_binary_op(BinaryOp::Lt, SlotValue::I64(a), SlotValue::I64(c)),
+            Ok(SlotValue::Bool(true))
+        );
     }
 }
