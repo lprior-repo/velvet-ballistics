@@ -1,5 +1,11 @@
 //! Cold compiler evidence. A checked candidate is not runtime admission authority.
 
+mod retry_generation;
+pub use retry_generation::{
+    RetryPlanningAttachment, RetryPlanningError, RetryPolicyRecord, decode_retry_planning,
+    encode_retry_planning,
+};
+
 use crate::{CompileErrors, check_idempotency_gates, compile_workflow_with_contracts};
 use vb_core::budget::WholeWorkflowBudget;
 use vb_core::{ActionContract, CompiledWorkflow, WorkflowDigest, WorkflowError};
