@@ -2115,6 +2115,120 @@ fn drive_state_without_admitted_budget_ignores_value_store_count() {
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
     assert_eq!(state.store.total_arena_count(), 1);
 }
+fn gather_items_budget(max_gather_items: u32) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 100,
+        max_action_tickets: 10,
+        max_parallel_in_flight: 10,
+        max_retries_per_action: 10,
+        max_gather_pages: 10,
+        max_gather_items,
+        max_for_each_iterations: 10,
+        max_together_branches: 10,
+        max_repeat_attempts: 10,
+        max_run_time_seconds: 100,
+        max_result_bytes: 100,
+        max_total_slots_written: 100,
+        max_timer_entries: 100,
+        max_trace_events: 100,
+        max_queue_depth: 100,
+        max_journal_batch_bytes: 100,
+        max_ipc_payload_bytes: 100,
+        max_blob_bytes: 100,
+        max_input_bytes: 100,
+        max_step_budget_per_tick: 100,
+        max_transitions_per_tick: 100,
+        max_open_gates: 10,
+        max_signal_subscriptions: 10,
+        max_incident_emissions: 100,
+        max_transitions: 100,
+        max_journal_bytes_total: 100,
+        max_value_store_entries: 100,
+        max_cost_units: 100,
+    }
+}
+
+fn seed_collect_items_consumed(
+    state: &mut crate::shard::types::RunState,
+    run: vb_core::ids::RunId,
+    cursor: usize,
+) {
+    state
+        .collect_states
+        .upsert(crate::primitives::collect::CollectPaginationState {
+            run_id: run,
+            collector_slot: SlotIdx::ZERO,
+            source: vb_core::ids::ListId::new(1),
+            current_page: vb_core::ids::ListId::new(1),
+            cursor,
+            page_size: cursor,
+            item_count: cursor,
+            limit: 100,
+            time_limit_ms: None,
+            start_millis: 0,
+        })
+        .expect("seed collect items");
+}
+
+#[test]
+fn drive_state_fails_when_gather_items_exceed_admitted_limit() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(750);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    seed_collect_items_consumed(&mut state, run, 3);
+    assert_eq!(state.collect_states.total_items_consumed(), 3);
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        gather_items_budget(2),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "gather_items",
+            limit: 2,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_at_gather_items_limit_finishes() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(751);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    seed_collect_items_consumed(&mut state, run, 3);
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        gather_items_budget(3),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_without_admitted_budget_ignores_gather_items() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(752);
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    seed_collect_items_consumed(&mut state, run, 3);
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
 fn transition_budget(max_transitions: u64) -> AggregateResourceBudget {
     AggregateResourceBudget {
         max_steps_executable: 10,

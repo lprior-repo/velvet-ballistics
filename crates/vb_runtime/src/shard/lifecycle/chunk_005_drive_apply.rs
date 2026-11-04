@@ -36,6 +36,7 @@ impl Shard {
         Self::check_steps_executable_budget(state)?;
         Self::check_result_bytes_budget(state, &signal)?;
         Self::check_gather_pages_budget(state)?;
+        Self::check_gather_items_budget(state)?;
         Ok(signal)
     }
 
@@ -501,6 +502,24 @@ impl Shard {
             .map_err(DriveApplyFailure::AfterCommit)?;
         self.apply(run, RuntimeEvent::Fail)
             .map_err(DriveApplyFailure::AfterCommit)
+    }
+
+    fn check_gather_items_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        if state.collect_states.total_items_consumed() > u64::from(budget.max_gather_items) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "gather_items",
+                    limit: u64::from(budget.max_gather_items),
+                },
+            ));
+        }
+        Ok(())
     }
 
     fn apply_drive_result(
