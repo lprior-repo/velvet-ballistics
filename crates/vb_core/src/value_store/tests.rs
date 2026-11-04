@@ -6,7 +6,7 @@ use crate::limits::{
     MAX_BLOB_BYTES_PER_VALUE, MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE,
     MAX_SYMBOL_BYTES_PER_VALUE,
 };
-use crate::value::{SlotValue, Taint};
+use crate::value::{FiniteF64, SlotValue, Taint};
 use bytes::Bytes;
 
 #[test]
@@ -2083,4 +2083,131 @@ fn value_store_default_has_zero_arena_entries() -> Result<(), String> {
     assert_eq!(store.total_arena_count(), 0);
     assert_eq!(store.max_arena_entries(), 0);
     Ok(())
+}
+
+#[test]
+fn deep_size_counts_scalars() -> Result<(), String> {
+    let store = ValueStore::new();
+    let finite = FiniteF64::new(3.14).map_err(|e| e.to_string())?;
+    if store
+        .deep_size(SlotValue::Null)
+        .map_err(|e| e.to_string())?
+        != 0
+    {
+        return Err(String::from("expected Null deep size 0"));
+    }
+    if store
+        .deep_size(SlotValue::Bool(true))
+        .map_err(|e| e.to_string())?
+        != 1
+    {
+        return Err(String::from("expected Bool deep size 1"));
+    }
+    if store
+        .deep_size(SlotValue::I64(-7))
+        .map_err(|e| e.to_string())?
+        != 8
+    {
+        return Err(String::from("expected I64 deep size 8"));
+    }
+    if store
+        .deep_size(SlotValue::F64(finite))
+        .map_err(|e| e.to_string())?
+        != 8
+    {
+        return Err(String::from("expected F64 deep size 8"));
+    }
+    Ok(())
+}
+
+#[test]
+fn deep_size_traverses_nested_list_and_blob() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let blob = store
+        .insert_blob(Bytes::from_static(b"payload"))
+        .map_err(|e| e.to_string())?;
+    let inner = store
+        .insert_list(Box::from([SlotValue::I64(1), SlotValue::Blob(blob)]))
+        .map_err(|e| e.to_string())?;
+    let outer = store
+        .insert_list(Box::from([SlotValue::List(inner), SlotValue::Bool(false)]))
+        .map_err(|e| e.to_string())?;
+    if store
+        .deep_size(SlotValue::Blob(blob))
+        .map_err(|e| e.to_string())?
+        != 7
+    {
+        return Err(String::from("expected blob deep size 7"));
+    }
+    if store
+        .deep_size(SlotValue::List(inner))
+        .map_err(|e| e.to_string())?
+        != 15
+    {
+        return Err(String::from("expected inner list deep size 15"));
+    }
+    if store
+        .deep_size(SlotValue::List(outer))
+        .map_err(|e| e.to_string())?
+        != 16
+    {
+        return Err(String::from("expected outer list deep size 16"));
+    }
+    Ok(())
+}
+
+#[test]
+fn deep_size_counts_shared_entry_once() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let blob = store
+        .insert_blob(Bytes::from_static(b"12345"))
+        .map_err(|e| e.to_string())?;
+    let list = store
+        .insert_list(Box::from([SlotValue::Blob(blob), SlotValue::Blob(blob)]))
+        .map_err(|e| e.to_string())?;
+    if store
+        .deep_size(SlotValue::List(list))
+        .map_err(|e| e.to_string())?
+        != 5
+    {
+        return Err(String::from(
+            "expected shared blob counted once, deep size 5",
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn deep_size_counts_object_keys_and_values() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let key = store
+        .insert_symbol(Box::<str>::from("key"))
+        .map_err(|e| e.to_string())?;
+    let object = store
+        .insert_object(Box::from([ObjectField::clean(key, SlotValue::I64(2))]))
+        .map_err(|e| e.to_string())?;
+    if store
+        .deep_size(SlotValue::Symbol(key))
+        .map_err(|e| e.to_string())?
+        != 3
+    {
+        return Err(String::from("expected symbol deep size 3"));
+    }
+    if store
+        .deep_size(SlotValue::Object(object))
+        .map_err(|e| e.to_string())?
+        != 11
+    {
+        return Err(String::from("expected object deep size 11"));
+    }
+    Ok(())
+}
+
+#[test]
+fn deep_size_rejects_dangling_handle() -> Result<(), String> {
+    let store = ValueStore::new();
+    match store.deep_size(SlotValue::List(ListId::new(0))) {
+        Err(CoreError::ListOutOfBounds { .. }) => Ok(()),
+        other => Err(format!("unexpected result: {other:?}")),
+    }
 }

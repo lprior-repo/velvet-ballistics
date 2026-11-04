@@ -26,6 +26,7 @@ impl Shard {
         Self::check_suspension_budgets(state)?;
         Self::check_value_store_budget(state)?;
         Self::check_cost_budget(state, &signal)?;
+        Self::check_result_budget(state, &signal)?;
         Ok(signal)
     }
 
@@ -163,6 +164,31 @@ impl Shard {
                 vb_core::engine::EngineError::BudgetExceeded {
                     budget: "cost_units",
                     limit: budget.max_cost_units,
+                },
+            ));
+        }
+        Ok(())
+    }
+
+    fn check_result_budget(state: &RunState, signal: &RuntimeSignal) -> RuntimeEngineResult<()> {
+        let RuntimeSignal::Finished(value) = signal else {
+            return Ok(());
+        };
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let size = state
+            .store
+            .deep_size(*value)
+            .map_err(crate::engine::types::RuntimeEngineError::Core)?;
+        if size > u64::from(budget.max_result_bytes) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "result_bytes",
+                    limit: u64::from(budget.max_result_bytes),
                 },
             ));
         }

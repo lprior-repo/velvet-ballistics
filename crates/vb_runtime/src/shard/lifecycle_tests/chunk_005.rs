@@ -1143,3 +1143,130 @@ fn drive_state_without_admitted_budget_drives_to_finish() {
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
     assert_eq!(state.frame.executed(), 11);
 }
+
+fn result_budget(max_result_bytes: u32) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 10,
+        max_action_tickets: 1,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 1,
+        max_gather_pages: 1,
+        max_gather_items: 1,
+        max_for_each_iterations: 1,
+        max_together_branches: 1,
+        max_repeat_attempts: 1,
+        max_run_time_seconds: 10,
+        max_result_bytes,
+        max_total_slots_written: 1,
+        max_timer_entries: 1,
+        max_trace_events: 10,
+        max_queue_depth: 1,
+        max_journal_batch_bytes: 1,
+        max_ipc_payload_bytes: 1,
+        max_blob_bytes: 1,
+        max_input_bytes: 1,
+        max_step_budget_per_tick: 1,
+        max_transitions_per_tick: 1,
+        max_open_gates: 1,
+        max_signal_subscriptions: 1,
+        max_incident_emissions: 1,
+        max_transitions: 10,
+        max_journal_bytes_total: 1,
+        max_value_store_entries: 1000,
+        max_cost_units: 1,
+    }
+}
+
+fn result_budget_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let nodes = vec![vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+        None,
+        None,
+    )];
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("result_budget"),
+        digest: WorkflowDigest::from_bytes([7; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn result_budget_state(run_id: u64) -> Option<crate::shard::types::RunState> {
+    let workflow = result_budget_workflow()?;
+    let run = RunId::new(run_id);
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)?;
+    let blob = state.store.insert_blob(vec![0u8; 100]).ok()?;
+    let list = state
+        .store
+        .insert_list(Box::from([SlotValue::Blob(blob)]))
+        .ok()?;
+    let _ = state.frame.write_slot(SlotIdx::ZERO, SlotValue::List(list));
+    Some(state)
+}
+
+#[test]
+fn drive_state_fails_when_result_bytes_exceed_admitted_limit() {
+    let Some(mut state) = result_budget_state(730) else {
+        return;
+    };
+    let run = RunId::new(730);
+    let digest = state.workflow.digest();
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        result_budget(99),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "result_bytes",
+            limit: 99,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_at_result_byte_limit_finishes() {
+    let Some(mut state) = result_budget_state(731) else {
+        return;
+    };
+    let run = RunId::new(731);
+    let digest = state.workflow.digest();
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        result_budget(100),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_without_admitted_budget_ignores_result_bytes() {
+    let Some(mut state) = result_budget_state(732) else {
+        return;
+    };
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}

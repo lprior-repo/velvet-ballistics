@@ -324,6 +324,88 @@ impl ValueStore {
         self.max_arena_entries
     }
 
+    /// Deep byte size of a value: the sum of the payload bytes of every
+    /// distinct arena value reachable from `value`. A handle contributes
+    /// nothing on its own; symbols contribute their string length, blobs
+    /// their byte length, `I64` and `F64` contribute 8 bytes, `Bool`
+    /// contributes 1 byte, `Null` contributes 0, lists contribute their
+    /// elements, and objects contribute their keys and values. An arena
+    /// entry reached more than once is counted once, so shared subvalues
+    /// cannot inflate the measurement and a reference cycle cannot loop it.
+    pub fn deep_size(&self, value: SlotValue) -> CoreResult<u64> {
+        let mut total: u64 = 0;
+        let mut pending: Vec<SlotValue> = vec![value];
+        let mut seen_symbols: std::collections::BTreeSet<SymbolId> =
+            std::collections::BTreeSet::new();
+        let mut seen_lists: std::collections::BTreeSet<ListId> = std::collections::BTreeSet::new();
+        let mut seen_objects: std::collections::BTreeSet<ObjectId> =
+            std::collections::BTreeSet::new();
+        let mut seen_blobs: std::collections::BTreeSet<BlobId> = std::collections::BTreeSet::new();
+        while let Some(current) = pending.pop() {
+            match current {
+                SlotValue::Null => {}
+                SlotValue::Bool(_) => {
+                    total = total
+                        .checked_add(1)
+                        .ok_or(CoreError::InternalInvariantViolation {
+                            reason: "deep size overflow",
+                        })?;
+                }
+                SlotValue::I64(_) | SlotValue::F64(_) => {
+                    total = total
+                        .checked_add(8)
+                        .ok_or(CoreError::InternalInvariantViolation {
+                            reason: "deep size overflow",
+                        })?;
+                }
+                SlotValue::Symbol(id) => {
+                    if seen_symbols.insert(id) {
+                        let bytes = u64::try_from(self.symbol(id)?.len()).map_err(|_| {
+                            CoreError::InternalInvariantViolation {
+                                reason: "symbol length overflow",
+                            }
+                        })?;
+                        total = total.checked_add(bytes).ok_or(
+                            CoreError::InternalInvariantViolation {
+                                reason: "deep size overflow",
+                            },
+                        )?;
+                    }
+                }
+                SlotValue::List(id) => {
+                    if seen_lists.insert(id) {
+                        for item in self.list(id)? {
+                            pending.push(*item);
+                        }
+                    }
+                }
+                SlotValue::Object(id) => {
+                    if seen_objects.insert(id) {
+                        for field in self.object(id)? {
+                            pending.push(SlotValue::Symbol(field.key));
+                            pending.push(field.value);
+                        }
+                    }
+                }
+                SlotValue::Blob(id) => {
+                    if seen_blobs.insert(id) {
+                        let bytes = u64::try_from(self.blob(id)?.len()).map_err(|_| {
+                            CoreError::InternalInvariantViolation {
+                                reason: "blob length overflow",
+                            }
+                        })?;
+                        total = total.checked_add(bytes).ok_or(
+                            CoreError::InternalInvariantViolation {
+                                reason: "deep size overflow",
+                            },
+                        )?;
+                    }
+                }
+            }
+        }
+        Ok(total)
+    }
+
     /// Checks whether a new arena entry would exceed the cap.
     fn check_arena_cap(&self) -> CoreResult<()> {
         if self.max_arena_entries == 0 {
