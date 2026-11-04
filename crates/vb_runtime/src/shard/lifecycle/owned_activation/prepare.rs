@@ -29,6 +29,7 @@ impl Shard {
             admission: Some(accepted.admission),
             run_started_millis: None,
             collect_states: crate::primitives::collect::CollectStates::new(),
+            journal_bytes_written: 0,
             action_contracts: accepted.contracts,
         })
     }

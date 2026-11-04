@@ -437,6 +437,72 @@ impl Shard {
         Ok(())
     }
 
+    fn journal_batch_bytes(events: &[RuntimeJournalEvent]) -> RuntimeResult<u64> {
+        let mut total: u64 = 0;
+        for event in events {
+            let encoded = postcard::to_allocvec(event).map_err(|_| RuntimeError::EncodeFailed)?;
+            let len = u64::try_from(encoded.len()).map_err(|_| RuntimeError::EncodeFailed)?;
+            total = total
+                .checked_add(len)
+                .ok_or(RuntimeError::EncodeFailed)?;
+        }
+        Ok(total)
+    }
+
+    fn charge_drive_journal_bytes(
+        state: &mut RunState,
+        events: &[RuntimeJournalEvent],
+    ) -> RuntimeResult<bool> {
+        let bytes = Self::journal_batch_bytes(events)?;
+        let next = state
+            .journal_bytes_written
+            .checked_add(bytes)
+            .ok_or(RuntimeError::EncodeFailed)?;
+        let Some(budget) = state.admission.as_ref().and_then(|a| a.budget()) else {
+            state.journal_bytes_written = next;
+            return Ok(true);
+        };
+        if next > budget.max_journal_bytes_total {
+            return Ok(false);
+        }
+        state.journal_bytes_written = next;
+        Ok(true)
+    }
+
+    fn record_drive_journal_bytes(
+        state: &mut RunState,
+        events: &[RuntimeJournalEvent],
+    ) -> RuntimeResult<()> {
+        let bytes = Self::journal_batch_bytes(events)?;
+        state.journal_bytes_written = state
+            .journal_bytes_written
+            .checked_add(bytes)
+            .ok_or(RuntimeError::EncodeFailed)?;
+        Ok(())
+    }
+
+    fn fail_run_on_journal_budget(
+        &mut self,
+        run: RunId,
+        mut state: RunState,
+        trace_events: Vec<TraceEvent>,
+    ) -> Result<(), DriveApplyFailure> {
+        let fallback = [RuntimeJournalEvent::RunFailed {
+            run,
+            attempt: state.run_attempt.get(),
+        }];
+        Self::record_drive_journal_bytes(&mut state, &fallback)
+            .map_err(DriveApplyFailure::BeforeCommit)?;
+        self.append_journal_event_batch(&fallback)
+            .map_err(DriveApplyFailure::BeforeCommit)?;
+        self.push_trace_events(trace_events);
+        let retry_step = state.frame.pc();
+        self.fail_run_state_with_retry_checkpoint(run, retry_step, state)
+            .map_err(DriveApplyFailure::AfterCommit)?;
+        self.apply(run, RuntimeEvent::Fail)
+            .map_err(DriveApplyFailure::AfterCommit)
+    }
+
     fn apply_drive_result(
         &mut self,
         run: RunId,
@@ -472,12 +538,17 @@ impl Shard {
     fn apply_drive_continue(
         &mut self,
         run: RunId,
-        state: RunState,
+        mut state: RunState,
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         let (journal_events, trace_events) = self
             .prepare_evidence_events(run, state.run_attempt.get(), evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
+        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+            .map_err(DriveApplyFailure::BeforeCommit)?
+        {
+            return self.fail_run_on_journal_budget(run, state, trace_events);
+        }
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);

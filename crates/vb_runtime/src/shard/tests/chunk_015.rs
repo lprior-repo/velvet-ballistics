@@ -431,6 +431,7 @@ fn terminal_append_failure_reports_rollback_failure_without_laundering() -> Resu
         admission: None,
         run_started_millis: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     };
 

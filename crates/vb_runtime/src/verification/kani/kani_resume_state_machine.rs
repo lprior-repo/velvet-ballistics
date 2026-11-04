@@ -216,6 +216,7 @@ fn symbolic_run_state(run: RunId) -> Option<RunState> {
         admission: None,
         run_started_millis: None,
         collect_states: Default::default(),
+        journal_bytes_written: 0,
         action_contracts: Vec::new().into_boxed_slice(),
     })
 }

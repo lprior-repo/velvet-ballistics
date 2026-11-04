@@ -43,6 +43,8 @@ pub struct RunCheckpointV1 {
     pub run_started_millis: Option<u64>,
     /// Pagination state and page lineage captured with the state.
     pub collect_states: CollectStatesCheckpointV1,
+    /// Cumulative drive-path journal bytes charged before append.
+    pub journal_bytes_written: u64,
     /// Validated action contracts bound to the accepted artifact.
     pub action_contracts: Box<[ActionContract]>,
 }
@@ -145,6 +147,7 @@ impl RunCheckpointV1 {
             admission: state.admission.clone(),
             run_started_millis: state.run_started_millis,
             collect_states: state.collect_states.checkpoint_v1(),
+            journal_bytes_written: state.journal_bytes_written,
             action_contracts: state.action_contracts.clone(),
         };
         checkpoint.validate_against(&state.workflow, artifact_digest, &state.action_contracts)?;
@@ -228,6 +231,7 @@ impl RunCheckpointV1 {
             run_started_millis: self.run_started_millis,
             collect_states,
             action_contracts: self.action_contracts,
+            journal_bytes_written: self.journal_bytes_written,
         };
         Ok((state, self.run_attempt, self.retry_step, self.prior_seq))
     }
@@ -252,7 +256,7 @@ fn validate_admission(
 /// Reads the VARINT-encoded version field first to determine the checkpoint
 /// format version before decoding the full payload. Rejects historical version
 /// 1 checkpoints that lack the policy_pin field and version 2 checkpoints
-/// that lack the run_started_millis field, which cannot be safely decoded
+/// that lack the run-start and journal-byte counters, which cannot be safely decoded
 /// as the current RunCheckpointV1 layout.
 pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunCheckpointV1Error> {
     if payload.is_empty() {
@@ -265,8 +269,7 @@ pub fn decode_checkpoint_payload(payload: &[u8]) -> Result<RunCheckpointV1, RunC
     let version: u16 = serde::Deserialize::deserialize(&mut decoder)
         .map_err(|_| RunCheckpointV1Error::UnsupportedVersion)?;
     match version {
-        1 => Err(RunCheckpointV1Error::UnsupportedVersion),
-        2 => Err(RunCheckpointV1Error::UnsupportedVersion),
+        1 | 2 => Err(RunCheckpointV1Error::UnsupportedVersion),
         3 => postcard::from_bytes(payload).map_err(|_| RunCheckpointV1Error::DecodeError),
         _ => Err(RunCheckpointV1Error::UnsupportedVersion),
     }

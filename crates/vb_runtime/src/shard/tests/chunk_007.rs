@@ -193,6 +193,7 @@ fn run_state_equality() {
         admission: None,
         run_started_millis: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     };
     let frame2 = match vb_core::frame::RunFrame::new(
@@ -214,6 +215,7 @@ fn run_state_equality() {
         admission: None,
         run_started_millis: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     };
     assert_eq!(state, state2);

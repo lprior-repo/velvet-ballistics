@@ -58,6 +58,7 @@ fn failed_state(workflow: vb_core::workflow::CompiledWorkflow, run_id: RunId) ->
         )),
         run_started_millis: None,
         collect_states: CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     })
 }
@@ -66,8 +67,9 @@ fn failed_state(workflow: vb_core::workflow::CompiledWorkflow, run_id: RunId) ->
 fn capture_resets_only_retry_step_and_preserves_action_attempts() -> Result<(), String> {
     let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
     let run_id = RunId::new(41);
-    let state =
+    let mut state =
         failed_state(workflow, run_id).ok_or_else(|| "failed state setup failed".to_string())?;
+    state.journal_bytes_written = 1234;
     let checkpoint = RunCheckpointV1::capture(
         run_id,
         WorkflowDigest::from_bytes([7; 32]),
@@ -78,6 +80,7 @@ fn capture_resets_only_retry_step_and_preserves_action_attempts() -> Result<(), 
     )
     .map_err(|error| format!("capture failed: {error}"))?;
 
+    assert_eq!(checkpoint.journal_bytes_written, 1234);
     assert_eq!(
         checkpoint.frame.states,
         [vb_core::frame::CheckpointStepState::Pending]
@@ -109,6 +112,7 @@ fn capture_resets_only_retry_step_and_preserves_action_attempts() -> Result<(), 
         Ok(vb_core::frame::StepState::Pending)
     );
     assert_eq!(restored.action_attempts.as_ref(), [0]);
+    assert_eq!(restored.journal_bytes_written, 1234);
     Ok(())
 }
 
@@ -346,6 +350,34 @@ fn versioned_checkpoint_roundtrips_run_started_millis_through_decoder() -> Resul
     assert_eq!(decoded, checkpoint);
     assert_eq!(decoded.run_started_millis, Some(1_700_000_000_000));
     Ok(())
+}
+
+#[test]
+fn versioned_decoder_rejects_version_2_header() -> Result<(), String> {
+    let workflow = workflow().ok_or_else(|| "workflow compilation failed".to_string())?;
+    let run_id = RunId::new(103);
+    let state =
+        failed_state(workflow, run_id).ok_or_else(|| "failed state setup failed".to_string())?;
+    let checkpoint = RunCheckpointV1::capture(
+        run_id,
+        WorkflowDigest::from_bytes([7; 32]),
+        NonZeroU16::new(2).ok_or_else(|| "invalid attempt".to_string())?,
+        StepIdx::ZERO,
+        9,
+        &state,
+    )
+    .map_err(|error| format!("capture failed: {error}"))?;
+    let mut bytes = postcard::to_allocvec(&checkpoint)
+        .map_err(|error| format!("checkpoint encode failed: {error}"))?;
+    bytes[0] = 2;
+    match decode_checkpoint_payload(&bytes) {
+        Err(RunCheckpointV1Error::UnsupportedVersion) => Ok(()),
+        Err(other) => Err(format!("expected UnsupportedVersion, got {other}")),
+        Ok(cp) => Err(format!(
+            "expected version rejection, got checkpoint with version {}",
+            cp.version
+        )),
+    }
 }
 
 #[test]

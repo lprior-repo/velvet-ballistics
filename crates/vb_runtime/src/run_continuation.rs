@@ -92,6 +92,7 @@ impl RunContinuationV1 {
             admission: Some(body.admission),
             run_started_millis: None,
             collect_states,
+            journal_bytes_written: 0,
             action_contracts: body.action_contracts,
         })
     }

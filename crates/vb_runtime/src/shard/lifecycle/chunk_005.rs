@@ -121,9 +121,14 @@ impl Shard {
                 .await_action(run, state, ticket)
                 .map_err(DriveApplyFailure::AfterCommit);
         }
-        let (journal_events, trace_events, state, ticket, step) = self
+        let (journal_events, trace_events, mut state, ticket, step) = self
             .prepare_awaiting_action(run, state, ticket, evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
+        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+            .map_err(DriveApplyFailure::BeforeCommit)?
+        {
+            return self.fail_run_on_journal_budget(run, state, trace_events);
+        }
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);
@@ -156,9 +161,14 @@ impl Shard {
             self.reserve_pending_ask_authority_slot(run)
                 .map_err(DriveApplyFailure::BeforeCommit)?;
         }
-        let (journal_events, trace_events, state, timer, ask_boundary_seq) = self
+        let (journal_events, trace_events, mut state, timer, ask_boundary_seq) = self
             .prepare_awaiting_timer(run, state, kind, evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
+        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+            .map_err(DriveApplyFailure::BeforeCommit)?
+        {
+            return self.fail_run_on_journal_budget(run, state, trace_events);
+        }
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         if let Some(boundary_seq) = ask_boundary_seq {
@@ -179,7 +189,7 @@ impl Shard {
     fn apply_terminal_finished(
         &mut self,
         run: RunId,
-        state: RunState,
+        mut state: RunState,
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         if evidence.is_empty() {
@@ -205,6 +215,11 @@ impl Shard {
             },
         )
         .map_err(DriveApplyFailure::BeforeCommit)?;
+        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+            .map_err(DriveApplyFailure::BeforeCommit)?
+        {
+            return self.fail_run_on_journal_budget(run, state, trace_events);
+        }
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);
@@ -217,7 +232,7 @@ impl Shard {
     fn apply_terminal_failed(
         &mut self,
         run: RunId,
-        state: RunState,
+        mut state: RunState,
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         if evidence.is_empty() {
@@ -238,6 +253,11 @@ impl Shard {
             },
         )
         .map_err(DriveApplyFailure::BeforeCommit)?;
+        if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
+            .map_err(DriveApplyFailure::BeforeCommit)?
+        {
+            return self.fail_run_on_journal_budget(run, state, trace_events);
+        }
         self.append_journal_event_batch(&journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         self.push_trace_events(trace_events);

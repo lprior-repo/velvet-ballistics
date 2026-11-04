@@ -154,6 +154,7 @@ impl Shard {
             admission,
             run_started_millis: crate::shard::helpers::wall_clock_millis_since_epoch(),
             collect_states: CollectStates::new(),
+            journal_bytes_written: 0,
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
         self.terminal_runs_remove(run);
@@ -526,6 +527,7 @@ impl Shard {
                 admission: state_admission,
                 run_started_millis: None,
                 collect_states,
+                journal_bytes_written: 0,
                 action_contracts: artifact.action_contracts.clone(),
             }
         };

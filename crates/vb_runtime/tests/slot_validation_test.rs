@@ -50,6 +50,7 @@ fn make_run_state(wf: CompiledWorkflow) -> RunState {
         admission: None,
         run_started_millis: None,
         collect_states: CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     }
 }

@@ -98,6 +98,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
         admission: None,
         run_started_millis: None,
         collect_states: CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::new([]),
     };
 
