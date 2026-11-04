@@ -129,14 +129,7 @@ pub(super) fn body_edges(
     })
 }
 
-fn validate_body(index: usize, config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {
-    if config.body.is_empty() {
-        return Err(CompileErrors(vec![CompileError::StepFieldShape {
-            step: index,
-            field: "for_each.body",
-            expected: "non-empty body",
-        }]));
-    }
+fn validate_body(config: &ForEachLowering<'_>) -> Result<(), CompileErrors> {
     for step in config.body {
         if step.id == config.variable {
             return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
@@ -248,7 +241,7 @@ pub(super) fn lower_bounded_for_each(
     let (input, limit) = resolve_input(index, &config)?;
 
     validate_parameters(index, &config)?;
-    validate_body(index, &config)?;
+    validate_body(&config)?;
 
     let iterator = builder
         .allocate_slot()

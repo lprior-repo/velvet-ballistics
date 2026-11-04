@@ -23,6 +23,9 @@ mod source_slot_reservation;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod for_each_empty_body_tests;
+
 // vb-qb2k2: the stale aggregate `property_tests` module is retired because no
 // `property_tests.rs` or `property_tests/mod.rs` exists. Register the focused
 // lowering property suites here so they can exercise private lowering seams
