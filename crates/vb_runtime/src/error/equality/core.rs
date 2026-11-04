@@ -97,6 +97,10 @@ fn runtime_error_attempt_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
             RuntimeError::AttemptBeyondMax { attempt: a, max: b },
             RuntimeError::AttemptBeyondMax { attempt: c, max: d },
         ) => a == c && b == d,
+        (
+            RuntimeError::RetryBlockedOnUndrainedJournal { run: a },
+            RuntimeError::RetryBlockedOnUndrainedJournal { run: b },
+        ) => a == b,
         _ => false,
     }
 }

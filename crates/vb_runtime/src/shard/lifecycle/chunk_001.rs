@@ -738,6 +738,14 @@ impl Shard {
             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
             preflight_action_failure(state, ticket, &failure)?
         };
+        // 1b. Retry durability gate: a RetryNow proceeds only when every
+        // event emitted for the run is durable, flushing the queued prefix
+        // on demand. Runs before any journal append so a full journal still
+        // surfaces QueueFull from the append with state preserved, and a
+        // blocked retry mutates nothing at all.
+        if preflight.outcome == ActionFailureOutcome::RetryNow {
+            self.can_retry(run)?;
+        }
         // 2. Journal append FIRST. FailRun needs both ActionFailed and
         //    RunFailed to append as one same-run batch before any pending
         //    action, trace, frame, counter, or terminal-state mutation. If

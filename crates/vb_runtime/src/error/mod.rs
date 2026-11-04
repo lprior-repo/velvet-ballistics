@@ -76,6 +76,12 @@ pub enum RuntimeError {
         /// Maximum attempt count from the retry policy.
         max: u16,
     },
+    /// Retry blocked because journal events emitted for the run are not yet
+    /// durable. The run is untouched and the retry may proceed after a flush.
+    RetryBlockedOnUndrainedJournal {
+        /// Run identifier.
+        run: RunId,
+    },
     /// Timer fired for a run that is not suspended on a registered timer.
     InvalidTimerFire,
     /// Durable recovery can expose a summary, but cannot yet rebuild a live frame.

@@ -2137,3 +2137,109 @@ fn drive_state_without_admitted_budget_drives_to_finish() {
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
     assert_eq!(state.frame.executed(), 11);
 }
+
+#[test]
+fn queued_retry_flushes_emitted_prefix_and_resumes_drive() -> Result<(), String> {
+    let (journal, _queue, _adapter, shared) =
+        queued_journal_fixture("vb-runtime-retry-watermark-", 16, 4)?;
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let run = RunId::new(710);
+    submit_run(&mut shard, run, retry_workflow()?);
+    // Submission events sit in the queue: nothing durable yet.
+    assert!(
+        journal
+            .events_for_run(run)
+            .map_err(|error| error.to_string())?
+            .is_empty()
+    );
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: pending_ticket(&shard, run, StepIdx::new(1), 1),
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // The retry flushed the emitted prefix (durable) and resumed the drive.
+    assert!(
+        !journal
+            .events_for_run(run)
+            .map_err(|error| error.to_string())?
+            .is_empty()
+    );
+    let state = shard
+        .run_state_get(run)
+        .ok_or("run should exist after queued retry")?;
+    assert_eq!(state.action_attempts.get(1).copied(), Some(2));
+    assert_eq!(shard.active_run_count(), 1);
+    Ok(())
+}
+
+/// Journal stub that always reports a pending high-water, even after a
+/// flush. Exercises the fail-closed arm of the retry watermark gate.
+struct NeverDurableJournal;
+
+impl crate::journal::RuntimeJournal for NeverDurableJournal {
+    fn append(&self, _event: RuntimeJournalEvent) -> Result<(), crate::RuntimeError> {
+        Ok(())
+    }
+
+    fn probe(&self) -> Result<(), crate::RuntimeError> {
+        Ok(())
+    }
+
+    fn append_sequenced(
+        &self,
+        _event: RuntimeJournalEvent,
+        _seq: vb_storage::EventSeq,
+    ) -> Result<(), crate::RuntimeError> {
+        Ok(())
+    }
+
+    fn append_sequenced_batch(
+        &self,
+        _events: &[RuntimeJournalEvent],
+        _start_seq: vb_storage::EventSeq,
+    ) -> Result<(), crate::RuntimeError> {
+        Ok(())
+    }
+
+    fn pending_high_water_for_run(
+        &self,
+        _run: RunId,
+    ) -> Result<Option<vb_storage::EventSeq>, crate::RuntimeError> {
+        Ok(Some(vb_storage::EventSeq::new(0)))
+    }
+}
+
+#[test]
+fn blocked_retry_reports_typed_error_and_keeps_run() -> Result<(), String> {
+    let shared: SharedRuntimeJournal = std::sync::Arc::new(NeverDurableJournal);
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let run = RunId::new(711);
+    submit_run(&mut shard, run, retry_workflow()?);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: pending_ticket(&shard, run, StepIdx::new(1), 1),
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    match shard.tick() {
+        Err(crate::RuntimeError::RetryBlockedOnUndrainedJournal { run: blocked }) => {
+            assert_eq!(blocked, run);
+        }
+        other => {
+            return Err(format!(
+                "expected RetryBlockedOnUndrainedJournal, got {other:?}"
+            ));
+        }
+    }
+    // Nothing mutated: run, pending action, and attempt counter are intact.
+    let state = shard
+        .run_state_get(run)
+        .ok_or("blocked retry must keep the run")?;
+    assert_eq!(state.action_attempts.get(1).copied(), Some(1));
+    pending_ticket(&shard, run, StepIdx::new(1), 1);
+    Ok(())
+}

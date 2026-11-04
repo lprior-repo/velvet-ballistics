@@ -108,6 +108,28 @@ impl JournalWriterQueue {
         Ok(())
     }
 
+    /// Returns the highest per-run sequence still waiting in the queue, or
+    /// `None` when no queued event belongs to `run`. The scan is bounded by
+    /// the queue capacity. Callers derive the durable watermark as
+    /// "everything below the emitted watermark that is not pending".
+    pub fn pending_high_water_for_run(
+        &self,
+        run: vb_core::RunId,
+    ) -> Result<Option<crate::EventSeq>, JournalError> {
+        let state = self
+            .state
+            .lock()
+            .map_err(|_| JournalError::WriteLockPoisoned)?;
+        let mut high_water: Option<crate::EventSeq> = None;
+        for item in &state.pending {
+            if item.event.run_id() == run {
+                let event_seq = item.event.seq();
+                high_water = Some(high_water.map_or(event_seq, |current| current.max(event_seq)));
+            }
+        }
+        Ok(high_water)
+    }
+
     /// Returns pending write counts split by durability profile.
     pub fn pending_profile_counts(&self) -> Result<JournalWriterQueueProfileCounts, JournalError> {
         let state = self

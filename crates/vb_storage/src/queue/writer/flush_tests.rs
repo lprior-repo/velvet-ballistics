@@ -13,6 +13,32 @@ fn event(seq: u64) -> JournalEvent {
     }
 }
 
+fn event_for_run(run: u64, seq: u64) -> JournalEvent {
+    JournalEvent::RunAccepted {
+        run: RunId::new(run),
+        seq: EventSeq::new(seq),
+        workflow: WorkflowDigest::from_bytes([9; 32]),
+    }
+}
+
+#[test]
+fn pending_high_water_tracks_per_run_queued_prefix() -> TestResult {
+    let queue = JournalWriterQueue::new(8, 4, StorageLimits::DEFAULT)?;
+    queue.enqueue_journaled(event_for_run(900, 0))?;
+    queue.enqueue_journaled(event_for_run(901, 0))?;
+    queue.enqueue_journaled(event_for_run(900, 1))?;
+    assert_eq!(
+        queue.pending_high_water_for_run(RunId::new(900))?,
+        Some(EventSeq::new(1))
+    );
+    assert_eq!(
+        queue.pending_high_water_for_run(RunId::new(901))?,
+        Some(EventSeq::new(0))
+    );
+    assert_eq!(queue.pending_high_water_for_run(RunId::new(902))?, None);
+    Ok(())
+}
+
 #[test]
 fn durable_service_respects_batch_limit_and_fifo() -> TestResult {
     let dir = tempfile::tempdir()?;

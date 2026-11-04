@@ -51,6 +51,19 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
             .map_err(RuntimeError::from)
     }
 
+    fn pending_high_water_for_run(&self, run: RunId) -> RuntimeResult<Option<EventSeq>> {
+        self.queue
+            .pending_high_water_for_run(run)
+            .map_err(RuntimeError::from)
+    }
+
+    fn flush_run_prefix(&self, _run: RunId) -> RuntimeResult<()> {
+        self.queue
+            .drain_all(&self.journal)
+            .map_err(RuntimeError::from)?;
+        Ok(())
+    }
+
     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
         // Retire each queue batch only after its own SyncAll succeeds. A
         // failed barrier keeps that batch in RAM for an idempotent retry.

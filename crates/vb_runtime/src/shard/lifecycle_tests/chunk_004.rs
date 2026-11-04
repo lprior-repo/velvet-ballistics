@@ -1490,6 +1490,11 @@ fn retry_now_action_failure_queue_full_preserves_post_failure_state() -> Result<
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let run = RunId::new(50_070);
     submit_run(&mut shard, run, retry_workflow()?);
+    // Watermark contract: the retry gate flushes an undrained own-prefix, so
+    // drain the run's submit prefix first. The queue is then refilled with
+    // other runs' events and the retry drive still meets a full journal,
+    // preserving this test's QueueFull scenario under the new invariant.
+    adapter.drain_all().map_err(|error| error.to_string())?;
     let filled_counts = fill_queue_to_one_free_slot(&queue, QUEUE_CAPACITY, 50_071)?;
     assert_eq!(filled_counts, QUEUE_CAPACITY - 1);
 

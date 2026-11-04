@@ -66,6 +66,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
             Some("secret-tainted answer payload is not allowed by resource contract")
         }
         RuntimeError::EngineDriveFailed { .. } => Some("deterministic engine drive failed"),
+        RuntimeError::RetryBlockedOnUndrainedJournal { .. } => {
+            Some("retry blocked on undrained journal events")
+        }
         RuntimeError::MigrateSelf => Some("migration target is the source shard"),
         RuntimeError::IntrospectionEpochExhausted => {
             Some("introspection registry epoch space exhausted (u64::MAX)")
@@ -153,6 +156,12 @@ fn write_runtime_error_dynamic(
         ),
         RuntimeError::EngineDriveFailed { run, source } => {
             write!(f, "engine drive failed for run {run:?}: {source}")
+        }
+        RuntimeError::RetryBlockedOnUndrainedJournal { run } => {
+            write!(
+                f,
+                "retry blocked for run {run:?}: journal events not yet durable"
+            )
         }
         RuntimeError::ShardNotFound { shard } => {
             write!(f, "shard {shard} not found")

@@ -368,6 +368,19 @@ pub trait RuntimeJournal: Send + Sync {
             written: 0,
         })
     }
+
+    /// Highest per-run sequence still waiting for durability, or `None` when
+    /// every event emitted for the run is durable. Synchronous journals return
+    /// `Ok(None)`: `append_*` succeeding means durable.
+    fn pending_high_water_for_run(&self, _run: RunId) -> RuntimeResult<Option<EventSeq>> {
+        Ok(None)
+    }
+
+    /// Makes the run's emitted prefix durable before a retry proceeds.
+    /// Synchronous journals are already durable: default no-op.
+    fn flush_run_prefix(&self, _run: RunId) -> RuntimeResult<()> {
+        Ok(())
+    }
 }
 
 /// Shared journal trait object.
