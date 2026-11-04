@@ -2347,3 +2347,142 @@ fn blocked_retry_reports_typed_error_and_keeps_run() -> Result<(), String> {
     pending_ticket(&shard, run, StepIdx::new(1), 1);
     Ok(())
 }
+
+fn result_bytes_budget(max_result_bytes: u32) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 100,
+        max_action_tickets: 10,
+        max_parallel_in_flight: 10,
+        max_retries_per_action: 10,
+        max_gather_pages: 10,
+        max_gather_items: 10,
+        max_for_each_iterations: 10,
+        max_together_branches: 10,
+        max_repeat_attempts: 10,
+        max_run_time_seconds: 100,
+        max_result_bytes,
+        max_total_slots_written: 100,
+        max_timer_entries: 100,
+        max_trace_events: 100,
+        max_queue_depth: 100,
+        max_journal_batch_bytes: 100,
+        max_ipc_payload_bytes: 100,
+        max_blob_bytes: 100,
+        max_input_bytes: 100,
+        max_step_budget_per_tick: 100,
+        max_transitions_per_tick: 100,
+        max_open_gates: 10,
+        max_signal_subscriptions: 10,
+        max_incident_emissions: 100,
+        max_transitions: 100,
+        max_journal_bytes_total: 100,
+        max_value_store_entries: 100,
+        max_cost_units: 100,
+    }
+}
+
+fn list_result_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let first = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let second = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(1),
+        },
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(2)),
+    );
+    let build = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::BuildList {
+            items: Box::from([SlotIdx::ZERO, SlotIdx::new(1)]),
+        },
+        Some(SlotIdx::new(2)),
+        Some(StepIdx::new(3)),
+    );
+    let finish = vb_core::workflow::node(
+        StepIdx::new(3),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(2),
+        },
+        None,
+        None,
+    );
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("list_result_budget"),
+        digest: WorkflowDigest::from_bytes([13; 32]),
+        nodes: Box::from([first, second, build, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(10), ConstValue::I64(20)]),
+        slot_count: 3,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+#[test]
+fn drive_state_fails_when_finished_list_deep_size_exceeds_admitted_limit() {
+    let workflow = list_result_workflow().expect("list result workflow builds");
+    let run = RunId::new(750);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        result_bytes_budget(15),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "result_bytes",
+            limit: 15,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_at_finished_list_deep_size_limit_finishes() {
+    let workflow = list_result_workflow().expect("list result workflow builds");
+    let run = RunId::new(751);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        result_bytes_budget(16),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_without_admitted_budget_ignores_finished_list_size() {
+    let workflow = list_result_workflow().expect("list result workflow builds");
+    let run = RunId::new(752);
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
