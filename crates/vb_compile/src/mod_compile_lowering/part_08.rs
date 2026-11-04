@@ -274,7 +274,14 @@ pub(super) fn compile_step(
             return compile_parallel(body, index, last_step, id, source_ir_starts, builder);
         }
         StepPrimitive::Collect => {
-            return compile_collect(body, index, last_step, id, next, builder);
+            // Legacy 3-node collect emission is retired: it structurally
+            // self-loops (CollectPage.body is its own id) and can never
+            // reach CollectFinish. The bounded CollectNext lowering is the
+            // live path.
+            return Err(CompileError::UnsupportedStepPrimitive {
+                step: index,
+                primitive: "collect",
+            });
         }
         StepPrimitive::Aggregate => {
             return compile_aggregate(body, index, last_step, id, next, builder);

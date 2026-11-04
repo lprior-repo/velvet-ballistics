@@ -422,22 +422,27 @@ fn resumed_storage_event(run: RunId, seq: EventSeq, timestamp: u64) -> RuntimeRe
     })
 }
 
-/// Counts the number of times `clone_for_dispatch` is invoked. Used by the
-/// `storage_event_clones_the_event_exactly_once_per_dispatch` regression test
-/// to assert that dispatching a `RuntimeJournalEvent` through `storage_event`
-/// performs exactly one full-event clone.
+// Counts the number of times `clone_for_dispatch` is invoked on the
+// current thread. Used by the
+// `storage_event_clones_the_event_exactly_once_per_dispatch` regression test
+// to assert that dispatching a `RuntimeJournalEvent` through `storage_event`
+// performs exactly one full-event clone. Thread-local so concurrently
+// running tests cannot inflate each other's counts; each test resets its
+// own thread's count before asserting.
 #[cfg(test)]
-static STORAGE_EVENT_CLONE_COUNT: std::sync::atomic::AtomicUsize =
-    std::sync::atomic::AtomicUsize::new(0);
+std::thread_local! {
+    static STORAGE_EVENT_CLONE_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+}
 
 /// Clones a `RuntimeJournalEvent` for dispatch into one of the per-variant
-/// helpers. In test builds this also increments `STORAGE_EVENT_CLONE_COUNT`
-/// so the single-clone invariant is enforced by an executable assertion; in
-/// release builds it is a plain clone.
+/// helpers. In test builds this also increments the calling thread's
+/// `STORAGE_EVENT_CLONE_COUNT` so the single-clone invariant is enforced by
+/// an executable assertion; in release builds it is a plain clone.
 fn clone_for_dispatch(event: &RuntimeJournalEvent) -> RuntimeJournalEvent {
     #[cfg(test)]
     {
-        STORAGE_EVENT_CLONE_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        STORAGE_EVENT_CLONE_COUNT.with(|count| count.set(count.get().saturating_add(1)));
     }
     event.clone()
 }

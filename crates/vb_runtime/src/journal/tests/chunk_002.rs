@@ -638,8 +638,6 @@ fn shared_journal_returns_unsupported_durability_profile_error_for_future_varian
 
 #[test]
 fn storage_event_clones_the_event_exactly_once_per_dispatch() {
-    use std::sync::atomic::Ordering;
-
     let run = RunId::new(101);
     let workflow = WorkflowDigest::from_bytes([42; 32]);
     let seq = EventSeq::new(7);
@@ -653,10 +651,13 @@ fn storage_event_clones_the_event_exactly_once_per_dispatch() {
     );
     let run_admission_event = RuntimeJournalEvent::RunAdmission { admission };
 
-    super::STORAGE_EVENT_CLONE_COUNT.store(0, Ordering::SeqCst);
+    super::STORAGE_EVENT_CLONE_COUNT.with(|count| count.set(0));
     let mapped = StorageRuntimeJournal::storage_event(run_admission_event, seq)
         .expect("run-admission dispatch succeeds");
-    assert_eq!(super::STORAGE_EVENT_CLONE_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        super::STORAGE_EVENT_CLONE_COUNT.with(|count| count.get()),
+        1
+    );
     assert!(matches!(
         mapped,
         JournalEvent::RunAdmission {
@@ -676,10 +677,13 @@ fn storage_event_clones_the_event_exactly_once_per_dispatch() {
         action: ActionId::new(9),
     };
 
-    super::STORAGE_EVENT_CLONE_COUNT.store(0, Ordering::SeqCst);
+    super::STORAGE_EVENT_CLONE_COUNT.with(|count| count.set(0));
     let mapped = StorageRuntimeJournal::storage_event(action_event, seq)
         .expect("action-scheduled dispatch succeeds");
-    assert_eq!(super::STORAGE_EVENT_CLONE_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        super::STORAGE_EVENT_CLONE_COUNT.with(|count| count.get()),
+        1
+    );
     assert_eq!(
         mapped,
         JournalEvent::ActionScheduled {
@@ -701,10 +705,13 @@ fn storage_event_clones_the_event_exactly_once_per_dispatch() {
         extra: None,
     };
 
-    super::STORAGE_EVENT_CLONE_COUNT.store(0, Ordering::SeqCst);
+    super::STORAGE_EVENT_CLONE_COUNT.with(|count| count.set(0));
     let mapped = StorageRuntimeJournal::storage_event(slot_written_event, seq)
         .expect("slot-written dispatch succeeds");
-    assert_eq!(super::STORAGE_EVENT_CLONE_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        super::STORAGE_EVENT_CLONE_COUNT.with(|count| count.get()),
+        1
+    );
     assert!(matches!(
         &mapped,
         JournalEvent::SlotWrittenEvent {

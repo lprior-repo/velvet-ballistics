@@ -3,7 +3,6 @@
 // case variations, and injection attempts.
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use std::process::Command;
 
 fn utf8_prefix(input: &str, max_bytes: usize) -> &str {
     if input.len() <= max_bytes {
@@ -46,11 +45,10 @@ fuzz_target!(|data: &[u8]| {
     full_args.push(*package_arg);
     full_args.extend(selector_args.iter().copied());
 
-    match Command::new("bash")
-        .arg("scripts/flux-check-package.sh")
-        .args(&full_args)
-        .output()
-    {
-        Ok(_) | Err(_) => {}
-    }
+    // Capped: adversarial selectors can steer the script into real cargo
+    // work that would outlast the smoke lane's per-target budget.
+    let mut argv = Vec::with_capacity(full_args.len() + 1);
+    argv.push("scripts/flux-check-package.sh");
+    argv.extend(full_args);
+    fuzz_lib::bounded_cmd::run_smoke_bounded("bash", &argv, &[]);
 });
