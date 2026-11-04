@@ -13,7 +13,7 @@
 //!   B-017: Max valid start ID = u16::MAX - N - 2 (u16::MAX - 3 for N = 1).
 
 use proptest::prelude::*;
-use vb_compile::{SlotCompiler, compile_workflow, lower_collect};
+use vb_compile::{CompileError, SlotCompiler, compile_workflow, lower_collect};
 use vb_core::workflow::NodeContinuation;
 use vb_core::{
     CompiledNodeKind,
@@ -483,7 +483,7 @@ fn lower_collect_emits_three_nodes() {
     let body = StepIdx::new(11);
     let done = StepIdx::new(12);
 
-    let result = lower_collect(id, source, 5, 10, body, done, &mut builder);
+    let result = lower_collect(id, source, 10, 5, body, done, &mut builder);
     assert!(result.is_ok(), "lower_collect should succeed");
     let nodes = result.unwrap();
     assert_eq!(nodes.len(), 3, "lower_collect emits exactly 3 nodes");
@@ -496,7 +496,7 @@ fn lower_collect_node_ids_are_id_body_done() {
     let body = StepIdx::new(11);
     let done = StepIdx::new(12);
 
-    let result = lower_collect(id, SlotIdx::new(0), 5, 10, body, done, &mut builder);
+    let result = lower_collect(id, SlotIdx::new(0), 10, 5, body, done, &mut builder);
     let nodes = result.unwrap();
 
     assert_eq!(nodes[0].id.get(), 10, "CollectStart at id");
@@ -509,8 +509,8 @@ fn lower_collect_collectstart_has_correct_fields() {
     let mut builder = SlotCompiler::new();
     let id = StepIdx::new(10);
     let source = SlotIdx::new(7);
-    let limit = 5u32;
-    let page_size = 10u32;
+    let limit = 10u32;
+    let page_size = 5u32;
     let body = StepIdx::new(11);
     let done = StepIdx::new(12);
 
@@ -526,8 +526,8 @@ fn lower_collect_collectstart_has_correct_fields() {
             done: d,
         } => {
             assert_eq!(s.get(), 7, "source slot preserved");
-            assert_eq!(*l, 5, "limit preserved");
-            assert_eq!(*p, 10, "page_size preserved");
+            assert_eq!(*l, 10, "limit preserved");
+            assert_eq!(*p, 5, "page_size preserved");
             assert_eq!(b.get(), 11, "body step preserved");
             assert_eq!(d.get(), 12, "done step preserved");
         }
@@ -543,7 +543,7 @@ fn lower_collect_collectpage_has_correct_slot_reference() {
     let body = StepIdx::new(11);
     let done = StepIdx::new(12);
 
-    let result = lower_collect(id, source, 3, 4, body, done, &mut builder);
+    let result = lower_collect(id, source, 4, 3, body, done, &mut builder);
     let nodes = result.unwrap();
 
     match &nodes[1].kind {
@@ -572,7 +572,7 @@ fn lower_collect_collectfinish_has_correct_slot_reference() {
     let body = StepIdx::new(11);
     let done = StepIdx::new(12);
 
-    let result = lower_collect(id, source, 3, 4, body, done, &mut builder);
+    let result = lower_collect(id, source, 4, 3, body, done, &mut builder);
     let nodes = result.unwrap();
 
     match &nodes[2].kind {
@@ -588,20 +588,45 @@ fn lower_collect_collectfinish_has_correct_slot_reference() {
 }
 
 #[test]
-fn lower_collect_accepts_zero_limit_and_page_size() {
+fn lower_collect_rejects_zero_page_size() {
+    // vb-zrfxv contract change: the runtime rejects a zero page size at
+    // collect_start, so the compiler must reject it instead of emitting IR
+    // that can never run.
+    for (limit, page_size) in [(0u32, 0u32), (5u32, 0u32)] {
+        let mut builder = SlotCompiler::new();
+        let result = lower_collect(
+            StepIdx::new(10),
+            SlotIdx::new(0),
+            limit,
+            page_size,
+            StepIdx::new(11),
+            StepIdx::new(12),
+            &mut builder,
+        );
+        assert!(
+            matches!(result, Err(CompileError::StepFieldShape { step: 10, .. })),
+            "lower_collect must reject zero page_size (limit {limit})"
+        );
+    }
+}
+
+#[test]
+fn lower_collect_rejects_page_size_above_limit() {
+    // vb-zrfxv contract change: the runtime rejects a page larger than the
+    // item limit at collect_start, so the compiler must reject it.
     let mut builder = SlotCompiler::new();
     let result = lower_collect(
         StepIdx::new(10),
         SlotIdx::new(0),
-        0,
-        0,
+        3,
+        4,
         StepIdx::new(11),
         StepIdx::new(12),
         &mut builder,
     );
     assert!(
-        result.is_ok(),
-        "lower_collect should accept zero limit/page_size"
+        matches!(result, Err(CompileError::StepFieldShape { step: 10, .. })),
+        "lower_collect must reject page_size above limit"
     );
 }
 

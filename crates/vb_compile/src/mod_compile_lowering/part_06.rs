@@ -132,6 +132,12 @@ pub(super) fn alloc_accumulator_slot(builder: &mut SlotCompiler) -> Result<SlotI
 }
 
 /// Lowers a `collect` (gather) primitive into collection IR nodes.
+///
+/// Rejects at compile time what the runtime rejects at `collect_start`:
+/// a zero page size (`InvalidCompiledWorkflow`) and a page larger than
+/// the item limit (`CollectPageLimitExceeded`). Same check order as the
+/// runtime so the reported cause matches instead of compiling IR that
+/// can never run.
 pub fn lower_collect(
     id: StepIdx,
     source: SlotIdx,
@@ -141,6 +147,20 @@ pub fn lower_collect(
     done: StepIdx,
     builder: &mut SlotCompiler,
 ) -> Result<Vec<CompiledNode>, CompileError> {
+    if page_size == 0 {
+        return Err(CompileError::StepFieldShape {
+            step: usize::from(id.get()),
+            field: "collect.page_size",
+            expected: "nonzero page size",
+        });
+    }
+    if page_size > limit {
+        return Err(CompileError::StepFieldShape {
+            step: usize::from(id.get()),
+            field: "collect.page_size",
+            expected: "page size must not exceed limit",
+        });
+    }
     builder.record_slot(source);
     let collector_slot = source;
     Ok(vec![
