@@ -804,7 +804,7 @@ fn parse_event_round_trips_budgeted_run_admission() {
         policy: RuntimePolicy::Strict,
         budget,
     };
-    assert_eq!(event.record_kind().id(), 46);
+    assert_eq!(event.record_kind().id(), 47);
     assert_eq!(event.run_id(), RunId::new(77));
     assert_eq!(event.seq(), EventSeq::new(1));
     assert!(event.is_valid());

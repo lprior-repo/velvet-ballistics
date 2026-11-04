@@ -233,7 +233,7 @@ pub enum RecordKind {
     CompatibilityDecision = 45,
     /// Run admission receipt carrying the admitted aggregate budget (§77.18);
     /// appended, no old ordinal moved.
-    RunAdmissionBudget = 46,
+    RunAdmissionBudget = 47,
 }
 
 impl RecordKind {
@@ -280,7 +280,7 @@ impl RecordKind {
             Self::RunContinuation => 43,
             Self::GateDecision => 44,
             Self::CompatibilityDecision => 45,
-            Self::RunAdmissionBudget => 46,
+            Self::RunAdmissionBudget => 47,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -329,7 +329,7 @@ impl RecordKind {
             43 => Some(Self::RunContinuation),
             44 => Some(Self::GateDecision),
             45 => Some(Self::CompatibilityDecision),
-            46 => Some(Self::RunAdmissionBudget),
+            47 => Some(Self::RunAdmissionBudget),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
