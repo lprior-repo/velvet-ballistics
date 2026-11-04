@@ -461,3 +461,9 @@ impl ScopedGrant {
 #[cfg(test)]
 #[path = "capability_grant_tests.rs"]
 mod tests;
+
+pub use historical::{
+    CapabilityGrant, GrantDigest, GrantIdentity, HistoricalGrantSignature, MAX_GRANT_CAPABILITIES,
+    MAX_GRANT_RESOURCES, MAX_GRANT_SIGNATURE_LEN, MAX_GRANT_TEXT_LEN, NarrowedToken, ResourceScope,
+};
+mod historical;
