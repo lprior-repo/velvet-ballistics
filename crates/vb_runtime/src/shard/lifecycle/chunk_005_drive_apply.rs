@@ -4,7 +4,7 @@ impl Shard {
         step_budget_per_tick: u64,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeEngineResult<RuntimeSignal> {
-        let mut budget = vb_core::engine::StepBudget::new(step_budget_per_tick);
+        let mut budget = Self::transition_tick_budget(state, step_budget_per_tick)?;
         let empty_caps = CapabilitySet::empty();
         let granted = state
             .admission
@@ -24,6 +24,7 @@ impl Shard {
             state.run_attempt.get(),
         )?;
         Self::check_suspension_budgets(state)?;
+        Self::check_value_store_budget(state)?;
         Ok(signal)
     }
 
@@ -75,6 +76,65 @@ impl Shard {
             ));
         }
         Ok(())
+    }
+
+    fn check_value_store_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let limit = budget.max_value_store_entries;
+        if state.store.total_arena_count() > limit {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "value_store_entries",
+                    limit,
+                },
+            ));
+        }
+        Ok(())
+    }
+
+    /// Tick transition allowance for a run from its admitted total-transition
+    /// budget, or the full per-tick budget when the run carries no admitted
+    /// budget. Remaining transitions derive from the frame executed count,
+    /// which round-trips through the run frame checkpoint, so a recovered
+    /// run resumes with the same allowance and no new durable state is
+    /// required. Exhaustion fails the run, matching the typed outcome for
+    /// total-transition exhaustion.
+    fn transition_tick_budget(
+        state: &RunState,
+        step_budget_per_tick: u64,
+    ) -> RuntimeEngineResult<vb_core::engine::StepBudget> {
+        let tick = vb_core::engine::StepBudget::new(step_budget_per_tick);
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(tick);
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(tick);
+        };
+        let limit = budget.max_transitions;
+        let Some(left) = limit.checked_sub(state.frame.executed()) else {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "transitions",
+                    limit,
+                },
+            ));
+        };
+        if left == 0 {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "transitions",
+                    limit,
+                },
+            ));
+        }
+        Ok(vb_core::engine::StepBudget::new(
+            step_budget_per_tick.min(left),
+        ))
     }
 
     fn apply_drive_result(

@@ -115,12 +115,16 @@ fn get_ticket_and_grant(
 ) -> CaseResult<(
     vb_core::action::ActionTicket,
     vb_storage::executor::RegisterGrant,
+    vb_core::ScopedGrant,
+    vb_core::GrantDispatchContext,
 )> {
     let ticket = runtime
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(artifact, ticket, scope())?;
-    Ok((ticket, grant))
+    let (scoped, dispatch) =
+        crate::scoped_grant_fixture::issue_scoped(catalog, artifact, &grant, ticket, scope(), 31)?;
+    Ok((ticket, grant, scoped, dispatch))
 }
 
 fn compute_expected_decision(
@@ -151,8 +155,16 @@ fn execute_with_adapter(
     adapter: &mut FjallRegister,
     run: RunId,
     grant: &vb_storage::executor::RegisterGrant,
+    scoped: &vb_core::ScopedGrant,
+    dispatch: &vb_core::GrantDispatchContext,
 ) -> Result<vb_storage::executor::RegisterReceipt, RegisteredExecutionError> {
-    runtime.execute_registered_action(adapter, run, u64::from(StepIdx::ZERO.get()), grant)
+    runtime.execute_registered_action(
+        adapter,
+        run,
+        u64::from(StepIdx::ZERO.get()),
+        grant,
+        vb_core::ScopedDispatch::new(scoped, dispatch, &[]),
+    )
 }
 
 fn assert_policy_denied_full_record(
@@ -256,7 +268,7 @@ fn suspended_policy_denies_execution_with_full_record() -> CaseResult<()> {
         case.contract.clone(),
     )?;
 
-    let (ticket, grant) =
+    let (ticket, grant, scoped, dispatch) =
         get_ticket_and_grant(&case.runtime, &case.catalog, &case.artifact, case.run)?;
 
     let expected = compute_expected_decision(&case.artifact, &ticket, case.suspended_digest)?;
@@ -265,7 +277,14 @@ fn suspended_policy_denies_execution_with_full_record() -> CaseResult<()> {
 
     let register_path = case.dir.path().join("register");
     let mut adapter = FjallRegister::open(&register_path, 8)?;
-    let result = execute_with_adapter(&mut case.runtime, &mut adapter, case.run, &grant);
+    let result = execute_with_adapter(
+        &mut case.runtime,
+        &mut adapter,
+        case.run,
+        &grant,
+        &scoped,
+        &dispatch,
+    );
 
     assert_policy_denied_full_record(result, &expected, case.suspended_digest)?;
     assert_zero_effects(&adapter)?;

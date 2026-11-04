@@ -107,21 +107,61 @@ pub(super) fn require_scalar_in(
                 Some(i) => Ok(ScalarValue::Integer(i)),
                 None => Err(YamlError::FieldShape {
                     field: context,
-                    expected: "string or integer scalar",
+                    expected: "string or integer scalar in i64 range",
                 }),
             },
         },
     }
 }
 
-/// Optional string field.
-pub(super) fn opt_str(node: &saphyr::Yaml<'_>, field: &str) -> Option<String> {
-    lookup(node, field).and_then(|v| v.as_str().map(std::string::ToString::to_string))
+/// Optional string field. A present field with the wrong type is an error,
+/// never silently treated as absent.
+pub(super) fn opt_str(node: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<Option<String>> {
+    match lookup(node, field) {
+        None => Ok(None),
+        Some(v) => match v.as_str() {
+            Some(s) => Ok(Some(s.to_string())),
+            None => Err(YamlError::FieldShape {
+                field,
+                expected: "string",
+            }),
+        },
+    }
 }
 
-/// Optional u32 field.
-pub(super) fn opt_u32(node: &saphyr::Yaml<'_>, field: &str) -> Option<u32> {
-    lookup(node, field).and_then(|v| v.as_integer().and_then(|i| u32::try_from(i).ok()))
+/// Optional control field (`with`, `then`): presence is what the compiler
+/// gates on, so a present field of any shape stays present.
+pub(super) fn opt_control_str(
+    node: &saphyr::Yaml<'_>,
+    field: &'static str,
+) -> YamlResult<Option<String>> {
+    match lookup(node, field) {
+        None => Ok(None),
+        Some(v) => Ok(Some(
+            v.as_str().map_or_else(String::new, ToString::to_string),
+        )),
+    }
+}
+
+/// Optional u32 field. A present field with the wrong type or out of range
+/// is an error, never silently treated as absent.
+pub(super) fn opt_u32(node: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<Option<u32>> {
+    match lookup(node, field) {
+        None => Ok(None),
+        Some(v) => match v.as_integer() {
+            Some(i) => match u32::try_from(i) {
+                Ok(n) => Ok(Some(n)),
+                Err(_) => Err(YamlError::FieldShape {
+                    field,
+                    expected: "u32 integer in range 0..=4294967295",
+                }),
+            },
+            None => Err(YamlError::FieldShape {
+                field,
+                expected: "u32 integer",
+            }),
+        },
+    }
 }
 
 /// Require a u16 field.

@@ -46,7 +46,19 @@ pub(super) fn optional_vars_mapping(doc: &Yaml<'_>) -> Result<(), CompileError> 
             return Err(non_string_key_error());
         };
         validate_public_name("vars", name)?;
-        slot_value(value, 0)?;
+        match value {
+            Yaml::Sequence(_) | Yaml::Mapping(_) | Yaml::Tagged(..) => {
+                return Err(CompileError::ExpressionLoweringUnsupported {
+                    feature: format!(
+                        "vars.{name} currently requires a null, boolean, or integer static literal"
+                    )
+                    .into_boxed_str(),
+                });
+            }
+            _ => {
+                slot_value(value, 0)?;
+            }
+        }
     }
     Ok(())
 }

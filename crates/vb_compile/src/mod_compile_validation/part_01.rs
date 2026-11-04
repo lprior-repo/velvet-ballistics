@@ -34,7 +34,12 @@ pub(crate) fn yaml_error_category(error: &crate::YamlError) -> &'static str {
         | crate::YamlError::BinaryScalar
         | crate::YamlError::AmbiguousScalar { .. }
         | crate::YamlError::ForbiddenFeature { .. } => "forbidden_feature",
-        crate::YamlError::DuplicateKey { .. } => "duplicate_key",
+        crate::YamlError::DuplicateKey { .. } | crate::YamlError::DuplicateKeyAt { .. } => {
+            "duplicate_key"
+        }
+        crate::YamlError::MergeKeyForbidden { .. } | crate::YamlError::UnsupportedEncoding => {
+            "forbidden_feature"
+        }
         crate::YamlError::MultipleDocuments { .. } => "document_count",
         crate::YamlError::SourceTooLarge { .. }
         | crate::YamlError::NestingTooDeep { .. }
@@ -121,6 +126,23 @@ pub(crate) fn validate_canonical_compile_scope(
             });
         }
     }
+    let input_names: HashSet<&str> = source
+        .inputs()
+        .iter()
+        .map(|input| input.key.as_str())
+        .collect();
+    // A top-level `set` output may not shadow a declared input. Nested
+    // bodies are lexically scoped: branch-local shadowing is intended.
+    for step in source.steps() {
+        if let crate::StepPrimitive::Set { output, .. } = &step.primitive
+            && input_names.contains(output.as_str())
+        {
+            errors.push(CompileError::SetOutputShadowsInput {
+                name: Box::from(output.as_str()),
+            });
+        }
+        super::part_10::check_step_tree(step, &mut errors);
+    }
     if errors.is_empty() {
         Ok(())
     } else {
@@ -136,6 +158,7 @@ pub(crate) fn checked_utf8(source: &[u8], limits: YamlLimits) -> Result<&str, Co
         });
     }
     let text = str::from_utf8(source)?;
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     if text.trim().is_empty() {
         Err(CompileError::EmptySource)
     } else {

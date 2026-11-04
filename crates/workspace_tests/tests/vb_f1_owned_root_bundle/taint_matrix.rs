@@ -1,7 +1,7 @@
 use vb_core::ids::{ListId, SlotIdx};
 use vb_core::root_bundle::{OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 use super::support::{TestResult, checkpoint, fixture};
 
@@ -33,6 +33,7 @@ fn taint_matrix_all_pairs() -> TestResult<()> {
                 vec![CompiledInputSlot {
                     slot: SlotIdx::new(0),
                     kind: InputSlotKind::List,
+                    constraint: CompiledInputConstraint::unconstrained(),
                 }],
                 8,
                 4,

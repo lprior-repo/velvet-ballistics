@@ -55,6 +55,14 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
+    let (scoped, dispatch) = crate::scoped_grant_fixture::issue_scoped(
+        &catalog,
+        &artifact,
+        &grant,
+        ticket,
+        scope(),
+        33,
+    )?;
 
     // Save pending state before execute for fail-closed verification.
     let pending_before = runtime.pending_boundary_snapshot(8);
@@ -66,6 +74,7 @@ fn strict_port_failure_returns_typed_runtime_error_with_zero_effects() -> TestRe
         run,
         u64::from(StepIdx::ZERO.get()),
         &grant,
+        vb_core::ScopedDispatch::new(&scoped, &dispatch, &[]),
     );
 
     // Expect exact typed error propagation.

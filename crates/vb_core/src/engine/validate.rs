@@ -15,7 +15,7 @@ pub fn validate_compiled_workflow(parts: &WorkflowParts) -> Result<(), WorkflowE
 /// Validates resource contract bounds against hard limits.
 ///
 /// Bounds-only pre-check: delegates to the canonical
-/// [`crate::workflow::check_resource_contract_limits`] implementation shared
+/// `check_resource_contract_limits` implementation shared
 /// with admission (`CompiledWorkflow::try_from_parts`). Actual-usage
 /// (`Exceeded`) checks are admission-only and intentionally absent here.
 pub fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowError> {

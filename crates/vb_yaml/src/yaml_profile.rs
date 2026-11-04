@@ -22,3 +22,6 @@ mod profile_tests;
 #[cfg(test)]
 #[path = "yaml_profile_tests_adversarial.rs"]
 mod profile_tests_adversarial;
+#[cfg(test)]
+#[path = "yaml_qa_permutation_tests.rs"]
+mod qa_permutation_tests;

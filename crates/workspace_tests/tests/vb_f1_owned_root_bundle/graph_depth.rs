@@ -3,7 +3,7 @@ use vb_core::ids::{ListId, SlotIdx};
 use vb_core::root_bundle::{ArenaNode, OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStoreCheckpointV1;
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 pub(super) fn chain(count: u32) -> TestResult<ValueStoreCheckpointV1> {
     let mut cp = checkpoint(128);
@@ -32,6 +32,7 @@ fn depth_64_accepted() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::List,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         128,
         4,
@@ -58,6 +59,7 @@ fn depth_65_rejected() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::List,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         128,
         4,

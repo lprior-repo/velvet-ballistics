@@ -34,6 +34,8 @@ impl Shard {
             shutting_down: false,
             current_tick: TimerTick::new(0),
             journal,
+            completion_capture: crate::runtime::completion_observation::CompletionCapture::default(
+            ),
         }
     }
 
@@ -672,6 +674,23 @@ impl Shard {
 
     /// Processes one command from the queue. Returns false if the shard should shut down.
     pub fn tick(&mut self) -> RuntimeResult<bool> {
+        self.completion_capture.reset();
+        self.tick_inner()
+    }
+
+    pub(crate) fn tick_observed(
+        &mut self,
+    ) -> (
+        RuntimeResult<bool>,
+        crate::runtime::completion_observation::CompletionObservationSlot,
+    ) {
+        self.completion_capture.reset();
+        self.completion_capture.enabled = true;
+        let mut guard = CompletionCaptureGuard { shard: self };
+        guard.tick()
+    }
+
+    fn tick_inner(&mut self) -> RuntimeResult<bool> {
         if self.shutting_down {
             return Ok(false);
         }
@@ -978,5 +997,29 @@ impl Shard {
         for event in trace_events {
             self.trace_ring.push(event);
         }
+    }
+}
+
+/// Owns the exclusive shard borrow so unwind cleanup cannot leave capture enabled.
+struct CompletionCaptureGuard<'a> {
+    shard: &'a mut Shard,
+}
+
+impl CompletionCaptureGuard<'_> {
+    fn tick(
+        &mut self,
+    ) -> (
+        RuntimeResult<bool>,
+        crate::runtime::completion_observation::CompletionObservationSlot,
+    ) {
+        let execution = self.shard.tick_inner();
+        let captured = core::mem::take(&mut self.shard.completion_capture.slot);
+        (execution, captured)
+    }
+}
+
+impl Drop for CompletionCaptureGuard<'_> {
+    fn drop(&mut self) {
+        self.shard.completion_capture.reset();
     }
 }

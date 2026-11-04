@@ -2,8 +2,8 @@ use vb_compile::{CompileError, CompileErrors, compile_source, parse_workflow_sou
 use vb_core::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};
 use vb_core::value_store::ValueStore;
 use vb_core::{
-    CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, InputSlotKind, RunId, SlotIdx,
-    SlotValue, Taint, WorkflowParts,
+    CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, CompiledWorkflow, InputSlotKind,
+    RunId, SlotIdx, SlotValue, Taint, WorkflowParts,
 };
 
 fn compile(yaml: &str) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
@@ -35,7 +35,8 @@ fn test_compile_base() -> Result<(), Box<dyn std::error::Error>> {
         workflow.input_slots(),
         &[CompiledInputSlot {
             slot: SlotIdx::new(0),
-            kind: InputSlotKind::I64
+            kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::required()
         }]
     );
     for value in [i64::MIN, -1, 0, 42, i64::MAX] {
@@ -56,7 +57,8 @@ fn test_save_before_finish() -> Result<(), Box<dyn std::error::Error>> {
         workflow.input_slots(),
         &[CompiledInputSlot {
             slot: SlotIdx::new(1),
-            kind: InputSlotKind::I64
+            kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::required()
         }]
     );
     let signal = run(&workflow, &[99])?;
@@ -76,11 +78,13 @@ fn test_two_inputs() -> Result<(), Box<dyn std::error::Error>> {
         &[
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
-                kind: InputSlotKind::I64
+                kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::required()
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(1),
-                kind: InputSlotKind::I64
+                kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::required()
             }
         ]
     );
@@ -120,7 +124,8 @@ fn test_named_internal_finish() -> Result<(), Box<dyn std::error::Error>> {
         workflow.input_slots(),
         &[CompiledInputSlot {
             slot: SlotIdx::new(1),
-            kind: InputSlotKind::I64
+            kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::required()
         }]
     );
     let signal = run(&workflow, &[999])?;
@@ -139,7 +144,8 @@ fn test_numeric_slot_finish() -> Result<(), Box<dyn std::error::Error>> {
         workflow.input_slots(),
         &[CompiledInputSlot {
             slot: SlotIdx::new(4),
-            kind: InputSlotKind::I64
+            kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::required()
         }]
     );
     let parts = workflow.to_parts();

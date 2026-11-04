@@ -25,9 +25,8 @@
 
 use proptest::prelude::*;
 use vb_compile::canonical_digest_part05;
-use vb_compile::{
-    ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
-};
+use vb_compile::{ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource};
+use vb_yaml::yaml_ast::types::WorkflowSourceParts;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Proptest Strategies
