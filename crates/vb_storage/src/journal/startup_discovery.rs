@@ -53,11 +53,34 @@ impl FjallJournal {
         &self,
         max_rows: NonZeroUsize,
         max_encoded_bytes: NonZeroUsize,
-        mut visit: F,
+        visit: F,
     ) -> Result<(), StartupDiscoveryError<E>>
     where
         E: std::error::Error + 'static,
         F: FnMut(RunId) -> Result<(), E>,
+    {
+        self.try_for_each_startup_run_with_snapshot(
+            max_rows,
+            max_encoded_bytes,
+            visit,
+            || self.database.snapshot(),
+            || Ok(()),
+        )
+    }
+
+    fn try_for_each_startup_run_with_snapshot<E, F, S, H>(
+        &self,
+        max_rows: NonZeroUsize,
+        max_encoded_bytes: NonZeroUsize,
+        mut visit: F,
+        mut make_snapshot: S,
+        mut after_headers: H,
+    ) -> Result<(), StartupDiscoveryError<E>>
+    where
+        E: std::error::Error + 'static,
+        F: FnMut(RunId) -> Result<(), E>,
+        S: FnMut() -> fjall::Snapshot,
+        H: FnMut() -> Result<(), JournalError>,
     {
         let probe = max_rows
             .get()
@@ -66,7 +89,7 @@ impl FjallJournal {
         let mut runs = Vec::new();
         runs.try_reserve_exact(max_rows.get())
             .map_err(|_| StartupDiscoveryError::AllocationFailed)?;
-        let snapshot = self.database.snapshot();
+        let snapshot = make_snapshot();
         let mut rows = 0usize;
         let mut bytes = 0usize;
         for (keyspace, is_header) in [(&self.run_header, true), (&self.events, false)] {
@@ -96,6 +119,9 @@ impl FjallJournal {
                 }
                 .map_err(StartupDiscoveryError::Storage)?;
                 runs.push(run);
+            }
+            if is_header {
+                after_headers().map_err(StartupDiscoveryError::Storage)?;
             }
         }
         runs.sort_unstable();
