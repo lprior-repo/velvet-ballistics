@@ -226,6 +226,41 @@ fn visitors_observe_complete_pinned_union_despite_callback_writes() -> TestResul
 }
 
 #[test]
+fn header_and_event_scans_share_one_snapshot_acquisition() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let journal = FjallJournal::open(dir.path(), None)?;
+    journal.put_run_header(&header(1))?;
+    journal.append_strict(&accepted(2))?;
+    let snapshot_calls = std::cell::Cell::new(0usize);
+    let observer_calls = std::cell::Cell::new(0usize);
+    let mut seen = Vec::new();
+    journal.try_for_each_startup_run_with_snapshot(
+        nonzero(4)?,
+        nonzero(4096)?,
+        |run| {
+            seen.push(run.get());
+            Ok::<(), JournalError>(())
+        },
+        || {
+            snapshot_calls.set(snapshot_calls.get().saturating_add(1));
+            journal.database.snapshot()
+        },
+        || {
+            observer_calls.set(observer_calls.get().saturating_add(1));
+            let mut batch = journal.batch();
+            batch.put_run_header(&header(3))?;
+            batch.append_event(&accepted(4))?;
+            batch.strict().commit()
+        },
+    )?;
+    assert_eq!(snapshot_calls.get(), 1);
+    assert_eq!(observer_calls.get(), 1);
+    assert_eq!(seen, [1, 2]);
+    assert_eq!(collect(&journal, 4, 4096)?, [1, 2, 3, 4]);
+    Ok(())
+}
+
+#[test]
 fn visitor_refusal_is_returned_without_visiting_later_runs() -> TestResult {
     let dir = tempfile::tempdir()?;
     let journal = FjallJournal::open(dir.path(), None)?;
