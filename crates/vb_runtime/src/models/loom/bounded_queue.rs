@@ -7,8 +7,7 @@
 //! Verifier: loom
 //! Command: RUSTFLAGS="--cfg loom" cargo test -p vb_runtime bounded_queue
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use crate::models::sync::sync::{Arc, AtomicUsize, Ordering};
 
 /// Abstract model of a bounded queue with concurrent take/release.
 /// Tests the invariant: available <= capacity && available >= 0

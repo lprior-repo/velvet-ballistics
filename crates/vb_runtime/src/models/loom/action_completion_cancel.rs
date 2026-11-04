@@ -7,43 +7,55 @@
 //! Verifier: loom
 //! Command: RUSTFLAGS="--cfg loom" cargo test -p vb_runtime action_completion_cancel
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use crate::models::sync::sync::{Arc, AtomicUsize, Ordering};
 
-#[allow(dead_code)]
-enum ActionState {
-    Pending,
-    Completed,
-    Cancelled,
-}
+/// Single-word ticket state so completion and cancellation resolve through
+/// one atomic transition. The two-flag check-then-act form allowed both
+/// `try_complete` and `try_cancel` to succeed under interleaving; loom
+/// exposes that race once the model uses loom atomics.
+const TICKET_PENDING: usize = 0;
+const TICKET_COMPLETED: usize = 1;
+const TICKET_CANCELLED: usize = 2;
 
 struct ActionTicket {
-    completed: AtomicBool,
-    cancelled: AtomicBool,
+    state: AtomicUsize,
 }
 
 impl ActionTicket {
     fn new() -> Self {
         Self {
-            completed: AtomicBool::new(false),
-            cancelled: AtomicBool::new(false),
+            state: AtomicUsize::new(TICKET_PENDING),
         }
     }
 
     fn try_complete(&self) -> bool {
-        !self.cancelled.load(Ordering::SeqCst) && !self.completed.swap(true, Ordering::SeqCst)
+        self.state
+            .compare_exchange(
+                TICKET_PENDING,
+                TICKET_COMPLETED,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            )
+            .is_ok()
     }
 
     fn try_cancel(&self) -> bool {
-        !self.completed.load(Ordering::SeqCst) && !self.cancelled.swap(true, Ordering::SeqCst)
+        self.state
+            .compare_exchange(
+                TICKET_PENDING,
+                TICKET_CANCELLED,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            )
+            .is_ok()
     }
 
     fn is_completed(&self) -> bool {
-        self.completed.load(Ordering::SeqCst)
+        self.state.load(Ordering::SeqCst) == TICKET_COMPLETED
     }
 
     fn is_cancelled(&self) -> bool {
-        self.cancelled.load(Ordering::SeqCst)
+        self.state.load(Ordering::SeqCst) == TICKET_CANCELLED
     }
 
     fn check_invariants(&self) {

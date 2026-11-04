@@ -7,6 +7,7 @@
 //! when the tracker is full, which is safe because the durable journal is the
 //! authoritative source of truth for crash recovery.
 
+use std::collections::VecDeque;
 #[cfg(kani)]
 use std::collections::{BTreeMap as Map, BTreeSet as Set};
 #[cfg(not(kani))]
@@ -34,7 +35,9 @@ const DEFAULT_CAPACITY: usize = 1024;
 pub struct IdempotencyTracker {
     /// Map from idempotency key to the completed ticket (for all classes).
     completed: Map<u128, ActionTicket>,
-    /// Insertion order for FIFO eviction.
+    /// Insertion order for FIFO eviction. Entries are removed here exactly
+    /// when their key is evicted from `completed`, so this never outgrows
+    /// the map.
     order: Vec<u128>,
     /// Maximum number of entries before eviction.
     capacity: usize,
@@ -44,6 +47,10 @@ pub struct IdempotencyTracker {
     /// completed. Kept separate so policy decision can be made without
     /// consulting the full `completed` map.
     at_least_once_completed: Set<u128>,
+    /// Insertion order for FIFO eviction of `at_least_once_completed`.
+    /// Entries are removed here exactly when their key leaves the set, so
+    /// the policy set stays within the same capacity bound as the map.
+    policy_order: VecDeque<u128>,
 }
 
 impl IdempotencyTracker {
@@ -74,6 +81,7 @@ impl IdempotencyTracker {
             capacity: effective_capacity,
             cursor: 0,
             at_least_once_completed: Set::new(),
+            policy_order: VecDeque::new(),
         }
     }
 
@@ -139,7 +147,9 @@ impl IdempotencyTracker {
                 if self.at_least_once_completed.contains(&key) {
                     return Err(ActionError::CompletionAlreadyRecorded);
                 }
+                self.evict_policy_if_full();
                 self.at_least_once_completed.insert(key);
+                self.policy_order.push_back(key);
                 Ok(())
             }
             _ => Err(ActionError::NonIdempotentReplayBlocked),
@@ -181,7 +191,9 @@ impl IdempotencyTracker {
                 if self.at_least_once_completed.contains(&key) {
                     false
                 } else {
+                    self.evict_policy_if_full();
                     self.at_least_once_completed.insert(key);
+                    self.policy_order.push_back(key);
                     true
                 }
             }
@@ -204,13 +216,16 @@ impl IdempotencyTracker {
     }
 
     /// Evicts the oldest entry if the tracker is at or above capacity.
+    ///
+    /// The evicted key is removed from `order` as well as from `completed`,
+    /// so the order log stays exactly as long as the map and tracker memory
+    /// remains bounded by capacity.
     fn evict_if_full(&mut self) {
         if self.completed.len() < self.capacity {
             return;
         }
-        // Try to evict from the ring cursor position. We bound iterations
-        // to the order length to guarantee termination even if every key
-        // has already been removed from the HashMap.
+        // We bound iterations to the order length to guarantee termination
+        // even if every key has already been removed from the map.
         let max_attempts = self.order.len();
         let mut attempts = 0;
         while attempts < max_attempts {
@@ -218,15 +233,36 @@ impl IdempotencyTracker {
                 Some(n) => n,
                 None => break,
             };
-            let Some(&key) = self.order.get(self.cursor) else {
-                break;
+            if self.cursor >= self.order.len() {
+                self.cursor = 0;
+                continue;
+            }
+            let index = self.cursor;
+            let Some(&key) = self.order.get(index) else {
+                let next = index.saturating_add(1);
+                self.cursor = if next >= self.order.len() { 0 } else { next };
+                continue;
             };
-            let removed = self.completed.remove(&key);
-            let next = self.cursor.saturating_add(1);
-            self.cursor = if next >= self.order.len() { 0 } else { next };
-            if removed.is_some() {
+            if self.completed.remove(&key).is_some() {
+                self.order.remove(index);
+                // Removal shifts later entries left; resume at the entry
+                // that followed the evicted key to preserve FIFO order.
+                self.cursor = if index < self.order.len() { index } else { 0 };
                 return;
             }
+            let next = index.saturating_add(1);
+            self.cursor = if next >= self.order.len() { 0 } else { next };
+        }
+    }
+
+    /// Evicts oldest policy keys until `at_least_once_completed` is below
+    /// capacity, keeping the policy set within the same bound as the map.
+    fn evict_policy_if_full(&mut self) {
+        while self.at_least_once_completed.len() >= self.capacity {
+            let Some(oldest) = self.policy_order.pop_front() else {
+                break;
+            };
+            self.at_least_once_completed.remove(&oldest);
         }
     }
 }

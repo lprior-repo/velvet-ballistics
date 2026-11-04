@@ -185,6 +185,34 @@ fn policy_aware_tracking_at_least_once_mark_completed_updates_set() {
 }
 
 #[test]
+fn idempotency_tracker_order_log_stays_within_capacity() {
+    let mut tracker = IdempotencyTracker::with_capacity(2);
+    for key in 0..1000u128 {
+        let ticket = make_ticket(key);
+        let _ = tracker.mark_completed(&ticket);
+    }
+    assert!(tracker.len() <= 2);
+    assert!(
+        tracker.order.len() <= 2,
+        "order retained {} entries for capacity-2 tracker",
+        tracker.order.len()
+    );
+}
+
+#[test]
+fn idempotency_tracker_policy_set_stays_within_capacity() {
+    let mut tracker = IdempotencyTracker::with_capacity(2);
+    for key in 0..1000u128 {
+        let _ = tracker.track_for_policy(Idempotency::AtLeastOnceExternal, key);
+    }
+    assert!(
+        tracker.at_least_once_completed.len() <= 2,
+        "policy set retained {} entries for capacity-2 tracker",
+        tracker.at_least_once_completed.len()
+    );
+}
+
+#[test]
 fn policy_aware_tracking_different_policies_independent() {
     // Keys are tracked independently per policy class.
     let mut tracker = IdempotencyTracker::with_default_capacity();

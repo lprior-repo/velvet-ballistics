@@ -7,8 +7,7 @@
 //! Model: Shutdown drain ordering.
 //! Invariant: all pending work drained after shutdown.
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use crate::models::sync::sync::{Arc, AtomicUsize, Ordering};
 
 /// Verifies that shutdown drains all pending work in correct order.
 /// Loom explores all interleavings of shutdown and work completion.

@@ -8,8 +8,7 @@
 //! Verifier: loom
 //! Command: RUSTFLAGS="--cfg loom" cargo test -p vb_runtime journal_writer_queue
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use crate::models::sync::sync::{Arc, AtomicUsize, Ordering};
 
 struct JournalWriterQueue {
     pending: AtomicUsize,
