@@ -23,6 +23,7 @@ pub(super) fn capture(
         entries: Vec::new(),
         lineages: Vec::new(),
         total_items_consumed: state.collect_states.total_items_consumed(),
+        total_pages_delivered: state.collect_states.total_pages_delivered(),
     };
     let body = BodyRef::new(state, authority, &frame, boundary, &collect)?;
     let bytes = encode_body(&body, limits.component)?;

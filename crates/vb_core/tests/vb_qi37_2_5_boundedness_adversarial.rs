@@ -447,7 +447,7 @@ fn given_finite_nested_composition_when_budget_computed_then_each_growth_dimensi
 -> Result<(), String> {
     let budget = finite_nested_budget(3).map_err(|error| error.to_string())?;
 
-    assert_eq!(budget.max_gather_pages, 1);
+    assert_eq!(budget.max_gather_pages, 2);
     assert_eq!(budget.max_gather_items, 3);
     assert_eq!(budget.max_fanout, 2);
     assert_eq!(budget.max_parallel_in_flight, 2);

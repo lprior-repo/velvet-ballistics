@@ -3088,9 +3088,15 @@ fn update_workflow_metrics(
                 *max_together_branches = branch_count;
             }
         }
-        CompiledNodeKind::CollectStart { limit, .. } => {
+        CompiledNodeKind::CollectStart {
+            limit, page_size, ..
+        } => {
+            let per_page = u64::from(*page_size).max(1);
+            let pages = u64::from(*limit).div_ceil(per_page);
+            let pages = u32::try_from(pages)
+                .map_err(|_| BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
             *max_gather_pages = max_gather_pages
-                .checked_add(1)
+                .checked_add(pages)
                 .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
             *max_gather_items = max_gather_items
                 .checked_add(*limit)

@@ -202,7 +202,7 @@ fn whole_workflow_budget_accumulates_sequential_collect_reduce_repeat_and_resour
     let actual = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|error| format!("unexpected budget error: {error:?}"))?;
 
-    ensure_equal(actual.max_gather_pages, 1)?;
+    ensure_equal(actual.max_gather_pages, 3)?;
     ensure_equal(actual.max_gather_items, 3)?;
     ensure_equal(actual.max_repeat_attempts, 2)?;
     ensure_equal(actual.max_timer_entries, 1)?;
@@ -1685,7 +1685,7 @@ fn collect_start_body_accounting() -> Result<(), String> {
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| e.to_string())?;
     ensure_equal(budget.max_total_steps, 5)?;
-    ensure_equal(budget.max_gather_pages, 1)?;
+    ensure_equal(budget.max_gather_pages, 3)?;
     ensure_equal(budget.max_gather_items, 3)
 }
 
@@ -3718,7 +3718,7 @@ fn whole_workflow_budget_max_gather_pages_and_items() -> Result<(), String> {
     let contract = test_contract(3, 3);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| e.to_string())?;
-    ensure_equal(budget.max_gather_pages, 1)?;
+    ensure_equal(budget.max_gather_pages, 5)?;
     ensure_equal(budget.max_gather_items, 50)
 }
 

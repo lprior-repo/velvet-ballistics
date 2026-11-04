@@ -2486,3 +2486,146 @@ fn drive_state_without_admitted_budget_ignores_finished_list_size() {
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
+
+fn gather_pages_budget(max_gather_pages: u32) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable: 100,
+        max_action_tickets: 10,
+        max_parallel_in_flight: 10,
+        max_retries_per_action: 10,
+        max_gather_pages,
+        max_gather_items: 10,
+        max_for_each_iterations: 10,
+        max_together_branches: 10,
+        max_repeat_attempts: 10,
+        max_run_time_seconds: 100,
+        max_result_bytes: 100,
+        max_total_slots_written: 100,
+        max_timer_entries: 100,
+        max_trace_events: 100,
+        max_queue_depth: 100,
+        max_journal_batch_bytes: 100,
+        max_ipc_payload_bytes: 100,
+        max_blob_bytes: 100,
+        max_input_bytes: 100,
+        max_step_budget_per_tick: 100,
+        max_transitions_per_tick: 100,
+        max_open_gates: 10,
+        max_signal_subscriptions: 10,
+        max_incident_emissions: 100,
+        max_transitions: 100,
+        max_journal_bytes_total: 100,
+        max_value_store_entries: 100,
+        max_cost_units: 100,
+    }
+}
+
+fn deliver_collect_page(
+    states: &mut crate::primitives::collect::CollectStates,
+    run: RunId,
+    page: u32,
+) {
+    states
+        .upsert(crate::primitives::collect::CollectPaginationState {
+            run_id: run,
+            collector_slot: SlotIdx::new(1),
+            source: vb_core::ids::ListId::new(1),
+            current_page: vb_core::ids::ListId::new(page),
+            cursor: 1,
+            page_size: 1,
+            item_count: 1,
+            limit: 1,
+            time_limit_ms: None,
+            start_millis: 0,
+        })
+        .expect("page upsert must succeed");
+}
+
+#[test]
+fn drive_state_fails_when_delivered_pages_exceed_admitted_limit() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(764);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    deliver_collect_page(&mut state.collect_states, run, 1);
+    deliver_collect_page(&mut state.collect_states, run, 2);
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        gather_pages_budget(1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "gather_pages",
+            limit: 1,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_at_delivered_pages_limit_finishes() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(765);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    deliver_collect_page(&mut state.collect_states, run, 1);
+    deliver_collect_page(&mut state.collect_states, run, 2);
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        gather_pages_budget(2),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_without_admitted_budget_ignores_delivered_pages() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(766);
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    deliver_collect_page(&mut state.collect_states, run, 1);
+    deliver_collect_page(&mut state.collect_states, run, 2);
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_fails_when_delivered_pages_exceed_limit_after_removal() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(767);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .expect("run state builds");
+    deliver_collect_page(&mut state.collect_states, run, 1);
+    deliver_collect_page(&mut state.collect_states, run, 2);
+    state.collect_states.remove(run, SlotIdx::new(1));
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        gather_pages_budget(1),
+    ));
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "gather_pages",
+            limit: 1,
+        }))
+    ));
+}

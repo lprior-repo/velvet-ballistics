@@ -34,6 +34,7 @@ impl Shard {
         Self::check_total_slots_written_budget(state)?;
         Self::check_steps_executable_budget(state)?;
         Self::check_result_bytes_budget(state, &signal)?;
+        Self::check_gather_pages_budget(state)?;
         Ok(signal)
     }
 
@@ -368,6 +369,24 @@ impl Shard {
                 vb_core::engine::EngineError::BudgetExceeded {
                     budget: "steps_executable",
                     limit: u64::from(budget.max_steps_executable),
+                },
+            ));
+        }
+        Ok(())
+    }
+
+    fn check_gather_pages_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        if state.collect_states.total_pages_delivered() > u64::from(budget.max_gather_pages) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "gather_pages",
+                    limit: u64::from(budget.max_gather_pages),
                 },
             ));
         }
