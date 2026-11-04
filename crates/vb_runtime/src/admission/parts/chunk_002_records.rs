@@ -13,6 +13,11 @@ pub struct RunAdmission {
     policy_pin: RunPolicyPin,
     /// Aggregate budget admitted for this run, when budget admission is used.
     budget: Option<AggregateResourceBudget>,
+    /// Caller-supplied tenant the run is charged to, when tenant-scoped
+    /// admission was used. Absent for admissions that predate tenant
+    /// scoping or did not use it.
+    #[serde(default)]
+    tenant: Option<TenantId>,
     /// Actions whose idempotency evidence passed artifact admission.
     idempotency_attested: Box<[ActionId]>,
 }
@@ -46,6 +51,7 @@ impl RunAdmission {
             policy,
             policy_pin: RunPolicyPin::Unverified,
             budget: None,
+            tenant: None,
             idempotency_attested: Box::new([]),
         }
     }
@@ -68,6 +74,7 @@ impl RunAdmission {
             policy,
             policy_pin: RunPolicyPin::Unverified,
             budget: None,
+            tenant: None,
             idempotency_attested,
         }
     }
@@ -90,6 +97,7 @@ impl RunAdmission {
             policy,
             policy_pin: RunPolicyPin::Unverified,
             budget: Some(budget),
+            tenant: None,
             idempotency_attested: Box::new([]),
         }
     }
@@ -108,6 +116,12 @@ impl RunAdmission {
     /// Attaches the workflow-derived aggregate budget to this admission.
     pub(crate) fn with_attached_budget(mut self, budget: AggregateResourceBudget) -> Self {
         self.budget = Some(budget);
+        self
+    }
+
+    /// Records the caller-supplied tenant this run is charged to.
+    pub(crate) fn with_tenant(mut self, tenant: TenantId) -> Self {
+        self.tenant = Some(tenant);
         self
     }
 
@@ -145,6 +159,13 @@ impl RunAdmission {
     #[must_use]
     pub const fn budget(&self) -> Option<AggregateResourceBudget> {
         self.budget
+    }
+
+    /// Returns the tenant this run is charged to, when tenant-scoped
+    /// admission was used.
+    #[must_use]
+    pub const fn tenant(&self) -> Option<TenantId> {
+        self.tenant
     }
 
     /// Returns fresh remaining-budget counters for the admitted budget,

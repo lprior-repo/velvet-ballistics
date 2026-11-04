@@ -1625,6 +1625,90 @@ fn admit_run_with_budget_and_tenant_quota_admits_at_quota_and_exposes_remaining(
 }
 
 #[test]
+fn admit_run_with_budget_and_tenant_quota_from_snapshot_rejects_over_quota() {
+    struct AlwaysPresentStore;
+    impl ArtifactStore for AlwaysPresentStore {
+        fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+            true
+        }
+    }
+    let mut usage = ShardUsageSnapshot::default();
+    usage
+        .record_tenant_cost(TenantId::new(7), 5)
+        .expect("snapshot record fits");
+    let result = admit_run_with_budget_and_tenant_quota_from_snapshot(
+        &AlwaysPresentStore,
+        RuntimePolicy::Strict,
+        test_digest(),
+        RunId::new(3),
+        CapabilitySet::empty(),
+        AdmissionBudgetRequest {
+            requested: requested_budget_77_18(10, 1),
+            available: ample_capacity_77_18(),
+            policy: BoundednessPolicy::DEFAULT,
+        },
+        TenantId::new(7),
+        &usage,
+        10,
+    );
+    assert_eq!(
+        result,
+        Err(AdmissionError::ResourceCapacityExceeded {
+            resource: "tenant_quota_cost_units",
+            requested: 15,
+            available: 10,
+        })
+    );
+}
+
+#[test]
+fn admit_run_with_budget_and_tenant_quota_from_snapshot_records_tenant() {
+    struct AlwaysPresentStore;
+    impl ArtifactStore for AlwaysPresentStore {
+        fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+            true
+        }
+    }
+    let mut usage = ShardUsageSnapshot::default();
+    usage
+        .record_tenant_cost(TenantId::new(8), 100)
+        .expect("other tenant record fits");
+    let admission = admit_run_with_budget_and_tenant_quota_from_snapshot(
+        &AlwaysPresentStore,
+        RuntimePolicy::Strict,
+        test_digest(),
+        RunId::new(4),
+        CapabilitySet::empty(),
+        AdmissionBudgetRequest {
+            requested: requested_budget_77_18(10, 1),
+            available: ample_capacity_77_18(),
+            policy: BoundednessPolicy::DEFAULT,
+        },
+        TenantId::new(7),
+        &usage,
+        10,
+    )
+    .expect("other tenant usage must not count against this tenant");
+    assert_eq!(admission.tenant(), Some(TenantId::new(7)));
+    let legacy = admit_run_with_budget_and_tenant_quota(
+        &AlwaysPresentStore,
+        RuntimePolicy::Strict,
+        test_digest(),
+        RunId::new(5),
+        CapabilitySet::empty(),
+        AdmissionBudgetRequest {
+            requested: requested_budget_77_18(10, 1),
+            available: ample_capacity_77_18(),
+            policy: BoundednessPolicy::DEFAULT,
+        },
+        0,
+        10,
+    )
+    .expect("explicit-sum path still admits");
+    assert_eq!(legacy.tenant(), None);
+}
+
+#[test]
 fn admit_run_with_budget_rejects_over_global_quota() {
     struct AlwaysPresentStore;
     impl ArtifactStore for AlwaysPresentStore {
