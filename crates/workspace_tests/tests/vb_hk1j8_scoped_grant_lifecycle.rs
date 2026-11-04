@@ -656,8 +656,8 @@ fn assert_canonical_grant_binding(mismatch: CanonicalGrantMismatch, reconcile: b
     assert_eq!(foreign.verify_for_execute(&foreign_context, &[]), Ok(()));
     assert_eq!(foreign.verify_for_reconcile(&foreign_context), Ok(()));
     let before_events = fixture.journal.events_for_run_full(fixture.run)?;
-    let before_effects = adapter.effect_count();
-    let before_value = adapter.value(scope_a());
+    let before_effects = adapter.effect_count()?;
+    let before_value = adapter.value(scope_a())?;
     let result = if reconcile {
         fixture.runtime.reconcile_registered_action(
             &mut adapter,
@@ -682,16 +682,16 @@ fn assert_canonical_grant_binding(mismatch: CanonicalGrantMismatch, reconcile: b
         }
         other => return Err(format!("expected canonical binding refusal, got {other:?}").into()),
     }
-    assert_eq!(adapter.effect_count(), before_effects);
+    assert_eq!(adapter.effect_count()?, before_effects);
     assert_eq!(
         fixture.journal.events_for_run_full(fixture.run)?,
         before_events
     );
     assert_eq!(pending(&fixture, 0)?, ticket);
-    assert_eq!(adapter.value(scope_a()), before_value);
+    assert_eq!(adapter.value(scope_a())?, before_value);
     fixture.runtime.tick_all()?;
-    assert_eq!(adapter.effect_count(), before_effects);
-    assert_eq!(adapter.value(scope_a()), before_value);
+    assert_eq!(adapter.effect_count()?, before_effects);
+    assert_eq!(adapter.value(scope_a())?, before_value);
     assert_eq!(
         fixture.journal.events_for_run_full(fixture.run)?,
         before_events
@@ -706,7 +706,7 @@ fn assert_canonical_grant_binding(mismatch: CanonicalGrantMismatch, reconcile: b
             &scoped,
             &dispatch,
         )?;
-        assert_eq!(adapter.effect_count(), before_effects);
+        assert_eq!(adapter.effect_count()?, before_effects);
     } else {
         fixture.runtime.execute_registered_action(
             &mut adapter,
@@ -715,7 +715,7 @@ fn assert_canonical_grant_binding(mismatch: CanonicalGrantMismatch, reconcile: b
             &grant,
             ScopedDispatch::new(&scoped, &dispatch, &[]),
         )?;
-        assert_eq!(adapter.effect_count(), 1);
+        assert_eq!(adapter.effect_count()?, 1);
     }
     Ok(())
 }
