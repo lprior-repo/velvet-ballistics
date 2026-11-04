@@ -53,7 +53,7 @@ fn compile_submission(
     source: &[u8],
     output: OutputFormat,
 ) -> Result<vb_core::CompiledWorkflow, ExitCode> {
-    vb_compile::compile_workflow(source).map_err(|errors| {
+    let compiled = vb_compile::compile_workflow(source).map_err(|errors| -> ExitCode {
         if output != OutputFormat::Text {
             json_error(
                 &serde_json::json!({
@@ -68,7 +68,9 @@ fn compile_submission(
             }
         }
         CliExitCode::CompileFailed.into()
-    })
+    })?;
+    crate::action_specs::reject_unknown_actions(&compiled, output, CliExitCode::CompileFailed)?;
+    Ok(compiled)
 }
 
 fn prepare_records(

@@ -2,8 +2,8 @@
 //! Step parsing logic.
 
 use super::parse::{
-    lookup, mapping, opt_str, opt_u32, reject_unknown_fields, require_scalar_in, require_str_in,
-    require_u16, sequence,
+    lookup, mapping, opt_control_str, opt_str, opt_u32, reject_unknown_fields, require_scalar_in,
+    require_str_in, require_u16, sequence,
 };
 use super::types::*;
 use crate::yaml_error::{YamlError, YamlResult};
@@ -25,13 +25,13 @@ pub(super) fn parse_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
 fn parse_step(yaml: &saphyr::Yaml<'_>) -> YamlResult<StepAst> {
     reject_unknown_step_fields(yaml)?;
     let id = require_str_in(yaml, "id", "step.id")?;
-    let name = opt_str(yaml, "name");
-    let condition = opt_str(yaml, "if");
+    let name = opt_str(yaml, "name")?;
+    let condition = opt_str(yaml, "if")?;
     let primitive = parse_step_primitive(yaml)?;
-    let with = opt_str(yaml, "with");
+    let with = opt_control_str(yaml, "with")?;
     let retry = parse_retry(yaml)?;
     let on_error = parse_error_handler(yaml)?;
-    let then = opt_str(yaml, "then");
+    let then = opt_control_str(yaml, "then")?;
     Ok(StepAst {
         id,
         name,
@@ -64,6 +64,12 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
             return Err(YamlError::LegacyPrimitive {
                 primitive: "aggregate",
                 canonical: "reduce",
+            });
+        }
+        if key == "foreach" {
+            return Err(YamlError::LegacyPrimitive {
+                primitive: "foreach",
+                canonical: "for_each",
             });
         }
         if is_primitive(key) {
@@ -186,7 +192,7 @@ fn parse_choose(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
             branches.push(ChooseBranch { when, steps });
         }
     }
-    let otherwise = opt_str(node, "otherwise");
+    let otherwise = opt_control_str(node, "otherwise")?;
     Ok(StepPrimitive::Choose {
         branches,
         otherwise,
@@ -197,7 +203,7 @@ fn parse_foreach(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     reject_unknown_fields(node, &["variable", "input", "at_once", "steps"])?;
     let variable = require_str_in(node, "variable", "foreach.variable")?;
     let input = require_str_in(node, "input", "foreach.input")?;
-    let at_once = opt_u32(node, "at_once");
+    let at_once = opt_u32(node, "at_once")?;
     let body = parse_body_steps(node)?;
     Ok(StepPrimitive::ForEach {
         variable,
@@ -225,8 +231,8 @@ fn parse_collect(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     reject_unknown_fields(node, &["variable", "source", "pages", "items", "steps"])?;
     let variable = require_str_in(node, "variable", "collect.variable")?;
     let source = require_str_in(node, "source", "collect.source")?;
-    let pages = opt_u32(node, "pages");
-    let items = opt_u32(node, "items");
+    let pages = opt_u32(node, "pages")?;
+    let items = opt_u32(node, "items")?;
     let body = parse_body_steps(node)?;
     Ok(StepPrimitive::Collect {
         variable,

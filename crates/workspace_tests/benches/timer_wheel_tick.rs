@@ -239,25 +239,25 @@ fn bench_timer_wheel_tick(c: &mut Criterion) {
             metadata(
                 "timer_wheel_cancel_1",
                 fixture_bytes,
-                "fixture=wheel_100;surface=cancel",
+                "fixture=wheel_100_mixed;surface=cancel",
             ),
             |b| {
                 b.iter(|| {
-                    let mut wheel = wheel_100(now);
+                    let mut wheel = wheel_100_mixed(now);
                     let cancelled = wheel.cancel(RunId::new(50));
                     // Exact assertion: cancel returns true for existing timer
                     assert!(cancelled, "cancel of existing timer 50 must return true");
                     // Cancelled timer no longer fires
-                    let fired = wheel.fire_expired(now + Duration::from_secs(1));
+                    let fired = wheel.fire_expired(now);
                     assert!(
                         fired.iter().all(|e| e.run != RunId::new(50)),
                         "cancelled timer 50 must not appear in fired list"
                     );
-                    // 99 timers remain
+                    // 10 future timers remain
                     assert_eq!(
                         wheel.next_deadline().is_some(),
                         true,
-                        "99 remaining timers must have a deadline"
+                        "10 remaining timers must have a deadline"
                     );
                     black_box(cancelled)
                 });

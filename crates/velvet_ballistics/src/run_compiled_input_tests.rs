@@ -40,12 +40,14 @@ fn i64_port() -> CompiledInputSlot {
     CompiledInputSlot {
         slot: SlotIdx::new(2),
         kind: InputSlotKind::I64,
+        constraint: vb_core::CompiledInputConstraint::unconstrained(),
     }
 }
 fn bool_port() -> CompiledInputSlot {
     CompiledInputSlot {
         slot: SlotIdx::new(3),
         kind: InputSlotKind::Bool,
+        constraint: vb_core::CompiledInputConstraint::unconstrained(),
     }
 }
 
@@ -238,11 +240,97 @@ proptest::proptest! {
     }
 }
 
+fn required_number_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(2),
+        kind: InputSlotKind::I64,
+        constraint: vb_core::CompiledInputConstraint::required(),
+    }
+}
+
+fn required_trailing_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(3),
+        kind: InputSlotKind::I64,
+        constraint: vb_core::CompiledInputConstraint::required(),
+    }
+}
+
+fn optional_number_port() -> CompiledInputSlot {
+    CompiledInputSlot {
+        slot: SlotIdx::new(3),
+        kind: InputSlotKind::Bool,
+        constraint: vb_core::CompiledInputConstraint::unconstrained(),
+    }
+}
+
+#[test]
+fn required_port_empty_raw_is_missing() -> TestResult<()> {
+    let wf = fixture(Box::from([required_number_port()]))?;
+    assert_eq!(
+        map_runtime_inputs(&wf, &[]),
+        Err(InputMappingError::MissingRequiredInput {
+            slot: SlotIdx::new(2)
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn required_port_empty_encoded_is_missing() -> TestResult<()> {
+    let wf = fixture(Box::from([required_number_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([]))?;
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::MissingRequiredInput {
+            slot: SlotIdx::new(2)
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn required_trailing_port_short_list_is_missing() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port(), required_trailing_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(1)]))?;
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Err(InputMappingError::MissingRequiredInput {
+            slot: SlotIdx::new(3)
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn optional_trailing_port_short_list_maps_prefix() -> TestResult<()> {
+    let wf = fixture(Box::from([i64_port(), optional_number_port()]))?;
+    let buf = postcard::to_allocvec(&Box::<[SlotValue]>::from([SlotValue::I64(11)]))?;
+    assert_eq!(
+        map_runtime_inputs(&wf, &buf),
+        Ok(Box::from([(SlotIdx::new(2), SlotValue::I64(11))]))
+    );
+    Ok(())
+}
+
+#[test]
+fn missing_required_input_display() -> TestResult<()> {
+    let error = InputMappingError::MissingRequiredInput {
+        slot: SlotIdx::new(2),
+    };
+    assert_eq!(
+        error.to_string(),
+        "INPUT_MAPPING_FAILED: missing required input for slot SlotIdx(2)"
+    );
+    Ok(())
+}
+
 #[test]
 fn any_port_maps_primitives() -> TestResult<()> {
     let wf = fixture(Box::from([CompiledInputSlot {
         slot: SlotIdx::new(2),
         kind: InputSlotKind::Any,
+        constraint: vb_core::CompiledInputConstraint::unconstrained(),
     }]))?;
     let values = [
         vb_core::SlotValue::Null,

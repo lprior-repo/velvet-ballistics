@@ -2,7 +2,7 @@ use super::support::{TestResult, checkpoint, fixture};
 use vb_core::ids::SlotIdx;
 use vb_core::root_bundle::{OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 #[test]
 fn out_of_range_before_duplicate_and_missing() -> TestResult<()> {
@@ -13,10 +13,12 @@ fn out_of_range_before_duplicate_and_missing() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(2),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         8,
@@ -54,10 +56,12 @@ fn duplicate_before_extra_and_missing() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(2),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         8,
@@ -94,10 +98,12 @@ fn extra_before_missing() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(2),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         8,
@@ -133,10 +139,12 @@ fn missing_slot_detected() -> TestResult<()> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(2),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ],
         8,
