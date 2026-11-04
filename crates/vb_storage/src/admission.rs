@@ -231,6 +231,9 @@ pub struct AcceptedArtifact {
     /// process memory.
     #[serde(default)]
     pub action_contracts: Box<[ActionContract]>,
+    /// Compiled-IR schema version stamped at admission; the admission and
+    /// dispatch gates classify it against `CURRENT_IR_VERSION`.
+    pub artifact_version: vb_core::compat::SchemaVersion,
 }
 
 /// Computes the policy digest from a workflow's resource contract.

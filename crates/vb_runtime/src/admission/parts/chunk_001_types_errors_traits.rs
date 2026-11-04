@@ -181,6 +181,15 @@ pub enum AdmissionError {
         /// Digest found inside the loaded artifact envelope.
         found: WorkflowDigest,
     },
+    /// The artifact's IR version does not authorize live effects under §77.17.
+    #[error(
+        "admission rejected: artifact IR version incompatible: held {held:?}, required {required:?}, decision code {code}"
+    )]
+    ArtifactVersionIncompatible {
+        held: vb_core::compat::SchemaVersion,
+        required: vb_core::compat::SchemaVersion,
+        code: u16,
+    },
     /// The loaded artifact certificate is older than the caller's freshness floor.
     #[error(
         "admission rejected: artifact certificate stale for digest {digest:?}: accepted_at_seq {accepted_at_seq:?} < required_at_least {required_at_least:?}"

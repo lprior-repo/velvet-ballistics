@@ -23,6 +23,8 @@ pub(super) fn validate(
     let artifact = load_artifact(store, digest)?;
     crate::admission::verify_stored_artifact(store, &artifact, Some(policy))
         .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
+    crate::admission::check_artifact_ir_version(&artifact)
+        .map_err(|_| RuntimeError::AdmissionArtifactInvalid { digest })?;
     compare_execution_tuple(&artifact, workflow, contracts)
 }
 

@@ -32,6 +32,10 @@ pub struct SchemaVersion {
     pub patch: u16,
 }
 
+/// Current compiled-IR schema version. Admission stamps it onto accepted
+/// artifacts; the admission/dispatch gates classify against it.
+pub const CURRENT_IR_VERSION: SchemaVersion = SchemaVersion::new(1, 0, 0);
+
 impl SchemaVersion {
     /// Builds a version triple.
     #[must_use]

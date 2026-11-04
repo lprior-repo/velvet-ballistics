@@ -650,6 +650,70 @@ fn admission_admit_run_strict_with_present_artifact() -> Result<(), String> {
 }
 
 #[test]
+fn admit_artifact_run_rejects_future_major_ir_version() -> Result<(), String> {
+    let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
+    artifact.artifact_version = vb_core::compat::SchemaVersion::new(2, 0, 0);
+    let digest =
+        vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
+    artifact.digest = digest;
+    artifact.verification.digest = digest;
+    let store = FixedAcceptedStore { artifact };
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        digest,
+        CapabilitySet::empty(),
+    );
+    assert!(
+        matches!(
+            result,
+            Err(AdmissionError::ArtifactVersionIncompatible { code: 300, .. })
+        ),
+        "major-line IR change with no declared path must reject with code 300, got {result:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn admit_artifact_run_accepts_same_major_newer_minor_ir_version() -> Result<(), String> {
+    let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
+    artifact.artifact_version = vb_core::compat::SchemaVersion::new(1, 2, 0);
+    let digest =
+        vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
+    artifact.digest = digest;
+    artifact.verification.digest = digest;
+    let store = FixedAcceptedStore { artifact };
+    let result = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        digest,
+        CapabilitySet::empty(),
+    );
+    assert!(
+        result.is_ok(),
+        "same-major newer-minor IR version is forward compatible and must admit, got {result:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn check_artifact_ir_version_allows_only_live_effect_classes() -> Result<(), String> {
+    let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
+    assert!(check_artifact_ir_version(&artifact).is_ok());
+    artifact.artifact_version = vb_core::compat::SchemaVersion::new(2, 0, 0);
+    assert!(
+        matches!(
+            check_artifact_ir_version(&artifact),
+            Err(AdmissionError::ArtifactVersionIncompatible { code: 300, .. })
+        ),
+        "future major IR version must not authorize live effects"
+    );
+    Ok(())
+}
+
+#[test]
 fn admission_admit_run_strict_rejects_loaded_digest_mismatch() -> Result<(), String> {
     struct MismatchedAcceptedStore;
     impl AcceptedArtifactStore for MismatchedAcceptedStore {
@@ -1488,6 +1552,9 @@ fn admission_error_match_covers_all_variants() {
             AdmissionError::ArtifactInvalidProofFlag { .. } => "artifact_invalid_proof_flag",
             AdmissionError::ArtifactDigestMismatch { .. } => "artifact_digest_mismatch",
             AdmissionError::ArtifactCertificateStale { .. } => "artifact_certificate_stale",
+            AdmissionError::ArtifactVersionIncompatible { .. } => {
+                "artifact_version_incompatible"
+            }
             AdmissionError::CapabilityCountMismatch { .. } => "capability_count_mismatch",
         }
     }

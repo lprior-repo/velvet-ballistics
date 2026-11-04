@@ -12,10 +12,9 @@
 
 use vb_core::compat::{CompatBoundary, CompatDecision, CompatDigests, CompatInputs, SchemaVersion};
 
-/// Current IR schema version declared by this batch. The compiled IR has
-/// no version field today; this constant is the consumer side of the
-/// classification until one lands.
-pub const CURRENT_IR_VERSION: SchemaVersion = SchemaVersion::new(1, 0, 0);
+/// Re-exported from `vb_core::compat`: the single IR version for the
+/// compiler seam, storage admission, and the runtime gates.
+pub use vb_core::compat::CURRENT_IR_VERSION;
 
 /// Classifies an IR artifact version pair at the
 /// [`CompatBoundary::IrVersion`] boundary using the §77.17 algebra.

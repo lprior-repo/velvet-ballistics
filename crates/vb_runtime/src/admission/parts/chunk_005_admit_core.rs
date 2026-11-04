@@ -22,6 +22,7 @@ pub fn admit_run(
                     flag: "admission_policy",
                 },
             )?;
+            check_artifact_ir_version(&artifact)?;
             if artifact.digest != digest && artifact.source_digest != digest {
                 return Err(AdmissionError::ArtifactDigestMismatch {
                     requested: digest,
@@ -100,6 +101,7 @@ pub fn admit_artifact_run_with_certificate_floor(
                     flag: "admission_policy",
                 },
             )?;
+            check_artifact_ir_version(&artifact)?;
 
             // INV-002: digest binding must be total. The loaded artifact's digest
             // must match the requested digest exactly — a crafted artifact with

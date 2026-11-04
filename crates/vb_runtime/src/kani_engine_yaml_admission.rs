@@ -75,6 +75,7 @@ fn artifact(
         verification: proof(digest, gate_count, bounded),
         accepted_at_seq: vb_storage::EventSeq::new(0),
         required_capabilities,
+        artifact_version: vb_core::compat::CURRENT_IR_VERSION,
     }
 }
 

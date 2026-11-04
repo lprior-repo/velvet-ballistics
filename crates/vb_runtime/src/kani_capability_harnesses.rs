@@ -118,6 +118,7 @@ mod kani_capability_harnesses {
         vb_storage::admission::AcceptedArtifact {
             digest,
             ir: Vec::new(),
+            artifact_version: vb_core::compat::CURRENT_IR_VERSION,
             verification: vb_storage::admission::VerificationProof {
                 digest,
                 gate_count: REQUIRED_GATE_COUNT,

@@ -475,6 +475,25 @@ fn accepted_artifact_fields_are_populated() -> Result<(), String> {
 }
 
 #[test]
+fn prepared_artifact_carries_current_ir_version() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+    let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+        .map_err(|e| format!("submit failed: {e}"))?;
+    assert_eq!(
+        artifact.artifact_version,
+        vb_core::compat::CURRENT_IR_VERSION,
+        "admission must stamp the current IR version"
+    );
+    assert_eq!(
+        artifact.artifact_version,
+        vb_core::compat::SchemaVersion::new(1, 0, 0),
+        "current IR version is 1.0.0"
+    );
+    Ok(())
+}
+
+#[test]
 fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability()
 -> Result<(), String> {
     let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
