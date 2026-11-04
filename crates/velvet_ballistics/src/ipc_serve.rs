@@ -43,6 +43,12 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
     let config = vb_runtime::shard::ShardConfig::default();
     let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config, runtime_journal);
 
+    let persistence = IpcJournalService { journal, queue };
+    if let Err(error) = recover_startup(&persistence, &mut runtime, STARTUP_HEADER_SCAN_LIMIT) {
+        errln!("error recovering startup runs: {error}");
+        return CliExitCode::IpcError.into();
+    }
+
     // Bind the IPC server
     let mut server = match vb_ipc::server::IpcServer::bind(socket) {
         Ok(s) => s,
@@ -53,7 +59,6 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
     };
 
     outln!("ipc server listening on {}", socket.display());
-    let persistence = IpcJournalService { journal, queue };
 
     // Event loop
     loop {
@@ -209,3 +214,58 @@ fn decode_workflow_parts(
     vb_core::CompiledWorkflow::try_from_parts(parts)
         .map_err(|_| vb_ipc::server::WorkflowResolutionError::InvalidArtifact)
 }
+
+// Startup bounds historical headers independently of live-run capacity.
+const STARTUP_HEADER_SCAN_LIMIT: usize = 65_536;
+
+fn recover_startup(
+    service: &IpcJournalService,
+    runtime: &mut vb_runtime::runtime::Runtime,
+    max_headers: usize,
+) -> Result<(), vb_storage::headers::RunHeaderScanError<vb_runtime::RuntimeError>> {
+    use vb_storage::headers::RunHeaderScanError;
+    let limit = NonZeroUsize::new(max_headers).ok_or(RunHeaderScanError::InvalidLimit)?;
+    service
+        .journal
+        .try_for_each_run_header_bounded(limit, |header| {
+            match runtime.recover_and_resume(header.run) {
+                Err(vb_runtime::RuntimeError::RecoveryCannotResume { reason })
+                    if reason == "terminal_state" =>
+                {
+                    return Ok(());
+                }
+                result => result?,
+            }
+            if !runtime.tick_all()? {
+                return Err(vb_runtime::RuntimeError::ShutdownInProgress);
+            }
+            service.flush_startup_journal()
+        })
+}
+
+impl IpcJournalService {
+    fn flush_startup_journal(&self) -> Result<(), vb_runtime::RuntimeError> {
+        let counts = self.queue.pending_profile_counts()?;
+        let pending = counts.journaled.checked_add(counts.strict).ok_or(
+            vb_runtime::RuntimeError::UnsupportedOperation {
+                operation: "startup_journal_count_overflow",
+            },
+        )?;
+        for _ in 0..pending {
+            if self.queue.flush_batch_durable(&self.journal)?.drained == 0 {
+                break;
+            }
+        }
+        let counts = self.queue.pending_profile_counts()?;
+        if counts.journaled != 0 || counts.strict != 0 {
+            return Err(vb_runtime::RuntimeError::UnsupportedOperation {
+                operation: "startup_journal_not_drained",
+            });
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+#[path = "ipc_startup_recovery_tests.rs"]
+mod startup_recovery_tests;
