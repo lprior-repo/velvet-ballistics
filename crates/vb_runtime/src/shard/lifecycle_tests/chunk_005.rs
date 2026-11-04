@@ -231,11 +231,9 @@ fn ask_answer_unknown_run_returns_run_not_found() {
 }
 
 #[test]
-fn timer_fire_advances_wait_to_completion() {
+fn timer_fire_advances_wait_to_completion() -> Result<(), String> {
     let mut shard = Shard::new(small_config());
-    let Some(wf) = wait_workflow() else {
-        return;
-    };
+    let wf = require_workflow("wait_workflow", wait_workflow())?;
     let run = RunId::new(80);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithContracts {
@@ -254,6 +252,7 @@ fn timer_fire_advances_wait_to_completion() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.pending_timer_count(), 0);
+    Ok(())
 }
 
 #[test]
