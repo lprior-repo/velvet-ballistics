@@ -22,6 +22,46 @@ fn empty_source_rejected() {
 }
 
 #[test]
+fn contentless_documents_rejected_as_empty_source() {
+    for text in ["---\n...\n", "---\n", "~\n", "null\n", "Null\n", "NULL\n"] {
+        let result = validate_yaml_profile(text);
+        assert!(
+            matches!(result, Err(YamlError::EmptySource)),
+            "expected EmptySource for {text:?}, got {result:?}"
+        );
+    }
+}
+
+#[test]
+fn nested_nulls_remain_legitimate_values() {
+    for text in ["a: ~\n", "a: null\n", "a: \n", "[~, 1]\n"] {
+        let result = validate_yaml_profile(text);
+        assert_eq!(result, Ok(()), "nested null must stay valid: {text:?}");
+    }
+}
+
+#[test]
+fn non_null_root_scalar_still_counts_as_content() {
+    // A scalar root is not workflow content for the AST, but the profile
+    // content gate only excludes null roots; anything else is unchanged.
+    assert_eq!(validate_yaml_profile("hello\n"), Ok(()));
+}
+
+#[test]
+fn explicit_complex_keys_rejected_before_duplicate_check() {
+    // vb-rqu7r: the first complex key already fails, so a duplicated
+    // complex key can never silently override.
+    let result = validate_yaml_profile("? [a]\n: 1\n? [a]\n: 2\n");
+    assert!(
+        matches!(
+            result,
+            Err(YamlError::FieldShape { field, .. }) if field == "mapping key"
+        ),
+        "expected mapping-key FieldShape, got {result:?}"
+    );
+}
+
+#[test]
 fn single_document_accepted() {
     let result = validate_yaml_profile("a: 1\n");
     assert_eq!(result, Ok(()));

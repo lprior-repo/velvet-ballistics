@@ -122,7 +122,13 @@ impl EventCollectionState {
         } else if self.in_mapping.last().is_some() {
             self.record_sequence_scalar(limits)?;
         }
-        self.found_content = true;
+        // A null scalar at document root is saphyr's synthesized placeholder
+        // for a contentless document (`---`, `--- ...`, explicit null): it is
+        // not workflow content, so it must not satisfy the `finish` content
+        // gate. Nested nulls are legitimate values and still count.
+        if self.in_mapping.last().is_some() || !is_root_null(value) {
+            self.found_content = true;
+        }
         Ok(())
     }
 
@@ -214,4 +220,11 @@ impl EventCollectionState {
         }
         Ok(self.events)
     }
+}
+
+/// Null spellings that carry no workflow content at document root. Kept in
+/// sync with the null arm of duplicate-key identity so the profile treats
+/// "no content" the same everywhere.
+fn is_root_null(value: &str) -> bool {
+    matches!(value, "" | "~" | "null" | "Null" | "NULL")
 }
