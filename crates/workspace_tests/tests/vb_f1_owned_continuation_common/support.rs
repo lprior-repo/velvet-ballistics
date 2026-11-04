@@ -196,6 +196,7 @@ fn initial_state(
         workflow,
         store,
         admission: Some(admission),
+        run_started_millis: None,
         collect_states: CollectStates::new(),
         action_contracts: receipt.artifact.action_contracts.clone(),
     })

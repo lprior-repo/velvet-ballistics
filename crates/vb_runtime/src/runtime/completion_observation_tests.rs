@@ -64,6 +64,7 @@ fn state(
         store: vb_core::value_store::ValueStore::new(),
         action_attempts: Box::from([0, 0]),
         admission: None,
+        run_started_millis: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
     })

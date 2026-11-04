@@ -156,6 +156,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         store: vb_core::value_store::ValueStore::new(),
         action_attempts: super::new_action_attempts(1),
         admission: None,
+        run_started_millis: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
     };

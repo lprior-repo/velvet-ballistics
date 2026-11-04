@@ -214,6 +214,7 @@ fn symbolic_run_state(run: RunId) -> Option<RunState> {
         store: vb_core::value_store::ValueStore::with_max_slots(slot_count),
         action_attempts: crate::shard::helpers::new_action_attempts(step_count),
         admission: None,
+        run_started_millis: None,
         collect_states: Default::default(),
         action_contracts: Vec::new().into_boxed_slice(),
     })

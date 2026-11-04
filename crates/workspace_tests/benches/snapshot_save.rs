@@ -95,6 +95,7 @@ fn run_state_after_n_steps(workflow: &CompiledWorkflow, run_id: RunId, executed:
         store: vb_core::ValueStore::new(),
         action_attempts: vec![1u16; usize::from(step_count)].into_boxed_slice(),
         admission: None,
+        run_started_millis: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::from([]),
     }

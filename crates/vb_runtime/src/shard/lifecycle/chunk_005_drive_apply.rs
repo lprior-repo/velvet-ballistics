@@ -23,6 +23,7 @@ impl Shard {
             granted,
             state.run_attempt.get(),
         )?;
+        Self::check_run_time_budget(state)?;
         Self::check_suspension_budgets(state)?;
         Self::check_value_store_budget(state)?;
         Self::check_cost_budget(state, &signal)?;
@@ -33,6 +34,49 @@ impl Shard {
         Self::check_parallel_in_flight_budget(state)?;
         Self::check_total_slots_written_budget(state)?;
         Ok(signal)
+    }
+
+    fn check_run_time_budget(state: &mut RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let started = match state.run_started_millis {
+            Some(started) => started,
+            None => {
+                let now = crate::shard::helpers::wall_clock_millis_since_epoch().ok_or(
+                    crate::engine::types::RuntimeEngineError::Core(
+                        vb_core::engine::EngineError::InternalInvariantViolation {
+                            reason: "wall clock unavailable",
+                        },
+                    ),
+                )?;
+                state.run_started_millis = Some(now);
+                now
+            }
+        };
+        let now = crate::shard::helpers::wall_clock_millis_since_epoch().ok_or(
+            crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::InternalInvariantViolation {
+                    reason: "wall clock unavailable",
+                },
+            ),
+        )?;
+        let elapsed = now.saturating_sub(started);
+        let Some(limit_millis) = budget.max_run_time_seconds.checked_mul(1000) else {
+            return Ok(());
+        };
+        if elapsed > limit_millis {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "run_time",
+                    limit: budget.max_run_time_seconds,
+                },
+            ));
+        }
+        Ok(())
     }
 
     fn check_suspension_budgets(state: &RunState) -> RuntimeEngineResult<()> {

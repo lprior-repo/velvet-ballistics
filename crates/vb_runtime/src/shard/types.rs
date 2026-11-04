@@ -504,6 +504,10 @@ pub struct RunState {
     pub action_attempts: Box<[u16]>,
     /// Admission record for this run, if admission gating was performed.
     pub admission: Option<crate::admission::RunAdmission>,
+    /// Wall-clock run start in milliseconds since the UNIX epoch, recorded at submit.
+    /// None for states built before a start was recorded; the drive check records
+    /// the current wall clock on first drive in that case.
+    pub run_started_millis: Option<u64>,
     /// Per-run collect pagination state side table.
     pub collect_states: CollectStates,
     /// Validated action contracts used by Do execution.

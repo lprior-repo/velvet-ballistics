@@ -191,6 +191,7 @@ fn run_state_equality() {
         store: vb_core::value_store::ValueStore::new(),
         action_attempts: super::new_action_attempts(4),
         admission: None,
+        run_started_millis: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
     };
@@ -211,6 +212,7 @@ fn run_state_equality() {
         store: vb_core::value_store::ValueStore::new(),
         action_attempts: super::new_action_attempts(4),
         admission: None,
+        run_started_millis: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
     };

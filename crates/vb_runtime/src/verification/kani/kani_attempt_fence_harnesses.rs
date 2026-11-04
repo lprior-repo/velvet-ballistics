@@ -96,6 +96,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
         store: ValueStore::new(),
         action_attempts: new_action_attempts(step_count),
         admission: None,
+        run_started_millis: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
     };

@@ -90,6 +90,7 @@ impl RunContinuationV1 {
             store,
             action_attempts: body.action_attempts,
             admission: Some(body.admission),
+            run_started_millis: None,
             collect_states,
             action_contracts: body.action_contracts,
         })
