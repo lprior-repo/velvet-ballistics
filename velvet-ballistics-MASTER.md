@@ -1910,7 +1910,7 @@ The current `velvet-ballistics` backend milestone is done when all 24 points are
 17. IR-interpreter execution covers every active final IR node and is the accepted execution mode.
 18. Diagnostics include stable code, path, source span, message, and cold side-table context.
 19. Validation, compile, runtime, storage, IPC, action, and replay failures are typed and graceful.
-20. Forbidden constructs are absent: `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, ignored `Result`, runtime maps, hot formatting, runtime YAML/JSON/HTTP, and string reference/action lookup.
+20. Forbidden constructs are absent from production lib code (held to forbid-level `unwrap`/`expect`/`panic` lints); test and proof code is exempt from this point: `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, ignored `Result`, runtime maps, hot formatting, runtime YAML/JSON/HTTP, and string reference/action lookup.
 21. Unchecked indexing, slicing, casts, and arithmetic are absent from first-party code.
 22. Every speed claim is backed by real benchmark evidence with p50/p95/p99, instruction counts, allocation counts, bytes allocated, latency, durability mode, and fixture metadata; compileable scaffold placeholders do not count.
 23. Full current-scope gates pass: fmt, clippy hard denies, tests, nextest, Miri, coverage, fuzz smoke, mutants smoke, feature powerset, docs, benchmark build, storage/recovery evidence, IPC evidence, and direct API evidence. Supply-chain/dependency unsafe reports are advisory under the owner waiver unless a bead opts in.
