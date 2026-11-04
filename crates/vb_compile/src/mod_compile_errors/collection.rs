@@ -42,6 +42,7 @@ impl CompileError {
             | Self::StepIndexOutOfRange { .. }
             | Self::SlotIndexOutOfRange { .. }
             | Self::BranchTargetOutOfRange { .. }
+            | Self::IntegerScalarOutOfRange { .. }
             | Self::PrimitiveLoweringLimitExceeded { .. } => "LIMIT_EXCEEDED",
             Self::Workflow(error) => workflow_error_code(error),
             Self::CompiledIrEncode(_) => "INVALID_COMPILED_WORKFLOW",
@@ -59,6 +60,7 @@ impl CompileError {
             Self::InvalidName { field, value } => invalid_name_code(field, value),
             Self::DuplicateStepId { .. }
             | Self::DuplicateOutputName { .. }
+            | Self::SetOutputShadowsInput { .. }
             | Self::DuplicateInputName { .. } => "DUPLICATE_ID",
             Self::UnknownOutputName { .. } => "UNKNOWN_OUTPUT_NAME",
             Self::UnknownStepField { .. } | Self::UnknownStepPrimitiveField { .. } => {
@@ -69,6 +71,7 @@ impl CompileError {
             Self::UnsupportedStepControlField { field, .. } => control_field_code(field),
             Self::StepFieldShape { field, .. } => step_field_shape_code(field),
             Self::BackwardBranchTarget { .. }
+            | Self::BackwardEdgeNamed { .. }
             | Self::UnknownStepTarget { .. }
             | Self::UnknownStepLabel { .. } => "INVALID_THEN_TARGET",
             Self::UnknownReferenceRoot { .. } => "UNKNOWN_REFERENCE",
@@ -85,6 +88,7 @@ impl CompileError {
             | Self::ExpressionLimitExceeded { .. }
             | Self::ExpressionUnexpectedToken { .. }
             | Self::ExpressionUnknownIdentifier { .. }
+            | Self::ConstantFault { .. }
             | Self::ExpressionLoweringUnsupported { .. }
             | Self::ExpressionHelperArity { .. } => "INVALID_EXPRESSION",
             Self::IdempotencyViolation { .. } => "IDEMPOTENCY_VIOLATION",

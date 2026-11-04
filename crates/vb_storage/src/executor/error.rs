@@ -30,6 +30,9 @@ pub enum ExecutorError {
     /// Grant does not match the exact artifact/run/action/ticket/resource.
     #[error("execution authority mismatch")]
     Unauthorized,
+    /// Scoped grant lifecycle check failed before live dispatch.
+    #[error("scoped grant: {0}")]
+    Grant(#[from] vb_core::GrantError),
     /// Ticket key or attempt bounds are invalid.
     #[error("invalid action ticket")]
     InvalidTicket,

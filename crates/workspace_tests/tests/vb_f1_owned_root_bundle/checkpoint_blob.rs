@@ -6,7 +6,7 @@ use vb_core::errors::CoreError;
 use vb_core::ids::{BlobId, SlotIdx};
 use vb_core::root_bundle::{OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 use super::support::{TestResult, checkpoint, fixture};
 
@@ -16,6 +16,7 @@ fn list_taint_count_mismatch() -> TestResult<()> {
     let inputs = vec![CompiledInputSlot {
         slot: SlotIdx::new(0),
         kind: InputSlotKind::I64,
+        constraint: CompiledInputConstraint::unconstrained(),
     }];
     let wf = fixture(1, inputs, 8, 4)?;
 
@@ -48,6 +49,7 @@ fn blob_limit_enforced() -> TestResult<()> {
     let inputs = vec![CompiledInputSlot {
         slot: SlotIdx::new(0),
         kind: InputSlotKind::I64,
+        constraint: CompiledInputConstraint::unconstrained(),
     }];
     let wf = fixture(1, inputs, 8, 4)?;
 
@@ -79,6 +81,7 @@ fn exact_bound_blob_success() -> TestResult<()> {
     let inputs = vec![CompiledInputSlot {
         slot: SlotIdx::new(0),
         kind: InputSlotKind::Blob,
+        constraint: CompiledInputConstraint::unconstrained(),
     }];
     let wf = fixture(1, inputs.clone(), 8, 4)?;
 

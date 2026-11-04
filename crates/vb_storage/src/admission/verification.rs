@@ -101,22 +101,39 @@ fn checked_evidence_schema(
 ) -> Result<&ArtifactVerificationEvidence, JournalError> {
     match evidence {
         ArtifactEvidence::Packed(_) => Err(JournalError::ArtifactMalformed),
-        ArtifactEvidence::Unverified => Err(JournalError::MigrationRequired {
-            from: 1,
-            to: EVIDENCE_VERSION,
-        }),
-        ArtifactEvidence::Verified(evidence) if evidence.schema_version == 2 => {
-            Err(JournalError::MigrationRequired {
-                from: 2,
-                to: EVIDENCE_VERSION,
-            })
-        }
+        ArtifactEvidence::Unverified => Err(classify_evidence_held(1)),
         ArtifactEvidence::Verified(evidence) if evidence.schema_version == EVIDENCE_VERSION => {
             Ok(evidence)
         }
-        ArtifactEvidence::Verified(evidence) => Err(JournalError::UnsupportedSchemaVersion {
-            version: evidence.schema_version,
-        }),
+        ArtifactEvidence::Verified(evidence) => {
+            Err(classify_evidence_held(evidence.schema_version))
+        }
+    }
+}
+
+/// Routes one evidence schema version through the §77.17 algebra at the
+/// [`vb_core::compat::CompatBoundary::ArtifactEnvelope`] boundary. Only
+/// the known legacy lines (the v1 `Unverified` era and v2) carry a
+/// migration path, and the path is explicit: the caller sees
+/// `MigrationRequired` and must regenerate the evidence, never a silent
+/// default substitution. Anything else unknown fails closed as
+/// `Rejected`. No replay allowance is declared on this path, so the
+/// wildcard arm fails `ReplayOnly` closed with every unknown future
+/// class.
+pub(crate) fn classify_evidence_held(held: u16) -> JournalError {
+    let inputs = crate::compat::wire_version_inputs(
+        vb_core::compat::CompatBoundary::ArtifactEnvelope,
+        held,
+        EVIDENCE_VERSION,
+        held == 1 || held == 2,
+        false,
+    );
+    match vb_core::compat::classify(inputs).class {
+        vb_core::compat::CompatibilityClass::MigrationRequired => JournalError::MigrationRequired {
+            from: held,
+            to: EVIDENCE_VERSION,
+        },
+        _ => JournalError::UnsupportedSchemaVersion { version: held },
     }
 }
 

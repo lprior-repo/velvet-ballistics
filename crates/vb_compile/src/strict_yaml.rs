@@ -51,7 +51,7 @@ fn validate_event(event: &Event<'_>, mark: Span) -> Result<(), CompileError> {
         | Event::SequenceStart(anchor, tag)
         | Event::Scalar(_, _, anchor, tag) => {
             reject_anchor(*anchor, mark)?;
-            reject_tag(tag.as_ref(), mark)
+            reject_tag(tag.as_deref(), mark)
         }
         _ => Ok(()),
     }
@@ -77,14 +77,25 @@ fn reject_anchor(anchor: usize, mark: Span) -> Result<(), CompileError> {
     }
 }
 
-fn reject_tag<T>(tag: Option<&T>, mark: Span) -> Result<(), CompileError> {
-    if tag.is_some() {
-        Err(CompileError::TagForbidden {
+fn reject_tag(tag: Option<&saphyr_parser::Tag>, mark: Span) -> Result<(), CompileError> {
+    match tag {
+        None => Ok(()),
+        Some(tag) if is_core_tag(tag) => Ok(()),
+        Some(_) => Err(CompileError::TagForbidden {
             mark: SourceMark::from_parser_span(mark),
-        })
-    } else {
-        Ok(())
+        }),
     }
+}
+
+/// YAML core-schema tags (`!!str`, `!!int`, ...) are allowed everywhere in
+/// the compiler, matching the `vb_yaml` profile.
+fn is_core_tag(tag: &saphyr_parser::Tag) -> bool {
+    let core_handle = tag.handle == "tag:yaml.org,2002:" || tag.handle == "!!";
+    core_handle
+        && matches!(
+            tag.suffix.as_str(),
+            "str" | "int" | "float" | "bool" | "null" | "seq" | "map"
+        )
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@ use vb_core::ids::{BlobId, ListId, ObjectId, SlotIdx, SymbolId};
 use vb_core::root_bundle::{OwnedRootBundle, OwnedRootBundleError, ValueKind};
 use vb_core::value::{FiniteF64, SlotValue, Taint};
 use vb_core::value_store::ValueStoreCheckpointV1;
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 fn cases() -> TestResult<[(InputSlotKind, SlotValue, ValueKind); 8]> {
     Ok([
@@ -73,6 +73,7 @@ fn all_kinds_and_any_accept_exactly() -> TestResult<()> {
                 vec![CompiledInputSlot {
                     slot: SlotIdx::new(0),
                     kind: declared_kind,
+                    constraint: CompiledInputConstraint::unconstrained(),
                 }],
                 1,
                 4,
@@ -109,6 +110,7 @@ fn every_strict_kind_mismatch_is_typed() -> TestResult<()> {
                 vec![CompiledInputSlot {
                     slot: SlotIdx::new(0),
                     kind: expected.0,
+                    constraint: CompiledInputConstraint::unconstrained(),
                 }],
                 1,
                 4,

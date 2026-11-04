@@ -8,9 +8,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)] // shared test helpers used across multiple test targets
 
-use vb_compile::{
-    ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
-};
+use vb_compile::{ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource};
+use vb_yaml::yaml_ast::types::WorkflowSourceParts;
 
 /// Build a minimal WorkflowSource with a single Ask step and a Finish step.
 ///
