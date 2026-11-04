@@ -22,6 +22,8 @@ pub fn assert_typed_ipc_error(error: vb_ipc::IpcError) -> bool {
             | IpcError::InvalidMagic { .. }
             | IpcError::UnsupportedVersion { .. }
             | IpcError::UnknownCommand(_)
+            | IpcError::InvalidCommandFlags { .. }
+            | IpcError::ReservedBitsSet { .. }
             | IpcError::ReservedNonZero { .. }
             | IpcError::PayloadLengthMismatch { .. }
             | IpcError::HeaderEncodeFailed
@@ -193,7 +195,7 @@ mod typed_ipc_error_tests {
     use super::*;
 
     #[test]
-    fn test_all_14_explicit_variants_match() {
+    fn test_all_explicit_variants_match() {
         let variants = [
             vb_ipc::IpcError::Full,
             vb_ipc::IpcError::Disconnected,
@@ -204,6 +206,15 @@ mod typed_ipc_error_tests {
             vb_ipc::IpcError::InvalidMagic { actual: 0 },
             vb_ipc::IpcError::UnsupportedVersion { actual: 0 },
             vb_ipc::IpcError::UnknownCommand(0),
+            vb_ipc::IpcError::InvalidCommandFlags {
+                command: vb_ipc::IpcCommand::SubmitRun,
+                flags: 0,
+            },
+            vb_ipc::IpcError::ReservedBitsSet {
+                command: vb_ipc::IpcCommand::SubmitRun,
+                actual: 0,
+                reserved_mask: 0,
+            },
             vb_ipc::IpcError::ReservedNonZero { actual: 1 },
             vb_ipc::IpcError::PayloadLengthMismatch {
                 header: 1,
@@ -230,5 +241,28 @@ mod typed_ipc_error_tests {
         assert_eq!(error, vb_ipc::IpcError::InvalidMagic { actual: 0 });
         assert!(assert_typed_ipc_error(error));
         Ok(())
+    }
+
+    #[test]
+    fn test_crash_artifact_reserved_bits_typed() {
+        // vb-1ej5v: libFuzzer artifact (base64
+        // VExCVgEAAABUTAAAAAAAQlZUAQAAAAAAAAJbClsKOw==) aborted the
+        // ipc_frame target: decode yields ReservedBitsSet, which the typed
+        // oracle did not list, so the target-level assert failed. Mirrors
+        // the target's decode-error branch plus the shared frame oracle.
+        let data: &[u8] = &[
+            0x54, 0x4c, 0x42, 0x56, 0x01, 0x00, 0x00, 0x00, 0x54, 0x4c, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x42, 0x56, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x5b, 0x0a,
+            0x5b, 0x0a, 0x3b,
+        ];
+        let mut header_bytes = [0u8; vb_ipc::IPC_HEADER_LEN];
+        header_bytes.copy_from_slice(&data[..vb_ipc::IPC_HEADER_LEN]);
+        match vb_ipc::frame::decode_frame_header(&header_bytes) {
+            Ok(_) => {}
+            Err(decode_error) => {
+                assert!(assert_typed_ipc_error(decode_error));
+            }
+        }
+        super::fuzz_ipc_frame(data);
     }
 }

@@ -131,50 +131,6 @@ pub(super) fn alloc_accumulator_slot(builder: &mut SlotCompiler) -> Result<SlotI
     builder.allocate_slot()
 }
 
-/// Lowers a `collect` (gather) primitive into collection IR nodes.
-pub fn lower_collect(
-    id: StepIdx,
-    source: SlotIdx,
-    limit: u32,
-    page_size: u32,
-    body: StepIdx,
-    done: StepIdx,
-    builder: &mut SlotCompiler,
-) -> Result<Vec<CompiledNode>, CompileError> {
-    builder.record_slot(source);
-    let collector_slot = source;
-    Ok(vec![
-        node(
-            id,
-            CompiledNodeKind::CollectStart {
-                source,
-                limit,
-                page_size,
-                body,
-                done,
-            },
-            None,
-            None,
-        ),
-        node(
-            body,
-            CompiledNodeKind::CollectPage {
-                collector_slot,
-                body,
-                done,
-            },
-            None,
-            None,
-        ),
-        node(
-            done,
-            CompiledNodeKind::CollectFinish { collector_slot },
-            None,
-            None,
-        ),
-    ])
-}
-
 /// Lowers a `reduce` (summarize) primitive into reduction IR nodes.
 pub fn lower_reduce(
     id: StepIdx,

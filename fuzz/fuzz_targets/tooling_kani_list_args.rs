@@ -3,7 +3,6 @@
 // path traversal via KANI_LIST_DIR, and feature injection.
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use std::process::Command;
 
 fn utf8_prefix(input: &str, max_bytes: usize) -> &str {
     if input.len() <= max_bytes {
@@ -38,15 +37,16 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
 
-    // Try running kani-list.sh with the fuzzed arguments
-    // Use a short timeout to avoid hanging on cargo operations
-    match Command::new("bash")
-        .arg("scripts/kani-list.sh")
-        .args(&args)
-        .env("KANI_LIST_DIR", "/tmp/fuzz-kani-list")
-        .output()
-    {
-        Ok(_) | Err(_) => {}
-    }
+    // Try running kani-list.sh with the fuzzed arguments. Capped: the old
+    // comment promised a short timeout but none was enforced, so adversarial
+    // arguments could hang the smoke lane on cargo operations.
+    let mut argv = Vec::with_capacity(args.len() + 1);
+    argv.push("scripts/kani-list.sh");
+    argv.extend(args);
+    fuzz_lib::bounded_cmd::run_smoke_bounded(
+        "bash",
+        &argv,
+        &[("KANI_LIST_DIR", "/tmp/fuzz-kani-list")],
+    );
     // No assertions — fuzzer checks for panics/crashes only
 });

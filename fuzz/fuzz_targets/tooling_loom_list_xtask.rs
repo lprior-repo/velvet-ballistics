@@ -4,7 +4,6 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use std::io::Write;
-use std::process::Command;
 
 fuzz_target!(|data: &[u8]| {
     // Simulate xtask loom output with arbitrary content
@@ -66,16 +65,16 @@ fuzz_target!(|data: &[u8]| {
         Ok(_) | Err(_) => {}
     }
 
-    // Run loom-list.sh with the fake cargo in PATH
+    // Run loom-list.sh with the fake cargo in PATH. Capped so no input can
+    // hang the smoke lane's per-target budget.
     let wrapper_dir = std::path::Path::new(&wrapper_path)
         .parent()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_else(|| "/tmp".to_string());
-    match Command::new("bash")
-        .arg("scripts/loom-list.sh")
-        .env("PATH", format!("{}:/usr/bin:/bin", wrapper_dir))
-        .output()
-    {
-        Ok(_) | Err(_) => {}
-    }
+    let path_value = format!("{}:/usr/bin:/bin", wrapper_dir);
+    fuzz_lib::bounded_cmd::run_smoke_bounded(
+        "bash",
+        &["scripts/loom-list.sh"],
+        &[("PATH", path_value.as_str())],
+    );
 });

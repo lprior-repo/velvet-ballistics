@@ -51,13 +51,15 @@ pub fn analyze_incident_events(events: &[JournalEvent]) -> IncidentAnalysis {
                     certainty: SideEffectCertainty::Confirmed,
                 });
             }
-            JournalEvent::ActionAbandoned { .. } => {
+            JournalEvent::ActionAbandoned { ticket, .. } => {
                 // ActionAbandoned is a run-cancellation side effect;
                 // surface it as a confirmed side effect so downstream
                 // rollback / compensation logic sees the cancellation.
+                // The ticket carries the real step/action identity; never
+                // synthesize 0, which reads as blaming step 0.
                 side_effects.push(SideEffect {
-                    step: 0,
-                    action: 0,
+                    step: ticket.step.get(),
+                    action: ticket.action.get(),
                     certainty: SideEffectCertainty::Confirmed,
                 });
             }
@@ -250,6 +252,9 @@ mod tests {
     use super::*;
     use crate::EventSeq;
     use crate::JournalEvent;
+    use vb_core::ActionTicket;
+    use vb_core::action::compute_action_idempotency_key;
+    use vb_core::ids::SeqNo;
 
     /// Helper: create a minimal StepStarted event.
     fn step_event(step: u16) -> JournalEvent {
@@ -483,5 +488,41 @@ mod tests {
     fn t_013_unknown_failure_code() {
         let hints = build_repair_hints("UnknownError", &[], None);
         assert!(hints.is_empty());
+    }
+
+    /// Helper: create an ActionAbandoned event carrying a ticket for step/action.
+    fn action_abandoned(step: u16, action: u16) -> JournalEvent {
+        let run = RunId::new(1);
+        let seq = SeqNo::new(3);
+        let action_id = ActionId::new(action);
+        JournalEvent::ActionAbandoned {
+            run,
+            seq: EventSeq::new(4),
+            ticket: ActionTicket {
+                run,
+                step: StepIdx::new(step),
+                seq,
+                action: action_id,
+                run_attempt: 1,
+                attempt: 1,
+                idempotency_key: compute_action_idempotency_key(run, 1, seq, action_id),
+                capacity: 2,
+            },
+        }
+    }
+
+    // ---- T-014: ActionAbandoned keeps ticket identity ----
+    #[test]
+    fn t_014_action_abandoned_keeps_ticket_identity() {
+        let events = vec![action_abandoned(5, 9), run_cancelled()];
+        let analysis = analyze_incident_events(&events);
+        assert!(analysis.failure_found);
+        assert_eq!(analysis.side_effects.len(), 1);
+        assert_eq!(analysis.side_effects[0].step, 5);
+        assert_eq!(analysis.side_effects[0].action, 9);
+        assert!(matches!(
+            analysis.side_effects[0].certainty,
+            SideEffectCertainty::Confirmed
+        ));
     }
 }

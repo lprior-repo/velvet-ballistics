@@ -5,7 +5,6 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use std::io::Write;
-use std::process::Command;
 
 fuzz_target!(|data: &[u8]| {
     // Write fuzz data to a temp file that simulates cargo test output
@@ -48,13 +47,8 @@ fuzz_target!(|data: &[u8]| {
         path
     };
 
-    // Run guard-zero-tests.sh with the fake test
-    match Command::new("bash")
-        .arg("scripts/guard-zero-tests.sh")
-        .arg("--")
-        .arg(&fake_test_path)
-        .output()
-    {
-        Ok(_) | Err(_) => {}
-    }
+    // Run guard-zero-tests.sh with the fake test. Capped so no input can
+    // hang the smoke lane's per-target budget.
+    let script_args = ["scripts/guard-zero-tests.sh", "--", fake_test_path.as_str()];
+    fuzz_lib::bounded_cmd::run_smoke_bounded("bash", &script_args, &[]);
 });

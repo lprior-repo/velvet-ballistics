@@ -91,6 +91,12 @@ impl JournalWriterQueue {
         if state.shutdown {
             return Err(JournalError::QueueShutdown);
         }
+        // Fail fast on oversized payloads before capacity: payload size is an
+        // intrinsic, permanent property of the event, while queue occupancy is
+        // transient. Accepting an oversized event would poison every later
+        // flush, because failed staging leaves the batch owned by the queue
+        // and healthy entries behind the poison never drain.
+        check_event_payload_size(&event)?;
         if state.pending.len() >= self.capacity {
             return Err(JournalError::QueueFull);
         }
@@ -176,6 +182,23 @@ impl JournalWriterQueue {
         }
         self.drain_all(journal)
     }
+}
+
+/// Rejects events whose postcard payload exceeds the flush-time staging
+/// limit, before they can enter the queue and poison later flushes.
+///
+/// Measures with [`postcard::experimental::serialized_size`] (allocation-free walk)
+/// and applies the same [`crate::codec::payload::payload_len_u32`] bound
+/// that [`encode_record`](crate::codec::encode_record) enforces at staging,
+/// so the gate agrees exactly with flush-time behavior and adds no encode
+/// pass: the event is still encoded once, at staging.
+pub(super) fn check_event_payload_size(event: &JournalEvent) -> Result<(), JournalError> {
+    let size = postcard::experimental::serialized_size(event).map_err(JournalError::Encode)?;
+    crate::codec::payload::payload_len_u32(
+        size,
+        crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+    Ok(())
 }
 
 #[cfg(test)]

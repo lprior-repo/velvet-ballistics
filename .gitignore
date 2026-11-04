@@ -29,17 +29,18 @@ fuzz/target/
 .beads/embeddeddolt/
 .beads-credential-key
 
-# Runtime lock/log/socket state
+# Runtime lock/log/socket state (root-anchored: unanchored names also
+# matched source module dirs at depth, e.g. vb_runtime/src/runtime/)
 *.lock
 !fuzz/Cargo.lock
 *.log
 *.pid
 *.sock
 *.socket
-states/
-run/
-runtime/
-tmp/
+/states/
+/run/
+/runtime/
+/tmp/
 
 # Local databases
 *.db

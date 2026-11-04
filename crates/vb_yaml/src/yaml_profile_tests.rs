@@ -22,6 +22,98 @@ fn empty_source_rejected() {
 }
 
 #[test]
+fn contentless_documents_rejected_as_empty_source() {
+    for text in ["---\n...\n", "---\n", "~\n", "null\n", "Null\n", "NULL\n"] {
+        let result = validate_yaml_profile(text);
+        assert!(
+            matches!(result, Err(YamlError::EmptySource)),
+            "expected EmptySource for {text:?}, got {result:?}"
+        );
+    }
+}
+
+#[test]
+fn nested_nulls_remain_legitimate_values() {
+    for text in ["a: ~\n", "a: null\n", "a: \n", "[~, 1]\n"] {
+        let result = validate_yaml_profile(text);
+        assert_eq!(result, Ok(()), "nested null must stay valid: {text:?}");
+    }
+}
+
+#[test]
+fn non_null_root_scalar_still_counts_as_content() {
+    // A scalar root is not workflow content for the AST, but the profile
+    // content gate only excludes null roots; anything else is unchanged.
+    assert_eq!(validate_yaml_profile("hello\n"), Ok(()));
+}
+
+#[test]
+fn nested_container_counts_do_not_bubble_into_parent_limits() {
+    // vb-3e653: every container is under its own limit; the nested map's
+    // entries must not inflate the root map's count.
+    let mut yaml = String::from("---\n");
+    for i in 0..25 {
+        yaml.push_str(&format!("k{i}: v\n"));
+    }
+    yaml.push_str("big:\n");
+    for i in 0..1000 {
+        yaml.push_str(&format!("  n{i}: v\n"));
+    }
+    assert_eq!(validate_yaml_profile(&yaml), Ok(()));
+}
+
+#[test]
+fn sequence_limit_counts_mapping_items() {
+    // vb-x4azz: non-scalar sequence items count toward the length limit.
+    let mut yaml = String::from("items:\n");
+    for i in 0..10_000 {
+        yaml.push_str(&format!("  - k{i}: v\n"));
+    }
+    assert_eq!(validate_yaml_profile(&yaml), Ok(()));
+    yaml.push_str("  - k10000: v\n");
+    let result = validate_yaml_profile(&yaml);
+    assert!(
+        matches!(
+            result,
+            Err(YamlError::SequenceTooLong {
+                len: 10_001,
+                max: 10_000
+            })
+        ),
+        "expected SequenceTooLong, got {result:?}"
+    );
+}
+
+#[test]
+fn alias_keys_rejected_before_duplicate_tracking() {
+    // vb-l5we4: alias uses are always rejected ahead of duplicate-key
+    // tracking (undefined anchors fail at parse; defined anchors fail the
+    // anchor/alias/merge gate), so the tracker's alias blindness is
+    // unreachable through validation.
+    let result = validate_yaml_profile("a: &x 1\nb: *x\n");
+    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    let result = validate_yaml_profile("? *a : 1\n? *a : 2\n");
+    assert!(
+        matches!(result, Err(YamlError::ParseError { .. })),
+        "undefined anchor must fail at parse, got {result:?}"
+    );
+}
+
+#[test]
+fn explicit_complex_keys_rejected_before_duplicate_check() {
+    // vb-rqu7r: the first complex key already fails, so a duplicated
+    // complex key can never silently override.
+    let result = validate_yaml_profile("? [a]\n: 1\n? [a]\n: 2\n");
+    assert!(
+        matches!(
+            result,
+            Err(YamlError::FieldShape { field, .. }) if field == "mapping key"
+        ),
+        "expected mapping-key FieldShape, got {result:?}"
+    );
+}
+
+#[test]
 fn single_document_accepted() {
     let result = validate_yaml_profile("a: 1\n");
     assert_eq!(result, Ok(()));
