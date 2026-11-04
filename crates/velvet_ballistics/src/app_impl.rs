@@ -18,7 +18,7 @@ pub(crate) mod prelude {
         write_action_inspect, write_action_registry, write_action_registry_uninitialized,
     };
     pub(crate) use crate::action_specs::{
-        action_contract_detail, action_table_rows, registered_cli_actions,
+        action_contract_detail, action_table_rows, registered_cli_actions, reject_unknown_actions,
     };
     pub(crate) use crate::app_impl::{
         INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, VERSION,

@@ -35,4 +35,7 @@ commands:
   help
   version
 
-architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
+architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path
+
+notes: workflow inputs are files only (no stdin, no '-' path); flags accept '--flag value' and '--flag=value'
+exit codes: 0 success, 1 runtime failed, 2 validation failed, 3 compile failed, 4 verification failed, 5 storage error, 6 ipc error, 7 action policy, 8 replay divergence, 9 lifecycle error";

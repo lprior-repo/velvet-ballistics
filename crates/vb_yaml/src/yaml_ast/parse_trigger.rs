@@ -61,9 +61,15 @@ fn empty_body(body: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<()> {
 
 fn parse_schedule(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
     reject_unknown_fields(body, &["cron"])?;
-    let Some(cron) = lookup(body, "cron").and_then(saphyr::Yaml::as_str) else {
+    let Some(cron_node) = lookup(body, "cron") else {
         return Err(YamlError::MissingField {
             field: "when.schedule.cron",
+        });
+    };
+    let Some(cron) = cron_node.as_str() else {
+        return Err(YamlError::FieldShape {
+            field: "when.schedule.cron",
+            expected: "string",
         });
     };
     if cron.is_empty() {

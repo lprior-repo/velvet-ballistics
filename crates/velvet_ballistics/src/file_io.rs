@@ -15,10 +15,26 @@ pub(crate) fn read_file(
     match std::fs::read(path) {
         Ok(bytes) => Ok(bytes),
         Err(e) => {
-            let message = format!("error reading {}: {e}", path.display());
+            let message = format!(
+                "error reading {}: {}: {e}",
+                path.display(),
+                io_error_kind(&e)
+            );
             write_failure_message(&message, output, exit_code);
             Err(exit_code.into())
         }
+    }
+}
+
+/// Stable machine-readable kind for an IO error, ahead of the OS detail.
+pub(crate) fn io_error_kind(error: &std::io::Error) -> &'static str {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => "file_not_found",
+        std::io::ErrorKind::IsADirectory => "is_directory",
+        std::io::ErrorKind::PermissionDenied => "permission_denied",
+        // ELOOP (40 on Linux) has no stable ErrorKind yet.
+        _ if error.raw_os_error() == Some(40) => "too_many_symlinks",
+        _ => "io_error",
     }
 }
 

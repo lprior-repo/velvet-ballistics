@@ -85,7 +85,7 @@ pub(crate) fn run_compiled_workflow(
     if output != OutputFormat::Text {
         emit_json_or_return!(
             &serde_json::json!({
-                "success": counters.runs_failed == 0,
+                "success": counters.runs_failed == 0 && counters.runs_completed != 0,
                 "run_id": run_id.get(),
                 "status": status,
                 "runtime": {
@@ -112,7 +112,15 @@ pub(crate) fn run_compiled_workflow(
         }
 
         if counters.runs_failed != 0 {
-            errln!("run failed");
+            match last_started_step(&traces) {
+                Some(step) => {
+                    let name = compiled
+                        .step_name(step)
+                        .map_or_else(|| "?".to_string(), String::from);
+                    errln!("run failed at step {} ({name})", step.get());
+                }
+                None => errln!("run failed"),
+            }
         } else if counters.runs_completed != 0 {
             outln!("run completed");
         } else {
@@ -120,11 +128,18 @@ pub(crate) fn run_compiled_workflow(
         }
     }
 
-    if counters.runs_failed != 0 {
+    if counters.runs_failed != 0 || counters.runs_completed == 0 {
         return CliExitCode::RuntimeFailed.into();
     }
 
     ExitCode::SUCCESS
+}
+
+fn last_started_step(traces: &[vb_runtime::trace::TraceEvent]) -> Option<vb_core::StepIdx> {
+    traces.iter().rev().find_map(|trace| match trace {
+        vb_runtime::trace::TraceEvent::StepStarted { step, .. } => Some(*step),
+        _ => None,
+    })
 }
 
 /// Selects the run id for `run` / `run-compiled`.

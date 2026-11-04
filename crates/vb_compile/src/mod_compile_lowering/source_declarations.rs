@@ -28,7 +28,7 @@ pub(super) fn prepare_source_declarations(
     }
     let mut names = Vec::with_capacity(source.vars().len());
     for variable in source.vars() {
-        let (value, ty) = scalar_variable(&variable.value)?;
+        let (value, ty) = scalar_variable(&variable.key, &variable.value)?;
         let slot = builder.allocate_slot()?;
         emit_variable(value, slot, builder)?;
         bind_declaration(outputs, format!("$vars.{}", variable.key), slot)?;
@@ -110,13 +110,16 @@ fn emit_variable(
     Ok(())
 }
 
-fn scalar_variable(value: &AuthorValue) -> Result<(ConstValue, ExprType), CompileError> {
+fn scalar_variable(key: &str, value: &AuthorValue) -> Result<(ConstValue, ExprType), CompileError> {
     match value {
         AuthorValue::Null => Ok((ConstValue::Null, ExprType::Null)),
         AuthorValue::Bool(value) => Ok((ConstValue::Bool(*value), ExprType::Bool)),
         AuthorValue::I64(value) => Ok((ConstValue::I64(*value), ExprType::I64)),
         _ => Err(CompileError::ExpressionLoweringUnsupported {
-            feature: Box::from("vars currently require null, boolean, or integer static literals"),
+            feature: format!(
+                "vars.{key} currently requires a null, boolean, or integer static literal"
+            )
+            .into_boxed_str(),
         }),
     }
 }

@@ -30,7 +30,6 @@ pub use yaml_source_map::{
     span_for_node,
 };
 
-#[cfg(any(test, feature = "test-util"))]
 pub use yaml_ast::types::WorkflowSourceParts;
 pub use yaml_ast::types::{
     AuthorEntry, AuthorValue, ChooseBranch, ErrorHandlerAst, ExampleAst, InputField, ResultMapping,
@@ -40,12 +39,14 @@ pub use yaml_ast::types::{
 
 /// Parse YAML text into a vector of YAML events.
 pub fn parse_yaml_events(text: &str) -> YamlResult<Vec<YamlEvent>> {
+    let text = yaml_profile::strip_bom(text);
     yaml_profile::validate_yaml_profile(text)?;
     yaml_events::collect_events(text)
 }
 
 /// Parse YAML text into a WorkflowSource AST.
 pub fn parse_workflow_source(text: &str) -> YamlResult<yaml_ast::WorkflowSource> {
+    let text = yaml_profile::strip_bom(text);
     yaml_profile::validate_yaml_profile(text)?;
     yaml_ast::parse_workflow_ast(text)
 }
