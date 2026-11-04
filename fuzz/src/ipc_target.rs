@@ -265,4 +265,21 @@ mod typed_ipc_error_tests {
         }
         super::fuzz_ipc_frame(data);
     }
+
+    #[test]
+    fn test_fuzz_smoke_crash_header_yields_typed_flag_error() {
+        let header: [u8; vb_ipc::IPC_HEADER_LEN] = [
+            0x54, 0x4c, 0x42, 0x56, 0x01, 0x00, 0x00, 0x00, 0x6a, 0x00, 0x00, 0x00, 0x00, 0x05,
+            0x4c, 0x56, 0x00, 0x54, 0x56, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ];
+        let error = vb_ipc::frame::decode_frame_header(&header).err();
+        assert_eq!(
+            error,
+            Some(vb_ipc::IpcError::InvalidCommandFlags {
+                command: vb_ipc::IpcCommand::UnknownCommand(0),
+                flags: 0x006a,
+            })
+        );
+        assert!(error.is_some_and(assert_typed_ipc_error));
+    }
 }
