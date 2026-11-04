@@ -85,6 +85,21 @@ fn sequence_limit_counts_mapping_items() {
 }
 
 #[test]
+fn alias_keys_rejected_before_duplicate_tracking() {
+    // vb-l5we4: alias uses are always rejected ahead of duplicate-key
+    // tracking (undefined anchors fail at parse; defined anchors fail the
+    // anchor/alias/merge gate), so the tracker's alias blindness is
+    // unreachable through validation.
+    let result = validate_yaml_profile("a: &x 1\nb: *x\n");
+    assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    let result = validate_yaml_profile("? *a : 1\n? *a : 2\n");
+    assert!(
+        matches!(result, Err(YamlError::ParseError { .. })),
+        "undefined anchor must fail at parse, got {result:?}"
+    );
+}
+
+#[test]
 fn explicit_complex_keys_rejected_before_duplicate_check() {
     // vb-rqu7r: the first complex key already fails, so a duplicated
     // complex key can never silently override.
