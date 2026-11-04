@@ -116,6 +116,7 @@ impl Runtime {
         ticket: ActionTicket,
         grant: &RegisterGrant,
     ) -> Result<(), RegisteredExecutionError> {
+        require_canonical_scoped_binding(scoped, artifact, ticket)?;
         let catalog = self
             .journal
             .executor_catalog()
@@ -199,4 +200,28 @@ impl Runtime {
             })?;
         Ok(())
     }
+}
+
+fn require_canonical_scoped_binding(
+    scoped: &ScopedGrant,
+    artifact: &vb_storage::AcceptedArtifact,
+    ticket: ActionTicket,
+) -> Result<(), ExecutorError> {
+    if scoped.artifact != artifact.digest {
+        return Err(ExecutorError::Grant(vb_core::GrantError::ArtifactMismatch));
+    }
+    if scoped.ticket != ticket {
+        return Err(ExecutorError::Grant(vb_core::GrantError::TicketMismatch));
+    }
+    let contract = artifact
+        .action_contracts
+        .iter()
+        .find(|contract| contract.id == ticket.action)
+        .ok_or(ExecutorError::PackMismatch)?;
+    if contract.required_capabilities.as_ref() != std::slice::from_ref(&scoped.capability) {
+        return Err(ExecutorError::Grant(
+            vb_core::GrantError::CapabilityMismatch,
+        ));
+    }
+    Ok(())
 }
