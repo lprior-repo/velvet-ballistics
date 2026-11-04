@@ -160,39 +160,6 @@ pub(super) fn compile_parallel(
 }
 
 #[allow(dead_code)]
-pub(super) fn compile_collect(
-    body: &Yaml<'_>,
-    index: usize,
-    last_step: usize,
-    id: StepIdx,
-    next: Option<StepIdx>,
-    builder: &mut WorkflowBuilder,
-) -> Result<Vec<CompiledNode>, CompileError> {
-    reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "collect", &["source", "limit", "page_size"])?;
-    let source = required_slot(body, index, "source")?;
-    let limit = required_u32_field(body, index, "collect", "limit")?;
-    let page_size = required_u32_field(body, index, "collect", "page_size")?;
-    let body_step = checked_step_offset(id, 1, "collect", "body")?;
-    let done = checked_step_offset(id, 2, "collect", "done")?;
-    builder.record_slot(source);
-    let mut nodes = lower_collect(
-        id,
-        source,
-        limit,
-        page_size,
-        body_step,
-        done,
-        &mut SlotCompiler::new(),
-    )?;
-    // CollectFinish (index 2) chains to the next step.
-    if let Some(finish) = nodes.get_mut(2) {
-        finish.routing.next = next.into();
-    }
-    Ok(nodes)
-}
-
-#[allow(dead_code)]
 pub(super) fn compile_aggregate(
     body: &Yaml<'_>,
     index: usize,

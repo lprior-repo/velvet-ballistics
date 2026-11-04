@@ -317,13 +317,6 @@ doc = false
 bench = false
 
 [[bin]]
-name = "fuzz_collect_lowering"
-path = "fuzz_targets/fuzz_collect_lowering.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
 name = "fuzz_wait_lowering"
 path = "fuzz_targets/fuzz_wait_lowering.rs"
 test = false
