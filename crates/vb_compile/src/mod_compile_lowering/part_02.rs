@@ -21,7 +21,10 @@ mod canonical_types;
 
 #[path = "canonical_scalar.rs"]
 mod canonical_scalar;
-pub(super) use canonical_scalar::{compile_canonical_expression, lower_canonical_set_expression};
+pub(super) use canonical_scalar::{
+    compile_canonical_expression, lower_canonical_set_expression,
+    lower_canonical_set_expression_with_binding,
+};
 
 #[path = "canonical_do.rs"]
 mod canonical_do;

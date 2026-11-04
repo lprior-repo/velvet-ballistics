@@ -3,7 +3,9 @@
 
 use super::CanonicalScope;
 use super::canonical_references::StepReferenceResolver;
-use super::canonical_types::{infer_canonical_expr_type, validate_canonical_references};
+use super::canonical_types::{
+    infer_canonical_expr_type, validate_canonical_references_with_resolver,
+};
 use crate::expression::parse_expression;
 use crate::expression_bytecode::compile_expr_to_bytecode_with_resolver;
 use crate::mod_compile_errors::CompileErrors;
@@ -31,6 +33,30 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_set_expression(
     scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<ExprType, CompileErrors> {
+    lower_set_expression(id, slot, value, next, scope, None, builder)
+}
+
+pub(in crate::mod_compile_lowering) fn lower_canonical_set_expression_with_binding(
+    id: StepIdx,
+    slot: SlotIdx,
+    value: &str,
+    next: Option<StepIdx>,
+    scope: CanonicalScope<'_>,
+    local_name: &str,
+    builder: &mut SlotCompiler,
+) -> Result<ExprType, CompileErrors> {
+    lower_set_expression(id, slot, value, next, scope, Some(local_name), builder)
+}
+
+fn lower_set_expression(
+    id: StepIdx,
+    slot: SlotIdx,
+    value: &str,
+    next: Option<StepIdx>,
+    scope: CanonicalScope<'_>,
+    local_name: Option<&str>,
+    builder: &mut SlotCompiler,
+) -> Result<ExprType, CompileErrors> {
     // Try I64 constant first (preserves existing SetConst shape)
     if let Ok(constant) = value.parse::<i64>() {
         lower_set_constant(id, slot, constant, next, builder)?;
@@ -38,7 +64,7 @@ pub(in crate::mod_compile_lowering) fn lower_canonical_set_expression(
     }
 
     // Compile as expression program with type checking
-    let inferred = compile_and_emit_set(id, slot, value, next, scope, builder)?;
+    let inferred = compile_and_emit_set(id, slot, value, next, scope, local_name, builder)?;
     Ok(inferred)
 }
 
@@ -62,9 +88,15 @@ fn compile_and_emit_set(
     value: &str,
     next: Option<StepIdx>,
     scope: CanonicalScope<'_>,
+    local_name: Option<&str>,
     builder: &mut SlotCompiler,
 ) -> Result<ExprType, CompileErrors> {
-    let (expr_idx, inferred) = compile_canonical_expression(value, scope, builder)?;
+    let (expr_idx, inferred) = compile_canonical_expression_with_binding(
+        value,
+        scope,
+        local_name.map(|name| (name, slot)),
+        builder,
+    )?;
 
     builder.push_node(node(
         id,
@@ -82,13 +114,24 @@ pub(in crate::mod_compile_lowering) fn compile_canonical_expression(
     scope: CanonicalScope<'_>,
     builder: &mut SlotCompiler,
 ) -> Result<(vb_core::ExprIdx, ExprType), CompileErrors> {
+    compile_canonical_expression_with_binding(value, scope, None, builder)
+}
+
+fn compile_canonical_expression_with_binding(
+    value: &str,
+    scope: CanonicalScope<'_>,
+    binding: Option<(&str, SlotIdx)>,
+    builder: &mut SlotCompiler,
+) -> Result<(vb_core::ExprIdx, ExprType), CompileErrors> {
     let parsed = parse_expression(value).map_err(|e| CompileErrors(vec![e]))?;
-    validate_canonical_references(&parsed, scope.outputs, scope.step_outputs)
-        .map_err(|e| CompileErrors(vec![e]))?;
-    let inferred =
-        infer_canonical_expr_type(&parsed, scope.slot_types, scope.outputs, scope.step_outputs)
-            .map_err(|e| CompileErrors(vec![e]))?;
     let mut resolver = StepReferenceResolver::new(scope.outputs, scope.step_outputs);
+    if let Some((name, slot)) = binding {
+        resolver = resolver.with_local_binding(name, slot);
+    }
+    validate_canonical_references_with_resolver(&parsed, &resolver)
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let inferred = infer_canonical_expr_type(&parsed, scope.slot_types, &resolver)
+        .map_err(|e| CompileErrors(vec![e]))?;
     let program =
         compile_expr_to_bytecode_with_resolver(&parsed, &mut builder.constants, &mut resolver)
             .map_err(|e| CompileErrors(vec![e]))?;
