@@ -255,6 +255,42 @@ fn bench_action_dispatch(c: &mut Criterion) {
         );
     }
 
+    // Resolve compile-time — lookup cycling through all registered ids, so no
+    // single-id specialization can stand in for the lookup cost.
+    {
+        let fixture_bytes = 10usize;
+        group.bench_function(
+            metadata(
+                "action_dispatch_resolve_compile_time_varying",
+                fixture_bytes,
+                "fixture=10_actions;surface=resolve_compile_time_varying",
+            ),
+            |b| {
+                let mut next: u16 = 0;
+                b.iter(|| {
+                    let raw = next;
+                    next = next.saturating_add(1);
+                    if next >= 10 {
+                        next = 0;
+                    }
+                    let result = registry_10.resolve_compile_time(black_box(ActionId::new(raw)));
+                    assert!(
+                        result.is_ok(),
+                        "resolve_compile_time must succeed for a registered id"
+                    );
+                    if let Ok(contract) = result {
+                        assert_eq!(
+                            contract.id.get(),
+                            raw,
+                            "resolved contract must match the queried id"
+                        );
+                        black_box(contract);
+                    }
+                });
+            },
+        );
+    }
+
     group.finish();
 }
 

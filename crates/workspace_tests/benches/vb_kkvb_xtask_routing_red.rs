@@ -6,17 +6,43 @@ use xtask::{
     CommandFamily, OutputFormat, XtaskCommand, XtaskEnvironment, parse_xtask_command, route_command,
 };
 
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence";
+
+fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
+    format!(
+        "{name};{BENCH_METADATA};{extra};fixture_bytes={fixture_bytes}",
+        name = name,
+        fixture_bytes = fixture_bytes
+    )
+}
+
 fn benchmark_parse_required_command(c: &mut Criterion) {
-    c.bench_function("vb_kkvb_parse_ai_context", |bench| {
+    let fixture_bytes: usize = [
+        "xtask",
+        "ai-context",
+        "--bead",
+        "vb-kkvb",
+        "--format",
+        "jsonl",
+    ]
+    .iter()
+    .map(|arg| arg.len())
+    .sum();
+    let id = metadata(
+        "vb_kkvb_parse_ai_context",
+        fixture_bytes,
+        "fixture=argv_6_args;surface=parse_ai_context",
+    );
+    c.bench_function(&id, |bench| {
         bench.iter(|| {
-            parse_xtask_command(black_box([
+            black_box(parse_xtask_command(black_box([
                 OsString::from("xtask"),
                 OsString::from("ai-context"),
                 OsString::from("--bead"),
                 OsString::from("vb-kkvb"),
                 OsString::from("--format"),
                 OsString::from("jsonl"),
-            ]))
+            ])))
         })
     });
 }
@@ -30,8 +56,13 @@ fn benchmark_route_deferred_command(c: &mut Criterion) {
     };
     let command = XtaskCommand::Required(CommandFamily::AiContext);
 
-    c.bench_function("vb_kkvb_route_ai_context_deferred", |bench| {
-        bench.iter(|| route_command(black_box(command.clone()), black_box(&env)))
+    let id = metadata(
+        "vb_kkvb_route_ai_context_deferred",
+        1,
+        "fixture=route_1_command;surface=route_ai_context_deferred",
+    );
+    c.bench_function(&id, |bench| {
+        bench.iter(|| black_box(route_command(black_box(command.clone()), black_box(&env))))
     });
 }
 

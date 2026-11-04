@@ -62,12 +62,31 @@ fn contract() -> ActionContract {
     }
 }
 
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;measurement=criterion-timing;external-counters=separate-evidence";
+
+fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
+    format!(
+        "{name};{BENCH_METADATA};{extra};fixture_bytes={fixture_bytes}",
+        name = name,
+        fixture_bytes = fixture_bytes
+    )
+}
+
 fn bench_capability_schema_validation(c: &mut Criterion) {
     let parts = parts();
     let contracts = [contract()];
-    c.bench_function("capability schema validation", |b| {
+    let fixture_bytes = parts.nodes.len().saturating_add(contracts.len());
+    let id = metadata(
+        "capability schema validation",
+        fixture_bytes,
+        "fixture=workflow_2_nodes_1_contract;surface=capability_schema_validation",
+    );
+    c.bench_function(&id, |b| {
         b.iter(|| {
-            vb_validate::shared::validate_with_contracts(black_box(&parts), black_box(&contracts))
+            black_box(vb_validate::shared::validate_with_contracts(
+                black_box(&parts),
+                black_box(&contracts),
+            ))
         })
     });
 }
