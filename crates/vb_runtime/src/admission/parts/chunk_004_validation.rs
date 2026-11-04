@@ -11,6 +11,26 @@ fn validate_accepted_artifact_envelope(
     verify_stored_artifact(store, artifact, None).map(|_| ())
 }
 
+/// Shared §77.17 live-effect gate for the admission call sites in
+/// `chunk_005` and the submit/dispatch binding in
+/// `shard::lifecycle::execution_binding`.
+pub(crate) fn check_artifact_ir_version(
+    artifact: &vb_storage::admission::AcceptedArtifact,
+) -> Result<(), AdmissionError> {
+    let classification = vb_core::compat::classify(vb_storage::compat::artifact_ir_version_inputs(
+        artifact.artifact_version,
+    ));
+    if classification.class.authorizes_live_effect() {
+        Ok(())
+    } else {
+        Err(AdmissionError::ArtifactVersionIncompatible {
+            held: artifact.artifact_version,
+            required: vb_core::compat::CURRENT_IR_VERSION,
+            code: classification.code.code(),
+        })
+    }
+}
+
 fn map_artifact_envelope_error(source: ArtifactEnvelopeError) -> AdmissionError {
     match source {
         ArtifactEnvelopeError::ArtifactNotFound { digest } => {

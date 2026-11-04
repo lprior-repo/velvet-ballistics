@@ -256,6 +256,9 @@ impl Shard {
                 required_count,
                 granted_count,
             }),
+            Err(AdmissionError::ArtifactVersionIncompatible { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
         }
     }
 

@@ -543,6 +543,7 @@ impl vb_runtime::admission::AcceptedArtifactStore for WrongGateCountStore {
             accepted_at_seq: EventSeq::new(0),
             required_capabilities: Box::new([]),
             action_contracts: Box::new([]),
+            artifact_version: vb_core::compat::CURRENT_IR_VERSION,
         })
     }
 }

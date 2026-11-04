@@ -45,6 +45,7 @@ pub(crate) fn prepare_with_profile(
         accepted_at_seq: EventSeq::new(0),
         required_capabilities: required_capabilities_from_contracts(contracts)?,
         action_contracts: contracts.to_vec().into_boxed_slice(),
+        artifact_version: vb_core::compat::CURRENT_IR_VERSION,
     };
     bind_artifact_digest(&mut artifact)?;
     Ok(artifact)

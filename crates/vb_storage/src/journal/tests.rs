@@ -62,6 +62,7 @@ fn accepted_artifact_record_for_source(
         accepted_at_seq: EventSeq::new(0),
         required_capabilities: Box::new([]),
         action_contracts: Box::new([]),
+        artifact_version: vb_core::compat::CURRENT_IR_VERSION,
     };
     let digest = crate::admission::accepted_artifact_digest(&artifact)?;
     artifact.digest = digest;

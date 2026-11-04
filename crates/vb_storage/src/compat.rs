@@ -160,6 +160,21 @@ pub const fn wire_version_inputs(
     }
 }
 
+/// Inputs for one accepted artifact's IR version at the
+/// [`CompatBoundary::IrVersion`] boundary. No IR migration path and no IR
+/// replay allowance is declared anywhere in this tree, so a major-line
+/// difference classifies `Rejected` and fails closed.
+#[must_use]
+pub const fn artifact_ir_version_inputs(held: SchemaVersion) -> CompatInputs {
+    CompatInputs {
+        boundary: CompatBoundary::IrVersion,
+        held,
+        required: vb_core::compat::CURRENT_IR_VERSION,
+        migration_available: false,
+        replay_only: false,
+    }
+}
+
 /// Inputs for absent or inactive SDK metadata at the
 /// [`CompatBoundary::SdkAbi`] boundary.
 ///
@@ -268,6 +283,37 @@ mod tests {
                 _ => None,
             })
             .collect())
+    }
+
+    #[test]
+    fn artifact_ir_version_inputs_classify_against_current() {
+        use vb_core::compat::CURRENT_IR_VERSION;
+        assert_eq!(CURRENT_IR_VERSION, v(1, 0, 0));
+        let current = super::artifact_ir_version_inputs(v(1, 0, 0));
+        assert_eq!(current.boundary, CompatBoundary::IrVersion);
+        assert_eq!(current.required, CURRENT_IR_VERSION);
+        assert!(!current.migration_available);
+        assert!(!current.replay_only);
+        assert_eq!(classify(current).class, CompatibilityClass::Identical);
+        assert!(
+            classify(current).class.authorizes_live_effect(),
+            "identical IR version authorizes live effects"
+        );
+        let newer_minor = super::artifact_ir_version_inputs(v(1, 2, 0));
+        assert_eq!(
+            classify(newer_minor).class,
+            CompatibilityClass::ForwardCompatible
+        );
+        assert!(
+            classify(newer_minor).class.authorizes_live_effect(),
+            "same-major newer artifact is forward compatible"
+        );
+        let future_major = super::artifact_ir_version_inputs(v(2, 0, 0));
+        assert_eq!(classify(future_major).class, CompatibilityClass::Rejected);
+        assert!(
+            !classify(future_major).class.authorizes_live_effect(),
+            "undeclared major-line change fails closed"
+        );
     }
 
     #[test]

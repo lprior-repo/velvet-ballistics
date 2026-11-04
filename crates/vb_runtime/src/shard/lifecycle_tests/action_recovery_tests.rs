@@ -69,6 +69,7 @@ fn action_recovery_contract_store(
                 accepted_at_seq: vb_storage::types::EventSeq::new(0),
                 required_capabilities: Box::new([]),
                 action_contracts: Box::from([self.contract.clone()]),
+                artifact_version: vb_core::compat::CURRENT_IR_VERSION,
             })
         }
     }

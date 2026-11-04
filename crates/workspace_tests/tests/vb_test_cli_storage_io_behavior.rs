@@ -123,6 +123,7 @@ fn accepted_artifact_record(compiled: &CompiledWorkflow) -> CompiledIrRecord {
         accepted_at_seq: EventSeq::ZERO,
         required_capabilities: Box::new([]),
         action_contracts: Box::new([]),
+        artifact_version: vb_core::compat::CURRENT_IR_VERSION,
     };
     let digest = vb_storage::admission::accepted_artifact_digest(&artifact)
         .expect("accepted artifact digest must encode");
