@@ -25,6 +25,7 @@ impl Shard {
         )?;
         Self::check_suspension_budgets(state)?;
         Self::check_value_store_budget(state)?;
+        Self::check_cost_budget(state, &signal)?;
         Ok(signal)
     }
 
@@ -135,6 +136,37 @@ impl Shard {
         Ok(vb_core::engine::StepBudget::new(
             step_budget_per_tick.min(left),
         ))
+    }
+
+    fn check_cost_budget(state: &RunState, signal: &RuntimeSignal) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let mut issued: u64 = 0;
+        for attempts in state.action_attempts.iter() {
+            issued = issued.saturating_add(u64::from(*attempts));
+        }
+        if let RuntimeSignal::AwaitingAction(ticket) = signal {
+            let recorded = match state.action_attempts.get(ticket.step.as_usize()) {
+                Some(value) => *value,
+                None => 0,
+            };
+            issued = issued
+                .saturating_sub(u64::from(recorded))
+                .saturating_add(u64::from(recorded.max(ticket.attempt)));
+        }
+        if issued > budget.max_cost_units {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "cost_units",
+                    limit: budget.max_cost_units,
+                },
+            ));
+        }
+        Ok(())
     }
 
     fn apply_drive_result(
