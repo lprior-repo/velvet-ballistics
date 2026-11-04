@@ -307,6 +307,22 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
                 ("answer", serde_json::Value::from(format!("{:?}", answer))),
             ],
         },
+        JournalEvent::RunContinuation { carrier } => TraceEntry {
+            index: idx,
+            event_type: "RunContinuation",
+            step: None,
+            status: Some(TraceStatus::Active),
+            action: None,
+            seq: carrier.header().own_seq().get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(carrier.header().run().get())),
+                (
+                    "attempt",
+                    serde_json::Value::from(carrier.header().actual_attempt()),
+                ),
+                (
+                    "prior_seq",
+                    serde_json::Value::from(carrier.header().prior_seq().get()),
         JournalEvent::RetryCheckpoint {
             seq, step, attempt, ..
         } => TraceEntry {

@@ -651,6 +651,61 @@ fn trace_one_run_answered_uses_event_seq() {
     assert_eq!(entry.index, 17);
 }
 
+fn make_run_continuation_event() -> Result<JournalEvent, Box<dyn std::error::Error>> {
+    let mut body = vec![1_u8];
+    body.extend_from_slice(&[0_u8; 40]);
+    let digest = blake3::derive_key("velvet-ballistics/run-continuation/v1", &body);
+    let mut component = body;
+    component.extend_from_slice(&digest);
+    let header = vb_storage::ContinuationCarrierHeader::new(
+        make_run_id(1),
+        make_event_seq(23),
+        2,
+        make_event_seq(22),
+        digest,
+    )?;
+    let mut encode_budget =
+        vb_storage::ContinuationCarrierBudget::new(1_048_576, 67_108_864, 16_777_216)?;
+    let encoded = vb_storage::encode_owned_continuation(header, &component, &mut encode_budget)?;
+    let key = vb_storage::keys::run_event_key(make_run_id(1), make_event_seq(23))?;
+    let mut decode_budget =
+        vb_storage::ContinuationCarrierBudget::new(1_048_576, 67_108_864, 16_777_216)?;
+    let view = vb_storage::decode_owned_continuation(
+        &key,
+        make_run_id(1),
+        encoded.as_bytes(),
+        &mut decode_budget,
+    )?;
+    Ok(view.into_event(&mut decode_budget)?)
+}
+
+#[test]
+fn trace_one_run_continuation_uses_carrier_header() -> Result<(), Box<dyn std::error::Error>> {
+    let event = make_run_continuation_event()?;
+    let entry = trace_one(18, &event);
+    assert_eq!(entry.event_type, "RunContinuation");
+    assert_eq!(entry.seq, 23);
+    assert_eq!(entry.step, None);
+    assert_eq!(entry.index, 18);
+    assert_eq!(entry.status, Some(TraceStatus::Active));
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| { *key == "run" && *value == serde_json::Value::from(1_u64) })
+    );
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| { *key == "attempt" && *value == serde_json::Value::from(2_u16) })
+    );
+    assert!(
+        entry.extra_json.iter().any(|(key, value)| {
+            *key == "prior_seq" && *value == serde_json::Value::from(22_u64)
+        })
+    );
+    Ok(())
 fn make_ticket() -> ActionTicket {
     ActionTicket {
         run: make_run_id(1),
