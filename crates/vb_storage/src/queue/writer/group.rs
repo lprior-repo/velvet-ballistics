@@ -31,6 +31,12 @@ impl JournalWriterQueue {
         if state.shutdown {
             return Err(JournalError::QueueShutdown);
         }
+        // Gate every member before mutating: an atomic batch is all-or-nothing,
+        // so a single oversized member rejects the whole batch with no partial
+        // push. Same shutdown-then-payload-then-capacity order as `enqueue`.
+        for event in &events {
+            super::check_event_payload_size(event)?;
+        }
         let available = self
             .capacity
             .checked_sub(state.pending.len())
