@@ -559,6 +559,20 @@ fn trace_one_run_cancelled_maps_correct_fields() {
 }
 
 #[test]
+fn trace_one_run_killed_maps_correct_fields() {
+    let event = JournalEvent::RunKilled {
+        run: make_run_id(1),
+        seq: make_event_seq(19),
+        attempt: 2,
+    };
+    let entry = trace_one(12, &event);
+    assert_eq!(entry.event_type, "RunKilled");
+    assert_eq!(entry.seq, 19);
+    assert_eq!(entry.step, None);
+    assert_eq!(entry.index, 12);
+}
+
+#[test]
 fn trace_one_run_finished_maps_correct_fields() {
     let event = JournalEvent::RunFinished {
         run: make_run_id(1),

@@ -243,6 +243,15 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             seq: seq.get(),
             extra_json: vec![],
         },
+        JournalEvent::RunKilled { seq, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunKilled",
+            step: None,
+            status: Some(TraceStatus::Cancelled),
+            action: None,
+            seq: seq.get(),
+            extra_json: vec![],
+        },
         JournalEvent::RunFinished { seq, result, .. } => TraceEntry {
             index: idx,
             event_type: "RunFinished",
