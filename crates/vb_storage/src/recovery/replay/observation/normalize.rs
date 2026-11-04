@@ -57,6 +57,7 @@ fn observe_event(
     match event {
         JournalEvent::RunAccepted { .. }
         | JournalEvent::RunAdmission { .. }
+        | JournalEvent::RunAdmissionBudget { .. }
         | JournalEvent::RunResumed { .. }
         | JournalEvent::RunRetried { .. } => observe_lifecycle_event(event, observations)?,
         JournalEvent::StepStarted { .. }
@@ -115,6 +116,12 @@ fn observe_lifecycle_event(
             ));
         }
         JournalEvent::RunAdmission {
+            artifact_digest,
+            granted_capabilities,
+            policy,
+            ..
+        }
+        | JournalEvent::RunAdmissionBudget {
             artifact_digest,
             granted_capabilities,
             policy,

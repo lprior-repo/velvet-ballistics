@@ -712,4 +712,150 @@ mod tests {
         assert_eq!(decoded, decision);
         Ok(())
     }
+
+    /// Independent adversarial corpus: hand-written literal versions only,
+    /// no round-trip construction, no generators. Covers the numeric
+    /// edges (zero, `u16::MAX`), patch-only direction inside one major
+    /// line, flag precedence, and unknown-future fail-closed behavior.
+    #[test]
+    fn adversarial_version_corpus() {
+        // (held, required, migration, replay, class).
+        let max = u16::MAX;
+        let cases: [(SchemaVersion, SchemaVersion, bool, bool, CompatibilityClass); 12] = [
+            // Zero line against itself is identical, not rejected.
+            (
+                v(0, 0, 0),
+                v(0, 0, 0),
+                false,
+                false,
+                CompatibilityClass::Identical,
+            ),
+            // Absent (0.0.0) against any declared line with no path fails closed.
+            (
+                v(0, 0, 0),
+                v(1, 0, 0),
+                false,
+                false,
+                CompatibilityClass::Rejected,
+            ),
+            (
+                v(0, 0, 0),
+                v(1, 0, 0),
+                true,
+                true,
+                CompatibilityClass::MigrationRequired,
+            ),
+            // Patch-only direction inside one major line.
+            (
+                v(2, 4, 0),
+                v(2, 4, 7),
+                false,
+                false,
+                CompatibilityClass::BackwardCompatible,
+            ),
+            (
+                v(2, 4, 7),
+                v(2, 4, 0),
+                false,
+                false,
+                CompatibilityClass::ForwardCompatible,
+            ),
+            // Minor-only direction ignores the patch entirely.
+            (
+                v(2, 4, 9),
+                v(2, 5, 0),
+                false,
+                false,
+                CompatibilityClass::BackwardCompatible,
+            ),
+            (
+                v(2, 5, 0),
+                v(2, 4, 9),
+                false,
+                false,
+                CompatibilityClass::ForwardCompatible,
+            ),
+            // Extreme majors: unknown future fails closed, known past
+            // migrates explicitly.
+            (
+                v(1, 0, 0),
+                v(max, 0, 0),
+                false,
+                false,
+                CompatibilityClass::Rejected,
+            ),
+            (
+                v(max, max, max),
+                v(1, 0, 0),
+                true,
+                false,
+                CompatibilityClass::MigrationRequired,
+            ),
+            (
+                v(max, max, max),
+                v(1, 0, 0),
+                false,
+                true,
+                CompatibilityClass::ReplayOnly,
+            ),
+            (
+                v(max, max, max),
+                v(1, 0, 0),
+                false,
+                false,
+                CompatibilityClass::Rejected,
+            ),
+            // Both flags set on a major change: migration wins over replay,
+            // so data is never silently replayed past a needed migration.
+            (
+                v(3, 0, 0),
+                v(4, 0, 0),
+                true,
+                true,
+                CompatibilityClass::MigrationRequired,
+            ),
+        ];
+        for (held, required, migration, replay, class) in cases {
+            let got = classify(inputs(held, required, migration, replay));
+            assert_eq!(got.class, class, "held {held:?} required {required:?}");
+        }
+    }
+
+    /// Unknown-future fail-closed holds at every boundary, not just the
+    /// IR one: a held major line no consumer understands, with no
+    /// declared path, is `Rejected` everywhere and blocks replay too.
+    #[test]
+    fn unknown_future_fails_closed_at_all_boundaries() {
+        assert_eq!(CompatBoundary::ALL.len(), 12);
+        for boundary in CompatBoundary::ALL {
+            let decision = CompatDecision::decide(
+                CompatInputs {
+                    boundary,
+                    held: SchemaVersion::new(9, 0, 0),
+                    required: SchemaVersion::new(1, 0, 0),
+                    migration_available: false,
+                    replay_only: false,
+                },
+                CompatDigests {
+                    rule_digest: [0u8; 32],
+                    old_schema_digest: [0u8; 32],
+                    new_schema_digest: [0u8; 32],
+                },
+            );
+            assert_eq!(decision.class, CompatibilityClass::Rejected, "{boundary:?}");
+            assert_eq!(
+                decision.rule,
+                CompatRule::MajorChangeUnsupported,
+                "{boundary:?}"
+            );
+            assert_eq!(
+                decision.decision_code,
+                CompatDecisionCode::BlockRejected,
+                "{boundary:?}"
+            );
+            assert!(decision.blocks_dispatch(), "{boundary:?}");
+            assert!(decision.authorize_live_effect().is_err(), "{boundary:?}");
+            assert!(decision.authorize_replay().is_err(), "{boundary:?}");
+        }
+    }
 }

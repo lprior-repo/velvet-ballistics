@@ -720,3 +720,79 @@ fn storage_event_clones_the_event_exactly_once_per_dispatch() {
             && payload.len() == 64 * 1024
     ));
 }
+
+#[test]
+fn storage_event_maps_budgeted_admission_to_budget_receipt() {
+    let run = RunId::new(202);
+    let workflow = WorkflowDigest::from_bytes([77; 32]);
+    let seq = EventSeq::new(3);
+    let budget = vb_core::AggregateResourceBudget {
+        max_steps_executable: 10,
+        max_action_tickets: 4,
+        max_parallel_in_flight: 2,
+        max_retries_per_action: 1,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 120,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 55,
+    };
+    let budgeted = crate::admission::RunAdmission::with_budget(
+        workflow,
+        run,
+        vb_core::capability::CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Journaled,
+        budget,
+    );
+    let mapped = StorageRuntimeJournal::storage_event(
+        RuntimeJournalEvent::RunAdmission {
+            admission: budgeted,
+        },
+        seq,
+    )
+    .expect("budgeted admission maps");
+    assert!(matches!(
+        mapped,
+        JournalEvent::RunAdmissionBudget {
+            run: mapped_run,
+            seq: mapped_seq,
+            artifact_digest: mapped_digest,
+            budget: mapped_budget,
+            ..
+        } if mapped_run == run && mapped_seq == seq && mapped_digest == workflow && mapped_budget == budget
+    ));
+    let plain = crate::admission::RunAdmission::new(
+        workflow,
+        run,
+        vb_core::capability::CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Journaled,
+    );
+    let mapped = StorageRuntimeJournal::storage_event(
+        RuntimeJournalEvent::RunAdmission { admission: plain },
+        seq,
+    )
+    .expect("plain admission maps");
+    assert!(matches!(
+        mapped,
+        JournalEvent::RunAdmission { .. }
+    ));
+}

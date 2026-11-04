@@ -94,15 +94,28 @@ impl StorageRuntimeJournal {
                 Ok(Some(JournalEvent::RunAccepted { run, seq, workflow }))
             }
             RuntimeJournalEvent::RunAdmission { admission } => {
-                Ok(Some(JournalEvent::RunAdmission {
-                    input_digest: vb_storage::RunInputBinding::LegacyUnbound,
-                    run: admission.run_id(),
-                    seq,
-                    artifact_digest: admission.artifact_digest(),
-                    policy_pin: admission.policy_pin(),
-                    granted_capabilities: admission.granted_capabilities().clone(),
-                    policy: admission.policy(),
-                }))
+                if let Some(budget) = admission.budget() {
+                    Ok(Some(JournalEvent::RunAdmissionBudget {
+                        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+                        run: admission.run_id(),
+                        seq,
+                        artifact_digest: admission.artifact_digest(),
+                        policy_pin: admission.policy_pin(),
+                        granted_capabilities: admission.granted_capabilities().clone(),
+                        policy: admission.policy(),
+                        budget,
+                    }))
+                } else {
+                    Ok(Some(JournalEvent::RunAdmission {
+                        input_digest: vb_storage::RunInputBinding::LegacyUnbound,
+                        run: admission.run_id(),
+                        seq,
+                        artifact_digest: admission.artifact_digest(),
+                        policy_pin: admission.policy_pin(),
+                        granted_capabilities: admission.granted_capabilities().clone(),
+                        policy: admission.policy(),
+                    }))
+                }
             }
             RuntimeJournalEvent::RetryCheckpoint {
                 run,

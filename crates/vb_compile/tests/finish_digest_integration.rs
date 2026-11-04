@@ -4,7 +4,7 @@
 //   PO-INT-FINISH-001: Finish result value changes compiled workflow digest
 //   PO-INT-FINISH-002: Finish step ID changes compiled workflow digest
 //   PO-INT-FINISH-003: Finish result type (String vs Integer) changes digest
-//   PO-INT-FINISH-004: Canonical/legacy digest equivalence (BLOCKED — see below)
+//   PO-INT-FINISH-004: Canonical digest equivalence
 //
 // NOTE: This test is placed in crates/vb_compile/tests/ rather than
 // crates/workspace_tests/tests/ because workspace_tests is excluded from
@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 
+use vb_compile::canonical_digest;
 use vb_compile::compile_source;
 use vb_compile::parse_workflow_source;
 use vb_core::ids::WorkflowDigest;
@@ -231,56 +232,16 @@ steps:
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PO-INT-FINISH-004: Canonical/legacy digest equivalence
+// PO-INT-FINISH-004: Canonical digest equivalence
 // ─────────────────────────────────────────────────────────────────
 
-/// Verify that the canonical path's `canonical_digest()` produces the same
-/// digest as the legacy path's `canonical_digest()` for all valid inputs.
-///
-/// **STATUS: BLOCKED_VISIBILITY**
-///
-/// The legacy `canonical_digest()` is defined as `fn canonical_digest(...)`
-/// (private) in `crate::compile::mod` (a private module, `mod compile;` in
-/// lib.rs). This function is NOT accessible from integration tests in a
-/// separate crate.
-///
-/// The canonical `canonical_digest()` is `pub(super)` in
-/// `mod_compile_lowering::part_05`, re-exported as `pub` within
-/// `mod_compile_lowering` but NOT re-exported at the crate level
-/// (lib.rs only exports `compile_source`, not `canonical_digest`).
-///
-/// Since this test file is in `crates/vb_compile/tests/`, it compiles as an
-/// external crate and cannot access private or pub(super) items.
-///
-/// ## Remediation Options (for proof-to-implementation agent):
-///
-/// 1. **Add `#[cfg(test)]` re-export**: In lib.rs, add
-///    `#[cfg(test)] pub use lwr::canonical_digest;` (for canonical path)
-///    and `#[cfg(test)] pub use compile::canonical_digest;` (for legacy path).
-///
-/// 2. **Write the equivalence test within vb_compile**: Move this test to
-///    `crates/vb_compile/src/tests/finish_digest_tests.rs` where both paths
-///    are accessible (`crate::mod_compile_lowering::canonical_digest` and
-///    `crate::compile::canonical_digest`).
-///
-/// 3. **Consolidate to single implementation**: Delete the legacy path
-///    and have all callers use the canonical path. This eliminates the
-///    equivalence test need entirely.
-///
-/// Until visibility is resolved or the legacy path is consolidated, this
-/// test is a documentation marker. See `trusted-base-ledger.jsonl` for
-/// the BLOCKED_VISIBILITY entry.
+/// The standalone `canonical_digest()` and the identity `compile_source()`
+/// records on the compiled workflow must agree: compilation computes the
+/// semantic source identity from the same function. The compiled
+/// `digest()` itself is a different value (blake3 over the encoded lowered
+/// parts) and is not part of this equivalence.
 #[test]
-#[ignore = "BLOCKED: legacy canonical_digest is not accessible from integration test crate"]
-fn canonical_legacy_digest_equivalence() {
-    // Placeholder test — BLOCKED by visibility constraints.
-    // When unblocked, this test should:
-    // 1. Parse YAML into WorkflowSource
-    // 2. Call both canonical_digest() paths on the same source
-    // 3. Assert both paths produce identical digests
-    // 4. Assert compiled digest matches both
-
-    // For now, verify the canonical path self-consistency:
+fn canonical_digest_matches_compiled_semantic_identity() -> Result<(), Box<dyn std::error::Error>> {
     let yaml = r#"version: velvet-ballistics/v1
 name: equivalence_test
 when:
@@ -291,24 +252,34 @@ steps:
       result: 42
 "#;
 
-    let source = parse_workflow_source(yaml).expect("valid YAML must parse");
-    let compiled = compile_source(&source).expect("valid source must compile");
+    let source = parse_workflow_source(yaml)?;
+    let compiled = compile_source(&source)?;
+    let canonical = canonical_digest(&source)?;
 
-    // The compiled digest must be non-zero and consistent on recompile
-    let compiled2 = compile_source(&source).expect("same source must compile twice");
+    if compiled.semantic_source_identity() != Some(canonical) {
+        return Err(format!(
+            "compiled semantic source identity {:?} must equal standalone canonical digest {:?}",
+            compiled.semantic_source_identity(),
+            canonical
+        )
+        .into());
+    }
 
-    assert_eq!(
-        compiled.digest(),
-        compiled2.digest(),
-        "compiling same source twice must give same digest"
-    );
+    let compiled2 = compile_source(&source)?;
 
-    // Verify digest is not the sentinel zero value
-    assert_ne!(
-        compiled.digest(),
-        WorkflowDigest::from_bytes([0u8; 32]),
-        "compiled digest must be non-zero for a valid workflow"
-    );
+    if compiled.digest() != compiled2.digest() {
+        return Err(format!(
+            "compiling same source twice must give same digest: {:?} vs {:?}",
+            compiled.digest(),
+            compiled2.digest()
+        )
+        .into());
+    }
+
+    if compiled.digest() == WorkflowDigest::from_bytes([0u8; 32]) {
+        return Err("compiled digest must be non-zero for a valid workflow".into());
+    }
+    Ok(())
 }
 
 // ─────────────────────────────────────────────────────────────────

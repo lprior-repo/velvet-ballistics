@@ -90,6 +90,9 @@ fn collect_typed_entry(
     file_type: fs::FileType,
 ) -> Result<(), NamingScanError> {
     if file_type.is_dir() {
+        if directory_unreadable_by_permission_bits(&path)? {
+            return Ok(());
+        }
         collect_inputs(root, &path, config, inputs)
     } else {
         push_eligible_file(inputs, path, &relative);
@@ -104,6 +107,21 @@ fn push_eligible_file(inputs: &mut Vec<ScanInput>, path: PathBuf, relative: &str
             absolute_path: path,
         });
     }
+}
+
+#[cfg(unix)]
+fn directory_unreadable_by_permission_bits(path: &Path) -> Result<bool, NamingScanError> {
+    use std::os::unix::fs::PermissionsExt;
+    match fs::metadata(path) {
+        Ok(metadata) => Ok(metadata.permissions().mode() & 0o444 == 0),
+        Err(source) if discovery_permission_denied(&source) => Ok(true),
+        Err(source) => Err(discovery_error(path, source)),
+    }
+}
+
+#[cfg(not(unix))]
+fn directory_unreadable_by_permission_bits(_path: &Path) -> Result<bool, NamingScanError> {
+    Ok(false)
 }
 
 fn discovery_permission_denied(source: &std::io::Error) -> bool {

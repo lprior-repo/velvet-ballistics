@@ -2,13 +2,15 @@
 
 //! Proptests for collect lowering: vb-8mdp.7
 //!
-//! Behaviors covered:
-//!   B-013: Collect emits exactly 4 nodes with consecutive IDs
-//!   (CollectStart, SetConst, CollectNext, CollectFinish).
-//!   B-014: CollectStart limit/page_size match input; source slot preserved.
-//!   B-015: Step offset property (body=id+1, page=id+2, done=id+3).
+//! Behaviors covered (single-step fixtures exercise the N = 1 shape;
+//! offsets scale with body length N per bounded_collect::plan_compute_edges):
+//!   B-013: Collect emits exactly N + 3 nodes with consecutive IDs
+//!   (CollectStart, N body nodes, CollectNext, CollectFinish).
+//!   B-014: CollectStart limit is pages * items; page_size is items;
+//!   source slot preserved, fresh collector slot shared by advance/finish.
+//!   B-015: Step offset property (body=id+1, advance=id+N+1, done=id+N+2).
 //!   B-016: At least one explicit positive bound; the missing bound defaults to 1.
-//!   B-017: Max valid start ID = u16::MAX - 3.
+//!   B-017: Max valid start ID = u16::MAX - N - 2 (u16::MAX - 3 for N = 1).
 
 use proptest::prelude::*;
 use vb_compile::{SlotCompiler, compile_workflow, lower_collect};
@@ -351,6 +353,56 @@ fn step_idx_max_is_u16_max_minus_three_for_offset_three() {
         over.checked_add(3).is_none(),
         "id=65533 must fail for +3 offset"
     );
+}
+
+/// B-013/B-015 with N = 2: a two-step lexical body emits N + 3 nodes and
+/// the advance/done edges scale (advance = id+3, done = id+4).
+#[test]
+fn collect_two_step_body_scales_edges() {
+    let yaml = String::from(
+        "version: velvet-ballistics/v1\nname: collect_two\nwhen:\n  manual: {}\nsteps:\n  - id: collect_pages\n    collect:\n      variable: batch\n      source: \"0\"\n      pages: 1\n      items: 1\n      steps:\n        - id: first_page\n          set:\n            output: seen_a\n            value: \"7\"\n        - id: second_page\n          set:\n            output: seen_b\n            value: \"8\"\n  - id: done\n    finish:\n      result: 0\n",
+    );
+
+    let result = compile_workflow(yaml.as_bytes());
+    assert!(
+        result.is_ok(),
+        "two-step collect should compile: {:?}",
+        result.err()
+    );
+    let wf = result.unwrap();
+    assert_eq!(
+        wf.node_count(),
+        6,
+        "N=2 body emits 5 collect nodes + finish"
+    );
+
+    let start = node_at(&wf, 0).expect("CollectStart must exist at id 0");
+    assert!(matches!(&start.kind, CompiledNodeKind::CollectStart { .. }));
+    let advance = node_at(&wf, 3).expect("CollectNext must exist at id 3");
+    assert!(matches!(
+        &advance.kind,
+        CompiledNodeKind::CollectNext { .. }
+    ));
+    let finish_node = node_at(&wf, 4).expect("CollectFinish must exist at id 4");
+    assert!(matches!(
+        &finish_node.kind,
+        CompiledNodeKind::CollectFinish { .. }
+    ));
+
+    match &start.kind {
+        CompiledNodeKind::CollectStart { body, done, .. } => {
+            assert_eq!(body.get(), 1, "body = id+1 = 1");
+            assert_eq!(done.get(), 4, "done = id+N+2 = 4");
+        }
+        _ => assert!(false, "expected CollectStart"),
+    }
+    match &advance.kind {
+        CompiledNodeKind::CollectNext { body, done, .. } => {
+            assert_eq!(body.get(), 1, "advance body = id+1 = 1");
+            assert_eq!(done.get(), 4, "advance done = id+N+2 = 4");
+        }
+        _ => assert!(false, "expected CollectNext"),
+    }
 }
 
 /// B-017: With a moderate preamble (100 steps), verify the collect step
