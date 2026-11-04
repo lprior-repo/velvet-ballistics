@@ -32,7 +32,36 @@ impl Shard {
         Self::check_timer_entry_budget(state)?;
         Self::check_parallel_in_flight_budget(state)?;
         Self::check_total_slots_written_budget(state)?;
+        Self::check_result_bytes_budget(state, &signal)?;
         Ok(signal)
+    }
+
+    fn check_result_bytes_budget(
+        state: &RunState,
+        signal: &RuntimeSignal,
+    ) -> RuntimeEngineResult<()> {
+        let RuntimeSignal::Finished(value) = signal else {
+            return Ok(());
+        };
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let size = state
+            .store
+            .deep_size(value)
+            .map_err(crate::engine::types::RuntimeEngineError::Core)?;
+        if size > u64::from(budget.max_result_bytes) {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "result_bytes",
+                    limit: u64::from(budget.max_result_bytes),
+                },
+            ));
+        }
+        Ok(())
     }
 
     fn check_suspension_budgets(state: &RunState) -> RuntimeEngineResult<()> {

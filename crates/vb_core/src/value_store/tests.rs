@@ -2084,3 +2084,167 @@ fn value_store_default_has_zero_arena_entries() -> Result<(), String> {
     assert_eq!(store.max_arena_entries(), 0);
     Ok(())
 }
+
+#[test]
+fn deep_size_counts_scalars_symbols_and_blobs() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let symbol = store
+        .insert_symbol(Box::from("hello"))
+        .map_err(|e| format!("{e:?}"))?;
+    let blob = store
+        .insert_blob(Bytes::from_static(b"1234567"))
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::Null)
+            .map_err(|e| format!("{e:?}"))?,
+        0
+    );
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::Bool(true))
+            .map_err(|e| format!("{e:?}"))?,
+        1
+    );
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::I64(-3))
+            .map_err(|e| format!("{e:?}"))?,
+        8
+    );
+    let finite = crate::value::FiniteF64::new(1.5).map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::F64(finite))
+            .map_err(|e| format!("{e:?}"))?,
+        8
+    );
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::Symbol(symbol))
+            .map_err(|e| format!("{e:?}"))?,
+        5
+    );
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::Blob(blob))
+            .map_err(|e| format!("{e:?}"))?,
+        7
+    );
+    Ok(())
+}
+
+#[test]
+fn deep_size_traverses_nested_list_and_object() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let key = store
+        .insert_symbol(Box::from("k"))
+        .map_err(|e| format!("{e:?}"))?;
+    let blob = store
+        .insert_blob(Bytes::from_static(b"12345"))
+        .map_err(|e| format!("{e:?}"))?;
+    let inner = store
+        .insert_list(Box::from([SlotValue::I64(2), SlotValue::Blob(blob)]))
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::List(inner))
+            .map_err(|e| format!("{e:?}"))?,
+        13
+    );
+    let object = store
+        .insert_object(Box::from([ObjectField::clean(key, SlotValue::List(inner))]))
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::Object(object))
+            .map_err(|e| format!("{e:?}"))?,
+        14
+    );
+    let outer = store
+        .insert_list(Box::from([
+            SlotValue::Object(object),
+            SlotValue::Bool(false),
+        ]))
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::List(outer))
+            .map_err(|e| format!("{e:?}"))?,
+        15
+    );
+    Ok(())
+}
+
+#[test]
+fn deep_size_counts_shared_handle_once() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let blob = store
+        .insert_blob(Bytes::from_static(b"1234"))
+        .map_err(|e| format!("{e:?}"))?;
+    let twice_blob = store
+        .insert_list(Box::from([SlotValue::Blob(blob), SlotValue::Blob(blob)]))
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::List(twice_blob))
+            .map_err(|e| format!("{e:?}"))?,
+        4
+    );
+    let inner = store
+        .insert_list(Box::from([SlotValue::I64(9)]))
+        .map_err(|e| format!("{e:?}"))?;
+    let twice_inner = store
+        .insert_list(Box::from([SlotValue::List(inner), SlotValue::List(inner)]))
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::List(twice_inner))
+            .map_err(|e| format!("{e:?}"))?,
+        8
+    );
+    Ok(())
+}
+
+#[test]
+fn deep_size_rejects_unresolvable_handle() -> Result<(), String> {
+    let store = ValueStore::new();
+    for value in [
+        SlotValue::Symbol(SymbolId::new(99)),
+        SlotValue::List(ListId::new(99)),
+        SlotValue::Object(ObjectId::new(99)),
+        SlotValue::Blob(BlobId::new(99)),
+    ] {
+        match store.deep_size(&value) {
+            Err(_) => {}
+            Ok(size) => {
+                return Err(format!("unresolvable {value:?} measured as {size}"));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn deep_size_terminates_on_checkpoint_restored_cycle() -> Result<(), String> {
+    use crate::value_store::ValueStoreCheckpointV1;
+    let checkpoint = ValueStoreCheckpointV1 {
+        symbols: Vec::new(),
+        lists: vec![
+            Box::from([SlotValue::List(ListId::new(1))]),
+            Box::from([SlotValue::List(ListId::new(0))]),
+        ],
+        list_taints: vec![Box::from([Taint::Clean]), Box::from([Taint::Clean])],
+        objects: Vec::new(),
+        blobs: Vec::new(),
+        max_arena_entries: 0,
+    };
+    let store = ValueStore::from_checkpoint_v1(checkpoint).map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        store
+            .deep_size(&SlotValue::List(ListId::new(0)))
+            .map_err(|e| format!("{e:?}"))?,
+        0
+    );
+    Ok(())
+}
