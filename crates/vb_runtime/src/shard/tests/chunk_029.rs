@@ -72,6 +72,11 @@ fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() {
         Ok(entry) => entry,
         Err(error) => panic!("timer authority capture failed: {error}"),
     };
+    std::thread::sleep(
+        captured
+            .deadline
+            .saturating_duration_since(std::time::Instant::now()),
+    );
 
     // When legacy run-only delivery is called, it must fail closed rather than fabricate authority.
     assert_eq!(
@@ -155,6 +160,11 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arri
         Some(timer) => timer,
         None => panic!("timed wait must register one pending timer before valid fire"),
     };
+    std::thread::sleep(
+        terminal_timer
+            .deadline
+            .saturating_duration_since(std::time::Instant::now()),
+    );
     let terminal_command = ShardCommand::TimerFired {
         run,
         generation: terminal_timer.generation,

@@ -14,7 +14,7 @@ steps:
   - id: clock
     set:
       output: duration
-      value: "600000"
+      value: "1"
   - id: question
     ask:
       prompt: "$alias"
@@ -76,6 +76,11 @@ fn run_named_wait(event: bool) -> Result<(), String> {
     assert_eq!(runtime.counters_snapshot().runs_completed, 0);
     assert_eq!(runtime.counters_snapshot().runs_failed, 0);
 
+    std::thread::sleep(
+        entry
+            .deadline
+            .saturating_duration_since(std::time::Instant::now()),
+    );
     runtime
         .timer_entry_fired(entry)
         .map_err(|e| format!("timer_entry_fired failed: {e:?}"))?;

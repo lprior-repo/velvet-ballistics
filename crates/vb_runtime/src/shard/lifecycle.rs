@@ -39,6 +39,7 @@ mod tests {
     include!("lifecycle_tests/recovery_context_tests.rs");
     include!("lifecycle_tests/contract_validation_tests.rs");
     include!("lifecycle_tests/action_recovery_tests.rs");
+    include!("lifecycle_tests/timer_due_regressions.rs");
 
     mod strict_policy_sequence {
         include!("lifecycle_tests/strict_policy_sequence.rs");

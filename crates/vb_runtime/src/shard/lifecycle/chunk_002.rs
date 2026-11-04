@@ -127,6 +127,9 @@ impl Shard {
         if !current_timer.matches_authority(generation, deadline, kind) {
             return Err(RuntimeError::InvalidTimerFire);
         }
+        if current_timer.deadline > std::time::Instant::now() {
+            return Err(RuntimeError::InvalidTimerFire);
+        }
         let state_ref = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
         crate::shard::helpers::validate_timer_fire(state_ref, current_timer)?;
         self.append_timer_resolution_event(run, current_timer)?;

@@ -459,6 +459,11 @@ fn timer_fired_persists_before_ack() {
     let _ = journal.snapshot().unwrap();
 
     let entry = shard.timer_entry(run).unwrap();
+    std::thread::sleep(
+        entry
+            .deadline
+            .saturating_duration_since(std::time::Instant::now()),
+    );
     shard
         .enqueue(ShardCommand::TimerFired {
             run: entry.run,
