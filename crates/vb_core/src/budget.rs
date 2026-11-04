@@ -82,7 +82,10 @@ pub struct WholeWorkflowBudget {
     /// byte caps and the remaining-budget counter, not by this bound.
     pub max_value_store_entries: u64,
     /// Maximum cost units over the run. Cost model: one unit per action
-    /// ticket issued, so this equals the action ticket bound.
+    /// ticket issued, and a retry re-issues the ticket, so this equals
+    /// the action ticket bound times the retry factor, mirroring the
+    /// transition bound: a verifier that counted distinct tickets only
+    /// would under-approximate every retried action.
     pub max_cost_units: u64,
 }
 
@@ -232,12 +235,15 @@ fn derive_budget_dimensions(
         .checked_add(u64::from(contract.max_slots))
         .and_then(|value| value.checked_add(u64::from(contract.max_constants)))
         .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
+    let max_cost_units = u64::from(max_action_tickets)
+        .checked_mul(retry_factor)
+        .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
     Ok(DerivedBudgetDimensions {
         max_transitions,
         max_journal_bytes_total,
         max_value_store_entries,
         max_incident_emissions: max_total_steps,
-        max_cost_units: u64::from(max_action_tickets),
+        max_cost_units,
     })
 }
 
