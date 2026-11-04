@@ -405,6 +405,13 @@ pub enum JournalEvent {
     /// historical grant evidence only: replay validates the grant's
     /// structure and never authorizes a new live effect from it.
     CapabilityGrantEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Complete capability grant record.
+        grant: vb_core::capability_grant::CapabilityGrant,
+    },
     /// Run admission receipt carrying the admitted aggregate budget
     /// (MASTER §77.18). Appended at the end of the enum; no existing
     /// variant was renumbered. Identical in meaning to `RunAdmission`
@@ -416,8 +423,6 @@ pub enum JournalEvent {
         run: RunId,
         /// Per-run sequence.
         seq: EventSeq,
-        /// Complete capability grant record.
-        grant: vb_core::capability_grant::CapabilityGrant,
         /// Compiled artifact digest admitted for this run.
         artifact_digest: WorkflowDigest,
         /// Canonical typed input identity, or explicit historical absence.
