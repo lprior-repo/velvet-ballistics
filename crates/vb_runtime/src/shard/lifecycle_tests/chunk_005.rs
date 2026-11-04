@@ -697,6 +697,110 @@ fn drive_state_without_admitted_budget_ignores_written_slots() {
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
 }
+
+fn steps_executable_budget(max_steps_executable: u32) -> AggregateResourceBudget {
+    AggregateResourceBudget {
+        max_steps_executable,
+        max_action_tickets: 10,
+        max_parallel_in_flight: 10,
+        max_retries_per_action: 10,
+        max_gather_pages: 10,
+        max_gather_items: 10,
+        max_for_each_iterations: 10,
+        max_together_branches: 10,
+        max_repeat_attempts: 10,
+        max_run_time_seconds: 100,
+        max_result_bytes: 100,
+        max_total_slots_written: 100,
+        max_timer_entries: 100,
+        max_trace_events: 100,
+        max_queue_depth: 100,
+        max_journal_batch_bytes: 100,
+        max_ipc_payload_bytes: 100,
+        max_blob_bytes: 100,
+        max_input_bytes: 100,
+        max_step_budget_per_tick: 100,
+        max_transitions_per_tick: 100,
+        max_open_gates: 10,
+        max_signal_subscriptions: 10,
+        max_incident_emissions: 100,
+        max_transitions: 100,
+        max_journal_bytes_total: 100,
+        max_value_store_entries: 100,
+        max_cost_units: 100,
+    }
+}
+
+fn drive_state_with_steps_budget(
+    run: RunId,
+    max_steps_executable: u32,
+    prior_executions: u64,
+) -> Result<RuntimeSignal, RuntimeEngineError> {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        steps_executable_budget(max_steps_executable),
+    ));
+    for _ in 0..prior_executions {
+        state
+            .frame
+            .increment_executed()
+            .expect("prior execution count increments");
+    }
+    let mut evidence = EvidenceCollector::new();
+    Shard::drive_state(&mut state, 100, &mut evidence)
+}
+
+#[test]
+fn drive_state_fails_when_executed_steps_exceed_admitted_limit() {
+    let result = drive_state_with_steps_budget(RunId::new(754), 2, 0);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "steps_executable",
+            limit: 2,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_at_steps_executable_limit_finishes() {
+    let result = drive_state_with_steps_budget(RunId::new(755), 3, 0);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_counts_prior_executions_against_steps_executable_limit() {
+    let result = drive_state_with_steps_budget(RunId::new(756), 5, 3);
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(EngineError::BudgetExceeded {
+            budget: "steps_executable",
+            limit: 5,
+        }))
+    ));
+}
+
+#[test]
+fn drive_state_retried_run_within_steps_executable_limit_finishes() {
+    let result = drive_state_with_steps_budget(RunId::new(757), 5, 2);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
+
+#[test]
+fn drive_state_without_admitted_budget_ignores_steps_executable() {
+    let workflow = two_slot_workflow().expect("two slot workflow builds");
+    let run = RunId::new(758);
+    let mut state = crate::shard::helpers::make_run_state(workflow, run).expect("run state builds");
+    let mut evidence = EvidenceCollector::new();
+    let result = Shard::drive_state(&mut state, 100, &mut evidence);
+    assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
+}
 fn parallel_in_flight_budget(max_parallel_in_flight: u16) -> AggregateResourceBudget {
     AggregateResourceBudget {
         max_steps_executable: 100,
