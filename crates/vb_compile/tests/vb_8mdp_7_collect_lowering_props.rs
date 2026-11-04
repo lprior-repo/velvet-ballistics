@@ -255,11 +255,11 @@ proptest! {
 // =========================================================================
 
 proptest! {
-    /// B-014+B-015: CollectStart.limit and CollectStart.page_size match
-    /// the input `pages` and `items` (or default to 1). Source slot is
-    /// preserved in CollectStart but a fresh collector slot is shared
+    /// B-014+B-015: CollectStart.limit is the `pages` * `items` product
+    /// and CollectStart.page_size is `items` (each defaulting to 1). Source
+    /// slot is preserved in CollectStart but a fresh collector slot is shared
     /// by CollectNext and CollectFinish, distinct from the source and
-    /// body result slots. Offsets: body=id+1, page=id+2, done=id+3.
+    /// body result slots. Offsets: body=id+1, next=id+2, done=id+3.
     #[test]
 fn collect_start_fields_match_input_and_offsets_correct(
     source_digit in source_digit_str(),
