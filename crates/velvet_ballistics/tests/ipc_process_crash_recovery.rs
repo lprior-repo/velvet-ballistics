@@ -172,6 +172,74 @@ fn scheduled_ask(events: &[JournalEvent], run: RunId) -> TestResult<(EventSeq, S
     Ok((seq, step, attempt))
 }
 
+fn assert_single_submission_and_prefix_steps(events: &[JournalEvent]) {
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(event, JournalEvent::RunAccepted { .. }))
+            .count(),
+        1
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(event, JournalEvent::RunAdmissionBudget { .. }))
+            .count(),
+        1
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(event, JournalEvent::RunAdmission { .. }))
+            .count(),
+        0
+    );
+    for original_step in [StepIdx::new(0), StepIdx::new(1)] {
+        assert_eq!(
+            events
+                .iter()
+                .filter(|event| matches!(
+                    event,
+                    JournalEvent::StepStarted { step, .. } if *step == original_step
+                ))
+                .count(),
+            1
+        );
+    }
+}
+
+fn assert_no_failed_outcomes(events: &[JournalEvent]) {
+    assert!(!events.iter().any(|event| matches!(
+        event,
+        JournalEvent::RunFailedEvent { .. }
+            | JournalEvent::RunCancelled { .. }
+            | JournalEvent::RunKilled { .. }
+            | JournalEvent::AskTimedOutEvent { .. }
+            | JournalEvent::StepFailed { .. }
+            | JournalEvent::ActionFailedEvent { .. }
+            | JournalEvent::ActionAbandoned { .. }
+    )));
+}
+
+fn assert_prompt_value(events: &[JournalEvent]) -> TestResult {
+    let last_write = events
+        .iter()
+        .rev()
+        .find_map(|event| match event {
+            JournalEvent::SlotWrittenEvent { slot, value, .. } if *slot == SlotIdx::new(0) => {
+                Some(value)
+            }
+            _ => None,
+        })
+        .ok_or("prompt slot has no write")?;
+    let bytes = last_write
+        .as_deref()
+        .ok_or("prompt slot value was not captured")?;
+    assert_eq!(bytes, postcard::to_allocvec(&SlotValue::I64(7))?.as_slice());
+    assert_eq!(postcard::from_bytes::<SlotValue>(bytes)?, SlotValue::I64(7));
+    Ok(())
+}
+
 fn assert_completed_result(
     events: &[JournalEvent],
     run: RunId,
@@ -290,6 +358,17 @@ fn real_ipc_process_recovers_untimed_ask_after_sigkill() -> TestResult {
     let crashed =
         fixture.inspect_copy(|journal| readback(journal, run, original_artifact.digest))?;
     assert_eq!(crashed.artifact, original_artifact);
+    assert_single_submission_and_prefix_steps(&crashed.events);
+    assert_no_failed_outcomes(&crashed.events);
+    assert_prompt_value(&crashed.events)?;
+    assert_eq!(
+        crashed
+            .events
+            .iter()
+            .filter(|event| matches!(event, JournalEvent::StepStarted { .. }))
+            .count(),
+        2
+    );
     assert!(matches!(
         crashed.events.first(),
         Some(JournalEvent::RunAccepted { run: id, workflow: digest, .. })
@@ -316,6 +395,9 @@ fn real_ipc_process_recovers_untimed_ask_after_sigkill() -> TestResult {
     let completed =
         fixture.inspect_copy(|journal| readback(journal, run, original_artifact.digest))?;
     assert_eq!(completed.artifact, original_artifact);
+    assert_single_submission_and_prefix_steps(&completed.events);
+    assert_no_failed_outcomes(&completed.events);
+    assert_prompt_value(&completed.events)?;
     assert!(completed.events.starts_with(&crashed.events));
     assert!(completed.raw.starts_with(&crashed.raw));
     assert_eq!(scheduled_ask(&completed.events, run)?, schedule);
