@@ -54,6 +54,7 @@ pub struct CollectPaginationState {
 pub struct CollectStates {
     entries: Map<(RunId, SlotIdx), CollectPaginationState>,
     lineages: Map<(RunId, SlotIdx), CollectPageLineage>,
+    total_items_consumed: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -73,11 +74,31 @@ impl CollectStates {
         Self::default()
     }
 
+    /// Items consumed by every collect page delivered so far, including
+    /// collects whose pagination state was already removed at completion.
+    #[must_use]
+    pub fn total_items_consumed(&self) -> u64 {
+        self.total_items_consumed
+    }
+
     /// Insert or replace the state for the given key.
     pub fn upsert(&mut self, state: CollectPaginationState) -> Result<(), EngineError> {
         let key = (state.run_id, state.collector_slot);
+        let previous = self.entries.get(&key).map_or(0, |prior| prior.cursor);
+        let delivered = state.cursor.saturating_sub(previous);
+        let total = self
+            .total_items_consumed
+            .checked_add(u64::try_from(delivered).map_err(|_| {
+                EngineError::InternalInvariantViolation {
+                    reason: "collect item counter overflow",
+                }
+            })?)
+            .ok_or(EngineError::InternalInvariantViolation {
+                reason: "collect item counter overflow",
+            })?;
         self.record_lineage(key, state.current_page)?;
         self.entries.insert(key, state);
+        self.total_items_consumed = total;
         Ok(())
     }
 
