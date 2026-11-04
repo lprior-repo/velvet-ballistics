@@ -7,6 +7,16 @@ use vb_core::ids::RunId;
 pub enum RuntimeError {
     /// Bounded queue is full.
     QueueFull,
+    /// A run already has its admitted number of commands pending on the
+    /// shard command queue.
+    PerRunQueueDepthExceeded {
+        /// Run whose pending command count reached the cap.
+        run: RunId,
+        /// Commands already pending for the run.
+        pending: u32,
+        /// Admitted per-run queue depth for the run.
+        limit: u32,
+    },
     /// Run identifier not found.
     RunNotFound,
     /// Active run capacity for a shard has been exhausted.

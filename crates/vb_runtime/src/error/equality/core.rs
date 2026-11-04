@@ -32,6 +32,18 @@ fn runtime_error_capacity_eq(left: &RuntimeError, right: &RuntimeError) -> bool 
                 max: d,
             },
         ) => a == c && b == d,
+        (
+            RuntimeError::PerRunQueueDepthExceeded {
+                run: a,
+                pending: b,
+                limit: c,
+            },
+            RuntimeError::PerRunQueueDepthExceeded {
+                run: d,
+                pending: e,
+                limit: f,
+            },
+        ) => a == d && b == e && c == f,
         _ => false,
     }
 }
