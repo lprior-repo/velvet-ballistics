@@ -8101,3 +8101,37 @@ fn budget_dimensions_remaining_monotonic_dimensions_fail_on_exhaustion() {
         })
     );
 }
+
+#[test]
+fn budget_cost_units_cover_retried_action_tickets() {
+    let nodes = vec![
+        node(
+            StepIdx::new(0),
+            CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::ZERO,
+            },
+            Some(SlotIdx::ZERO),
+            Some(StepIdx::new(1)),
+        ),
+        node(
+            StepIdx::new(1),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+            None,
+            None,
+        ),
+    ];
+    let contract = ResourceContract {
+        max_retry_attempts: 3,
+        ..test_contract(2, 1)
+    };
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .ok()
+        .filter(|b| b.max_action_tickets == 1 && b.max_cost_units == 4);
+    assert!(
+        budget.is_some(),
+        "one action ticket retried up to 3 extra attempts must budget 4 cost units"
+    );
+}

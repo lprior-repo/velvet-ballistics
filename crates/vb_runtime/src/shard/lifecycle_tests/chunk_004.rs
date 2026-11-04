@@ -1401,7 +1401,7 @@ fn submit_drive_queue_full_after_admission_leaves_resumable_retry() -> Result<()
         durable_header.as_slice(),
         [
             vb_storage::JournalEvent::RunAccepted { seq, .. },
-            vb_storage::JournalEvent::RunAdmission { seq: admission_seq, .. },
+            vb_storage::JournalEvent::RunAdmissionBudget { seq: admission_seq, .. },
         ] if *seq == vb_storage::EventSeq::new(0)
             && *admission_seq == vb_storage::EventSeq::new(1)
     ));
