@@ -30,6 +30,9 @@ pub(crate) fn cmd_compile(
             return CliExitCode::CompileFailed.into();
         }
     };
+    if let Err(code) = reject_unknown_actions(&compiled, output, CliExitCode::CompileFailed) {
+        return code;
+    }
 
     match emit {
         EmitTarget::Ir => {

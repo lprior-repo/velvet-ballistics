@@ -48,6 +48,7 @@ fn base_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
         input_slots: Box::from([vb_core::workflow::CompiledInputSlot {
             slot: SlotIdx::ZERO,
             kind: vb_core::workflow::InputSlotKind::I64,
+            constraint: vb_core::workflow::CompiledInputConstraint::unconstrained(),
         }]),
     }
 }
@@ -191,18 +192,31 @@ fn run_compiled_for_each_corpus_artifact_reaches_runtime_semantics() {
     let yaml_run = run_yaml(&workflow_path, &input_path);
     let compiled_run = run_compiled(&ir_path, &input_path);
 
+    // F4: the corpus declares a required `items` input and the input file is
+    // empty, so both commands must fail closed with identical diagnostics.
+    // Exit codes follow the pinned per-command input-mapping contract
+    // (run=1, run-compiled=3); agreement is on the rejection itself.
+    for (output, code) in [(&yaml_run, 1), (&compiled_run, 3)] {
+        assert_eq!(
+            output.status.code(),
+            Some(code),
+            "missing required input must fail: stdout={} stderr={}",
+            stdout(output),
+            stderr(output),
+        );
+        assert!(
+            stderr(output).contains("INPUT_MAPPING_FAILED: missing required input for slot"),
+            "stderr should name the missing required input: {}",
+            stderr(output),
+        );
+    }
     assert_eq!(
-        yaml_run.status.code(),
-        compiled_run.status.code(),
+        stderr(&yaml_run),
+        stderr(&compiled_run),
         "run and run-compiled should agree after compilation: run stdout={} run stderr={} compiled stdout={} compiled stderr={}",
         stdout(&yaml_run),
         stderr(&yaml_run),
         stdout(&compiled_run),
-        stderr(&compiled_run)
-    );
-    assert!(
-        !stderr(&compiled_run).contains("compiled IR validation error"),
-        "compiled artifact should reach runtime semantics, not IR validation: {}",
         stderr(&compiled_run)
     );
 }

@@ -15,6 +15,9 @@ use vb_core::value::SlotValue;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
+#[path = "vb_hk1j8_fixture/scoped_grant_fixture.rs"]
+mod scoped_grant_fixture;
+
 use vb_runtime::journal::StorageRuntimeJournal;
 use vb_runtime::runtime::RegisteredExecutionError;
 use vb_runtime::runtime::Runtime;
@@ -189,6 +192,8 @@ fn corrupt_emergency_marker_causes_precise_typed_failure() -> TestResult {
         .lookup_pending_action_ticket(run, u64::from(StepIdx::ZERO.get()))
         .ok_or("expected pending action ticket")?;
     let grant = catalog.issue_register_grant(&artifact, ticket, scope())?;
+    let (scoped, dispatch) =
+        scoped_grant_fixture::issue_scoped(&catalog, &artifact, &grant, ticket, scope(), 21)?;
 
     // Record full boundary snapshot BEFORE execute
     let pending_before = runtime.pending_boundary_snapshot(8);
@@ -201,6 +206,7 @@ fn corrupt_emergency_marker_causes_precise_typed_failure() -> TestResult {
         run,
         u64::from(StepIdx::ZERO.get()),
         &grant,
+        vb_core::ScopedDispatch::new(&scoped, &dispatch, &[]),
     );
 
     // Verify precise typed error: StorageJournalAppend wrapping EmergencyDenyMarkerUnsupportedVersion { version: 99 }

@@ -10,6 +10,9 @@
 #[path = "vb_policy_dispatch_fail_closed/fixtures.rs"]
 mod fixtures;
 
+#[path = "vb_hk1j8_fixture/scoped_grant_fixture.rs"]
+mod scoped_grant_fixture;
+
 use fixtures::*;
 
 use std::sync::Arc;

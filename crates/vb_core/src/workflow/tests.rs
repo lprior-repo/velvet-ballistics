@@ -5,10 +5,11 @@ use crate::ids::{
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE, MAX_PATH_DEPTH};
 use crate::value::ConstValue;
 use crate::workflow::{
-    AccessorProgram, CompiledInputSlot, CompiledNode, CompiledNodeKind, CompiledWorkflow,
-    ContractResource, CoreError, ErrorRouting, ExprBranch, ExprOp, ExprProgram, InputSlotKind,
-    NodeContinuation, NodeOutput, PathSegment, ResourceContract, SlotBranch, WorkflowError,
-    WorkflowParts, check_expr_stack_bound, validate_budget_result,
+    AccessorProgram, CompiledInputConstraint, CompiledInputSlot, CompiledNode, CompiledNodeKind,
+    CompiledWorkflow, ContractResource, CoreError, ErrorRouting, ExprBranch, ExprOp, ExprProgram,
+    InputConstraintIssue, InputSlotKind, NodeContinuation, NodeOutput, PathSegment,
+    ResourceContract, SlotBranch, WorkflowError, WorkflowParts, check_expr_stack_bound,
+    validate_budget_result,
 };
 use std::fmt::Debug;
 
@@ -591,14 +592,17 @@ fn workflow_input_slots_accept_valid_increasing_indices() -> Result<(), String> 
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(1),
                 kind: InputSlotKind::Bool,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(2),
                 kind: InputSlotKind::Symbol,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ]),
         name: Box::<str>::from("input_slot_case"),
@@ -663,6 +667,7 @@ fn workflow_input_slots_reject_out_of_bounds() -> Result<(), String> {
         input_slots: Box::new([CompiledInputSlot {
             slot: SlotIdx::new(5),
             kind: InputSlotKind::I64,
+            constraint: CompiledInputConstraint::unconstrained(),
         }]),
         name: Box::<str>::from("input_slot_oob"),
         digest: WorkflowDigest::from_bytes([7; 32]),
@@ -697,10 +702,12 @@ fn workflow_input_slots_reject_duplicate() -> Result<(), String> {
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::Bool,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ]),
         name: Box::<str>::from("input_slot_dup"),
@@ -736,10 +743,12 @@ fn workflow_input_slots_reject_non_canonical_order() -> Result<(), String> {
             CompiledInputSlot {
                 slot: SlotIdx::new(1),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::Bool,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ]),
         name: Box::<str>::from("input_slot_order"),
@@ -775,10 +784,12 @@ fn workflow_input_slots_out_of_bounds_before_duplicate() -> Result<(), String> {
             CompiledInputSlot {
                 slot: SlotIdx::new(5),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(5),
                 kind: InputSlotKind::Bool,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ]),
         name: Box::<str>::from("input_slot_prec"),
@@ -5086,4 +5097,80 @@ fn blake3_digest_valid_for_zero_slot_workflow() {
     let hash_bytes = hash.as_bytes();
     assert_eq!(hash_bytes.len(), 32, "blake3 must produce 32-byte hash");
     assert_ne!(hash_bytes, &[0u8; 32], "hash must not be all zeros");
+}
+
+fn parts_with_constraint(constraint: CompiledInputConstraint) -> WorkflowParts {
+    let mut parts = make_minimal_workflow_parts("constraint_case", StepIdx::ZERO, 1);
+    parts.input_slots = Box::new([CompiledInputSlot {
+        slot: SlotIdx::ZERO,
+        kind: InputSlotKind::I64,
+        constraint,
+    }]);
+    parts
+}
+
+#[test]
+fn constraint_default_is_legacy_permissive() {
+    let unconstrained = CompiledInputConstraint::unconstrained();
+    assert!(!unconstrained.requires_value());
+    assert_eq!(
+        unconstrained,
+        CompiledInputConstraint::default(),
+        "serde default for pre-constraint artifacts must stay permissive"
+    );
+    let required = CompiledInputConstraint::required();
+    assert!(required.requires_value());
+    assert!(!required.optional);
+}
+
+#[test]
+fn inconsistent_min_max_rejected() {
+    let mut constraint = CompiledInputConstraint::required();
+    constraint.min = Some(10);
+    constraint.max = Some(9);
+    match CompiledWorkflow::try_from_parts(parts_with_constraint(constraint)) {
+        Err(WorkflowError::InconsistentInputConstraint { slot, issue }) => {
+            assert_eq!(slot, SlotIdx::ZERO);
+            assert!(matches!(issue, InputConstraintIssue::MinExceedsMax));
+        }
+        other => panic!("expected InconsistentInputConstraint, got {other:?}"),
+    }
+}
+
+#[test]
+fn inconsistent_length_bounds_rejected() {
+    let mut constraint = CompiledInputConstraint::required();
+    constraint.min_length = Some(4);
+    constraint.max_length = Some(3);
+    match CompiledWorkflow::try_from_parts(parts_with_constraint(constraint)) {
+        Err(WorkflowError::InconsistentInputConstraint { issue, .. }) => {
+            assert!(matches!(
+                issue,
+                InputConstraintIssue::MinLengthExceedsMaxLength
+            ));
+        }
+        other => panic!("expected InconsistentInputConstraint, got {other:?}"),
+    }
+}
+
+#[test]
+fn negative_length_bound_rejected() {
+    let mut constraint = CompiledInputConstraint::required();
+    constraint.max_length = Some(-1);
+    match CompiledWorkflow::try_from_parts(parts_with_constraint(constraint)) {
+        Err(WorkflowError::InconsistentInputConstraint { issue, .. }) => {
+            assert!(matches!(issue, InputConstraintIssue::NegativeLengthBound));
+        }
+        other => panic!("expected InconsistentInputConstraint, got {other:?}"),
+    }
+}
+
+#[test]
+fn consistent_bounds_accepted() {
+    let mut constraint = CompiledInputConstraint::required();
+    constraint.min = Some(-5);
+    constraint.max = Some(5);
+    constraint.min_length = Some(0);
+    constraint.max_length = Some(8);
+    assert!(CompiledWorkflow::try_from_parts(parts_with_constraint(constraint)).is_ok());
 }

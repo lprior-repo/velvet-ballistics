@@ -2,7 +2,7 @@ use super::Runtime;
 use super::live_policy_dispatch::AdmissionEvalContext;
 use crate::{RuntimeError, shard::ShardCommand};
 use vb_core::policy::DecisionRecord;
-use vb_core::{ActionTicket, RunId};
+use vb_core::{ActionTicket, GrantDispatchContext, RunId, ScopedDispatch, ScopedGrant};
 use vb_storage::executor::{ExecutorError, FjallRegister, RegisterGrant, RegisterReceipt};
 
 /// Runtime authority failures and uncertain adapter outcomes remain distinct.
@@ -21,6 +21,9 @@ pub enum RegisteredExecutionError {
 
 impl Runtime {
     /// Execute only a canonical pending action with its actual live I64 input.
+    /// The scoped grant lifecycle is verified before live dispatch: identity
+    /// plus typed time/revocation, with the narrowed scope bound to the
+    /// declared pack scope. Rejections happen before any journal write.
     /// A post-effect queue failure preserves the durable receipt for reconciliation.
     pub fn execute_registered_action(
         &mut self,
@@ -28,8 +31,10 @@ impl Runtime {
         run: RunId,
         wire_step: u64,
         grant: &RegisterGrant,
+        presented: ScopedDispatch<'_>,
     ) -> Result<RegisterReceipt, RegisteredExecutionError> {
         let (ticket, context) = self.registered_context(run, wire_step, grant)?;
+        self.verify_scoped_execute(presented, &context, ticket, grant)?;
         if context.mode != crate::shard::types::RegisteredExecutionMode::Live {
             return Err(ExecutorError::Unauthorized.into());
         }
@@ -46,15 +51,20 @@ impl Runtime {
     }
 
     /// Recovery reads an existing receipt and never invokes a production effect.
-    /// Missing receipts and Blocked recovery fail before any target write.
+    /// The scoped identity bindings are verified, but expiry and revocation
+    /// never block history reads. Missing receipts and Blocked recovery fail
+    /// before any target write.
     pub fn reconcile_registered_action(
         &mut self,
         adapter: &mut FjallRegister,
         run: RunId,
         wire_step: u64,
         grant: &RegisterGrant,
+        scoped: &ScopedGrant,
+        dispatch: &GrantDispatchContext,
     ) -> Result<RegisterReceipt, RegisteredExecutionError> {
         let (ticket, context) = self.registered_context(run, wire_step, grant)?;
+        self.verify_scoped_reconcile(scoped, dispatch, &context, ticket, grant)?;
         let catalog = self
             .journal
             .executor_catalog()
@@ -63,6 +73,58 @@ impl Runtime {
         let receipt = adapter.reconcile(grant, ticket, context.value)?;
         self.enqueue_registered_completion(ticket, context.output, receipt.clone())?;
         Ok(receipt)
+    }
+
+    /// Scoped pre-dispatch gate for live execution: full identity plus typed
+    /// time/revocation, with both grants narrowed to the declared pack scope.
+    fn verify_scoped_execute(
+        &self,
+        presented: ScopedDispatch<'_>,
+        context: &crate::shard::lifecycle::RegisteredActionContext,
+        ticket: ActionTicket,
+        grant: &RegisterGrant,
+    ) -> Result<(), RegisteredExecutionError> {
+        presented
+            .scoped
+            .verify_for_execute(presented.dispatch, presented.revoked_ids)
+            .map_err(ExecutorError::Grant)?;
+        self.require_narrowed_scope(presented.scoped, &context.artifact, ticket, grant)?;
+        Ok(())
+    }
+
+    /// Scoped gate for recovery reads: identity and narrowing only.
+    fn verify_scoped_reconcile(
+        &self,
+        scoped: &ScopedGrant,
+        dispatch: &GrantDispatchContext,
+        context: &crate::shard::lifecycle::RegisteredActionContext,
+        ticket: ActionTicket,
+        grant: &RegisterGrant,
+    ) -> Result<(), RegisteredExecutionError> {
+        scoped
+            .verify_for_reconcile(dispatch)
+            .map_err(ExecutorError::Grant)?;
+        self.require_narrowed_scope(scoped, &context.artifact, ticket, grant)?;
+        Ok(())
+    }
+
+    /// Both grants must carry exactly the declared pack scope.
+    fn require_narrowed_scope(
+        &self,
+        scoped: &ScopedGrant,
+        artifact: &vb_storage::AcceptedArtifact,
+        ticket: ActionTicket,
+        grant: &RegisterGrant,
+    ) -> Result<(), RegisteredExecutionError> {
+        let catalog = self
+            .journal
+            .executor_catalog()
+            .ok_or(ExecutorError::CatalogRequired)?;
+        let declared = catalog.declared_scope(artifact, ticket.action)?;
+        if scoped.scope != declared || grant.scope() != declared {
+            return Err(ExecutorError::Unauthorized.into());
+        }
+        Ok(())
     }
 
     pub(super) fn validate_registered_recovery(

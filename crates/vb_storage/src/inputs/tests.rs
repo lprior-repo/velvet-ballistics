@@ -1,6 +1,9 @@
 use super::*;
 use vb_core::workflow::node;
-use vb_core::{CompiledInputSlot, CompiledNodeKind, InputSlotKind, StepIdx, WorkflowParts};
+use vb_core::{
+    CompiledInputConstraint, CompiledInputSlot, CompiledNodeKind, InputSlotKind, StepIdx,
+    WorkflowParts,
+};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -13,10 +16,12 @@ pub(super) fn workflow() -> Result<CompiledWorkflow, Box<dyn std::error::Error>>
             CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
             CompiledInputSlot {
                 slot: SlotIdx::new(1),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             },
         ]),
         nodes: Box::from([node(
@@ -225,6 +230,153 @@ fn journal_input_read_rejects_wrong_run_and_legacy_absence_is_explicit() -> Test
     assert!(
         matches!(journal.run_inputs(RunId::ZERO), Err(JournalError::InvalidRunId { run }) if run == RunId::ZERO)
     );
+    Ok(())
+}
+
+fn constrained_workflow(
+    kind: InputSlotKind,
+    constraint: CompiledInputConstraint,
+) -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    let mut parts = WorkflowParts {
+        name: "constrained_input".into(),
+        digest: WorkflowDigest::from_bytes([0; 32]),
+        semantic_source_identity: None,
+        input_slots: Box::from([CompiledInputSlot {
+            slot: SlotIdx::new(0),
+            kind,
+            constraint,
+        }]),
+        nodes: Box::from([node(
+            StepIdx::new(0),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+            None,
+            None,
+        )]),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: vb_core::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+    Ok(CompiledWorkflow::try_from_parts(parts)?)
+}
+
+fn required_number() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+    constrained_workflow(InputSlotKind::I64, CompiledInputConstraint::required())
+}
+
+#[test]
+fn required_input_missing_is_rejected_before_acceptance() -> TestResult {
+    let workflow = required_number()?;
+    assert!(matches!(
+        record(&workflow, Box::new([])),
+        Err(JournalError::InputSchemaMismatch)
+    ));
+    let retained = record(&workflow, Box::from([(SlotIdx::new(0), SlotValue::I64(3))]))?;
+    assert_eq!(retained.inputs(), &[(SlotIdx::new(0), SlotValue::I64(3))]);
+    Ok(())
+}
+
+#[test]
+fn optional_input_missing_is_accepted() -> TestResult {
+    let workflow =
+        constrained_workflow(InputSlotKind::I64, CompiledInputConstraint::unconstrained())?;
+    let retained = record(&workflow, Box::new([]))?;
+    assert!(retained.inputs().is_empty());
+    Ok(())
+}
+
+#[test]
+fn scalar_default_is_filled_and_bound_to_identity() -> TestResult {
+    let constraint = CompiledInputConstraint {
+        optional: false,
+        default_value: Some(SlotValue::I64(7)),
+        ..CompiledInputConstraint::unconstrained()
+    };
+    let workflow = constrained_workflow(InputSlotKind::I64, constraint)?;
+    let retained = record(&workflow, Box::new([]))?;
+    assert_eq!(retained.inputs(), &[(SlotIdx::new(0), SlotValue::I64(7))]);
+    // A supplied value wins over the default.
+    let retained = record(&workflow, Box::from([(SlotIdx::new(0), SlotValue::I64(9))]))?;
+    assert_eq!(retained.inputs(), &[(SlotIdx::new(0), SlotValue::I64(9))]);
+    Ok(())
+}
+
+#[test]
+fn null_accepted_only_when_nullable() -> TestResult {
+    let strict = required_number()?;
+    assert!(matches!(
+        record(&strict, Box::from([(SlotIdx::new(0), SlotValue::Null)])),
+        Err(JournalError::InputSchemaMismatch)
+    ));
+    let nullable = constrained_workflow(
+        InputSlotKind::I64,
+        CompiledInputConstraint {
+            optional: false,
+            nullable: true,
+            ..CompiledInputConstraint::unconstrained()
+        },
+    )?;
+    let retained = record(&nullable, Box::from([(SlotIdx::new(0), SlotValue::Null)]))?;
+    assert_eq!(retained.inputs(), &[(SlotIdx::new(0), SlotValue::Null)]);
+    Ok(())
+}
+
+#[test]
+fn integer_range_bounds_are_enforced() -> TestResult {
+    let bounded = constrained_workflow(
+        InputSlotKind::I64,
+        CompiledInputConstraint {
+            optional: false,
+            min: Some(1),
+            max: Some(10),
+            ..CompiledInputConstraint::unconstrained()
+        },
+    )?;
+    for value in [i64::MIN, 0, 11, i64::MAX] {
+        assert!(
+            matches!(
+                record(
+                    &bounded,
+                    Box::from([(SlotIdx::new(0), SlotValue::I64(value))])
+                ),
+                Err(JournalError::InputSchemaMismatch)
+            ),
+            "out-of-range value {value} must be rejected"
+        );
+    }
+    for value in [1, 5, 10] {
+        let retained = record(
+            &bounded,
+            Box::from([(SlotIdx::new(0), SlotValue::I64(value))]),
+        )?;
+        assert_eq!(
+            retained.inputs(),
+            &[(SlotIdx::new(0), SlotValue::I64(value))]
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn corrupted_constraint_identity_fails_revalidation() -> TestResult {
+    let workflow = required_number()?;
+    let retained = record(&workflow, Box::from([(SlotIdx::new(0), SlotValue::I64(4))]))?;
+    let mut parts = workflow.to_parts();
+    let slot = parts.input_slots.first_mut().ok_or("missing port")?;
+    slot.constraint.min = Some(100);
+    parts.digest = WorkflowDigest::from_bytes([0; 32]);
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
+    assert!(matches!(
+        retained.validate_workflow(&CompiledWorkflow::try_from_parts(parts)?),
+        Err(JournalError::PayloadDigestMismatch)
+    ));
     Ok(())
 }
 
