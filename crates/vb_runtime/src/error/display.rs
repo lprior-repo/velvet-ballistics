@@ -115,6 +115,16 @@ fn write_runtime_error_dynamic(
         RuntimeError::CommandQueueCapacityExceeded { capacity, max } => {
             write!(f, "command queue capacity {capacity} exceeds maximum {max}")
         }
+        RuntimeError::PerRunQueueDepthExceeded {
+            run,
+            pending,
+            limit,
+        } => {
+            write!(
+                f,
+                "per-run queue depth exceeded for run {run:?}: {pending} pending, limit {limit}"
+            )
+        }
         RuntimeError::StaleAttempt { incoming, current } => {
             write!(
                 f,

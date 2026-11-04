@@ -46,11 +46,13 @@ impl RuntimeError {
     pub const SHARD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x201C);
     pub const MIGRATE_SELF_CODE: DiagnosticCode = DiagnosticCode::new(0x201D);
     pub const INTROSPECTION_EPOCH_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x201F);
+    pub const PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2023);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
         match self {
             Self::QueueFull => Self::QUEUE_FULL_CODE,
+            Self::PerRunQueueDepthExceeded { .. } => Self::PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE,
             Self::RunNotFound => Self::RUN_NOT_FOUND_CODE,
             Self::ActiveRunCapacityExceeded { .. } => Self::ACTIVE_RUN_CAPACITY_EXCEEDED_CODE,
             Self::RunAlreadyExists => Self::RUN_ALREADY_EXISTS_CODE,
@@ -127,9 +129,9 @@ impl RuntimeError {
     #[must_use]
     pub fn runtime_code(&self) -> Option<&'static str> {
         match self {
-            Self::QueueFull | Self::ActiveRunCapacityExceeded { .. } => {
-                Some(Self::QUEUE_FULL_RUNTIME_CODE)
-            }
+            Self::QueueFull
+            | Self::PerRunQueueDepthExceeded { .. }
+            | Self::ActiveRunCapacityExceeded { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::JournalFull { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::JournalPoisoned | Self::UnsupportedAsyncStrictAck => {
                 Some(Self::STORAGE_ERROR_RUNTIME_CODE)

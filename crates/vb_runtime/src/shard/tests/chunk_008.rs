@@ -285,3 +285,67 @@ fn shard_submit_after_shutdown_is_rejected_and_never_processed() {
     // And no runs were submitted
     assert_eq!(shard.counters().snapshot().runs_submitted, 0);
 }
+
+#[test]
+fn shard_enqueue_enforces_admitted_per_run_queue_depth() {
+    let config = ShardConfig {
+        command_queue_capacity: 4096,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 4,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let budget = match vb_core::budget::AggregateResourceBudget::from_workflow(&workflow) {
+        Ok(budget) => budget,
+        Err(_) => return,
+    };
+    let limit = budget.max_queue_depth;
+    let run = super::RunId::new(302);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithContracts {
+            run,
+            workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.command_queue_pending_for(run), 1);
+    let mut filled = 1u32;
+    while filled < limit {
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run,
+                correlation: u64::from(filled),
+            }),
+            Ok(())
+        );
+        filled += 1;
+    }
+    assert_eq!(shard.command_queue_pending_for(run), limit);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: u64::from(limit),
+        }),
+        Err(RuntimeError::PerRunQueueDepthExceeded {
+            run,
+            pending: limit,
+            limit,
+        })
+    );
+    assert_eq!(shard.command_queue_pending_for(run), limit);
+    while shard.command_queue.pop().is_some() {}
+    assert_eq!(shard.command_queue_pending_for(run), 0);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 0,
+        }),
+        Ok(())
+    );
+}

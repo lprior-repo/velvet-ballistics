@@ -209,6 +209,37 @@ pub enum ShardCommand {
     Recover { command: Box<RecoverRunCommand> },
 }
 
+impl ShardCommand {
+    /// Returns the run this command belongs to, when the command has one.
+    ///
+    /// Ticket and answer variants carry the run inside their ticket rather
+    /// than as a direct field; `Shutdown` carries no run.
+    #[must_use]
+    pub fn run_id(&self) -> Option<RunId> {
+        match self {
+            Self::ActivateOwnedSubmission { run, .. }
+            | Self::Submit { run, .. }
+            | Self::SubmitPrePersisted { run, .. }
+            | Self::SubmitWithInputs { run, .. }
+            | Self::SubmitWithContracts { run, .. }
+            | Self::SubmitWithInputsAndContracts { run, .. }
+            | Self::Resume { run }
+            | Self::ActionCompletedLegacy { run, .. }
+            | Self::TimerFired { run, .. }
+            | Self::Cancel { run, .. }
+            | Self::Kill { run, .. }
+            | Self::Inspect { run, .. } => Some(*run),
+            Self::ActionCompleted { ticket, .. }
+            | Self::RegisteredActionCompleted { ticket, .. }
+            | Self::ActionFailed { ticket, .. }
+            | Self::RuntimeActionFailed { ticket, .. } => Some(ticket.run),
+            Self::AskAnswered { answer } => Some(answer.ticket.run),
+            Self::Recover { command } => Some(command.run),
+            Self::Shutdown => None,
+        }
+    }
+}
+
 /// Typed recovery command carrying full recovery context from journal replay.
 ///
 /// Constructed by recovery machinery after validating journal evidence
@@ -300,6 +331,18 @@ impl RecoverRunCommand {
     ) -> Self {
         self.admission = RecoveredAdmissionKind::Historical(Box::new(admission));
         self
+    }
+
+    /// Returns the admitted per-run queue depth carried by a historical
+    /// admission, or `None` when the recovery carries no verified admission.
+    #[must_use]
+    pub(crate) fn admitted_queue_depth(&self) -> Option<u32> {
+        match &self.admission {
+            RecoveredAdmissionKind::Historical(admission) => {
+                admission.budget().map(|budget| budget.max_queue_depth)
+            }
+            RecoveredAdmissionKind::Unverified { .. } => None,
+        }
     }
 
     /// Attaches full retry state whose identity is checked against the loaded accepted artifact.
@@ -800,6 +843,18 @@ pub struct ShardCommandQueue {
     inner: ArrayQueue<ShardCommand>,
     /// Stored capacity to satisfy POST-001 and INV-001 invariants.
     capacity: usize,
+    /// Pending command count per run, keyed by the run derived from each
+    /// command. The shard keeps one queue; this map is accounting only.
+    /// Entries are removed when their count reaches zero, so the map is
+    /// bounded by the number of distinct runs with pending commands.
+    pending: std::sync::Mutex<IndexMap<RunId, u32>>,
+    /// Admitted per-run queue depth recorded from a pending submit, keyed
+    /// by run. A submit's workflow budget is the cap for commands that
+    /// arrive before the run has an attached admission in run state.
+    /// Entries are removed when the run's pending count reaches zero, so
+    /// the map is bounded by the number of distinct runs with pending
+    /// commands.
+    admitted_depth: std::sync::Mutex<IndexMap<RunId, u32>>,
 }
 
 impl ShardCommandQueue {
@@ -818,6 +873,8 @@ impl ShardCommandQueue {
         Ok(Self {
             inner: ArrayQueue::new(capacity),
             capacity,
+            pending: std::sync::Mutex::new(IndexMap::new()),
+            admitted_depth: std::sync::Mutex::new(IndexMap::new()),
         })
     }
 
@@ -831,6 +888,17 @@ impl ShardCommandQueue {
         Self {
             inner: ArrayQueue::new(config.command_queue_capacity),
             capacity: config.command_queue_capacity,
+            pending: std::sync::Mutex::new(IndexMap::new()),
+            admitted_depth: std::sync::Mutex::new(IndexMap::new()),
+        }
+    }
+
+    fn lock_or_recover(
+        pending: &std::sync::Mutex<IndexMap<RunId, u32>>,
+    ) -> std::sync::MutexGuard<'_, IndexMap<RunId, u32>> {
+        match pending.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
         }
     }
 
@@ -839,16 +907,111 @@ impl ShardCommandQueue {
     ///
     /// This operation is non-blocking and never allocates on failure.
     pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
-        self.inner
-            .push(cmd)
-            .map_err(|_| crate::RuntimeError::QueueFull)
+        self.enqueue_with_limit(cmd, None)
+    }
+
+    /// Enqueues a command, enforcing a per-run pending cap when one is given.
+    ///
+    /// The cap check and the count increment are held under one lock with
+    /// the push, so concurrent enqueues cannot jointly exceed the cap. A
+    /// rejected command is never pushed and never counted; a command that
+    /// fails on shard-wide capacity is likewise never counted. When no cap
+    /// is given, a cap recorded from a pending submit for the same run
+    /// applies; a submit records its workflow budget on a successful push.
+    ///
+    /// # Errors
+    /// Returns `RuntimeError::PerRunQueueDepthExceeded` when the command's
+    /// run already has `limit` commands pending, or
+    /// `RuntimeError::QueueFull` when the queue is at capacity.
+    pub fn enqueue_with_limit(&self, cmd: ShardCommand, limit: Option<u32>) -> RuntimeResult<()> {
+        let run = cmd.run_id();
+        let submit_depth = match &cmd {
+            ShardCommand::Submit { run, workflow, .. }
+            | ShardCommand::SubmitPrePersisted { run, workflow, .. }
+            | ShardCommand::SubmitWithInputs { run, workflow, .. }
+            | ShardCommand::SubmitWithContracts { run, workflow, .. }
+            | ShardCommand::SubmitWithInputsAndContracts { run, workflow, .. } => {
+                vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
+                    .ok()
+                    .map(|budget| (*run, budget.max_queue_depth))
+            }
+            _ => None,
+        };
+        let mut pending = Self::lock_or_recover(&self.pending);
+        let mut admitted = Self::lock_or_recover(&self.admitted_depth);
+        let recorded = run.and_then(|run| admitted.get(&run).copied());
+        let effective = limit
+            .or(recorded)
+            .or_else(|| submit_depth.map(|(_, depth)| depth));
+        let current = run.and_then(|run| pending.get(&run).copied()).unwrap_or(0);
+        if let (Some(run), Some(limit)) = (run, effective)
+            && current >= limit
+        {
+            return Err(crate::RuntimeError::PerRunQueueDepthExceeded {
+                run,
+                pending: current,
+                limit,
+            });
+        }
+        let next = match run {
+            Some(run) => Some((
+                run,
+                current
+                    .checked_add(1)
+                    .ok_or(crate::RuntimeError::PerRunQueueDepthExceeded {
+                        run,
+                        pending: current,
+                        limit: current,
+                    })?,
+            )),
+            None => None,
+        };
+        match self.inner.push(cmd) {
+            Ok(()) => {
+                if let Some((run, next)) = next {
+                    let _previous = pending.insert(run, next);
+                }
+                if let Some((run, depth)) = submit_depth {
+                    let _previous = admitted.insert(run, depth);
+                }
+                Ok(())
+            }
+            Err(_) => Err(crate::RuntimeError::QueueFull),
+        }
+    }
+
+    /// Returns the number of commands currently pending for a run.
+    #[must_use]
+    pub fn pending_for(&self, run: RunId) -> u32 {
+        Self::lock_or_recover(&self.pending)
+            .get(&run)
+            .copied()
+            .unwrap_or(0)
     }
 
     /// Dequeues the frontmost command, if any.
     ///
     /// Returns `Some(cmd)` in FIFO order, or `None` if the queue is empty.
+    /// A dequeued command decrements its run's pending count.
     pub fn pop(&self) -> Option<ShardCommand> {
-        self.inner.pop()
+        let cmd = self.inner.pop()?;
+        if let Some(run) = cmd.run_id() {
+            let mut pending = Self::lock_or_recover(&self.pending);
+            match pending.get(&run).copied() {
+                Some(1) => {
+                    let _removed = pending.swap_remove(&run);
+                    let mut admitted = Self::lock_or_recover(&self.admitted_depth);
+                    let _removed = admitted.swap_remove(&run);
+                }
+                Some(count) => {
+                    if let Some(next) = count.checked_sub(1) {
+                        let _previous = pending.insert(run, next);
+                    }
+                }
+                None => {}
+            }
+        }
+        Some(cmd)
     }
 
     /// Returns the number of commands currently in the queue.
@@ -1748,6 +1911,87 @@ mod tests {
         assert_eq!(q.len(), 2);
         q.pop();
         assert_eq!(q.len(), 1);
+    }
+
+    #[test]
+    fn command_queue_tracks_pending_per_run_and_decrements_on_pop() {
+        let q = ShardCommandQueue::new(8).unwrap();
+        let run = vb_core::ids::RunId::new(7);
+        let other = vb_core::ids::RunId::new(8);
+        let cancel = |run| ShardCommand::Cancel { run, reason: None };
+        assert_eq!(q.enqueue(cancel(run)), Ok(()));
+        assert_eq!(q.enqueue(cancel(run)), Ok(()));
+        assert_eq!(q.enqueue(cancel(other)), Ok(()));
+        assert_eq!(q.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(q.pending_for(run), 2);
+        assert_eq!(q.pending_for(other), 1);
+        assert_eq!(q.pop(), Some(cancel(run)));
+        assert_eq!(q.pending_for(run), 1);
+        assert_eq!(q.pop(), Some(cancel(run)));
+        assert_eq!(q.pending_for(run), 0);
+        assert_eq!(q.pop(), Some(cancel(other)));
+        assert_eq!(q.pending_for(other), 0);
+        assert_eq!(q.pop(), Some(ShardCommand::Shutdown));
+        assert!(q.is_empty());
+    }
+
+    #[test]
+    fn command_queue_enforce_per_run_limit_and_frees_slot_on_pop() {
+        let q = ShardCommandQueue::new(8).unwrap();
+        let run = vb_core::ids::RunId::new(7);
+        let other = vb_core::ids::RunId::new(8);
+        let cancel = |run| ShardCommand::Cancel { run, reason: None };
+        assert_eq!(q.enqueue_with_limit(cancel(run), Some(1)), Ok(()));
+        assert_eq!(
+            q.enqueue_with_limit(cancel(run), Some(1)),
+            Err(RuntimeError::PerRunQueueDepthExceeded {
+                run,
+                pending: 1,
+                limit: 1,
+            })
+        );
+        assert_eq!(q.pending_for(run), 1);
+        assert_eq!(q.len(), 1);
+        assert_eq!(q.enqueue_with_limit(cancel(other), Some(1)), Ok(()));
+        assert_eq!(q.pop(), Some(cancel(run)));
+        assert_eq!(q.enqueue_with_limit(cancel(run), Some(1)), Ok(()));
+    }
+
+    #[test]
+    fn command_queue_zero_limit_rejects_first_run_command() {
+        let q = ShardCommandQueue::new(8).unwrap();
+        let run = vb_core::ids::RunId::new(7);
+        assert_eq!(
+            q.enqueue_with_limit(ShardCommand::Cancel { run, reason: None }, Some(0)),
+            Err(RuntimeError::PerRunQueueDepthExceeded {
+                run,
+                pending: 0,
+                limit: 0,
+            })
+        );
+        assert_eq!(q.pending_for(run), 0);
+        assert!(q.is_empty());
+    }
+
+    #[test]
+    fn command_queue_run_id_derives_from_ask_answer_ticket() {
+        let run = vb_core::ids::RunId::new(7);
+        let ticket = AskTicket::issued(
+            run,
+            vb_core::ids::StepIdx::new(0),
+            vb_core::ids::StepIdx::new(1),
+            vb_core::ids::SlotIdx::new(0),
+            vb_storage::EventSeq::ZERO,
+        );
+        let answer = AskAnswer::new(
+            ticket,
+            vb_core::ids::SlotIdx::new(0),
+            SlotValue::Bool(true),
+            Taint::Clean,
+        );
+        let cmd = ShardCommand::AskAnswered { answer };
+        assert_eq!(cmd.run_id(), Some(run));
+        assert_eq!(ShardCommand::Shutdown.run_id(), None);
     }
 
     // ---- ShardConfig ----
