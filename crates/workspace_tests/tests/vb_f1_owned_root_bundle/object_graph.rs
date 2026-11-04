@@ -3,7 +3,7 @@ use vb_core::ids::{BlobId, ListId, ObjectId, SlotIdx, SymbolId};
 use vb_core::root_bundle::{ArenaNode, OwnedRootBundle, OwnedRootBundleError};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ObjectField;
-use vb_core::workflow::{CompiledInputSlot, InputSlotKind};
+use vb_core::workflow::{CompiledInputConstraint, CompiledInputSlot, InputSlotKind};
 
 use super::support::{TestResult, checkpoint, fixture};
 
@@ -15,6 +15,7 @@ fn object_keys_are_reachable() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::Object,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         4,
@@ -63,6 +64,7 @@ fn duplicate_object_key() -> TestResult<()> {
         vec![CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: InputSlotKind::Object,
+            constraint: CompiledInputConstraint::unconstrained(),
         }],
         8,
         4,
@@ -121,6 +123,7 @@ fn every_arena_unreachable() -> TestResult<()> {
             vec![CompiledInputSlot {
                 slot: SlotIdx::new(0),
                 kind: InputSlotKind::I64,
+                constraint: CompiledInputConstraint::unconstrained(),
             }],
             8,
             4,

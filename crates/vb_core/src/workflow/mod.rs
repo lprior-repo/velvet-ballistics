@@ -13,7 +13,7 @@ use crate::limits::{
     MAX_OUTPUT_BYTES, MAX_PATH_DEPTH, MAX_QUEUE_DEPTH, MAX_RETRY_ATTEMPTS, MAX_SLOTS_PER_WORKFLOW,
     MAX_STEP_BUDGET, MAX_STEPS_PER_WORKFLOW,
 };
-use crate::value::ConstValue;
+use crate::value::{ConstValue, SlotValue};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
@@ -492,12 +492,116 @@ pub enum InputSlotKind {
 /// Source names are intentionally excluded; the compiler emits only numeric
 /// references so the runtime never pays for string lookups on hot paths.
 /// The `kind` field describes the runtime value shape held at that slot index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompiledInputSlot {
     /// Numeric slot index.
     pub slot: SlotIdx,
     /// Runtime value shape classification for this slot.
     pub kind: InputSlotKind,
+    /// Retained author-declared schema constraints for this slot.
+    ///
+    /// Serde `default` tolerates pre-constraint artifacts the same way
+    /// `WorkflowParts::input_slots` tolerates pre-v1 artifacts.
+    #[serde(default)]
+    pub constraint: CompiledInputConstraint,
+}
+
+/// Retained per-slot input schema constraints as bounded numerics.
+///
+/// Every field is `Copy` with no heap allocation so input-slot tables stay
+/// numeric end to end. `unconstrained()` reproduces exact legacy behavior
+/// (kind-only check, no presence requirement) for hand-built or
+/// pre-constraint artifacts; only compiler-emitted slots carry strict
+/// constraints. Nested object `fields` sub-schemas and non-scalar defaults
+/// are not representable here; their full-fidelity identity is carried by
+/// `WorkflowParts::semantic_source_identity` instead.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompiledInputConstraint {
+    /// The slot may be omitted at submission.
+    pub optional: bool,
+    /// An explicit null value is accepted for non-null kinds.
+    pub nullable: bool,
+    /// Scalar default filled when the slot is omitted (`None` when no
+    /// materializable default was declared).
+    pub default_value: Option<SlotValue>,
+    /// Inclusive minimum for integer values (length bound for lists).
+    pub min: Option<i64>,
+    /// Inclusive maximum for integer values (length bound for lists).
+    pub max: Option<i64>,
+    /// Inclusive minimum text length (retained; enforced where payloads
+    /// are visible).
+    pub min_length: Option<i64>,
+    /// Inclusive maximum text length (retained; enforced where payloads
+    /// are visible).
+    pub max_length: Option<i64>,
+    /// Declared list element kind (`of`).
+    pub element: Option<InputSlotKind>,
+    /// Declared object `extra` policy (`None` when undeclared).
+    pub allow_extra: Option<bool>,
+    /// Author-declared secrecy marker (matches compile-time taint facts).
+    pub secret: bool,
+}
+
+impl CompiledInputConstraint {
+    /// Plain required slot with no further constraints.
+    ///
+    /// This is what the compiler emits for bare shorthand schemas such as
+    /// `count: number`: the value must be supplied, with kind-only checking.
+    #[must_use]
+    pub const fn required() -> Self {
+        Self {
+            optional: false,
+            ..Self::unconstrained()
+        }
+    }
+
+    /// Legacy-compatible constraint: kind-only check, nothing required.
+    #[must_use]
+    pub const fn unconstrained() -> Self {
+        Self {
+            optional: true,
+            nullable: false,
+            default_value: None,
+            min: None,
+            max: None,
+            min_length: None,
+            max_length: None,
+            element: None,
+            allow_extra: None,
+            secret: false,
+        }
+    }
+
+    /// Whether submission must supply a value for this slot.
+    ///
+    /// A declared scalar default satisfies a missing input, so only slots
+    /// that are neither optional nor defaulted require a value.
+    #[must_use]
+    pub const fn requires_value(&self) -> bool {
+        !self.optional && self.default_value.is_none()
+    }
+}
+
+impl Default for CompiledInputConstraint {
+    /// Legacy-compatible default: same as `unconstrained()`.
+    ///
+    /// This keeps `#[serde(default)]` on pre-constraint artifacts
+    /// permissive instead of flipping them to required.
+    fn default() -> Self {
+        Self::unconstrained()
+    }
+}
+
+/// One structural inconsistency in a retained input constraint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum InputConstraintIssue {
+    /// `min` exceeds `max`.
+    MinExceedsMax,
+    /// `min_length` exceeds `max_length`.
+    MinLengthExceedsMaxLength,
+    /// A length bound is negative.
+    NegativeLengthBound,
 }
 
 /// Untrusted compiled workflow parts emitted by a compiler boundary.
@@ -740,6 +844,14 @@ pub enum WorkflowError {
         prev_slot: SlotIdx,
         /// The out-of-order slot index.
         curr_slot: SlotIdx,
+    },
+    /// A retained input constraint is structurally inconsistent.
+    #[error("input slot {slot:?} has inconsistent constraint: {issue:?}")]
+    InconsistentInputConstraint {
+        /// The slot carrying the inconsistent constraint.
+        slot: SlotIdx,
+        /// The structural inconsistency found.
+        issue: InputConstraintIssue,
     },
     /// A loop control step has no matching loop body or done target.
     #[error("loop control step {control:?} is unpaired")]
@@ -1306,7 +1418,34 @@ fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> {
                 });
             }
         }
+        validate_input_constraint(current, &input_slot.constraint)?;
         prev_slot = Some(current);
+    }
+    Ok(())
+}
+
+fn validate_input_constraint(
+    slot: SlotIdx,
+    constraint: &CompiledInputConstraint,
+) -> Result<(), WorkflowError> {
+    let inconsistent =
+        |issue: InputConstraintIssue| WorkflowError::InconsistentInputConstraint { slot, issue };
+    if let (Some(min), Some(max)) = (constraint.min, constraint.max)
+        && min > max
+    {
+        return Err(inconsistent(InputConstraintIssue::MinExceedsMax));
+    }
+    if let (Some(min), Some(max)) = (constraint.min_length, constraint.max_length)
+        && min > max
+    {
+        return Err(inconsistent(
+            InputConstraintIssue::MinLengthExceedsMaxLength,
+        ));
+    }
+    if constraint.min_length.is_some_and(|bound| bound < 0)
+        || constraint.max_length.is_some_and(|bound| bound < 0)
+    {
+        return Err(inconsistent(InputConstraintIssue::NegativeLengthBound));
     }
     Ok(())
 }

@@ -1335,13 +1335,10 @@ fn decode_record_journal_event_rejects_ask_answered_envelope_with_ask_timed_out_
         {
             Ok(())
         }
-        other => {
-            eprintln!(
-                "decode_record::<JournalEvent> must reject AskAnswered(18) envelope \
-                 carrying AskTimedOut payload, got {other:?}"
-            );
-            Err(JournalError::InvalidEvent)
-        }
+        other => panic!(
+            "decode_record::<JournalEvent> must reject AskAnswered(18) envelope \
+             carrying AskTimedOut payload, got {other:?}"
+        ),
     }
 }
 
@@ -1378,13 +1375,10 @@ fn decode_record_journal_event_rejects_ask_timed_out_envelope_with_ask_answered_
         {
             Ok(())
         }
-        other => {
-            eprintln!(
-                "decode_record::<JournalEvent> must reject AskTimedOut(29) envelope \
-                 carrying AskAnswered payload, got {other:?}"
-            );
-            Err(JournalError::InvalidEvent)
-        }
+        other => panic!(
+            "decode_record::<JournalEvent> must reject AskTimedOut(29) envelope \
+             carrying AskAnswered payload, got {other:?}"
+        ),
     }
 }
 
@@ -1417,13 +1411,10 @@ fn decode_journal_event_rejects_ask_timed_out_envelope_with_ask_answered_payload
         {
             Ok(())
         }
-        other => {
-            eprintln!(
-                "decode_journal_event must reject AskTimedOut(29) envelope \
-                 carrying AskAnswered payload, got {other:?}"
-            );
-            Err(JournalError::InvalidEvent)
-        }
+        other => panic!(
+            "decode_journal_event must reject AskTimedOut(29) envelope \
+             carrying AskAnswered payload, got {other:?}"
+        ),
     }
 }
 
@@ -1481,14 +1472,11 @@ fn assert_stable_payload_kind_mismatch(
         }) if observed_envelope == envelope_kind.id() && observed_payload == payload_kind.id() => {
             Ok(())
         }
-        other => {
-            eprintln!(
-                "expected stable schema-1 envelope kind {} payload kind {} mismatch, got {other:?}",
-                envelope_kind.id(),
-                payload_kind.id()
-            );
-            Err(JournalError::InvalidEvent)
-        }
+        other => panic!(
+            "expected stable schema-1 envelope kind {} payload kind {} mismatch, got {other:?}",
+            envelope_kind.id(),
+            payload_kind.id()
+        ),
     }
 }
 

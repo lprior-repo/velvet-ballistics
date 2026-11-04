@@ -83,6 +83,9 @@ pub(crate) enum InputMappingError {
         slot: vb_core::SlotIdx,
         expected_kind: vb_core::InputSlotKind,
     },
+    MissingRequiredInput {
+        slot: vb_core::SlotIdx,
+    },
 }
 
 impl std::fmt::Display for InputMappingError {
@@ -99,6 +102,10 @@ impl std::fmt::Display for InputMappingError {
                 formatter,
                 "INPUT_MAPPING_FAILED: slot {slot:?} value kind mismatch, expected {expected_kind:?}"
             ),
+            Self::MissingRequiredInput { slot } => write!(
+                formatter,
+                "INPUT_MAPPING_FAILED: missing required input for slot {slot:?}"
+            ),
         }
     }
 }
@@ -108,42 +115,50 @@ pub(crate) fn map_runtime_inputs(
     input_data: &[u8],
 ) -> Result<Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>, InputMappingError> {
     let input_slots = compiled.input_slots();
-    if input_data.is_empty() {
-        return Ok(Box::from([]));
-    }
-    let (values, remainder) = postcard::take_from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
-        .map_err(|_| InputMappingError::DecodeFailed)?;
-    if !remainder.is_empty() {
-        return Err(InputMappingError::DecodeFailed);
-    }
+    let values: Box<[vb_core::SlotValue]> = if input_data.is_empty() {
+        Box::from([])
+    } else {
+        let (values, remainder) =
+            postcard::take_from_bytes::<Box<[vb_core::SlotValue]>>(input_data)
+                .map_err(|_| InputMappingError::DecodeFailed)?;
+        if !remainder.is_empty() {
+            return Err(InputMappingError::DecodeFailed);
+        }
+        values
+    };
     if values.len() > input_slots.len() {
         return Err(InputMappingError::SlotCountExceeded);
     }
-    input_slots
-        .iter()
-        .zip(values.iter())
-        .map(|(slot, value)| {
-            let value_kind = match value {
-                vb_core::SlotValue::Null => vb_core::InputSlotKind::Null,
-                vb_core::SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
-                vb_core::SlotValue::I64(_) => vb_core::InputSlotKind::I64,
-                vb_core::SlotValue::F64(_) => vb_core::InputSlotKind::F64,
-                vb_core::SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
-                vb_core::SlotValue::List(_) => vb_core::InputSlotKind::List,
-                vb_core::SlotValue::Object(_) => vb_core::InputSlotKind::Object,
-                vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
-                _ => return Err(InputMappingError::DecodeFailed),
-            };
-            if slot.kind != vb_core::InputSlotKind::Any && value_kind != slot.kind {
-                return Err(InputMappingError::KindMismatch {
-                    slot: slot.slot,
-                    expected_kind: slot.kind,
-                });
-            }
-            Ok((slot.slot, *value))
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map(Vec::into_boxed_slice)
+    let mut mapped = Vec::with_capacity(values.len());
+    for (slot, value) in input_slots.iter().zip(values.iter()) {
+        let value_kind = match value {
+            vb_core::SlotValue::Null => vb_core::InputSlotKind::Null,
+            vb_core::SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+            vb_core::SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+            vb_core::SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+            vb_core::SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
+            vb_core::SlotValue::List(_) => vb_core::InputSlotKind::List,
+            vb_core::SlotValue::Object(_) => vb_core::InputSlotKind::Object,
+            vb_core::SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
+            _ => return Err(InputMappingError::DecodeFailed),
+        };
+        if slot.kind != vb_core::InputSlotKind::Any && value_kind != slot.kind {
+            return Err(InputMappingError::KindMismatch {
+                slot: slot.slot,
+                expected_kind: slot.kind,
+            });
+        }
+        mapped.push((slot.slot, *value));
+    }
+    // A short value list no longer silently drops trailing ports: every
+    // required slot without a supplied value fails here, before admission.
+    // Optional and defaulted slots are satisfied downstream by storage.
+    for slot in input_slots.iter().skip(values.len()) {
+        if slot.constraint.requires_value() {
+            return Err(InputMappingError::MissingRequiredInput { slot: slot.slot });
+        }
+    }
+    Ok(mapped.into_boxed_slice())
 }
 
 pub(crate) fn runtime_journal_for_mode(

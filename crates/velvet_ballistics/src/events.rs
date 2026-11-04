@@ -18,6 +18,10 @@ pub(crate) fn cmd_events(
         Err(code) => return code,
     };
 
+    if let Err(code) = check_journal_dir(db, output) {
+        return code;
+    }
+
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {

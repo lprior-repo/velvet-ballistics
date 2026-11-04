@@ -72,6 +72,7 @@ fn arena_limit_65536_symbols() -> TestResult<()> {
         vec![vb_core::workflow::CompiledInputSlot {
             slot: SlotIdx::new(0),
             kind: vb_core::workflow::InputSlotKind::I64,
+            constraint: vb_core::workflow::CompiledInputConstraint::unconstrained(),
         }],
         65535,
         4,

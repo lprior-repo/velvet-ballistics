@@ -44,6 +44,14 @@ fn parse_action_inspect(args: &[OsString]) -> Result<Command, ParseError> {
         .ok_or_else(|| ParseError::InvalidActionName(format!("{raw_name:?}")))?
         .trim()
         .to_string();
+    // `action list` shows numeric IDs; accept them for inspect too.
+    let action_name = match action_name.parse::<u16>() {
+        Ok(id) => match crate::action_specs::action_name_for_id(id) {
+            Some(name) => name.to_string(),
+            None => action_name,
+        },
+        Err(_) => action_name,
+    };
     if action_name.is_empty() {
         return Err(ParseError::InvalidActionName("action name is empty".into()));
     }

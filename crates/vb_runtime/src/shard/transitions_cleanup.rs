@@ -15,6 +15,9 @@ impl crate::shard::Shard {
         run: RunId,
         state: RunState,
     ) -> RuntimeResult<()> {
+        // The terminal append wrapper succeeded. Capture before fallible cleanup;
+        // the caller may still receive an execution error after this observation.
+        self.completion_capture.capture_terminal(run, &state);
         let _removed_timer = self.pending_timer_remove(run);
         let _removed_action = self.pending_action_remove(run);
         self.clear_pending_ask_authority(run);

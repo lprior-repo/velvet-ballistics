@@ -23,14 +23,28 @@ macro_rules! fail_assert {
 fn adversarial_duplicate_keys_nested_deep_mapping_rejected() {
     let yaml = "a:\n  b:\n    c: 1\n    c: 2\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "c".into() }));
+    assert_eq!(
+        result,
+        Err(YamlError::DuplicateKeyAt {
+            key: "c".into(),
+            line: 4,
+            column: 4
+        })
+    );
 }
 
 #[test]
 fn adversarial_duplicate_keys_top_level_rejected() {
     let yaml = "x: 1\nx: 2\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "x".into() }));
+    assert_eq!(
+        result,
+        Err(YamlError::DuplicateKeyAt {
+            key: "x".into(),
+            line: 2,
+            column: 0
+        })
+    );
 }
 
 #[test]
@@ -217,7 +231,14 @@ fn adversarial_node_limit_exceeded() {
 fn adversarial_duplicate_key_in_sequence_context_rejected() {
     let yaml = "items:\n  - name: a\n    name: b\n";
     let result = validate_yaml_profile(yaml);
-    assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
+    assert_eq!(
+        result,
+        Err(YamlError::DuplicateKeyAt {
+            key: "name".into(),
+            line: 3,
+            column: 4
+        })
+    );
 }
 
 #[test]

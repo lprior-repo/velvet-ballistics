@@ -4,7 +4,7 @@ use vb_core::action_pack::{
     ActionPack, ActionPackDigest, CapabilityScopeSpec, ExecutorIdentity, ExecutorVersionDigest,
     IdempotencyClass, ManifestDigest, ReceiptSchemaDigest, RecoveryClass, TimeoutPolicy,
 };
-use vb_core::{ActionContract, ActionTicket, Idempotency, RetrySafety, SideEffect};
+use vb_core::{ActionContract, ActionId, ActionTicket, Idempotency, RetrySafety, SideEffect};
 
 /// Trusted built-in selector. Construction always executes the concrete scratch suite.
 /// Cloning preserves that checked origin; raw report deserialization cannot create it.
@@ -114,6 +114,51 @@ impl ExecutorCatalog {
             return Err(ExecutorError::ReceiptConflict);
         }
         Ok(())
+    }
+
+    /// Trusted scoped-grant issuance binding lifecycle facts to one register grant.
+    /// Strict-exact: the requested scope must equal the register scope and the
+    /// declared pack scope, and the capability must equal the contract
+    /// requirement for the ticket action. The executor receives only this
+    /// narrowed scope at dispatch.
+    pub fn issue_scoped_grant(
+        &self,
+        artifact: &crate::AcceptedArtifact,
+        register: &RegisterGrant,
+        params: vb_core::ScopedGrantParams,
+    ) -> Result<vb_core::ScopedGrant, ExecutorError> {
+        if register.artifact_digest() != artifact.digest {
+            return Err(ExecutorError::Unauthorized);
+        }
+        if params.scope != register.scope {
+            return Err(ExecutorError::Unauthorized);
+        }
+        let pack = self.pack_for(artifact, register.ticket.action)?;
+        if pack.scope != params.scope {
+            return Err(ExecutorError::Unauthorized);
+        }
+        let contract = artifact
+            .action_contracts
+            .iter()
+            .find(|contract| contract.id == register.ticket.action)
+            .ok_or(ExecutorError::PackMismatch)?;
+        if contract.required_capabilities.as_ref() != [params.capability.clone()] {
+            return Err(ExecutorError::Unauthorized);
+        }
+        Ok(vb_core::ScopedGrant::issue(
+            params,
+            artifact.digest,
+            register.ticket,
+        )?)
+    }
+
+    /// Declared pack scope for one action; the only scope dispatch may pass on.
+    pub fn declared_scope(
+        &self,
+        artifact: &crate::AcceptedArtifact,
+        action: ActionId,
+    ) -> Result<CapabilityScopeSpec, ExecutorError> {
+        Ok(self.pack_for(artifact, action)?.scope)
     }
 
     /// Recovery authority is explicit and independent from idempotency enforcement.

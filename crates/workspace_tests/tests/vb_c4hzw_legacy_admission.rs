@@ -18,3 +18,6 @@ mod legacy_admission_test;
 
 #[path = "vb_c4hzw_legacy_admission/forged_admission_test.rs"]
 mod forged_admission_test;
+
+#[path = "vb_hk1j8_fixture/scoped_grant_fixture.rs"]
+mod scoped_grant_fixture;
