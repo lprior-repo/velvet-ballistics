@@ -19,6 +19,9 @@ fn timer_command(shard: &Shard, run: RunId) -> ShardCommand {
     let Some(entry) = shard.timer_entry(run) else {
         panic!("timer_command requires a live captured timer entry");
     };
+    // A timer may only be delivered once its deadline is due; wait out the
+    // fixture's short timeout so the captured authority is still valid.
+    std::thread::sleep(entry.deadline.saturating_duration_since(std::time::Instant::now()));
     ShardCommand::TimerFired {
         run: entry.run,
         generation: entry.generation,

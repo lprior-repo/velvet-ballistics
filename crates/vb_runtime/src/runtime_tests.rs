@@ -2458,6 +2458,11 @@ mod tests {
         let Ok(entry1) = runtime.capture_timer_entry(run1) else {
             return;
         };
+        std::thread::sleep(
+            entry1
+                .deadline
+                .saturating_duration_since(std::time::Instant::now()),
+        );
         assert_eq!(runtime.timer_entry_fired(entry1), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
@@ -2486,6 +2491,11 @@ mod tests {
         let Ok(entry2) = runtime.capture_timer_entry(run2) else {
             return;
         };
+        std::thread::sleep(
+            entry2
+                .deadline
+                .saturating_duration_since(std::time::Instant::now()),
+        );
         assert_eq!(runtime.timer_entry_fired(entry2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         let snap2 = runtime.counters_snapshot();

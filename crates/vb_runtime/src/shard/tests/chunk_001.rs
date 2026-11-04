@@ -19,6 +19,9 @@ use crate::shard::types::{PendingTimer, PendingTimerKind};
 
 fn timer_command(shard: &Shard, run: super::RunId) -> Option<ShardCommand> {
     let entry = shard.timer_entry(run)?;
+    // A timer may only be delivered once its deadline is due; wait out the
+    // fixture's short timeout so the captured authority is still valid.
+    std::thread::sleep(entry.deadline.saturating_duration_since(std::time::Instant::now()));
     Some(ShardCommand::TimerFired {
         run: entry.run,
         generation: entry.generation,

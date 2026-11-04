@@ -46,14 +46,21 @@ impl Shard {
         let (mut journal_events, trace_events) =
             self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
-        let (timer, ask_boundary_seq) =
-            self.prepare_awaiting_schedule(run, step, kind, register_timer, &mut journal_events)?;
+        let (timer, ask_boundary_seq) = self.prepare_awaiting_schedule(
+            run,
+            &state,
+            step,
+            kind,
+            register_timer,
+            &mut journal_events,
+        )?;
         Ok((journal_events, trace_events, state, timer, ask_boundary_seq))
     }
 
     fn prepare_awaiting_schedule(
         &self,
         run: RunId,
+        state: &RunState,
         step: StepIdx,
         kind: PendingTimerKind,
         register_timer: bool,
@@ -67,7 +74,7 @@ impl Shard {
         } else {
             None
         };
-        let timer = self.pending_timer_for_awaiting(run, step, kind, register_timer)?;
+        let timer = self.pending_timer_for_awaiting(run, state, step, kind, register_timer)?;
         Self::push_drive_journal_event(journal_events, awaiting_schedule_event(run, step, kind))?;
         Ok((timer, boundary_seq))
     }
@@ -89,6 +96,7 @@ impl Shard {
     fn pending_timer_for_awaiting(
         &self,
         run: RunId,
+        state: &RunState,
         step: StepIdx,
         kind: PendingTimerKind,
         register_timer: bool,
@@ -103,7 +111,7 @@ impl Shard {
             step,
             kind,
             generation,
-            deadline: std::time::Instant::now(),
+            deadline: awaiting_deadline(state, step),
         }))
     }
 

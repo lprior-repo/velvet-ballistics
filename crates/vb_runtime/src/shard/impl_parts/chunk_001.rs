@@ -300,13 +300,13 @@ impl Shard {
         Ok(())
     }
 
-    /// `#[cfg(kani)]`-only accessor for the per-run journal sequence.
+    /// Kani- and test-only accessor for the per-run journal sequence.
     /// Returns the current `EventSeq` recorded for `run_id`, or `None`
     /// if no sequence has been allocated yet. Used by kani harnesses
     /// (e.g. `kani_ask_answer_lifecycle::kani_ask_answer_journal_monotonicity`)
-    /// to inspect monotonicity invariants without exposing the field
-    /// outside the `kani` build.
-    #[cfg(kani)]
+    /// and the timer regressions to inspect monotonicity invariants without
+    /// exposing the field outside those builds.
+    #[cfg(any(kani, test))]
     pub(crate) fn journal_seq_get(&self, run_id: RunId) -> Option<EventSeq> {
         self.journal_sequences.get(&run_id).copied()
     }
@@ -746,12 +746,26 @@ impl Shard {
         guard.tick()
     }
 
+    fn drive_one_due_timer(&mut self) -> RuntimeResult<()> {
+        let now = std::time::Instant::now();
+        let due = self
+            .pending_timer_iter()
+            .filter(|(_, timer)| timer.deadline <= now)
+            .min_by_key(|(run, timer)| (timer.deadline, run.get()))
+            .map(|(run, timer)| (*run, *timer));
+        let Some((run, timer)) = due else {
+            return Ok(());
+        };
+        self.handle_timer(run, timer.generation, timer.deadline, timer.kind)
+    }
+
     fn tick_inner(&mut self) -> RuntimeResult<bool> {
         if self.shutting_down {
             return Ok(false);
         }
 
         let Some(cmd) = self.command_queue.pop() else {
+            self.drive_one_due_timer()?;
             return Ok(true);
         };
 
