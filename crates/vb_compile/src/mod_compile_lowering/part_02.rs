@@ -163,10 +163,31 @@ pub(super) fn lower_canonical_step(
         }
         crate::StepPrimitive::Aggregate {
             input,
+            variable,
             initial,
             body,
-            ..
-        } => lower_canonical_aggregate(index, id, input, initial, body, next, builder),
+        } => {
+            let (slot, inferred) = lower_canonical_aggregate(
+                index,
+                id,
+                ReduceLowering {
+                    input,
+                    variable,
+                    initial,
+                    body,
+                    next,
+                    scope: CanonicalScope {
+                        outputs,
+                        step_outputs,
+                        slot_types,
+                    },
+                },
+                builder,
+            )?;
+            step_outputs.insert(step.id.to_string(), slot);
+            slot_types.insert(slot, inferred);
+            Ok(())
+        }
         crate::StepPrimitive::Repeat { max_attempts, body } => lower_canonical_repeat(
             index,
             id,
