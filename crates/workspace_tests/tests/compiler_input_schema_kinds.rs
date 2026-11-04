@@ -500,3 +500,44 @@ fn any_schema_digest_and_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
     );
     Ok(())
 }
+
+fn object_default_mapping_source(entries: usize) -> String {
+    let mut source = String::from(
+        "version: velvet-ballistics/v1\nname: yaml_mapping_limit\nwhen:\n  manual: {}\ninputs:\n  payload:\n    is: object\n    default:\n",
+    );
+    for index in 0..entries {
+        source.push_str(&format!("      k{index:04}: {{}}\n"));
+    }
+    source.push_str(
+        "steps:\n  - id: seed\n    set:\n      output: answer\n      value: \"1\"\n  - id: done\n    finish:\n      result: \"$steps.seed\"\n",
+    );
+    source
+}
+
+#[test]
+fn object_default_container_mapping_limit_is_checked_before_compile()
+-> Result<(), Box<dyn std::error::Error>> {
+    let at = object_default_mapping_source(1024);
+    let workflow = vb_compile::compile_workflow(at.as_bytes())?;
+    assert_eq!(workflow.name(), "yaml_mapping_limit");
+    assert_eq!(workflow.node_count(), 2);
+    assert_eq!(workflow.input_slots().len(), 1);
+    let input = workflow
+        .input_slots()
+        .first()
+        .ok_or("object input missing")?;
+    assert_eq!(input.kind, vb_core::InputSlotKind::Object);
+    assert_eq!(input.constraint.default_value, None);
+    assert!(workflow.to_parts().semantic_source_identity.is_some());
+    let over = object_default_mapping_source(1025);
+    let errors = match vb_compile::compile_workflow(over.as_bytes()) {
+        Err(errors) => errors,
+        Ok(_) => return Err("compiler accepted over-limit container mapping".into()),
+    };
+    assert!(
+        matches!(errors.0.as_slice(), [vb_compile::CompileError::CanonicalYaml {
+        category: "limit_exceeded", message,
+    }] if message.as_ref() == "mapping too large: 1025 entries, max 1024")
+    );
+    Ok(())
+}
