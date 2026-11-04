@@ -11,7 +11,7 @@ impl Shard {
             .as_ref()
             .map(|a| a.granted_capabilities())
             .unwrap_or(&empty_caps);
-        drive_deterministic_full(
+        let signal = drive_deterministic_full(
             &state.workflow,
             &mut state.frame,
             &mut budget,
@@ -22,7 +22,28 @@ impl Shard {
             &mut state.collect_states,
             granted,
             state.run_attempt.get(),
-        )
+        )?;
+        Self::check_value_store_budget(state)?;
+        Ok(signal)
+    }
+
+    fn check_value_store_budget(state: &RunState) -> RuntimeEngineResult<()> {
+        let Some(admission) = state.admission.as_ref() else {
+            return Ok(());
+        };
+        let Some(budget) = admission.budget() else {
+            return Ok(());
+        };
+        let limit = budget.max_value_store_entries;
+        if state.store.total_arena_count() > limit {
+            return Err(crate::engine::types::RuntimeEngineError::Core(
+                vb_core::engine::EngineError::BudgetExceeded {
+                    budget: "value_store_entries",
+                    limit,
+                },
+            ));
+        }
+        Ok(())
     }
 
     /// Tick transition allowance for a run from its admitted total-transition
