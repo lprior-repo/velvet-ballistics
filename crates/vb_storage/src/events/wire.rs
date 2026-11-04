@@ -6,8 +6,6 @@ mod category;
 mod compat;
 #[path = "wire_deserialize.rs"]
 mod deserialize;
-#[path = "wire_legacy.rs"]
-mod legacy;
 #[path = "wire_serialize.rs"]
 mod serialize;
 #[path = "wire_tags.rs"]

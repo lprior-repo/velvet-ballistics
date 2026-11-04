@@ -7,8 +7,8 @@
 //! record-kind discriminant (workflow source, compiled IR, blob, run snapshot,
 //! run header, and any external test payload). For [`crate::JournalEvent`],
 //! parity is mandatory: the override verifies that the envelope record kind
-//! matches the decoded payload variant, except for the named schema-1 shared
-//! envelope compatibility path, and that the event passes `JournalEvent::is_valid()`.
+//! matches the decoded payload variant exactly and that the event passes
+//! `JournalEvent::is_valid()`.
 //!
 //! External types that decode through `decode_record` only need to add a
 //! trivial `impl EnforceKindParity for MyType {}` line. Because the default
@@ -39,9 +39,9 @@ pub trait EnforceKindParity: Sized {
     /// Decodes the payload bytes into `Self`.
     ///
     /// Most record payloads use their Serde implementation directly. Journal
-    /// events override this hook because schema-1 replay must accept the
-    /// pre-stable in-repo ordinal postcard shape as a compatibility fallback
-    /// while new writes use stable record-kind tags.
+    /// events override this hook to reject context-free continuation decoding
+    /// and require stable record-kind tags to match the envelope. Ordinal and
+    /// missing-field compatibility payloads are not decoded.
     fn decode_payload<'payload>(
         envelope: &RecordEnvelope,
         payload: &'payload [u8],
@@ -74,7 +74,7 @@ impl EnforceKindParity for crate::JournalEvent {
     }
 
     fn enforce_kind_parity(envelope: &RecordEnvelope, value: &Self) -> Result<(), JournalError> {
-        super::validate_decoded_journal_event_record_kind(envelope, value)?;
+        super::validate_journal_event_record_kind(envelope, value)?;
         if !value.is_valid() {
             return Err(JournalError::InvalidEvent);
         }
