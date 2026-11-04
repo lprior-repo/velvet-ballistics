@@ -157,27 +157,27 @@ macro_rules! red_complete_slot_contract_test {
 }
 
 red_complete_slot_contract_test!(
-    event_only_recovery_returns_secret_i64_when_durable_taint_is_secret,
+    event_only_recovery_returns_secret_when_no_durable_taint_metadata,
     SlotValue::I64(99),
     Taint::Secret
 );
 red_complete_slot_contract_test!(
-    event_only_recovery_returns_derived_bool_when_durable_taint_is_derived,
+    legacy_bool_true_without_durable_taint_becomes_secret,
     SlotValue::Bool(true),
     Taint::Secret
 );
 red_complete_slot_contract_test!(
-    action_completion_records_exact_secret_taint_when_action_writes_output,
+    action_completion_without_durable_taint_returns_secret,
     SlotValue::I64(7),
     Taint::Secret
 );
 red_complete_slot_contract_test!(
-    ask_answer_records_exact_clean_taint_when_answer_writes_output,
+    legacy_bool_false_without_durable_taint_becomes_secret,
     SlotValue::Bool(false),
     Taint::Secret
 );
 red_complete_slot_contract_test!(
-    runtime_to_storage_mapping_preserves_taint_for_slot_write,
+    runtime_to_storage_mapping_preserves_secret_for_null_without_taint_metadata,
     SlotValue::Null,
     Taint::Secret
 );
@@ -366,7 +366,7 @@ fn drain_report_contract_requires_three_drained_and_three_written() {
 
 proptest! {
     #[test]
-    fn proptest_event_only_slot_recovery_preserves_secret_taint(value in -128_i64..128_i64) {
+    fn proptest_legacy_slot_recovery_returns_secret_without_durable_taint(value in -128_i64..128_i64) {
         let events = complete_slot_events(
             RunId::new(60),
             StepIdx::new(1),
