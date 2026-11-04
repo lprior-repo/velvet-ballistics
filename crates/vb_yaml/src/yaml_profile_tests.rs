@@ -48,6 +48,43 @@ fn non_null_root_scalar_still_counts_as_content() {
 }
 
 #[test]
+fn nested_container_counts_do_not_bubble_into_parent_limits() {
+    // vb-3e653: every container is under its own limit; the nested map's
+    // entries must not inflate the root map's count.
+    let mut yaml = String::from("---\n");
+    for i in 0..25 {
+        yaml.push_str(&format!("k{i}: v\n"));
+    }
+    yaml.push_str("big:\n");
+    for i in 0..1000 {
+        yaml.push_str(&format!("  n{i}: v\n"));
+    }
+    assert_eq!(validate_yaml_profile(&yaml), Ok(()));
+}
+
+#[test]
+fn sequence_limit_counts_mapping_items() {
+    // vb-x4azz: non-scalar sequence items count toward the length limit.
+    let mut yaml = String::from("items:\n");
+    for i in 0..10_000 {
+        yaml.push_str(&format!("  - k{i}: v\n"));
+    }
+    assert_eq!(validate_yaml_profile(&yaml), Ok(()));
+    yaml.push_str("  - k10000: v\n");
+    let result = validate_yaml_profile(&yaml);
+    assert!(
+        matches!(
+            result,
+            Err(YamlError::SequenceTooLong {
+                len: 10_001,
+                max: 10_000
+            })
+        ),
+        "expected SequenceTooLong, got {result:?}"
+    );
+}
+
+#[test]
 fn explicit_complex_keys_rejected_before_duplicate_check() {
     // vb-rqu7r: the first complex key already fails, so a duplicated
     // complex key can never silently override.
