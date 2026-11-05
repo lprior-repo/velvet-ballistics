@@ -11,9 +11,21 @@ use crate::{parse_yaml_events, validate_yaml_profile};
 // Property: Valid simple YAML mapping parses
 // ─────────────────────────────────────────────────────────────────
 
+fn is_yaml_1_1_ambiguous(scalar: &str) -> bool {
+    matches!(
+        scalar.to_ascii_lowercase().as_str(),
+        "yes" | "no" | "on" | "off" | "y" | "n"
+    )
+}
+
 proptest! {
     #[test]
-    fn simple_yaml_mapping_parses(key in "[a-zA-Z][a-zA-Z0-9_]{1,9}", value in "[a-zA-Z][a-zA-Z0-9]{2,10}") {
+    fn simple_yaml_mapping_parses(
+        key in "[a-zA-Z][a-zA-Z0-9_]{1,9}"
+            .prop_filter("unambiguous YAML 1.1 scalar", |key| !is_yaml_1_1_ambiguous(key)),
+        value in "[a-zA-Z][a-zA-Z0-9]{2,10}"
+            .prop_filter("unambiguous YAML 1.1 scalar", |value| !is_yaml_1_1_ambiguous(value)),
+    ) {
         let yaml = format!("{}: {}\n", key, value);
         let result = parse_yaml_events(&yaml);
         assert!(result.is_ok(), "Simple YAML mapping should parse: {}", yaml);
