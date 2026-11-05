@@ -23,7 +23,7 @@ where
     let payload: (
         vb_core::RunId,
         crate::EventSeq,
-        vb_core::compat::CompatDecision,
+        crate::compat::CompatDecision,
     ) = variant.newtype_variant()?;
     let (run, seq, decision) = payload;
     Ok(JournalEvent::CompatibilityDecisionEvent { run, seq, decision })
