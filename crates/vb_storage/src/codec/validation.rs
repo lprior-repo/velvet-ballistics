@@ -2,7 +2,7 @@ use crate::{
     compat::wire_version_inputs, constants::CURRENT_SCHEMA_VERSION, error::JournalError,
     records::RecordKind,
 };
-use vb_core::compat::{CompatBoundary, CompatibilityClass, classify};
+use crate::compat::{CompatBoundary, CompatibilityClass, classify};
 
 const SCHEMA_ONE_VERSION: u16 = 1;
 
