@@ -2,270 +2,28 @@
 //! Pure helper functions for shard operations.
 
 use vb_core::action::ActionTicket;
-use vb_core::frame::{RunFrame, StepState};
+use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
-use vb_core::value::{SlotValue, Taint};
+use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow, NodeContinuation};
+use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
 
 use crate::primitives::collect::CollectStates;
 
 use crate::engine::RetryPolicy;
 use crate::{RuntimeError, RuntimeResult};
 
-use crate::shard::types::{InspectSnapshot, PendingTimer, PendingTimerKind};
+use crate::shard::types::InspectSnapshot;
 
-/// Seeds input slots on a frame before deterministic execution.
-pub fn seed_input_slots(
-    frame: &mut RunFrame,
-    inputs: &[(SlotIdx, SlotValue)],
-    workflow: &CompiledWorkflow,
-) -> RuntimeResult<()> {
-    for (slot, value) in inputs {
-        let declared = workflow.input_slots().iter().find(|cs| cs.slot == *slot);
-        if let Some(kind) = declared.map(|cs| cs.kind)
-            && !slot_value_matches_kind(value, kind)
-        {
-            return Err(RuntimeError::RuntimeInputSlotKindMismatch {
-                slot: *slot,
-                expected: kind,
-                actual: slot_value_kind(value),
-            });
-        }
-        let taint = if declared.is_some_and(|cs| cs.constraint.secret) {
-            Taint::Secret
-        } else {
-            Taint::Clean
-        };
-        frame
-            .write_slot_with_taint(*slot, *value, taint)
-            .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
-    }
-    Ok(())
-}
+mod completion;
+mod inputs;
 
-fn slot_value_matches_kind(value: &SlotValue, kind: vb_core::InputSlotKind) -> bool {
-    if kind == vb_core::InputSlotKind::Any {
-        return matches!(
-            value,
-            SlotValue::Null
-                | SlotValue::Bool(_)
-                | SlotValue::I64(_)
-                | SlotValue::F64(_)
-                | SlotValue::Symbol(_)
-                | SlotValue::List(_)
-                | SlotValue::Object(_)
-                | SlotValue::Blob(_)
-        );
-    }
-    matches!(
-        (value, kind),
-        (SlotValue::Null, vb_core::InputSlotKind::Null)
-            | (SlotValue::Bool(_), vb_core::InputSlotKind::Bool)
-            | (SlotValue::I64(_), vb_core::InputSlotKind::I64)
-            | (SlotValue::F64(_), vb_core::InputSlotKind::F64)
-            | (SlotValue::Symbol(_), vb_core::InputSlotKind::Symbol)
-            | (SlotValue::List(_), vb_core::InputSlotKind::List)
-            | (SlotValue::Object(_), vb_core::InputSlotKind::Object)
-            | (SlotValue::Blob(_), vb_core::InputSlotKind::Blob)
-    )
-}
-
-fn slot_value_kind(value: &SlotValue) -> vb_core::InputSlotKind {
-    match value {
-        SlotValue::Null => vb_core::InputSlotKind::Null,
-        SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
-        SlotValue::I64(_) => vb_core::InputSlotKind::I64,
-        SlotValue::F64(_) => vb_core::InputSlotKind::F64,
-        SlotValue::Symbol(_) => vb_core::InputSlotKind::Symbol,
-        SlotValue::List(_) => vb_core::InputSlotKind::List,
-        SlotValue::Object(_) => vb_core::InputSlotKind::Object,
-        SlotValue::Blob(_) => vb_core::InputSlotKind::Blob,
-        &_ => vb_core::InputSlotKind::Blob,
-    }
-}
-
-/// Validates that an action completion matches the expected ticket.
-pub fn validate_action_completion(
-    state: &crate::shard::types::RunState,
-    ticket: ActionTicket,
-) -> RuntimeResult<()> {
-    validate_ticket_attempt(state, ticket)?;
-    if state.frame.step_state(ticket.step) != Ok(StepState::Running) {
-        return Err(RuntimeError::InvalidActionCompletion);
-    }
-    let Some(node) = state.workflow.node(ticket.step) else {
-        return Err(RuntimeError::InvalidActionCompletion);
-    };
-    match node.kind {
-        CompiledNodeKind::Do { action, .. } if action == ticket.action => Ok(()),
-        _ => Err(RuntimeError::InvalidActionCompletion),
-    }
-}
-
-/// Returns the input slot for a suspended Do step.
-pub fn action_input_slot(
-    state: &crate::shard::types::RunState,
-    step: StepIdx,
-) -> RuntimeResult<SlotIdx> {
-    let Some(node) = state.workflow.node(step) else {
-        return Err(RuntimeError::InvalidActionCompletion);
-    };
-    match node.kind {
-        CompiledNodeKind::Do { input, .. } => Ok(input),
-        _ => Err(RuntimeError::InvalidActionCompletion),
-    }
-}
-
-/// Returns the output slot for a suspended Do step.
-pub fn action_output_slot(
-    state: &crate::shard::types::RunState,
-    step: StepIdx,
-) -> RuntimeResult<SlotIdx> {
-    state
-        .workflow
-        .node(step)
-        .and_then(|node| node.output.slot())
-        .ok_or(RuntimeError::InvalidActionCompletion)
-}
-
-fn validate_ticket_attempt(
-    state: &crate::shard::types::RunState,
-    ticket: ActionTicket,
-) -> RuntimeResult<()> {
-    // Run attempt authority: ticket must match current run attempt.
-    let expected = state.run_attempt.get();
-    if ticket.run_attempt != expected {
-        return Err(RuntimeError::StaleAttempt {
-            incoming: ticket.run_attempt,
-            current: expected,
-        });
-    }
-    // Per-action attempt bounds.
-    if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
-        return Err(RuntimeError::AttemptBeyondMax {
-            attempt: ticket.attempt,
-            max: ticket.capacity,
-        });
-    }
-    let current = state
-        .action_attempts
-        .get(ticket.step.as_usize())
-        .copied()
-        .ok_or(RuntimeError::InvalidActionCompletion)?;
-    if ticket.attempt < current {
-        return Err(RuntimeError::StaleAttempt {
-            incoming: ticket.attempt,
-            current,
-        });
-    }
-    // Future-attempt rejection (G005): only the scheduled attempt may complete.
-    if ticket.attempt > current {
-        return Err(RuntimeError::InvalidActionCompletion);
-    }
-    Ok(())
-}
-
-/// Promotes an engine-issued ticket to the live per-step attempt counter.
-pub fn normalize_scheduled_ticket(
-    state: &crate::shard::types::RunState,
-    ticket: ActionTicket,
-) -> RuntimeResult<ActionTicket> {
-    let current = state
-        .action_attempts
-        .get(ticket.step.as_usize())
-        .copied()
-        .ok_or(RuntimeError::InvalidActionCompletion)?;
-    let attempt = current.max(ticket.attempt).max(1);
-    if ticket.capacity == 0 || attempt > ticket.capacity {
-        return Err(RuntimeError::AttemptBeyondMax {
-            attempt,
-            max: ticket.capacity,
-        });
-    }
-    Ok(ActionTicket { attempt, ..ticket })
-}
-
-/// Advances PC after an action completes successfully.
-pub fn advance_after_action_completion(
-    state: &mut crate::shard::types::RunState,
-    step: StepIdx,
-) -> RuntimeResult<()> {
-    let Some(node) = state.workflow.node(step) else {
-        return Err(RuntimeError::InvalidActionCompletion);
-    };
-    match node.routing.next.step() {
-        Some(next) => {
-            state
-                .frame
-                .set_pc(next)
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            Ok(())
-        }
-        None => Ok(()),
-    }
-}
-
-/// Returns true if a timer must be registered for the given step.
-pub fn timer_registration_required(state: &crate::shard::types::RunState, step: StepIdx) -> bool {
-    let Some(node) = state.workflow.node(step) else {
-        return false;
-    };
-    match node.kind {
-        CompiledNodeKind::WaitUntil { .. } => true,
-        CompiledNodeKind::WaitEvent { timeout_slot, .. }
-        | CompiledNodeKind::Ask { timeout_slot, .. } => timeout_slot.is_some(),
-        _ => false,
-    }
-}
-
-/// Advances state after a timer fires.
-pub fn advance_after_timer_fire(
-    state: &mut crate::shard::types::RunState,
-    timer: PendingTimer,
-) -> RuntimeResult<()> {
-    validate_timer_fire(state, timer)?;
-    let next = state
-        .workflow
-        .node(timer.step)
-        .and_then(|node| node.routing.next.step())
-        .ok_or(RuntimeError::InvalidTimerFire)?;
-    state
-        .frame
-        .mark_running(timer.step)
-        .map_err(|_| RuntimeError::InvalidTimerFire)?;
-    state
-        .frame
-        .mark_succeeded(timer.step)
-        .map_err(|_| RuntimeError::InvalidTimerFire)?;
-    state
-        .frame
-        .set_pc(next)
-        .map_err(|_| RuntimeError::InvalidTimerFire)?;
-    Ok(())
-}
-
-/// Validates a timer fire without mutating the run frame.
-pub fn validate_timer_fire(
-    state: &crate::shard::types::RunState,
-    timer: PendingTimer,
-) -> RuntimeResult<()> {
-    let Some(node) = state.workflow.node(timer.step) else {
-        return Err(RuntimeError::InvalidTimerFire);
-    };
-    match (timer.kind, &node.kind) {
-        (
-            PendingTimerKind::Wait,
-            CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. },
-        )
-        | (PendingTimerKind::Ask, CompiledNodeKind::Ask { .. }) => {}
-        _ => return Err(RuntimeError::InvalidTimerFire),
-    }
-    if matches!(node.routing.next, NodeContinuation::End) {
-        return Err(RuntimeError::InvalidTimerFire);
-    }
-    Ok(())
-}
+pub use completion::{
+    action_input_slot, action_output_slot, advance_after_action_completion,
+    advance_after_timer_fire, normalize_scheduled_ticket, timer_registration_required,
+    validate_action_completion, validate_timer_fire,
+};
+pub use inputs::seed_input_slots;
 
 /// Creates a new action attempts tracker.
 pub fn new_action_attempts(step_count: u16) -> Box<[u16]> {
