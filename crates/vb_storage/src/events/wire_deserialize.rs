@@ -15,7 +15,6 @@ mod wait_ask;
 
 use super::super::JournalEvent;
 use super::category::{JournalRecordCategory, journal_record_category};
-use super::legacy::decode_legacy_journal_event_payload;
 use super::tags::JOURNAL_EVENT_VARIANTS;
 use crate::{JournalError, RecordKind, types::RecordEnvelope};
 use serde::{
@@ -86,36 +85,8 @@ pub(crate) fn decode_journal_event_payload_for_envelope<'payload>(
     if envelope.record_kind == RecordKind::RunContinuation.id() {
         return Err(JournalError::InvalidEvent);
     }
-    match postcard::take_from_bytes::<JournalEvent>(payload) {
-        Ok((event, remainder)) if event.record_kind().id() == envelope.record_kind => {
-            Ok((event, remainder))
-        }
-        Ok((event, _)) => decode_legacy_or_payload_mismatch(envelope, payload, event),
-        Err(error) => decode_legacy_or_decode_error(envelope, payload, error),
-    }
-}
-
-fn decode_legacy_or_payload_mismatch<'payload>(
-    envelope: &RecordEnvelope,
-    payload: &'payload [u8],
-    stable_event: JournalEvent,
-) -> Result<(JournalEvent, &'payload [u8]), JournalError> {
-    match decode_legacy_journal_event_payload(envelope, payload) {
-        Ok(decoded) => Ok(decoded),
-        Err(_) => Err(JournalError::RecordKindPayloadMismatch {
-            envelope_kind: envelope.record_kind,
-            payload_kind: stable_event.record_kind().id(),
-        }),
-    }
-}
-
-fn decode_legacy_or_decode_error<'payload>(
-    envelope: &RecordEnvelope,
-    payload: &'payload [u8],
-    stable_error: postcard::Error,
-) -> Result<(JournalEvent, &'payload [u8]), JournalError> {
-    match decode_legacy_journal_event_payload(envelope, payload) {
-        Ok(decoded) => Ok(decoded),
-        Err(_) => Err(JournalError::PostcardDecodeFailed(stable_error)),
-    }
+    let (event, remainder) = postcard::take_from_bytes::<JournalEvent>(payload)
+        .map_err(JournalError::PostcardDecodeFailed)?;
+    crate::codec::validate_journal_event_record_kind(envelope, &event)?;
+    Ok((event, remainder))
 }

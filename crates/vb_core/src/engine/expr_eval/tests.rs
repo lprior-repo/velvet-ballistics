@@ -159,10 +159,16 @@ fn ends_with_matches_suffix() -> Result<(), EngineError> {
 }
 
 #[test]
-fn has_finds_element_in_list() -> Result<(), EngineError> {
+fn has_finds_existing_object_key_with_false_value() -> Result<(), EngineError> {
     let mut store = ValueStore::new();
-    let list = store.insert_list(
-        vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)].into_boxed_slice(),
+    let key = store.insert_symbol("present")?;
+    let object = store.insert_object(
+        vec![ObjectField {
+            key,
+            value: SlotValue::Bool(false),
+            taint: Taint::Clean,
+        }]
+        .into_boxed_slice(),
     )?;
 
     let ops = vec![
@@ -172,8 +178,8 @@ fn has_finds_element_in_list() -> Result<(), EngineError> {
     ];
     let result = eval_expr_ops_with_store(
         &ops,
-        vec![SlotValue::List(list)],
-        vec![ConstValue::I64(20)],
+        vec![SlotValue::Object(object)],
+        vec![ConstValue::Symbol(key)],
         &mut store,
     )?;
     assert_eq!(result, SlotValue::Bool(true));
