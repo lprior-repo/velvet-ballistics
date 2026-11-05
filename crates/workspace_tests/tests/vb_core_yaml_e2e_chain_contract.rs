@@ -110,7 +110,7 @@ fn accepted_artifact_with_gate_count(
         accepted_at_seq: EventSeq::new(0),
         required_capabilities: Box::new([]),
         action_contracts: Box::new([]),
-        artifact_version: vb_core::compat::CURRENT_IR_VERSION,
+        artifact_version: vb_storage::compat::CURRENT_IR_VERSION,
     };
     bind_test_artifact_digest(&mut artifact);
     artifact

@@ -652,7 +652,7 @@ fn admission_admit_run_strict_with_present_artifact() -> Result<(), String> {
 #[test]
 fn admit_artifact_run_rejects_future_major_ir_version() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    artifact.artifact_version = vb_core::compat::SchemaVersion::new(2, 0, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 0, 0);
     let digest =
         vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
     artifact.digest = digest;
@@ -678,7 +678,7 @@ fn admit_artifact_run_rejects_future_major_ir_version() -> Result<(), String> {
 #[test]
 fn admit_artifact_run_accepts_same_major_newer_minor_ir_version() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    artifact.artifact_version = vb_core::compat::SchemaVersion::new(1, 2, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(1, 2, 0);
     let digest =
         vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
     artifact.digest = digest;
@@ -702,7 +702,7 @@ fn admit_artifact_run_accepts_same_major_newer_minor_ir_version() -> Result<(), 
 fn check_artifact_ir_version_allows_only_live_effect_classes() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
     assert!(check_artifact_ir_version(&artifact).is_ok());
-    artifact.artifact_version = vb_core::compat::SchemaVersion::new(2, 0, 0);
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 0, 0);
     assert!(
         matches!(
             check_artifact_ir_version(&artifact),

@@ -35,6 +35,10 @@ pub struct SchemaVersion {
     pub patch: u16,
 }
 
+/// Current compiled-IR schema version. Admission stamps it onto accepted
+/// artifacts; the admission/dispatch gates classify against it.
+pub const CURRENT_IR_VERSION: SchemaVersion = SchemaVersion::new(1, 0, 0);
+
 impl SchemaVersion {
     /// Builds a version triple.
     #[must_use]
@@ -583,7 +587,7 @@ pub const fn artifact_ir_version_inputs(held: SchemaVersion) -> CompatInputs {
     CompatInputs {
         boundary: CompatBoundary::IrVersion,
         held,
-        required: vb_core::compat::CURRENT_IR_VERSION,
+        required: crate::compat::CURRENT_IR_VERSION,
         migration_available: false,
         replay_only: false,
     }
@@ -701,7 +705,7 @@ mod tests {
 
     #[test]
     fn artifact_ir_version_inputs_classify_against_current() {
-        use vb_core::compat::CURRENT_IR_VERSION;
+        use crate::compat::CURRENT_IR_VERSION;
         assert_eq!(CURRENT_IR_VERSION, v(1, 0, 0));
         let current = super::artifact_ir_version_inputs(v(1, 0, 0));
         assert_eq!(current.boundary, CompatBoundary::IrVersion);

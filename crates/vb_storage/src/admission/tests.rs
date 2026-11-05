@@ -482,12 +482,12 @@ fn prepared_artifact_carries_current_ir_version() -> Result<(), String> {
         .map_err(|e| format!("submit failed: {e}"))?;
     assert_eq!(
         artifact.artifact_version,
-        vb_core::compat::CURRENT_IR_VERSION,
+        crate::compat::CURRENT_IR_VERSION,
         "admission must stamp the current IR version"
     );
     assert_eq!(
         artifact.artifact_version,
-        vb_core::compat::SchemaVersion::new(1, 0, 0),
+        crate::compat::SchemaVersion::new(1, 0, 0),
         "current IR version is 1.0.0"
     );
     Ok(())

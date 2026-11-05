@@ -17,7 +17,7 @@ fn validate_accepted_artifact_envelope(
 pub(crate) fn check_artifact_ir_version(
     artifact: &vb_storage::admission::AcceptedArtifact,
 ) -> Result<(), AdmissionError> {
-    let classification = vb_core::compat::classify(vb_storage::compat::artifact_ir_version_inputs(
+    let classification = vb_storage::compat::classify(vb_storage::compat::artifact_ir_version_inputs(
         artifact.artifact_version,
     ));
     if classification.class.authorizes_live_effect() {
@@ -25,7 +25,7 @@ pub(crate) fn check_artifact_ir_version(
     } else {
         Err(AdmissionError::ArtifactVersionIncompatible {
             held: artifact.artifact_version,
-            required: vb_core::compat::CURRENT_IR_VERSION,
+            required: vb_storage::compat::CURRENT_IR_VERSION,
             code: classification.code.code(),
         })
     }

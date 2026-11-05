@@ -186,8 +186,8 @@ pub enum AdmissionError {
         "admission rejected: artifact IR version incompatible: held {held:?}, required {required:?}, decision code {code}"
     )]
     ArtifactVersionIncompatible {
-        held: vb_core::compat::SchemaVersion,
-        required: vb_core::compat::SchemaVersion,
+        held: vb_storage::compat::SchemaVersion,
+        required: vb_storage::compat::SchemaVersion,
         code: u16,
     },
     /// The loaded artifact certificate is older than the caller's freshness floor.

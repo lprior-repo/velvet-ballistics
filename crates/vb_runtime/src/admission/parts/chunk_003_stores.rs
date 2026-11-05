@@ -67,7 +67,7 @@ fn always_present_accepted_artifact(
         accepted_at_seq: vb_storage::types::EventSeq::new(0),
         required_capabilities: Box::new([]),
         action_contracts: Box::new([]),
-        artifact_version: vb_core::compat::CURRENT_IR_VERSION,
+        artifact_version: vb_storage::compat::CURRENT_IR_VERSION,
     }
 }
 
