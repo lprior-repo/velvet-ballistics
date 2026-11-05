@@ -47,7 +47,10 @@ fuzz_target!(|data: &[u8]| {
 
     // Capped: adversarial selectors can steer the script into real cargo
     // work that would outlast the smoke lane's per-target budget.
-    let mut argv = Vec::with_capacity(full_args.len().saturating_add(1));
+    let Some(capacity) = full_args.len().checked_add(1) else {
+        return;
+    };
+    let mut argv = Vec::with_capacity(capacity);
     argv.push("scripts/flux-check-package.sh");
     argv.extend(full_args);
     fuzz_lib::bounded_cmd::run_smoke_bounded("bash", &argv, &[]);

@@ -134,9 +134,12 @@ impl FrameSeedAccumulator {
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
                 self.record_action_completed(*action, *step)
             }
-            JournalEvent::ActionFailedEvent { action, step, .. } => {
-                self.record_action_failed(*action, *step)
-            }
+            JournalEvent::ActionFailedEvent {
+                action,
+                step,
+                attempt,
+                ..
+            } => self.record_action_failed(*action, *step, *attempt),
             JournalEvent::ActionCompletedEnvelope {
                 run,
                 ticket,
@@ -249,10 +252,17 @@ impl FrameSeedAccumulator {
         Ok(self)
     }
 
-    fn record_action_failed(mut self, action: ActionId, step: StepIdx) -> RecoveryResult<Self> {
+    fn record_action_failed(
+        mut self,
+        action: ActionId,
+        step: StepIdx,
+        attempt: u16,
+    ) -> RecoveryResult<Self> {
         if self.action_tracker.is_resolved(action, step) {
             return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
         }
+        self.action_tracker
+            .require_failed_attempt_matches_schedule(action, step, attempt)?;
         self.action_tracker.mark_failed(action, step);
         self.pending_actions.remove(&(action, step));
         Ok(self)
@@ -264,3 +274,7 @@ impl FrameSeedAccumulator {
         self.min_step_idx.map_or(StepIdx::ZERO, |step| step)
     }
 }
+
+#[cfg(test)]
+#[path = "failure_attempt_tests.rs"]
+mod failure_attempt_tests;

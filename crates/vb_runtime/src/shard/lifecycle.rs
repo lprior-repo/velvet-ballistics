@@ -29,6 +29,7 @@ mod tests {
     include!("lifecycle_tests/chunk_002.rs");
     include!("lifecycle_tests/chunk_003.rs");
     include!("lifecycle_tests/chunk_004.rs");
+    include!("lifecycle_tests/submission_pair_tests.rs");
     include!("lifecycle_tests/chunk_005.rs");
     include!("lifecycle_tests/chunk_006.rs");
     include!("lifecycle_tests/chunk_007.rs");

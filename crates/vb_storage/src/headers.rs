@@ -109,3 +109,102 @@ fn run_from_header_key(key: &[u8]) -> Result<vb_core::RunId, JournalError> {
         }),
     }
 }
+
+/// Failure of a complete bounded run-header scan or its visitor.
+#[derive(Debug, thiserror::Error)]
+pub enum RunHeaderScanError<E: std::error::Error + 'static> {
+    /// The limit cannot admit a bounded overflow probe.
+    #[error("invalid bounded run-header scan limit")]
+    InvalidLimit,
+    /// More headers exist than the scan permits.
+    #[error("run-header scan exceeds limit {limit}")]
+    LimitExceeded {
+        /// Configured maximum number of headers.
+        limit: usize,
+    },
+    /// A key, envelope or storage operation failed.
+    #[error("run-header scan failed: {0}")]
+    Storage(#[source] JournalError),
+    /// The visitor refused a validated header.
+    #[error("run-header visitor failed: {0}")]
+    Visitor(#[source] E),
+}
+
+impl FjallJournal {
+    /// Visits a complete bounded snapshot in key order after validating every row.
+    ///
+    /// Overflow or malformed rows fail before any visitor runs. Each pass decodes
+    /// one record at a time from the same pinned snapshot.
+    ///
+    /// # Examples
+    /// ```
+    /// fn scan(journal: &vb_storage::FjallJournal) -> Result<(), vb_storage::headers::RunHeaderScanError<vb_storage::JournalError>> {
+    ///     journal.try_for_each_run_header_bounded(std::num::NonZeroUsize::MIN, |_header| Ok(()))
+    /// }
+    /// ```
+    pub fn try_for_each_run_header_bounded<E, F>(
+        &self,
+        limit: std::num::NonZeroUsize,
+        mut visit: F,
+    ) -> Result<(), RunHeaderScanError<E>>
+    where
+        E: std::error::Error + 'static,
+        F: FnMut(RunHeaderRecord) -> Result<(), E>,
+    {
+        use fjall::Readable;
+        let probe = limit
+            .get()
+            .checked_add(1)
+            .ok_or(RunHeaderScanError::InvalidLimit)?;
+        let snapshot = self.database.snapshot();
+        let mut count = 0usize;
+        for item in snapshot.iter(&self.run_header).take(probe) {
+            count = count
+                .checked_add(1)
+                .ok_or(RunHeaderScanError::InvalidLimit)?;
+            if count > limit.get() {
+                return Err(RunHeaderScanError::LimitExceeded { limit: limit.get() });
+            }
+            let (key, value) = item
+                .into_inner()
+                .map_err(JournalError::from)
+                .map_err(RunHeaderScanError::Storage)?;
+            decode_scanned_header(key.as_ref(), value.as_ref())
+                .map_err(RunHeaderScanError::Storage)?;
+        }
+        for item in snapshot.iter(&self.run_header).take(limit.get()) {
+            let (key, value) = item
+                .into_inner()
+                .map_err(JournalError::from)
+                .map_err(RunHeaderScanError::Storage)?;
+            let header = decode_scanned_header(key.as_ref(), value.as_ref())
+                .map_err(RunHeaderScanError::Storage)?;
+            visit(header).map_err(RunHeaderScanError::Visitor)?;
+        }
+        Ok(())
+    }
+}
+
+pub(crate) fn decode_scanned_header(
+    key: &[u8],
+    value: &[u8],
+) -> Result<RunHeaderRecord, JournalError> {
+    let run = run_from_header_key(key)?;
+    let (envelope, header) = decode_record(
+        value,
+        MAGIC_INDEX_RECORD,
+        crate::constants::MAX_RUN_HEADER_BYTES,
+    )?;
+    if envelope.record_kind != crate::records::RecordKind::RunHeader.id() {
+        return Err(JournalError::RecordKindPayloadMismatch {
+            envelope_kind: envelope.record_kind,
+            payload_kind: crate::records::RecordKind::RunHeader.id(),
+        });
+    }
+    validate_run_header_read(&envelope, run, &header)?;
+    Ok(header)
+}
+
+#[cfg(test)]
+#[path = "startup_header_scan_tests.rs"]
+mod startup_header_scan_tests;

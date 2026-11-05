@@ -246,7 +246,6 @@ pub fn pop_pair(stack: &mut ReplayExprStack) -> Result<(SlotValue, SlotValue), R
     let left = stack.pop()?;
     Ok((left, right))
 }
-
 pub fn pop_i64_pair(stack: &mut ReplayExprStack) -> Result<(i64, i64), ReplayError> {
     let right = stack.pop()?;
     let left = stack.pop()?;

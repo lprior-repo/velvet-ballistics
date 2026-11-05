@@ -250,7 +250,7 @@ fn legacy_action_completed_unknown_run_returns_run_not_found() {
 }
 
 #[test]
-fn legacy_action_completion_journal_first() {
+fn legacy_action_completion_journal_first() -> Result<(), String> {
     // Regression test for RS-010:
     // handle_legacy_action_completion must append the journal event BEFORE mutating
     // the run frame. On journal append failure, the frame MUST remain unchanged.
@@ -295,9 +295,7 @@ fn legacy_action_completion_journal_first() {
 
     let shared: SharedRuntimeJournal = std::sync::Arc::new(LegacyStepFailsJournal);
     let mut shard = Shard::new_with_journal(small_config(), shared);
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
+    let wf = require_workflow("suspended_workflow", suspended_workflow())?;
     let run = RunId::new(50_010);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
@@ -365,6 +363,7 @@ fn legacy_action_completion_journal_first() {
     // Counters and journal sequence MUST remain unchanged.
     assert_eq!(shard.counters().snapshot(), counters_before);
     assert_eq!(shard.journal_sequences.get(&run).copied(), seq_before);
+    Ok(())
 }
 
 #[test]
@@ -587,7 +586,7 @@ fn handle_ask_answer_batch_append_failures_leave_no_partial_rows() -> Result<(),
 }
 
 #[test]
-fn handle_action_completion_journal_first() {
+fn handle_action_completion_journal_first() -> Result<(), String> {
     // Regression test for RS-010 (non-legacy path):
     // handle_action_completion must append the ActionCompletedEnvelope journal
     // event BEFORE mutating the run frame. On journal append failure, the
@@ -636,9 +635,7 @@ fn handle_action_completion_journal_first() {
 
     let shared: SharedRuntimeJournal = std::sync::Arc::new(EnvelopeFailsJournal);
     let mut shard = Shard::new_with_journal(small_config(), shared);
-    let Some(wf) = suspended_workflow() else {
-        return;
-    };
+    let wf = require_workflow("suspended_workflow", suspended_workflow())?;
     let run = RunId::new(50_020);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
@@ -733,6 +730,7 @@ fn handle_action_completion_journal_first() {
         trace_before,
         "trace ring must be unchanged"
     );
+    Ok(())
 }
 
 #[test]

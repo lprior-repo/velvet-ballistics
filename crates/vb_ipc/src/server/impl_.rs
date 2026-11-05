@@ -13,11 +13,6 @@ pub(crate) const MAX_CLIENTS: usize = 256;
 impl IpcServer {
     /// Creates a new IPC server bound to the given Unix socket path.
     pub fn bind(socket_path: &Path) -> Result<Self, IpcServerError> {
-        if socket_path.exists() {
-            std::fs::remove_file(socket_path)
-                .map_err(|source| IpcServerError::BindFailed { source })?;
-        }
-
         let mut listener = UnixListener::bind(socket_path)
             .map_err(|source| IpcServerError::BindFailed { source })?;
 

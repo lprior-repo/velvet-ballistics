@@ -10,11 +10,11 @@ proofs). The CI baseline (`moon run :ci`) only gates on a small slice of each.
 | --- | --- | --- | --- |
 | Kani harnesses (`#[kani::proof]`) | 331 | 8 (4 `vb_core` + 4 `vb_validate`) | 323 |
 | TLA+ root specs (`.tla`) | 23 | 2 (`WorkflowBoundedAdmission`, `IdempotencySafety`) | 21 |
-| Verus spec files (`verification/verus/*.rs`) | 2 | 0 | 2 |
+| Verus spec files (`verification/verus/*.rs`) | 103 | 0 | 103 |
 
 Kani counts are sourced from `.evidence/kani-list/*.json` (regenerate with
 `bash scripts/kani-list.sh <pkg>`); see `kani-baseline` for the harness-to-
-claim map. TLA+ and Verus counts above are tree counts at this revision: `.tla` files outside `.beads/` for TLA+, files present under `verification/verus/` for Verus, distinct `verus:` paths in `contracts/proof_obligations.yaml` for the registry; the Kani row was not re-counted here.
+claim map. TLA+ and Verus counts above are tree counts at this revision: `.tla` files outside `.beads/` for TLA+, files present under `verification/verus/` for Verus, distinct `verus:` paths in `contracts/proof_obligations.yaml` for the registry; the Kani row was not re-counted here. Of the 103 Verus files, 35 are distinct registry targets (all present in the tree) and 68 have no registry entry; 33 of the 103 are `extern_*.rs` companions and none of those is a registry target.
 
 ## CI Baseline
 
@@ -67,7 +67,7 @@ the registry's `verus:` targets via `scripts/verify-verus.sh`. It is marked
 plus 120-minute budget per PR). The full-workspace sweep
 `moon run :verify-verus-all` is `runInCI: false`.
 
-Only 2 `.rs` files are present under `verification/verus/` (a `production_inner` mirror and its bridge); the registry cites 35 distinct `verus:` targets, none of which is present in this tree, so `verify-verus` cannot pass until they are restored. The 2 present files are reachable only through manual invocation of the above commands.
+103 `.rs` files are present under `verification/verus/` (70 spec files plus 33 `extern_*.rs` companions); the registry cites 35 distinct `verus:` targets, all present in the tree, and `moon run :verify-verus` passed on this revision (35/35 targets, 1055 verified / 0 errors). The 68 files with no registry entry are reachable only through manual invocation of the above commands, and ship unverified by the registry gate.
 
 ## Exploratory Kani Harnesses (Top 10 by Package)
 
@@ -120,15 +120,16 @@ Per-package totals: `vb_core` 206, `vb_compile` 65, `vb_validate` 27,
 - **IdempotencySafety has 9 sub-configs** (`IdempotencySafetyOverflow`,
   `IdempotencySafetyCrashRecoverDuplicate`, etc.); only the root
   `IdempotencySafety.cfg` runs in CI.
+- **The two baseline specs are absent from the tree.** `verification/tla/WorkflowBoundedAdmission.tla` and `verification/tla/IdempotencySafety.tla` do not exist, so `verify-tlc` fails fast; authoring them (or rewiring the task) is a decision for John, not a docs fix.
 
 ### Verus
 
-- **0 of the 2 present files are in `ci:`.** `verify-verus` and `verify-verus-all`
+- **0 of the 103 present files are in `ci:`.** `verify-verus` and `verify-verus-all`
   are both manual. The `verify-verus` task reads from
-  `contracts/proof_obligations.yaml` and currently cites 35 distinct `verus:` targets.
+  `contracts/proof_obligations.yaml` and currently cites 35 distinct `verus:` targets, all present in the tree and passing on this revision (35/35, 1055 verified / 0 errors).
 - **Coverage is registry-driven, not pipeline-gated.** A Verus spec added
   under `verification/verus/` without a matching `verus:` registry entry
-  ships unverified.
+  ships unverified; 68 of the 103 files on this revision have no registry entry.
 
 ## Expanding CI Coverage
 

@@ -124,22 +124,37 @@ impl Shard {
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
-        if persist_header {
-            self.append_admission_header_journal_event(
-                run,
+        if let (true, Some(admission)) = (persist_header, admission.as_ref()) {
+            if let Err(error) = self.append_journal_events_atomically([
                 RuntimeJournalEvent::RunSubmitted {
                     run,
                     workflow: digest,
                 },
-            )?;
-        }
-        if let Some(admission) = admission.as_ref() {
-            self.append_admission_header_journal_event(
-                run,
                 RuntimeJournalEvent::RunAdmission {
                     admission: admission.clone(),
                 },
-            )?;
+            ]) {
+                self.discard_journal_sequence(run);
+                return Err(RuntimeError::admission_header_persistence_failed(error));
+            }
+        } else {
+            if persist_header {
+                self.append_admission_header_journal_event(
+                    run,
+                    RuntimeJournalEvent::RunSubmitted {
+                        run,
+                        workflow: digest,
+                    },
+                )?;
+            }
+            if let Some(admission) = admission.as_ref() {
+                self.append_admission_header_journal_event(
+                    run,
+                    RuntimeJournalEvent::RunAdmission {
+                        admission: admission.clone(),
+                    },
+                )?;
+            }
         }
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();

@@ -12,7 +12,7 @@ use vb_core::SlotIdx;
 use vb_expr::expr_parser::types::{ExprAst, ExprHelper, ExprLiteral};
 use vb_expr::expr_typecheck::{ExprType, TypeContext, typecheck_expr};
 
-use super::canonical_references::resolve_slot_reference;
+use super::canonical_references::StepReferenceResolver;
 
 /// Type-checks a canonical expression and returns its inferred type.
 /// Known static type errors (e.g., bool + number) are rejected. Dynamic
@@ -20,11 +20,10 @@ use super::canonical_references::resolve_slot_reference;
 pub(super) fn infer_canonical_expr_type(
     expr: &ParsedExpression,
     slot_types: &HashMap<SlotIdx, ExprType>,
-    outputs: &HashMap<String, SlotIdx>,
-    step_outputs: &HashMap<String, SlotIdx>,
+    resolver: &StepReferenceResolver<'_>,
 ) -> Result<ExprType, CompileError> {
     let ast = to_vb_expr_ast(expr)?;
-    let context = build_type_context(expr, slot_types, outputs, step_outputs)?;
+    let context = build_type_context(expr, slot_types, resolver)?;
     typecheck_expr(&ast, &context).map_err(vb_expr_error_to_compile)
 }
 
@@ -34,8 +33,16 @@ pub(super) fn validate_canonical_references(
     outputs: &HashMap<String, SlotIdx>,
     step_outputs: &HashMap<String, SlotIdx>,
 ) -> Result<(), CompileError> {
+    let resolver = StepReferenceResolver::new(outputs, step_outputs);
+    validate_canonical_references_with_resolver(expr, &resolver)
+}
+
+pub(super) fn validate_canonical_references_with_resolver(
+    expr: &ParsedExpression,
+    resolver: &StepReferenceResolver<'_>,
+) -> Result<(), CompileError> {
     for (reference, _) in collect_references(expr) {
-        resolve_slot_reference(&reference, outputs, step_outputs)?;
+        resolver.resolve_slot(&reference)?;
     }
     Ok(())
 }
@@ -72,12 +79,11 @@ fn collect_refs_inner(expr: &ParsedExpression, refs: &mut Vec<(String, bool)>) {
 fn build_type_context(
     expr: &ParsedExpression,
     slot_types: &HashMap<SlotIdx, ExprType>,
-    outputs: &HashMap<String, SlotIdx>,
-    step_outputs: &HashMap<String, SlotIdx>,
+    resolver: &StepReferenceResolver<'_>,
 ) -> Result<TypeContext, CompileError> {
     let mut context = TypeContext::new();
     for (reference, _) in collect_references(expr) {
-        let slot = resolve_slot_reference(&reference, outputs, step_outputs)?;
+        let slot = resolver.resolve_slot(&reference)?;
         let ty = slot_types.get(&slot).copied().unwrap_or(ExprType::Unknown);
         context.add_variable(reference.clone().into(), ty);
     }

@@ -8,134 +8,146 @@
 use libfuzzer_sys::fuzz_target;
 use vb_ipc::{IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader};
 
-/// Build a valid IPC header for the given command.
 fn make_valid_header(command: IpcCommand, payload_len: u32) -> IpcFrameHeader {
     IpcFrameHeader::new(command, 0, 0, payload_len)
 }
 
-/// Assert the result is either a valid header or a typed error.
 fn assert_typed_header_result(result: Result<IpcFrameHeader, IpcError>) {
-    // Both a valid header and any typed decode error are acceptable.
-    if let Err(error) = result {
-        let _ = error;
+    match result {
+        Ok(_) => {}
+        Err(IpcError::InvalidMagic { .. }) => {}
+        Err(IpcError::UnsupportedVersion { .. }) => {}
+        Err(IpcError::UnknownCommand(_)) => {}
+        Err(IpcError::InvalidCommandFlags { .. }) => {}
+        Err(IpcError::ReservedBitsSet { .. }) => {}
+        Err(IpcError::ReservedNonZero { .. }) => {}
+        Err(IpcError::HeaderDecodeFailed) => {}
+        Err(IpcError::PayloadLengthOutOfRange { .. }) => {}
+        Err(_) => {}
     }
 }
 
-/// Test byte-flipping of the IPC header bytes.
+fn byte_or_ff(data: &[u8], index: usize) -> u8 {
+    match data.get(index) {
+        Some(byte) => *byte,
+        None => 0xFF,
+    }
+}
+
+fn flip_at(bytes: &mut [u8], index: usize, xor: u8) {
+    if let Some(slot) = bytes.get_mut(index) {
+        *slot ^= xor;
+    }
+}
+
 fn test_header_byte_flip(data: &[u8]) {
     let header = make_valid_header(IpcCommand::Health, 0);
-    let Ok(encoded) = header.encode() else {
-        return;
+    let encoded = match header.encode() {
+        Ok(e) => e,
+        Err(_) => return,
     };
 
     let corrupted = fuzz_lib::byte_flip_mutation::corrupted_version(&encoded, data);
 
-    if let Ok(corrupted_arr) = <[u8; IPC_HEADER_LEN]>::try_from(corrupted.as_slice()) {
+    if let Ok(corrupted_arr) = <[u8; IPC_HEADER_LEN]>::try_from(corrupted) {
         assert_typed_header_result(vb_ipc::frame::decode_frame_header(&corrupted_arr));
     }
 }
 
-/// Test targeted header field corruption.
 fn test_targeted_header_corruption(data: &[u8]) {
     let header = make_valid_header(IpcCommand::Health, 0);
-    let Ok(encoded) = header.encode() else {
-        return;
+    let encoded = match header.encode() {
+        Ok(e) => e,
+        Err(_) => return,
     };
 
-    // Corrupt magic (offset 0-3)
     let mut magic_flip = encoded;
-    if let Some(byte) = magic_flip.get_mut(0) {
-        *byte ^= data.first().copied().unwrap_or(0xFF);
-    }
+    flip_at(&mut magic_flip, 0, byte_or_ff(data, 0));
     assert_typed_header_result(vb_ipc::frame::decode_frame_header(&magic_flip));
 
-    // Corrupt version (offset 4-5)
     let mut version_flip = encoded;
-    if let Some(byte) = version_flip.get_mut(4) {
-        *byte ^= data.get(1).copied().unwrap_or(0xFF);
-    }
+    flip_at(&mut version_flip, 4, byte_or_ff(data, 1));
     assert_typed_header_result(vb_ipc::frame::decode_frame_header(&version_flip));
 
-    // Corrupt command ID (offset 6-7)
     let mut command_flip = encoded;
-    if let Some(byte) = command_flip.get_mut(6) {
-        *byte ^= data.get(2).copied().unwrap_or(0xFF);
-    }
+    flip_at(&mut command_flip, 6, byte_or_ff(data, 2));
     assert_typed_header_result(vb_ipc::frame::decode_frame_header(&command_flip));
 
-    // Corrupt payload length (offset 8-11)
     let mut payload_len_flip = encoded;
-    if let Some(byte) = payload_len_flip.get_mut(8) {
-        *byte ^= data.get(3).copied().unwrap_or(0xFF);
-    }
+    flip_at(&mut payload_len_flip, 8, byte_or_ff(data, 3));
     assert_typed_header_result(vb_ipc::frame::decode_frame_header(&payload_len_flip));
 }
 
-/// Test complete frame corruption including payload.
 fn test_full_frame_corruption(data: &[u8]) {
     let header = make_valid_header(IpcCommand::SubmitRun, 4);
-    let Ok(encoded_header) = header.encode() else {
-        return;
+    let encoded_header = match header.encode() {
+        Ok(e) => e,
+        Err(_) => return,
     };
 
     let payload = [1u8, 2, 3, 4];
-    let mut frame = Vec::with_capacity(IPC_HEADER_LEN.saturating_add(4));
+    let mut frame = Vec::with_capacity(IPC_HEADER_LEN + 4);
     frame.extend_from_slice(&encoded_header);
     frame.extend_from_slice(&payload);
 
     let corrupted = fuzz_lib::byte_flip_mutation::corrupted_version(&frame, data);
 
-    let Some(header_bytes) = corrupted.get(..IPC_HEADER_LEN) else {
+    let Some(header_bytes) = corrupted
+        .get(..IPC_HEADER_LEN)
+        .and_then(|slice| <[u8; IPC_HEADER_LEN]>::try_from(slice).ok())
+    else {
         return;
     };
-    let Ok(header_bytes) = <[u8; IPC_HEADER_LEN]>::try_from(header_bytes) else {
-        return;
-    };
-    let result = vb_ipc::frame::decode_frame_header(&header_bytes);
 
-    match result {
+    match vb_ipc::frame::decode_frame_header(&header_bytes) {
         Ok(decoded_header) => {
-            let payload_result = corrupted.get(IPC_HEADER_LEN..).map(|payload_section| {
-                vb_ipc::frame::decode_frame_payload(&decoded_header, payload_section)
-            });
-            if let Some(Err(error)) = payload_result {
-                let _ = error;
+            if corrupted.len() > IPC_HEADER_LEN
+                && let Some(payload_section) = corrupted.get(IPC_HEADER_LEN..)
+            {
+                match vb_ipc::frame::decode_frame_payload(&decoded_header, payload_section) {
+                    Ok(_) | Err(_) => {}
+                }
             }
         }
-        // Any typed decode error is an acceptable mutation outcome.
-        Err(error) => {
-            let _ = error;
-        }
+        Err(IpcError::InvalidMagic { .. }) => {}
+        Err(IpcError::UnsupportedVersion { .. }) => {}
+        Err(IpcError::UnknownCommand(_)) => {}
+        Err(IpcError::InvalidCommandFlags { .. }) => {}
+        Err(IpcError::ReservedBitsSet { .. }) => {}
+        Err(IpcError::ReservedNonZero { .. }) => {}
+        Err(IpcError::PayloadLengthMismatch { .. }) => {}
+        Err(IpcError::HeaderDecodeFailed) => {}
+        Err(IpcError::PayloadLengthOutOfRange { .. }) => {}
+        Err(_) => {}
     }
 }
 
-/// Test byte flips on each byte of the header individually.
 fn test_individual_byte_flips(data: &[u8]) {
     let header = make_valid_header(IpcCommand::Health, 0);
-    let Ok(encoded) = header.encode() else {
-        return;
+    let encoded = match header.encode() {
+        Ok(e) => e,
+        Err(_) => return,
     };
 
-    let flip_count = data
-        .first()
-        .copied()
-        .map_or(1, |first| (first & 0x0F).saturating_add(1));
+    let flip_count = match data.first() {
+        Some(byte) => (byte & 0x0F).checked_add(1).unwrap_or(1),
+        None => 1,
+    };
 
     for i in 0..flip_count {
-        let i_usize = usize::from(i);
-        let byte_pos = match data.get(i_usize.saturating_add(1)) {
-            Some(&b) => usize::from(b).checked_rem(IPC_HEADER_LEN).unwrap_or(0),
-            None => i_usize.checked_rem(IPC_HEADER_LEN).unwrap_or(0),
+        let index = usize::from(i);
+        let byte_pos = match index.checked_add(1).and_then(|next| data.get(next)) {
+            Some(byte) => usize::from(*byte) % IPC_HEADER_LEN,
+            None => index % IPC_HEADER_LEN,
         };
 
-        let mut flip_seed = vec![0u8; 16];
-        if let Some(slot) = flip_seed.first_mut() {
-            *slot = u8::try_from(byte_pos).unwrap_or(u8::MAX);
-        }
+        let seed_byte = u8::try_from(byte_pos).unwrap_or(0);
+        let mut flip_seed = vec![seed_byte];
+        flip_seed.resize(16, 0);
 
         let corrupted = fuzz_lib::byte_flip_mutation::corrupted_version(&encoded, &flip_seed);
 
-        if let Ok(corrupted_arr) = <[u8; IPC_HEADER_LEN]>::try_from(corrupted.as_slice()) {
+        if let Ok(corrupted_arr) = <[u8; IPC_HEADER_LEN]>::try_from(corrupted) {
             assert_typed_header_result(vb_ipc::frame::decode_frame_header(&corrupted_arr));
         }
     }

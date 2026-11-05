@@ -33,23 +33,23 @@ pub fn pop_pair(
     Ok((left, right))
 }
 
-/// Extracts a boolean from a SlotValue, returning TypeMismatch on failure.
-pub fn expect_bool(value: SlotValue) -> ExprResult<bool> {
-    match value {
-        SlotValue::Bool(b) => Ok(b),
-        other => Err(ExprError::TypeMismatch {
-            expected: "boolean".into(),
-            found: other.type_name().into(),
-        }),
-    }
-}
-
 /// Extracts an i64 from a SlotValue, returning TypeMismatch on failure.
 pub fn expect_i64(value: SlotValue) -> ExprResult<i64> {
     match value {
         SlotValue::I64(n) => Ok(n),
         other => Err(ExprError::TypeMismatch {
             expected: "number".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+/// Extracts a bool from a SlotValue, returning TypeMismatch on failure.
+pub fn expect_bool(value: SlotValue) -> ExprResult<bool> {
+    match value {
+        SlotValue::Bool(b) => Ok(b),
+        other => Err(ExprError::TypeMismatch {
+            expected: "boolean".into(),
             found: other.type_name().into(),
         }),
     }

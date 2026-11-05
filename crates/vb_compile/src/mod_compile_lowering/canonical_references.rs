@@ -18,6 +18,7 @@ use vb_core::{ExprOp, SlotIdx};
 pub(super) struct StepReferenceResolver<'a> {
     outputs: &'a HashMap<String, SlotIdx>,
     step_outputs: &'a HashMap<String, SlotIdx>,
+    local_binding: Option<(&'a str, SlotIdx)>,
 }
 
 impl<'a> StepReferenceResolver<'a> {
@@ -28,7 +29,22 @@ impl<'a> StepReferenceResolver<'a> {
         Self {
             outputs,
             step_outputs,
+            local_binding: None,
         }
+    }
+
+    pub(super) fn with_local_binding(mut self, name: &'a str, slot: SlotIdx) -> Self {
+        self.local_binding = Some((name, slot));
+        self
+    }
+
+    pub(super) fn resolve_slot(&self, reference: &str) -> Result<SlotIdx, CompileError> {
+        if let Some((name, slot)) = self.local_binding
+            && reference.strip_prefix('$') == Some(name)
+        {
+            return Ok(slot);
+        }
+        resolve_slot_reference(reference, self.outputs, self.step_outputs)
     }
 }
 
@@ -146,7 +162,7 @@ fn resolve_numeric_slot(text: &str) -> Result<SlotIdx, CompileError> {
 /// Implementation of the expression bytecode reference resolver.
 impl crate::expression_bytecode::ExpressionReferenceResolver for StepReferenceResolver<'_> {
     fn resolve_reference(&mut self, reference: &str) -> Result<ExprOp, CompileError> {
-        let slot = resolve_slot_reference(reference, self.outputs, self.step_outputs)?;
+        let slot = self.resolve_slot(reference)?;
         Ok(ExprOp::LoadSlot(slot))
     }
 }

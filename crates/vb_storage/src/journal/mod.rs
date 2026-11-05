@@ -17,6 +17,7 @@ pub mod parse;
 pub mod readonly;
 pub(crate) mod replay;
 pub(crate) mod source;
+pub mod startup_discovery;
 
 #[cfg(test)]
 mod emergency_deny_tests;

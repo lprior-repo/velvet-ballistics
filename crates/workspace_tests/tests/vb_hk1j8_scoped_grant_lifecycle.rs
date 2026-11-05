@@ -606,3 +606,140 @@ fn revocation_blocks_live_effect_while_history_reads() -> TestResult {
     );
     Ok(())
 }
+
+#[derive(Clone, Copy)]
+enum CanonicalGrantMismatch {
+    Artifact,
+    Ticket,
+    Capability,
+}
+fn assert_canonical_grant_binding(mismatch: CanonicalGrantMismatch, reconcile: bool) -> TestResult {
+    let mut fixture = setup()?;
+    let ticket = pending(&fixture, 0)?;
+    let grant = fixture
+        .catalog
+        .issue_register_grant(&fixture.artifact, ticket, scope_a())?;
+    let (scoped, dispatch) = issue_kw(
+        &fixture.catalog,
+        &fixture.artifact,
+        &grant,
+        ticket,
+        scope_a(),
+        80,
+        1_500,
+    )?;
+    let path = fixture.dir.path().join("canonical-grant-binding");
+    let mut adapter = FjallRegister::open(&path, 8)?;
+    if reconcile {
+        let receipt = adapter.execute(&grant, ticket, 100)?;
+        assert_eq!(receipt.value(), 100);
+    }
+    let mut foreign = scoped.clone();
+    let mut foreign_context = dispatch.clone();
+    let expected = match mismatch {
+        CanonicalGrantMismatch::Artifact => {
+            foreign.artifact = WorkflowDigest::from_bytes([0xa5; 32]);
+            foreign_context.artifact = foreign.artifact;
+            GrantError::ArtifactMismatch
+        }
+        CanonicalGrantMismatch::Ticket => {
+            foreign.ticket.step = StepIdx::new(1);
+            foreign_context.ticket = foreign.ticket;
+            GrantError::TicketMismatch
+        }
+        CanonicalGrantMismatch::Capability => {
+            foreign.capability = Capability::new("foreign.capability".into(), ticket.action);
+            GrantError::CapabilityMismatch
+        }
+    };
+    assert_eq!(foreign.scope, scoped.scope);
+    assert_eq!(foreign.verify_for_execute(&foreign_context, &[]), Ok(()));
+    assert_eq!(foreign.verify_for_reconcile(&foreign_context), Ok(()));
+    let before_events = fixture.journal.events_for_run_full(fixture.run)?;
+    let before_effects = adapter.effect_count()?;
+    let before_value = adapter.value(scope_a())?;
+    let result = if reconcile {
+        fixture.runtime.reconcile_registered_action(
+            &mut adapter,
+            fixture.run,
+            0,
+            &grant,
+            &foreign,
+            &foreign_context,
+        )
+    } else {
+        fixture.runtime.execute_registered_action(
+            &mut adapter,
+            fixture.run,
+            0,
+            &grant,
+            ScopedDispatch::new(&foreign, &foreign_context, &[]),
+        )
+    };
+    match result {
+        Err(RegisteredExecutionError::Executor(ExecutorError::Grant(error))) => {
+            assert_eq!(error, expected);
+        }
+        other => return Err(format!("expected canonical binding refusal, got {other:?}").into()),
+    }
+    assert_eq!(adapter.effect_count()?, before_effects);
+    assert_eq!(
+        fixture.journal.events_for_run_full(fixture.run)?,
+        before_events
+    );
+    assert_eq!(pending(&fixture, 0)?, ticket);
+    assert_eq!(adapter.value(scope_a())?, before_value);
+    fixture.runtime.tick_all()?;
+    assert_eq!(adapter.effect_count()?, before_effects);
+    assert_eq!(adapter.value(scope_a())?, before_value);
+    assert_eq!(
+        fixture.journal.events_for_run_full(fixture.run)?,
+        before_events
+    );
+    assert_eq!(pending(&fixture, 0)?, ticket);
+    if reconcile {
+        fixture.runtime.reconcile_registered_action(
+            &mut adapter,
+            fixture.run,
+            0,
+            &grant,
+            &scoped,
+            &dispatch,
+        )?;
+        assert_eq!(adapter.effect_count()?, before_effects);
+    } else {
+        fixture.runtime.execute_registered_action(
+            &mut adapter,
+            fixture.run,
+            0,
+            &grant,
+            ScopedDispatch::new(&scoped, &dispatch, &[]),
+        )?;
+        assert_eq!(adapter.effect_count()?, 1);
+    }
+    Ok(())
+}
+#[test]
+fn execute_rejects_self_consistent_foreign_artifact_before_effect() -> TestResult {
+    assert_canonical_grant_binding(CanonicalGrantMismatch::Artifact, false)
+}
+#[test]
+fn execute_rejects_self_consistent_foreign_full_ticket_before_effect() -> TestResult {
+    assert_canonical_grant_binding(CanonicalGrantMismatch::Ticket, false)
+}
+#[test]
+fn execute_rejects_foreign_capability_before_effect() -> TestResult {
+    assert_canonical_grant_binding(CanonicalGrantMismatch::Capability, false)
+}
+#[test]
+fn reconcile_rejects_self_consistent_foreign_artifact_before_receipt_read() -> TestResult {
+    assert_canonical_grant_binding(CanonicalGrantMismatch::Artifact, true)
+}
+#[test]
+fn reconcile_rejects_self_consistent_foreign_full_ticket_before_receipt_read() -> TestResult {
+    assert_canonical_grant_binding(CanonicalGrantMismatch::Ticket, true)
+}
+#[test]
+fn reconcile_rejects_foreign_capability_before_receipt_read() -> TestResult {
+    assert_canonical_grant_binding(CanonicalGrantMismatch::Capability, true)
+}

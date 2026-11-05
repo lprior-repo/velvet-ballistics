@@ -329,22 +329,28 @@ steps:
 
     #[test]
     fn exit_code_six_on_ipc_error() {
-        // Given: ipc-serve with invalid socket path
+        // Given: ipc-serve with a socket path too long for bind to accept
         // When: velvet-ballistics ipc-serve is called
-        // Then: non-zero exit (IPC error or usage error)
+        // Then: exit code 6 (IPC error)
+        // The path exceeds the 108-byte unix socket limit, so bind fails
+        // for every user including root; a merely nonexistent parent
+        // directory binds fine as root and the server serves forever.
         let tmp_dir = bdd_tempdir().unwrap();
         let db = tmp_dir.path().join("db");
+        let socket = tmp_dir.path().join(format!("{}.sock", "x".repeat(200)));
         let output = run_cli_failing(&[
             "ipc-serve",
             "--socket",
-            "/nonexistent.socket",
+            socket.to_str().unwrap(),
             "--db",
             db.to_str().unwrap(),
         ])
         .unwrap();
-        assert!(
-            !output.status.success(),
-            "ipc-serve with invalid socket should fail"
+        assert_eq!(
+            output.status.code(),
+            Some(6),
+            "ipc-serve with an unbindable socket should exit 6, got: {:?}",
+            output.status.code()
         );
     }
 

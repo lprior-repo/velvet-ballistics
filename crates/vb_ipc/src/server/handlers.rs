@@ -347,9 +347,14 @@ pub fn submit_resolved_workflow(
     if workflow.digest() != submit.workflow {
         return IpcResponse::WorkflowDigestMismatch;
     }
+    let inputs = match map_submit_inputs(&workflow, &submit.input) {
+        Ok(inputs) => inputs,
+        Err(response) => return response,
+    };
     let result = match command {
-        IpcCommand::SubmitRun => runtime.submit_compiled(submit.run_id, workflow),
-        IpcCommand::SubmitRunInline => runtime.submit_direct(submit.run_id, workflow),
+        IpcCommand::SubmitRun | IpcCommand::SubmitRunInline => {
+            runtime.submit_compiled_with_inputs(submit.run_id, workflow, inputs)
+        }
         _ => return IpcResponse::CommandPayloadMismatch,
     };
     match result {
@@ -360,4 +365,68 @@ pub fn submit_resolved_workflow(
             message: sanitize_runtime_error(&e),
         },
     }
+}
+
+fn map_submit_inputs(
+    workflow: &CompiledWorkflow,
+    bytes: &[u8],
+) -> Result<Box<[(SlotIdx, SlotValue)]>, IpcResponse> {
+    let invalid = || ipc_error_response(crate::IpcError::PayloadDecodeFailed);
+    let values: Box<[SlotValue]> = if bytes.is_empty() {
+        Box::from([])
+    } else {
+        // Postcard sequences start with their usize length, before any elements.
+        let (count, _) = postcard::take_from_bytes::<usize>(bytes).map_err(|_| invalid())?;
+        if count > workflow.input_slots().len() {
+            return Err(invalid());
+        }
+        let (values, remainder) =
+            postcard::take_from_bytes::<Box<[SlotValue]>>(bytes).map_err(|_| invalid())?;
+        if !remainder.is_empty() {
+            return Err(invalid());
+        }
+        values
+    };
+    let declarations = workflow.input_slots();
+    if values.len() > declarations.len() {
+        return Err(invalid());
+    }
+    let mut mapped = Vec::new();
+    mapped
+        .try_reserve_exact(declarations.len())
+        .map_err(|_| invalid())?;
+    for (position, declaration) in declarations.iter().enumerate() {
+        let value = if let Some(value) = values.get(position) {
+            Some(*value)
+        } else if declaration.constraint.requires_value() {
+            return Err(invalid());
+        } else {
+            declaration.constraint.default_value
+        };
+        let Some(value) = value else {
+            continue;
+        };
+        let kind = match value {
+            SlotValue::Null => vb_core::InputSlotKind::Null,
+            SlotValue::Bool(_) => vb_core::InputSlotKind::Bool,
+            SlotValue::I64(_) => vb_core::InputSlotKind::I64,
+            SlotValue::F64(_) => vb_core::InputSlotKind::F64,
+            SlotValue::Symbol(symbol) if symbol.get() < workflow.symbols_count() => {
+                vb_core::InputSlotKind::Symbol
+            }
+            // This wire carries handles without the arena payloads they require.
+            _ => return Err(invalid()),
+        };
+        if declaration.kind != vb_core::InputSlotKind::Any && declaration.kind != kind {
+            return Err(invalid());
+        }
+        if let SlotValue::I64(number) = value
+            && (declaration.constraint.min.is_some_and(|min| number < min)
+                || declaration.constraint.max.is_some_and(|max| number > max))
+        {
+            return Err(invalid());
+        }
+        mapped.push((declaration.slot, value));
+    }
+    Ok(mapped.into_boxed_slice())
 }
