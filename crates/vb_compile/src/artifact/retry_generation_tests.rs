@@ -307,25 +307,48 @@ fn checked_historical_retry_check_profile_is_refused_by_both_planning_paths() ->
         }
     );
     let mut parts = ordinary.workflow().to_parts();
-    *parts.nodes.get_mut(1).ok_or("missing retry position")? = node(
-        StepIdx::new(1),
-        historical_kind,
-        None,
-        Some(StepIdx::new(2)),
-    );
+    let set_const = parts.nodes.first().ok_or("missing seed node")?.clone();
+    // Keep both action contracts referenced: the RetryCheck replaces the
+    // action-0 Do, so action 0 moves to the retry body's fall-through path.
+    parts.nodes = Box::from([
+        set_const,
+        node(
+            StepIdx::new(1),
+            historical_kind,
+            None,
+            Some(StepIdx::new(2)),
+        ),
+        node(
+            StepIdx::new(2),
+            CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(3)),
+        ),
+        node(
+            StepIdx::new(3),
+            CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+            Some(SlotIdx::new(1)),
+            Some(StepIdx::new(4)),
+        ),
+        node(
+            StepIdx::new(4),
+            CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+            None,
+            None,
+        ),
+    ]);
     parts.digest = WorkflowDigest::from_bytes([0; 32]);
     parts.digest = WorkflowDigest::from_bytes(blake3::hash(&postcard::to_allocvec(&parts)?).into());
     let workflow = CompiledWorkflow::try_from_parts(parts)?;
-    // Replacing the action-0 Do leaves that contract unreferenced, and the
-    // compiler rejects orphan contracts; keep only the action the legacy
-    // RetryCheck body still reaches.
-    let legacy_contracts: Vec<ActionContract> = ordinary
-        .contracts()
-        .iter()
-        .filter(|contract| contract.id == ActionId::new(1))
-        .cloned()
-        .collect();
-    let legacy = verify_compiled_artifact(&workflow, &legacy_contracts)?;
+    let legacy = verify_compiled_artifact(&workflow, ordinary.contracts())?;
     assert!(
         matches!(legacy.workflow().node(record.owner()).map(|node| &node.kind),
         Some(CompiledNodeKind::Do { action, .. }) if *action == record.action())
