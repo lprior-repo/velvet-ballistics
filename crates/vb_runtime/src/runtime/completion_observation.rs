@@ -116,6 +116,26 @@ fn observe_result(state: &RunState) -> CompletionValueObservation {
     CompletionValueObservation::Available(scalar)
 }
 
+pub(super) fn preflight_slots(
+    required: usize,
+    slots: &mut [CompletionObservationSlot],
+) -> Result<&mut [CompletionObservationSlot], ObservationPreflightError> {
+    let provided = slots.len();
+    let required_slots = slots
+        .get_mut(..required)
+        .ok_or(ObservationPreflightError::BufferTooShort { required, provided })?;
+    for (index, slot) in required_slots.iter().enumerate() {
+        if slot.first.is_some() || slot.conflict {
+            return Err(ObservationPreflightError::SlotNotEmpty { index });
+        }
+    }
+    Ok(required_slots)
+}
+
 #[cfg(test)]
 #[path = "completion_observation_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "completion_observation_runtime_tests.rs"]
+mod runtime_tests;

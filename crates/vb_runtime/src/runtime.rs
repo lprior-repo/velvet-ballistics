@@ -18,6 +18,10 @@ use crate::shard::{
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
+use self::completion_observation::{
+    ObservationConflict, ObservationPreflightError, ObservedTickOutcome,
+};
+
 pub mod completion_observation;
 mod owned_activation;
 mod shutdown;
@@ -1049,24 +1053,8 @@ impl Runtime {
     pub fn tick_all_observed(
         &mut self,
         slots: &mut [completion_observation::CompletionObservationSlot],
-    ) -> Result<
-        completion_observation::ObservedTickOutcome,
-        completion_observation::ObservationPreflightError,
-    > {
-        use completion_observation::{
-            ObservationConflict, ObservationPreflightError, ObservedTickOutcome,
-        };
-
-        let required = self.shards.len();
-        let provided = slots.len();
-        let required_slots = slots
-            .get_mut(..required)
-            .ok_or(ObservationPreflightError::BufferTooShort { required, provided })?;
-        for (index, slot) in required_slots.iter().enumerate() {
-            if slot.first.is_some() || slot.conflict {
-                return Err(ObservationPreflightError::SlotNotEmpty { index });
-            }
-        }
+    ) -> Result<ObservedTickOutcome, ObservationPreflightError> {
+        let required_slots = completion_observation::preflight_slots(self.shards.len(), slots)?;
         let mut alive = true;
         let mut observation = Ok(());
         for (shard, slot) in self.shards.iter_mut().zip(required_slots.iter_mut()) {
