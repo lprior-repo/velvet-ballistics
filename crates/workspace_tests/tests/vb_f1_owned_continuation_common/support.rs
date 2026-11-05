@@ -198,6 +198,7 @@ fn initial_state(
         admission: Some(admission),
         run_started_millis: None,
         collect_states: CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: receipt.artifact.action_contracts.clone(),
     })
 }

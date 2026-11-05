@@ -97,6 +97,7 @@ fn run_state_after_n_steps(workflow: &CompiledWorkflow, run_id: RunId, executed:
         admission: None,
         run_started_millis: None,
         collect_states: CollectStates::new(),
+        journal_bytes_written: 0,
         action_contracts: Box::from([]),
     }
 }

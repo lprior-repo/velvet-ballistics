@@ -104,6 +104,8 @@ fn build_run_state(data: &[u8]) -> Option<vb_runtime::shard::types::RunState> {
         action_attempts: vb_runtime::shard::helpers::new_action_attempts(1),
         admission: None,
         collect_states: vb_runtime::primitives::collect::CollectStates::new(),
+        journal_bytes_written: 0,
+        run_started_millis: None,
         action_contracts: Box::new([]),
     })
 }
