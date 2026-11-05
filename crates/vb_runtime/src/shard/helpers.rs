@@ -22,12 +22,8 @@ pub fn seed_input_slots(
     workflow: &CompiledWorkflow,
 ) -> RuntimeResult<()> {
     for (slot, value) in inputs {
-        let declared = workflow
-            .input_slots()
-            .iter()
-            .find(|cs| cs.slot == *slot)
-            .map(|cs| cs.kind);
-        if let Some(kind) = declared
+        let declared = workflow.input_slots().iter().find(|cs| cs.slot == *slot);
+        if let Some(kind) = declared.map(|cs| cs.kind)
             && !slot_value_matches_kind(value, kind)
         {
             return Err(RuntimeError::RuntimeInputSlotKindMismatch {
@@ -36,8 +32,13 @@ pub fn seed_input_slots(
                 actual: slot_value_kind(value),
             });
         }
+        let taint = if declared.is_some_and(|cs| cs.constraint.secret) {
+            Taint::Secret
+        } else {
+            Taint::Clean
+        };
         frame
-            .write_slot_with_taint(*slot, *value, Taint::Clean)
+            .write_slot_with_taint(*slot, *value, taint)
             .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
     }
     Ok(())
