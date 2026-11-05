@@ -53,7 +53,10 @@ impl Shard {
                 // Storage-backed journal: use StorageArtifactStore for strict/journaled
                 // artifact validation. This ensures the shard can load and validate
                 // accepted artifacts from durable storage before admission.
-                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(fjall_journal, journal.executor_catalog()))
+                std::sync::Arc::new(crate::admission::StorageArtifactStore::with_catalog(
+                    fjall_journal,
+                    journal.executor_catalog(),
+                ))
             } else {
                 match config.policy {
                     vb_core::policy::RuntimePolicy::Relaxed => {
@@ -196,8 +199,11 @@ impl Shard {
     pub(crate) fn append_journal_event(&mut self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
         let run = event.run_id();
         let seq = self.journal_sequence_for(run);
+        let next = Self::journal_sequence_after(seq, 1)?;
+        self.reserve_journal_sequence_slot(run)?;
         self.journal.append_sequenced(event, seq)?;
-        self.advance_journal_sequence(run, seq)
+        let _previous = self.journal_sequences.insert(run, next);
+        Ok(())
     }
 
     #[cfg(not(kani))]
@@ -302,17 +308,6 @@ impl Shard {
             .checked_add(count)
             .map(EventSeq::new)
             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
-    }
-
-    fn advance_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
-        let next = seq
-            .get()
-            .checked_add(1)
-            .map(EventSeq::new)
-            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
-        self.reserve_journal_sequence_slot(run)?;
-        let _previous = self.journal_sequences.insert(run, next);
-        Ok(())
     }
 
     pub(crate) fn discard_journal_sequence(&mut self, run: RunId) {
@@ -716,7 +711,10 @@ impl Shard {
         };
 
         match cmd {
-            ShardCommand::ActivateOwnedSubmission { run, expected_source_digest } => {
+            ShardCommand::ActivateOwnedSubmission {
+                run,
+                expected_source_digest,
+            } => {
                 self.handle_owned_activation(run, expected_source_digest)?;
             }
             ShardCommand::Submit {
@@ -757,7 +755,11 @@ impl Shard {
             ShardCommand::Resume { run } => {
                 self.handle_resume(run).map_err(RuntimeError::from)?;
             }
-            ShardCommand::RegisteredActionCompleted { ticket, receipt, output } => {
+            ShardCommand::RegisteredActionCompleted {
+                ticket,
+                receipt,
+                output,
+            } => {
                 self.handle_registered_action_completion(ticket, receipt, output)?;
             }
             ShardCommand::ActionCompleted { ticket, output } => {
@@ -944,7 +946,7 @@ impl Shard {
             EvidenceEvent::StepStarted { step } => {
                 Self::push_drive_journal_event(
                     journal_events,
-                    RuntimeJournalEvent::StepStarted { run, step, attempt},
+                    RuntimeJournalEvent::StepStarted { run, step, attempt },
                 )?;
                 trace_events.push(TraceEvent::StepStarted { run, step });
                 Ok(())

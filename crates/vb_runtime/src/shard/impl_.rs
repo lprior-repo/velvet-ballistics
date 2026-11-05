@@ -12,3 +12,7 @@ mod tests {
     include!("impl_tests/chunk_001.rs");
     include!("impl_tests/chunk_002.rs");
 }
+
+#[cfg(all(test, not(kani)))]
+#[path = "impl_tests/single_event_sequence_preflight.rs"]
+mod single_event_sequence_preflight;
