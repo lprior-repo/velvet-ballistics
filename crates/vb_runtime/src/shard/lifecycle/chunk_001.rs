@@ -127,22 +127,28 @@ impl Shard {
             return Err(error);
         }
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
-        if persist_header {
-            self.append_admission_header_journal_event(
+        if persist_header
+            && let Err(error) = self.append_admission_header_journal_event(
                 run,
                 RuntimeJournalEvent::RunSubmitted {
                     run,
                     workflow: digest,
                 },
-            )?;
+            )
+        {
+            self.release_frame(frame);
+            return Err(error);
         }
-        if let Some(admission) = admission.as_ref() {
-            self.append_admission_header_journal_event(
+        if let Some(admission) = admission.as_ref()
+            && let Err(error) = self.append_admission_header_journal_event(
                 run,
                 RuntimeJournalEvent::RunAdmission {
                     admission: admission.clone(),
                 },
-            )?;
+            )
+        {
+            self.release_frame(frame);
+            return Err(error);
         }
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();
