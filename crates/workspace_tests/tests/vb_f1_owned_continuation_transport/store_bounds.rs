@@ -66,8 +66,10 @@ fn existing_cycle_and_depth_validators_remain_authoritative_after_preflight() ->
         .err()
         .ok_or("invalid graph accepted")?;
         assert!(failure.strong_decode_started);
-        let TransportFailure::Strong(RunContinuationError::RuntimeStore(error)) = failure.failure
-        else {
+        let TransportFailure::Strong(strong) = failure.failure else {
+            return Err("lost existing graph error".into());
+        };
+        let RunContinuationError::RuntimeStore(error) = *strong else {
             return Err("lost existing graph error".into());
         };
         match (*error, cycle) {

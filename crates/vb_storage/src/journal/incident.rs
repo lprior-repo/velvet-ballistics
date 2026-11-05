@@ -505,6 +505,7 @@ mod tests {
                 attempt: 1,
                 idempotency_key: compute_action_idempotency_key(run, 1, seq, action_id),
                 capacity: 2,
+                fencing_token: 0,
             },
         }
     }

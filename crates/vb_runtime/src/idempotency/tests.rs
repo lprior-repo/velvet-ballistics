@@ -15,6 +15,7 @@ fn make_ticket(key: u128) -> ActionTicket {
         attempt: 1,
         idempotency_key: key,
         capacity: 1,
+        fencing_token: 0,
     }
 }
 

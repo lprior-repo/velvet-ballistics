@@ -15,6 +15,7 @@ fn ticket(run: u64, step: u16, seq: u64, action: u16, attempt: u16) -> ActionTic
         attempt,
         idempotency_key: 0,
         capacity: attempt,
+        fencing_token: 0,
     }
 }
 

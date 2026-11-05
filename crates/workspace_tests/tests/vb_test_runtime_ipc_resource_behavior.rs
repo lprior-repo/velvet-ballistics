@@ -48,6 +48,7 @@ fn make_ticket(run: RunId, seq: u64) -> ActionTicket {
         attempt: 1,
         idempotency_key: seq as u128,
         capacity: 1,
+        fencing_token: 0,
     }
 }
 
@@ -396,6 +397,7 @@ fn ipc_action_completion_enqueues_for_nonexistent_run() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        fencing_token: 0,
     };
     let output = ActionOutputReady {
         output_slot: SlotIdx::new(1),
@@ -1041,6 +1043,7 @@ fn resource_action_failure_enqueues_for_nonexistent_run() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        fencing_token: 0,
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Rejected,
@@ -1072,6 +1075,7 @@ fn resource_action_failure_enqueued_for_nonexistent_run() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        fencing_token: 0,
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Rejected,

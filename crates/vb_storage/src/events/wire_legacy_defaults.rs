@@ -1,10 +1,11 @@
 #![forbid(unsafe_code)]
 
 use super::super::super::{DurableActionOutcome, JournalEvent};
+use super::LegacyActionTicket;
 use super::zero_workflow_digest;
 use crate::{EventSeq, JournalError};
 use serde::Deserialize;
-use vb_core::{ActionTicket, RunId, SlotIdx, Taint};
+use vb_core::{RunId, SlotIdx, Taint};
 
 #[derive(Deserialize)]
 enum LegacyJournalEventMissingDefaults {
@@ -17,14 +18,14 @@ enum LegacyJournalEventMissingDefaults {
     ActionScheduledTicket {
         run: RunId,
         seq: EventSeq,
-        ticket: ActionTicket,
+        ticket: LegacyActionTicket,
         input: SlotIdx,
         output: SlotIdx,
     },
     ActionCompletedEnvelope {
         run: RunId,
         seq: EventSeq,
-        ticket: ActionTicket,
+        ticket: LegacyActionTicket,
         output: SlotIdx,
         outcome: DurableActionOutcome,
         value: Vec<u8>,
@@ -55,7 +56,7 @@ impl LegacyJournalEventMissingDefaults {
             } => Some(JournalEvent::ActionScheduledTicket {
                 run,
                 seq,
-                ticket,
+                ticket: ticket.into_current(),
                 input,
                 output,
                 action_abi_digest: zero_workflow_digest(),
@@ -73,7 +74,7 @@ impl LegacyJournalEventMissingDefaults {
             } => Some(JournalEvent::ActionCompletedEnvelope {
                 run,
                 seq,
-                ticket,
+                ticket: ticket.into_current(),
                 output,
                 outcome,
                 value,

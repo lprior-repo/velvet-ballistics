@@ -283,7 +283,7 @@ fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
-    };
+     fencing_token: 0, };
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
         retry_policy: VbRetryPolicy::NonRetryable,

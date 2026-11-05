@@ -13,6 +13,7 @@ fn baseline_ticket() -> ActionTicket {
         attempt: 1,
         idempotency_key: 0,
         capacity: 10,
+        fencing_token: 0,
     }
 }
 

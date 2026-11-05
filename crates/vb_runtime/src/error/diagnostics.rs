@@ -74,6 +74,7 @@ impl RuntimeError {
             Self::FramePoolUnavailable => Self::FRAME_POOL_UNAVAILABLE_CODE,
             Self::InvalidActionCompletion
             | Self::StaleAttempt { .. }
+            | Self::StaleFencingToken { .. }
             | Self::AttemptBeyondMax { .. }
             | Self::ActionOutputLengthMismatch { .. }
             | Self::ActionOutputTooLarge { .. }
@@ -160,6 +161,7 @@ impl RuntimeError {
             },
             Self::InvalidActionCompletion
             | Self::StaleAttempt { .. }
+            | Self::StaleFencingToken { .. }
             | Self::AttemptBeyondMax { .. }
             | Self::ActionOutputLengthMismatch { .. }
             | Self::ActionOutputTooLarge { .. }

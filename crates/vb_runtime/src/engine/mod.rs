@@ -17,6 +17,7 @@ pub mod execute;
 #[cfg(test)]
 mod execute_tests;
 pub mod helpers;
+pub mod jitter;
 #[cfg(test)]
 pub mod property_tests;
 pub mod retry_math;
@@ -33,7 +34,7 @@ pub use action::{
 pub use drive::{drive_deterministic_full, drive_with_actions};
 pub use execute::execute_node_full;
 pub use helpers::mark_step_after_signal;
-pub use retry_math::{RetryCursor, RetryPolicyLimits, RetryPolicyMathError};
+pub use retry_math::{RetryCursor, RetryCursorIter, RetryPolicyLimits, RetryPolicyMathError};
 pub use signal::runtime_from_core;
 pub use types::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeEngineResult,

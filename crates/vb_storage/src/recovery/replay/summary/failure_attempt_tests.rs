@@ -22,6 +22,7 @@ fn scheduled_ticket_for(action: ActionId, step: StepIdx, seq: SeqNo, attempt: u1
         attempt,
         idempotency_key: compute_action_idempotency_key(run, 1, seq, action),
         capacity: 2,
+        fencing_token: 0,
     }
 }
 

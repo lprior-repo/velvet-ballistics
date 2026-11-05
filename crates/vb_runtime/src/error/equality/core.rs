@@ -106,6 +106,10 @@ fn runtime_error_attempt_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
             },
         ) => a == c && b == d,
         (
+            RuntimeError::StaleFencingToken { incoming: a },
+            RuntimeError::StaleFencingToken { incoming: b },
+        ) => a == b,
+        (
             RuntimeError::AttemptBeyondMax { attempt: a, max: b },
             RuntimeError::AttemptBeyondMax { attempt: c, max: d },
         ) => a == c && b == d,

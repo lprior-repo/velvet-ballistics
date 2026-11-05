@@ -376,6 +376,7 @@ mod unit_tests {
             attempt: 1,
             idempotency_key: seq as u128,
             capacity: 1,
+            fencing_token: 0,
         }
     }
 

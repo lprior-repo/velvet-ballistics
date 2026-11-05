@@ -47,7 +47,7 @@ fn make_ticket(run: RunId, step: StepIdx, attempt: u16) -> ActionTicket {
         attempt,
         idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
         capacity: 1,
-    }
+     fencing_token: 0, }
 }
 
 fn pending_ticket(shard: &Shard, run: RunId, step: StepIdx, attempt: u16) -> ActionTicket {

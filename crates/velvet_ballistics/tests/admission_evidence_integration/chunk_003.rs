@@ -57,7 +57,7 @@ fn evidence_chain_after_execution() {
             ActionId::new(7),
         ),
         capacity: 1,
-    };
+     fencing_token: 0, };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value: SlotValue::I64(99),
@@ -390,7 +390,7 @@ fn evidence_chain_preserves_event_ordering_across_restarts() {
             ActionId::new(7),
         ),
         capacity: 1,
-    };
+     fencing_token: 0, };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value: SlotValue::I64(99),

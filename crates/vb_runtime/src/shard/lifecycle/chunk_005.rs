@@ -122,6 +122,13 @@ impl Shard {
         ticket: ActionTicket,
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
+        // Mint before the ticket is journaled so the token is durable with the
+        // schedule that issued it.
+        let token = self.fencing_tokens.mint(run);
+        let ticket = ActionTicket {
+            fencing_token: token,
+            ..ticket
+        };
         if evidence.is_empty() {
             self.apply(run, RuntimeEvent::AwaitAction)
                 .map_err(DriveApplyFailure::AfterCommit)?;

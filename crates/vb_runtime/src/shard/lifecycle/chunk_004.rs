@@ -50,7 +50,12 @@ impl Shard {
             return Err(RuntimeError::RunNotFound);
         }
         match self.pending_action_get(ticket.run) {
-            Some(pending) if pending == ticket => Ok(()),
+            Some(pending) if pending.same_invocation(&ticket) => {
+                // Identity is token-agnostic, so this is where a superseded
+                // issuance (same invocation, older token) is caught. Tampered
+                // fields fall through to the specific diagnostics below.
+                self.require_current_fencing_token(ticket)
+            }
             Some(pending)
                 if ticket.attempt > 0
                     && ticket.attempt < pending.attempt
@@ -67,6 +72,18 @@ impl Shard {
                 })
             }
             Some(_) | None => Err(RuntimeError::InvalidActionCompletion),
+        }
+    }
+
+    /// Rejects a completion whose fencing token was superseded by a later
+    /// issuance for the same run.
+    fn require_current_fencing_token(&self, ticket: ActionTicket) -> RuntimeResult<()> {
+        if self.fencing_tokens.accepts(ticket.run, ticket.fencing_token) {
+            Ok(())
+        } else {
+            Err(RuntimeError::StaleFencingToken {
+                incoming: ticket.fencing_token,
+            })
         }
     }
 

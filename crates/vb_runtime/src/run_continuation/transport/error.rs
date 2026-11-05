@@ -30,6 +30,16 @@ pub enum TransportFailure {
     #[error("continuation transport integrity mismatch")]
     Integrity,
     /// Existing ordinary strong validation failed; no validator is bypassed.
+    ///
+    /// Boxed because the strong-continuation error carries an action resume
+    /// report, which carries a full ticket; inline, that chain pushes the
+    /// enclosing transport error past the large-error threshold.
     #[error(transparent)]
-    Strong(#[from] RunContinuationError),
+    Strong(Box<RunContinuationError>),
+}
+
+impl From<RunContinuationError> for TransportFailure {
+    fn from(error: RunContinuationError) -> Self {
+        Self::Strong(Box::new(error))
+    }
 }

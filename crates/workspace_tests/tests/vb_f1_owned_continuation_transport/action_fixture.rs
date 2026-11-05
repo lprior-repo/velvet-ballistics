@@ -123,7 +123,7 @@ fn real_guarded_do_is_reachable_and_dispatches_without_fabricated_completion() -
     .ok_or("in-flight action was accepted as quiescent")?;
     assert!(matches!(
         error.failure,
-        TransportFailure::Strong(RunContinuationError::InFlight)
+        TransportFailure::Strong(ref strong) if matches!(**strong, RunContinuationError::InFlight)
     ));
     assert!(!error.strong_decode_started);
     Ok(())

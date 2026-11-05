@@ -206,6 +206,7 @@ fn mk_ticket(run: u64, seq: u32, action: u16, attempt: u16) -> ActionTicket {
         attempt,
         idempotency_key,
         capacity: 3,
+        fencing_token: 0,
     }
 }
 

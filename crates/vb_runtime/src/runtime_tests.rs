@@ -860,6 +860,7 @@ mod tests {
             attempt: 1,
             idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, ActionId::new(7)),
             capacity: 1,
+            fencing_token: 0,
         };
         let value = SlotValue::I64(99);
         let output = ActionOutputReady {
@@ -934,6 +935,7 @@ mod tests {
             attempt: 1,
             idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, ActionId::new(7)),
             capacity: 1,
+            fencing_token: 0,
         };
         assert_eq!(
             runtime.complete_action_with_output(completion_ticket, output),
@@ -993,6 +995,7 @@ mod tests {
             attempt: 1,
             idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, ActionId::new(8)),
             capacity: 1,
+            fencing_token: 0,
         };
         let output = ActionOutputReady {
             output_slot: SlotIdx::new(1),
@@ -1166,6 +1169,7 @@ mod tests {
                 ActionId::new(0),
             ),
             capacity: 1,
+            fencing_token: 0,
         };
         let failure = ActionFailureCode::Rejected.into();
         let result = runtime.fail_action(ticket, failure);
@@ -1831,6 +1835,7 @@ mod tests {
                 ActionId::new(0),
             ),
             capacity: 1,
+            fencing_token: 0,
         };
         let failure = ActionFailureCode::Rejected.into();
         // Then enqueue succeeds (failure is queued)
@@ -2073,6 +2078,7 @@ mod tests {
             attempt: 1,
             idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, ActionId::new(0)),
             capacity: 1,
+            fencing_token: 0,
         };
         let failure = ActionFailureCode::Rejected.into();
         assert_eq!(runtime.fail_action(ticket, failure), Ok(()));
@@ -2542,6 +2548,7 @@ mod tests {
             attempt: 1,
             idempotency_key: compute_idempotency_key(run2, 1, SeqNo::ZERO, ActionId::new(7)),
             capacity: 1,
+            fencing_token: 0,
         };
         let output = ActionOutputReady {
             output_slot: SlotIdx::new(1),

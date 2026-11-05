@@ -28,6 +28,7 @@ fn input_len_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTicket
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        fencing_token: 0,
     }
 }
 
@@ -344,6 +345,7 @@ fn action_ticket_with_idempotency_key_zero_is_a_valid_ticket() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        fencing_token: 0,
     };
     assert_eq!(ticket.idempotency_key, 0);
     assert_eq!(ticket.run, RunId::new(1));
@@ -398,6 +400,7 @@ fn action_ticket_from_different_run_is_not_equal() {
         attempt: 1,
         idempotency_key: 100,
         capacity: 1,
+        fencing_token: 0,
     };
     let ticket_b = ActionTicket {
         run: RunId::new(2),
@@ -408,6 +411,7 @@ fn action_ticket_from_different_run_is_not_equal() {
         attempt: 1,
         idempotency_key: 100,
         capacity: 1,
+        fencing_token: 0,
     };
     assert_ne!(ticket_a, ticket_b);
 }
@@ -528,6 +532,7 @@ fn action_outcome_suspended_carries_ticket_identity() {
         attempt: 1,
         idempotency_key: 999,
         capacity: 1,
+        fencing_token: 0,
     };
     let outcome = ActionOutcome::Suspended(ticket);
     match outcome {
@@ -1300,6 +1305,7 @@ fn issue_action_ticket_captures_all_fields() {
         attempt: 3,
         idempotency_key: 12345,
         capacity: 10,
+        fencing_token: 0,
     });
     assert_eq!(ticket.run, RunId::new(42));
     assert_eq!(ticket.step, StepIdx::new(3));
@@ -1322,6 +1328,7 @@ fn issue_action_ticket_with_zero_key_is_valid() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        fencing_token: 0,
     });
     assert_eq!(ticket.idempotency_key, 0);
     assert_eq!(ticket.attempt, 1);
@@ -1338,6 +1345,7 @@ fn issue_action_ticket_with_max_values() {
         attempt: u16::MAX,
         idempotency_key: u128::MAX,
         capacity: u16::MAX,
+        fencing_token: 0,
     });
     assert_eq!(ticket.run, RunId::new(u64::MAX));
     assert_eq!(ticket.step, StepIdx::new(u16::MAX));
@@ -1517,6 +1525,7 @@ fn validate_action_outcome_suspended_rejected() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        fencing_token: 0,
     };
     let outcome = ActionOutcome::Suspended(ticket);
     let result = validate_action_outcome(&contract, &outcome);
@@ -1536,6 +1545,7 @@ fn journal_event_suspended_roundtrips_fields() {
         attempt: 1,
         idempotency_key: 999,
         capacity: 1,
+        fencing_token: 0,
     };
     let event = ActionJournalEvent::Suspended {
         ticket,
@@ -1576,6 +1586,7 @@ fn journal_event_serialization_roundtrip() {
         attempt: 1,
         idempotency_key: 12345,
         capacity: 1,
+        fencing_token: 0,
     };
     let event = ActionJournalEvent::Suspended {
         ticket,
@@ -1609,6 +1620,7 @@ fn action_ticket_construction_all_fields_accessible() {
         attempt: 3,
         idempotency_key: 0xDEADBEEF_u128,
         capacity: 10,
+        fencing_token: 0,
     };
     assert_eq!(ticket.run, RunId::new(999));
     assert_eq!(ticket.step, StepIdx::new(42));
@@ -1866,6 +1878,7 @@ fn test_canonical_key_validates() {
             attempt: deterministic_rand_u16_bounded(3, iter, 14) + 1,
             idempotency_key: canonical_key,
             capacity: deterministic_rand_u16_bounded(5, iter, 15) + 1,
+            fencing_token: 0,
         };
         assert!(
             action_ticket_has_valid_key(canonical_ticket),
@@ -1913,6 +1926,7 @@ fn action_ticket_postcard_roundtrip_preserves_idempotency_key() {
         attempt: 2,
         idempotency_key,
         capacity: 5,
+        fencing_token: 0,
     };
 
     let bytes = postcard::to_allocvec(&original).expect("postcard encode must succeed");
@@ -1960,6 +1974,7 @@ fn action_ticket_postcard_roundtrip_at_idempotency_key_boundaries() {
             attempt: 1,
             idempotency_key: key,
             capacity: 1,
+            fencing_token: 0,
         };
         let bytes = postcard::to_allocvec(&original).expect("postcard encode must succeed");
         let decoded: ActionTicket =

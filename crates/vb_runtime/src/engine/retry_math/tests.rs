@@ -160,3 +160,184 @@ fn fast_forward_cursor_rejects_inconsistent_cursor() {
         result
     );
 }
+
+// =====================================================================
+// Retry cursor iterator: one cursor per admitted attempt.
+// =====================================================================
+
+/// The iterator must yield exactly `max_attempts` cursors, starting at
+/// attempt 1 with no preceding delay.
+#[test]
+fn cursors_yield_one_cursor_per_attempt() -> Result<(), RetryPolicyMathError> {
+    let policy = RetryPolicy {
+        max_attempts: 3,
+        base_delay_ms: 100,
+        exponential_backoff: false,
+    };
+    let cursors: Vec<_> = policy.cursors(MAX_INTERVAL_MS)?.collect();
+    assert_eq!(cursors.len(), 3);
+    assert_eq!(
+        cursors
+            .iter()
+            .map(|cursor| cursor.attempt)
+            .collect::<Vec<_>>(),
+        vec![1, 2, 3]
+    );
+    assert_eq!(
+        cursors
+            .iter()
+            .map(|cursor| cursor.delay_ms)
+            .collect::<Vec<_>>(),
+        vec![0, 100, 100]
+    );
+    Ok(())
+}
+
+/// Exponential policies must expose the doubling delays through the
+/// iterator, including the final exhausted cursor shape.
+#[test]
+fn cursors_apply_exponential_backoff() -> Result<(), RetryPolicyMathError> {
+    let policy = RetryPolicy {
+        max_attempts: 4,
+        base_delay_ms: 100,
+        exponential_backoff: true,
+    };
+    let delays: Vec<_> = policy
+        .cursors(MAX_INTERVAL_MS)?
+        .map(|cursor| cursor.delay_ms)
+        .collect();
+    assert_eq!(delays, vec![0, 100, 200, 400]);
+    Ok(())
+}
+
+/// The iterator must respect the caller's timer budget cap.
+#[test]
+fn cursors_clamp_delays_to_max_interval() -> Result<(), RetryPolicyMathError> {
+    let policy = RetryPolicy {
+        max_attempts: 5,
+        base_delay_ms: 100,
+        exponential_backoff: true,
+    };
+    let cursors: Vec<_> = policy.cursors(250)?.collect();
+    assert_eq!(
+        cursors.len(),
+        usize::from(policy.max_attempts),
+        "clamping must not change the attempt count"
+    );
+    assert!(
+        cursors.iter().all(|cursor| cursor.delay_ms <= 250),
+        "cursor delay exceeded the interval cap: {cursors:?}"
+    );
+    assert_eq!(
+        cursors
+            .iter()
+            .map(|cursor| cursor.attempt)
+            .collect::<Vec<_>>(),
+        vec![1, 2, 3, 4, 5],
+        "clamping must not skip or duplicate attempts"
+    );
+    Ok(())
+}
+
+/// A zero-attempt policy is invalid and must be rejected up front rather
+/// than yielding an empty iterator that hides the bad config.
+#[test]
+fn cursors_reject_zero_attempts() {
+    let policy = RetryPolicy {
+        max_attempts: 0,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    };
+    let result = policy.cursors(MAX_INTERVAL_MS);
+    assert!(
+        matches!(result, Err(RetryPolicyMathError::ZeroMaxAttempts)),
+        "expected Err(ZeroMaxAttempts), got {:?}",
+        result
+    );
+}
+
+/// `size_hint` must stay exact so `ExactSizeIterator` consumers are safe.
+#[test]
+fn cursors_size_hint_is_exact() -> Result<(), RetryPolicyMathError> {
+    let policy = RetryPolicy {
+        max_attempts: 3,
+        base_delay_ms: 10,
+        exponential_backoff: false,
+    };
+    let mut iter = policy.cursors(MAX_INTERVAL_MS)?;
+    assert_eq!(iter.len(), iter.clone().count());
+    assert_eq!(iter.size_hint(), (iter.len(), Some(iter.len())));
+    assert_eq!(iter.len(), 3);
+    let _first = iter.next();
+    assert_eq!(iter.len(), 2);
+    let _second = iter.next();
+    let _third = iter.next();
+    assert_eq!(iter.len(), 0);
+    assert!(iter.next().is_none());
+    Ok(())
+}
+
+// =====================================================================
+// Jitter: delays stay inside the un-jittered bound.
+// =====================================================================
+
+/// Jittered delays must fall in `[0, delay_for_attempt)`.
+#[test]
+fn jittered_delay_stays_within_base_delay() -> Result<(), RetryPolicyMathError> {
+    let policy = RetryPolicy {
+        max_attempts: 4,
+        base_delay_ms: 1_000,
+        exponential_backoff: true,
+    };
+    let mut rng = rand::rng();
+    let mut saw_nonzero = false;
+    for attempt in 1..=4 {
+        let base = policy.delay_for_attempt(MAX_INTERVAL_MS, attempt)?;
+        for _ in 0..64 {
+            let jittered = policy.jittered_delay_for_attempt(MAX_INTERVAL_MS, attempt, &mut rng)?;
+            assert!(
+                jittered < base || base == 0,
+                "jittered delay {jittered} not below base {base}"
+            );
+            saw_nonzero = saw_nonzero || jittered > 0;
+        }
+    }
+    // A jitter that always returned the lower bound would satisfy every bound
+    // above; at least one draw must land above zero.
+    assert!(saw_nonzero, "jitter returned zero for every draw");
+    Ok(())
+}
+
+/// A zero base delay has no span to jitter, so it must stay zero.
+#[test]
+fn jittered_delay_with_zero_base_stays_zero() -> Result<(), RetryPolicyMathError> {
+    let policy = RetryPolicy {
+        max_attempts: 2,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    };
+    let mut rng = rand::rng();
+    assert_eq!(
+        policy.jittered_delay_for_attempt(MAX_INTERVAL_MS, 1, &mut rng)?,
+        0
+    );
+    Ok(())
+}
+
+/// `jittered_next_cursor` must preserve the cursor's attempt bookkeeping
+/// and only replace the delay.
+#[test]
+fn jittered_next_cursor_preserves_attempt_identity() -> Result<(), RetryPolicyMathError> {
+    let policy = RetryPolicy {
+        max_attempts: 3,
+        base_delay_ms: 500,
+        exponential_backoff: false,
+    };
+    let mut rng = rand::rng();
+    let initial = policy.initial_cursor()?;
+    let next = policy.jittered_next_cursor(MAX_INTERVAL_MS, initial, &mut rng)?;
+    assert_eq!(next.attempt, 2);
+    assert_eq!(next.remaining, 2);
+    assert!(next.delay_ms < 500);
+    Ok(())
+}

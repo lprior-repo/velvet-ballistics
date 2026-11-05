@@ -57,6 +57,7 @@ fn arb_ticket() -> impl Strategy<Value = ActionTicket> {
                 attempt,
                 idempotency_key: key,
                 capacity,
+                fencing_token: 0,
             },
         )
 }
@@ -83,6 +84,7 @@ fn arb_hostile_ticket() -> impl Strategy<Value = ActionTicket> {
                 attempt,
                 idempotency_key: key,
                 capacity,
+                fencing_token: 0,
             },
         )
 }
@@ -159,7 +161,7 @@ proptest! {
             attempt: current.saturating_sub(1),
             idempotency_key: 0,
             capacity,
-        };
+         fencing_token: 0, };
 
         let result = normalize_scheduled_ticket(&state, ticket);
         prop_assert!(result.is_ok(), "normalize_scheduled_ticket must succeed for stale (it promotes)");
@@ -190,7 +192,7 @@ proptest! {
             attempt: current.saturating_sub(1),
             idempotency_key: 0,
             capacity,
-        };
+         fencing_token: 0, };
 
         record_scheduled_attempt(&mut state, ticket);
         let after = state.action_attempts.get(0).copied().unwrap_or(0);
@@ -228,7 +230,7 @@ proptest! {
             attempt: incoming,
             idempotency_key: 0,
             capacity,
-        };
+         fencing_token: 0, };
 
         let result = normalize_scheduled_ticket(&state, ticket);
         prop_assert!(result.is_ok(),
@@ -256,7 +258,7 @@ proptest! {
             attempt: incoming,
             idempotency_key: 0,
             capacity,
-        };
+         fencing_token: 0, };
 
         let result = normalize_scheduled_ticket(&state, ticket);
         prop_assert!(result.is_err(),
@@ -286,7 +288,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity: max_attempts,
-        };
+         fencing_token: 0, };
 
         let mut state = make_do_run_state(1);
         if let Some(slot) = state.action_attempts.get_mut(0) {
@@ -337,7 +339,7 @@ proptest! {
             attempt: *attempt,
                 idempotency_key: 0,
                 capacity: 255,
-            };
+             fencing_token: 0, };
             record_scheduled_attempt(&mut state, ticket);
             let current = state.action_attempts.get(0).copied().unwrap_or(0);
             max_so_far = max_so_far.max(*attempt);
@@ -369,7 +371,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity,
-        };
+         fencing_token: 0, };
 
         let state = make_do_run_state(1);
         let attempts_before = state.action_attempts.get(0).copied().unwrap_or(0);
@@ -410,7 +412,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity,
-        };
+         fencing_token: 0, };
 
         let mut state = make_do_run_state(1);
         // Mark step as running so validate_action_completion passes step state check
@@ -481,7 +483,7 @@ proptest! {
             attempt,
             idempotency_key: 0,
             capacity,
-        };
+         fencing_token: 0, };
 
         // Must not panic for any u16 inputs
         let _result = normalize_scheduled_ticket(&state, ticket);
@@ -512,7 +514,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity: u16::MAX,
-        };
+         fencing_token: 0, };
 
         let policy = RetryPolicy {
             max_attempts: 0,
@@ -625,7 +627,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity,
-        };
+         fencing_token: 0, };
 
         let _ = validate_action_completion(&state, ticket);
         let after = state.action_attempts.get(0).copied().unwrap_or(0);

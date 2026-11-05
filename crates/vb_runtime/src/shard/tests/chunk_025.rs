@@ -29,7 +29,7 @@ fn vb1u88_action_completion_unknown_run_not_found() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
-    };
+     fencing_token: 0, };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: vb_core::value::SlotValue::I64(1),
@@ -56,7 +56,7 @@ fn vb1u88_action_failure_unknown_run_not_found() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
-    };
+     fencing_token: 0, };
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
         retry_policy: VbRetryPolicy::NonRetryable,

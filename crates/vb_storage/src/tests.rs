@@ -2990,6 +2990,7 @@ mod tests {
             attempt: 1,
             idempotency_key: 7,
             capacity: 3,
+            fencing_token: 0,
         }
     }
 

@@ -79,6 +79,12 @@ pub enum RuntimeError {
         /// Current attempt recorded on the live run state.
         current: u16,
     },
+    /// Action completion carries a fencing token superseded by a later
+    /// issuance for the same run.
+    StaleFencingToken {
+        /// Token carried by the incoming completion.
+        incoming: u64,
+    },
     /// Action completion or scheduling exceeded the bounded retry capacity.
     AttemptBeyondMax {
         /// Attempt carried by the ticket.

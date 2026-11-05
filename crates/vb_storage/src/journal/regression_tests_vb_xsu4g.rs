@@ -51,6 +51,7 @@ fn sample_completed_envelope() -> JournalEvent {
             attempt: 2,
             idempotency_key: 0xA5A5_A5A5_5A5A_5A5A_B0B0_B0B0_0B0B_0B0B_u128,
             capacity: 5,
+            fencing_token: 0,
         },
         output: SlotIdx::new(3),
         outcome: DurableActionOutcome::Ready,
@@ -113,6 +114,7 @@ fn action_completed_envelope_roundtrips_through_parse_event() {
                 attempt: 2,
                 idempotency_key: 0xA5A5_A5A5_5A5A_5A5A_B0B0_B0B0_0B0B_0B0B_u128,
                 capacity: 5,
+                fencing_token: 0,
             };
             assert_eq!(
                 ticket, expected_ticket,

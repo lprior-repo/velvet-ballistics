@@ -86,7 +86,14 @@ pub(super) fn from_legacy(event: LegacyJournalEvent) -> JournalEvent {
             input,
             output,
             action_abi_digest,
-        } => scheduled_ticket(run, seq, ticket, input, output, action_abi_digest),
+        } => scheduled_ticket(
+            run,
+            seq,
+            ticket.into_current(),
+            input,
+            output,
+            action_abi_digest,
+        ),
         other => envelope_failure_or_dispatch(other),
     }
 }
@@ -105,7 +112,7 @@ fn envelope_failure_or_dispatch(event: LegacyJournalEvent) -> JournalEvent {
             value_digest,
             action_abi_digest,
         } => completed_envelope(CompletedEnvelopeParts {
-            head: CompletedEnvelopeHead::new(run, seq, ticket, output, outcome),
+            head: CompletedEnvelopeHead::new(run, seq, ticket.into_current(), output, outcome),
             tail: CompletedEnvelopeTail::new(
                 value,
                 encoded_len,
@@ -127,7 +134,9 @@ fn failure_or_dispatch(event: LegacyJournalEvent) -> JournalEvent {
             action,
             attempt,
         } => failed(run, seq, step, action, attempt),
-        LegacyJournalEvent::ActionAbandoned { run, seq, ticket } => abandoned(run, seq, ticket),
+        LegacyJournalEvent::ActionAbandoned { run, seq, ticket } => {
+            abandoned(run, seq, ticket.into_current())
+        }
         other => super::into_current_by_category(other),
     }
 }

@@ -24,6 +24,7 @@ pub(crate) fn make_ticket(run: u64, step: u16, seq: u64, action: u16) -> ActionT
         attempt: 3,
         idempotency_key: key,
         capacity: 10,
+        fencing_token: 0,
     }
 }
 

@@ -1381,6 +1381,7 @@ fn action_queue_dequeue_respects_fifo_order_with_values() -> Result<(), String> 
         attempt: 1,
         idempotency_key: 0,
         capacity: 10,
+        fencing_token: 0,
     };
     let ticket_b = ActionTicket {
         run: RunId::new(2),
@@ -1391,6 +1392,7 @@ fn action_queue_dequeue_respects_fifo_order_with_values() -> Result<(), String> 
         attempt: 1,
         idempotency_key: 0,
         capacity: 10,
+        fencing_token: 0,
     };
     let ticket_c = ActionTicket {
         run: RunId::new(3),
@@ -1401,6 +1403,7 @@ fn action_queue_dequeue_respects_fifo_order_with_values() -> Result<(), String> 
         attempt: 1,
         idempotency_key: 0,
         capacity: 10,
+        fencing_token: 0,
     };
 
     // Enqueue in order A, B, C

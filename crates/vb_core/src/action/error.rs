@@ -22,6 +22,27 @@ pub struct ActionFailure {
     pub encoded_len: u32,
 }
 
+impl ActionFailureCode {
+    /// Whether a retry can plausibly succeed for this code.
+    ///
+    /// Only codes where the request itself was refused are permanent: the same
+    /// input would be refused again. Every other code depends on external state
+    /// that can change between attempts, including [`Conflict`](Self::Conflict)
+    /// because the competing writer may have finished.
+    #[must_use]
+    pub const fn is_transient(self) -> bool {
+        match self {
+            Self::Rejected | Self::InvalidInput | Self::PermissionDenied => false,
+            Self::Timeout
+            | Self::RateLimited
+            | Self::ResourceExhausted
+            | Self::ExternalUnavailable
+            | Self::Conflict
+            | Self::Unknown => true,
+        }
+    }
+}
+
 impl From<ActionFailureCode> for ActionFailure {
     fn from(code: ActionFailureCode) -> Self {
         let retry_policy = match code {
@@ -135,6 +156,29 @@ impl ActionError {
             Self::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::EncodingFailed | Self::DispatchFailed => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ActionFailureCode;
+
+    #[test]
+    fn transient_classification_is_explicit_per_code() {
+        let expected = [
+            (ActionFailureCode::Rejected, false),
+            (ActionFailureCode::Timeout, true),
+            (ActionFailureCode::RateLimited, true),
+            (ActionFailureCode::ResourceExhausted, true),
+            (ActionFailureCode::ExternalUnavailable, true),
+            (ActionFailureCode::InvalidInput, false),
+            (ActionFailureCode::PermissionDenied, false),
+            (ActionFailureCode::Conflict, true),
+            (ActionFailureCode::Unknown, true),
+        ];
+        for (code, transient) in expected {
+            assert_eq!(code.is_transient(), transient, "code {code:?}");
         }
     }
 }

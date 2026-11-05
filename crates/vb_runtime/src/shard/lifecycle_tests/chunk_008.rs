@@ -146,7 +146,7 @@ fn test_action_output_oversize_rejected() -> Result<(), String> {
             ActionId::new(0),
         ),
         capacity: 1,
-    };
+     fencing_token: 0, };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
         Ok(())
@@ -225,7 +225,7 @@ fn test_action_output_taint_mismatch_rejected() -> Result<(), String> {
             ActionId::new(0),
         ),
         capacity: 1,
-    };
+     fencing_token: 0, };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
         Ok(())
@@ -303,7 +303,7 @@ fn test_action_output_within_limits_accepted() -> Result<(), String> {
             ActionId::new(0),
         ),
         capacity: 1,
-    };
+     fencing_token: 0, };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
         Ok(())

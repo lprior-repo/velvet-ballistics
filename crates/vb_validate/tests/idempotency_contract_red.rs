@@ -623,6 +623,7 @@ fn static_verifier_ignores_zero_numeric_ticket_key_when_contract_is_key_required
         attempt: 1,
         idempotency_key: 0,
         capacity: 3,
+        fencing_token: 0,
     };
 
     let result = validate_action_idempotency_contract(&candidate);

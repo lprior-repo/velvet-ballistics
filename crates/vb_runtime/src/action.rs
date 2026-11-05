@@ -197,6 +197,7 @@ fn dispatch_generic(input: &ActionInput, contract: &ActionContract) -> ActionRes
         attempt: input.ticket.attempt,
         idempotency_key: input.ticket.idempotency_key,
         capacity: 1,
+        fencing_token: 0,
     };
     Ok(ActionOutcome::Suspended(ticket))
 }

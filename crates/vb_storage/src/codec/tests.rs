@@ -35,6 +35,7 @@ fn codec_action_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTic
         attempt: 1,
         idempotency_key: compute_action_idempotency_key(run, 1, seq, action),
         capacity: 2,
+        fencing_token: 0,
     }
 }
 
@@ -314,6 +315,44 @@ struct SchemaOneMissingFieldCase {
     name: &'static str,
 }
 
+/// Serializes a ticket in the schema-one shape, without the fencing token.
+///
+/// The fixtures below model bytes written before the token existed; encoding
+/// the current struct would make the "historical" payload current.
+mod schema_one_ticket_wire {
+    use super::*;
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    struct LegacyActionTicket {
+        run: RunId,
+        step: StepIdx,
+        seq: SeqNo,
+        action: ActionId,
+        run_attempt: u16,
+        attempt: u16,
+        idempotency_key: u128,
+        capacity: u16,
+    }
+
+    pub(super) fn serialize<S: serde::Serializer>(
+        ticket: &ActionTicket,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        LegacyActionTicket {
+            run: ticket.run,
+            step: ticket.step,
+            seq: ticket.seq,
+            action: ticket.action,
+            run_attempt: ticket.run_attempt,
+            attempt: ticket.attempt,
+            idempotency_key: ticket.idempotency_key,
+            capacity: ticket.capacity,
+        }
+        .serialize(serializer)
+    }
+}
+
 #[allow(dead_code)]
 #[derive(serde::Serialize)]
 enum SchemaOneJournalEventFixture {
@@ -358,6 +397,7 @@ enum SchemaOneJournalEventFixture {
     ActionScheduledTicket {
         run: RunId,
         seq: EventSeq,
+        #[serde(serialize_with = "schema_one_ticket_wire::serialize")]
         ticket: ActionTicket,
         input: SlotIdx,
         output: SlotIdx,
@@ -366,6 +406,7 @@ enum SchemaOneJournalEventFixture {
     ActionCompletedEnvelope {
         run: RunId,
         seq: EventSeq,
+        #[serde(serialize_with = "schema_one_ticket_wire::serialize")]
         ticket: ActionTicket,
         output: SlotIdx,
         outcome: DurableActionOutcome,
@@ -385,6 +426,7 @@ enum SchemaOneJournalEventFixture {
     ActionAbandoned {
         run: RunId,
         seq: EventSeq,
+        #[serde(serialize_with = "schema_one_ticket_wire::serialize")]
         ticket: ActionTicket,
     },
     SlotWrittenEvent {
@@ -484,6 +526,7 @@ enum SchemaOneMissingFieldFixture {
     ActionScheduledTicket {
         run: RunId,
         seq: EventSeq,
+        #[serde(serialize_with = "schema_one_ticket_wire::serialize")]
         ticket: ActionTicket,
         input: SlotIdx,
         output: SlotIdx,
@@ -491,6 +534,7 @@ enum SchemaOneMissingFieldFixture {
     ActionCompletedEnvelope {
         run: RunId,
         seq: EventSeq,
+        #[serde(serialize_with = "schema_one_ticket_wire::serialize")]
         ticket: ActionTicket,
         output: SlotIdx,
         outcome: DurableActionOutcome,

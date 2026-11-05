@@ -37,6 +37,7 @@ mod proptest_idempotency {
                     attempt,
                     idempotency_key: key,
                     capacity,
+                    fencing_token: 0,
                 },
             )
     }
@@ -113,7 +114,7 @@ mod proptest_idempotency {
             attempt: ticket.attempt,
                             idempotency_key: key,
                             capacity: ticket.capacity,
-                        };
+                         fencing_token: 0, };
                         let should_exist = idx >= evicted_count;
                         if should_exist {
                             assert!(
@@ -146,7 +147,7 @@ mod proptest_idempotency {
             attempt: base.attempt,
                     idempotency_key: key_counter,
                     capacity: base.capacity,
-                };
+                 fencing_token: 0, };
                 key_counter += 1;
                 unique_tickets.push(ticket);
             }
@@ -192,7 +193,7 @@ mod proptest_idempotency {
             attempt: base.attempt,
                     idempotency_key: key_counter,
                     capacity: base.capacity,
-                };
+                 fencing_token: 0, };
                 key_counter += 1;
                 unique_tickets.push(ticket);
             }
@@ -278,7 +279,7 @@ mod proptest_idempotency {
             attempt: 1,
                 idempotency_key: key_a,
                 capacity: 1,
-            };
+             fencing_token: 0, };
             let ticket_b = ActionTicket {
                 run: RunId::new(1),
                 step: StepIdx::new(0),
@@ -288,7 +289,7 @@ mod proptest_idempotency {
             attempt: 1,
                 idempotency_key: key_b,
                 capacity: 1,
-            };
+             fencing_token: 0, };
 
             assert!(tracker.mark_completed(&ticket_a).is_ok());
             assert!(tracker.mark_completed(&ticket_b).is_ok());

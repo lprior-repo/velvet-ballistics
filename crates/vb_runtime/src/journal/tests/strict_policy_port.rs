@@ -23,7 +23,7 @@ fn fixture_ticket(run: RunId) -> vb_core::action::ActionTicket {
         attempt: 1,
         idempotency_key: 0x0a0b0c0d0e0f1011u128,
         capacity: 3,
-    }
+     fencing_token: 0, }
 }
 
 fn fixture_decision(run: RunId) -> DecisionRecord {

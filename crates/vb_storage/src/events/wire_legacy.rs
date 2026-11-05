@@ -20,6 +20,40 @@ const fn zero_workflow_digest() -> WorkflowDigest {
     WorkflowDigest::from_bytes([0; DIGEST_BYTES])
 }
 
+/// Action ticket as written before the fencing token existed.
+///
+/// A record in this shape decodes with [`ActionTicket::fencing_token`] zero.
+/// Fencing reads zero as "unknown", not "stale": the durable ticket identity
+/// still rejects wrong attempts, and refusing every pre-token completion would
+/// strand runs across an upgrade.
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub(super) struct LegacyActionTicket {
+    run: RunId,
+    step: StepIdx,
+    seq: vb_core::SeqNo,
+    action: ActionId,
+    run_attempt: u16,
+    attempt: u16,
+    idempotency_key: u128,
+    capacity: u16,
+}
+
+impl LegacyActionTicket {
+    pub(super) const fn into_current(self) -> ActionTicket {
+        ActionTicket {
+            run: self.run,
+            step: self.step,
+            seq: self.seq,
+            action: self.action,
+            run_attempt: self.run_attempt,
+            attempt: self.attempt,
+            idempotency_key: self.idempotency_key,
+            capacity: self.capacity,
+            fencing_token: 0,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub(super) enum LegacyJournalEvent {
     RunAccepted {
@@ -63,7 +97,7 @@ pub(super) enum LegacyJournalEvent {
     ActionScheduledTicket {
         run: RunId,
         seq: EventSeq,
-        ticket: ActionTicket,
+        ticket: LegacyActionTicket,
         input: SlotIdx,
         output: SlotIdx,
         #[serde(default = "zero_workflow_digest")]
@@ -72,7 +106,7 @@ pub(super) enum LegacyJournalEvent {
     ActionCompletedEnvelope {
         run: RunId,
         seq: EventSeq,
-        ticket: ActionTicket,
+        ticket: LegacyActionTicket,
         output: SlotIdx,
         outcome: DurableActionOutcome,
         value: Vec<u8>,
@@ -92,7 +126,7 @@ pub(super) enum LegacyJournalEvent {
     ActionAbandoned {
         run: RunId,
         seq: EventSeq,
-        ticket: ActionTicket,
+        ticket: LegacyActionTicket,
     },
     SlotWrittenEvent {
         run: RunId,
@@ -213,4 +247,72 @@ fn decode_current_schema_one_payload(
     let (legacy, remainder) = postcard::take_from_bytes::<LegacyJournalEvent>(payload)
         .map_err(JournalError::PostcardDecodeFailed)?;
     Ok((legacy.into_current(), remainder))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vb_core::SeqNo;
+
+    #[test]
+    fn pre_token_action_abandoned_decodes_with_zero_fencing_token() {
+        let legacy = LegacyJournalEvent::ActionAbandoned {
+            run: RunId::new(5),
+            seq: EventSeq::new(9),
+            ticket: LegacyActionTicket {
+                run: RunId::new(5),
+                step: StepIdx::new(1),
+                seq: SeqNo::new(3),
+                action: ActionId::new(2),
+                run_attempt: 1,
+                attempt: 1,
+                idempotency_key: 7,
+                capacity: 3,
+            },
+        };
+        let bytes = postcard::to_allocvec(&legacy).expect("legacy encode");
+        let (decoded, remainder) =
+            postcard::take_from_bytes::<LegacyJournalEvent>(&bytes).expect("legacy decode");
+        assert!(remainder.is_empty(), "trailing bytes after legacy event");
+        match decoded.into_current() {
+            JournalEvent::ActionAbandoned { ticket, .. } => {
+                assert_eq!(ticket.fencing_token, 0);
+                assert_eq!(ticket.run, RunId::new(5));
+                assert_eq!(ticket.idempotency_key, 7);
+            }
+            other => panic!("unexpected legacy event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn pre_token_scheduled_ticket_decodes_with_zero_fencing_token() {
+        let legacy = LegacyJournalEvent::ActionScheduledTicket {
+            run: RunId::new(6),
+            seq: EventSeq::new(1),
+            ticket: LegacyActionTicket {
+                run: RunId::new(6),
+                step: StepIdx::new(0),
+                seq: SeqNo::new(2),
+                action: ActionId::new(4),
+                run_attempt: 2,
+                attempt: 1,
+                idempotency_key: 11,
+                capacity: 5,
+            },
+            input: SlotIdx::new(0),
+            output: SlotIdx::new(1),
+            action_abi_digest: zero_workflow_digest(),
+        };
+        let bytes = postcard::to_allocvec(&legacy).expect("legacy encode");
+        let (decoded, _) =
+            postcard::take_from_bytes::<LegacyJournalEvent>(&bytes).expect("legacy decode");
+        match decoded.into_current() {
+            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+                assert_eq!(ticket.fencing_token, 0);
+                assert_eq!(ticket.run_attempt, 2);
+                assert_eq!(ticket.capacity, 5);
+            }
+            other => panic!("unexpected legacy event: {other:?}"),
+        }
+    }
 }

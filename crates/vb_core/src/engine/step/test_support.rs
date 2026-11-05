@@ -80,6 +80,7 @@ pub(super) fn action_ticket(run: u64, step: u16, action: u16, capacity: u16) -> 
         attempt: 1,
         idempotency_key: compute_action_idempotency_key(run, 1, seq, action),
         capacity,
+        fencing_token: 0,
     }
 }
 

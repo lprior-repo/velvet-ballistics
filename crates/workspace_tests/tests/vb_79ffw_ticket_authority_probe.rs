@@ -490,6 +490,7 @@ fn future_run_attempt_ticket_rejected() -> Result<(), String> {
             ticket.action,
         ),
         capacity: ticket.capacity,
+        fencing_token: 0,
     };
 
     let result =
@@ -557,6 +558,7 @@ fn zero_run_attempt_ticket_rejected() -> Result<(), String> {
             ticket.action,
         ),
         capacity: ticket.capacity,
+        fencing_token: 0,
     };
 
     let result =
@@ -660,6 +662,7 @@ fn cold_recovery_preserves_run_attempt() -> Result<(), String> {
                 ticket.action,
             ),
             capacity: ticket.capacity,
+            fencing_token: 0,
         };
 
         let result =
@@ -718,6 +721,7 @@ fn ticket_key_valid_after_serialization() -> Result<(), String> {
             action,
         ),
         capacity: 3,
+        fencing_token: 0,
     };
 
     assert!(

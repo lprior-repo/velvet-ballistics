@@ -94,6 +94,7 @@ fn make_ticket(seq: u32) -> ActionTicket {
         attempt: 1,
         idempotency_key: u128::from(seq),
         capacity: 1,
+        fencing_token: 0,
     }
 }
 

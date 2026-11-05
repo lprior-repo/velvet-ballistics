@@ -36,6 +36,7 @@ impl Shard {
             journal,
             completion_capture: crate::runtime::completion_observation::CompletionCapture::default(
             ),
+            fencing_tokens: super::fencing::FencingTokens::new(),
         }
     }
 
@@ -380,6 +381,7 @@ impl Shard {
         run: RunId,
         ticket: vb_core::action::ActionTicket,
     ) -> RuntimeResult<()> {
+        self.fencing_tokens.restore(run, ticket.fencing_token);
         self.pending_action_insert(run, ticket)?;
         Ok(())
     }

@@ -640,6 +640,7 @@ fn action_scheduled_ticket_advances_max_slot_and_step_dimensions() {
             ActionId::new(11),
         ),
         capacity: 1,
+        fencing_token: 0,
     };
     let events = [JournalEvent::ActionScheduledTicket {
         run,
@@ -696,6 +697,7 @@ fn action_abandoned_event_drops_pending_action_and_increments_resolved() {
             ActionId::new(13),
         ),
         capacity: 1,
+        fencing_token: 0,
     };
     let events = [
         JournalEvent::ActionScheduledTicket {
@@ -770,6 +772,7 @@ fn crash_after_schedule_then_recover_hydrates_resume_queue() {
             ActionId::new(17),
         ),
         capacity: 1,
+        fencing_token: 0,
     };
     let events = [
         JournalEvent::RunAccepted {

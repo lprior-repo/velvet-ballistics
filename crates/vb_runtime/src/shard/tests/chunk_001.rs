@@ -105,7 +105,7 @@ fn action_ticket(run: super::RunId, step: vb_core::ids::StepIdx) -> vb_core::act
         attempt: 1,
         idempotency_key: vb_core::action::compute_action_idempotency_key(run, 1, seq, action),
         capacity: 1,
-    }
+     fencing_token: 0, }
 }
 
 fn pending_action_ticket(
@@ -173,7 +173,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
-    };
+     fencing_token: 0, };
     let policy = crate::engine::RetryPolicy {
         max_attempts: 2,
         base_delay_ms: 0,

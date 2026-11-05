@@ -2,6 +2,7 @@
 
 //! Pure retry policy calculations.
 
+use crate::engine::jitter::jitter_delay;
 use crate::engine::types::RetryPolicy;
 
 /// Bounded resource limits used when accepting a retry policy.
@@ -82,6 +83,59 @@ impl RetryPolicy {
     ) -> Result<u64, RetryPolicyMathError> {
         self.validate_attempt(attempt)?;
         Ok(self.delay_after_valid_attempt(max_interval_ms, attempt))
+    }
+
+    /// Returns the bounded delay for a one-based attempt with uniform jitter
+    /// drawn from `rng`.
+    ///
+    /// The jittered delay falls in `[0, delay_for_attempt(...))`; for the
+    /// first attempt the un-jittered delay is zero, so the jittered delay is
+    /// zero too. Drawing the whole interval, rather than adding a perturbation
+    /// to the base delay, is what actually decorrelates concurrent retryers: a
+    /// perturbation keeps both retryers at or above the base delay and they
+    /// still collide.
+    pub fn jittered_delay_for_attempt(
+        self,
+        max_interval_ms: u64,
+        attempt: u16,
+        rng: &mut impl rand::Rng,
+    ) -> Result<u64, RetryPolicyMathError> {
+        let delay = self.delay_for_attempt(max_interval_ms, attempt)?;
+        Ok(jitter_delay(0, delay, rng))
+    }
+
+    /// Advances a retry cursor by one attempt with a jittered delay.
+    ///
+    /// An exhausted cursor is returned unchanged: there is no next attempt to
+    /// jitter.
+    pub fn jittered_next_cursor(
+        self,
+        max_interval_ms: u64,
+        cursor: RetryCursor,
+        rng: &mut impl rand::Rng,
+    ) -> Result<RetryCursor, RetryPolicyMathError> {
+        let next = self.next_cursor(max_interval_ms, cursor)?;
+        if next.exhausted {
+            return Ok(next);
+        }
+        Ok(RetryCursor {
+            delay_ms: jitter_delay(0, next.delay_ms, rng),
+            ..next
+        })
+    }
+
+    /// Builds a validated iterator over the cursors this policy admits.
+    ///
+    /// The iterator replaces the manual `initial_cursor`/`next_cursor` loop
+    /// with the shape a retry loop actually wants: one cursor per attempt,
+    /// each carrying the delay that precedes it. Iteration ends after
+    /// `max_attempts` cursors, so the retry budget is visible in the type.
+    pub fn cursors(self, max_interval_ms: u64) -> Result<RetryCursorIter, RetryPolicyMathError> {
+        Ok(RetryCursorIter {
+            policy: self,
+            max_interval_ms,
+            cursor: Some(self.initial_cursor()?),
+        })
     }
 
     /// Builds the initial retry cursor for this policy.
@@ -216,6 +270,45 @@ impl RetryPolicy {
         })
     }
 }
+
+/// Bounded iterator over the cursors a validated [`RetryPolicy`] admits.
+///
+/// Yields the initial cursor (`attempt == 1`, `delay_ms == 0`) first; every
+/// later cursor carries the delay that precedes its attempt. A caller can
+/// therefore write `for cursor in policy.cursors(max)?.take(..)` and sleep
+/// `cursor.delay_ms` before running attempt `cursor.attempt`.
+#[derive(Debug, Clone)]
+pub struct RetryCursorIter {
+    policy: RetryPolicy,
+    max_interval_ms: u64,
+    cursor: Option<RetryCursor>,
+}
+
+impl Iterator for RetryCursorIter {
+    type Item = RetryCursor;
+
+    fn next(&mut self) -> Option<RetryCursor> {
+        let current = self.cursor?;
+        if current.exhausted {
+            self.cursor = None;
+            return None;
+        }
+        self.cursor = self.policy.next_cursor(self.max_interval_ms, current).ok();
+        Some(current)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.cursor {
+            Some(cursor) if !cursor.exhausted => {
+                let remaining = usize::from(cursor.remaining);
+                (remaining, Some(remaining))
+            }
+            _ => (0, Some(0)),
+        }
+    }
+}
+
+impl ExactSizeIterator for RetryCursorIter {}
 
 #[cfg(test)]
 #[path = "retry_math/tests.rs"]

@@ -20,6 +20,13 @@ pub struct ActionTicket {
     pub idempotency_key: u128,
     /// Maximum per-action attempts allowed (capacity bound from retry policy).
     pub capacity: u16,
+    /// Fencing token minted when this ticket was issued.
+    ///
+    /// A completion carrying a token older than the run's current one is a
+    /// straggler from a superseded invocation and must not apply. Zero means
+    /// "unknown": records written before the token existed decode with zero and
+    /// are fenced by ticket identity alone.
+    pub fencing_token: u64,
 }
 /// Parameters for creating a new action ticket via `issue_action_ticket`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,6 +47,29 @@ pub struct NewActionTicket {
     pub idempotency_key: u128,
     /// Maximum per-action attempts allowed.
     pub capacity: u16,
+    /// Fencing token minted for this issuance. Zero means "not minted".
+    pub fencing_token: u64,
+}
+
+impl ActionTicket {
+    /// Compares every field that identifies the invocation, ignoring the
+    /// fencing token.
+    ///
+    /// Issuance mints a fresh token, so a caller that rebuilt the ticket from
+    /// its own inputs holds the same invocation with an unknown token. Identity
+    /// is deliberately token-agnostic; fencing is a separate check so neither
+    /// can mask the other.
+    #[must_use]
+    pub fn same_invocation(&self, other: &Self) -> bool {
+        self.run == other.run
+            && self.step == other.step
+            && self.seq == other.seq
+            && self.action == other.action
+            && self.run_attempt == other.run_attempt
+            && self.attempt == other.attempt
+            && self.idempotency_key == other.idempotency_key
+            && self.capacity == other.capacity
+    }
 }
 
 /// Computes the canonical deterministic idempotency key for an action ticket.
@@ -85,5 +115,6 @@ pub fn issue_action_ticket(spec: NewActionTicket) -> ActionTicket {
         attempt: spec.attempt,
         idempotency_key: spec.idempotency_key,
         capacity: spec.capacity,
+        fencing_token: spec.fencing_token,
     }
 }

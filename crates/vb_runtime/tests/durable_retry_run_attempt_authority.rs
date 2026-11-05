@@ -414,6 +414,7 @@ fn future_run_attempt_ticket_rejected() -> Result<(), String> {
         attempt: current_ticket.attempt,
         idempotency_key: current_ticket.idempotency_key,
         capacity: current_ticket.capacity,
+        fencing_token: 0,
     };
 
     let result =
@@ -454,6 +455,7 @@ fn zero_run_attempt_ticket_rejected() -> Result<(), String> {
         attempt: current_ticket.attempt,
         idempotency_key: current_ticket.idempotency_key,
         capacity: current_ticket.capacity,
+        fencing_token: 0,
     };
 
     let result =

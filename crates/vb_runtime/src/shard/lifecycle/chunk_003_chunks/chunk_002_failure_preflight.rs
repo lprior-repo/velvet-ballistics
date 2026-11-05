@@ -28,8 +28,13 @@ pub(crate) fn preflight_action_failure(
 ) -> RuntimeResult<ActionFailurePreflight> {
     crate::shard::helpers::validate_action_completion(state, ticket)?;
 
-    // Retry path: only when policy is Retryable AND retry metadata exists.
+    // Retry path: policy is Retryable, the failure can actually change on a
+    // retry, and retry metadata exists. A caller-supplied Retryable alone is
+    // not enough: retrying a refusal (invalid input, denied permission,
+    // rejected request) burns the attempt budget and delays the error handler
+    // without ever changing the outcome.
     if failure.retry_policy == VbCoreRetryPolicy::Retryable
+        && failure.code.is_transient()
         && crate::shard::helpers::retry_metadata_exists(state, ticket.step)
     {
         let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;

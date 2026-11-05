@@ -157,5 +157,6 @@ fn action_ticket_from_bytes(data: &[u8]) -> Option<ActionTicket> {
         attempt,
         idempotency_key: 0,
         capacity: if capacity == 0 { 1 } else { capacity },
+        fencing_token: 0,
     })
 }

@@ -266,6 +266,7 @@ fn pending_ticket(run: RunId, action: ActionId) -> ActionTicket {
         attempt: 1,
         idempotency_key: compute_idempotency_key(run, 1, SeqNo::ZERO, action),
         capacity: 1,
+        fencing_token: 0,
     }
 }
 

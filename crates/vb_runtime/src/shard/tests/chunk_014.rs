@@ -84,7 +84,7 @@ fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
-    };
+     fencing_token: 0, };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
         value: vb_core::value::SlotValue::I64(1),
@@ -244,4 +244,59 @@ fn shard_action_failure_non_retryable_without_handler_fails_run() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
+
+#[test]
+fn shard_action_completion_with_superseded_fencing_token_is_rejected() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = do_with_retry_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(744);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run: run,
+            workflow: workflow,
+            caps: test_fixtures::contract_capability_for(ActionId::new(0)),
+            action_contracts: test_fixtures::contracts_through(ActionId::new(0)),
+            inputs: Box::from([(SlotIdx::ZERO, SlotValue::I64(0))])
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    let first = pending_action_ticket(&shard, run, vb_core::ids::StepIdx::new(1), 1);
+    assert!(first.fencing_token > 0, "issuance must mint a token");
+
+    // A second issuance for the same invocation (a re-drive after recovery)
+    // mints a fresh token while every other ticket field stays identical, so
+    // ticket identity alone cannot tell the two issuances apart.
+    let reissued_token = shard.fencing_tokens.mint(run);
+    assert!(reissued_token > first.fencing_token);
+    let reissued = vb_core::action::ActionTicket {
+        fencing_token: reissued_token,
+        ..first
+    };
+    assert!(shard.pending_action_insert(run, reissued).is_ok());
+
+    let output = vb_core::action::ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: SlotValue::I64(1),
+        taint: vb_core::value::Taint::Clean,
+        encoded_len: 8,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted {
+            ticket: first,
+            output,
+        }),
+        Ok(())
+    );
+    assert_eq!(
+        shard.tick(),
+        Err(RuntimeError::StaleFencingToken {
+            incoming: first.fencing_token,
+        })
+    );
 }

@@ -280,6 +280,7 @@ fn durable_fixture(deficient_cost: bool) -> TestResult<DurableFixture> {
             seq,
             ActionId::new(0),
         ),
+        fencing_token: 0,
     };
     let events = [
         vb_storage::JournalEvent::RunAccepted {
