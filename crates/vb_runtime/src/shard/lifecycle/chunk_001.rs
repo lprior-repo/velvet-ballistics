@@ -122,7 +122,10 @@ impl Shard {
         )?;
         self.prepare_run_slots(run)?;
         let mut frame = self.take_frame_for(run, &workflow)?;
-        crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
+        if let Err(error) = crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow) {
+            self.release_frame(frame);
+            return Err(error);
+        }
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
         if persist_header {
             self.append_admission_header_journal_event(
@@ -268,12 +271,10 @@ impl Shard {
         let admission = self.build_admission(run, workflow.digest(), caps)?;
         match admission {
             Some(adm) => {
-                let budget =
-                    vb_core::budget::AggregateResourceBudget::from_workflow(workflow).map_err(
-                        |_| RuntimeError::AdmissionArtifactInvalid {
-                            digest: workflow.digest(),
-                        },
-                    )?;
+                let budget = vb_core::budget::AggregateResourceBudget::from_workflow(workflow)
+                    .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
+                        digest: workflow.digest(),
+                    })?;
                 Ok(Some(adm.with_attached_budget(budget)))
             }
             None => Ok(None),
