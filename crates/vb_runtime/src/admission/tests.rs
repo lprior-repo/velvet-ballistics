@@ -1552,9 +1552,7 @@ fn admission_error_match_covers_all_variants() {
             AdmissionError::ArtifactInvalidProofFlag { .. } => "artifact_invalid_proof_flag",
             AdmissionError::ArtifactDigestMismatch { .. } => "artifact_digest_mismatch",
             AdmissionError::ArtifactCertificateStale { .. } => "artifact_certificate_stale",
-            AdmissionError::ArtifactVersionIncompatible { .. } => {
-                "artifact_version_incompatible"
-            }
+            AdmissionError::ArtifactVersionIncompatible { .. } => "artifact_version_incompatible",
             AdmissionError::CapabilityCountMismatch { .. } => "capability_count_mismatch",
         }
     }
