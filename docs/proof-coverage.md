@@ -9,12 +9,12 @@ proofs). The CI baseline (`moon run :ci`) only gates on a small slice of each.
 | Verifier | Total artifacts | In CI baseline | Manual only |
 | --- | --- | --- | --- |
 | Kani harnesses (`#[kani::proof]`) | 331 | 8 (4 `vb_core` + 4 `vb_validate`) | 323 |
-| TLA+ root specs (`.tla`) | 26 | 2 (`WorkflowBoundedAdmission`, `IdempotencySafety`) | 24 |
-| Verus spec files (`verification/verus/*.rs`) | 70 | 0 | 70 |
+| TLA+ root specs (`.tla`) | 23 | 2 (`WorkflowBoundedAdmission`, `IdempotencySafety`) | 21 |
+| Verus spec files (`verification/verus/*.rs`) | 2 | 0 | 2 |
 
 Kani counts are sourced from `.evidence/kani-list/*.json` (regenerate with
 `bash scripts/kani-list.sh <pkg>`); see `kani-baseline` for the harness-to-
-claim map.
+claim map. TLA+ and Verus counts above are tree counts at this revision: `.tla` files outside `.beads/` for TLA+, files present under `verification/verus/` for Verus, distinct `verus:` paths in `contracts/proof_obligations.yaml` for the registry; the Kani row was not re-counted here.
 
 ## CI Baseline
 
@@ -67,9 +67,7 @@ the registry's `verus:` targets via `scripts/verify-verus.sh`. It is marked
 plus 120-minute budget per PR). The full-workspace sweep
 `moon run :verify-verus-all` is `runInCI: false`.
 
-The 70 `.rs` files under `verification/verus/` (excluding `extern_*` thin
-extern-spec mirrors) are reachable only through manual invocation of the
-above commands.
+Only 2 `.rs` files are present under `verification/verus/` (a `production_inner` mirror and its bridge); the registry cites 35 distinct `verus:` targets, none of which is present in this tree, so `verify-verus` cannot pass until they are restored. The 2 present files are reachable only through manual invocation of the above commands.
 
 ## Exploratory Kani Harnesses (Top 10 by Package)
 
@@ -115,7 +113,7 @@ Per-package totals: `vb_core` 206, `vb_compile` 65, `vb_validate` 27,
 
 ### TLA+
 
-- **24 of 26 root specs are exploratory.** Only `WorkflowBoundedAdmission`
+- **21 of 23 root specs are exploratory.** Only `WorkflowBoundedAdmission`
   and `IdempotencySafety` are wired into `verify-tlc`. Heavy specs
   (`StepBudgetSuspension`, `VbKyyfReplayDeterminism`, `YamlE2eChain`) stay
   out of CI until they have bounded, time-safe `.cfg` files.
@@ -125,9 +123,9 @@ Per-package totals: `vb_core` 206, `vb_compile` 65, `vb_validate` 27,
 
 ### Verus
 
-- **0 of 70 spec files are in `ci:`.** `verify-verus` and `verify-verus-all`
+- **0 of the 2 present files are in `ci:`.** `verify-verus` and `verify-verus-all`
   are both manual. The `verify-verus` task reads from
-  `contracts/proof_obligations.yaml` and currently lists 41 `verus:` keys.
+  `contracts/proof_obligations.yaml` and currently cites 35 distinct `verus:` targets.
 - **Coverage is registry-driven, not pipeline-gated.** A Verus spec added
   under `verification/verus/` without a matching `verus:` registry entry
   ships unverified.

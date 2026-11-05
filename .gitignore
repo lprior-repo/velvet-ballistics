@@ -88,6 +88,8 @@ fuzz/artifacts/
 **/*.d
 verification/**/*.bin
 verification/verus/vb_*
+# Verus source files are not build artifacts: never ignore vb_*.rs.
+!verification/verus/vb_*.rs
 # rustc long-type-hint dumps emitted when a type cannot be formatted
 *.long-type-*.txt
 
