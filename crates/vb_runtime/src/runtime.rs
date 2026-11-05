@@ -1036,6 +1036,57 @@ impl Runtime {
         Ok(alive)
     }
 
+    fn preflight_observed_slots(
+        slots: &mut [completion_observation::CompletionObservationSlot],
+        required: usize,
+    ) -> Result<
+        &mut [completion_observation::CompletionObservationSlot],
+        completion_observation::ObservationPreflightError,
+    > {
+        use completion_observation::ObservationPreflightError;
+
+        let provided = slots.len();
+        let required_slots = slots
+            .get_mut(..required)
+            .ok_or(ObservationPreflightError::BufferTooShort { required, provided })?;
+        for (index, slot) in required_slots.iter().enumerate() {
+            if slot.first.is_some() || slot.conflict {
+                return Err(ObservationPreflightError::SlotNotEmpty { index });
+            }
+        }
+        Ok(required_slots)
+    }
+
+    fn tick_observed_shards(
+        &mut self,
+        slots: &mut [completion_observation::CompletionObservationSlot],
+    ) -> completion_observation::ObservedTickOutcome {
+        use completion_observation::{ObservationConflict, ObservedTickOutcome};
+
+        let mut alive = true;
+        let mut observation = Ok(());
+        for (shard, slot) in self.shards.iter_mut().zip(slots.iter_mut()) {
+            let (execution, captured) = shard.tick_observed();
+            *slot = captured;
+            if slot.conflict {
+                observation = Err(ObservationConflict::MultipleCompletions);
+            }
+            match execution {
+                Ok(shard_alive) => alive &= shard_alive,
+                Err(error) => {
+                    return ObservedTickOutcome {
+                        execution: Err(error),
+                        observation,
+                    };
+                }
+            }
+        }
+        ObservedTickOutcome {
+            execution: Ok(alive),
+            observation,
+        }
+    }
+
     /// Processes one command per shard with opt-in, caller-owned observations.
     ///
     /// Preflight rejects a short buffer first, then the lowest occupied required
@@ -1053,42 +1104,9 @@ impl Runtime {
         completion_observation::ObservedTickOutcome,
         completion_observation::ObservationPreflightError,
     > {
-        use completion_observation::{
-            ObservationConflict, ObservationPreflightError, ObservedTickOutcome,
-        };
-
         let required = self.shards.len();
-        let provided = slots.len();
-        let required_slots = slots
-            .get_mut(..required)
-            .ok_or(ObservationPreflightError::BufferTooShort { required, provided })?;
-        for (index, slot) in required_slots.iter().enumerate() {
-            if slot.first.is_some() || slot.conflict {
-                return Err(ObservationPreflightError::SlotNotEmpty { index });
-            }
-        }
-        let mut alive = true;
-        let mut observation = Ok(());
-        for (shard, slot) in self.shards.iter_mut().zip(required_slots.iter_mut()) {
-            let (execution, captured) = shard.tick_observed();
-            *slot = captured;
-            if slot.conflict {
-                observation = Err(ObservationConflict::MultipleCompletions);
-            }
-            match execution {
-                Ok(shard_alive) => alive &= shard_alive,
-                Err(error) => {
-                    return Ok(ObservedTickOutcome {
-                        execution: Err(error),
-                        observation,
-                    });
-                }
-            }
-        }
-        Ok(ObservedTickOutcome {
-            execution: Ok(alive),
-            observation,
-        })
+        let required_slots = Self::preflight_observed_slots(slots, required)?;
+        Ok(self.tick_observed_shards(required_slots))
     }
 
     /// Processes one tick on a specific shard with the given directive.
