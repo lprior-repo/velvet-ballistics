@@ -16,7 +16,7 @@ use vb_core::action::{
 };
 use vb_core::budget::AggregateResourceBudget;
 use vb_core::capability::CapabilitySet;
-use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, TenantId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{
@@ -134,6 +134,7 @@ struct ForgedRunAdmission {
     policy: RuntimePolicy,
     policy_pin: RunPolicyPin,
     budget: Option<AggregateResourceBudget>,
+    tenant: Option<TenantId>,
     idempotency_attested: Box<[ActionId]>,
 }
 
@@ -148,6 +149,7 @@ fn forge_admission_with_pin(
         policy: original.policy(),
         policy_pin: RunPolicyPin::Pinned(forged_pin),
         budget: original.budget(),
+        tenant: original.tenant(),
         idempotency_attested: original.idempotency_attested().to_vec().into_boxed_slice(),
     };
     let bytes = postcard::to_allocvec(&dto)
@@ -190,7 +192,9 @@ fn get_run_admission_pin(
 ) -> Result<Option<RunPolicyPin>, String> {
     let events = journal.events_for_run(run).map_err(|e| e.to_string())?;
     for event in &events {
-        if let JournalEvent::RunAdmission { policy_pin, .. } = event {
+        if let JournalEvent::RunAdmission { policy_pin, .. }
+        | JournalEvent::RunAdmissionBudget { policy_pin, .. } = event
+        {
             return Ok(Some(*policy_pin));
         }
     }
@@ -423,9 +427,13 @@ fn policy_pin_survives_recovery_scenario(policy: RuntimePolicy, run: RunId) -> R
         // the original RunAdmission (seq 1) must still be present alongside
         // any new events.
         let final_events = journal.events_for_run(run).map_err(|e| e.to_string())?;
-        let admission_found = final_events.iter().any(
-            |e| matches!(e, JournalEvent::RunAdmission { seq, .. } if *seq == EventSeq::new(1)),
-        );
+        let admission_found = final_events.iter().any(|e| {
+            matches!(
+                e,
+                JournalEvent::RunAdmission { seq, .. } | JournalEvent::RunAdmissionBudget { seq, .. }
+                    if *seq == EventSeq::new(1)
+            )
+        });
         if !admission_found {
             return Err(
                 "original RunAdmission event must still be present in final journal".to_string(),

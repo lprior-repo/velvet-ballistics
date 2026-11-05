@@ -47,6 +47,9 @@ pub(super) fn positions(bytes: &[u8], fixture: &Fixture) -> TestResult<Positions
     c.take(admission_bytes.len())?;
     count(&mut c, size, "collect_entries", &mut fields)?;
     count(&mut c, size, "collect_lineages", &mut fields)?;
+    // Cumulative collect counters serialize after the two empty tables.
+    c.unsigned(64)?;
+    c.unsigned(64)?;
     mark(&c, size, "action_contracts", &mut fields);
     contracts(&mut c, size, &mut fields)?;
     assert_eq!(c.remaining().len(), 32);

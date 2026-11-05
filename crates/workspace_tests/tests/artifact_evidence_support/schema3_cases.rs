@@ -2,6 +2,9 @@ use super::*;
 
 #[test]
 fn real_schema2_artifact_requires_migration_before_positional_ir_decode() -> TestResult {
+    // The real schema-2 wrapper bytes plus the trailing postcard-encoded
+    // `artifact_version` (1.0.0) field added at admission; the embedded IR
+    // bytes remain the untouched schema-2 positional payload below.
     let bytes = include_bytes!("../../../../.beads/vb-9agmk/schema2-fixture/artifact.postcard");
     let artifact: vb_storage::AcceptedArtifact = postcard::from_bytes(bytes)?;
     let old_ir =

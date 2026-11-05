@@ -40,7 +40,7 @@ fuzz_target!(|data: &[u8]| {
     // Try running kani-list.sh with the fuzzed arguments. Capped: the old
     // comment promised a short timeout but none was enforced, so adversarial
     // arguments could hang the smoke lane on cargo operations.
-    let mut argv = Vec::with_capacity(args.len() + 1);
+    let mut argv = Vec::with_capacity(args.len().saturating_add(1));
     argv.push("scripts/kani-list.sh");
     argv.extend(args);
     fuzz_lib::bounded_cmd::run_smoke_bounded(

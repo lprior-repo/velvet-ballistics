@@ -35,6 +35,10 @@ pub(super) fn inspect<'a>(
     if cursor.length(0, "collect_entries")? != 0 || cursor.length(0, "collect_lineages")? != 0 {
         return Err(Error::Malformed("collect_tables").into());
     }
+    // The checkpoint serializes both cumulative collect counters after the
+    // two empty tables; skipping them shifts every later authority match.
+    cursor.unsigned(64)?;
+    cursor.unsigned(64)?;
     cursor.matching(op.known(&authority.contracts)?)?;
     integrity(bytes, &mut cursor)?;
     Ok(Witness { bytes, authority })

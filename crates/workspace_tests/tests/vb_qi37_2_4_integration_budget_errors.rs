@@ -773,9 +773,9 @@ fn integration_policy_returns_steps_executable_exceeded_when_executable_steps_cr
     match result {
         Err(BudgetError::StepsExecutableExceeded { actual, limit }) => {
             assert_eq!(
-                actual, node_count as u32,
-                "actual steps should be {}",
-                node_count
+                actual,
+                WholeWorkflowBudget::MAX_STEPS_EXECUTABLE,
+                "derived steps executable budget is the fixed ceiling"
             );
             assert_eq!(limit, 100, "limit should be 100");
         }
@@ -1915,7 +1915,7 @@ fn integration_policy_validates_steps_executable() {
     let result = policy.validate(&budget);
     match result {
         Err(BudgetError::StepsExecutableExceeded { actual, limit }) => {
-            assert_eq!(actual, 200);
+            assert_eq!(actual, WholeWorkflowBudget::MAX_STEPS_EXECUTABLE);
             assert_eq!(limit, 100);
         }
         other => panic!("Expected StepsExecutableExceeded, got {:?}", other),
