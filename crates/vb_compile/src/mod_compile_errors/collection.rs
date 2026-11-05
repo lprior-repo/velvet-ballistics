@@ -142,17 +142,6 @@ pub(super) fn workflow_error_code(error: &WorkflowError) -> &'static str {
         WorkflowError::SlotOutOfBounds { .. } => "TYPE_MISMATCH",
         WorkflowError::ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",
         WorkflowError::Expression(_) => "INVALID_EXPRESSION",
-        WorkflowError::EmptyNodes
-        | WorkflowError::EntryOutOfBounds { .. }
-        | WorkflowError::NodeIdMismatch { .. }
-        | WorkflowError::EmptyBranchTable
-        | WorkflowError::UnreachableNode { .. }
-        | WorkflowError::BackwardEdge { .. }
-        | WorkflowError::ImproperLoopNesting { .. }
-        | WorkflowError::SymbolOutOfBounds { .. }
-        | WorkflowError::AccessorPathTooDeep { .. }
-        | WorkflowError::StepCountOverflow { .. }
-        | WorkflowError::JumpCycle { .. } => "INVALID_COMPILED_WORKFLOW",
         _ => "INVALID_COMPILED_WORKFLOW",
     }
 }
