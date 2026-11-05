@@ -17,7 +17,6 @@ pub mod artifact;
 pub mod budget;
 pub mod capability;
 pub mod capability_grant;
-pub mod compat;
 pub mod contract_encoding;
 pub mod diagnostic;
 pub mod engine;
@@ -112,10 +111,6 @@ pub use capability::{Capability, CapabilitySet};
 pub use capability_grant::{
     GrantAdmissionMode, GrantDispatchContext, GrantError, GrantId, GrantSignature, GrantTimeMs,
     MAX_REVOKED_IDS, RevocationEpoch, ScopedDispatch, ScopedGrant, ScopedGrantParams,
-};
-pub use compat::{
-    Classification, CompatBoundary, CompatDecision, CompatDecisionCode, CompatDigests, CompatError,
-    CompatInputs, CompatRule, CompatibilityClass, SchemaVersion, classify,
 };
 pub use diagnostic::{
     CODE_REGISTRY, CodeCategory, CodeEntry, Diagnostic, DiagnosticCode, DiagnosticCodeParseError,

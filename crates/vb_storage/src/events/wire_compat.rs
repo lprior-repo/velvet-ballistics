@@ -2,7 +2,7 @@
 
 use super::super::JournalEvent;
 use crate::{RecordKind, codec::validation::is_schema_one_version, types::RecordEnvelope};
-use vb_core::compat::CompatibilityClass;
+use crate::compat::CompatibilityClass;
 
 pub(super) fn is_schema_one_envelope(envelope: &RecordEnvelope) -> bool {
     is_schema_one_version(envelope.schema_version)
