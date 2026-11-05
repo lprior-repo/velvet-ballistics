@@ -15,8 +15,7 @@
 //! - `impl_001_construct` - `RunFrame::new` and `RunFrame::reinitialize`
 //! - `impl_002_accessors` - read accessors, parallel-in-flight counter,
 //!   `set_pc`, `increment_executed`
-//! - `impl_003_slots_taints` - slot read/write, taint read/write,
-//!   `find_handle_taint`, and the slot/taint/states snapshot helpers
+//! - `impl_003_slots_taints` - slot/taint read/write and snapshot helpers
 //! - `impl_004_state_machines` - `mark_*` transitions, the private
 //!   `write_step_state` and `validate_transition` helpers
 //! - `initialized_slot_entry` - the free function used by
