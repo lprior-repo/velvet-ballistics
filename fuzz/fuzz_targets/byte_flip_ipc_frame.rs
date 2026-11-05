@@ -6,9 +6,7 @@
 
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use vb_ipc::{
-    IpcCommand, IpcError, IpcFrameHeader, IPC_HEADER_LEN,
-};
+use vb_ipc::{IPC_HEADER_LEN, IpcCommand, IpcError, IpcFrameHeader};
 
 /// Build a valid IPC header for the given command.
 fn make_valid_header(command: IpcCommand, payload_len: u32) -> IpcFrameHeader {
@@ -48,9 +46,7 @@ fn test_header_byte_flip(data: &[u8]) {
 
     // Decode and verify typed result
     if corrupted.len() == IPC_HEADER_LEN {
-        let corrupted_arr: [u8; IPC_HEADER_LEN] = corrupted
-            .try_into()
-            .unwrap();
+        let corrupted_arr: [u8; IPC_HEADER_LEN] = corrupted.try_into().unwrap();
         assert_typed_header_result(vb_ipc::frame::decode_frame_header(&corrupted_arr));
     }
 }
@@ -102,9 +98,7 @@ fn test_full_frame_corruption(data: &[u8]) {
 
     // Decode header first
     if corrupted.len() >= IPC_HEADER_LEN {
-        let header_bytes: [u8; IPC_HEADER_LEN] = corrupted[..IPC_HEADER_LEN]
-            .try_into()
-            .unwrap();
+        let header_bytes: [u8; IPC_HEADER_LEN] = corrupted[..IPC_HEADER_LEN].try_into().unwrap();
 
         let result = vb_ipc::frame::decode_frame_header(&header_bytes);
 
@@ -113,10 +107,7 @@ fn test_full_frame_corruption(data: &[u8]) {
                 // Try to decode payload if valid header
                 if corrupted.len() > IPC_HEADER_LEN {
                     let payload_section = &corrupted[IPC_HEADER_LEN..];
-                    let _ = vb_ipc::frame::decode_frame_payload(
-                        &decoded_header,
-                        payload_section,
-                    );
+                    let _ = vb_ipc::frame::decode_frame_payload(&decoded_header, payload_section);
                 }
             }
             Err(IpcError::InvalidMagic { .. }) => {}
@@ -164,9 +155,7 @@ fn test_individual_byte_flips(data: &[u8]) {
         let corrupted = fuzz_lib::byte_flip_mutation::corrupted_version(&encoded, &flip_seed);
 
         if corrupted.len() == IPC_HEADER_LEN {
-            let corrupted_arr: [u8; IPC_HEADER_LEN] = corrupted
-                .try_into()
-                .unwrap();
+            let corrupted_arr: [u8; IPC_HEADER_LEN] = corrupted.try_into().unwrap();
             assert_typed_header_result(vb_ipc::frame::decode_frame_header(&corrupted_arr));
         }
     }

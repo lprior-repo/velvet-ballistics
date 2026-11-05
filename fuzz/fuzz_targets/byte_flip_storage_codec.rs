@@ -66,11 +66,7 @@ fn test_byte_flip(encoded: &[u8], seed: &[u8]) {
 }
 
 fn test_all_byte_positions(encoded: &[u8], data: &[u8]) {
-    let seed = if !data.is_empty() {
-        data[0] as u64
-    } else {
-        0
-    };
+    let seed = if !data.is_empty() { data[0] as u64 } else { 0 };
 
     // Seed-based corruption testing
     let seed_bytes = seed.to_le_bytes();
