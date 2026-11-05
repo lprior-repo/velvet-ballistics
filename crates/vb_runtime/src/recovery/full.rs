@@ -79,7 +79,7 @@ impl RecoveredPendingActionTicket {
 pub(crate) fn hydrate_frame_for_full_recovery_with_inputs(
     seed: &RecoveryFrameSeed,
     boundary: RecoveredRunBoundary,
-    initial_inputs: Option<Vec<(vb_core::SlotIdx, vb_core::SlotValue)>>,
+    initial_inputs: Option<Vec<(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)>>,
 ) -> RuntimeResult<RunFrame> {
     super::frame::validate_recovery_seed_shape(seed)?;
     reject_unrecoverable_full_recovery_state(seed, boundary)?;

@@ -5,7 +5,7 @@ use std::num::NonZeroUsize;
 use vb_core::action::{ActionContract, ActionFailure, ActionOutputReady, ActionTicket};
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::value::SlotValue;
+use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::{CounterSnapshot, RuntimeMetricsSnapshot, ShardMetricsSnapshot};
@@ -26,6 +26,8 @@ pub mod completion_observation;
 mod owned_activation;
 mod shutdown;
 pub use shutdown::{ShutdownFailure, ShutdownPhase, ShutdownReport};
+
+type ScalarRecoveryInput = (SlotIdx, SlotValue, Taint);
 
 struct RecoveryArtifactWorkflow {
     artifact: vb_storage::admission::AcceptedArtifact,
@@ -666,7 +668,7 @@ impl Runtime {
         recovered: &RecoveryArtifactWorkflow,
         journal: &vb_storage::FjallJournal,
         run: RunId,
-    ) -> RuntimeResult<Option<vb_storage::RunInputsRecord>> {
+    ) -> RuntimeResult<Option<Vec<ScalarRecoveryInput>>> {
         // Check if this admission is new-bound (has input digest) or legacy
         let admission_event = prefix
             .events
@@ -702,7 +704,64 @@ impl Runtime {
         )?;
         crate::recovery::validate_input_record_workflow(&record, &recovered.workflow)?;
 
-        Ok(Some(record))
+        Self::scalar_recovery_inputs(&record, &recovered.workflow).map(Some)
+    }
+
+    /// Projects only validated retained scalar entries; omitted inputs stay absent.
+    fn scalar_recovery_inputs(
+        record: &vb_storage::RunInputsRecord,
+        workflow: &CompiledWorkflow,
+    ) -> RuntimeResult<Vec<ScalarRecoveryInput>> {
+        let inputs = record.inputs();
+        if inputs.len() > workflow.input_slots().len() {
+            return Err(RuntimeError::InvalidRecoveryHydration);
+        }
+        if inputs.is_empty() {
+            return Ok(Vec::new());
+        }
+        let taints = Self::scalar_recovery_input_taints(workflow)?;
+        let mut projected = Vec::new();
+        projected
+            .try_reserve_exact(inputs.len())
+            .map_err(|_| vb_core::errors::CoreError::AllocationFailed)?;
+        for (slot, value) in inputs {
+            let taint = taints
+                .get(slot.as_usize())
+                .copied()
+                .flatten()
+                .ok_or(RuntimeError::InvalidRecoveryHydration)?;
+            projected.push((*slot, *value, taint));
+        }
+        Ok(projected)
+    }
+
+    /// Builds one fallibly allocated dense lookup, bounded by the u16 frame width.
+    fn scalar_recovery_input_taints(
+        workflow: &CompiledWorkflow,
+    ) -> RuntimeResult<Vec<Option<Taint>>> {
+        let slot_count = usize::from(workflow.slot_count());
+        if workflow.input_slots().len() > slot_count {
+            return Err(RuntimeError::InvalidRecoveryHydration);
+        }
+        let mut taints = Vec::new();
+        taints
+            .try_reserve_exact(slot_count)
+            .map_err(|_| vb_core::errors::CoreError::AllocationFailed)?;
+        taints.resize(slot_count, None);
+        for declared in workflow.input_slots() {
+            let entry = taints
+                .get_mut(declared.slot.as_usize())
+                .ok_or(RuntimeError::InvalidRecoveryHydration)?;
+            let taint = if declared.constraint.secret {
+                Taint::Secret
+            } else {
+                Taint::Clean
+            };
+            if entry.replace(taint).is_some() {
+                return Err(RuntimeError::InvalidRecoveryHydration);
+            }
+        }
+        Ok(taints)
     }
 
     fn recovery_storage_journal(&self) -> RuntimeResult<std::sync::Arc<vb_storage::FjallJournal>> {
@@ -812,7 +871,7 @@ impl Runtime {
         run: RunId,
         prefix: RecoveryPrefixEvidence,
         recovered: RecoveryArtifactWorkflow,
-        retained_inputs: Option<vb_storage::RunInputsRecord>,
+        retained_inputs: Option<Vec<ScalarRecoveryInput>>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let expected = crate::recovery::action_abi_digests_from_contracts(
             &recovered.artifact.action_contracts,
@@ -880,7 +939,7 @@ impl Runtime {
         prefix: RecoveryPrefixEvidence,
         seed: vb_storage::recovery::RecoveryFrameSeedProduct,
         boundary: crate::recovery::RecoveredRunBoundary,
-        retained_inputs: Option<vb_storage::RunInputsRecord>,
+        retained_inputs: Option<Vec<ScalarRecoveryInput>>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let context = RecoveredSeedProductContext {
             run,
@@ -893,7 +952,7 @@ impl Runtime {
 
     fn product_from_recovered_context(
         context: RecoveredSeedProductContext,
-        retained_inputs: Option<vb_storage::RunInputsRecord>,
+        retained_inputs: Option<Vec<ScalarRecoveryInput>>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
         let cannot_resume =
             crate::recovery::classify_full_recovery_resume(context.seed.seed(), context.boundary);
@@ -919,15 +978,12 @@ impl Runtime {
 
     fn resumable_product_from_recovered_context(
         context: RecoveredSeedProductContext,
-        retained_inputs: Option<vb_storage::RunInputsRecord>,
+        retained_inputs: Option<Vec<ScalarRecoveryInput>>,
     ) -> RuntimeResult<crate::recovery::RuntimeRecoveryProduct> {
-        let initial_inputs = retained_inputs
-            .as_ref()
-            .map(|record| record.inputs().to_vec());
         let frame = crate::recovery::hydrate_frame_for_full_recovery_with_inputs(
             context.seed.seed(),
             context.boundary,
-            initial_inputs,
+            retained_inputs,
         )?;
         let collect_states = Self::hydrate_recovered_collect_states(&context.prefix.events)?;
         Ok(crate::recovery::RuntimeRecoveryProduct::resumable(
