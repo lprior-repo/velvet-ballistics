@@ -9,7 +9,7 @@ use libfuzzer_sys::fuzz_target;
 use vb_core::RunId;
 use vb_storage::{
     EventSeq,
-    constants::{MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAGIC_JOURNAL_EVENT, RECORD_HEADER_BYTES},
+    constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_BYTES},
 };
 
 fn make_journal_event(data: &[u8]) -> vb_storage::JournalEvent {
@@ -146,8 +146,7 @@ fn test_envelope_with_corrupted_postcard(event: &vb_storage::JournalEvent, data:
             } else {
                 0
             };
-            let flip_pos =
-                payload_offset + (flip_seed % (envelope_bytes.len() - payload_offset));
+            let flip_pos = payload_offset + (flip_seed % (envelope_bytes.len() - payload_offset));
             envelope_bytes[flip_pos] ^= 0xFF;
 
             // Try to decode

@@ -17,7 +17,9 @@ pub fn flip_byte_at(data: &[u8], offset: usize) -> Vec<u8> {
 
 /// Flip each byte individually, yielding one mutant per byte position.
 pub fn all_byte_flip_mutants(data: &[u8]) -> impl Iterator<Item = (usize, Vec<u8>)> {
-    data.iter().enumerate().map(move |(i, _)| (i, flip_byte_at(data, i)))
+    data.iter()
+        .enumerate()
+        .map(move |(i, _)| (i, flip_byte_at(data, i)))
 }
 
 /// Flip a random byte based on seed bytes.
@@ -25,9 +27,9 @@ pub fn seeded_byte_flip(data: &[u8], seed: &[u8]) -> Vec<u8> {
     if data.is_empty() {
         return Vec::new();
     }
-    let offset: usize = seed.iter().fold(0u64, |acc, b| {
-        acc.wrapping_mul(256).wrapping_add(*b as u64)
-    }) as usize;
+    let offset: usize =
+        seed.iter()
+            .fold(0u64, |acc, b| acc.wrapping_mul(256).wrapping_add(*b as u64)) as usize;
     let pos = offset % data.len();
     flip_byte_at(data, pos)
 }
@@ -66,7 +68,10 @@ pub fn flip_bit_at_byte_offset(data: &[u8], byte_offset: usize, bit_index: u8) -
 }
 
 /// Generate all single-bit-flip mutants within a byte.
-pub fn all_bit_flip_mutants(data: &[u8], byte_offset: usize) -> impl Iterator<Item = (u8, Vec<u8>)> {
+pub fn all_bit_flip_mutants(
+    data: &[u8],
+    byte_offset: usize,
+) -> impl Iterator<Item = (u8, Vec<u8>)> {
     (0..8).map(move |bit| (bit, flip_bit_at_byte_offset(data, byte_offset, bit)))
 }
 
@@ -96,11 +101,7 @@ pub fn corrupted_version(data: &[u8], seed: &[u8]) -> Vec<u8> {
             } else {
                 0
             };
-            let bit_pos = if seed.len() > 2 {
-                seed[2] & 0x07
-            } else {
-                0
-            };
+            let bit_pos = if seed.len() > 2 { seed[2] & 0x07 } else { 0 };
             flip_bit_at_byte_offset(data, byte_pos, bit_pos)
         }
         96..=127 => {
