@@ -2621,12 +2621,26 @@ fn cli_doctor_returns_success_for_healthy_journal_with_trim_recommended() {
 
 #[test]
 fn cli_doctor_returns_storage_error_for_unreadable_path() {
-    let nonexistent = std::path::PathBuf::from("/nonexistent/path/to/db");
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    // A regular file where the journal directory should be: opening a
+    // journal below it fails with ENOTDIR for every user including root,
+    // while a merely nonexistent path is created and opens fine as root.
+    let blocker = dir.path().join("blocker");
+    if !write_test_file(&blocker, b"not a directory") {
+        return;
+    }
+    let db = blocker.join("db");
 
     let output = match run_cli(&[
         std::ffi::OsStr::new("doctor"),
         std::ffi::OsStr::new("--db"),
-        nonexistent.as_os_str(),
+        db.as_os_str(),
     ]) {
         Some(output) => output,
         None => return,
