@@ -23,7 +23,7 @@ fn benchmark_aggregate_resource_budget_contract_surface(c: &mut Criterion) {
     c.bench_function(&id, |b| {
         b.iter(|| {
             let present = black_box(source).contains("AggregateResourceBudget");
-            assert!(present);
+            assert_eq!(present, true);
         });
     });
 }

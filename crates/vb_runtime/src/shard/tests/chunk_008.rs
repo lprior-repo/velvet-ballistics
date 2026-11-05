@@ -296,13 +296,9 @@ fn shard_enqueue_enforces_admitted_per_run_queue_depth() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else {
-        return;
-    };
-    let budget = match vb_core::budget::AggregateResourceBudget::from_workflow(&workflow) {
-        Ok(budget) => budget,
-        Err(_) => return,
-    };
+    let workflow = suspended_workflow().expect("suspended workflow builds");
+    let budget = vb_core::budget::AggregateResourceBudget::from_workflow(&workflow)
+        .expect("aggregate budget derives from workflow");
     let limit = budget.max_queue_depth;
     let run = super::RunId::new(302);
     assert_eq!(

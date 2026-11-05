@@ -701,7 +701,7 @@ fn admit_artifact_run_accepts_same_major_newer_minor_ir_version() -> Result<(), 
 #[test]
 fn check_artifact_ir_version_allows_only_live_effect_classes() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    assert!(check_artifact_ir_version(&artifact).is_ok());
+    assert_eq!(check_artifact_ir_version(&artifact), Ok(()));
     artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 0, 0);
     assert!(
         matches!(

@@ -2842,7 +2842,7 @@ fn drive_state_without_recorded_start_records_wall_clock_on_first_drive() {
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
     assert!(matches!(result, Ok(RuntimeSignal::Finished(_))));
-    assert!(state.run_started_millis.is_some());
+    assert_ne!(state.run_started_millis, None);
 }
 
 #[test]

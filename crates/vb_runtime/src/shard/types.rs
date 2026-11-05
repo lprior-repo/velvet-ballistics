@@ -1938,7 +1938,7 @@ mod tests {
         assert_eq!(q.pop(), Some(cancel(other)));
         assert_eq!(q.pending_for(other), 0);
         assert_eq!(q.pop(), Some(ShardCommand::Shutdown));
-        assert!(q.is_empty());
+        assert_eq!(q.len(), 0);
     }
 
     #[test]
@@ -1976,7 +1976,7 @@ mod tests {
             })
         );
         assert_eq!(q.pending_for(run), 0);
-        assert!(q.is_empty());
+        assert_eq!(q.len(), 0);
     }
 
     #[test]
