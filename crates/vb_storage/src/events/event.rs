@@ -398,7 +398,7 @@ pub enum JournalEvent {
         /// Per-run sequence.
         seq: EventSeq,
         /// Complete compatibility decision record.
-        decision: vb_core::compat::CompatDecision,
+        decision: crate::compat::CompatDecision,
     },
     /// Run admission receipt carrying the admitted aggregate budget
     /// (MASTER §77.18). Appended at the end of the enum; no existing

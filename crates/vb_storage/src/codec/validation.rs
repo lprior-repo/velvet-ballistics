@@ -1,8 +1,8 @@
+use crate::compat::{CompatBoundary, CompatibilityClass, classify};
 use crate::{
     compat::wire_version_inputs, constants::CURRENT_SCHEMA_VERSION, error::JournalError,
     records::RecordKind,
 };
-use crate::compat::{CompatBoundary, CompatibilityClass, classify};
 
 const SCHEMA_ONE_VERSION: u16 = 1;
 
@@ -31,7 +31,7 @@ pub(crate) fn validate_schema_version(version: u16) -> Result<(), JournalError> 
             from: version,
             to: CURRENT_SCHEMA_VERSION,
         }),
-        CompatibilityClass::ReplayOnly | CompatibilityClass::Rejected | _ => {
+        CompatibilityClass::ReplayOnly | CompatibilityClass::Rejected => {
             Err(JournalError::UnsupportedSchemaVersion { version })
         }
     }

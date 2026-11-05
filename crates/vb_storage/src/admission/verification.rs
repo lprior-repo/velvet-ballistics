@@ -112,7 +112,7 @@ fn checked_evidence_schema(
 }
 
 /// Routes one evidence schema version through the §77.17 algebra at the
-/// [`vb_core::compat::CompatBoundary::ArtifactEnvelope`] boundary. Only
+/// [`crate::compat::CompatBoundary::ArtifactEnvelope`] boundary. Only
 /// the known legacy lines (the v1 `Unverified` era and v2) carry a
 /// migration path, and the path is explicit: the caller sees
 /// `MigrationRequired` and must regenerate the evidence, never a silent
@@ -122,14 +122,14 @@ fn checked_evidence_schema(
 /// class.
 pub(crate) fn classify_evidence_held(held: u16) -> JournalError {
     let inputs = crate::compat::wire_version_inputs(
-        vb_core::compat::CompatBoundary::ArtifactEnvelope,
+        crate::compat::CompatBoundary::ArtifactEnvelope,
         held,
         EVIDENCE_VERSION,
         held == 1 || held == 2,
         false,
     );
-    match vb_core::compat::classify(inputs).class {
-        vb_core::compat::CompatibilityClass::MigrationRequired => JournalError::MigrationRequired {
+    match crate::compat::classify(inputs).class {
+        crate::compat::CompatibilityClass::MigrationRequired => JournalError::MigrationRequired {
             from: held,
             to: EVIDENCE_VERSION,
         },

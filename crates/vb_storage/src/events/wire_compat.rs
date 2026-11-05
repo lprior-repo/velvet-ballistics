@@ -1,15 +1,15 @@
 #![forbid(unsafe_code)]
 
 use super::super::JournalEvent;
-use crate::{RecordKind, codec::validation::is_schema_one_version, types::RecordEnvelope};
 use crate::compat::CompatibilityClass;
+use crate::{RecordKind, codec::validation::is_schema_one_version, types::RecordEnvelope};
 
 pub(super) fn is_schema_one_envelope(envelope: &RecordEnvelope) -> bool {
     is_schema_one_version(envelope.schema_version)
 }
 
 /// §77.17 classification of one journal envelope at the
-/// [`vb_core::compat::CompatBoundary::JournalEventVersion`] boundary.
+/// [`crate::compat::CompatBoundary::JournalEventVersion`] boundary.
 ///
 /// This is a pure classifier: it changes no decode outcome. An envelope
 /// whose kind matches the decoded event under the current schema version

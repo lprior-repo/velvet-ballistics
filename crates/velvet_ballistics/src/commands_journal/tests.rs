@@ -1124,15 +1124,15 @@ fn trace_one_gate_decision_denied_maps_failed_status() {
 
 #[test]
 fn trace_one_compatibility_decision_maps_correct_fields() {
-    let decision = vb_core::CompatDecision::decide(
-        vb_core::CompatInputs {
-            boundary: vb_core::CompatBoundary::IrVersion,
-            held: vb_core::SchemaVersion::new(1, 0, 0),
-            required: vb_core::SchemaVersion::new(1, 0, 0),
+    let decision = vb_storage::compat::CompatDecision::decide(
+        vb_storage::compat::CompatInputs {
+            boundary: vb_storage::compat::CompatBoundary::IrVersion,
+            held: vb_storage::compat::SchemaVersion::new(1, 0, 0),
+            required: vb_storage::compat::SchemaVersion::new(1, 0, 0),
             migration_available: false,
             replay_only: false,
         },
-        vb_core::CompatDigests {
+        vb_storage::compat::CompatDigests {
             rule_digest: [7u8; 32],
             old_schema_digest: [1u8; 32],
             new_schema_digest: [2u8; 32],

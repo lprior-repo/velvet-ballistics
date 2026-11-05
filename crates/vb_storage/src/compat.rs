@@ -1,3 +1,25 @@
+#![forbid(unsafe_code)]
+
+//! MASTER §77.17 compatibility gates for the storage layer.
+//!
+//! The algebra itself lives in this module. This module owns the
+//! storage-side pieces: the BLAKE3 deciding-rule digest, journaling of
+//! decisions that affect admission or live-effect dispatch, and the two
+//! gate seams — admission and live dispatch.
+//!
+//! Gate split, by design:
+//! - Admission stores the artifact and journals the decision. It blocks
+//!   [`CompatibilityClass::MigrationRequired`] and
+//!   [`CompatibilityClass::Rejected`]; a
+//!   [`CompatibilityClass::ReplayOnly`] artifact may be admitted (stored
+//!   for replay) because admission alone mints no live-effect authority.
+//! - Live dispatch re-checks the journaled decision and blocks
+//!   [`CompatibilityClass::ReplayOnly`] too: a replay-only decision never
+//!   authorizes a new live effect.
+//! - Every decision is journaled before enforcement, including blocked
+//!   ones, so a refusal is itself on the durable record.
+
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Semver-shaped schema version. Single-number wire versions (for example
@@ -415,33 +437,16 @@ impl CompatDecision {
 
     /// True when the decision must block dispatch until resolved.
     #[must_use]
-#![forbid(unsafe_code)]
-
-//! MASTER §77.17 compatibility gates for the storage layer.
-//!
-//! The algebra itself lives in [`vb_core::compat`]. This module owns the
-//! storage-side pieces: the BLAKE3 deciding-rule digest, journaling of
-//! decisions that affect admission or live-effect dispatch, and the two
-//! gate seams — admission and live dispatch.
-//!
-//! Gate split, by design:
-//! - Admission stores the artifact and journals the decision. It blocks
-//!   [`CompatibilityClass::MigrationRequired`] and
-//!   [`CompatibilityClass::Rejected`]; a
-//!   [`CompatibilityClass::ReplayOnly`] artifact may be admitted (stored
-//!   for replay) because admission alone mints no live-effect authority.
-//! - Live dispatch re-checks the journaled decision and blocks
-//!   [`CompatibilityClass::ReplayOnly`] too: a replay-only decision never
-//!   authorizes a new live effect.
-//! - Every decision is journaled before enforcement, including blocked
-//!   ones, so a refusal is itself on the durable record.
+    pub const fn blocks_dispatch(self) -> bool {
+        self.class.blocks_dispatch()
+    }
+}
 
 use crate::{
     EventSeq, constants::CURRENT_SCHEMA_VERSION, error::JournalError, events::JournalEvent,
     journal::FjallJournal,
 };
 use vb_core::RunId;
-};
 
 /// Domain separation for deciding-rule digests.
 const RULE_DIGEST_DOMAIN: &[u8] = b"velvet-ballistics/compat-rule/v1";
@@ -503,6 +508,7 @@ pub fn journal_compat_decision(
 pub enum CompatGateError {
     /// The decision blocks this gate.
     #[error("compatibility gate blocked: {0}")]
+    Compat(#[from] CompatError),
     /// Journaling the decision failed.
     #[error("compatibility decision journaling failed: {0}")]
     Journal(#[from] JournalError),
@@ -534,11 +540,6 @@ pub fn gate_admission(
         | CompatibilityClass::BackwardCompatible
         | CompatibilityClass::ForwardCompatible
         | CompatibilityClass::ReplayOnly => Ok(decision),
-        // CompatibilityClass is non_exhaustive: an unknown future class
-        // fails closed rather than passing admission.
-        _ => Err(CompatGateError::Compat(CompatError::Rejected {
-            boundary: decision.boundary,
-        })),
     }
 }
 
@@ -585,6 +586,7 @@ pub const fn wire_version_inputs(
 /// `SdkAbi` boundary.
 #[must_use]
 pub const fn sdk_absent_inputs() -> CompatInputs {
+    CompatInputs {
         boundary: CompatBoundary::SdkAbi,
         held: SchemaVersion::from_major(0),
         required: SchemaVersion::from_major(CURRENT_SCHEMA_VERSION),
@@ -638,8 +640,8 @@ pub fn gate_run_start(
 #[allow(clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use crate::{RecordKind, constants::CURRENT_SCHEMA_VERSION, types::RecordEnvelope};
     use crate::compat::SchemaVersion;
+    use crate::{RecordKind, constants::CURRENT_SCHEMA_VERSION, types::RecordEnvelope};
     use vb_core::{SlotIdx, StepIdx};
 
     fn inputs(

@@ -85,6 +85,5 @@ pub fn issue_action_ticket(spec: NewActionTicket) -> ActionTicket {
         attempt: spec.attempt,
         idempotency_key: spec.idempotency_key,
         capacity: spec.capacity,
-        fencing_token: spec.fencing_token,
     }
 }
