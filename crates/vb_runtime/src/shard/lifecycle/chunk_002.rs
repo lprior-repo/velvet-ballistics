@@ -243,6 +243,7 @@ impl Shard {
     }
 
     fn drive_run(&mut self, run: RunId) -> RuntimeResult<()> {
+        self.gate_compat_run_start(run)?;
         let mut state = self.take_run_state(run)?;
         let rollback_state = state.clone();
         let mut evidence = EvidenceCollector::new();

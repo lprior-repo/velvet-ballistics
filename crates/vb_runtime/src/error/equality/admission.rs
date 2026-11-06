@@ -3,6 +3,23 @@ use super::RuntimeError;
 pub(super) fn runtime_error_admission_field_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     runtime_error_admission_digest_eq(left, right)
         || runtime_error_admission_capability_eq(left, right)
+        || compat_gate_blocked_eq(left, right)
+}
+
+fn compat_gate_blocked_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    matches!(
+        (left, right),
+        (
+            RuntimeError::CompatGateBlocked {
+                run: left_run,
+                source: left_source,
+            },
+            RuntimeError::CompatGateBlocked {
+                run: right_run,
+                source: right_source,
+            },
+        ) if left_run == right_run && left_source == right_source
+    )
 }
 
 fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) -> bool {

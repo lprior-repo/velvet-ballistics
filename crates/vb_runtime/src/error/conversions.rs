@@ -1,6 +1,7 @@
 use super::RuntimeError;
 use crate::shard::ResumeError;
 use std::sync::Arc;
+use vb_core::ids::RunId;
 
 impl From<vb_core::errors::CoreError> for RuntimeError {
     fn from(error: vb_core::errors::CoreError) -> Self {
@@ -34,6 +35,21 @@ impl RuntimeError {
                 Self::AdmissionHeaderPersistenceFailed { source }
             }
             other => other,
+        }
+    }
+
+    pub(crate) fn compat_gate_blocked(
+        run: RunId,
+        error: vb_storage::compat::CompatGateError,
+    ) -> Self {
+        match error {
+            vb_storage::compat::CompatGateError::Compat(source) => {
+                Self::CompatGateBlocked { run, source }
+            }
+            vb_storage::compat::CompatGateError::Journal(source) => Self::from(source),
+            _ => Self::UnsupportedOperation {
+                operation: "compat_gate_blocked",
+            },
         }
     }
 }

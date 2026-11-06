@@ -175,6 +175,14 @@ pub enum RuntimeError {
         /// Digest of the stale artifact.
         digest: vb_core::ids::WorkflowDigest,
     },
+    /// Compatibility gate blocked the run from starting: a journaled
+    /// §77.17 decision forbids new live effects for this run.
+    CompatGateBlocked {
+        /// Run the gate refused to start.
+        run: RunId,
+        /// Preserved compatibility failure from the storage gate.
+        source: vb_storage::compat::CompatError,
+    },
     /// Admission gate rejected the run because the artifact digest does not match.
     AdmissionDigestMismatch {
         /// Digest that was requested for admission.

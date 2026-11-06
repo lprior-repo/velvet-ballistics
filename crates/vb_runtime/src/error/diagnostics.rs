@@ -48,6 +48,7 @@ impl RuntimeError {
     pub const INTROSPECTION_EPOCH_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x201F);
     pub const RETRY_BLOCKED_ON_UNDRAINED_JOURNAL_CODE: DiagnosticCode = DiagnosticCode::new(0x2023);
     pub const PER_RUN_QUEUE_DEPTH_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2024);
+    pub const COMPAT_GATE_BLOCKED_CODE: DiagnosticCode = DiagnosticCode::new(0x2025);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -112,6 +113,7 @@ impl RuntimeError {
             Self::SecretResultNotAllowed => Self::SECRET_RESULT_NOT_ALLOWED_CODE,
             Self::IpcPayloadSizeExceeded { .. } => Self::IPC_PAYLOAD_SIZE_EXCEEDED_CODE,
             Self::EngineDriveFailed { .. } => Self::ENGINE_DRIVE_FAILED_CODE,
+            Self::CompatGateBlocked { .. } => Self::COMPAT_GATE_BLOCKED_CODE,
             Self::RetryBlockedOnUndrainedJournal { .. } => {
                 Self::RETRY_BLOCKED_ON_UNDRAINED_JOURNAL_CODE
             }
@@ -169,6 +171,7 @@ impl RuntimeError {
             | Self::ActionTaintDowngrade { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             Self::EngineDriveFailed { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             Self::RetryBlockedOnUndrainedJournal { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            Self::CompatGateBlocked { .. } => None,
             Self::RunNotFound
             | Self::RunAlreadyExists
             | Self::UnsupportedOperation { .. }
