@@ -19,8 +19,8 @@ pub fn mark_step_after_signal(
     signal: &RuntimeSignal,
 ) -> Result<(), RuntimeEngineError> {
     match signal {
-        RuntimeSignal::AwaitingWait => run.mark_waiting(step).map_err(RuntimeEngineError::Core),
-        RuntimeSignal::AwaitingAsk => run.mark_asking(step).map_err(RuntimeEngineError::Core),
+        RuntimeSignal::AwaitingWait(_) => run.mark_waiting(step).map_err(RuntimeEngineError::Core),
+        RuntimeSignal::AwaitingAsk(_) => run.mark_asking(step).map_err(RuntimeEngineError::Core),
         RuntimeSignal::AwaitingAction(_) | RuntimeSignal::StepBudgetExhausted => Ok(()),
         RuntimeSignal::Continue | RuntimeSignal::Finished(_) => {
             run.mark_succeeded(step).map_err(RuntimeEngineError::Core)

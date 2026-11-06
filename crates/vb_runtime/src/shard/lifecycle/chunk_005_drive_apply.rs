@@ -538,11 +538,11 @@ impl Shard {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
                 self.apply_awaiting_action(run, state, ticket, evidence)
             }
-            Ok(RuntimeSignal::AwaitingWait) => {
-                self.apply_awaiting_timer(run, state, PendingTimerKind::Wait, evidence)
+            Ok(RuntimeSignal::AwaitingWait(timeout_ms)) => {
+                self.apply_awaiting_timer(run, state, PendingTimerKind::Wait, timeout_ms, evidence)
             }
-            Ok(RuntimeSignal::AwaitingAsk) => {
-                self.apply_awaiting_timer(run, state, PendingTimerKind::Ask, evidence)
+            Ok(RuntimeSignal::AwaitingAsk(timeout_ms)) => {
+                self.apply_awaiting_timer(run, state, PendingTimerKind::Ask, timeout_ms, evidence)
             }
             // VB-NOORE: an unmapped core engine signal is a typed
             // engine error; route to terminal-failed so the run

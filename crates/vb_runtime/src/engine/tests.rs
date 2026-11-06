@@ -263,17 +263,17 @@ fn runtime_signal_equality_exhausted() {
 
 #[test]
 fn runtime_signal_equality_awaiting_wait() {
-    assert_eq!(RuntimeSignal::AwaitingWait, RuntimeSignal::AwaitingWait);
+    assert_eq!(RuntimeSignal::AwaitingWait(0), RuntimeSignal::AwaitingWait(0));
 }
 
 #[test]
 fn runtime_signal_equality_awaiting_ask() {
-    assert_eq!(RuntimeSignal::AwaitingAsk, RuntimeSignal::AwaitingAsk);
+    assert_eq!(RuntimeSignal::AwaitingAsk(0), RuntimeSignal::AwaitingAsk(0));
 }
 
 #[test]
 fn runtime_signal_differs_awaiting_wait_from_awaiting_ask() {
-    assert_ne!(RuntimeSignal::AwaitingWait, RuntimeSignal::AwaitingAsk);
+    assert_ne!(RuntimeSignal::AwaitingWait(0), RuntimeSignal::AwaitingAsk(0));
 }
 
 #[test]

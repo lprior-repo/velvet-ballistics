@@ -11,14 +11,17 @@ use vb_core::value::SlotValue;
 ///
 /// Returns AwaitingWait signal. The host runtime is responsible for
 /// resuming the run after the deadline passes.
+/// Returns (AwaitingWait signal, timeout_ms). timeout_ms is the value from
+/// the deadline_slot as a millisecond duration from now.
 pub fn wait_until(
     run: &mut RunFrame,
     deadline_slot: SlotIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
+) -> Result<(vb_core::EngineSignal, i64), EngineError> {
     let deadline = *run.read_slot(deadline_slot)?;
+    let timeout_ms = numeric_to_i64(deadline)?;
     validate_numeric(deadline, "deadline")?;
     run.increment_executed()?;
-    Ok(vb_core::EngineSignal::AwaitingWait)
+    Ok((vb_core::EngineSignal::AwaitingWait, timeout_ms))
 }
 
 /// Executes WaitEvent: reads the event slot and optional timeout,
@@ -26,19 +29,24 @@ pub fn wait_until(
 ///
 /// Returns AwaitingWait signal. The host runtime resumes when the
 /// event fires or the timeout expires.
+/// Returns (AwaitingWait signal, timeout_ms). If timeout_slot is None or not numeric,
+/// timeout_ms defaults to -1 (no timeout).
 pub fn wait_event(
     run: &mut RunFrame,
     event: SlotIdx,
     timeout_slot: Option<SlotIdx>,
-) -> Result<vb_core::EngineSignal, EngineError> {
+) -> Result<(vb_core::EngineSignal, i64), EngineError> {
     let event_value = *run.read_slot(event)?;
     validate_numeric(event_value, "event")?;
-    if let Some(timeout) = timeout_slot {
+    let timeout_ms = if let Some(timeout) = timeout_slot {
         let timeout_value = *run.read_slot(timeout)?;
         validate_numeric(timeout_value, "timeout")?;
-    }
+        numeric_to_i64(timeout_value)?
+    } else {
+        -1
+    };
     run.increment_executed()?;
-    Ok(vb_core::EngineSignal::AwaitingWait)
+    Ok((vb_core::EngineSignal::AwaitingWait, timeout_ms))
 }
 
 /// Executes Ask: reads the prompt slot, validates it is prompt-compatible,
@@ -47,19 +55,24 @@ pub fn wait_event(
 ///
 /// Returns AwaitingAsk signal. The host runtime presents the prompt
 /// to the user and resumes with the answer.
+/// Returns (AwaitingAsk signal, timeout_ms). If timeout_slot is None or not numeric,
+/// timeout_ms defaults to -1 (no timeout).
 pub fn ask(
     run: &mut RunFrame,
     prompt: SlotIdx,
     timeout_slot: Option<SlotIdx>,
-) -> Result<vb_core::EngineSignal, EngineError> {
+) -> Result<(vb_core::EngineSignal, i64), EngineError> {
     let prompt_value = *run.read_slot(prompt)?;
     validate_prompt(prompt_value)?;
-    if let Some(timeout) = timeout_slot {
+    let timeout_ms = if let Some(timeout) = timeout_slot {
         let timeout_value = *run.read_slot(timeout)?;
         validate_numeric(timeout_value, "timeout")?;
-    }
+        numeric_to_i64(timeout_value)?
+    } else {
+        -1
+    };
     run.increment_executed()?;
-    Ok(vb_core::EngineSignal::AwaitingAsk)
+    Ok((vb_core::EngineSignal::AwaitingAsk, timeout_ms))
 }
 
 /// Executes AskResume: validates the answer slot is populated
@@ -83,6 +96,18 @@ pub fn ask_resume(
     run.set_pc(target)?;
     run.increment_executed()?;
     Ok(vb_core::EngineSignal::Continue)
+}
+
+/// Extract an i64 value from a numeric slot value for timeout computation.
+fn numeric_to_i64(value: SlotValue) -> Result<i64, EngineError> {
+    match value {
+        SlotValue::I64(n) => Ok(n),
+        SlotValue::F64(n) => Ok(n.get() as i64),
+        other => Err(EngineError::TypeMismatch {
+            expected: "numeric",
+            found: other.type_name(),
+        }),
+    }
 }
 
 fn validate_numeric(value: SlotValue, expected: &'static str) -> Result<(), EngineError> {
@@ -124,7 +149,10 @@ mod tests {
 
         let result = wait_until(&mut run, deadline);
 
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert_eq!(
+            result,
+            Ok((vb_core::EngineSignal::AwaitingWait, 1000))
+        );
     }
 
     #[test]
@@ -141,7 +169,10 @@ mod tests {
 
         let result = wait_event(&mut run, event, Some(timeout));
 
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert_eq!(
+            result,
+            Ok((vb_core::EngineSignal::AwaitingWait, 500))
+        );
     }
 
     #[test]
@@ -158,7 +189,10 @@ mod tests {
 
         let result = ask(&mut run, prompt, Some(timeout));
 
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+        assert_eq!(
+            result,
+            Ok((vb_core::EngineSignal::AwaitingAsk, 300))
+        );
     }
 
     #[test]
@@ -224,7 +258,7 @@ mod tests {
         // When calling wait_event without timeout
         let result = wait_event(&mut run, event, None);
         // Then it returns AwaitingWait
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingWait, _))));
     }
 
     #[test]
@@ -249,7 +283,7 @@ mod tests {
         // When calling ask without timeout
         let result = ask(&mut run, prompt, None);
         // Then it returns AwaitingAsk
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingAsk, _))));
     }
 
     #[test]
@@ -344,7 +378,7 @@ mod tests {
         // When calling wait_event with timeout
         let result = wait_event(&mut run, event, Some(timeout));
         // Then it returns AwaitingWait
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingWait, _))));
     }
 
     #[test]
@@ -362,7 +396,7 @@ mod tests {
         // When calling ask with timeout
         let result = ask(&mut run, prompt, Some(timeout));
         // Then it returns AwaitingAsk
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingAsk, _))));
     }
 
     #[test]
@@ -377,7 +411,7 @@ mod tests {
         // When calling wait_until
         let result = wait_until(&mut run, deadline);
         // Then pc is unchanged
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingWait, _))));
         assert_eq!(run.pc(), pc_before);
     }
 
@@ -393,7 +427,7 @@ mod tests {
         // When calling wait_event
         let result = wait_event(&mut run, event, None);
         // Then pc is unchanged
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingWait, _))));
         assert_eq!(run.pc(), pc_before);
     }
 
@@ -409,7 +443,7 @@ mod tests {
         // When calling ask
         let result = ask(&mut run, prompt, None);
         // Then pc is unchanged
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingAsk, _))));
         assert_eq!(run.pc(), pc_before);
     }
 
@@ -514,7 +548,7 @@ mod tests {
         let result = wait_until(&mut run, deadline);
         // Then it returns AwaitingWait (no deadline validation at primitive level)
         // BUG: No validation that the deadline is in the future or positive
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingWait, _))));
     }
 
     #[test]
@@ -528,7 +562,7 @@ mod tests {
         // When calling wait_until with deadline=0
         let result = wait_until(&mut run, deadline);
         // Then it returns AwaitingWait (no deadline validation)
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingWait, _))));
     }
 
     #[test]
@@ -546,7 +580,7 @@ mod tests {
         // When calling ask with timeout=0
         let result = ask(&mut run, prompt, Some(timeout));
         // Then it returns AwaitingAsk (no timeout validation at primitive level)
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingAsk, _))));
     }
 
     #[test]
@@ -564,7 +598,7 @@ mod tests {
         // When calling wait_event with negative timeout
         let result = wait_event(&mut run, event, Some(timeout));
         // Then it returns AwaitingWait (no timeout sign validation)
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingWait, _))));
     }
 
     #[test]
@@ -579,7 +613,7 @@ mod tests {
         // When calling wait_until
         let result = wait_until(&mut run, deadline);
         // Then executed counter IS incremented
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingWait, _))));
         assert_eq!(run.executed(), before + 1);
     }
 
@@ -595,7 +629,7 @@ mod tests {
         // When calling ask
         let result = ask(&mut run, prompt, None);
         // Then executed counter IS incremented
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingAsk));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingAsk, _))));
         assert_eq!(run.executed(), before + 1);
     }
 
@@ -611,7 +645,7 @@ mod tests {
         // When calling wait_event
         let result = wait_event(&mut run, event, None);
         // Then executed counter IS incremented
-        assert_eq!(result, Ok(vb_core::EngineSignal::AwaitingWait));
+        assert!(matches!(result, Ok((vb_core::EngineSignal::AwaitingWait, _))));
         assert_eq!(run.executed(), before + 1);
     }
 
@@ -657,7 +691,7 @@ mod tests {
         assert_eq!(
             result,
             Err(EngineError::TypeMismatch {
-                expected: "deadline",
+                expected: "numeric",
                 found: "boolean",
             })
         );
@@ -698,7 +732,7 @@ mod tests {
         assert_eq!(
             result,
             Err(EngineError::TypeMismatch {
-                expected: "deadline",
+                expected: "numeric",
                 found: "symbol",
             })
         );

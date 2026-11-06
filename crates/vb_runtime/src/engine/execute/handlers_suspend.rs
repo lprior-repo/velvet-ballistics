@@ -17,9 +17,10 @@ pub(super) fn handle_wait_until(
     run: &mut RunFrame,
     deadline_slot: SlotIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::wait_ask::wait_until(run, deadline_slot)
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+    let (signal, timeout_ms) =
+        crate::primitives::wait_ask::wait_until(run, deadline_slot)
+            .map_err(RuntimeEngineError::Core)?;
+    Ok(RuntimeSignal::AwaitingWait(timeout_ms))
 }
 
 pub(super) fn handle_wait_event(
@@ -27,9 +28,10 @@ pub(super) fn handle_wait_event(
     event: SlotIdx,
     timeout_slot: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::wait_ask::wait_event(run, event, timeout_slot)
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+    let (signal, timeout_ms) =
+        crate::primitives::wait_ask::wait_event(run, event, timeout_slot)
+            .map_err(RuntimeEngineError::Core)?;
+    Ok(RuntimeSignal::AwaitingWait(timeout_ms))
 }
 
 pub(super) fn handle_ask(
@@ -37,9 +39,10 @@ pub(super) fn handle_ask(
     prompt: SlotIdx,
     timeout_slot: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    crate::primitives::wait_ask::ask(run, prompt, timeout_slot)
-        .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+    let (signal, timeout_ms) =
+        crate::primitives::wait_ask::ask(run, prompt, timeout_slot)
+            .map_err(RuntimeEngineError::Core)?;
+    Ok(RuntimeSignal::AwaitingAsk(timeout_ms))
 }
 
 pub(super) fn handle_ask_resume(

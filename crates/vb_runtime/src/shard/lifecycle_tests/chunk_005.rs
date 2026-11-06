@@ -178,7 +178,7 @@ fn stale_ask_ticket_is_rejected_after_same_step_is_scheduled_again() -> Result<(
         .map_err(|error| format!("suspended ask state must be checked out: {error:?}"))?;
     let _previous_timer = shard.pending_timer_remove(run);
     shard
-        .await_timer(run, state, PendingTimerKind::Ask)
+        .await_timer(run, state, PendingTimerKind::Ask, 5000)
         .map_err(|error| format!("ask reschedule failed: {error:?}"))?;
     let second = shard
         .lookup_pending_ask_ticket(run, StepIdx::new(2))
@@ -963,7 +963,7 @@ fn drive_state_at_parallel_in_flight_limit_suspends_on_wait() {
     ));
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait(_))));
 }
 
 #[test]
@@ -974,7 +974,7 @@ fn drive_state_without_admitted_budget_ignores_parallel_count() {
         .expect("run state builds");
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait(_))));
 }
 fn timer_entry_budget(max_timer_entries: u32) -> AggregateResourceBudget {
     AggregateResourceBudget {
@@ -1145,7 +1145,7 @@ fn drive_state_at_timer_entry_limit_suspends_on_wait_until() {
     ));
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait(_))));
 }
 
 #[test]
@@ -1187,7 +1187,7 @@ fn drive_state_without_admitted_budget_ignores_timer_counts() {
     };
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait(_))));
 }
 fn incident_budget(max_incident_emissions: u64) -> AggregateResourceBudget {
     AggregateResourceBudget {
@@ -1883,7 +1883,7 @@ fn drive_state_at_open_gate_limit_suspends_on_ask() {
     ));
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::AwaitingAsk)));
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingAsk(_))));
 }
 
 #[test]
@@ -1933,7 +1933,7 @@ fn drive_state_at_signal_subscription_limit_suspends_on_wait_event() {
     ));
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait(_))));
 }
 
 #[test]
@@ -1955,7 +1955,7 @@ fn drive_state_timer_wait_is_not_a_signal_subscription() {
     ));
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait)));
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingWait(_))));
 }
 
 #[test]
@@ -1969,7 +1969,7 @@ fn drive_state_without_admitted_budget_ignores_suspension_counts() {
     };
     let mut evidence = EvidenceCollector::new();
     let result = Shard::drive_state(&mut state, 100, &mut evidence);
-    assert!(matches!(result, Ok(RuntimeSignal::AwaitingAsk)));
+    assert!(matches!(result, Ok(RuntimeSignal::AwaitingAsk(_))));
 }
 fn value_store_budget(max_value_store_entries: u64) -> AggregateResourceBudget {
     AggregateResourceBudget {

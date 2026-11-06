@@ -40,14 +40,23 @@ impl Shard {
         run: RunId,
         state: RunState,
         kind: PendingTimerKind,
+        timeout_ms: i64,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeResult<AwaitingTimerPlan> {
         let step = state.frame.pc();
         let (mut journal_events, trace_events) =
             self.prepare_evidence_events(run, state.run_attempt.get(), evidence)?;
         let register_timer = crate::shard::helpers::timer_registration_required(&state, step);
-        let (timer, ask_boundary_seq) =
-            self.prepare_awaiting_schedule(run, step, kind, register_timer, &mut journal_events)?;
+        let (timer, ask_boundary_seq) = self
+            .prepare_awaiting_schedule(
+                run,
+                step,
+                kind,
+                register_timer,
+                timeout_ms,
+                &mut journal_events,
+            )
+            ?;
         Ok((journal_events, trace_events, state, timer, ask_boundary_seq))
     }
 
@@ -57,6 +66,7 @@ impl Shard {
         step: StepIdx,
         kind: PendingTimerKind,
         register_timer: bool,
+        timeout_ms: i64,
         journal_events: &mut Vec<RuntimeJournalEvent>,
     ) -> RuntimeResult<(Option<PendingTimer>, Option<vb_storage::EventSeq>)> {
         if !register_timer && kind != PendingTimerKind::Ask {
@@ -67,7 +77,8 @@ impl Shard {
         } else {
             None
         };
-        let timer = self.pending_timer_for_awaiting(run, step, kind, register_timer)?;
+        let timer = self
+            .pending_timer_for_awaiting(run, step, kind, register_timer, timeout_ms)?;
         Self::push_drive_journal_event(journal_events, awaiting_schedule_event(run, step, kind))?;
         Ok((timer, boundary_seq))
     }
@@ -86,12 +97,23 @@ impl Shard {
             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
     }
 
+    /// Compute timer deadline from timeout slot value.
+    /// Slot unit contract: timeout_slot and deadline_slot are I64 millisecond
+    /// durations. WaitUntil deadline_slot is absolute (now + duration);
+    /// WaitEvent/Ask timeout_slot is relative duration.
+    fn timer_deadline_for_slot(timeout_ms: i64) -> std::time::Instant {
+        let duration =
+            std::time::Duration::from_millis(timeout_ms.max(0) as u64);
+        std::time::Instant::now() + duration
+    }
+
     fn pending_timer_for_awaiting(
         &self,
         run: RunId,
         step: StepIdx,
         kind: PendingTimerKind,
         register_timer: bool,
+        timeout_ms: i64,
     ) -> RuntimeResult<Option<PendingTimer>> {
         if !register_timer {
             return Ok(None);
@@ -103,7 +125,7 @@ impl Shard {
             step,
             kind,
             generation,
-            deadline: std::time::Instant::now(),
+            deadline: Self::timer_deadline_for_slot(timeout_ms),
         }))
     }
 
@@ -148,10 +170,11 @@ impl Shard {
         run: RunId,
         state: RunState,
         kind: PendingTimerKind,
+        timeout_ms: i64,
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         if evidence.is_empty() {
-            self.await_timer(run, state, kind)
+            self.await_timer(run, state, kind, timeout_ms)
                 .map_err(DriveApplyFailure::AfterCommit)?;
             return self
                 .apply(run, RuntimeEvent::AwaitTimer)
@@ -162,7 +185,7 @@ impl Shard {
                 .map_err(DriveApplyFailure::BeforeCommit)?;
         }
         let (journal_events, trace_events, mut state, timer, ask_boundary_seq) = self
-            .prepare_awaiting_timer(run, state, kind, evidence)
+            .prepare_awaiting_timer(run, state, kind, timeout_ms, evidence)
             .map_err(DriveApplyFailure::BeforeCommit)?;
         if !Self::charge_drive_journal_bytes(&mut state, &journal_events)
             .map_err(DriveApplyFailure::BeforeCommit)?

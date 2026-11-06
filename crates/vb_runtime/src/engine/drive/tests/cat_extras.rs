@@ -97,7 +97,7 @@ mod tests {
         let mut ev = EvidenceCollector::new();
         let sig = dde(&wf, &mut r, &mut b, &mut ev, &CapabilitySet::empty())?;
         match sig {
-            RuntimeSignal::AwaitingAsk => {}
+            RuntimeSignal::AwaitingAsk(_) => {}
             other => return Err(format!("expected AwaitingAsk, got {other:?}")),
         }
         let events = ev.drain();
@@ -126,7 +126,7 @@ mod tests {
         let mut ev = EvidenceCollector::new();
         let sig = dde(&wf, &mut r, &mut b, &mut ev, &CapabilitySet::empty())?;
         match sig {
-            RuntimeSignal::AwaitingWait => {}
+            RuntimeSignal::AwaitingWait(_) => {}
             other => return Err(format!("expected AwaitingWait, got {other:?}")),
         }
         let events = ev.drain();

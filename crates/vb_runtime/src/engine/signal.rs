@@ -34,8 +34,8 @@ pub fn runtime_from_core(signal: EngineSignal) -> RuntimeSignal {
             idempotency_key: 0,
             capacity: 1,
         }),
-        EngineSignal::AwaitingWait => RuntimeSignal::AwaitingWait,
-        EngineSignal::AwaitingAsk => RuntimeSignal::AwaitingAsk,
+        EngineSignal::AwaitingWait => RuntimeSignal::AwaitingWait(-1),
+        EngineSignal::AwaitingAsk => RuntimeSignal::AwaitingAsk(-1),
         #[allow(unreachable_patterns)]
         _ => RuntimeSignal::UnknownEngineSignal {
             signal_debug: format!("{signal:?}"),
@@ -68,13 +68,13 @@ mod tests {
     #[test]
     fn awaiting_wait_maps_directly() {
         let result = runtime_from_core(EngineSignal::AwaitingWait);
-        assert_eq!(result, RuntimeSignal::AwaitingWait);
+        assert_eq!(result, RuntimeSignal::AwaitingWait(-1));
     }
 
     #[test]
     fn awaiting_ask_maps_directly() {
         let result = runtime_from_core(EngineSignal::AwaitingAsk);
-        assert_eq!(result, RuntimeSignal::AwaitingAsk);
+        assert_eq!(result, RuntimeSignal::AwaitingAsk(-1));
     }
 
     #[test]
@@ -202,7 +202,7 @@ mod tests {
             signal_debug: "x".to_owned(),
         };
         assert_ne!(unknown, RuntimeSignal::Continue);
-        assert_ne!(unknown, RuntimeSignal::AwaitingWait);
+        assert_ne!(unknown, RuntimeSignal::AwaitingWait(0));
         assert_ne!(unknown, RuntimeSignal::StepBudgetExhausted);
     }
 
@@ -224,8 +224,8 @@ mod tests {
                     idempotency_key: 0,
                     capacity: 1,
                 }),
-                EngineSignal::AwaitingWait => RuntimeSignal::AwaitingWait,
-                EngineSignal::AwaitingAsk => RuntimeSignal::AwaitingAsk,
+                EngineSignal::AwaitingWait => RuntimeSignal::AwaitingWait(0),
+                EngineSignal::AwaitingAsk => RuntimeSignal::AwaitingAsk(0),
                 _ => RuntimeSignal::UnknownEngineSignal {
                     signal_debug: String::new(),
                 },

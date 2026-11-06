@@ -141,11 +141,14 @@ impl Shard {
     }
 
     /// Transitions a run to awaiting a timer (wait or ask timeout).
+    /// Transitions a run to awaiting a timer (wait or ask timeout).
+    /// timeout_ms is the duration in milliseconds; negative means no timeout.
     pub(crate) fn await_timer(
         &mut self,
         run: RunId,
         state: RunState,
         kind: PendingTimerKind,
+        timeout_ms: i64,
     ) -> RuntimeResult<()> {
         self.add_executed_step_delta(run, state.frame.executed());
         let step = state.frame.pc();
@@ -181,13 +184,16 @@ impl Shard {
                     return Err(RuntimeError::InvalidTimerFire);
                 }
             };
+            let duration =
+                std::time::Duration::from_millis(timeout_ms.max(0) as u64);
+            let deadline = std::time::Instant::now() + duration;
             self.pending_timer_insert(
                 run,
                 PendingTimer {
                     step,
                     kind,
                     generation,
-                    deadline: Instant::now(),
+                    deadline,
                 },
             )?;
         }

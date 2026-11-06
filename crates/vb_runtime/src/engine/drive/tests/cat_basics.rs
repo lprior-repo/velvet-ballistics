@@ -145,7 +145,7 @@ mod tests {
         let mut b = StepBudget::new(10);
         let sig = dd(&wf, &mut r, &mut b)?;
         match sig {
-            RuntimeSignal::AwaitingWait => Ok(()),
+            RuntimeSignal::AwaitingWait(_) => Ok(()),
             _ => Err("expected AwaitingWait".into()),
         }
     }
@@ -158,7 +158,7 @@ mod tests {
         let mut b = StepBudget::new(10);
         let sig = dd(&wf, &mut r, &mut b)?;
         match sig {
-            RuntimeSignal::AwaitingAsk => Ok(()),
+            RuntimeSignal::AwaitingAsk(_) => Ok(()),
             _ => Err("expected AwaitingAsk".into()),
         }
     }

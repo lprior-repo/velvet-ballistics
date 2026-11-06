@@ -265,7 +265,7 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
 
     // When registration tries to replace the timer, generation must not wrap to 1.
     assert_eq!(
-        shard.await_timer(run, state, PendingTimerKind::Ask),
+        shard.await_timer(run, state, PendingTimerKind::Ask, 5000),
         Err(RuntimeError::InvalidTimerFire)
     );
 

@@ -371,10 +371,10 @@ pub enum RuntimeSignal {
     StepBudgetExhausted,
     /// Run is awaiting action completion with the given ticket.
     AwaitingAction(ActionTicket),
-    /// Run is awaiting a wait condition.
-    AwaitingWait,
-    /// Run is awaiting external input (ask).
-    AwaitingAsk,
+    /// Run is awaiting a wait condition with timeout in milliseconds.
+    AwaitingWait(i64),
+    /// Run is awaiting external input (ask) with timeout in milliseconds.
+    AwaitingAsk(i64),
     /// Core engine produced a signal variant not handled by this runtime.
     ///
     /// `EngineSignal` is `#[non_exhaustive]` so a future vb_core revision
@@ -1198,8 +1198,8 @@ mod tests {
             RuntimeSignal::Continue,
             RuntimeSignal::Finished(SlotValue::Null),
             RuntimeSignal::StepBudgetExhausted,
-            RuntimeSignal::AwaitingWait,
-            RuntimeSignal::AwaitingAsk,
+            RuntimeSignal::AwaitingWait(0),
+            RuntimeSignal::AwaitingAsk(0),
         ];
         for (i, si) in signals.iter().enumerate() {
             for (j, sj) in signals.iter().enumerate() {
