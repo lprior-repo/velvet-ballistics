@@ -274,10 +274,10 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
     };
 
     // When registration tries to replace the timer, generation must not wrap to 1.
-    assert_eq!(
+    assert!(matches!(
         shard.await_timer(run, state, PendingTimerKind::Ask),
         Err(RuntimeError::InvalidTimerFire)
-    );
+    ));
 
     // Then the existing max-generation timer and run state remain intact.
     assert_eq!(shard.pending_timer_get(run), Some(timer));

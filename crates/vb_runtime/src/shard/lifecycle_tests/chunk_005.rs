@@ -177,9 +177,12 @@ fn stale_ask_ticket_is_rejected_after_same_step_is_scheduled_again() -> Result<(
         .take_run_state(run)
         .map_err(|error| format!("suspended ask state must be checked out: {error:?}"))?;
     let _previous_timer = shard.pending_timer_remove(run);
-    shard
-        .await_timer(run, state, PendingTimerKind::Ask)
-        .map_err(|error| format!("ask reschedule failed: {error:?}"))?;
+    assert!(matches!(
+        shard
+            .await_timer(run, state, PendingTimerKind::Ask)
+            .map_err(|error| format!("ask reschedule failed: {error:?}"))?,
+        crate::shard::transitions::TransitionOutcome::Applied
+    ));
     let second = shard
         .lookup_pending_ask_ticket(run, StepIdx::new(2))
         .ok_or("reentered ask boundary must issue a ticket")?;
@@ -3256,5 +3259,449 @@ fn pre_persisted_submit_seeds_counter_with_admission_event_only() -> Result<(), 
     }
     assert!(measured > 0, "journal must contain events");
     assert_eq!(state.journal_bytes_written, measured);
+    Ok(())
+}
+
+fn measured_journal_bytes(events: &[RuntimeJournalEvent]) -> Result<u64, String> {
+    let mut measured: u64 = 0;
+    for event in events {
+        let encoded = postcard::to_allocvec(event)
+            .map_err(|error| format!("event encode failed: {error:?}"))?;
+        measured = measured
+            .checked_add(u64::try_from(encoded.len()).map_err(|_| "length overflow")?)
+            .ok_or_else(|| "measured total overflow".to_string())?;
+    }
+    Ok(measured)
+}
+
+#[test]
+fn empty_evidence_await_timer_charges_ask_scheduled_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("ask", ask_workflow())?;
+    let run = RunId::new(777);
+    submit_run(&mut shard, run, wf);
+    assert_eq!(shard.tick(), Ok(true));
+    let before_counter = shard
+        .run_state_get(run)
+        .ok_or_else(|| "run should still be active awaiting ask".to_string())?
+        .journal_bytes_written;
+    let before_events = require_snapshot(&journal)?;
+    let before_measured = measured_journal_bytes(&before_events)?;
+    let before_asks = before_events
+        .iter()
+        .filter(|event| {
+            matches!(event, RuntimeJournalEvent::AskScheduled { run: ask_run, .. } if *ask_run == run)
+        })
+        .count();
+    let state = shard
+        .take_run_state(run)
+        .map_err(|error| format!("suspended ask state must be checked out: {error:?}"))?;
+    let _previous_timer = shard.pending_timer_remove(run);
+    assert!(matches!(
+        shard
+            .await_timer(run, state, PendingTimerKind::Ask)
+            .map_err(|error| format!("ask reschedule failed: {error:?}"))?,
+        crate::shard::transitions::TransitionOutcome::Applied
+    ));
+    let after_counter = shard
+        .run_state_get(run)
+        .ok_or_else(|| "run should still be active after reschedule".to_string())?
+        .journal_bytes_written;
+    let after_events = require_snapshot(&journal)?;
+    let after_measured = measured_journal_bytes(&after_events)?;
+    let after_asks = after_events
+        .iter()
+        .filter(|event| {
+            matches!(event, RuntimeJournalEvent::AskScheduled { run: ask_run, .. } if *ask_run == run)
+        })
+        .count();
+    assert_eq!(after_asks, before_asks + 1);
+    let charged = after_counter
+        .checked_sub(before_counter)
+        .ok_or_else(|| "counter must not decrease across the reschedule".to_string())?;
+    let appended = after_measured
+        .checked_sub(before_measured)
+        .ok_or_else(|| "journal must not shrink across the reschedule".to_string())?;
+    assert_eq!(charged, appended);
+    assert!(
+        charged > 0,
+        "rescheduled ask must charge its journal event"
+    );
+    Ok(())
+}
+
+#[test]
+fn retry_await_charges_second_action_scheduled_ticket_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let run = RunId::new(778);
+    submit_run(&mut shard, run, retry_workflow()?);
+    let first_counter = shard
+        .run_state_get(run)
+        .ok_or_else(|| "run should still be active awaiting action".to_string())?
+        .journal_bytes_written;
+    let first_events = require_snapshot(&journal)?;
+    let first_measured = measured_journal_bytes(&first_events)?;
+    assert_eq!(
+        first_events
+            .iter()
+            .filter(|event| {
+                matches!(event, RuntimeJournalEvent::ActionScheduledTicket { ticket, .. } if ticket.run == run)
+            })
+            .count(),
+        1
+    );
+    enqueue_action_failure(&mut shard, run, StepIdx::new(1), 1);
+    let second_counter = shard
+        .run_state_get(run)
+        .ok_or_else(|| "run should still be active awaiting the retried action".to_string())?
+        .journal_bytes_written;
+    let second_events = require_snapshot(&journal)?;
+    let second_measured = measured_journal_bytes(&second_events)?;
+    let appended = second_measured
+        .checked_sub(first_measured)
+        .ok_or_else(|| "journal must not shrink across the retry".to_string())?;
+    let delta = second_events
+        .get(first_events.len()..)
+        .ok_or_else(|| "retry snapshot must extend the submit snapshot".to_string())?;
+    let uncharged = delta
+        .iter()
+        .filter(|event| {
+            matches!(event, RuntimeJournalEvent::ActionFailed { run: failed_run, .. } if *failed_run == run)
+        })
+        .try_fold(0u64, |total, event| {
+            let len = u64::try_from(
+                postcard::to_allocvec(event)
+                    .map_err(|error| format!("event encode failed: {error:?}"))?
+                    .len(),
+            )
+            .map_err(|_| "length overflow".to_string())?;
+            total
+                .checked_add(len)
+                .ok_or_else(|| "uncharged total overflow".to_string())
+        })?;
+    assert_eq!(
+        delta
+            .iter()
+            .filter(|event| {
+                matches!(event, RuntimeJournalEvent::ActionFailed { run: failed_run, .. } if *failed_run == run)
+            })
+            .count(),
+        1
+    );
+    let second_tickets: Vec<&RuntimeJournalEvent> = second_events
+        .iter()
+        .filter(|event| {
+            matches!(event, RuntimeJournalEvent::ActionScheduledTicket { ticket, .. } if ticket.run == run)
+        })
+        .collect();
+    assert_eq!(second_tickets.len(), 2);
+    let second_ticket_bytes = u64::try_from(
+        postcard::to_allocvec(
+            second_tickets
+                .get(1)
+                .ok_or_else(|| "second scheduled ticket must be journaled".to_string())?,
+        )
+        .map_err(|error| format!("event encode failed: {error:?}"))?
+        .len(),
+    )
+    .map_err(|_| "length overflow".to_string())?;
+    let charged = second_counter
+        .checked_sub(first_counter)
+        .ok_or_else(|| "counter must not decrease across the retry".to_string())?;
+    assert_eq!(
+        charged,
+        appended
+            .checked_sub(uncharged)
+            .ok_or_else(|| "uncharged bytes must not exceed appended bytes".to_string())?
+    );
+    assert!(
+        charged > second_ticket_bytes,
+        "retry drive evidence must be charged alongside the ticket"
+    );
+    Ok(())
+}
+
+#[test]
+fn empty_evidence_fail_charges_run_failed_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
+    let run = RunId::new(779);
+    let digest = wf.digest();
+    let mut state = crate::shard::helpers::make_run_state(wf, run)
+        .ok_or_else(|| "run state fixture must build".to_string())?;
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(100_000),
+    ));
+    shard
+        .admit_run_state(run, state, super::super::RuntimeState::Initial)
+        .map_err(|error| error.to_string())?;
+    let state = shard
+        .take_run_state(run)
+        .map_err(|error| error.to_string())?;
+    assert!(matches!(
+        shard
+            .fail_run_state(run, state)
+            .map_err(|error| error.to_string())?,
+        crate::shard::transitions::TransitionOutcome::Applied
+    ));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert!(shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    let failed = events
+        .iter()
+        .find(|event| {
+            matches!(event, RuntimeJournalEvent::RunFailed { run: failed_run, .. } if *failed_run == run)
+        })
+        .ok_or_else(|| "RunFailed must be journaled".to_string())?;
+    let failed_len = u64::try_from(
+        postcard::to_allocvec(failed)
+            .map_err(|error| format!("event encode failed: {error:?}"))?
+            .len(),
+    )
+    .map_err(|_| "length overflow".to_string())?;
+    let checkpoint = events
+        .iter()
+        .find_map(|event| match event {
+            RuntimeJournalEvent::RetryCheckpoint {
+                run: checkpoint_run,
+                payload,
+                ..
+            } if *checkpoint_run == run => {
+                Some(postcard::from_bytes::<crate::run_checkpoint::RunCheckpointV1>(payload))
+            }
+            _ => None,
+        })
+        .ok_or_else(|| "RetryCheckpoint must be journaled".to_string())?
+        .map_err(|error| format!("checkpoint decode failed: {error:?}"))?;
+    assert_eq!(checkpoint.journal_bytes_written, failed_len);
+    Ok(())
+}
+
+#[test]
+fn journal_bytes_after_append_projects_measured_total() -> Result<(), String> {
+    let workflow = two_slot_workflow().ok_or_else(|| "two slot workflow builds".to_string())?;
+    let run = RunId::new(780);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .ok_or_else(|| "run state builds".to_string())?;
+    let event = RuntimeJournalEvent::RunFailed { run, attempt: 1 };
+    let len = u64::try_from(
+        postcard::to_allocvec(&event)
+            .map_err(|error| format!("event encode failed: {error:?}"))?
+            .len(),
+    )
+    .map_err(|_| "length overflow".to_string())?;
+    assert_eq!(
+        Shard::journal_bytes_after_append(&state, &[event])
+            .map_err(|error| format!("projection failed: {error:?}"))?,
+        len
+    );
+    assert_eq!(state.journal_bytes_written, 0);
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(len),
+    ));
+    assert!(!Shard::journal_bytes_exceeds_budget(&state, len));
+    assert!(Shard::journal_bytes_exceeds_budget(
+        &state,
+        len.checked_add(1)
+            .ok_or_else(|| "projection overflow".to_string())?
+    ));
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(
+            len.checked_sub(1)
+                .ok_or_else(|| "budget underflow".to_string())?,
+        ),
+    ));
+    assert!(Shard::journal_bytes_exceeds_budget(&state, len));
+    Ok(())
+}
+
+#[test]
+fn empty_evidence_finish_within_budget_applies() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
+    let run = RunId::new(781);
+    let digest = wf.digest();
+    let mut state = crate::shard::helpers::make_run_state(wf, run)
+        .ok_or_else(|| "run state fixture must build".to_string())?;
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(100_000),
+    ));
+    shard
+        .admit_run_state(run, state, super::super::RuntimeState::Initial)
+        .map_err(|error| error.to_string())?;
+    let state = shard
+        .take_run_state(run)
+        .map_err(|error| error.to_string())?;
+    assert!(matches!(
+        shard
+            .finish_run(run, state)
+            .map_err(|error| error.to_string())?,
+        crate::shard::transitions::TransitionOutcome::Applied
+    ));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    assert!(shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| {
+                matches!(event, RuntimeJournalEvent::RunFinished { run: finished_run, .. } if *finished_run == run)
+            })
+            .count(),
+        1
+    );
+    Ok(())
+}
+
+#[test]
+fn empty_evidence_finish_over_budget_fails_run_instead() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
+    let run = RunId::new(782);
+    let digest = wf.digest();
+    let mut state = crate::shard::helpers::make_run_state(wf, run)
+        .ok_or_else(|| "run state fixture must build".to_string())?;
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(0),
+    ));
+    shard
+        .admit_run_state(run, state, super::super::RuntimeState::Initial)
+        .map_err(|error| error.to_string())?;
+    let state = shard
+        .take_run_state(run)
+        .map_err(|error| error.to_string())?;
+    let state = match shard
+        .finish_run(run, state)
+        .map_err(|error| error.to_string())?
+    {
+        crate::shard::transitions::TransitionOutcome::JournalBudgetExceeded(state) => *state,
+        crate::shard::transitions::TransitionOutcome::Applied => {
+            return Err("finish must not apply over budget".to_string());
+        }
+    };
+    assert_eq!(state.journal_bytes_written, 0);
+    assert_eq!(shard.counters().snapshot().runs_completed, 0);
+    assert!(!shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    assert!(
+        !events.iter().any(|event| {
+            matches!(event, RuntimeJournalEvent::RunFinished { run: finished_run, .. } if *finished_run == run)
+        }),
+        "finished event must not be journaled over budget: {events:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn empty_evidence_fail_over_budget_returns_state_unjournaled() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
+    let run = RunId::new(783);
+    let digest = wf.digest();
+    let mut state = crate::shard::helpers::make_run_state(wf, run)
+        .ok_or_else(|| "run state fixture must build".to_string())?;
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(0),
+    ));
+    shard
+        .admit_run_state(run, state, super::super::RuntimeState::Initial)
+        .map_err(|error| error.to_string())?;
+    let state = shard
+        .take_run_state(run)
+        .map_err(|error| error.to_string())?;
+    let state = match shard
+        .fail_run_state(run, state)
+        .map_err(|error| error.to_string())?
+    {
+        crate::shard::transitions::TransitionOutcome::JournalBudgetExceeded(state) => *state,
+        crate::shard::transitions::TransitionOutcome::Applied => {
+            return Err("fail must not apply over budget".to_string());
+        }
+    };
+    assert_eq!(state.journal_bytes_written, 0);
+    assert!(!shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    assert!(
+        events.is_empty(),
+        "nothing must be journaled over budget: {events:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn empty_evidence_await_timer_over_budget_returns_state_unjournaled() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("tiny_journal_finished", tiny_journal_finished_workflow())?;
+    let run = RunId::new(784);
+    let digest = wf.digest();
+    let mut state = crate::shard::helpers::make_run_state(wf, run)
+        .ok_or_else(|| "run state fixture must build".to_string())?;
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(0),
+    ));
+    shard
+        .admit_run_state(run, state, super::super::RuntimeState::Initial)
+        .map_err(|error| error.to_string())?;
+    let state = shard
+        .take_run_state(run)
+        .map_err(|error| error.to_string())?;
+    let state = match shard
+        .await_timer(run, state, PendingTimerKind::Ask)
+        .map_err(|error| error.to_string())?
+    {
+        crate::shard::transitions::TransitionOutcome::JournalBudgetExceeded(state) => *state,
+        crate::shard::transitions::TransitionOutcome::Applied => {
+            return Err("ask schedule must not apply over budget".to_string());
+        }
+    };
+    assert_eq!(state.journal_bytes_written, 0);
+    let events = require_snapshot(&journal)?;
+    assert!(
+        events.is_empty(),
+        "nothing must be journaled over budget: {events:?}"
+    );
     Ok(())
 }
