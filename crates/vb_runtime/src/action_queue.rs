@@ -91,6 +91,26 @@ struct Inner {
     items: VecDeque<ActionTicket>,
 }
 
+/// Outcome of attempting to send a backpressure warning notification.
+///
+/// Returned by
+/// [`BoundedActionCompletionQueue::enqueue_with_backpressure_warning_outcome`]
+/// so callers can distinguish a delivered warning from a dropped one instead
+/// of discarding the `try_send` result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum BackpressureWarningOutcome {
+    /// The warning was delivered to the notification channel.
+    Delivered,
+    /// No warning was sent: below the backpressure threshold, no channel is
+    /// configured, or the enqueue itself failed.
+    NotSent,
+    /// The notification channel was full; the warning was dropped.
+    ChannelFull,
+    /// The notification channel receiver was dropped; the warning was dropped.
+    ChannelDisconnected,
+}
+
 /// Backpressure warning emitted when queue reaches 80% capacity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackpressureWarning {
@@ -200,32 +220,56 @@ impl BoundedActionCompletionQueue {
     /// Emits a backpressure warning if the queue reaches or exceeds 80% capacity
     /// after the enqueue.
     pub fn enqueue(&self, ticket: ActionTicket) -> Result<(), ActionQueueError> {
+        self.enqueue_with_backpressure_warning_outcome(ticket).0
+    }
+
+    /// Attempts to enqueue an action ticket, surfacing the backpressure
+    /// warning send outcome to the caller.
+    ///
+    /// The first element is exactly the [`Self::enqueue`] result. The second
+    /// reports whether the backpressure warning was delivered, not sent
+    /// (below threshold, no channel configured, or enqueue failed), or
+    /// dropped because the channel was full or disconnected.
+    pub fn enqueue_with_backpressure_warning_outcome(
+        &self,
+        ticket: ActionTicket,
+    ) -> (Result<(), ActionQueueError>, BackpressureWarningOutcome) {
         let mut inner = match self.inner.lock() {
             Ok(guard) => guard,
             Err(poisoned) => poisoned.into_inner(),
         };
         if inner.items.len() >= self.capacity.get() {
-            return Err(ActionQueueError::QueueFull {
-                capacity: self.capacity,
-            });
+            return (
+                Err(ActionQueueError::QueueFull {
+                    capacity: self.capacity,
+                }),
+                BackpressureWarningOutcome::NotSent,
+            );
         }
 
         inner.items.push_back(ticket);
 
         let depth = inner.items.len();
         let threshold = backpressure_threshold(self.capacity);
-        if depth >= threshold
-            && let Some(ref tx) = self.backpressure_tx
-        {
-            match tx.try_send(BackpressureWarning {
-                depth,
-                capacity: self.capacity.get(),
-            }) {
-                Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
+        let outcome = if depth >= threshold {
+            match self.backpressure_tx {
+                Some(ref tx) => match tx.try_send(BackpressureWarning {
+                    depth,
+                    capacity: self.capacity.get(),
+                }) {
+                    Ok(()) => BackpressureWarningOutcome::Delivered,
+                    Err(TrySendError::Full(_)) => BackpressureWarningOutcome::ChannelFull,
+                    Err(TrySendError::Disconnected(_)) => {
+                        BackpressureWarningOutcome::ChannelDisconnected
+                    }
+                },
+                None => BackpressureWarningOutcome::NotSent,
             }
-        }
+        } else {
+            BackpressureWarningOutcome::NotSent
+        };
 
-        Ok(())
+        (Ok(()), outcome)
     }
 
     /// Dequeues an action ticket in FIFO order.
@@ -763,5 +807,110 @@ mod unit_tests {
             threshold_7 >= 6,
             "capacity=7 must produce threshold >= 6 (ceiling of 80%); got {threshold_7}"
         );
+    }
+
+    #[test]
+    fn backpressure_outcome_delivered_when_warning_sent() {
+        let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+        for i in 0..7 {
+            queue.enqueue(make_ticket(i)).unwrap();
+        }
+        let (result, outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(7));
+        assert!(result.is_ok());
+        assert_eq!(outcome, BackpressureWarningOutcome::Delivered);
+        let warning = rx.try_recv().unwrap();
+        assert_eq!(warning.depth, 8);
+        assert_eq!(warning.capacity, 10);
+    }
+
+    #[test]
+    fn backpressure_outcome_not_sent_below_threshold() {
+        let (queue, _rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+        let (result, outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(0));
+        assert!(result.is_ok());
+        assert_eq!(outcome, BackpressureWarningOutcome::NotSent);
+    }
+
+    #[test]
+    fn backpressure_outcome_not_sent_without_channel() {
+        let queue = BoundedActionCompletionQueue::new(5).unwrap();
+        for i in 0..3 {
+            queue.enqueue(make_ticket(i)).unwrap();
+        }
+        let (result, outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(3));
+        assert!(result.is_ok());
+        assert_eq!(outcome, BackpressureWarningOutcome::NotSent);
+    }
+
+    #[test]
+    fn backpressure_outcome_channel_disconnected_when_receiver_dropped() {
+        let (queue, rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+        drop(rx);
+        for i in 0..7 {
+            queue.enqueue(make_ticket(i)).unwrap();
+        }
+        let (result, outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(7));
+        assert!(result.is_ok());
+        assert_eq!(outcome, BackpressureWarningOutcome::ChannelDisconnected);
+    }
+
+    #[test]
+    fn backpressure_outcome_channel_full_when_channel_bound_is_smaller() {
+        // The public constructor binds the channel to queue capacity, which
+        // warnings alone cannot fill; construct with a bound of 1 to prove
+        // the Full branch surfaces instead of being silently dropped.
+        let (tx, _rx) = std::sync::mpsc::sync_channel(1);
+        let queue = BoundedActionCompletionQueue {
+            inner: std::sync::Mutex::new(Inner {
+                items: VecDeque::with_capacity(10),
+            }),
+            capacity: ActionQueueCapacity(10),
+            backpressure_tx: Some(tx),
+        };
+        for i in 0..7 {
+            queue.enqueue(make_ticket(i)).unwrap();
+        }
+        let (first, first_outcome) =
+            queue.enqueue_with_backpressure_warning_outcome(make_ticket(7));
+        assert!(first.is_ok());
+        assert_eq!(first_outcome, BackpressureWarningOutcome::Delivered);
+        let (second, second_outcome) =
+            queue.enqueue_with_backpressure_warning_outcome(make_ticket(8));
+        assert!(second.is_ok());
+        assert_eq!(second_outcome, BackpressureWarningOutcome::ChannelFull);
+    }
+
+    #[test]
+    fn backpressure_outcome_channel_full_via_public_api_cycling() {
+        // The warning channel is bound to queue capacity (10), so filling it
+        // through the public API requires cycling at warning depth while the
+        // receiver lags: each dequeue/enqueue pair at depth 8 emits one more
+        // warning until the channel holds 10 undelivered warnings.
+        let (queue, _rx) = BoundedActionCompletionQueue::with_backpressure(10).unwrap();
+        let mut seq = 0;
+        for _ in 0..8 {
+            queue.enqueue(make_ticket(seq)).unwrap();
+            seq += 1;
+        }
+        // One warning already sent at depth 8; nine more fill the channel.
+        let mut outcome = BackpressureWarningOutcome::Delivered;
+        for _ in 0..10 {
+            assert!(queue.dequeue().is_some());
+            let (result, next) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(seq));
+            assert!(result.is_ok());
+            outcome = next;
+            seq += 1;
+        }
+        assert_eq!(outcome, BackpressureWarningOutcome::ChannelFull);
+    }
+
+    #[test]
+    fn backpressure_outcome_not_sent_on_queue_full() {
+        let (queue, _rx) = BoundedActionCompletionQueue::with_backpressure(2).unwrap();
+        queue.enqueue(make_ticket(0)).unwrap();
+        queue.enqueue(make_ticket(1)).unwrap();
+        let (result, outcome) = queue.enqueue_with_backpressure_warning_outcome(make_ticket(2));
+        assert!(result.is_err());
+        assert_eq!(outcome, BackpressureWarningOutcome::NotSent);
     }
 }
