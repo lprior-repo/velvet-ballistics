@@ -40,6 +40,7 @@ use vb_core::ids::{ActionId, RunId, TenantId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_storage::EventSeq;
 use vb_storage::RunPolicyPin;
+use vb_storage::compat::CompatDecision;
 
 /// Performs artifact admission plus aggregate resource capacity admission.
 ///

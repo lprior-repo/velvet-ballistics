@@ -141,6 +141,9 @@ impl StorageRuntimeJournal {
                 result,
                 attempt,
             })),
+            RuntimeJournalEvent::CompatibilityDecision { run, decision } => {
+                Ok(Some(JournalEvent::CompatibilityDecisionEvent { run, seq, decision }))
+            }
             RuntimeJournalEvent::RunFailed { run, attempt } => {
                 Ok(Some(JournalEvent::RunFailedEvent { run, seq, attempt }))
             }
@@ -265,6 +268,7 @@ impl StorageRuntimeJournal {
             }
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
+            | RuntimeJournalEvent::CompatibilityDecision { .. }
             | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
@@ -343,6 +347,7 @@ impl StorageRuntimeJournal {
             })),
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
+            | RuntimeJournalEvent::CompatibilityDecision { .. }
             | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
@@ -367,6 +372,7 @@ impl StorageRuntimeJournal {
         let result = match &event {
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
+            | RuntimeJournalEvent::CompatibilityDecision { .. }
             | RuntimeJournalEvent::RetryCheckpoint { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }

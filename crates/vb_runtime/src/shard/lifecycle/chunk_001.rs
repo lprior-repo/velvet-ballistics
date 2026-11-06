@@ -124,16 +124,32 @@ impl Shard {
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs, &workflow)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
+        let ir_compat_decision = admission
+            .as_ref()
+            .and_then(|admission| admission.ir_compat_decision());
         if let (true, Some(admission)) = (persist_header, admission.as_ref()) {
-            if let Err(error) = self.append_journal_events_atomically([
-                RuntimeJournalEvent::RunSubmitted {
-                    run,
-                    workflow: digest,
-                },
-                RuntimeJournalEvent::RunAdmission {
-                    admission: admission.clone(),
-                },
-            ]) {
+            let header_result = match ir_compat_decision {
+                Some(decision) => self.append_journal_events_atomically([
+                    RuntimeJournalEvent::RunSubmitted {
+                        run,
+                        workflow: digest,
+                    },
+                    RuntimeJournalEvent::RunAdmission {
+                        admission: admission.clone(),
+                    },
+                    RuntimeJournalEvent::CompatibilityDecision { run, decision },
+                ]),
+                None => self.append_journal_events_atomically([
+                    RuntimeJournalEvent::RunSubmitted {
+                        run,
+                        workflow: digest,
+                    },
+                    RuntimeJournalEvent::RunAdmission {
+                        admission: admission.clone(),
+                    },
+                ]),
+            };
+            if let Err(error) = header_result {
                 self.discard_journal_sequence(run);
                 return Err(RuntimeError::admission_header_persistence_failed(error));
             }
@@ -154,6 +170,12 @@ impl Shard {
                         admission: admission.clone(),
                     },
                 )?;
+                if let Some(decision) = ir_compat_decision {
+                    self.append_admission_header_journal_event(
+                        run,
+                        RuntimeJournalEvent::CompatibilityDecision { run, decision },
+                    )?;
+                }
             }
         }
         self.counters.inc_submitted();

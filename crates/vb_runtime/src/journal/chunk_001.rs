@@ -26,6 +26,16 @@ pub enum RuntimeJournalEvent {
         /// Admission record for this run.
         admission: crate::admission::RunAdmission,
     },
+    /// §77.17 compatibility decision journaled with the admission header
+    /// for an admitted run. Carries the full decision record; replay
+    /// treats it as informational and live dispatch re-checks the
+    /// journaled decision before authorizing new live effects.
+    CompatibilityDecision {
+        /// Run identifier.
+        run: RunId,
+        /// Compatibility decision recorded at admission.
+        decision: vb_storage::compat::CompatDecision,
+    },
     /// Full typed checkpoint and next-attempt authority for a retry.
     RetryCheckpoint {
         /// Run identifier.
@@ -244,6 +254,7 @@ impl RuntimeJournalEvent {
             | Self::ActionCompletedEnvelope { ticket, .. }
             | Self::ActionAbandoned { ticket } => ticket.run,
             Self::RunAdmission { admission } => admission.run_id(),
+            Self::CompatibilityDecision { run, .. } => *run,
             Self::RetryCheckpoint { run, .. } => *run,
         }
     }
@@ -254,6 +265,7 @@ impl RuntimeJournalEvent {
         match self {
             Self::RunSubmitted { .. } => "RunSubmitted",
             Self::RunAdmission { .. } => "RunAdmission",
+            Self::CompatibilityDecision { .. } => "CompatibilityDecision",
             Self::RetryCheckpoint { .. } => "RetryCheckpoint",
             Self::RunFinished { .. } => "RunFinished",
             Self::RunFailed { .. } => "RunFailed",
@@ -265,6 +277,16 @@ impl RuntimeJournalEvent {
             Self::ActionCompletedEnvelope { .. } => "ActionCompletedEnvelope",
             Self::ActionFailed { .. } => "ActionFailed",
             Self::ActionAbandoned { .. } => "ActionAbandoned",
+            _ => self.kind_tail(),
+        }
+    }
+
+    /// Variant names for the wait/ask/slot/step/resume tail of `kind`.
+    /// Only reachable from `kind` for those variants, so the fallback is
+    /// unreachable by construction; it yields an empty name rather than
+    /// attributing the event to the wrong variant.
+    const fn kind_tail(&self) -> &'static str {
+        match self {
             Self::WaitScheduled { .. } => "WaitScheduled",
             Self::WaitResolved { .. } => "WaitResolved",
             Self::AskScheduled { .. } => "AskScheduled",
@@ -274,6 +296,7 @@ impl RuntimeJournalEvent {
             Self::StepStarted { .. } => "StepStarted",
             Self::StepSucceeded { .. } => "StepSucceeded",
             Self::Resumed { .. } => "Resumed",
+            _ => "",
         }
     }
 }
