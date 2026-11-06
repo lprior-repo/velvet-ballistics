@@ -9,7 +9,7 @@ proofs). The CI baseline (`moon run :ci`) only gates on a small slice of each.
 | Verifier | Total artifacts | In CI baseline | Manual only |
 | --- | --- | --- | --- |
 | Kani harnesses (`#[kani::proof]`) | 331 | 8 (4 `vb_core` + 4 `vb_validate`) | 323 |
-| TLA+ root specs (`.tla`) | 23 | 2 (`WorkflowBoundedAdmission`, `IdempotencySafety`) | 21 |
+| TLA+ root specs (`.tla`) | 25 | 2 (`WorkflowBoundedAdmission`, `IdempotencySafety`) | 23 |
 | Verus spec files (`verification/verus/*.rs`) | 103 | 0 | 103 |
 
 Kani counts are sourced from `.evidence/kani-list/*.json` (regenerate with
@@ -48,7 +48,7 @@ Baseline is fail-closed: each per-package log must contain
 | Spec | Bounded model | CI baseline reason |
 | --- | --- | --- |
 | `verification/tla/WorkflowBoundedAdmission.tla` | Bounded step-budget workflow admission | Small state, fast (`-terse -metadir`) |
-| `verification/tla/IdempotencySafety.tla` | Crash-recovery + duplicate-replay safety | Highest-value bounded model; covered by 9 sub-configs |
+| `verification/tla/IdempotencySafety.tla` | Crash-recovery + duplicate-replay safety | Highest-value bounded model; root config only |
 
 Run via:
 
@@ -113,14 +113,9 @@ Per-package totals: `vb_core` 206, `vb_compile` 65, `vb_validate` 27,
 
 ### TLA+
 
-- **21 of 23 root specs are exploratory.** Only `WorkflowBoundedAdmission`
-  and `IdempotencySafety` are wired into `verify-tlc`. Heavy specs
-  (`StepBudgetSuspension`, `VbKyyfReplayDeterminism`, `YamlE2eChain`) stay
-  out of CI until they have bounded, time-safe `.cfg` files.
-- **IdempotencySafety has 9 sub-configs** (`IdempotencySafetyOverflow`,
-  `IdempotencySafetyCrashRecoverDuplicate`, etc.); only the root
-  `IdempotencySafety.cfg` runs in CI.
-- **The two baseline specs are absent from the tree.** `verification/tla/WorkflowBoundedAdmission.tla` and `verification/tla/IdempotencySafety.tla` do not exist, so `verify-tlc` fails fast; authoring them (or rewiring the task) is a decision for John, not a docs fix.
+- **Both baseline specs are present and passing.** `verification/tla/` holds exactly the two baseline specs, both wired into `verify-tlc`. `moon run :verify-tlc` passes on this revision: `WorkflowBoundedAdmission` 2,589 states generated / 1,520 distinct, `IdempotencySafety` 986 / 306, no errors.
+- **The other pre-deletion root specs are absent.** At `c0151645` `verification/tla/` held 26 root `.tla` files; only the 2 baselines were restored (#95), so 24 remain absent, including the heavy specs (`StepBudgetSuspension`, `VbKyyfReplayDeterminism`, `YamlE2eChain`). Restoring any of them is a scope decision for John, not a docs fix.
+- **IdempotencySafety has no sub-configs in the tree.** Only the root `IdempotencySafety.cfg` runs in CI. The 9 sub-configs exist only at `c0151645`; restoring them is a scope decision for John.
 
 ### Verus
 
@@ -153,9 +148,7 @@ production code:
    `tlc-baseline` task in `.moon/tasks/tlc.yml` analogous to `kani-baseline`
    with a `TLC_RUN_SUCCESSFUL` sentinel grep. This makes the TLA+ gate
    fail-closed like Kani.
-5. **Promote TLA+ sub-configs.** Move the nine `IdempotencySafety*` sub-
-   configs into `verify-tlc` after bounding their state space to the
-   values exercised by the root spec.
+5. **Promote TLA+ sub-configs.** Restore the nine `IdempotencySafety*` sub-configs from `c0151645` (scope decision for John), bound their state space to the values exercised by the root spec, then move them into `verify-tlc`.
 6. **Wire `verify-verus` into `ci:`** with a 60-minute timeout and
    registry-pinned target list. Defer `verify-verus-all` to nightly.
 7. **Inventory sync.** Regenerate `.evidence/kani-list/*.json` on every
