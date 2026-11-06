@@ -458,32 +458,38 @@ impl Shard {
         state: &mut RunState,
         events: &[RuntimeJournalEvent],
     ) -> RuntimeResult<bool> {
-        let bytes = Self::journal_batch_bytes(events)?;
-        let next = state
-            .journal_bytes_written
-            .checked_add(bytes)
-            .ok_or(RuntimeError::EncodeFailed)?;
-        let Some(budget) = state.admission.as_ref().and_then(|a| a.budget()) else {
-            state.journal_bytes_written = next;
-            return Ok(true);
-        };
-        if next > budget.max_journal_bytes_total {
+        let next = Self::journal_bytes_after_append(state, events)?;
+        if Self::journal_bytes_exceeds_budget(state, next) {
             return Ok(false);
         }
         state.journal_bytes_written = next;
         Ok(true)
     }
 
-    fn record_drive_journal_bytes(
+    pub(crate) fn record_drive_journal_bytes(
         state: &mut RunState,
         events: &[RuntimeJournalEvent],
     ) -> RuntimeResult<()> {
+        state.journal_bytes_written = Self::journal_bytes_after_append(state, events)?;
+        Ok(())
+    }
+
+    pub(crate) fn journal_bytes_after_append(
+        state: &RunState,
+        events: &[RuntimeJournalEvent],
+    ) -> RuntimeResult<u64> {
         let bytes = Self::journal_batch_bytes(events)?;
-        state.journal_bytes_written = state
+        state
             .journal_bytes_written
             .checked_add(bytes)
-            .ok_or(RuntimeError::EncodeFailed)?;
-        Ok(())
+            .ok_or(RuntimeError::EncodeFailed)
+    }
+
+    pub(crate) fn journal_bytes_exceeds_budget(state: &RunState, projected: u64) -> bool {
+        let Some(budget) = state.admission.as_ref().and_then(|a| a.budget()) else {
+            return false;
+        };
+        projected > budget.max_journal_bytes_total
     }
 
     fn fail_run_on_journal_budget(

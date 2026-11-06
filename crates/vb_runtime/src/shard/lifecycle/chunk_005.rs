@@ -1,3 +1,5 @@
+use crate::shard::transitions::TransitionOutcome;
+
 impl Shard {
     fn prepare_awaiting_action(
         &self,
@@ -132,9 +134,11 @@ impl Shard {
         if evidence.is_empty() {
             self.apply(run, RuntimeEvent::AwaitAction)
                 .map_err(DriveApplyFailure::AfterCommit)?;
-            return self
-                .await_action(run, state, ticket)
-                .map_err(DriveApplyFailure::AfterCommit);
+            let outcome = self.await_action(run, state, ticket).map_err(DriveApplyFailure::AfterCommit)?;
+            if let TransitionOutcome::JournalBudgetExceeded(state) = outcome {
+                return self.fail_run_on_journal_budget(run, *state, Vec::new());
+            }
+            return Ok(());
         }
         let (journal_events, trace_events, mut state, ticket, step) = self
             .prepare_awaiting_action(run, state, ticket, evidence)
@@ -166,8 +170,10 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         if evidence.is_empty() {
-            self.await_timer(run, state, kind)
-                .map_err(DriveApplyFailure::AfterCommit)?;
+            let outcome = self.await_timer(run, state, kind).map_err(DriveApplyFailure::AfterCommit)?;
+            if let TransitionOutcome::JournalBudgetExceeded(state) = outcome {
+                return self.fail_run_on_journal_budget(run, *state, Vec::new());
+            }
             return self
                 .apply(run, RuntimeEvent::AwaitTimer)
                 .map_err(DriveApplyFailure::AfterCommit);
@@ -208,8 +214,10 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         if evidence.is_empty() {
-            self.finish_run(run, state)
-                .map_err(DriveApplyFailure::AfterCommit)?;
+            let outcome = self.finish_run(run, state).map_err(DriveApplyFailure::AfterCommit)?;
+            if let TransitionOutcome::JournalBudgetExceeded(state) = outcome {
+                return self.fail_run_on_journal_budget(run, *state, Vec::new());
+            }
             return self
                 .apply(run, RuntimeEvent::DriveFinished)
                 .map_err(DriveApplyFailure::AfterCommit);
@@ -251,8 +259,10 @@ impl Shard {
         evidence: &mut EvidenceCollector,
     ) -> Result<(), DriveApplyFailure> {
         if evidence.is_empty() {
-            self.fail_run_state(run, state)
-                .map_err(DriveApplyFailure::AfterCommit)?;
+            let outcome = self.fail_run_state(run, state).map_err(DriveApplyFailure::AfterCommit)?;
+            if let TransitionOutcome::JournalBudgetExceeded(state) = outcome {
+                return self.fail_run_on_journal_budget(run, *state, Vec::new());
+            }
             return self
                 .apply(run, RuntimeEvent::Fail)
                 .map_err(DriveApplyFailure::AfterCommit);
