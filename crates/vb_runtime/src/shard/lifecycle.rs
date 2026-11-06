@@ -18,6 +18,7 @@ pub(crate) use registered_completion::RegisteredActionContext;
 include!("lifecycle/chunk_003.rs");
 include!("lifecycle/chunk_001.rs");
 include!("lifecycle/chunk_002.rs");
+include!("lifecycle/chunk_006.rs");
 include!("lifecycle/chunk_005_prepare.rs");
 include!("lifecycle/chunk_005_drive_apply.rs");
 include!("lifecycle/chunk_005.rs");
@@ -36,6 +37,7 @@ mod tests {
     include!("lifecycle_tests/chunk_008.rs");
     include!("lifecycle_tests/chunk_009.rs");
     include!("lifecycle_tests/chunk_010.rs");
+    include!("lifecycle_tests/chunk_011.rs");
     include!("lifecycle_tests/recovery_context_tests.rs");
     include!("lifecycle_tests/contract_validation_tests.rs");
     include!("lifecycle_tests/action_recovery_tests.rs");

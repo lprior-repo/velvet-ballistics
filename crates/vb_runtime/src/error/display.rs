@@ -167,6 +167,12 @@ fn write_runtime_error_dynamic(
         RuntimeError::EngineDriveFailed { run, source } => {
             write!(f, "engine drive failed for run {run:?}: {source}")
         }
+        RuntimeError::CompatGateBlocked { run, source } => {
+            write!(
+                f,
+                "compatibility gate blocked run {run:?} from starting live effects: {source}"
+            )
+        }
         RuntimeError::RetryBlockedOnUndrainedJournal { run } => {
             write!(
                 f,
