@@ -12,47 +12,17 @@ use crate::{EventSeq, JournalError, constants::DIGEST_BYTES, types::RecordEnvelo
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use vb_core::{
-    ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, StepIdx,
-    Taint, WorkflowDigest,
+    ActionId, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, StepIdx, Taint,
+    WorkflowDigest,
 };
 
 const fn zero_workflow_digest() -> WorkflowDigest {
     WorkflowDigest::from_bytes([0; DIGEST_BYTES])
 }
 
-/// Action ticket as written before the fencing token existed.
-///
-/// A record in this shape decodes with [`ActionTicket::fencing_token`] zero.
-/// Fencing reads zero as "unknown", not "stale": the durable ticket identity
-/// still rejects wrong attempts, and refusing every pre-token completion would
-/// strand runs across an upgrade.
-#[derive(Clone, Copy, Serialize, Deserialize)]
-pub(super) struct LegacyActionTicket {
-    run: RunId,
-    step: StepIdx,
-    seq: vb_core::SeqNo,
-    action: ActionId,
-    run_attempt: u16,
-    attempt: u16,
-    idempotency_key: u128,
-    capacity: u16,
-}
-
-impl LegacyActionTicket {
-    pub(super) const fn into_current(self) -> ActionTicket {
-        ActionTicket {
-            run: self.run,
-            step: self.step,
-            seq: self.seq,
-            action: self.action,
-            run_attempt: self.run_attempt,
-            attempt: self.attempt,
-            idempotency_key: self.idempotency_key,
-            capacity: self.capacity,
-            fencing_token: 0,
-        }
-    }
-}
+#[path = "wire_legacy/ticket.rs"]
+mod ticket;
+pub(super) use ticket::LegacyActionTicket;
 
 #[derive(Serialize, Deserialize)]
 pub(super) enum LegacyJournalEvent {
@@ -251,6 +221,7 @@ fn decode_current_schema_one_payload(
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use vb_core::SeqNo;
 
