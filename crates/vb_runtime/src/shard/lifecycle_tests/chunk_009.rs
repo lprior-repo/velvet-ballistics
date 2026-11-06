@@ -138,9 +138,12 @@ fn failed_terminal_parity_clears_boundaries_and_runtime_state() -> Result<(), St
         .map_err(|error| format!("take_run_state failed: {error:?}"))?;
     assert!(shard.checked_out_run_contains(run));
 
-    shard
-        .fail_run_state(run, state)
-        .map_err(|error| format!("fail_run_state failed: {error:?}"))?;
+    assert!(matches!(
+        shard
+            .fail_run_state(run, state)
+            .map_err(|error| format!("fail_run_state failed: {error:?}"))?,
+        crate::shard::transitions::TransitionOutcome::Applied
+    ));
     shard
         .apply(run, RuntimeEvent::Fail)
         .map_err(|error| format!("apply fail failed: {error:?}"))?;

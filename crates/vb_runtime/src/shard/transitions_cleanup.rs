@@ -108,13 +108,17 @@ impl crate::shard::Shard {
             Err(_) => return Ok(()),
         };
         let payload_digest = *blake3::hash(&payload).as_bytes();
-        self.append_journal_event(RuntimeJournalEvent::RetryCheckpoint {
+        let event = RuntimeJournalEvent::RetryCheckpoint {
             run,
             attempt: next_attempt.get(),
             step: retry_step,
             payload_digest,
             payload,
-        })
+        };
+        let projected = Self::journal_bytes_after_append(state, core::slice::from_ref(&event))?;
+        self.append_journal_event(event)?;
+        state.journal_bytes_written = projected;
+        Ok(())
     }
 
     pub(crate) fn rollback_run_state_preserving_error(
