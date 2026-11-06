@@ -641,7 +641,13 @@ fn admission_admit_run_strict_with_present_artifact() -> Result<(), String> {
     let run_id = RunId::new(1);
     let caps = CapabilitySet::empty();
     let result = admit_run(&store, RuntimePolicy::Strict, digest, run_id, caps.clone());
-    let admission = RunAdmission::new(digest, run_id, caps, RuntimePolicy::Strict);
+    let expected_decision = vb_storage::compat::decide_boundary(
+        vb_storage::compat::artifact_ir_version_inputs(vb_storage::compat::CURRENT_IR_VERSION),
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+    );
+    let admission = RunAdmission::new(digest, run_id, caps, RuntimePolicy::Strict)
+        .with_ir_compat_decision(expected_decision);
     assert_eq!(result, Ok(admission.clone()));
     assert_eq!(admission.artifact_digest(), digest);
     assert_eq!(admission.run_id(), run_id);
@@ -701,7 +707,24 @@ fn admit_artifact_run_accepts_same_major_newer_minor_ir_version() -> Result<(), 
 #[test]
 fn check_artifact_ir_version_allows_only_live_effect_classes() -> Result<(), String> {
     let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
-    assert_eq!(check_artifact_ir_version(&artifact), Ok(()));
+    let decision = check_artifact_ir_version(&artifact).map_err(|error| error.to_string())?;
+    assert_eq!(
+        decision.boundary,
+        vb_storage::compat::CompatBoundary::IrVersion
+    );
+    assert_eq!(
+        decision.class,
+        vb_storage::compat::CompatibilityClass::Identical
+    );
+    assert_eq!(decision.decision_code.code(), 100);
+    assert_eq!(
+        decision.old_schema_digest,
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION)
+    );
+    assert_eq!(
+        decision.new_schema_digest,
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION)
+    );
     artifact.artifact_version = vb_storage::compat::SchemaVersion::new(2, 0, 0);
     assert!(
         matches!(
@@ -710,6 +733,77 @@ fn check_artifact_ir_version_allows_only_live_effect_classes() -> Result<(), Str
         ),
         "future major IR version must not authorize live effects"
     );
+    Ok(())
+}
+
+#[test]
+fn admit_artifact_run_carries_ir_compat_decision() -> Result<(), String> {
+    let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
+    let digest =
+        vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
+    artifact.digest = digest;
+    artifact.verification.digest = digest;
+    let store = FixedAcceptedStore { artifact };
+    let admission = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        digest,
+        CapabilitySet::empty(),
+    )
+    .map_err(|error| error.to_string())?;
+    let decision = admission
+        .ir_compat_decision()
+        .ok_or("strict admission must carry the IR compat decision")?;
+    assert_eq!(
+        decision.class,
+        vb_storage::compat::CompatibilityClass::Identical
+    );
+    assert_eq!(decision.decision_code.code(), 100);
+    Ok(())
+}
+
+#[test]
+fn admit_artifact_run_carries_forward_compat_decision() -> Result<(), String> {
+    let mut artifact = accepted_artifact_with_caps(Box::new([]))?;
+    artifact.artifact_version = vb_storage::compat::SchemaVersion::new(1, 2, 0);
+    let digest =
+        vb_storage::admission::accepted_artifact_digest(&artifact).map_err(|e| e.to_string())?;
+    artifact.digest = digest;
+    artifact.verification.digest = digest;
+    let store = FixedAcceptedStore { artifact };
+    let admission = admit_artifact_run(
+        &store,
+        RuntimePolicy::Strict,
+        RunId::new(1),
+        digest,
+        CapabilitySet::empty(),
+    )
+    .map_err(|error| error.to_string())?;
+    let decision = admission
+        .ir_compat_decision()
+        .ok_or("strict admission must carry the IR compat decision")?;
+    assert_eq!(
+        decision.class,
+        vb_storage::compat::CompatibilityClass::ForwardCompatible
+    );
+    assert_eq!(decision.decision_code.code(), 102);
+    Ok(())
+}
+
+#[test]
+fn admit_artifact_run_relaxed_carries_no_ir_compat_decision() -> Result<(), String> {
+    let admission = admit_artifact_run(
+        &FixedAcceptedStore {
+            artifact: accepted_artifact_with_caps(Box::new([]))?,
+        },
+        RuntimePolicy::Relaxed,
+        RunId::new(1),
+        test_digest(),
+        CapabilitySet::empty(),
+    )
+    .map_err(|error| error.to_string())?;
+    assert_eq!(admission.ir_compat_decision(), None);
     Ok(())
 }
 

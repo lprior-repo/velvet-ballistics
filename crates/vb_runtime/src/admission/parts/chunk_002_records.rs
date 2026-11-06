@@ -20,6 +20,14 @@ pub struct RunAdmission {
     tenant: Option<TenantId>,
     /// Actions whose idempotency evidence passed artifact admission.
     idempotency_attested: Box<[ActionId]>,
+    /// §77.17 compatibility decision for the admitted artifact's IR
+    /// version, when the strict/journaled admission path classified it.
+    /// Absent for relaxed admissions, which skip the IR version check,
+    /// and for admissions that predate compatibility journaling. Boxed:
+    /// the three digests on the decision would otherwise push
+    /// `RunAdmission` past the large-variant lint threshold.
+    #[serde(default)]
+    ir_compat_decision: Option<Box<CompatDecision>>,
 }
 
 /// Aggregate resource request plus policy used by runtime budget admission.
@@ -53,6 +61,7 @@ impl RunAdmission {
             budget: None,
             tenant: None,
             idempotency_attested: Box::new([]),
+            ir_compat_decision: None,
         }
     }
 
@@ -76,6 +85,7 @@ impl RunAdmission {
             budget: None,
             tenant: None,
             idempotency_attested,
+            ir_compat_decision: None,
         }
     }
 
@@ -99,6 +109,7 @@ impl RunAdmission {
             budget: Some(budget),
             tenant: None,
             idempotency_attested: Box::new([]),
+            ir_compat_decision: None,
         }
     }
 
@@ -124,6 +135,15 @@ impl RunAdmission {
         self.tenant = Some(tenant);
         self
     }
+
+    /// Records the §77.17 compatibility decision for the admitted
+    /// artifact's IR version, so the submit path can journal it with the
+    /// admission header.
+    pub(crate) fn with_ir_compat_decision(mut self, decision: CompatDecision) -> Self {
+        self.ir_compat_decision = Some(Box::new(decision));
+        self
+    }
+
     /// Returns the artifact digest for this admission.
     #[must_use]
     pub fn artifact_digest(&self) -> WorkflowDigest {
@@ -165,6 +185,13 @@ impl RunAdmission {
     #[must_use]
     pub const fn tenant(&self) -> Option<TenantId> {
         self.tenant
+    }
+
+    /// Returns the §77.17 compatibility decision for the admitted
+    /// artifact's IR version, when the admission path classified it.
+    #[must_use]
+    pub fn ir_compat_decision(&self) -> Option<CompatDecision> {
+        self.ir_compat_decision.as_deref().copied()
     }
 
     /// Returns fresh remaining-budget counters for the admitted budget,

@@ -475,6 +475,23 @@ pub fn compat_rule_digest(boundary: CompatBoundary, rule: CompatRule) -> [u8; 32
     *blake3::hash(&bytes).as_bytes()
 }
 
+/// Domain separation for schema-version digests.
+const SCHEMA_VERSION_DIGEST_DOMAIN: &[u8] = b"velvet-ballistics/compat-schema-version/v1";
+
+/// BLAKE3 digest of one schema version: domain plus the major, minor, and
+/// patch lines as little-endian u16. Distinct versions always digest
+/// distinctly, and the digest is stable across runs, so it serves as the
+/// old/new schema digest on a decision record.
+#[must_use]
+pub fn schema_version_digest(version: SchemaVersion) -> [u8; 32] {
+    let mut bytes = Vec::with_capacity(SCHEMA_VERSION_DIGEST_DOMAIN.len().saturating_add(6));
+    bytes.extend_from_slice(SCHEMA_VERSION_DIGEST_DOMAIN);
+    bytes.extend_from_slice(&version.major.to_le_bytes());
+    bytes.extend_from_slice(&version.minor.to_le_bytes());
+    bytes.extend_from_slice(&version.patch.to_le_bytes());
+    *blake3::hash(&bytes).as_bytes()
+}
+
 /// Classifies one boundary and builds the decision record, computing the
 /// deciding-rule digest from the decided rule.
 #[must_use]
@@ -750,6 +767,17 @@ mod tests {
             first,
             compat_rule_digest(CompatBoundary::ActionAbi, CompatRule::IdenticalVersions)
         );
+        assert_ne!(first, [0u8; 32]);
+    }
+
+    #[test]
+    fn schema_version_digest_is_deterministic_and_version_specific() {
+        let first = schema_version_digest(v(1, 0, 0));
+        let again = schema_version_digest(v(1, 0, 0));
+        assert_eq!(first, again);
+        assert_ne!(first, schema_version_digest(v(1, 0, 1)));
+        assert_ne!(first, schema_version_digest(v(1, 1, 0)));
+        assert_ne!(first, schema_version_digest(v(2, 0, 0)));
         assert_ne!(first, [0u8; 32]);
     }
 

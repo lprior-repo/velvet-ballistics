@@ -136,6 +136,7 @@ struct ForgedRunAdmission {
     budget: Option<AggregateResourceBudget>,
     tenant: Option<TenantId>,
     idempotency_attested: Box<[ActionId]>,
+    ir_compat_decision: Option<vb_storage::compat::CompatDecision>,
 }
 
 fn forge_admission_with_pin(
@@ -151,6 +152,7 @@ fn forge_admission_with_pin(
         budget: original.budget(),
         tenant: original.tenant(),
         idempotency_attested: original.idempotency_attested().to_vec().into_boxed_slice(),
+        ir_compat_decision: original.ir_compat_decision(),
     };
     let bytes = postcard::to_allocvec(&dto)
         .map_err(|e| format!("forged admission serialization failed: {e}"))?;

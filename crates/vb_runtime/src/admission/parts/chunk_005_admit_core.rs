@@ -11,7 +11,7 @@ pub fn admit_run(
     run_id: RunId,
     caps: CapabilitySet,
 ) -> Result<RunAdmission, AdmissionError> {
-    let admitted_digest = match policy {
+    let (admitted_digest, ir_compat_decision) = match policy {
         RuntimePolicy::Strict | RuntimePolicy::Journaled => {
             let artifact = store
                 .load_accepted_artifact(digest)
@@ -22,28 +22,27 @@ pub fn admit_run(
                     flag: "admission_policy",
                 },
             )?;
-            check_artifact_ir_version(&artifact)?;
+            let ir_compat_decision = check_artifact_ir_version(&artifact)?;
             if artifact.digest != digest && artifact.source_digest != digest {
                 return Err(AdmissionError::ArtifactDigestMismatch {
                     requested: digest,
                     found: artifact.digest,
                 });
             }
-            artifact.digest
+            (artifact.digest, Some(ir_compat_decision))
         }
-        RuntimePolicy::Relaxed => digest,
+        RuntimePolicy::Relaxed => (digest, None),
         _ => {
             return Err(AdmissionError::ArtifactInvalidProofFlag {
                 flag: "runtime_policy",
             });
         }
     };
-    Ok(RunAdmission::new(
-        admitted_digest,
-        run_id,
-        caps,
-        policy,
-    ))
+    let mut admission = RunAdmission::new(admitted_digest, run_id, caps, policy);
+    if let Some(decision) = ir_compat_decision {
+        admission = admission.with_ir_compat_decision(decision);
+    }
+    Ok(admission)
 }
 
 /// Performs full admission gate check with artifact validation before run creation.
@@ -101,7 +100,7 @@ pub fn admit_artifact_run_with_certificate_floor(
                     flag: "admission_policy",
                 },
             )?;
-            check_artifact_ir_version(&artifact)?;
+            let ir_compat_decision = check_artifact_ir_version(&artifact)?;
 
             // INV-002: digest binding must be total. The loaded artifact's digest
             // must match the requested digest exactly — a crafted artifact with
@@ -171,7 +170,8 @@ pub fn admit_artifact_run_with_certificate_floor(
                 policy,
                 artifact.verification.idempotency_attested,
             )
-            .with_policy_pin(RunPolicyPin::Pinned(artifact.policy_digest)))
+            .with_policy_pin(RunPolicyPin::Pinned(artifact.policy_digest))
+            .with_ir_compat_decision(ir_compat_decision))
         }
         RuntimePolicy::Relaxed => {
             // Relaxed: skip artifact loading and capability checking.

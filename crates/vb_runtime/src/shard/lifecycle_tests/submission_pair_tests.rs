@@ -9,6 +9,50 @@ fn submit_pair_fixture(shard: &mut Shard, run: RunId) -> crate::RuntimeResult<()
     )
 }
 
+/// Contract for the suspended workflow's single Do action with a
+/// verifier-valid capability name. The shared `contracts_through`
+/// fixture names its capability `__contract_required__`, which the
+/// artifact verifier's capability-name grammar rejects, so a Strict
+/// submit needs its own contract.
+fn strict_submit_contracts() -> Box<[vb_core::action::ActionContract]> {
+    Box::new([vb_core::action::ActionContract {
+        id: ActionId::new(0),
+        name: vb_core::action::ActionName::from_static_infallible("test-action"),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: vb_core::action::Idempotency::DeterministicPure,
+        side_effect: vb_core::action::SideEffect::None,
+        retry_safety: vb_core::action::RetrySafety::Safe,
+        required_capabilities: Box::new([vb_core::capability::Capability::new(
+            "test.action".into(),
+            ActionId::new(0),
+        )]),
+    }])
+}
+
+fn strict_submit_caps() -> vb_core::capability::CapabilitySet {
+    vb_core::capability::CapabilitySet::from_grants(Box::new([
+        vb_core::capability::Capability::new("test.action".into(), ActionId::new(0)),
+    ]))
+}
+
+/// Replaces a fixture workflow's placeholder digest with the BLAKE3
+/// digest of its zeroed-digest serialization, so artifact preparation
+/// accepts it. The suspended-workflow fixture hardcodes a `[1; 32]`
+/// digest that does not match its contents.
+fn honest_digest_workflow(
+    workflow: vb_core::workflow::CompiledWorkflow,
+) -> Result<vb_core::workflow::CompiledWorkflow, String> {
+    let mut parts = workflow.to_parts();
+    parts.digest = vb_core::ids::WorkflowDigest::from_bytes([0; 32]);
+    let canonical = postcard::to_allocvec(&parts).map_err(|error| error.to_string())?;
+    parts.digest = vb_core::ids::WorkflowDigest::from_bytes(blake3::hash(&canonical).into());
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
+}
+
 fn assert_submit_pair_refused(shard: &Shard, run: RunId) {
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(shard.counters().snapshot().runs_submitted, 0);
@@ -249,5 +293,90 @@ fn submission_pair_explicit_batch_rejection_has_no_singleton_fallback() -> Resul
         1
     );
     assert_submit_pair_refused(&shard, run);
+    Ok(())
+}
+
+struct PreparedArtifactStore {
+    artifact: vb_storage::admission::AcceptedArtifact,
+}
+
+impl crate::admission::AcceptedArtifactStore for PreparedArtifactStore {
+    fn load_accepted_artifact(
+        &self,
+        _digest: vb_core::ids::WorkflowDigest,
+    ) -> Result<vb_storage::admission::AcceptedArtifact, crate::admission::ArtifactEnvelopeError>
+    {
+        Ok(self.artifact.clone())
+    }
+}
+
+#[test]
+fn submission_journals_ir_compat_decision() -> Result<(), String> {
+    let (journal, _queue, adapter, shared) =
+        queued_journal_fixture("vb-compat-decision-submit-", 10, 10)?;
+    let workflow = require_workflow("compat decision submit", suspended_workflow())?;
+    let workflow = honest_digest_workflow(workflow)?;
+    let contracts = strict_submit_contracts();
+    let artifact = vb_storage::admission::prepare_compiled_artifact(
+        &workflow,
+        vb_core::policy::RuntimePolicy::Strict,
+        &contracts,
+    )
+    .map_err(|error| error.to_string())?;
+    let strict_config = crate::shard::ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 4,
+        policy: vb_core::policy::RuntimePolicy::Strict,
+    };
+    let store: crate::admission::SharedAcceptedArtifactStore =
+        std::sync::Arc::new(PreparedArtifactStore { artifact });
+    let mut shard = Shard::new_with_journal_and_artifact_store(strict_config, shared, store);
+    let run = RunId::new(60_105);
+    shard
+        .handle_submit_with_inputs_and_contracts(
+            run,
+            workflow,
+            &[(SlotIdx::ZERO, SlotValue::I64(0))],
+            strict_submit_caps(),
+            &contracts,
+        )
+        .map_err(|error| error.to_string())?;
+    adapter.flush_batch().map_err(|error| error.to_string())?;
+    let decisions = vb_storage::compat::compat_decisions_for_run(&journal, run)
+        .map_err(|error| error.to_string())?;
+    assert_eq!(decisions.len(), 1);
+    let decision = decisions[0];
+    assert_eq!(
+        decision.boundary,
+        vb_storage::compat::CompatBoundary::IrVersion
+    );
+    assert_eq!(
+        decision.class,
+        vb_storage::compat::CompatibilityClass::Identical
+    );
+    assert_eq!(decision.decision_code.code(), 100);
+    assert_eq!(
+        decision.old_schema_digest,
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION)
+    );
+    assert_eq!(
+        decision.new_schema_digest,
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION)
+    );
+    let events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    assert!(matches!(
+        events.get(2),
+        Some(vb_storage::JournalEvent::CompatibilityDecisionEvent {
+            run: found,
+            seq,
+            decision: found_decision,
+        }) if *found == run
+            && *seq == vb_storage::EventSeq::new(2)
+            && *found_decision == decision
+    ));
     Ok(())
 }

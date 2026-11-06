@@ -803,3 +803,28 @@ fn storage_event_maps_budgeted_admission_to_budget_receipt() {
         JournalEvent::RunAdmission { .. }
     ));
 }
+
+#[test]
+fn storage_event_maps_compat_decision_to_compat_decision_event() {
+    let run = RunId::new(203);
+    let seq = EventSeq::new(4);
+    let held = vb_storage::compat::SchemaVersion::new(1, 0, 0);
+    let decision = vb_storage::compat::decide_boundary(
+        vb_storage::compat::artifact_ir_version_inputs(held),
+        vb_storage::compat::schema_version_digest(held),
+        vb_storage::compat::schema_version_digest(vb_storage::compat::CURRENT_IR_VERSION),
+    );
+    let event = RuntimeJournalEvent::CompatibilityDecision { run, decision };
+    assert_eq!(event.run_id(), run);
+    assert_eq!(event.kind(), "CompatibilityDecision");
+    let mapped = StorageRuntimeJournal::storage_event(event, seq)
+        .expect("compat decision maps");
+    assert!(matches!(
+        mapped,
+        JournalEvent::CompatibilityDecisionEvent {
+            run: mapped_run,
+            seq: mapped_seq,
+            decision: mapped_decision,
+        } if mapped_run == run && mapped_seq == seq && mapped_decision == decision
+    ));
+}
