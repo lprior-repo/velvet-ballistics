@@ -28,7 +28,7 @@ pub mod batch;
 pub mod binary;
 pub mod blobs;
 pub mod codec;
-#[cfg(miri)]
+#[cfg(all(test, miri))]
 pub mod codec_miri_tests;
 pub mod compat;
 pub mod constants;
