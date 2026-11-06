@@ -1,6 +1,8 @@
 //! CLI Postcard Types
 //!
 //! Core types for CLI Postcard binary format.
+//! This CLI-output format has its own 52-byte little-endian header; it is
+//! distinct from the 60-byte storage record envelope and the 24-byte IPC header.
 
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +19,7 @@ pub(crate) const MAX_PAYLOAD: usize = 64 * 1024;
 /// - kind_u16: 2 bytes
 /// - header_len: 4 bytes
 /// - payload_len: 4 bytes
-/// - payload_digest: 32 bytes (SHA-256)
+/// - payload_digest: 32 bytes (BLAKE3)
 /// - header_crc: 4 bytes
 pub(crate) const HEADER_SIZE: usize = 52;
 pub(crate) const HEADER_SIZE_U32: u32 = 52;
@@ -59,7 +61,7 @@ impl CliPostcardPayload {
 pub(crate) struct PostcardHeader {
     /// Magic bytes (must be CLI_MAGIC).
     pub(crate) magic: [u8; 4],
-    /// Schema version as u16 (endianness specified by protocol).
+    /// Schema version as a little-endian u16.
     pub(crate) schema_version: u16,
     /// Kind enum as u16.
     pub(crate) kind: u16,
@@ -67,7 +69,7 @@ pub(crate) struct PostcardHeader {
     pub(crate) header_len: u32,
     /// Length of payload in bytes.
     pub(crate) payload_len: u32,
-    /// SHA-256 digest of payload (32 bytes).
+    /// BLAKE3 digest of payload (32 bytes).
     pub(crate) payload_digest: [u8; 32],
     /// CRC-32 of header bytes.
     pub(crate) header_crc: u32,

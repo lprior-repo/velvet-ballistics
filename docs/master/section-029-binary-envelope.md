@@ -6,7 +6,9 @@ parent: velvet-ballistics-MASTER.md
 
 ## 29. Binary Envelope
 
-Every artifact, journal record, snapshot, blob record, and IPC frame uses one envelope.
+Every persisted artifact, journal record, snapshot, blob record, and index value
+uses this 60-byte storage envelope. Multi-byte integer fields are little-endian.
+Fjall numeric key fields remain big-endian for lexicographic ordering.
 
 ```text
 offset  bytes  field
@@ -36,7 +38,7 @@ Postcard decode typed payload
 validate semantic payload invariants
 ```
 
-There is no separate IPC frame format.
+External `vb-ipc` traffic uses the separate 24-byte little-endian frame header
+defined in Section 21; it is not wrapped in this storage envelope.
 
 ---
-

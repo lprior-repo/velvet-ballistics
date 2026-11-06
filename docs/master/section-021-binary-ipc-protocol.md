@@ -9,6 +9,10 @@ parent: velvet-ballistics-MASTER.md
 
 Fastest ingress is direct in-process Rust API. External local process ingress uses binary IPC.
 
+The production frame begins with a fixed 24-byte header. Every multi-byte field
+in this IPC header is little-endian. This is not the 60-byte storage record
+envelope and does not contain storage-envelope BLAKE3 or CRC32C fields.
+
 Frame wire format:
 
 ```text

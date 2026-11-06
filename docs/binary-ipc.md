@@ -28,12 +28,18 @@ bounded bytes payload
 
 The default maximum payload is 1 MiB. Payload parsing and input-slot mapping are cold boundary work.
 
-## Target Wire Frame
+## Wire Frame
+
+Production `vb-ipc` uses a fixed 24-byte little-endian header. It is separate
+from the 60-byte storage record envelope and therefore has no storage-envelope
+BLAKE3 digest or CRC32C fields.
 
 ```text
 magic:       u32 = 0x56424C54
 version:     u16
 command:     u16
+flags:       u16
+reserved:    u16 = 0
 correlation: u64
 payload_len: u32
 payload:     postcard bytes
