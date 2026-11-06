@@ -21,7 +21,7 @@ fn header_with_kind(kind: u16) -> [u8; vb_storage::constants::RECORD_HEADER_BYTE
 }
 
 fn unknown_kind(kind: u16) -> bool {
-    !matches!(kind, 1..=4 | 10..=43 | 50)
+    RecordKind::from_id(kind).is_none()
 }
 
 proptest! {
