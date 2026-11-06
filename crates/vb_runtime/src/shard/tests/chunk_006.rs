@@ -171,6 +171,7 @@ fn shard_config_equality_differs() {
         step_budget_per_tick: 1,
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+        retry_yield_threshold_ms: 2000,
     };
     // Then they are not equal
     assert_ne!(a, b);

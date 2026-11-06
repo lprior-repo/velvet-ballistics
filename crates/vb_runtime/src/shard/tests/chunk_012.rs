@@ -6,6 +6,7 @@ fn shard_remaining_capacity_decrements_on_enqueue() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -25,6 +26,7 @@ fn shard_remaining_capacity_is_zero_when_full() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -52,6 +54,7 @@ fn shard_is_queue_full_returns_true_when_at_capacity() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -70,6 +73,7 @@ fn shard_command_queue_capacity_returns_configured_value() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -85,6 +89,7 @@ fn shard_remaining_capacity_after_pop() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -103,6 +108,7 @@ fn shard_queue_len_decrements_after_tick() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -215,6 +221,7 @@ fn shard_config_new_accepts_valid_parameters() {
             trace_capacity: 4096,
             step_budget_per_tick: 1000,
             max_active_runs: 512,
+        retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })
     );

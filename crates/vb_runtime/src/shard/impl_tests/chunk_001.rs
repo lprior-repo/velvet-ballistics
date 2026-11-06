@@ -34,6 +34,7 @@ fn small_config() -> ShardConfig {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     }
 }
@@ -50,6 +51,7 @@ fn config_new_accepts_min_valid_capacity() {
         trace_capacity: 1,
         step_budget_per_tick: 1,
         max_active_runs: 1,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     assert_eq!(result, Ok(expected));
@@ -100,6 +102,7 @@ fn config_new_accepts_max_command_queue_capacity() {
         trace_capacity: 1,
         step_budget_per_tick: 1,
         max_active_runs: 1,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     assert_eq!(result, Ok(expected));
@@ -115,6 +118,7 @@ fn config_new_preserves_all_fields() {
             trace_capacity: 128,
             step_budget_per_tick: 256,
             max_active_runs: 32,
+        retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })
     );
@@ -144,6 +148,7 @@ fn enqueue_and_capacity_tracking() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -162,6 +167,7 @@ fn queue_full_at_capacity_boundary() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);
@@ -212,6 +218,7 @@ fn drain_for_shutdown_processes_pending_commands() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -239,6 +246,7 @@ fn drain_for_shutdown_on_empty_queue_hits_capacity_limit() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);

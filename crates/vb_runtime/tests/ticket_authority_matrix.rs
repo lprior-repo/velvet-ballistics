@@ -164,6 +164,7 @@ fn check_case(case: Tamper, delivery: Delivery) -> TestResult<()> {
             trace_capacity: 64,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         },
         journal.clone(),

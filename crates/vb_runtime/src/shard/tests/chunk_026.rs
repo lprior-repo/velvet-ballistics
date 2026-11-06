@@ -6,6 +6,7 @@ fn vb1u88_queue_full_at_capacity_boundary() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+        retry_yield_threshold_ms: 2000,
     };
     let shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));

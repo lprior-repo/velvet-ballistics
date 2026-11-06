@@ -151,6 +151,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         }
     }
@@ -535,6 +536,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let runtime = Runtime::new_for_tests_and_benchmarks_only(shard_count, config);
@@ -1595,6 +1597,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -1845,6 +1848,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -1897,6 +1901,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -2149,6 +2154,7 @@ mod tests {
             trace_capacity: 16,
             step_budget_per_tick: 4,
             max_active_runs: 1,
+            retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -2203,6 +2209,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -2590,6 +2597,7 @@ mod tests {
             trace_capacity: 64,
             step_budget_per_tick: 100,
             max_active_runs: 4,
+            retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {
@@ -2727,6 +2735,7 @@ mod tests {
             trace_capacity: 4,
             step_budget_per_tick: 4,
             max_active_runs: 4,
+            retry_yield_threshold_ms: 2000,
             policy: RuntimePolicy::Relaxed,
         };
         let Some(shard_count) = NonZeroUsize::new(1) else {

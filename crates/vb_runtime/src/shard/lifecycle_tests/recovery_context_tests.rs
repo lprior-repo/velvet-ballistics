@@ -8,6 +8,7 @@
             step_budget_per_tick: 4,
             max_active_runs: 8,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            retry_yield_threshold_ms: 2000,
         };
         crate::shard::Shard::new(config)
     }

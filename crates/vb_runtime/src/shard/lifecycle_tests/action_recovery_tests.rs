@@ -127,6 +127,7 @@ fn recover_restores_action_contracts_schedules_completes_and_finishes()
         trace_capacity: 64,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     // vb-peb9u: Mocked store with internally consistent provenance. The artifact
@@ -501,6 +502,7 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         trace_capacity: 64,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let fresh_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
@@ -600,6 +602,7 @@ fn assert_raw_checkpoint_wrong_pin_rejected(
         trace_capacity: 64,
         step_budget_per_tick: 4,
         max_active_runs: 8,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let positive_journal = std::sync::Arc::new(VolatileRuntimeJournal::new());

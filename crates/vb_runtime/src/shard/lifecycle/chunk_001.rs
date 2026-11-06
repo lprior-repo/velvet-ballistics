@@ -809,7 +809,18 @@ impl Shard {
         });
         // 4. Drive the run state machine forward using the preflighted outcome.
         match preflight.outcome {
-            ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
+            ActionFailureOutcome::RetryNow => {
+                // Compute the retry delay and schedule via PendingTimer if
+                // it exceeds the threshold, yielding control to the scheduler.
+                let retry_delay_ms = self.compute_retry_delay(&preflight);
+                if retry_delay_ms > self.retry_yield_threshold_ms {
+                    self.schedule_retry_timer(run, retry_delay_ms)?;
+                    Ok(())
+                } else {
+                    self.drive_run(run)
+                }
+            }
+            ActionFailureOutcome::DriveHandler => {
                 self.drive_run(run)
             }
             ActionFailureOutcome::FailRun => {
@@ -817,6 +828,54 @@ impl Shard {
                 self.fail_run_state_with_retry_checkpoint(run, preflight.ticket.step, state)
             }
         }
+    }
+
+    /// Compute the retry delay in milliseconds for the given failure preflight.
+    /// Returns 0 if the retry policy doesn't specify a delay.
+    fn compute_retry_delay(&self, preflight: &ActionFailurePreflight) -> u64 {
+        let state = self.run_state_get(preflight.ticket.run);
+        match state {
+            Some(state) => {
+                if let Ok(policy) =
+                    crate::shard::helpers::retry_policy_after_action(state, preflight.ticket.step)
+                {
+                    policy
+                        .delay_for_attempt(u64::MAX, preflight.ticket.attempt as u16)
+                        .map_or(0, |delay| delay)
+                } else {
+                    0
+                }
+            }
+            None => 0,
+        }
+    }
+
+    /// Schedule a retry via PendingTimer. When the timer fires, handle_timer
+    /// will drive the run and execute the retry.
+    fn schedule_retry_timer(&mut self, run: RunId, delay_ms: u64) -> RuntimeResult<()> {
+        use std::time::{Duration, Instant};
+        let duration = Duration::from_millis(delay_ms);
+        let deadline = Instant::now() + duration;
+        let generation = self
+            .next_pending_timer_generation(run)
+            .ok_or(RuntimeError::InvalidTimerFire)?;
+        let step = {
+            let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+            state.frame.pc()
+        };
+        let timer = PendingTimer {
+            step,
+            kind: PendingTimerKind::Wait,
+            generation,
+            deadline,
+        };
+        self.pending_timer_insert(run, timer)?;
+        self.trace_ring.push(TraceEvent::RetryScheduled {
+            run,
+            step,
+            delay_ms,
+        });
+        Ok(())
     }
 
     pub fn ticket_with_retry_capacity(

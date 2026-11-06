@@ -1387,6 +1387,7 @@ pub struct Shard {
     pub(crate) inspect_response: Option<InspectResponse>,
     pub(crate) shutting_down: bool,
     pub(crate) current_tick: TimerTick,
+    pub(crate) retry_yield_threshold_ms: u64,
     pub(crate) journal: SharedRuntimeJournal,
     pub(crate) completion_capture: crate::runtime::completion_observation::CompletionCapture,
 }
@@ -1441,6 +1442,10 @@ pub struct ShardConfig {
     pub max_active_runs: usize,
     /// Admission policy governing artifact verification.
     pub policy: vb_core::policy::RuntimePolicy,
+    /// Retry delay threshold in milliseconds. When a retry delay exceeds
+    /// this value, the retry is scheduled via PendingTimer instead of
+    /// executing immediately, yielding control back to the scheduler.
+    pub retry_yield_threshold_ms: u64,
 }
 
 /// Returns true when a trace ring capacity can retain at least one trace event.
@@ -1463,6 +1468,7 @@ impl Default for ShardConfig {
             step_budget_per_tick: 1000,
             max_active_runs: 1024,
             policy: vb_core::policy::RuntimePolicy::Strict,
+            retry_yield_threshold_ms: 2000,
         }
     }
 }

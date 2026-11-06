@@ -121,6 +121,7 @@ fn shard_config_new_accepts_max_step_budget() {
             step_budget_per_tick: u64::MAX,
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+        retry_yield_threshold_ms: 2000,
         })
     );
 }

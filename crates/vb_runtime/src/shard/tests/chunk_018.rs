@@ -33,6 +33,7 @@ fn bh_shd_11_zero_step_budget_never_executes() {
         trace_capacity: 16,
         step_budget_per_tick: 0,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -171,6 +172,7 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
         trace_capacity: 16,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);

@@ -210,6 +210,7 @@ fn observed_shard_resets_after_real_resume_error_and_finish() -> Result<(), Stri
     let mut shard = Shard::new(ShardConfig {
         policy: vb_core::RuntimePolicy::Relaxed,
         max_active_runs: 1,
+            retry_yield_threshold_ms: 2000,
         ..ShardConfig::default()
     });
     let enqueue_result = shard.enqueue(ShardCommand::Resume { run: RunId::new(7) });

@@ -106,6 +106,7 @@ fn shard_new_with_custom_config_returns_generation_one() {
         trace_capacity: 128,
         step_budget_per_tick: 100,
         max_active_runs: 16,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Strict,
     };
     let shard = Shard::new(config);

@@ -96,6 +96,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
         trace_capacity: 16,
         step_budget_per_tick: 8,
         max_active_runs: 1,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
@@ -234,6 +235,7 @@ fn shard_config_new_at_max_capacity_boundary() {
             trace_capacity: 16,
             step_budget_per_tick: 100,
             max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })
     );
@@ -254,6 +256,7 @@ fn shard_config_new_at_minimum_capacity() {
             trace_capacity: 1,
             step_budget_per_tick: 1,
             max_active_runs: 1,
+        retry_yield_threshold_ms: 2000,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })
     );

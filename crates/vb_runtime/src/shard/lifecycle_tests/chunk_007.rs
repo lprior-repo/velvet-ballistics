@@ -32,6 +32,7 @@ fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> {
         step_budget_per_tick: 4,
         max_active_runs: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            retry_yield_threshold_ms: 2000,
     };
     let mut shard = Shard::new(config);
     submit_run(

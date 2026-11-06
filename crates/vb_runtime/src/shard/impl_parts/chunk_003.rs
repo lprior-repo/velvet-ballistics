@@ -34,6 +34,7 @@ impl ShardConfig {
             step_budget_per_tick,
             max_active_runs,
             policy,
+            retry_yield_threshold_ms: 2000,
         })
     }
 }

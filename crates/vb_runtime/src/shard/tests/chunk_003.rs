@@ -32,6 +32,7 @@ fn small_config() -> ShardConfig {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+        retry_yield_threshold_ms: 2000,
     }
 }
 
@@ -202,6 +203,7 @@ fn enqueue_returns_queue_full_when_capacity_exceeded() {
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
+        retry_yield_threshold_ms: 2000,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let shard = Shard::new(config);

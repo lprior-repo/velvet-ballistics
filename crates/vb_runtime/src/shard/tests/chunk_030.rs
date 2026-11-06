@@ -28,6 +28,7 @@ fn shard_created_with_custom_config_has_custom_properties() {
         step_budget_per_tick: 500,
         max_active_runs: 16,
         policy: vb_core::policy::RuntimePolicy::Strict,
+        retry_yield_threshold_ms: 2000,
     };
     let shard = Shard::new(config);
     assert_eq!(shard.command_queue_capacity(), 64);

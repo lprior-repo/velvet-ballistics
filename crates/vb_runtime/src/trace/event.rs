@@ -53,6 +53,15 @@ pub enum TraceEvent {
         /// Failure code.
         code: ActionFailureCode,
     },
+    /// A retry was scheduled via PendingTimer due to long retry delay.
+    RetryScheduled {
+        /// Run identifier.
+        run: RunId,
+        /// Step at which the retry will resume.
+        step: StepIdx,
+        /// Scheduled retry delay in milliseconds.
+        delay_ms: u64,
+    },
     /// An ask was answered.
     AskAnswered {
         /// Run identifier.
@@ -105,7 +114,8 @@ impl TraceEvent {
             | Self::RunFinished { run }
             | Self::RunFailed { run }
             | Self::RunCancelled { run }
-            | Self::RunKilled { run } => *run,
+            | Self::RunKilled { run }
+            | Self::RetryScheduled { run, .. } => *run,
         }
     }
 
@@ -124,7 +134,8 @@ impl TraceEvent {
             | Self::ActionCompleted { .. }
             | Self::ActionFailed { .. }
             | Self::AskAnswered { .. }
-            | Self::RunSubmitted { .. } => false,
+            | Self::RunSubmitted { .. }
+            | Self::RetryScheduled { .. } => false,
         }
     }
 }

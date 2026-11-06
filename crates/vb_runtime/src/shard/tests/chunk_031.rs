@@ -100,6 +100,7 @@ fn current_tick_starts_at_zero_for_custom_config() {
         step_budget_per_tick: 100,
         max_active_runs: 16,
         policy: vb_core::policy::RuntimePolicy::Strict,
+        retry_yield_threshold_ms: 2000,
     };
     let shard = Shard::new(config);
     assert_eq!(shard.current_tick(), TimerTick::new(0));

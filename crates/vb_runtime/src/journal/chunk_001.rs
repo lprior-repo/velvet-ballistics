@@ -71,6 +71,7 @@ pub enum RuntimeJournalEvent {
         /// Run attempt that was killed.
         attempt: u16,
     },
+
     /// Action was scheduled and handed to the external action boundary.
     ActionScheduled {
         /// Run identifier.

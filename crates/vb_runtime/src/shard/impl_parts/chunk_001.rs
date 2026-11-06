@@ -33,6 +33,7 @@ impl Shard {
             inspect_response: None,
             shutting_down: false,
             current_tick: TimerTick::new(0),
+            retry_yield_threshold_ms: config.retry_yield_threshold_ms,
             journal,
             completion_capture: crate::runtime::completion_observation::CompletionCapture::default(
             ),
