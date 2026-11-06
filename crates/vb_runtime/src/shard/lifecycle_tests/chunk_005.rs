@@ -3186,7 +3186,7 @@ fn drive_awaiting_run_falls_back_to_single_run_failed_when_journal_budget_exceed
 }
 
 #[test]
-fn drive_journal_bytes_counter_matches_appended_drive_batch() -> Result<(), String> {
+fn journal_bytes_counter_matches_appended_header_and_drive_events() -> Result<(), String> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -3200,23 +3200,61 @@ fn drive_journal_bytes_counter_matches_appended_drive_batch() -> Result<(), Stri
     let events = require_snapshot(&journal)?;
     let mut measured: u64 = 0;
     for event in &events {
-        let is_drive_event = matches!(
-            event,
-            RuntimeJournalEvent::StepStarted { run: r, .. }
-            | RuntimeJournalEvent::StepSucceeded { run: r, .. }
-            | RuntimeJournalEvent::SlotWritten { run: r, .. }
-            | RuntimeJournalEvent::AskScheduled { run: r, .. }
-                if *r == run
-        );
-        if is_drive_event {
-            let encoded = postcard::to_allocvec(event)
-                .map_err(|error| format!("event encode failed: {error:?}"))?;
-            measured = measured
-                .checked_add(u64::try_from(encoded.len()).map_err(|_| "length overflow")?)
-                .ok_or_else(|| "measured total overflow".to_string())?;
-        }
+        let encoded = postcard::to_allocvec(event)
+            .map_err(|error| format!("event encode failed: {error:?}"))?;
+        measured = measured
+            .checked_add(u64::try_from(encoded.len()).map_err(|_| "length overflow")?)
+            .ok_or_else(|| "measured total overflow".to_string())?;
     }
-    assert!(measured > 0, "drive batch must contain events");
+    assert!(measured > 0, "journal must contain events");
+    assert_eq!(state.journal_bytes_written, measured);
+    Ok(())
+}
+
+#[test]
+fn pre_persisted_submit_seeds_counter_with_admission_event_only() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("ask_then_finish", ask_workflow())?;
+    let run = RunId::new(776);
+    assert_eq!(
+        shard.enqueue(ShardCommand::SubmitPrePersisted {
+            run,
+            workflow: wf,
+            caps: crate::shard::tests::test_fixtures::contract_capability_for(ActionId::new(0)),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    let state = shard
+        .run_state_get(run)
+        .ok_or_else(|| "run should still be active awaiting ask".to_string())?;
+    let events = require_snapshot(&journal)?;
+    assert!(
+        !events.iter().any(|event| matches!(
+            event,
+            RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run
+        )),
+        "pre-persisted submit must not journal a second submitted event: {events:?}"
+    );
+    assert!(
+        events.iter().any(|event| matches!(
+            event,
+            RuntimeJournalEvent::RunAdmission { admission } if admission.run_id() == run
+        )),
+        "pre-persisted submit must journal the admission event: {events:?}"
+    );
+    let mut measured: u64 = 0;
+    for event in &events {
+        let encoded = postcard::to_allocvec(event)
+            .map_err(|error| format!("event encode failed: {error:?}"))?;
+        measured = measured
+            .checked_add(u64::try_from(encoded.len()).map_err(|_| "length overflow")?)
+            .ok_or_else(|| "measured total overflow".to_string())?;
+    }
+    assert!(measured > 0, "journal must contain events");
     assert_eq!(state.journal_bytes_written, measured);
     Ok(())
 }

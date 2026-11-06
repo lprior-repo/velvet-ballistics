@@ -127,27 +127,36 @@ impl Shard {
         let ir_compat_decision = admission
             .as_ref()
             .and_then(|admission| admission.ir_compat_decision());
+        let mut header_bytes: u64 = 0;
         if let (true, Some(admission)) = (persist_header, admission.as_ref()) {
             let header_result = match ir_compat_decision {
-                Some(decision) => self.append_journal_events_atomically([
-                    RuntimeJournalEvent::RunSubmitted {
-                        run,
-                        workflow: digest,
-                    },
-                    RuntimeJournalEvent::RunAdmission {
-                        admission: admission.clone(),
-                    },
-                    RuntimeJournalEvent::CompatibilityDecision { run, decision },
-                ]),
-                None => self.append_journal_events_atomically([
-                    RuntimeJournalEvent::RunSubmitted {
-                        run,
-                        workflow: digest,
-                    },
-                    RuntimeJournalEvent::RunAdmission {
-                        admission: admission.clone(),
-                    },
-                ]),
+                Some(decision) => {
+                    let events = [
+                        RuntimeJournalEvent::RunSubmitted {
+                            run,
+                            workflow: digest,
+                        },
+                        RuntimeJournalEvent::RunAdmission {
+                            admission: admission.clone(),
+                        },
+                        RuntimeJournalEvent::CompatibilityDecision { run, decision },
+                    ];
+                    header_bytes = Self::journal_batch_bytes(&events)?;
+                    self.append_journal_events_atomically(events)
+                }
+                None => {
+                    let events = [
+                        RuntimeJournalEvent::RunSubmitted {
+                            run,
+                            workflow: digest,
+                        },
+                        RuntimeJournalEvent::RunAdmission {
+                            admission: admission.clone(),
+                        },
+                    ];
+                    header_bytes = Self::journal_batch_bytes(&events)?;
+                    self.append_journal_events_atomically(events)
+                }
             };
             if let Err(error) = header_result {
                 self.discard_journal_sequence(run);
@@ -155,26 +164,29 @@ impl Shard {
             }
         } else {
             if persist_header {
-                self.append_admission_header_journal_event(
+                let event = RuntimeJournalEvent::RunSubmitted {
                     run,
-                    RuntimeJournalEvent::RunSubmitted {
-                        run,
-                        workflow: digest,
-                    },
-                )?;
+                    workflow: digest,
+                };
+                header_bytes = header_bytes
+                    .checked_add(Self::journal_event_bytes(&event)?)
+                    .ok_or(RuntimeError::EncodeFailed)?;
+                self.append_admission_header_journal_event(run, event)?;
             }
             if let Some(admission) = admission.as_ref() {
-                self.append_admission_header_journal_event(
-                    run,
-                    RuntimeJournalEvent::RunAdmission {
-                        admission: admission.clone(),
-                    },
-                )?;
+                let event = RuntimeJournalEvent::RunAdmission {
+                    admission: admission.clone(),
+                };
+                header_bytes = header_bytes
+                    .checked_add(Self::journal_event_bytes(&event)?)
+                    .ok_or(RuntimeError::EncodeFailed)?;
+                self.append_admission_header_journal_event(run, event)?;
                 if let Some(decision) = ir_compat_decision {
-                    self.append_admission_header_journal_event(
-                        run,
-                        RuntimeJournalEvent::CompatibilityDecision { run, decision },
-                    )?;
+                    let event = RuntimeJournalEvent::CompatibilityDecision { run, decision };
+                    header_bytes = header_bytes
+                        .checked_add(Self::journal_event_bytes(&event)?)
+                        .ok_or(RuntimeError::EncodeFailed)?;
+                    self.append_admission_header_journal_event(run, event)?;
                 }
             }
         }
@@ -191,7 +203,7 @@ impl Shard {
             admission,
             run_started_millis: crate::shard::helpers::wall_clock_millis_since_epoch(),
             collect_states: CollectStates::new(),
-            journal_bytes_written: 0,
+            journal_bytes_written: header_bytes,
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
         self.terminal_runs_remove(run);
