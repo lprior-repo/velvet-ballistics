@@ -5,14 +5,15 @@
 // ============================================================================
 //
 // DRIFT POLICY: This file MUST be regenerated from the following production
-// sources whenever either changes:
+// sources whenever either changes. Master source:
+// `crates/vb_storage/src/journal/append.rs:1-93`
 //
-//   * crates/vb_storage/src/journal/append.rs:1-89
-//     (append_strict body at lines 35-57; append_strict_batch and
+//   * crates/vb_storage/src/journal/append.rs:1-93
+//     (append_strict body at lines 39-61; append_strict_batch and
 //     append_journaled are NOT mirrored here)
-//   * crates/vb_storage/src/batch/commit.rs:1-27
+//   * crates/vb_storage/src/batch/commit.rs:1-41
 //     (strict() and commit() bodies)
-//   * crates/vb_storage/src/error/mod.rs:21-188
+//   * crates/vb_storage/src/error/mod.rs:21-198
 //     (JournalError variants reachable from append_strict)
 //
 // The master DRIFT POLICY claim is the authoritative pointer to the

@@ -14,12 +14,12 @@
 //                                                            `RuntimeEvent`)
 //   - `crates/vb_runtime/src/shard/types.rs:676-709`        (`ShardStatus`,
 //                                                            `ShardHealth`)
-//   - `crates/vb_runtime/src/shard/types.rs:31-34, 532-639` (`PendingTimerKind`,
+//   - `crates/vb_runtime/src/shard/types.rs:33-36, 830-864` (`PendingTimerKind`,
 //                                                            `ShardCommandQueue`,
 //                                                            `MAX_COMMAND_QUEUE_CAPACITY`)
 //   - `crates/vb_runtime/src/shard/timer_wheel.rs:20-159`   (`TimerEntry`,
 //                                                            `TimerWheel`)
-//   - `crates/vb_core/src/policy.rs:7+`                     (`RuntimePolicy`)
+//   - `crates/vb_core/src/policy.rs:194-201`                     (`RuntimePolicy`)
 //   - `crates/vb_runtime/src/admission.rs:82-95`            (`RunAdmission`)
 //
 // The substitutions relative to direct `#[path]` inclusion of the
@@ -55,20 +55,26 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `RuntimeEvent` (9-variant enum)                 <- crates/vb_runtime/src/shard/types.rs:778-797
+//   - `RuntimeEvent` (9-variant enum)                 <- crates/vb_runtime/src/shard/types.rs:1500-1519
+// Production `crates/vb_runtime/src/shard/types.rs:1500-1519`
 //   - `RuntimeEvent::is_terminal()`                   <- crates/vb_runtime/src/shard/types.rs:802-807
 //   - `RuntimeEvent::is_resumable()`                  <- crates/vb_runtime/src/shard/types.rs:811-816
-//   - `RuntimeState` (5-variant enum)                 <- crates/vb_runtime/src/shard/types.rs:753-764
+//   - `RuntimeState` (5-variant enum)                 <- crates/vb_runtime/src/shard/types.rs:1475-1486
+// Production `crates/vb_runtime/src/shard/types.rs:1475-1486`
 //   - `RuntimeState::is_resumable()`                  <- crates/vb_runtime/src/shard/types.rs:769-771
-//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types.rs:676-699
-//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types.rs:704-709
-//   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`           <- crates/vb_runtime/src/shard/types.rs:532
+//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types.rs:1398-1421
+// Production `crates/vb_runtime/src/shard/types.rs:1398-1421`
+//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types.rs:1426-1431
+// Production `crates/vb_runtime/src/shard/types.rs:1426-1431`
+//   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`           <- crates/vb_runtime/src/shard/types.rs:830
 //     (declared in the spec file, not this mirror — see header note)
-//   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types.rs:550-639
-//   - `PendingTimerKind` (2-variant enum)             <- crates/vb_runtime/src/shard/types.rs:31-34
+//   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types.rs:848-864
+//   - `PendingTimerKind` (2-variant enum)             <- crates/vb_runtime/src/shard/types.rs:33-36
+// Production `crates/vb_runtime/src/shard/types.rs:33-36`
 //   - `TimerEntry` (4-field struct)                   <- crates/vb_runtime/src/shard/timer_wheel.rs:20-30
 //   - `TimerWheel`                                    <- crates/vb_runtime/src/shard/timer_wheel.rs:41-46
-//   - `RuntimePolicy` (4-variant enum)                <- crates/vb_core/src/policy.rs:7+
+//   - `RuntimePolicy` (4-variant enum)                <- crates/vb_core/src/policy.rs:194-201
+// Production `crates/vb_core/src/policy.rs:194-201`
 //   - `RunAdmission` (6-field struct)                 <- crates/vb_runtime/src/admission.rs:82-95
 //
 // ============================================================================
@@ -86,11 +92,11 @@
 #![allow(non_snake_case)]
 
 // ============================================================================
-// Mirror of production `RuntimePolicy` (vb_core/src/policy.rs:7+)
+// Mirror of production `RuntimePolicy` (vb_core/src/policy.rs:194-201)
 // ============================================================================
 
 /// Mirror of production `vb_core::policy::RuntimePolicy` at
-/// `crates/vb_core/src/policy.rs:7+`. The discriminant set is the
+/// `crates/vb_core/src/policy.rs:194-201`. The discriminant set is the
 /// production set: 4 variants (Strict | Journaled | Relaxed | Other).
 #[derive(Clone, Copy)]
 pub enum RuntimePolicy {
@@ -234,27 +240,27 @@ pub struct ShardStatus {
 }
 
 // ============================================================================
-// Mirror of production `ShardCommandQueue` (shard/types.rs:550-639)
+// Mirror of production `ShardCommandQueue` (shard/types.rs:848-864)
 // ============================================================================
 
 /// Mirror of production `vb_runtime::shard::types::ShardCommandQueue`
-/// at `crates/vb_runtime/src/shard/types.rs:550-639`.
+/// at `crates/vb_runtime/src/shard/types.rs:848-864`.
 #[derive(Clone)]
 pub struct ShardCommandQueue {
-    /// Production field (types.rs:552): configured queue capacity.
+    /// Production field (types.rs:851): configured queue capacity.
     pub capacity: usize,
-    /// Production field (types.rs:554): current queue depth.
+    /// Production `len` (types.rs:1025-1027): current queue depth.
     pub depth: usize,
 }
 
 impl ShardCommandQueue {
-    /// Production `ShardCommandQueue::len` at types.rs:607-610.
+    /// Production `ShardCommandQueue::len` at types.rs:1025-1027.
     #[verifier::external]
     pub fn len(&self) -> usize {
         self.depth
     }
 
-    /// Production `ShardCommandQueue::capacity` at types.rs:619-622.
+    /// Production `ShardCommandQueue::capacity` at types.rs:1037-1039.
     #[verifier::external]
     pub fn capacity(&self) -> usize {
         self.capacity
