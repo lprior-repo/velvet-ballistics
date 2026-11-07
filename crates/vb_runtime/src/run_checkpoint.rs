@@ -43,7 +43,7 @@ pub struct RunCheckpointV1 {
     pub run_started_millis: Option<u64>,
     /// Pagination state and page lineage captured with the state.
     pub collect_states: CollectStatesCheckpointV1,
-    /// Cumulative drive-path journal bytes charged before append.
+    /// Cumulative journal bytes for the run through the RetryCheckpoint event carrying this checkpoint, including that event's own encoded size.
     pub journal_bytes_written: u64,
     /// Validated action contracts bound to the accepted artifact.
     pub action_contracts: Box<[ActionContract]>,

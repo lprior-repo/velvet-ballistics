@@ -3449,21 +3449,31 @@ fn empty_evidence_fail_charges_run_failed_bytes() -> Result<(), String> {
             .len(),
     )
     .map_err(|_| "length overflow".to_string())?;
-    let checkpoint = events
+    let checkpoint_event = events
         .iter()
-        .find_map(|event| match event {
-            RuntimeJournalEvent::RetryCheckpoint {
-                run: checkpoint_run,
-                payload,
-                ..
-            } if *checkpoint_run == run => {
-                Some(postcard::from_bytes::<crate::run_checkpoint::RunCheckpointV1>(payload))
-            }
-            _ => None,
+        .find(|event| {
+            matches!(event, RuntimeJournalEvent::RetryCheckpoint { run: checkpoint_run, .. } if *checkpoint_run == run)
         })
-        .ok_or_else(|| "RetryCheckpoint must be journaled".to_string())?
+        .ok_or_else(|| "RetryCheckpoint must be journaled".to_string())?;
+    let checkpoint_event_len = u64::try_from(
+        postcard::to_allocvec(checkpoint_event)
+            .map_err(|error| format!("event encode failed: {error:?}"))?
+            .len(),
+    )
+    .map_err(|_| "length overflow".to_string())?;
+    let RuntimeJournalEvent::RetryCheckpoint { payload, .. } = checkpoint_event else {
+        return Err("event shape changed".to_string());
+    };
+    let checkpoint = postcard::from_bytes::<crate::run_checkpoint::RunCheckpointV1>(payload)
         .map_err(|error| format!("checkpoint decode failed: {error:?}"))?;
-    assert_eq!(checkpoint.journal_bytes_written, failed_len);
+    // The stored counter includes the RunFailed event charged before capture
+    // and the RetryCheckpoint event's own postcard bytes.
+    assert_eq!(
+        checkpoint.journal_bytes_written,
+        failed_len
+            .checked_add(checkpoint_event_len)
+            .ok_or_else(|| "counter total overflow".to_string())?
+    );
     Ok(())
 }
 
@@ -4353,4 +4363,97 @@ fn command_resumed_records_journal_bytes() -> Result<(), String> {
         .map_err(|error| format!("resumed event append failed: {error:?}"))?;
     assert_eq!(count_events(&require_snapshot(&journal)?, run, is_resumed), 1);
     assert_counter_matches_journal(&shard, &journal, run)
+}
+
+fn retry_checkpoint_counter_case(base: u64, run: RunId) -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let workflow = two_slot_workflow().ok_or_else(|| "two slot workflow builds".to_string())?;
+    let digest = workflow.digest();
+    shard
+        .append_journal_event(RuntimeJournalEvent::RunSubmitted {
+            run,
+            workflow: digest,
+        })
+        .map_err(|error| format!("seed journal failed: {error:?}"))?;
+    let mut state = crate::shard::helpers::make_run_state(workflow.clone(), run)
+        .ok_or_else(|| "run state builds".to_string())?;
+    state.admission = Some(RunAdmission::new(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+    ));
+    state.journal_bytes_written = base;
+    state
+        .frame
+        .mark_running(StepIdx::ZERO)
+        .map_err(|error| format!("mark running failed: {error:?}"))?;
+    shard
+        .capture_retry_checkpoint(run, StepIdx::ZERO, &mut state)
+        .map_err(|error| format!("capture retry checkpoint failed: {error:?}"))?;
+    let events = require_snapshot(&journal)?;
+    let checkpoint_event = events
+        .iter()
+        .find(|event| {
+            matches!(
+                event,
+                RuntimeJournalEvent::RetryCheckpoint { run: event_run, .. } if *event_run == run
+            )
+        })
+        .ok_or_else(|| "retry checkpoint must be journaled".to_string())?;
+    let event_bytes = postcard::to_allocvec(checkpoint_event)
+        .map_err(|error| format!("event encode failed: {error:?}"))?;
+    let event_len =
+        u64::try_from(event_bytes.len()).map_err(|_| "event length overflow".to_string())?;
+    let expected = base
+        .checked_add(event_len)
+        .ok_or_else(|| "expected counter overflow".to_string())?;
+    let RuntimeJournalEvent::RetryCheckpoint {
+        payload,
+        payload_digest,
+        attempt,
+        step,
+        ..
+    } = checkpoint_event
+    else {
+        return Err("checkpoint event shape changed".to_string());
+    };
+    assert_eq!(
+        *payload_digest,
+        *blake3::hash(payload).as_bytes(),
+        "checkpoint digest must match its payload"
+    );
+    let checkpoint = crate::run_checkpoint::decode_checkpoint_payload(payload)
+        .map_err(|error| format!("checkpoint decode failed: {error}"))?;
+    assert_eq!(checkpoint.journal_bytes_written, expected);
+    let rebuilt = RuntimeJournalEvent::RetryCheckpoint {
+        run,
+        attempt: *attempt,
+        step: *step,
+        payload_digest: *payload_digest,
+        payload: postcard::to_allocvec(&checkpoint)
+            .map_err(|error| format!("checkpoint re-encode failed: {error:?}"))?,
+    };
+    let rebuilt_bytes = postcard::to_allocvec(&rebuilt)
+        .map_err(|error| format!("rebuilt event encode failed: {error:?}"))?;
+    assert_eq!(
+        u64::try_from(rebuilt_bytes.len()).map_err(|_| "rebuilt length overflow")?,
+        event_len
+    );
+    let (restored, restored_attempt, _, _) = checkpoint
+        .restore(workflow, digest, &state.action_contracts)
+        .map_err(|error| format!("checkpoint restore failed: {error}"))?;
+    assert_eq!(restored.journal_bytes_written, expected);
+    assert_eq!(restored_attempt.get(), 2);
+    Ok(())
+}
+
+#[test]
+fn retry_checkpoint_stores_counter_including_its_own_event_bytes() -> Result<(), String> {
+    retry_checkpoint_counter_case(0, RunId::new(777))?;
+    retry_checkpoint_counter_case(127, RunId::new(778))?;
+    retry_checkpoint_counter_case(16_383, RunId::new(779))?;
+    Ok(())
 }
