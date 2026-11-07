@@ -131,7 +131,7 @@ scripts/check-hot-cold-forbidden-apis.rs|lewis|vb-srclen|split-after-ledger-land
 scripts/check-test-integrity.rs|lewis|vb-srclen|split-after-ledger-landing|production 2480 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 scripts/check-workspace-assertions.rs|lewis|vb-srclen|split-after-ledger-landing|production 440 lines (limit 300) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 verification/verus/budget_bounded.rs|lewis|vb-srclen|split-after-ledger-landing|verus 956 lines (limit 800) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
-verification/verus/collect_ir_structure.rs|lewis|vb-srclen|split-after-ledger-landing|verus 869 lines (limit 800) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
+verification/verus/collect_ir_structure.rs|lewis|vb-srclen|split-after-ledger-landing|verus 1971 lines (limit 800) on branch vb/collect-ir-structure-refresh; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 verification/verus/error_parity.rs|lewis|vb-srclen|split-after-ledger-landing|verus 931 lines (limit 800) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 verification/verus/extern_recovery_verification.rs|lewis|vb-srclen|split-after-ledger-landing|verus 1150 lines (limit 800) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
 verification/verus/idempotency_replay_tracker.rs|lewis|vb-srclen|split-after-ledger-landing|verus 822 lines (limit 800) on main d3110dd2; pre-existing over-limit baseline, split follow-up tracked under vb-srclen
