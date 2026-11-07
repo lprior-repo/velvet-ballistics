@@ -10,7 +10,7 @@
 // `verification/verus/production_inner/emit_single_body_set_production.rs`,
 // which is a structural mirror of the production exec fn
 // `emit_single_body_set` at
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297`.
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
 //
 // The mirror reproduces the production decision shape (body_len != 1
 // -> StepFieldShape; body_len == 1 and primitive_tag in {Set, Do} ->
