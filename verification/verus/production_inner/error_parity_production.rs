@@ -536,14 +536,28 @@ impl SlotCompiler {
 ///
 /// Marked `#[verifier::external]` so the body is opaque to Verus and
 /// the production contract is attached via `assume_specification` in
-/// the companion spec file. The body below is a placeholder; the
-/// spec-side `assume_specification` pins the discriminant mapping
-/// using the `tag_length` length-tag approach (which avoids Verus's
+/// the companion spec file. The body below is the production match
+/// verbatim (part_05_digest.rs:125-141); the spec-side
+/// `assume_specification` pins the same discriminant mapping using
+/// the `tag_length` length-tag approach (which avoids Verus's
 /// `cmp::eq_spec` postcondition check on direct `&str` equality).
 #[verifier::external]
 pub fn canonical_primitive_name(primitive: &StepPrimitive) -> &'static str {
-    let _ = primitive;
-    "unknown"
+    match primitive {
+        StepPrimitive::Set { .. } => "set",
+        StepPrimitive::Save { .. } => "save",
+        StepPrimitive::Do { .. } => "do",
+        StepPrimitive::Choose { .. } => "choose",
+        StepPrimitive::ForEach { .. } => "for_each",
+        StepPrimitive::Together { .. } => "together",
+        StepPrimitive::Collect { .. } => "collect",
+        StepPrimitive::Aggregate { .. } => "reduce",
+        StepPrimitive::Repeat { .. } => "repeat",
+        StepPrimitive::Wait { .. } => "wait",
+        StepPrimitive::Ask { .. } => "ask",
+        StepPrimitive::Finish { .. } => "finish",
+        _ => "unknown",
+    }
 }
 
 // ============================================================================
