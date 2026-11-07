@@ -106,6 +106,19 @@ impl ConstIdx {
 
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActionId(pub u16);
+
+impl ActionId {
+    pub const fn new(value: u16) -> Self {
+        Self(value)
+    }
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+}
+
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExprIdx(pub u32);
 
 impl ExprIdx {
@@ -378,9 +391,9 @@ impl ErrorRouting {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompiledNodeKind {
-    Do { action: u16, input: SlotIdx },
-    Set { value: ConstIdx, slot: SlotIdx },
-    Finish,
+    Do { action: ActionId, input: SlotIdx },
+    SetConst { value: ConstIdx },
+    Finish { result: SlotIdx },
     Other,
 }
 
