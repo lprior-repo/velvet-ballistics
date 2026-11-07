@@ -115,6 +115,25 @@
 #[path = "production_inner/try_from_parts_production.rs"]
 pub mod production_try_from_parts;
 use vstd::prelude::*;
+
+/// Pins the `production_try_from_parts::CompiledNodeKind` payloads
+/// (`crates/vb_core/src/workflow/mod.rs:1191-1357`) so a field drift
+/// breaks the build. The `Do` / `SetConst` / `Finish` arms are the
+/// only kinds this mirror models; constructing each pins its field set.
+#[verifier::external]
+fn compiled_node_kind_drift_check() {
+    let _kind = production_try_from_parts::CompiledNodeKind::Do {
+        action: production_try_from_parts::ActionId::new(0),
+        input: production_try_from_parts::SlotIdx::new(0),
+    };
+    let _kind = production_try_from_parts::CompiledNodeKind::SetConst {
+        value: production_try_from_parts::ConstIdx::new(0),
+    };
+    let _kind = production_try_from_parts::CompiledNodeKind::Finish {
+        result: production_try_from_parts::SlotIdx::new(0),
+    };
+}
+
 // ============================================================================
 // Error discriminant mirror (SpecWorkflowError)
 // ============================================================================
@@ -847,7 +866,7 @@ fn compiled_node_shape_drift_check() {
                 error_slot: Some(node_slot),
             },
         },
-        kind: production_try_from_parts::CompiledNodeKind::Finish,
+        kind: production_try_from_parts::CompiledNodeKind::Finish { result: node_slot },
     };
     let _node = production_try_from_parts::CompiledNode {
         id: node_step,
@@ -856,6 +875,6 @@ fn compiled_node_shape_drift_check() {
             next: production_try_from_parts::NodeContinuation::End,
             error: production_try_from_parts::ErrorRouting::None,
         },
-        kind: production_try_from_parts::CompiledNodeKind::Finish,
+        kind: production_try_from_parts::CompiledNodeKind::Finish { result: node_slot },
     };
 }

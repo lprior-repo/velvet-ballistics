@@ -225,6 +225,22 @@ impl ActionId {
     }
 }
 
+/// Mirror of `ConstIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:75`.
+/// Used by `CompiledNodeKind::SetConst { value, .. }` and produced by
+/// `lower_set` and `body_constant_index` for the `SetConst` arm.
+#[derive(Clone, Copy)]
+pub struct ConstIdx(pub u16);
+
+impl ConstIdx {
+    pub const fn new(value: u16) -> Self {
+        Self(value)
+    }
+
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+}
+
 // ============================================================================
 // StepAst / StepPrimitive — mirrors of `crates/vb_yaml/src/yaml_ast/types.rs`
 // ============================================================================
@@ -505,11 +521,11 @@ impl ErrorRouting {
 }
 
 /// Mirror of production `CompiledNodeKind` at
-/// `crates/vb_core/src/workflow/mod.rs`. Restricted to the
+/// `crates/vb_core/src/workflow/mod.rs:1191-1357`. Restricted to the
 /// `SetConst` and `Do` arms `emit_single_body_set` constructs.
 pub enum CompiledNodeKind {
     SetConst {
-        value: usize,
+        value: ConstIdx,
     },
     Do {
         action: ActionId,
@@ -661,7 +677,7 @@ pub fn is_do_primitive(primitive: &StepPrimitive) -> bool {
 pub fn lower_set(
     _id: StepIdx,
     _output: SlotIdx,
-    _value: usize,
+    _value: ConstIdx,
     _next: Option<StepIdx>,
 ) -> CompiledNode {
     // Placeholder body — production logic lives in part_05_ir.rs and
@@ -679,7 +695,7 @@ pub fn body_constant_index(
     _value: &str,
     _step: usize,
     _reuse_first_constant: bool,
-) -> Result<usize, CompileErrors> {
+) -> Result<ConstIdx, CompileErrors> {
     loop {}
 }
 

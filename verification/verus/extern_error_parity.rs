@@ -62,6 +62,21 @@ verus! {
 #[path = "production_inner/error_parity_production.rs"]
 pub mod prod_src;
 
+/// Pins the `prod_src::CompiledNodeKind` payloads
+/// (`crates/vb_core/src/workflow/mod.rs:1191-1357`) so a field drift
+/// breaks the build. The `SetConst` / `Do` arms are the only kinds
+/// this mirror models; constructing each pins its field set.
+#[verifier::external]
+fn compiled_node_kind_drift_check() {
+    let _kind = prod_src::CompiledNodeKind::SetConst {
+        value: prod_src::ConstIdx::new(0),
+    };
+    let _kind = prod_src::CompiledNodeKind::Do {
+        action: prod_src::ActionId::new(0),
+        input: prod_src::SlotIdx::new(0),
+    };
+}
+
 pub use prod_src::{
     ActionId,
     body_constant_index,
@@ -110,7 +125,9 @@ fn compiled_node_shape_drift_check() {
                 error_slot: Some(node_slot),
             },
         },
-        kind: prod_src::CompiledNodeKind::SetConst { value: 0 },
+        kind: prod_src::CompiledNodeKind::SetConst {
+            value: prod_src::ConstIdx::new(0),
+        },
     };
     let _node = prod_src::CompiledNode {
         id: node_step,
@@ -119,7 +136,9 @@ fn compiled_node_shape_drift_check() {
             next: prod_src::NodeContinuation::End,
             error: prod_src::ErrorRouting::None,
         },
-        kind: prod_src::CompiledNodeKind::SetConst { value: 0 },
+        kind: prod_src::CompiledNodeKind::SetConst {
+            value: prod_src::ConstIdx::new(0),
+        },
     };
 }
 
