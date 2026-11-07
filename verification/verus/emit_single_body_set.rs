@@ -10,7 +10,7 @@
 //
 // This file is bound to the production exec fn
 // `emit_single_body_set` at
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297`
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`
 // through the companion extern surface
 // `verification/verus/extern_emit_single_body_set.rs`.
 //
@@ -23,8 +23,8 @@
 // This rewrite grounds every lemma in production types:
 //   - The shadow `SpecErrorType` enum is gone. The production error
 //     variants `CompileError::StepFieldShape`
-//     (kind.rs:113-114) and `CompileError::UnsupportedStepPrimitive`
-//     (kind.rs:107-108) are what `emit_single_body_set` actually
+//     (kind.rs:123-124) and `CompileError::UnsupportedStepPrimitive`
+//     (kind.rs:117-118) are what `emit_single_body_set` actually
 //     constructs on the corresponding input shapes.
 //   - The shadow `int` and `&str` parameters are gone. The projection
 //     takes production-aligned `usize` (body_len, diagnostic_step)
@@ -45,23 +45,23 @@
 // ============================================================================
 //   - `StepIdx` (u16 newtype)               <- extern_emit_single_body_set.rs
 //                                               (mirror of
-//                                                vb_core/src/ids/mod.rs:55)
+//                                                vb_core/src/ids/mod.rs:70)
 //   - `SlotIdx` (u16 newtype)               <- extern_emit_single_body_set.rs
 //                                               (mirror of
-//                                                vb_core/src/ids/mod.rs:56)
+//                                                vb_core/src/ids/mod.rs:71)
 //   - `SpecCompileError::StepFieldShape`    <- extern_emit_single_body_set.rs
 //                                               (mirror of
 //                                                CompileError::StepFieldShape
-//                                                at kind.rs:113-114)
+//                                                at kind.rs:123-124)
 //   - `SpecCompileError::UnsupportedStepPrimitive`
 //                                           <- extern_emit_single_body_set.rs
 //                                               (mirror of
 //                                                CompileError::UnsupportedStepPrimitive
-//                                                at kind.rs:107-108)
+//                                                at kind.rs:117-118)
 //   - `emit_single_body_set_projection`     <- extern_emit_single_body_set.rs
 //                                               (mirror of
 //                                                emit_single_body_set decision shape
-//                                                at part_04.rs:213-297)
+//                                                at part_04.rs:96-179)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS SPEC
@@ -130,7 +130,7 @@ pub use production::{
 // ============================================================================
 //
 // Mirrors the production dispatch in `emit_single_body_set` at
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297`.
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
 // The contract characterises every production decision branch in
 // terms of the production error variants (`StepFieldShape`,
 // `UnsupportedStepPrimitive`) and the success discriminant.
@@ -459,7 +459,7 @@ pub proof fn lemma_emit_single_body_set_error_invariant(body_len: int, primitive
 /// variants are covered by the `UnsupportedStepPrimitive` error.
 /// The set of covered tags is the full primitive tag space minus
 /// `{Set, Do}`; the lemma below enumerates the production variants
-/// (mirroring `canonical_primitive_name` at part_05_digest.rs:6-22)
+/// (mirroring `canonical_primitive_name` at part_05_digest.rs:125-141)
 /// and verifies each is `!= Set` and `!= Do`.
 pub proof fn lemma_all_primitives_covered()
     ensures
