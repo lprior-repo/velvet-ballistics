@@ -109,20 +109,20 @@
 //        (production body: dispatches the typed recovery product;
 //        frame seeds are rejected when any of the 13 cannot-resume
 //        flags is true.)
-//   - `check_compiled_ir_digest_pure`
+//   - `check_compiled_ir_digest`
 //        <- crates/vb_storage/src/recovery/recover.rs:53-62
 //        (production body: `if expected == found { Ok(()) } else
 //        { Err(CompiledIrDigestMismatch) }`).
-//   - `check_workflow_source_digest_pure`
+//   - `check_workflow_source_digest`
 //        <- crates/vb_storage/src/recovery/recover.rs:32-50
 //        (production body: scan events for RunAccepted; return Ok iff
 //        found AND `*workflow == expected`. Pure projection: success
 //        iff has_acceptance_record && workflow_source_matches.)
-//   - `check_action_abi_digest_pure`
+//   - `check_action_abi_digest`
 //        <- crates/vb_storage/src/recovery/recover.rs:65-75
 //        (production body: equality check; pure projection: success
 //        iff matches.)
-//   - `check_policy_digest_pure`
+//   - `check_policy_digest`
 //        <- crates/vb_storage/src/recovery/recover.rs:78-88
 //        (production body: equality check; pure projection: success
 //        iff matches.)
@@ -133,7 +133,7 @@
 //        closed decision fn over (level, workflow_source_matches,
 //        has_acceptance_record, compiled_ir_matches,
 //        action_abi_all_match, policy_all_match).)
-//   - `recover_runtime_summary_pure`
+//   - `recover_runtime_summary`
 //        <- crates/vb_storage/src/recovery/recover.rs:178-187
 //        (production body: read events; reject if empty; delegate to
 //        summarize_recovery_events. Pure projection: success iff
