@@ -40,15 +40,15 @@
 // =============================================================================
 // BINDING LEDGER
 // =============================================================================
-//   - `StepBudget`                          <- crates/vb_core/src/engine/signals.rs:13-16
-//   - `StepBudget::MAX`                     <- crates/vb_core/src/engine/signals.rs:19-22
-//   - `StepBudget::new`                     <- crates/vb_core/src/engine/signals.rs:26-35
+//   - `StepBudget`                          <- crates/vb_core/src/engine/signals.rs:14-16
+//   - `StepBudget::MAX`                     <- crates/vb_core/src/engine/signals.rs:20-22
+//   - `StepBudget::new`                     <- crates/vb_core/src/engine/signals.rs:27-35
 //   - `StepBudget::try_take`                <- crates/vb_core/src/engine/signals.rs:50-60
-//   - `StepBudget::remaining`               <- crates/vb_core/src/engine/signals.rs:62-66
-//   - `StepBudget::from_env`                <- crates/vb_core/src/engine/signals.rs:80-94
+//   - `StepBudget::remaining`               <- crates/vb_core/src/engine/signals.rs:64-66
+//   - `StepBudget::from_env`                <- crates/vb_core/src/engine/signals.rs:81-94
 //   - `EngineError::StepCounterOverflow`    <- crates/vb_core/src/errors.rs:241
 //   - `MAX_STEP_BUDGET = 10_000`            <- crates/vb_core/src/limits.rs:94
-//   - `EngineSignal`                        <- crates/vb_core/src/engine/signals.rs:99-115
+//   - `EngineSignal`                        <- crates/vb_core/src/engine/signals.rs:100-115
 //                                             (7 variants, all production discriminants
 //                                              preserved verbatim)
 //

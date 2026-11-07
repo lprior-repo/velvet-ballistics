@@ -57,15 +57,15 @@
 // BINDING LEDGER
 // =============================================================================
 //   - `CliExitCode` enum (9 variants, repr(u8))
-//                            <- crates/velvet_ballistics/src/exit_code.rs:9-32
+//                            <- crates/velvet_ballistics/src/exit_code.rs:12-34
 //   - `From<CliExitCode> for u8` (production impl)
-//                            <- crates/velvet_ballistics/src/exit_code.rs:40-54
+//                            <- crates/velvet_ballistics/src/exit_code.rs:42-57
 //   - `From<CliExitCode> for ExitCode` (production impl)
-//                            <- crates/velvet_ballistics/src/exit_code.rs:34-38
+//                            <- crates/velvet_ballistics/src/exit_code.rs:36-40
 //   - `From<vb_core::errors::CoreError> for CliExitCode` (production)
-//                            <- crates/velvet_ballistics/src/exit_code.rs:56-61
+//                            <- crates/velvet_ballistics/src/exit_code.rs:59-64
 //   - `From<vb_storage::error::JournalError> for CliExitCode` (production)
-//                            <- crates/velvet_ballistics/src/exit_code.rs:63-68
+//                            <- crates/velvet_ballistics/src/exit_code.rs:66-71
 //
 // Spec-side projection into mathematical Set algebra:
 //   - `spec_cli_exit_code_discriminant(code)` -> u8

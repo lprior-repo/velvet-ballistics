@@ -31,10 +31,10 @@
 // ============================================================================
 // BINDING LEDGER (mirrors production_inner/ipc_strict_admission_production.rs)
 // ============================================================================
-//   - `StrictAdmissionRefinement` (struct)             <- crates/vb_runtime/src/ipc_refinement.rs:21-29
-//   - `is_refined`                                     <- crates/vb_runtime/src/ipc_refinement.rs:34-36
+//   - `StrictAdmissionRefinement` (struct)             <- crates/vb_runtime/src/ipc_refinement.rs:23-30
+//   - `is_refined`                                     <- crates/vb_runtime/src/ipc_refinement.rs:35-37
 //   - `evidence_complete_projection`                  <- derived projection
-//   - `strict_admission_refinement`                   <- crates/vb_runtime/src/ipc_refinement.rs:123-134
+//   - `strict_admission_refinement`                   <- crates/vb_runtime/src/ipc_refinement.rs:124-135
 //
 // ============================================================================
 // TRUST BOUNDARY

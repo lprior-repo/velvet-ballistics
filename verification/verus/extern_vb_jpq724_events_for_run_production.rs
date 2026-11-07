@@ -78,9 +78,9 @@
 //                                          (u64 newtype)
 //   - `EventSeq`                         <- crates/vb_storage/src/types.rs:73
 //                                          (u64 newtype)
-//   - `EventReplayLimit`                 <- crates/vb_storage/src/journal/core.rs:25-27
+//   - `EventReplayLimit`                 <- crates/vb_storage/src/journal/core.rs:22-24
 //                                          (struct { max_events: usize })
-//   - `MirrorJournalError`               <- crates/vb_storage/src/error/mod.rs:21-163
+//   - `MirrorJournalError`               <- crates/vb_storage/src/error/mod.rs:21-198
 //                                          (restricted subset of variants
 //                                          relevant to replay seams:
 //                                          SequenceOverflow, WrongRun,
@@ -90,7 +90,7 @@
 //                                          TooManyEvents,
 //                                          ReplayAllocationFailed,
 //                                          UnexpectedEof)
-//   - `MirrorJournalEvent`               <- crates/vb_storage/src/events.rs:23-316
+//   - `MirrorJournalEvent`               <- crates/vb_storage/src/events/event.rs:37-427
 //                                          (mirror of the production enum
 //                                          shape; only the per-variant
 //                                          `run` and `seq` fields are
@@ -108,16 +108,16 @@
 // so Verus skips body verification; the production contract is
 // attached via `assume_specification` in the companion spec file:
 //
-//   - `next_seq`                         <- crates/vb_storage/src/codec/mod.rs:176-181
+//   - `next_seq`                         <- crates/vb_storage/src/codec/mod.rs:183-188
 //        (production: `seq.get().checked_add(1).map(EventSeq::new)
 //                      .ok_or(JournalError::SequenceOverflow)`)
 //   - `production_validate_replayed_event`
-//                                       <- crates/vb_storage/src/codec/mod.rs:183-201
+//                                       <- crates/vb_storage/src/codec/mod.rs:190-208
 //        (production: `if event.run_id() != run return WrongRun;
 //                       if event.seq() != expected return SequenceGap;
 //                       Ok(())`)
 //   - `production_latest_durable_snapshot_seq`
-//                                       <- crates/vb_storage/src/trimming/logic.rs:24-41
+//                                       <- crates/vb_storage/src/trimming/logic.rs:26-36
 //        (production: returns `Option<EventSeq>` from the snapshot
 //                       keyspace; the mirror holds the per-run seq
 //                       in `latest_snapshot_seq_for_run`)
@@ -126,7 +126,7 @@
 //                       latest durable snapshot seq when present,
 //                       otherwise from `EventSeq::new(0)`; delegates
 //                       to `events_for_run_from`)
-//   - `production_events_for_run_from`   <- crates/vb_storage/src/journal/replay.rs:130-161
+//   - `production_events_for_run_from`   <- crates/vb_storage/src/journal/replay.rs:130-163
 //        (production: pure range scan from `start_key`, decodes each
 //                       value, validates run_id + seq contiguity
 //                       via `validate_replay_sequence`, enforces
