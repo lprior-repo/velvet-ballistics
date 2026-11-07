@@ -23,11 +23,11 @@
 // Production mirror binding ledger (pointing to production source files):
 //   - `StepBudget`             <- crates/vb_core/src/engine/signals.rs:14-16
 //   - `EngineSignal`           <- crates/vb_core/src/engine/signals.rs:100-115
-//   - `StepBudget::new`        <- crates/vb_core/src/engine/signals.rs:26-35
+//   - `StepBudget::new`        <- crates/vb_core/src/engine/signals.rs:27-35
 //   - `StepBudget::try_take`   <- crates/vb_core/src/engine/signals.rs:50-60
-//   - `StepBudget::remaining`  <- crates/vb_core/src/engine/signals.rs:62-65
-//   - `StepBudget::from_env`   <- crates/vb_core/src/engine/signals.rs:80-94
-//   - `StepBudget::MAX`        <- crates/vb_core/src/engine/signals.rs:19-22
+//   - `StepBudget::remaining`  <- crates/vb_core/src/engine/signals.rs:64-66
+//   - `StepBudget::from_env`   <- crates/vb_core/src/engine/signals.rs:81-94
+//   - `StepBudget::MAX`        <- crates/vb_core/src/engine/signals.rs:20-22
 //   - `mark_step_after_signal` <- crates/vb_core/src/engine/step.rs:109-121
 //
 // ============================================================================
