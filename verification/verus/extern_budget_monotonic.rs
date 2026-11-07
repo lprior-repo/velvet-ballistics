@@ -222,6 +222,33 @@ fn prod_methods_drift_check(
     let nodes: &[production_inner::workflow::CompiledNode] = &[];
     let _ = production_inner::whole_workflow_budget_compute(nodes, entry, &contract);
     let _ = production_inner::WholeWorkflowBudget::compute(nodes, entry, &contract);
+
+    // Reference the workflow::CompiledNode struct shape
+    // (workflow/mod.rs:995-1004) so a field drift breaks the build.
+    // Constructing both routing shapes pins every variant of the
+    // NodeOutput / NodeContinuation / ErrorRouting mirrors.
+    let node_slot = production_inner::SlotIdx::new(0);
+    let _node = production_inner::workflow::CompiledNode {
+        id: step,
+        output: production_inner::workflow::NodeOutput::Slot(node_slot),
+        routing: production_inner::workflow::NodeRouting {
+            next: production_inner::workflow::NodeContinuation::Step(step),
+            error: production_inner::workflow::ErrorRouting::Handler {
+                handler: step,
+                error_slot: Some(node_slot),
+            },
+        },
+        kind: production_inner::workflow::CompiledNodeKind::Nop,
+    };
+    let _node = production_inner::workflow::CompiledNode {
+        id: step,
+        output: production_inner::workflow::NodeOutput::Discard,
+        routing: production_inner::workflow::NodeRouting {
+            next: production_inner::workflow::NodeContinuation::End,
+            error: production_inner::workflow::ErrorRouting::None,
+        },
+        kind: production_inner::workflow::CompiledNodeKind::Nop,
+    };
 }
 
 } // verus!
