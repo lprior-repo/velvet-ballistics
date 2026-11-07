@@ -1108,9 +1108,9 @@ verus_registry:
     production: crates/vb_compile/src/mod_compile_lowering/part_03.rs
 
   - id: PO-VERUS-025
-    description: "lower_canonical_collect IR struct field refinement: CompiledCollect IR field shapes match production surface (PO-012)."
+    description: "lower_bounded_collect IR struct field refinement: CompiledCollect IR field shapes match production surface (PO-012)."
     verus: verification/verus/collect_ir_structure.rs
-    production: crates/vb_compile/src/mod_compile_lowering/part_03.rs
+    production: crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs
 
   - id: PO-VERUS-026
     description: "emit_single_body_set error invariants: SpecCompileError::StepFieldShape emission bound to production part_04.rs:213-297 (PO-006, PO-009, PO-018)."
