@@ -124,6 +124,98 @@ fn prod_methods_drift_check(
         target: step,
     };
 
+    // Reference every CompiledNodeKind variant whose fields this
+    // mirror aligns with production (workflow/mod.rs:1191-1357).
+    // Constructing them with the production fields pins the mirror
+    // against field drift even though the spec never constructs them.
+    let slot = production_inner::SlotIdx::new(0);
+    let constant = production_inner::ConstIdx::new(0);
+    let _kind = production_inner::workflow::CompiledNodeKind::TogetherBranch {
+        branch: 0,
+        entry: step,
+        join: step,
+        accumulator: slot,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::TogetherJoin {
+        branch_count: 0,
+        accumulator: slot,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::CollectStart {
+        source: slot,
+        limit: 0,
+        page_size: 0,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::CollectPage {
+        collector_slot: slot,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::CollectNext {
+        collector_slot: slot,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::CollectFinish {
+        collector_slot: slot,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::ReduceStart {
+        input: slot,
+        accumulator: slot,
+        initial: constant,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::ReduceNext {
+        iterator_slot: slot,
+        accumulator: slot,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::ReduceFinish {
+        accumulator: slot,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::RepeatAttempt {
+        attempt_slot: slot,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::RepeatCheck {
+        attempt_slot: slot,
+        done: step,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::RepeatFinish {
+        result: slot,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::RetryCheck {
+        policy_slot: slot,
+        body: step,
+        exhausted: step,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::ErrorHandler {
+        body: step,
+        handler: step,
+        error_slot: None,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::WaitUntil {
+        deadline_slot: slot,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::WaitEvent {
+        event: slot,
+        timeout_slot: None,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::Ask {
+        prompt: slot,
+        timeout_slot: None,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::AskResume {
+        answer: slot,
+    };
+    let _kind = production_inner::workflow::CompiledNodeKind::Finish {
+        result: slot,
+    };
+
     // Force resolution of the production method by invoking it with
     // phantom arguments. The body is opaque to Verus but the rustc
     // compilation resolves the names.
