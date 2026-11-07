@@ -63,19 +63,19 @@
 // =============================================================================
 // BINDING LEDGER
 // =============================================================================
-//   - `ObjectField`                          <- crates/vb_core/src/value_store.rs:14-23
-//   - `ObjectField::clean`                   <- crates/vb_core/src/value_store.rs:27-32
-//   - `ObjectField::with_taint`              <- crates/vb_core/src/value_store.rs:36-39
-//   - `ValueStore`                           <- crates/vb_core/src/value_store.rs:43-58
-//   - `ValueStore::with_max_slots`           <- crates/vb_core/src/value_store.rs:77-89
-//   - `ValueStore::insert_symbol`            <- crates/vb_core/src/value_store.rs:91-99
-//   - `ValueStore::insert_list`              <- crates/vb_core/src/value_store.rs:102-112
-//   - `ValueStore::insert_list_with_taint`   <- crates/vb_core/src/value_store.rs:114-131
-//   - `ValueStore::insert_object`            <- crates/vb_core/src/value_store.rs:133-160
-//   - `ValueStore::insert_blob`              <- crates/vb_core/src/value_store.rs:162-170
-//   - `ValueStore::total_arena_count`        <- crates/vb_core/src/value_store.rs:300-308
-//   - `ValueStore::max_arena_entries`        <- crates/vb_core/src/value_store.rs:311-314
-//   - `ValueStore::check_arena_cap`          <- crates/vb_core/src/value_store.rs:316-329
+//   - `ObjectField`                          <- crates/vb_core/src/value_store.rs:27-34
+//   - `ObjectField::clean`                   <- crates/vb_core/src/value_store.rs:39-45
+//   - `ObjectField::with_taint`              <- crates/vb_core/src/value_store.rs:49-51
+//   - `ValueStore`                           <- crates/vb_core/src/value_store.rs:56-69
+//   - `ValueStore::with_max_slots`           <- crates/vb_core/src/value_store.rs:89-100
+//   - `ValueStore::insert_symbol`            <- crates/vb_core/src/value_store.rs:103-110
+//   - `ValueStore::insert_list`              <- crates/vb_core/src/value_store.rs:114-123
+//   - `ValueStore::insert_list_with_taint`   <- crates/vb_core/src/value_store.rs:126-142
+//   - `ValueStore::insert_object`            <- crates/vb_core/src/value_store.rs:145-171
+//   - `ValueStore::insert_blob`              <- crates/vb_core/src/value_store.rs:174-181
+//   - `ValueStore::total_arena_count`        <- crates/vb_core/src/value_store.rs:312-319
+//   - `ValueStore::max_arena_entries`        <- crates/vb_core/src/value_store.rs:323-325
+//   - `ValueStore::check_arena_cap`          <- crates/vb_core/src/value_store.rs:390-402
 //                                             (this is the production cap gate; the
 //                                              spec proves its semantics via
 //                                              `assume_specification` bridge)
