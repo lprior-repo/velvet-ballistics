@@ -166,11 +166,30 @@ fn prod_methods_drift_check() {
 
     // Reference the workflow::CompiledNode and workflow::WorkflowError
     // mirror types so a rename in workflow/mod.rs:666-880 breaks the build.
+    // The CompiledNode constructions pin the struct shape
+    // (workflow/mod.rs:995-1004) and both routing shapes of the
+    // NodeOutput / NodeContinuation / ErrorRouting mirrors.
+    let node_slot = production_inner::SlotIdx::new(0);
     let _node = production_inner::CompiledNode {
         id: entry,
+        output: production_inner::NodeOutput::Slot(node_slot),
+        routing: production_inner::NodeRouting {
+            next: production_inner::NodeContinuation::Step(step),
+            error: production_inner::ErrorRouting::Handler {
+                handler: step,
+                error_slot: Some(node_slot),
+            },
+        },
         kind: production_inner::CompiledNodeKind::Nop,
-        next: None,
-        on_error: None,
+    };
+    let _node = production_inner::CompiledNode {
+        id: entry,
+        output: production_inner::NodeOutput::Discard,
+        routing: production_inner::NodeRouting {
+            next: production_inner::NodeContinuation::End,
+            error: production_inner::ErrorRouting::None,
+        },
+        kind: production_inner::CompiledNodeKind::Nop,
     };
     let _err = production_inner::workflow::WorkflowError::Other;
 

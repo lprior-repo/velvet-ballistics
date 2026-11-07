@@ -225,6 +225,34 @@ fn prod_methods_drift_check(
     let _ = production_inner::aggregate_resource_usage_check_policy(&aru, &policy);
     let _ = production_inner::add_dim(0u64, 0u64, "");
     let _ = production_inner::sub_dim(0u64, 0u64, "");
+
+    // Reference the workflow::CompiledNode struct shape
+    // (workflow/mod.rs:995-1004) so a field drift breaks the build.
+    // Constructing both routing shapes pins every variant of the
+    // NodeOutput / NodeContinuation / ErrorRouting mirrors.
+    let node_step = production_inner::StepIdx::new(0);
+    let node_slot = production_inner::SlotIdx::new(0);
+    let _node = production_inner::workflow::CompiledNode {
+        id: node_step,
+        output: production_inner::workflow::NodeOutput::Slot(node_slot),
+        routing: production_inner::workflow::NodeRouting {
+            next: production_inner::workflow::NodeContinuation::Step(node_step),
+            error: production_inner::workflow::ErrorRouting::Handler {
+                handler: node_step,
+                error_slot: Some(node_slot),
+            },
+        },
+        kind: production_inner::CompiledNodeKind::Nop,
+    };
+    let _node = production_inner::workflow::CompiledNode {
+        id: node_step,
+        output: production_inner::workflow::NodeOutput::Discard,
+        routing: production_inner::workflow::NodeRouting {
+            next: production_inner::workflow::NodeContinuation::End,
+            error: production_inner::workflow::ErrorRouting::None,
+        },
+        kind: production_inner::CompiledNodeKind::Nop,
+    };
 }
 
 } // verus!

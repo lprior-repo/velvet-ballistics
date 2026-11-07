@@ -248,16 +248,78 @@ pub enum CompiledNodeKind {
     Other,
 }
 
-/// Marker mirror of production `CompiledNode` at
-/// `crates/vb_core/src/workflow/mod.rs`. Holds `id`, `kind`, `next`,
-/// `on_error`. The marker struct is sufficient because the bodies of
-/// the exec fns that take `&[CompiledNode]` slices are skipped.
+/// Mirror of production `CompiledNode` at
+/// `crates/vb_core/src/workflow/mod.rs:995-1004`. Every field name,
+/// type, and visibility matches production exactly. Drift in any
+/// field breaks the mirror.
 #[derive(Clone, Copy)]
 pub struct CompiledNode {
     pub id: StepIdx,
+    pub output: NodeOutput,
+    pub routing: NodeRouting,
     pub kind: CompiledNodeKind,
-    pub next: Option<StepIdx>,
-    pub on_error: Option<StepIdx>,
+}
+
+/// Mirror of production `NodeOutput` at
+/// `crates/vb_core/src/workflow/mod.rs:1008-1013`.
+#[derive(Clone, Copy)]
+pub enum NodeOutput {
+    Discard,
+    Slot(SlotIdx),
+}
+
+impl NodeOutput {
+    pub const fn slot(self) -> Option<SlotIdx> {
+        match self {
+            Self::Discard => None,
+            Self::Slot(slot) => Some(slot),
+        }
+    }
+}
+
+/// Mirror of production `NodeRouting` at
+/// `crates/vb_core/src/workflow/mod.rs:1028-1033`.
+#[derive(Clone, Copy)]
+pub struct NodeRouting {
+    pub next: NodeContinuation,
+    pub error: ErrorRouting,
+}
+
+/// Mirror of production `NodeContinuation` at
+/// `crates/vb_core/src/workflow/mod.rs:1037-1042`.
+#[derive(Clone, Copy)]
+pub enum NodeContinuation {
+    End,
+    Step(StepIdx),
+}
+
+impl NodeContinuation {
+    pub const fn step(self) -> Option<StepIdx> {
+        match self {
+            Self::End => None,
+            Self::Step(step) => Some(step),
+        }
+    }
+}
+
+/// Mirror of production `ErrorRouting` at
+/// `crates/vb_core/src/workflow/mod.rs:1083-1093`.
+#[derive(Clone, Copy)]
+pub enum ErrorRouting {
+    None,
+    Handler {
+        handler: StepIdx,
+        error_slot: Option<SlotIdx>,
+    },
+}
+
+impl ErrorRouting {
+    pub const fn handler(self) -> Option<StepIdx> {
+        match self {
+            Self::None => None,
+            Self::Handler { handler, .. } => Some(handler),
+        }
+    }
 }
 
 // ============================================================================
