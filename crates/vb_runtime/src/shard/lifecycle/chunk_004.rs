@@ -33,12 +33,12 @@ impl Shard {
         terminal: RuntimeJournalEvent,
     ) -> RuntimeResult<()> {
         match self.pending_action_get(run) {
-            Some(ticket) if ticket.run == run => self.append_journal_events_atomically([
+            Some(ticket) if ticket.run == run => self.record_command_journal_events(run, [
                 RuntimeJournalEvent::ActionAbandoned { ticket },
                 terminal,
             ]),
             Some(_) => Err(RuntimeError::InvalidActionCompletion),
-            None => self.append_journal_event(terminal),
+            None => self.record_command_journal_events(run, [terminal]),
         }
     }
 
