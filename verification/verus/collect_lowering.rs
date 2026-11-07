@@ -1,5 +1,5 @@
 // Verification artifact: collect_lowering.rs
-// PO: PO-011 (lower_canonical_collect emission invariants)
+// PO: PO-011 (lower_bounded_collect emission invariants)
 // Bead: vb-8mdp.7
 // Verifier: Verus — production-bound spec via extern mirror
 // Command: verus --crate-type=lib verification/verus/collect_lowering.rs
@@ -8,37 +8,43 @@
 // PRODUCTION BINDING (GOD RULE 2 compliance)
 // ============================================================================
 //
-// This file is bound to the production exec fn `lower_canonical_collect`
-// at `crates/vb_compile/src/mod_compile_lowering/part_03.rs:195-256`
+// This file is bound to the production exec fn `lower_bounded_collect`
+// at `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-261`
 // through the companion extern surface
 // `verification/verus/extern_collect_lowering.rs`. The production exec
-// fn makes three calls to `checked_step_offset(id, 1/2/3, "collect", ...)`
-// at part_03.rs:203-208 to compute the body / page / done offsets, then
-// pushes one `CollectStart` node, emits the body sequence, and pushes
-// one `CollectPage` and one `CollectFinish` node.
+// fn computes edges via `plan_compute_edges`
+// (bounded_collect.rs:116-126): body is id + 1, advance is
+// id + body_len + 1, done is id + body_len + 2, each a
+// `StepIdx::checked_add` with u16 bounds, with body_len + 1 and
+// body_len + 2 u16-checked first. It then pushes one `CollectStart`
+// node, emits the body sequence, and pushes one `CollectNext` and one
+// `CollectFinish` node, returning the finish slot.
 //
-// The pre-binding spec defined a shadow `VbSpecCompileError` enum
-// containing only a `LimitExceeded` variant and proved arithmetic
-// lemmas against that shadow type. That is a VACUUM proof: production
-// never constructs `VbSpecCompileError`, and the lemmas have no
-// relationship to the production `StepIdx` type or to the production
-// `CompileError::PrimitiveLoweringLimitExceeded` variant that
-// `checked_step_offset` actually returns on overflow.
+// The pre-split spec bound this file to `lower_canonical_collect` at
+// part_03.rs:195-256 with fixed offsets (body=id+1, page=id+2,
+// done=id+3). That binding is false for current production whenever
+// the body has more than one step: the consecutiveness lemma (L3)
+// and the max-valid-start lemma (L4, 65532) no longer hold. This
+// rewrite re-grounds every lemma in the current shape, mirroring the
+// production-side contract already proven in the part_03.rs Verus
+// block (L1-L6 for `plan_compute_edges`).
 //
 // This rewrite grounds every lemma in production types:
-//   - The shadow error enum is gone. The production error variant
+//   - The shadow error enum is gone. The production error variants
 //     `CompileError::PrimitiveLoweringLimitExceeded` from
-//     `crates/vb_compile/src/mod_compile_errors/kind.rs:124` is what
-//     `checked_step_offset` actually constructs on overflow (see
-//     part_12.rs:206-211).
+//     `crates/vb_compile/src/mod_compile_errors/kind.rs:141` and
+//     `CompileError::StepIndexOutOfRange` from kind.rs:126 are what
+//     `checked_step_offset` (part_12.rs:199-212) and
+//     `checked_body_length_offset` (bounded_collect.rs:108-114)
+//     actually construct on overflow.
 //   - The shadow `int` parameters are gone. Each lemma takes the
 //     production `production::StepIdx` and `u16` types directly,
 //     so the SMT solver reasons about the same integer widths that
 //     `u16::checked_add` operates on.
 //   - The proof lemmas reason at the spec level (Verus proof mode
 //     forbids calling exec fns from proof fns). The production exec
-//     wrappers `lower_canonical_collect_offsets_matches`,
-//     `lower_canonical_collect_projection_matches`, and
+//     wrappers `lower_bounded_collect_offsets_matches`,
+//     `lower_bounded_collect_projection_matches`, and
 //     `step_idx_checked_add_matches` (declared in this file) invoke
 //     the production exec fns and assert the spec contract holds;
 //     these wrappers are the discharge witnesses for the
@@ -52,50 +58,52 @@
 // ============================================================================
 //   - `StepIdx` (u16 newtype)              <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              crates/vb_core/src/ids/mod.rs:55)
+//                                              crates/vb_core/src/ids/mod.rs:70)
 //   - `StepIdx::new`                       <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              crates/vb_core/src/ids/mod.rs:21)
+//                                              crates/vb_core/src/ids/mod.rs:36)
 //   - `StepIdx::get`                       <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              crates/vb_core/src/ids/mod.rs:27)
+//                                              crates/vb_core/src/ids/mod.rs:70)
 //   - `StepIdx::checked_add`               <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              crates/vb_core/src/ids/mod.rs:303-308)
+//                                              crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206)
 //   - `SlotIdx` (u16 newtype)              <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              crates/vb_core/src/ids/mod.rs:56)
+//                                              crates/vb_core/src/ids/mod.rs:71)
 //   - `SpecCompileError`                   <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              crates/vb_compile/src/mod_compile_errors/kind.rs:124)
-//   - `lower_canonical_collect_projection` <- extern_collect_lowering.rs
+//                                              crates/vb_compile/src/mod_compile_errors/kind.rs:126,141)
+//   - `lower_bounded_collect_projection`   <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              part_03.rs:195-256)
-//   - `lower_canonical_collect_offsets`    <- extern_collect_lowering.rs
+//                                              bounded_collect.rs:243-261)
+//   - `lower_bounded_collect_offsets`      <- extern_collect_lowering.rs
 //                                              (mirror of
-//                                              part_03.rs:203-208)
+//                                              bounded_collect.rs:116-126)
 //
 // ============================================================================
-// UPGRADE FROM PREVIOUS SPEC
+// RESHAPE FROM PRE-SPLIT BINDING
 // ============================================================================
-// The previous `collect_lowering.rs` defined an internally-invented
-// `VbSpecCompileError` enum with one variant (`LimitExceeded`) and
-// proved arithmetic lemmas over abstract `int` arguments with no
-// production connection. The pre-binding spec was therefore a
-// VACUUM proof: it reasoned about a shadow type that the production
-// code never constructs and arithmetic bounds the production code
-// never sees.
-//
-// This rewrite uses the production `StepIdx` (u16 newtype) and
-// `SpecCompileError::PrimitiveLoweringLimitExceeded` (the actual
-// variant production constructs) as the spec-side types, and
-// exercises the production exec fns through `assume_specification`
-// contracts that the proof lemmas discharge.
+// The previous `collect_lowering.rs` modelled the pre-split
+// `lower_canonical_collect` (part_03.rs:195-256): fixed offsets 1/2/3,
+// a `CollectPage` node, a `3 + body.len()` node count, and a +1 slot
+// delta. The production split moved the fn to
+// `bounded_collect.rs:243-261` as `lower_bounded_collect` and changed
+// the shape: edges depend on body length, the middle node is
+// `CollectNext`, the fn returns the finish slot, and the slot delta
+// is +3 (one record plus two allocates). The old lemmas L3
+// (consecutive by exactly 1) and L4 (max valid start 65532) are false
+// for the new shape, so this rewrite parameterizes every lemma by
+// `body_len` and proves the body-length-scaled properties production
+// now has. The projection models the scalar-determined sub-decision
+// (body emptiness, edge arithmetic, slot budget); bounds, name, and
+// source validation stay outside the projection (see the extern
+// file's TRUST BOUNDARY note).
 //
 // ============================================================================
 // TRUST BOUNDARY
 // ============================================================================
-// The production body of `lower_canonical_collect` is NOT verified by
+// The production body of `lower_bounded_collect` is NOT verified by
 // Verus. The projection in `extern_collect_lowering.rs` is
 // `#[verifier::external]`, the contract is attached via
 // `assume_specification` below, and the production-bound exec
@@ -107,17 +115,18 @@ verus! {
 
 // ============================================================================
 // Production extern surface — `#[path]`-bound mirror of vb_core StepIdx and
-// vb_compile lower_canonical_collect
+// vb_compile lower_bounded_collect
 // ============================================================================
 #[path = "extern_collect_lowering.rs"]
 mod production;
 
 // Re-export the production type and exec wrappers so the spec proofs
 // below reference them as `production::StepIdx`,
-// `production::lower_canonical_collect_projection`, etc.
+// `production::lower_bounded_collect_projection`, etc.
 pub use production::{
-    lower_canonical_collect_offsets, lower_canonical_collect_projection, SlotIdx, SpecCollectOutcome,
-    SpecCompileError, StepIdx,
+    lower_bounded_collect_offsets, lower_bounded_collect_projection, SlotIdx, SpecCollectOutcome,
+    SpecCompileError, StepIdx, SPEC_ERR_INDEX_RANGE, SPEC_ERR_LIMIT_EXCEEDED, SPEC_ERR_NONE,
+    SPEC_ERR_SLOT_RANGE, SPEC_ERR_STEP_SHAPE,
 };
 
 // ============================================================================
@@ -125,7 +134,8 @@ pub use production::{
 // ============================================================================
 /// The maximum value of u16 (StepIdx inner type).
 /// This is the bound used in the MachineInt model and matches
-/// `u16::MAX` in `crates/vb_core/src/ids/mod.rs:299`
+/// `u16::MAX` in
+/// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:197`
 /// (`StepIdx::MAX = Self(u16::MAX)`).
 pub open spec fn u16_max() -> int {
     65535
@@ -138,7 +148,7 @@ pub open spec fn u16_max() -> int {
 // Bridge: `StepIdx::checked_add` matches u16 arithmetic.
 // --------------------------------------------------------------------------
 // Mirrors production `StepIdx::checked_add(self, rhs: u16) -> Option<Self>`
-// at `crates/vb_core/src/ids/mod.rs:303-308`:
+// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`:
 //
 //     pub const fn checked_add(self, rhs: u16) -> Option<Self> {
 //         match self.0.checked_add(rhs) {
@@ -163,52 +173,55 @@ pub assume_specification[ production::StepIdx::checked_add ](
         },
 ;
 // --------------------------------------------------------------------------
-// Bridge: `lower_canonical_collect_offsets` matches production semantics.
+// Bridge: `lower_bounded_collect_offsets` matches production semantics.
 // --------------------------------------------------------------------------
-// Mirrors the three `checked_step_offset` calls at
-// `crates/vb_compile/src/mod_compile_lowering/part_03.rs:203-208`:
+// Mirrors `plan_compute_edges` at
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:116-126`:
 //
-//     let body_step = checked_step_offset(id, 1, "collect", "body")
-//         .map_err(|e| CompileErrors(vec![e]))?;
-//     let page = checked_step_offset(id, 2, "collect", "page")
-//         .map_err(|e| CompileErrors(vec![e]))?;
-//     let done = checked_step_offset(id, 3, "collect", "done")
-//         .map_err(|e| CompileErrors(vec![e]))?;
+//     let body = checked_body_offset(id, 1, "collect", "body")?;
+//     let advance_n = checked_body_length_offset(body_len, 1)?;
+//     let advance = checked_body_offset(id, advance_n, "collect", "page")?;
+//     let done_n = checked_body_length_offset(body_len, 2)?;
+//     let done = checked_body_offset(id, done_n, "collect", "done")?;
 //
-// The contract: returns Ok((b, p, d)) where b == id + 1, p == id + 2,
-// d == id + 3 iff all three sums fit in u16; otherwise returns Err
-// with the `PrimitiveLoweringLimitExceeded` discriminant — the exact
-// variant `checked_step_offset` constructs at part_12.rs:206-211.
-pub assume_specification[ production::lower_canonical_collect_offsets ](
+// The contract: returns Ok((b, a, d)) where b == id + 1,
+// a == id + body_len + 1, d == id + body_len + 2 iff every sum fits
+// in u16; otherwise returns Err with the first failing check's
+// variant in production order: `PrimitiveLoweringLimitExceeded`
+// when an `id + offset` sum overflows, `StepIndexOutOfRange` when a
+// `body_len + extra` sum overflows.
+pub assume_specification[ production::lower_bounded_collect_offsets ](
     id: production::StepIdx,
+    body_len: u16,
 ) -> (result: Result<(u16, u16, u16), production::SpecCompileError>)
     ensures
         match result {
-            Ok((b, p, d)) => {
+            Ok((b, a, d)) => {
                 &&& b as int == id.0 as int + 1
-                &&& p as int == id.0 as int + 2
-                &&& d as int == id.0 as int + 3
+                &&& a as int == id.0 as int + body_len as int + 1
+                &&& d as int == id.0 as int + body_len as int + 2
                 &&& b as int <= u16_max()
-                &&& p as int <= u16_max()
+                &&& a as int <= u16_max()
                 &&& d as int <= u16_max()
             },
-            Err(production::SpecCompileError::PrimitiveLoweringLimitExceeded { .. }) => {
-                ||| id.0 as int + 1 > u16_max()
-                ||| id.0 as int + 2 > u16_max()
-                ||| id.0 as int + 3 > u16_max()
-            },
+            Err(production::SpecCompileError::PrimitiveLoweringLimitExceeded { .. }) => spec_offsets_limit_case(id, body_len),
+            Err(production::SpecCompileError::StepIndexOutOfRange { .. }) => spec_offsets_index_case(id, body_len),
         },
 ;
 // --------------------------------------------------------------------------
-// Bridge: `lower_canonical_collect_projection` matches production emission.
+// Bridge: `lower_bounded_collect_projection` matches production emission.
 // --------------------------------------------------------------------------
-// Mirrors production `lower_canonical_collect` at
-// `crates/vb_compile/src/mod_compile_lowering/part_03.rs:195-256`.
+// Mirrors production `lower_bounded_collect` at
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-261`.
 // The projection flattens the production args to
-// `(id: StepIdx, body_node_count: u16, pre_slot_count: u16)` and
-// returns `SpecCollectOutcome` carrying every scalar the spec needs.
-pub assume_specification[ production::lower_canonical_collect_projection ](
+// `(id: StepIdx, body_len: u16, body_node_count: u16,
+// pre_slot_count: u16)` and returns `SpecCollectOutcome` carrying
+// every scalar the spec needs. The error cases below are stated in
+// production order, each with its "earlier checks passed" prefix, so
+// the first failing check determines the error kind.
+pub assume_specification[ production::lower_bounded_collect_projection ](
     id: production::StepIdx,
+    body_len: u16,
     body_node_count: u16,
     pre_slot_count: u16,
 ) -> (result: production::SpecCollectOutcome)
@@ -216,22 +229,27 @@ pub assume_specification[ production::lower_canonical_collect_projection ](
         match result.ok {
             true => {
                 &&& result.body_offset as int == id.0 as int + 1
-                &&& result.page_offset as int == id.0 as int + 2
-                &&& result.done_offset as int == id.0 as int + 3
+                &&& result.advance_offset as int == id.0 as int + body_len as int + 1
+                &&& result.done_offset as int == id.0 as int + body_len as int + 2
                 &&& result.body_offset as int <= u16_max()
-                &&& result.page_offset as int <= u16_max()
+                &&& result.advance_offset as int <= u16_max()
                 &&& result.done_offset as int <= u16_max()
+                &&& body_len as int >= 1
+                &&& body_len as int + 1 <= u16_max()
+                &&& body_len as int + 2 <= u16_max()
+                &&& pre_slot_count as int + 3 <= u16_max()
                 &&& result.error_kind == production::SPEC_ERR_NONE
-                &&& result.post_slot_count == pre_slot_count + 1
-                &&& result.emitted_node_count == body_node_count + 3
+                &&& result.post_slot_count as int == pre_slot_count as int + 3
+                &&& result.emitted_node_count as int == body_node_count as int + 3
             },
             false => {
-                &&& result.error_kind == production::SPEC_ERR_LIMIT_EXCEEDED
                 &&& result.post_slot_count == pre_slot_count
                 &&& result.emitted_node_count == 0
-                &&& (id.0 as int + 1 > u16_max()
-                    || id.0 as int + 2 > u16_max()
-                    || id.0 as int + 3 > u16_max())
+                &&& result.body_offset == 0
+                &&& result.advance_offset == 0
+                &&& result.done_offset == 0
+                &&& result.error_kind == spec_collect_error_kind(id, body_len, pre_slot_count)
+                &&& !spec_collect_ok(id, body_len, pre_slot_count)
             },
         },
 ;
@@ -257,63 +275,74 @@ pub exec fn step_idx_checked_add_matches(id: production::StepIdx, rhs: u16) -> (
 }
 
 /// Production-bound exec wrapper: invoke
-/// `production::lower_canonical_collect_offsets` and assert that the
+/// `production::lower_bounded_collect_offsets` and assert that the
 /// returned triple equals the spec contract `spec_collect_offsets_ok`
 /// iff the projection succeeds.
-pub exec fn lower_canonical_collect_offsets_matches(id: production::StepIdx) -> (r: bool)
+pub exec fn lower_bounded_collect_offsets_matches(
+    id: production::StepIdx,
+    body_len: u16,
+) -> (r: bool)
     ensures
-        r == spec_collect_offsets_ok(id),
+        r == spec_collect_offsets_ok(id, body_len),
 {
-    let result = production::lower_canonical_collect_offsets(id);
+    let result = production::lower_bounded_collect_offsets(id, body_len);
     assert(match result {
-        Ok((b, p, d)) => {
+        Ok((b, a, d)) => {
             &&& b as int == id.0 as int + 1
-            &&& p as int == id.0 as int + 2
-            &&& d as int == id.0 as int + 3
+            &&& a as int == id.0 as int + body_len as int + 1
+            &&& d as int == id.0 as int + body_len as int + 2
             &&& b as int <= u16_max()
-            &&& p as int <= u16_max()
+            &&& a as int <= u16_max()
             &&& d as int <= u16_max()
         },
-        Err(production::SpecCompileError::PrimitiveLoweringLimitExceeded { .. }) => {
-            ||| id.0 as int + 1 > u16_max()
-            ||| id.0 as int + 2 > u16_max()
-            ||| id.0 as int + 3 > u16_max()
-        },
+        Err(production::SpecCompileError::PrimitiveLoweringLimitExceeded { .. }) => spec_offsets_limit_case(id, body_len),
+        Err(production::SpecCompileError::StepIndexOutOfRange { .. }) => spec_offsets_index_case(id, body_len),
     });
     result.is_ok()
 }
 
 /// Production-bound exec wrapper: invoke
-/// `production::lower_canonical_collect_projection` and assert that
+/// `production::lower_bounded_collect_projection` and assert that
 /// the outcome matches the production-bridge contract.
-pub exec fn lower_canonical_collect_projection_matches(
+pub exec fn lower_bounded_collect_projection_matches(
     id: production::StepIdx,
+    body_len: u16,
     body_node_count: u16,
     pre_slot_count: u16,
 ) -> (r: bool)
     ensures
-        r == spec_collect_ok(id),
+        r == spec_collect_ok(id, body_len, pre_slot_count),
 {
-    let result = production::lower_canonical_collect_projection(id, body_node_count, pre_slot_count);
+    let result = production::lower_bounded_collect_projection(
+        id,
+        body_len,
+        body_node_count,
+        pre_slot_count,
+    );
     assert(match result.ok {
         true => {
             &&& result.body_offset as int == id.0 as int + 1
-            &&& result.page_offset as int == id.0 as int + 2
-            &&& result.done_offset as int == id.0 as int + 3
+            &&& result.advance_offset as int == id.0 as int + body_len as int + 1
+            &&& result.done_offset as int == id.0 as int + body_len as int + 2
             &&& result.body_offset as int <= u16_max()
-            &&& result.page_offset as int <= u16_max()
+            &&& result.advance_offset as int <= u16_max()
             &&& result.done_offset as int <= u16_max()
+            &&& body_len as int >= 1
+            &&& body_len as int + 1 <= u16_max()
+            &&& body_len as int + 2 <= u16_max()
+            &&& pre_slot_count as int + 3 <= u16_max()
             &&& result.error_kind == production::SPEC_ERR_NONE
-            &&& result.post_slot_count == pre_slot_count + 1
-            &&& result.emitted_node_count == body_node_count + 3
+            &&& result.post_slot_count as int == pre_slot_count as int + 3
+            &&& result.emitted_node_count as int == body_node_count as int + 3
         },
         false => {
-            &&& result.error_kind == production::SPEC_ERR_LIMIT_EXCEEDED
             &&& result.post_slot_count == pre_slot_count
             &&& result.emitted_node_count == 0
-            &&& (id.0 as int + 1 > u16_max()
-                || id.0 as int + 2 > u16_max()
-                || id.0 as int + 3 > u16_max())
+            &&& result.body_offset == 0
+            &&& result.advance_offset == 0
+            &&& result.done_offset == 0
+            &&& result.error_kind == spec_collect_error_kind(id, body_len, pre_slot_count)
+            &&& !spec_collect_ok(id, body_len, pre_slot_count)
         },
     });
     result.ok
@@ -330,151 +359,243 @@ pub open spec fn spec_offset_ok(id: production::StepIdx, offset: int) -> bool {
 }
 
 /// Spec helper: returns whether the production projection
-/// `lower_canonical_collect_offsets` accepts `id`. Mirrors the
-/// `assume_specification` contract on `lower_canonical_collect_offsets`
-/// above.
-pub open spec fn spec_collect_offsets_ok(id: production::StepIdx) -> bool {
+/// `lower_bounded_collect_offsets` accepts `(id, body_len)`.
+/// Mirrors the `assume_specification` contract on
+/// `lower_bounded_collect_offsets` above: all three edge sums fit
+/// in u16 and both body-length sums fit in u16.
+pub open spec fn spec_collect_offsets_ok(id: production::StepIdx, body_len: u16) -> bool {
     &&& id.0 as int + 1 <= u16_max()
-    &&& id.0 as int + 2 <= u16_max()
-    &&& id.0 as int + 3 <= u16_max()
+    &&& id.0 as int + body_len as int + 1 <= u16_max()
+    &&& id.0 as int + body_len as int + 2 <= u16_max()
+    &&& body_len as int + 1 <= u16_max()
+    &&& body_len as int + 2 <= u16_max()
 }
 
 /// Spec helper: returns whether the production exec fn
-/// `lower_canonical_collect` accepts `id` (all three offset checks
-/// fit in u16). Mirrors the success arm of the `assume_specification`
-/// contract on `lower_canonical_collect_projection` above.
-pub open spec fn spec_collect_ok(id: production::StepIdx) -> bool {
-    &&& id.0 as int + 1 <= u16_max()
-    &&& id.0 as int + 2 <= u16_max()
-    &&& id.0 as int + 3 <= u16_max()
+/// `lower_bounded_collect` accepts `(id, body_len, pre_slot_count)`
+/// on the scalar-determined sub-decision (non-empty body, all edge
+/// sums fit, slot budget fits). Mirrors the success arm of the
+/// `assume_specification` contract on
+/// `lower_bounded_collect_projection` above.
+pub open spec fn spec_collect_ok(
+    id: production::StepIdx,
+    body_len: u16,
+    pre_slot_count: u16,
+) -> bool {
+    &&& body_len as int >= 1
+    &&& spec_collect_offsets_ok(id, body_len)
+    &&& pre_slot_count as int + 3 <= u16_max()
+}
+
+/// Spec helper: whether the production `plan_compute_edges` fails
+/// with `PrimitiveLoweringLimitExceeded`, in production order (body,
+/// then advance, then done). Each case carries its "earlier checks
+/// passed" prefix so the first failing check determines the variant.
+pub open spec fn spec_offsets_limit_case(id: production::StepIdx, body_len: u16) -> bool {
+    if id.0 as int + 1 > u16_max() {
+        true
+    } else if body_len as int + 1 <= u16_max() && id.0 as int + body_len as int + 1 > u16_max() {
+        true
+    } else if body_len as int + 1 <= u16_max() && id.0 as int + body_len as int + 1 <= u16_max() && body_len as int + 2 <= u16_max() && id.0 as int + body_len as int + 2 > u16_max() {
+        true
+    } else {
+        false
+    }
+}
+
+/// Spec helper: whether the production `plan_compute_edges` fails
+/// with `StepIndexOutOfRange`, in production order (advance_n, then
+/// done_n). Each case carries its "earlier checks passed" prefix.
+pub open spec fn spec_offsets_index_case(id: production::StepIdx, body_len: u16) -> bool {
+    if id.0 as int + 1 <= u16_max() && body_len as int + 1 > u16_max() {
+        true
+    } else if body_len as int + 1 <= u16_max() && id.0 as int + body_len as int + 1 <= u16_max() && body_len as int + 2 > u16_max() {
+        true
+    } else {
+        false
+    }
+}
+
+/// Spec helper: the error kind the production projection returns when
+/// the scalar-determined sub-decision fails, in production order
+/// (empty body, then the `plan_compute_edges` checks in order, then
+/// the slot budget). Mirrors the decision shape of
+/// `lower_bounded_collect_projection` in the extern file.
+pub open spec fn spec_collect_error_kind(
+    id: production::StepIdx,
+    body_len: u16,
+    pre_slot_count: u16,
+) -> u8 {
+    if body_len as int == 0 {
+        SPEC_ERR_STEP_SHAPE
+    } else if id.0 as int + 1 > u16_max() {
+        SPEC_ERR_LIMIT_EXCEEDED
+    } else if body_len as int + 1 > u16_max() {
+        SPEC_ERR_INDEX_RANGE
+    } else if id.0 as int + body_len as int + 1 > u16_max() {
+        SPEC_ERR_LIMIT_EXCEEDED
+    } else if body_len as int + 2 > u16_max() {
+        SPEC_ERR_INDEX_RANGE
+    } else if id.0 as int + body_len as int + 2 > u16_max() {
+        SPEC_ERR_LIMIT_EXCEEDED
+    } else {
+        SPEC_ERR_SLOT_RANGE
+    }
 }
 
 // ============================================================================
-// L1: Step offset strict monotonicity — body < page < done
+// L1: Step offset strict monotonicity — body < advance < done
 // ============================================================================
-// Production source: part_03.rs:203-208 (the three
-// `checked_step_offset(id, 1/2/3, "collect", ...)` calls).
+// Production source: bounded_collect.rs:116-126 (`plan_compute_edges`).
 //
-// PO-COLLECT-001: When the production exec fn accepts `id` (i.e.
-// all three offsets fit in u16), the body offset is strictly less
-// than the page offset, which is strictly less than the done offset.
-pub proof fn lemma_collect_steps_strictly_increasing(id: production::StepIdx)
+// PO-COLLECT-001: When the production exec fn accepts `(id, body_len)`
+// (i.e. all edge sums fit in u16), the body offset is strictly less
+// than the advance offset, which is strictly less than the done
+// offset.
+pub proof fn lemma_collect_steps_strictly_increasing(
+    id: production::StepIdx,
+    body_len: u16,
+)
     requires
-        spec_collect_offsets_ok(id),
+        spec_collect_offsets_ok(id, body_len),
+        body_len as int >= 1,
     ensures
-        spec_offset_ok(id, 1) && spec_offset_ok(id, 2) && spec_offset_ok(id, 3),
-        id.0 as int + 1 < id.0 as int + 2,
-        id.0 as int + 2 < id.0 as int + 3,
-        id.0 as int + 1 < id.0 as int + 3,
+        spec_offset_ok(id, 1) && spec_offset_ok(id, body_len as int + 1)
+            && spec_offset_ok(id, body_len as int + 2),
+        id.0 as int + 1 < id.0 as int + body_len as int + 1,
+        id.0 as int + body_len as int + 1 < id.0 as int + body_len as int + 2,
+        id.0 as int + 1 < id.0 as int + body_len as int + 2,
 {
-    assert(id.0 as int + 1 < id.0 as int + 2);
-    assert(id.0 as int + 2 < id.0 as int + 3);
-    assert(id.0 as int + 1 < id.0 as int + 3);
+    assert(id.0 as int + 1 < id.0 as int + body_len as int + 1);
+    assert(id.0 as int + body_len as int + 1 < id.0 as int + body_len as int + 2);
+    assert(id.0 as int + 1 < id.0 as int + body_len as int + 2);
 }
 
 // ============================================================================
-// L2: 4 distinct IDs within u16 bounds (body, page, done, all fit)
+// L2: 3 emitted IDs within u16 bounds (body, advance, done, all fit)
 // ============================================================================
-// Production source: part_03.rs:203-208.
+// Production source: bounded_collect.rs:116-126.
 //
-// PO-COLLECT-002: When `id + 3 <= u16::MAX`, all three offsets
-// (id + 1, id + 2, id + 3) produced by the production wrapper
-// `lower_canonical_collect_offsets` are within u16 bounds.
-pub proof fn lemma_collect_3_offsets_in_bounds(id: production::StepIdx)
+// PO-COLLECT-002: When `id + body_len + 2 <= u16::MAX`, all three
+// offsets (id + 1, id + body_len + 1, id + body_len + 2) produced by
+// the production wrapper `lower_bounded_collect_offsets` are within
+// u16 bounds, and both body-length sums fit in u16.
+pub proof fn lemma_collect_3_offsets_in_bounds(id: production::StepIdx, body_len: u16)
     requires
-        id.0 as int + 3 <= u16_max(),
+        id.0 as int + body_len as int + 2 <= u16_max(),
     ensures
-        spec_collect_offsets_ok(id),
+        spec_collect_offsets_ok(id, body_len),
         id.0 as int + 1 <= u16_max(),
-        id.0 as int + 2 <= u16_max(),
-        id.0 as int + 3 <= u16_max(),
+        id.0 as int + body_len as int + 1 <= u16_max(),
+        id.0 as int + body_len as int + 2 <= u16_max(),
 {
     assert(id.0 as int + 1 <= u16_max()) by {
-        assert(id.0 as int + 3 <= u16_max());
-        assert(id.0 as int + 1 <= id.0 as int + 3);
+        assert(id.0 as int + body_len as int + 2 <= u16_max());
+        assert(id.0 as int + 1 <= id.0 as int + body_len as int + 2);
     }
-    assert(id.0 as int + 2 <= u16_max()) by {
-        assert(id.0 as int + 3 <= u16_max());
-        assert(id.0 as int + 2 <= id.0 as int + 3);
+    assert(id.0 as int + body_len as int + 1 <= u16_max()) by {
+        assert(id.0 as int + body_len as int + 2 <= u16_max());
+        assert(id.0 as int + body_len as int + 1 <= id.0 as int + body_len as int + 2);
     }
-    assert(id.0 as int + 3 <= u16_max());
-    assert(spec_collect_offsets_ok(id));
+    assert(id.0 as int + body_len as int + 2 <= u16_max());
+    assert(spec_collect_offsets_ok(id, body_len));
 }
 
 // ============================================================================
-// L3: Consecutive IDs — each offset differs by exactly 1
+// L3: Body starts at id + 1; advance/done stay consecutive;
+// the body-to-advance gap scales with body length
 // ============================================================================
-// Production source: part_03.rs:203-208 (offsets 1, 2, 3 are
-// consecutive).
+// Production source: bounded_collect.rs:116-126 (edge gaps are 1,
+// body_len, 1).
 //
 // PO-COLLECT-003: The three offsets produced by the production
-// wrapper differ from their predecessor by exactly 1.
-pub proof fn lemma_collect_ids_are_consecutive(id: production::StepIdx)
+// wrapper differ from their predecessor by 1 (body from id, done
+// from advance) and by exactly `body_len` (advance from body).
+pub proof fn lemma_collect_edge_gaps(id: production::StepIdx, body_len: u16)
     requires
-        spec_collect_offsets_ok(id),
+        spec_collect_offsets_ok(id, body_len),
+        body_len as int >= 1,
     ensures
         (id.0 as int + 1) - id.0 as int == 1,
-        (id.0 as int + 2) - (id.0 as int + 1) == 1,
-        (id.0 as int + 3) - (id.0 as int + 2) == 1,
+        (id.0 as int + body_len as int + 2) - (id.0 as int + body_len as int + 1) == 1,
+        (id.0 as int + body_len as int + 1) - (id.0 as int + 1) == body_len as int,
 {
     assert((id.0 as int + 1) - id.0 as int == 1) by {}
-    assert((id.0 as int + 2) - (id.0 as int + 1) == 1) by {}
-    assert((id.0 as int + 3) - (id.0 as int + 2) == 1) by {}
+    assert((id.0 as int + body_len as int + 2) - (id.0 as int + body_len as int + 1) == 1) by {}
+    assert((id.0 as int + body_len as int + 1) - (id.0 as int + 1) == body_len as int) by {}
 }
 
 // ============================================================================
-// L4: Maximum valid start ID is u16::MAX - 3 (= 65532)
+// L4: Maximum valid start ID is u16::MAX - body_len - 2
 // ============================================================================
-// Production source: part_12.rs:206-211 (the
+// Production source: part_12.rs:199-212 (the
 // `PrimitiveLoweringLimitExceeded` error constructed when
-// `StepIdx::checked_add` returns None).
+// `StepIdx::checked_add` returns None) and
+// bounded_collect.rs:108-114 (the `StepIndexOutOfRange` error
+// constructed when `body_len + extra` overflows u16).
 //
-// PO-COLLECT-004: At `id == u16::MAX - 3`, the production wrapper
-// accepts the call (all three offsets fit). At `id == u16::MAX - 2`,
-// the production wrapper rejects with
-// `PrimitiveLoweringLimitExceeded` because `id + 3 == u16::MAX + 1`
-// overflows u16.
-pub proof fn lemma_max_valid_collect_start()
+// PO-COLLECT-004: At `id == u16::MAX - body_len - 2`, the production
+// wrapper accepts the call (all edge sums fit). At
+// `id == u16::MAX - body_len - 1`, the production wrapper rejects
+// with `PrimitiveLoweringLimitExceeded` because
+// `id + body_len + 2 == u16::MAX + 1` overflows u16. (Reduces to
+// 65532 / 65533 for the legacy body_len = 1 shape.)
+pub proof fn lemma_max_valid_collect_start(body_len: u16)
+    requires
+        body_len as int >= 1,
+        body_len as int + 2 <= u16_max(),
     ensures
-        u16_max() - 3 >= 0,
-        (u16_max() - 3) + 1 <= u16_max(),
-        (u16_max() - 3) + 2 <= u16_max(),
-        (u16_max() - 3) + 3 <= u16_max(),
+        u16_max() - body_len as int - 2 >= 0,
+        (u16_max() - body_len as int - 2) + body_len as int + 2 == u16_max(),
+        (u16_max() - body_len as int - 2) + body_len as int + 2 <= u16_max(),
         // Last valid starting id: production exec fn succeeds.
-        spec_collect_offsets_ok(production::StepIdx::from_int(u16_max() - 3)),
+        spec_collect_offsets_ok(
+            production::StepIdx::from_int(u16_max() - body_len as int - 2),
+            body_len,
+        ),
         // First invalid starting id: production exec fn rejects.
-        !spec_collect_offsets_ok(production::StepIdx::from_int(u16_max() - 2)),
+        !spec_collect_offsets_ok(
+            production::StepIdx::from_int(u16_max() - body_len as int - 1),
+            body_len,
+        ),
 {
-    assert(u16_max() - 3 >= 0) by {
-        assert(u16_max() >= 3);
+    assert(u16_max() - body_len as int - 2 >= 0) by {
+        assert(u16_max() >= body_len as int + 2);
     }
-    assert((u16_max() - 3) + 1 <= u16_max());
-    assert((u16_max() - 3) + 2 <= u16_max());
-    assert((u16_max() - 3) + 3 <= u16_max()) by {
-        assert((u16_max() - 3) + 3 == u16_max());
+    assert((u16_max() - body_len as int - 2) + body_len as int + 2 == u16_max()) by {}
+    assert((u16_max() - body_len as int - 2) + body_len as int + 2 <= u16_max()) by {
+        assert((u16_max() - body_len as int - 2) + body_len as int + 2 == u16_max());
     }
-    assert(spec_collect_offsets_ok(production::StepIdx::from_int(u16_max() - 3))) by {
-        assert((u16_max() - 3) + 1 == u16_max() - 2);
-        assert((u16_max() - 3) + 1 <= u16_max());
-        assert((u16_max() - 3) + 2 == u16_max() - 1);
-        assert((u16_max() - 3) + 2 <= u16_max());
-        assert((u16_max() - 3) + 3 == u16_max());
-        assert((u16_max() - 3) + 3 <= u16_max());
+    assert(spec_collect_offsets_ok(
+        production::StepIdx::from_int(u16_max() - body_len as int - 2),
+        body_len,
+    )) by {
+        assert((u16_max() - body_len as int - 2) + 1 == u16_max() - body_len as int - 1);
+        assert((u16_max() - body_len as int - 2) + 1 <= u16_max());
+        assert((u16_max() - body_len as int - 2) + body_len as int + 1 == u16_max() - 1);
+        assert((u16_max() - body_len as int - 2) + body_len as int + 1 <= u16_max());
+        assert((u16_max() - body_len as int - 2) + body_len as int + 2 == u16_max());
+        assert((u16_max() - body_len as int - 2) + body_len as int + 2 <= u16_max());
     }
-    assert(!spec_collect_offsets_ok(production::StepIdx::from_int(u16_max() - 2))) by {
-        assert((u16_max() - 2) + 3 == u16_max() + 1);
+    assert(!spec_collect_offsets_ok(
+        production::StepIdx::from_int(u16_max() - body_len as int - 1),
+        body_len,
+    )) by {
+        assert((u16_max() - body_len as int - 1) + body_len as int + 2 == u16_max() + 1);
         assert(u16_max() + 1 > u16_max());
-        assert(!((u16_max() - 2) + 3 <= u16_max()));
+        assert(!((u16_max() - body_len as int - 1) + body_len as int + 2 <= u16_max()));
     }
 }
 
 // ============================================================================
 // L5: Option unwrap safety — pages.unwrap_or(1) and items.unwrap_or(1)
 // ============================================================================
-// Production source: part_03.rs:218-219:
+// Production source: bounded_collect.rs:135-136
+// (`plan_validate_bounds`) and bounded_collect.rs:170 (`plan_build`):
 //
-//     limit: collect.pages.unwrap_or(1),
-//     page_size: collect.items.unwrap_or(1),
+//     let pages = config.pages.unwrap_or(1);
+//     let items = config.items.unwrap_or(1);
+//     page_size: config.items.unwrap_or(1),
 //
 // PO-COLLECT-005: When `pages` is None or `pages >= 1`, the unwrap_or
 // default of 1 produces a value `>= 1`. The same holds for `items`.
@@ -490,40 +611,48 @@ pub proof fn lemma_option_some_or_default_is_at_least_one(v: Option<u32>)
 // ============================================================================
 // L6: Full emission chain — production projection contract end-to-end
 // ============================================================================
-// Production source: part_03.rs:195-256 (the full
-// `lower_canonical_collect` body).
+// Production source: bounded_collect.rs:243-261 (the full
+// `lower_bounded_collect` body).
 //
 // PO-COLLECT-006: For any valid starting `id` (where
-// `id + 3 <= u16::MAX`), the production projection succeeds and
-// satisfies every L1-L4 property simultaneously: monotonic, all
-// offsets within u16 bounds, consecutive IDs, and the projection
-// outcome reports the correct offset values.
-pub proof fn lemma_valid_collect_emission_chain(id: production::StepIdx)
+// `id + body_len + 2 <= u16::MAX`), the production projection
+// succeeds and satisfies every L1-L4 property simultaneously:
+// monotonic, all offsets within u16 bounds, body-length-scaled gaps,
+// and the projection outcome reports the correct offset values.
+pub proof fn lemma_valid_collect_emission_chain(
+    id: production::StepIdx,
+    body_len: u16,
+    pre_slot_count: u16,
+)
     requires
-        id.0 as int + 3 <= u16_max(),
+        id.0 as int + body_len as int + 2 <= u16_max(),
+        body_len as int >= 1,
+        pre_slot_count as int + 3 <= u16_max(),
     ensures
         // L1
-        id.0 as int + 1 < id.0 as int + 2,
-        id.0 as int + 2 < id.0 as int + 3,
+        id.0 as int + 1 < id.0 as int + body_len as int + 1,
+        id.0 as int + body_len as int + 1 < id.0 as int + body_len as int + 2,
         // L2
         id.0 as int + 1 <= u16_max(),
-        id.0 as int + 2 <= u16_max(),
-        id.0 as int + 3 <= u16_max(),
+        id.0 as int + body_len as int + 1 <= u16_max(),
+        id.0 as int + body_len as int + 2 <= u16_max(),
         // L3
         (id.0 as int + 1) - id.0 as int == 1,
-        (id.0 as int + 2) - (id.0 as int + 1) == 1,
-        (id.0 as int + 3) - (id.0 as int + 2) == 1,
+        (id.0 as int + body_len as int + 2) - (id.0 as int + body_len as int + 1) == 1,
+        (id.0 as int + body_len as int + 1) - (id.0 as int + 1) == body_len as int,
         // Production bridge: spec predicate matches projection.
-        spec_collect_offsets_ok(id),
-        spec_collect_ok(id),
+        spec_collect_offsets_ok(id, body_len),
+        spec_collect_ok(id, body_len, pre_slot_count),
 {
-    lemma_collect_3_offsets_in_bounds(id);
-    lemma_collect_steps_strictly_increasing(id);
-    lemma_collect_ids_are_consecutive(id);
-    assert(spec_collect_ok(id)) by {
+    lemma_collect_3_offsets_in_bounds(id, body_len);
+    lemma_collect_steps_strictly_increasing(id, body_len);
+    lemma_collect_edge_gaps(id, body_len);
+    assert(spec_collect_ok(id, body_len, pre_slot_count)) by {
         assert(id.0 as int + 1 <= u16_max());
-        assert(id.0 as int + 2 <= u16_max());
-        assert(id.0 as int + 3 <= u16_max());
+        assert(id.0 as int + body_len as int + 1 <= u16_max());
+        assert(id.0 as int + body_len as int + 2 <= u16_max());
+        assert(body_len as int + 1 <= u16_max());
+        assert(body_len as int + 2 <= u16_max());
     };
 }
 
@@ -531,25 +660,26 @@ pub proof fn lemma_valid_collect_emission_chain(id: production::StepIdx)
 // PO-COLLECT-007: Production projection emission contract — discharged
 // ============================================================================
 // This lemma proves the spec-side postcondition of
-// `lower_canonical_collect_projection` from the success-arm contract
+// `lower_bounded_collect_projection` from the success-arm contract
 // stated in the `assume_specification` bridge above. The exec wrapper
-// `lower_canonical_collect_projection_matches` is the runtime
+// `lower_bounded_collect_projection_matches` is the runtime
 // discharge witness.
 pub proof fn lemma_collect_projection_contract_holds(
     id: production::StepIdx,
+    body_len: u16,
     _body_node_count: u16,
-    _pre_slot_count: u16,
+    pre_slot_count: u16,
 )
     requires
-        spec_collect_ok(id),
+        spec_collect_ok(id, body_len, pre_slot_count),
     ensures
         id.0 as int + 1 <= u16_max(),
-        id.0 as int + 2 <= u16_max(),
-        id.0 as int + 3 <= u16_max(),
+        id.0 as int + body_len as int + 1 <= u16_max(),
+        id.0 as int + body_len as int + 2 <= u16_max(),
 {
     assert(id.0 as int + 1 <= u16_max());
-    assert(id.0 as int + 2 <= u16_max());
-    assert(id.0 as int + 3 <= u16_max());
+    assert(id.0 as int + body_len as int + 1 <= u16_max());
+    assert(id.0 as int + body_len as int + 2 <= u16_max());
 }
 
 fn main() {}
