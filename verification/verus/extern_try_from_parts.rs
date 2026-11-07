@@ -827,3 +827,35 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     }
     SpecValidationResult::Ok
 }
+
+/// Pins the `production_try_from_parts::CompiledNode` struct shape
+/// (`crates/vb_core/src/workflow/mod.rs:995-1004`) so a field drift
+/// breaks the build. Constructing both routing shapes pins every
+/// variant of the `NodeOutput` / `NodeContinuation` / `ErrorRouting`
+/// mirrors.
+#[verifier::external]
+fn compiled_node_shape_drift_check() {
+    let node_step = production_try_from_parts::StepIdx::new(0);
+    let node_slot = production_try_from_parts::SlotIdx::new(0);
+    let _node = production_try_from_parts::CompiledNode {
+        id: node_step,
+        output: production_try_from_parts::NodeOutput::Slot(node_slot),
+        routing: production_try_from_parts::NodeRouting {
+            next: production_try_from_parts::NodeContinuation::Step(node_step),
+            error: production_try_from_parts::ErrorRouting::Handler {
+                handler: node_step,
+                error_slot: Some(node_slot),
+            },
+        },
+        kind: production_try_from_parts::CompiledNodeKind::Finish,
+    };
+    let _node = production_try_from_parts::CompiledNode {
+        id: node_step,
+        output: production_try_from_parts::NodeOutput::Discard,
+        routing: production_try_from_parts::NodeRouting {
+            next: production_try_from_parts::NodeContinuation::End,
+            error: production_try_from_parts::ErrorRouting::None,
+        },
+        kind: production_try_from_parts::CompiledNodeKind::Finish,
+    };
+}

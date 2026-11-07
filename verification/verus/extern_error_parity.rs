@@ -91,4 +91,36 @@ pub use prod_src::{
     TogetherBranch,
 };
 
+/// Pins the `prod_src::CompiledNode` struct shape
+/// (`crates/vb_core/src/workflow/mod.rs:995-1004`) so a field drift
+/// breaks the build. Constructing both routing shapes pins every
+/// variant of the `NodeOutput` / `NodeContinuation` / `ErrorRouting`
+/// mirrors.
+#[verifier::external]
+fn compiled_node_shape_drift_check() {
+    let node_step = prod_src::StepIdx::new(0);
+    let node_slot = prod_src::SlotIdx::new(0);
+    let _node = prod_src::CompiledNode {
+        id: node_step,
+        output: prod_src::NodeOutput::Slot(node_slot),
+        routing: prod_src::NodeRouting {
+            next: prod_src::NodeContinuation::Step(node_step),
+            error: prod_src::ErrorRouting::Handler {
+                handler: node_step,
+                error_slot: Some(node_slot),
+            },
+        },
+        kind: prod_src::CompiledNodeKind::SetConst { value: 0 },
+    };
+    let _node = prod_src::CompiledNode {
+        id: node_step,
+        output: prod_src::NodeOutput::Discard,
+        routing: prod_src::NodeRouting {
+            next: prod_src::NodeContinuation::End,
+            error: prod_src::ErrorRouting::None,
+        },
+        kind: prod_src::CompiledNodeKind::SetConst { value: 0 },
+    };
+}
+
 } // verus!
