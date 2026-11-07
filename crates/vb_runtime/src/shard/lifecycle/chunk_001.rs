@@ -649,7 +649,7 @@ impl Shard {
             .map_err(ResumeError::journal_append_failed_with_source)?;
         let timestamp = current_timestamp();
         let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
-        if let Err(source) = self.append_journal_event(resumed_event) {
+        if let Err(source) = self.record_command_journal_events(run, [resumed_event]) {
             self.apply(run, RuntimeEvent::ResumeRollback)
                 .map_err(ResumeError::journal_append_failed_with_source)?;
             return Err(ResumeError::journal_append_failed_with_source(source));
@@ -706,7 +706,7 @@ impl Shard {
             let abi = schedule_action_abi_digest(state, ticket.action)?;
             (pf, abi)
         };
-        self.append_journal_event(RuntimeJournalEvent::ActionCompletedEnvelope {
+        if self.append_command_journal_events(run, [RuntimeJournalEvent::ActionCompletedEnvelope {
             ticket: preflight.ticket,
             output: preflight.output_slot,
             value: preflight.encoded_value.clone(),
@@ -714,7 +714,10 @@ impl Shard {
             taint: preflight.taint,
             value_digest: preflight.value_digest,
             action_abi_digest,
-        })?;
+        }])? {
+            let _removed_ticket = self.pending_action_remove(run);
+            return self.fail_command_run_on_journal_budget(run);
+        }
         let state = self
             .run_state_get_mut(run)
             .ok_or(RuntimeError::RunNotFound)?;
@@ -755,12 +758,15 @@ impl Shard {
         // Evidence chain: emit StepSucceeded for legacy action completion.
         // Legacy path has no output slot information.
         // Journal append FIRST so a journal failure does not diverge frame and journal.
-        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
+        if self.append_command_journal_events(run, [RuntimeJournalEvent::StepSucceeded {
             run,
             step: ticket.step,
             output: SlotIdx::ZERO,
             attempt: ticket.attempt,
-        })?;
+        }])? {
+            let _removed_ticket = self.pending_action_remove(run);
+            return self.fail_command_run_on_journal_budget(run);
+        }
         let state = self
             .run_state_get_mut(run)
             .ok_or(RuntimeError::RunNotFound)?;
@@ -813,18 +819,24 @@ impl Shard {
             action: preflight.ticket.action,
             attempt: preflight.ticket.attempt,
         };
-        if preflight.outcome == ActionFailureOutcome::FailRun {
+        let budget_exceeded = if preflight.outcome == ActionFailureOutcome::FailRun {
             let attempt = self
                 .run_state_get(run)
                 .map(|state| state.run_attempt.get())
                 .ok_or(RuntimeError::RunNotFound)?;
-            self.append_journal_events_atomically([
+            if self.append_command_journal_events(run, [
                 action_failed_event,
                 RuntimeJournalEvent::RunFailed { run, attempt },
-            ])?;
+            ])? {
+                self.record_command_journal_events(run, [RuntimeJournalEvent::RunFailed {
+                    run,
+                    attempt,
+                }])?;
+            }
+            false
         } else {
-            self.append_journal_event(action_failed_event)?;
-        }
+            self.append_command_journal_events(run, [action_failed_event])?
+        };
         // 3. Apply preflight mutations to the run frame / action_attempts.
         //    Held in a narrow scope so `pending_action_remove` and
         //    `trace_ring.push` can borrow `self` after the mutable
@@ -844,6 +856,9 @@ impl Shard {
         // 4. Drive the run state machine forward using the preflighted outcome.
         match preflight.outcome {
             ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
+                if budget_exceeded {
+                    return self.fail_command_run_on_journal_budget(run);
+                }
                 self.drive_run(run)
             }
             ActionFailureOutcome::FailRun => {

@@ -492,6 +492,71 @@ impl Shard {
         projected > budget.max_journal_bytes_total
     }
 
+    fn command_journal_bytes_exceeds(
+        state: &RunState,
+        events: &[RuntimeJournalEvent],
+    ) -> RuntimeResult<bool> {
+        let bytes = Self::journal_batch_bytes(events)?;
+        let next = state
+            .journal_bytes_written
+            .checked_add(bytes)
+            .ok_or(RuntimeError::EncodeFailed)?;
+        Ok(state
+            .admission
+            .as_ref()
+            .and_then(|admission| admission.budget())
+            .is_some_and(|budget| next > budget.max_journal_bytes_total))
+    }
+
+    fn record_command_journal_events<const N: usize>(
+        &mut self,
+        run: RunId,
+        events: [RuntimeJournalEvent; N],
+    ) -> RuntimeResult<()> {
+        let bytes = Self::journal_batch_bytes(&events)?;
+        self.append_journal_events_atomically(events)?;
+        let state = self
+            .run_state_get_mut(run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        state.journal_bytes_written = state
+            .journal_bytes_written
+            .checked_add(bytes)
+            .ok_or(RuntimeError::EncodeFailed)?;
+        Ok(())
+    }
+
+    fn append_command_journal_events<const N: usize>(
+        &mut self,
+        run: RunId,
+        events: [RuntimeJournalEvent; N],
+    ) -> RuntimeResult<bool> {
+        let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+        if Self::command_journal_bytes_exceeds(state, &events)? {
+            return Ok(true);
+        }
+        self.record_command_journal_events(run, events)?;
+        Ok(false)
+    }
+
+    fn fail_command_run_on_journal_budget(&mut self, run: RunId) -> RuntimeResult<()> {
+        let state = self.take_run_state(run)?;
+        let rollback = state.clone();
+        match self.fail_run_on_journal_budget(run, state, Vec::new()) {
+            Ok(()) => Ok(()),
+            Err(DriveApplyFailure::BeforeCommit(error)) => {
+                if let Err(rollback_error) = self.run_state_insert(run, rollback) {
+                    return Err(RuntimeError::rollback_failed(
+                        "command_journal_budget",
+                        error,
+                        rollback_error,
+                    ));
+                }
+                Err(error)
+            }
+            Err(DriveApplyFailure::AfterCommit(error)) => Err(error),
+        }
+    }
+
     fn fail_run_on_journal_budget(
         &mut self,
         run: RunId,
