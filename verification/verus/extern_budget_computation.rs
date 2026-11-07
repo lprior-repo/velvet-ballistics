@@ -146,6 +146,18 @@ fn prod_methods_drift_check() {
         body: step,
         done: step,
     };
+    // Pin ReduceStart's full production fields (input, accumulator,
+    // initial, body, done); the spec never constructs it, so this
+    // construction is the only load-bearing use of the mirror shape.
+    let constant = production_inner::ConstIdx::new(0);
+    let reduce_slot = production_inner::SlotIdx::new(0);
+    let _kind = production_inner::CompiledNodeKind::ReduceStart {
+        input: reduce_slot,
+        accumulator: reduce_slot,
+        initial: constant,
+        body: step,
+        done: step,
+    };
 
     // Reference every variant of BudgetTraversalError (budget.rs:256-280)
     // and BudgetError (budget.rs:703-750) used by the spec.
