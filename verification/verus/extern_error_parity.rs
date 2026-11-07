@@ -10,9 +10,9 @@
 // `verification/verus/production_inner/error_parity_production.rs`,
 // which is a structural mirror of the production exec fns
 // `emit_single_body_set` at
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297` and
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179` and
 // `canonical_primitive_name` at
-// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:6-22`.
+// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
 //
 // The mirror reproduces the production type surface
 // (`StepIdx`, `SlotIdx`, `StepAst`, `StepPrimitive`, `CompileError`,
