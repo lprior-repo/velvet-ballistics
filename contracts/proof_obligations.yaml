@@ -1016,7 +1016,7 @@ verus_registry:
 
   # --- vb_runtime / vb_storage admission gates -------------------------
   - id: PO-VERUS-010
-    description: "Accepted-artifact admission: WorkflowDigest, VerificationProof, AcceptedArtifact, ADMISSION_GATE_COUNT = 15, is_strict_admission_valid (vb-qi37.4)."
+    description: "Accepted-artifact admission: WorkflowDigest, VerificationProof, AcceptedArtifact, prepared-proof shape (gate_count 0, bounded + idempotency claimed), proof_matches_prepared_shape (vb-qi37.4)."
     verus: verification/verus/admission_artifact_model.rs
     production: crates/vb_storage/src/admission.rs
 

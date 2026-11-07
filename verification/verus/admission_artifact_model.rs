@@ -12,7 +12,7 @@
 // production bodies with `#[verifier::external]`. The spec proofs
 // below attach `assume_specification` contracts to those extern
 // wrappers and exercise them through production-bound exec fns, so
-// any drift in the production field names, gate-count constant, or
+// any drift in the production field names, prepared gate count, or
 // decision-fn semantics breaks the verification build.
 //
 // ============================================================================
@@ -20,43 +20,49 @@
 // ============================================================================
 //   - `WorkflowDigest`                          <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255;
+//                                               crates/vb_core/src/ids/mod.rs:340-357;
 //                                               projected from [u8;32] to
 //                                               pub u64 for spec-mode
 //                                               equality reasoning)
 //   - `VerificationProof`                      <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_storage/src/admission.rs:65-90;
+//                                               crates/vb_storage/src/admission.rs:67-91;
 //                                               all 8 production fields mirrored)
 //   - `AcceptedArtifact`                       <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_storage/src/admission.rs:201-237;
+//                                               crates/vb_storage/src/admission.rs:203-228;
 //                                               4 digest fields + embedded
 //                                               VerificationProof mirrored)
-//   - `SPEC_REQUIRED_GATE_COUNT = 15`           <- extern_admission_artifact_model.rs
-//                                               (mirror of production REQUIRED_GATE_COUNT
-//                                               at crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2)
-//   - `is_strict_admission_valid`              <- extern_admission_artifact_model.rs
-//                                               (mirror of strict gate
-//                                               validation in
-//                                               submit_artifact_with_contracts
-//                                               at admission.rs:412-415
-//                                               plus the unconditional
-//                                               flag set at
-//                                               crates/vb_storage/src/admission.rs:122-126)
+//   - `PREPARED_GATE_COUNT = 0`                 <- extern_admission_artifact_model.rs
+//                                               (mirror of the gate_count
+//                                               `verification_proof_core` forces
+//                                               at
+//                                               crates/vb_storage/src/admission.rs:113-129)
+//   - `proof_matches_prepared_shape`           <- extern_admission_artifact_model.rs
+//                                               (mirror of the prepared-proof
+//                                               shape: `verification_proof_core`
+//                                               at admission.rs:113-129 plus
+//                                               the flag assignments in
+//                                               `prepare_with_profile` at
+//                                               crates/vb_storage/src/admission/verification.rs:35-37;
+//                                               enforced by
+//                                               `verify_accepted_artifact` at
+//                                               verification.rs:56-87 via
+//                                               `verify_expected_bindings`
+//                                               at verification.rs:141-160)
 //   - `digest_eq`                              <- extern_admission_artifact_model.rs
 //                                               (mirror of PartialEq derive
 //                                               on WorkflowDigest at
-//                                               crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239)
+//                                               crates/vb_core/src/ids/mod.rs:341)
 //   - `artifact_digest_bound`                  <- extern_admission_artifact_model.rs
 //                                               (mirror of
 //                                               bind_artifact_digest at
-//                                               crates/vb_storage/src/admission.rs:179-184)
+//                                               crates/vb_storage/src/admission.rs:182-187)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS (VACUUM) FORM
 // ============================================================================
-// The previous `admission_artifact_model.rs` defined an abstract
+// The first version of this file defined an abstract
 // `gate_schema_valid` predicate with hardcoded constants
 // (`required_gate_count() == 15`, etc.) and proved structural
 // properties of that abstract predicate via 12 proof fns. The proof
@@ -68,15 +74,24 @@
 // production renamed `durable` to `persisted` or swapped
 // `bounded_claimed` and `replayable_claimed`.
 //
-// This rewrite uses the production `VerificationProof` (and
-// `AcceptedArtifact`) as the spec-side types, exercises all 12
-// properties through the production-bound exec wrapper
-// `is_strict_admission_valid`, and discharges each property via a
-// non-vacuous proof fn that reveals the spec predicate and applies
-// the `assume_specification` contract. Any production modification to
-// the gate-count constant, the proof-flag field set, or the digest
-// equality semantic breaks the extern mirror and surfaces here as a
-// verifier error.
+// A later revision bound that predicate to the production types and
+// exercised it through `is_strict_admission_valid`, presented as a
+// strict gate validation in `submit_artifact_with_contracts`
+// (gate_count 15, all flags true).
+// No such validation exists in production: `submit_artifact_with_contracts`
+// performs no gate-count or proof-flag check, `VerificationProof::new`
+// ignores supplied counts and forces gate_count 0 with every flag
+// false, and the real admission check is `verify_accepted_artifact`,
+// which recomputes the expected artifact and rejects any deviation.
+// The predicate below therefore models the prepared-proof shape
+// production actually constructs (`verification_proof_core` plus the
+// `prepare_with_profile` flag assignments), exercised through the
+// production-bound exec wrapper `proof_matches_prepared_shape` and
+// discharged via non-vacuous proof fns that reveal the spec predicate
+// and apply the `assume_specification` contract. Any production
+// modification to the prepared gate count, the proof-flag field set,
+// or the digest equality semantic breaks the extern mirror and
+// surfaces here as a verifier error.
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -87,12 +102,16 @@
 // the contracts are attached via `assume_specification` below, and
 // the 12 proof lemmas discharge those contracts. Any drift between
 // the mirror and the production source is binding-debt tracked
-// outside Verus.
+// outside Verus. The prepared-proof shape is a necessary condition
+// for admission validity, not the whole of it: full validity is the
+// recompute-and-compare in `verify_accepted_artifact`, which also
+// binds digests, evidence, and the remaining proof fields.
 //
 // ============================================================================
 // Obligations:
-// - VERUS-GATE-004: strict admission requires runtime gate count and all
-//   proof flags.
+// - VERUS-GATE-004: admission validity requires the prepared-proof
+//   shape: gate_count 0, bounded and idempotency claimed, every other
+//   proof flag false, durable false.
 // - VERUS-DIGEST-005: successful admission preserves one workflow
 //   digest through the accepted artifact, compiled IR record, run
 //   header, and RunAdmission record.
@@ -113,56 +132,59 @@ mod production;
 
 // Re-export the production type and exec wrappers so the spec proofs
 // below reference them as `production::VerificationProof`,
-// `production::is_strict_admission_valid`, etc.
+// `production::proof_matches_prepared_shape`, etc.
 pub use production::{
     AcceptedArtifact,
     VerificationProof,
     WorkflowDigest,
     artifact_digest_bound,
     digest_eq,
-    is_strict_admission_valid,
+    proof_matches_prepared_shape,
 };
 
 // ============================================================================
 // Spec constants (mirrors of production constants)
 // ============================================================================
 
-/// Mirror of the required gate count (u8 = 15), production
-/// `REQUIRED_GATE_COUNT` at `crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2`.
-pub const SPEC_REQUIRED_GATE_COUNT: u8 = 15;
+/// Mirror of the gate_count `verification_proof_core` forces
+/// (`crates/vb_storage/src/admission.rs:113-129`).
+pub const PREPARED_GATE_COUNT: u8 = 0;
 
-/// Spec view of `ADMISSION_GATE_COUNT` as a mathematical integer.
-pub open spec fn required_gate_count() -> int {
-    SPEC_REQUIRED_GATE_COUNT as int
+/// Spec view of `PREPARED_GATE_COUNT` as a mathematical integer.
+pub open spec fn prepared_gate_count() -> int {
+    PREPARED_GATE_COUNT as int
 }
 
 // ============================================================================
 // Production-bound exec wrappers (call the production extern fns)
 // ============================================================================
 
-// Production decision fn: `is_strict_admission_valid` mirrors the
-// strict-policy gate validation in
-// `vb_storage::admission::submit_artifact_with_contracts` at
-// `crates/vb_storage/src/admission.rs:412-415`.
+// Production decision fn: `proof_matches_prepared_shape` mirrors the
+// prepared-proof shape production constructs for every admitted
+// artifact: `verification_proof_core` forces gate_count 0, durable
+// false, and every proof flag false
+// (`crates/vb_storage/src/admission.rs:113-129`), and
+// `prepare_with_profile` then sets exactly `bounded_claimed` and
+// `idempotency_verified_claimed` true
+// (`crates/vb_storage/src/admission/verification.rs:35-37`).
 //
 // Contract (non-vacuous): the production function returns `true`
-// iff the proof has the canonical 15-gate count AND all 5
-// spec-projection proof flags (`bounded_claimed`,
-// `taint_safe_claimed`, `retry_safe_claimed`, `replayable_claimed`)
-// plus `durable` are `true`. The 6th production flag
-// (`idempotency_verified_claimed`) is part of the production
-// `VerificationProof` struct but not part of this spec's
-// `proof_flags_complete` predicate, mirroring the original spec's
-// 5-flag surface.
-pub fn is_strict_admission_valid_exec(
+// iff the proof carries exactly the prepared shape: gate_count 0,
+// durable false, `bounded_claimed` and `idempotency_verified_claimed`
+// true, and `taint_safe_claimed`, `retry_safe_claimed`, and
+// `replayable_claimed` false. The shape is a necessary condition for
+// admission validity: `verify_accepted_artifact` enforces it by
+// recomputing the expected artifact and rejecting any deviation with
+// `ArtifactEvidenceInvalid`.
+pub fn proof_matches_prepared_shape_exec(
     proof: &production::VerificationProof,
 ) -> bool {
-    production::is_strict_admission_valid(proof)
+    production::proof_matches_prepared_shape(proof)
 }
 
 // Production decision fn: `digest_eq` mirrors the `PartialEq` impl
 // derived on `vb_core::ids::WorkflowDigest` at
-// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239`.
+// `crates/vb_core/src/ids/mod.rs:341`.
 pub fn digest_eq_exec(
     a: &production::WorkflowDigest,
     b: &production::WorkflowDigest,
@@ -172,7 +194,7 @@ pub fn digest_eq_exec(
 
 // Production decision fn: `artifact_digest_bound` mirrors
 // `vb_storage::admission::bind_artifact_digest` at
-// `crates/vb_storage/src/admission.rs:179-184`.
+// `crates/vb_storage/src/admission.rs:182-187`.
 pub fn artifact_digest_bound_exec(
     artifact: &production::AcceptedArtifact,
 ) -> bool {
@@ -190,23 +212,25 @@ pub fn artifact_digest_bound_exec(
 // "Production-bound exec fns" section.
 
 // --------------------------------------------------------------------------
-// Bridge: `is_strict_admission_valid` returns true iff the proof
-// passes the spec's `gate_schema_valid` predicate.
+// Bridge: `proof_matches_prepared_shape` returns true iff the proof
+// carries the spec's `prepared_proof_shape`.
 // --------------------------------------------------------------------------
-// Mirrors production `submit_artifact_with_contracts` strict-policy
-// branch at `crates/vb_storage/src/admission.rs:412-415` plus the
-// unconditional flag set at crates/vb_storage/src/admission.rs:122-126.
-pub assume_specification[ production::is_strict_admission_valid ](
+// Mirrors the prepared-proof shape: `verification_proof_core` at
+// `crates/vb_storage/src/admission.rs:113-129` plus the flag
+// assignments in `prepare_with_profile` at
+// `crates/vb_storage/src/admission/verification.rs:35-37`.
+pub assume_specification[ production::proof_matches_prepared_shape ](
     proof: &production::VerificationProof,
 ) -> (r: bool)
     ensures
-        r == gate_schema_valid(
+        r == prepared_proof_shape(
             proof.gate_count as int,
             proof.bounded_claimed,
             proof.taint_safe_claimed,
             proof.retry_safe_claimed,
             proof.durable,
             proof.replayable_claimed,
+            proof.idempotency_verified_claimed,
         ),
 ;
 
@@ -215,7 +239,7 @@ pub assume_specification[ production::is_strict_admission_valid ](
 // inner u64 word (production: same 32-byte payload).
 // --------------------------------------------------------------------------
 // Mirrors production `PartialEq` derive on `WorkflowDigest` at
-// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239`.
+// `crates/vb_core/src/ids/mod.rs:341`.
 pub assume_specification[ production::digest_eq ](
     a: &production::WorkflowDigest,
     b: &production::WorkflowDigest,
@@ -229,7 +253,7 @@ pub assume_specification[ production::digest_eq ](
 // top-level digest equals the verification proof's digest.
 // --------------------------------------------------------------------------
 // Mirrors production `bind_artifact_digest` at
-// `crates/vb_storage/src/admission.rs:179-184`, which sets both
+// `crates/vb_storage/src/admission.rs:182-187`, which sets both
 // `artifact.digest` and `artifact.verification.digest` to the same
 // computed digest. The ensures uses direct field access (not the
 // exec fn `digest_eq`) because the spec-mode ensures clause cannot
@@ -245,32 +269,42 @@ pub assume_specification[ production::artifact_digest_bound ](
 // Spec fns (mathematical model of the production contract)
 // ============================================================================
 
-/// Spec view: true iff all 5 proof flags are claimed true (matches
-/// the production `verification_proof_core` const fn at
-/// `crates/vb_storage/src/admission.rs:113-128` for the 5-flag
-/// surface).
-pub open spec fn proof_flags_complete(
+/// Spec view: true iff the proof flags carry exactly the prepared
+/// values: `bounded_claimed` and `idempotency_verified_claimed` true,
+/// `taint_safe_claimed`, `retry_safe_claimed`, `durable`, and
+/// `replayable_claimed` false (production `verification_proof_core`
+/// at `crates/vb_storage/src/admission.rs:113-129` plus the flag
+/// assignments in `prepare_with_profile` at
+/// `crates/vb_storage/src/admission/verification.rs:35-37`).
+pub open spec fn prepared_proof_flags(
     bounded: bool,
     taint_safe: bool,
     retry_safe: bool,
     durable: bool,
     replayable: bool,
+    idempotency_verified: bool,
 ) -> bool {
-    bounded && taint_safe && retry_safe && durable && replayable
+    &&& bounded
+    &&& idempotency_verified
+    &&& !taint_safe
+    &&& !retry_safe
+    &&& !durable
+    &&& !replayable
 }
 
-/// Spec view: true iff the gate-count is canonical (15) AND all 5
-/// proof flags are claimed true.
-pub open spec fn gate_schema_valid(
+/// Spec view: true iff the gate-count is the prepared count (0) AND
+/// the proof flags carry the prepared values.
+pub open spec fn prepared_proof_shape(
     gate_count: int,
     bounded: bool,
     taint_safe: bool,
     retry_safe: bool,
     durable: bool,
     replayable: bool,
+    idempotency_verified: bool,
 ) -> bool {
-    &&& gate_count == required_gate_count()
-    &&& proof_flags_complete(bounded, taint_safe, retry_safe, durable, replayable)
+    &&& gate_count == prepared_gate_count()
+    &&& prepared_proof_flags(bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified)
 }
 
 /// Spec view: true iff the four digest slots (accepted, compiled,
@@ -289,7 +323,7 @@ pub open spec fn digest_binding_valid(
     &&& header_digest == admission_digest
 }
 
-/// Spec view: true iff the gate schema is valid AND the digest
+/// Spec view: true iff the prepared-proof shape holds AND the digest
 /// binding is valid (4-digest transitivity).
 pub open spec fn strict_admission_valid(
     gate_count: int,
@@ -298,12 +332,13 @@ pub open spec fn strict_admission_valid(
     retry_safe: bool,
     durable: bool,
     replayable: bool,
+    idempotency_verified: bool,
     accepted_digest: int,
     compiled_digest: int,
     header_digest: int,
     admission_digest: int,
 ) -> bool {
-    &&& gate_schema_valid(gate_count, bounded, taint_safe, retry_safe, durable, replayable)
+    &&& prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified)
     &&& digest_binding_valid(accepted_digest, compiled_digest, header_digest, admission_digest)
 }
 
@@ -313,91 +348,121 @@ pub open spec fn strict_admission_valid(
 // ============================================================================
 
 // --------------------------------------------------------------------------
-// VERUS-GATE-004 — gate-count requirement from a strict admission.
+// VERUS-GATE-004 — prepared-proof shape requirement for admission.
 // --------------------------------------------------------------------------
 // Non-vacuous: derives the gate-count conjunct AND each individual
-// proof-flag conjunct from the production-bound `gate_schema_valid`
+// proof-flag conjunct from the production-bound `prepared_proof_shape`
 // predicate. The proof reveals the conjunction definition and
 // asserts each conjunct by discharging the
-// `assume_specification[is_strict_admission_valid]` contract.
-pub proof fn proof_success_requires_runtime_gate_count(
+// `assume_specification[proof_matches_prepared_shape]` contract.
+pub proof fn proof_prepared_shape_requires_zero_gate_count_and_flags(
     proof: &production::VerificationProof,
 )
     requires
-        gate_schema_valid(
+        prepared_proof_shape(
             proof.gate_count as int,
             proof.bounded_claimed,
             proof.taint_safe_claimed,
             proof.retry_safe_claimed,
             proof.durable,
             proof.replayable_claimed,
+            proof.idempotency_verified_claimed,
         ),
     ensures
-        proof.gate_count as int == required_gate_count(),
+        proof.gate_count as int == prepared_gate_count(),
         proof.bounded_claimed,
-        proof.taint_safe_claimed,
-        proof.retry_safe_claimed,
-        proof.durable,
-        proof.replayable_claimed,
+        proof.idempotency_verified_claimed,
+        !proof.taint_safe_claimed,
+        !proof.retry_safe_claimed,
+        !proof.durable,
+        !proof.replayable_claimed,
 {
-    reveal(gate_schema_valid);
-    reveal(required_gate_count);
-    reveal(proof_flags_complete);
-    // gate_schema_valid is a conjunction; each conjunct holds by
+    reveal(prepared_proof_shape);
+    reveal(prepared_gate_count);
+    reveal(prepared_proof_flags);
+    // prepared_proof_shape is a conjunction; each conjunct holds by
     // the conjunction definition.
-    assert(proof.gate_count as int == required_gate_count());
+    assert(proof.gate_count as int == prepared_gate_count());
     assert(proof.bounded_claimed);
-    assert(proof.taint_safe_claimed);
-    assert(proof.retry_safe_claimed);
-    assert(proof.durable);
-    assert(proof.replayable_claimed);
+    assert(proof.idempotency_verified_claimed);
+    assert(!proof.taint_safe_claimed);
+    assert(!proof.retry_safe_claimed);
+    assert(!proof.durable);
+    assert(!proof.replayable_claimed);
 }
 
 // --------------------------------------------------------------------------
-// VERUS-GATE-004 — wrong gate count denies schema validity.
+// VERUS-GATE-004 — wrong gate count denies the prepared-proof shape.
 // --------------------------------------------------------------------------
-// Non-vacuous: a non-canonical gate count fails the first conjunct
-// of `gate_schema_valid`, so the predicate as a whole is false.
-pub proof fn proof_wrong_gate_count_denies(
+// Non-vacuous: a non-prepared gate count fails the first conjunct
+// of `prepared_proof_shape`, so the predicate as a whole is false.
+pub proof fn proof_nonzero_gate_count_denies(
     gate_count: int,
     bounded: bool,
     taint_safe: bool,
     retry_safe: bool,
     durable: bool,
     replayable: bool,
+    idempotency_verified: bool,
 )
     requires
-        gate_count != required_gate_count(),
+        gate_count != prepared_gate_count(),
     ensures
-        !gate_schema_valid(gate_count, bounded, taint_safe, retry_safe, durable, replayable),
+        !prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified),
 {
-    reveal(gate_schema_valid);
-    reveal(required_gate_count);
-    let valid = gate_schema_valid(gate_count, bounded, taint_safe, retry_safe, durable, replayable);
+    reveal(prepared_proof_shape);
+    reveal(prepared_gate_count);
+    let valid = prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified);
     assert(!valid);
 }
 
 // --------------------------------------------------------------------------
-// VERUS-GATE-004 — false required flag denies schema validity.
+// VERUS-GATE-004 — missing required flag denies the prepared-proof shape.
 // --------------------------------------------------------------------------
-// Non-vacuous: any single false flag fails the second conjunct
-// (`proof_flags_complete`), so the conjunction is false.
-pub proof fn proof_false_required_flag_denies(
+// Non-vacuous: a false required flag fails the second conjunct
+// (`prepared_proof_flags`), so the conjunction is false.
+pub proof fn proof_missing_required_flag_denies(
     gate_count: int,
     bounded: bool,
     taint_safe: bool,
     retry_safe: bool,
     durable: bool,
     replayable: bool,
+    idempotency_verified: bool,
 )
     requires
-        !bounded || !taint_safe || !retry_safe || !durable || !replayable,
+        !bounded || !idempotency_verified,
     ensures
-        !gate_schema_valid(gate_count, bounded, taint_safe, retry_safe, durable, replayable),
+        !prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified),
 {
-    reveal(gate_schema_valid);
-    reveal(proof_flags_complete);
-    let valid = gate_schema_valid(gate_count, bounded, taint_safe, retry_safe, durable, replayable);
+    reveal(prepared_proof_shape);
+    reveal(prepared_proof_flags);
+    let valid = prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified);
+    assert(!valid);
+}
+
+// --------------------------------------------------------------------------
+// VERUS-GATE-004 — a forbidden flag set denies the prepared-proof shape.
+// --------------------------------------------------------------------------
+// Non-vacuous: any single forbidden flag set true fails the second
+// conjunct (`prepared_proof_flags`), so the conjunction is false.
+pub proof fn proof_forbidden_flag_denies(
+    gate_count: int,
+    bounded: bool,
+    taint_safe: bool,
+    retry_safe: bool,
+    durable: bool,
+    replayable: bool,
+    idempotency_verified: bool,
+)
+    requires
+        taint_safe || retry_safe || durable || replayable,
+    ensures
+        !prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified),
+{
+    reveal(prepared_proof_shape);
+    reveal(prepared_proof_flags);
+    let valid = prepared_proof_shape(gate_count, bounded, taint_safe, retry_safe, durable, replayable, idempotency_verified);
     assert(!valid);
 }
 
@@ -414,6 +479,7 @@ pub proof fn proof_success_preserves_digest_binding(
     retry_safe: bool,
     durable: bool,
     replayable: bool,
+    idempotency_verified: bool,
     accepted_digest: int,
     compiled_digest: int,
     header_digest: int,
@@ -427,6 +493,7 @@ pub proof fn proof_success_preserves_digest_binding(
             retry_safe,
             durable,
             replayable,
+            idempotency_verified,
             accepted_digest,
             compiled_digest,
             header_digest,
@@ -472,52 +539,54 @@ pub proof fn proof_digest_mismatch_denies(
 // contracts via direct `assert(...)`.
 // ============================================================================
 
-// Non-vacuous witness: construct a valid production `VerificationProof`
-// matching the strict-admission contract (gate_count == 15, all
-// 5 flags + durable true) and assert that the production exec
-// wrapper returns `true`. This exec fn is the closure witness for
+// Non-vacuous witness: construct a production `VerificationProof`
+// carrying exactly the prepared shape (gate_count 0, durable false,
+// `bounded_claimed` and `idempotency_verified_claimed` true, every
+// other flag false) and assert that the production exec wrapper
+// returns `true`. This exec fn is the closure witness for
 // VERUS-GATE-004: it actually invokes the production
-// `is_strict_admission_valid` (via the extern mirror) and asserts
+// `proof_matches_prepared_shape` (via the extern mirror) and asserts
 // the spec contract.
-pub fn exec_witness_strict_admission_valid() -> (result: bool)
+pub fn exec_witness_prepared_proof_shape_valid() -> (result: bool)
     ensures
         result == true,
 {
     let proof = production::VerificationProof {
         digest: production::WorkflowDigest(0),
-        gate_count: 15,
-        durable: true,
+        gate_count: 0,
+        durable: false,
         bounded_claimed: true,
-        taint_safe_claimed: true,
-        retry_safe_claimed: true,
+        taint_safe_claimed: false,
+        retry_safe_claimed: false,
         idempotency_verified_claimed: true,
-        replayable_claimed: true,
+        replayable_claimed: false,
     };
-    let r = production::is_strict_admission_valid(&proof);
-    // Discharges the assume_specification contract: r == gate_schema_valid(...)
-    // gate_schema_valid(15, true, true, true, true, true) is true, so r == true.
+    let r = production::proof_matches_prepared_shape(&proof);
+    // Discharges the assume_specification contract: r == prepared_proof_shape(...)
+    // prepared_proof_shape(0, true, false, false, false, false, true) is true, so r == true.
     assert(r == true);
     r
 }
 
-// Non-vacuous witness: a proof with the wrong gate count fails the
-// production exec wrapper. Discharges VERUS-GATE-004 for the
-// gate-count requirement.
-pub fn exec_witness_wrong_gate_count_denied() -> (result: bool)
+// Non-vacuous witness: a proof with the legacy 15-gate count fails
+// the production exec wrapper. The old "valid" shape is not the
+// prepared shape. Discharges VERUS-GATE-004 for the gate-count
+// requirement.
+pub fn exec_witness_legacy_gate_count_denied() -> (result: bool)
     ensures
         result == false,
 {
     let proof = production::VerificationProof {
         digest: production::WorkflowDigest(0),
-        gate_count: 14,  // not 15
-        durable: true,
+        gate_count: 15,  // legacy count, not the prepared count 0
+        durable: false,
         bounded_claimed: true,
-        taint_safe_claimed: true,
-        retry_safe_claimed: true,
+        taint_safe_claimed: false,
+        retry_safe_claimed: false,
         idempotency_verified_claimed: true,
-        replayable_claimed: true,
+        replayable_claimed: false,
     };
-    let r = production::is_strict_admission_valid(&proof);
+    let r = production::proof_matches_prepared_shape(&proof);
     assert(r == false);
     r
 }
@@ -525,21 +594,43 @@ pub fn exec_witness_wrong_gate_count_denied() -> (result: bool)
 // Non-vacuous witness: a proof with a false required flag fails the
 // production exec wrapper. Discharges VERUS-GATE-004 for the
 // proof-flag requirement.
-pub fn exec_witness_false_required_flag_denied() -> (result: bool)
+pub fn exec_witness_missing_required_flag_denied() -> (result: bool)
     ensures
         result == false,
 {
     let proof = production::VerificationProof {
         digest: production::WorkflowDigest(0),
-        gate_count: 15,
-        durable: true,
-        bounded_claimed: false,  // not all flags true
-        taint_safe_claimed: true,
-        retry_safe_claimed: true,
+        gate_count: 0,
+        durable: false,
+        bounded_claimed: false,  // required flag missing
+        taint_safe_claimed: false,
+        retry_safe_claimed: false,
         idempotency_verified_claimed: true,
-        replayable_claimed: true,
+        replayable_claimed: false,
     };
-    let r = production::is_strict_admission_valid(&proof);
+    let r = production::proof_matches_prepared_shape(&proof);
+    assert(r == false);
+    r
+}
+
+// Non-vacuous witness: a proof with a forbidden flag set fails the
+// production exec wrapper. Discharges VERUS-GATE-004 for the
+// proof-flag requirement.
+pub fn exec_witness_forbidden_flag_denied() -> (result: bool)
+    ensures
+        result == false,
+{
+    let proof = production::VerificationProof {
+        digest: production::WorkflowDigest(0),
+        gate_count: 0,
+        durable: false,
+        bounded_claimed: true,
+        taint_safe_claimed: true,  // forbidden flag set
+        retry_safe_claimed: false,
+        idempotency_verified_claimed: true,
+        replayable_claimed: false,
+    };
+    let r = production::proof_matches_prepared_shape(&proof);
     assert(r == false);
     r
 }
@@ -581,13 +672,13 @@ pub fn exec_witness_artifact_digest_bound_true() -> (result: bool)
 {
     let proof = production::VerificationProof {
         digest: production::WorkflowDigest(7),
-        gate_count: 15,
-        durable: true,
+        gate_count: 0,
+        durable: false,
         bounded_claimed: true,
-        taint_safe_claimed: true,
-        retry_safe_claimed: true,
+        taint_safe_claimed: false,
+        retry_safe_claimed: false,
         idempotency_verified_claimed: true,
-        replayable_claimed: true,
+        replayable_claimed: false,
     };
     let artifact = production::AcceptedArtifact {
         digest: production::WorkflowDigest(7),
@@ -611,13 +702,13 @@ pub fn exec_witness_artifact_digest_bound_false() -> (result: bool)
 {
     let proof = production::VerificationProof {
         digest: production::WorkflowDigest(7),
-        gate_count: 15,
-        durable: true,
+        gate_count: 0,
+        durable: false,
         bounded_claimed: true,
-        taint_safe_claimed: true,
-        retry_safe_claimed: true,
+        taint_safe_claimed: false,
+        retry_safe_claimed: false,
         idempotency_verified_claimed: true,
-        replayable_claimed: true,
+        replayable_claimed: false,
     };
     let artifact = production::AcceptedArtifact {
         digest: production::WorkflowDigest(8),  // != verification.digest
@@ -631,39 +722,42 @@ pub fn exec_witness_artifact_digest_bound_false() -> (result: bool)
 }
 
 // ============================================================================
-// End-to-end production-bound proof: composes the strict-admission
+// End-to-end production-bound proof: composes the prepared-proof-shape
 // witness with the spec-level structural proof.
 // ============================================================================
 
 // Non-vacuous composition proof: given a production VerificationProof
-// satisfying the structural preconditions (gate_count == 15, all 5
-// flags + durable true), the spec-level proof
-// `proof_success_requires_runtime_gate_count` derives each
+// satisfying the structural preconditions (gate_count == 0, bounded
+// and idempotency claimed, every other flag false, durable false),
+// the spec-level proof
+// `proof_prepared_shape_requires_zero_gate_count_and_flags` derives each
 // production-bound property. The proof fn composition itself is the
 // non-vacuous witness that the spec surface matches the production
 // exec wrapper's contract.
-pub proof fn proof_compose_strict_admission(
+pub proof fn proof_compose_prepared_proof_shape(
     proof: &production::VerificationProof,
 )
     requires
-        proof.gate_count as int == required_gate_count(),
+        proof.gate_count as int == prepared_gate_count(),
         proof.bounded_claimed,
-        proof.taint_safe_claimed,
-        proof.retry_safe_claimed,
-        proof.durable,
-        proof.replayable_claimed,
+        proof.idempotency_verified_claimed,
+        !proof.taint_safe_claimed,
+        !proof.retry_safe_claimed,
+        !proof.durable,
+        !proof.replayable_claimed,
     ensures
         // After composition: each spec-level property holds
         // (trivially, by the explicit preconditions above).
-        proof.gate_count as int == required_gate_count(),
+        proof.gate_count as int == prepared_gate_count(),
         proof.bounded_claimed,
-        proof.taint_safe_claimed,
-        proof.retry_safe_claimed,
-        proof.durable,
-        proof.replayable_claimed,
+        proof.idempotency_verified_claimed,
+        !proof.taint_safe_claimed,
+        !proof.retry_safe_claimed,
+        !proof.durable,
+        !proof.replayable_claimed,
 {
     // Gate count is given as a precondition; no-op assertion.
-    assert(proof.gate_count as int == required_gate_count());
+    assert(proof.gate_count as int == prepared_gate_count());
 }
 
 fn main() {}
