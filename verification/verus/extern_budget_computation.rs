@@ -28,8 +28,8 @@
 // ============================================================================
 //   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:2474-2500
 //   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:2464-2469
-//   - `max_gather_pages`                    <- crates/vb_core/src/budget.rs:3094-3103
-//   - `total`                               <- crates/vb_core/src/budget.rs:2301-2304
+//   - `max_gather_pages`                    <- crates/vb_core/src/budget.rs:3091-3104
+//   - `total`                               <- crates/vb_core/src/budget.rs:2301-2303
 //   - `count`                               <- crates/vb_core/src/budget.rs:2559-2564
 //
 // ============================================================================
@@ -78,11 +78,11 @@ pub mod production_inner;
 // The drift check references every production method that the spec
 // file attaches an `assume_specification` bridge to:
 //
-//   - count_and_push_loop_body      (budget.rs:1579-1605)
-//   - checked_step_add              (budget.rs:1569-1574)
-//   - collect_start_update_metrics  (budget.rs:2153-2160)
-//   - count_total_steps_step_increment (budget.rs:1422-1425)
-//   - body_region_step_increment    (budget.rs:1678-1683)
+//   - count_and_push_loop_body      (budget.rs:2474-2500)
+//   - checked_step_add              (budget.rs:2464-2469)
+//   - collect_start_update_metrics  (budget.rs:3091-3104)
+//   - count_total_steps_step_increment (budget.rs:2301-2303)
+//   - body_region_step_increment    (budget.rs:2559-2564)
 //
 // Plus the production type discriminants referenced by the spec
 // (BudgetTraversalError::StepCountOverflow, BudgetError::TotalStepsExceeded,
@@ -91,7 +91,7 @@ pub mod production_inner;
 // mirror types.
 #[verifier::external]
 fn prod_methods_drift_check() {
-    // Reference every field of ResourceContract (workflow/mod.rs:190-228)
+    // Reference every field of ResourceContract (workflow/mod.rs:252-289)
     // to surface any rename.
     let _contract = production_inner::ResourceContract {
         max_steps: 0,
@@ -116,7 +116,7 @@ fn prod_methods_drift_check() {
 
     // Reference every variant of CompiledNodeKind used by the spec:
     // ForEachStart, CollectStart, RepeatStart (production
-    // workflow/mod.rs:585-...).
+    // workflow/mod.rs:1191-1357).
     let entry = production_inner::StepIdx::new(0);
     let step = production_inner::StepIdx::new(0);
     let _kind = production_inner::CompiledNodeKind::ForEachStart {
@@ -126,6 +126,7 @@ fn prod_methods_drift_check() {
     };
     let _kind = production_inner::CompiledNodeKind::CollectStart {
         limit: 0,
+        page_size: 0,
         body: step,
         done: step,
     };
@@ -135,13 +136,13 @@ fn prod_methods_drift_check() {
         done: step,
     };
 
-    // Reference every variant of BudgetTraversalError (budget.rs:170-191)
-    // and BudgetError (budget.rs:533-568) used by the spec.
+    // Reference every variant of BudgetTraversalError (budget.rs:256-280)
+    // and BudgetError (budget.rs:703-750) used by the spec.
     let _err = production_inner::BudgetTraversalError::StepCountOverflow { actual: 0 };
     let _err = production_inner::BudgetError::TotalStepsExceeded { actual: 0, limit: 0 };
 
     // Reference the workflow::CompiledNode and workflow::WorkflowError
-    // mirror types so a rename in workflow/mod.rs:321-... breaks the build.
+    // mirror types so a rename in workflow/mod.rs:666-880 breaks the build.
     let _node = production_inner::CompiledNode {
         id: entry,
         kind: production_inner::CompiledNodeKind::Nop,
@@ -155,8 +156,11 @@ fn prod_methods_drift_check() {
     // rustc compilation resolves the names.
     let _ = production_inner::count_and_push_loop_body(0u64, 0u64, 0u64);
     let _ = production_inner::checked_step_add(0u64, 0u64);
-    let _ = production_inner::collect_start_update_metrics(0u32, 0u32, 0u32);
-    let _ = production_inner::count_total_steps_step_increment(0u64);
+    let _ = production_inner::collect_start_update_metrics(0u32, 0u32, 0u32, 0u32);
+    let _ = production_inner::count_total_steps_step_increment(
+        0u64,
+        production_inner::StepIdx::new(0),
+    );
     let _ = production_inner::body_region_step_increment(0u64);
 }
 
