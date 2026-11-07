@@ -375,7 +375,7 @@ pub struct CompiledInputSlot {
 // VERBATIM PRODUCTION: `WorkflowParts` struct declaration
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:337-370
+// Source: crates/vb_core/src/workflow/mod.rs:609-642
 // Drift policy: any change to the field NAMES or TYPES in production
 // MUST be mirrored here. The `Box<[T]>` production fields are replaced
 // with `Vec<T>` because `Box<[T]>` requires the `alloc` crate to be
@@ -402,7 +402,7 @@ pub struct WorkflowParts {
 // VERBATIM PRODUCTION: `CompiledWorkflow::try_from_parts` method body
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:37-62
+// Source: crates/vb_core/src/workflow/mod.rs:42-65
 // Drift policy: any change to this function in production MUST be
 // mirrored here. The spec proofs reason about the structural
 // invariants the production `try_from_parts` enforces (entry in
@@ -465,7 +465,7 @@ impl CompiledWorkflow {
 // VERBATIM PRODUCTION: `WorkflowError` enum declaration
 // ===========================================================================
 //
-// Source: crates/vb_core/src/workflow/mod.rs:394-549
+// Source: crates/vb_core/src/workflow/mod.rs:666-880
 // Drift policy: any change to the `WorkflowError` discriminant set in
 // production MUST be mirrored here. The mirror preserves the variant
 // NAMES and FIELD STRUCTURES verbatim; the `thiserror::Error` derive
@@ -475,6 +475,7 @@ impl CompiledWorkflow {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkflowError {
+    RepeatCounterForeignWrite { owner: StepIdx, writer: StepIdx, slot: SlotIdx },
     EmptyNodes,
     EntryOutOfBounds { entry: StepIdx },
     StepOutOfBounds { step: StepIdx },
@@ -482,13 +483,15 @@ pub enum WorkflowError {
     ConstOutOfBounds { constant: ConstIdx },
     NodeIdMismatch { expected: StepIdx, actual: StepIdx },
     Expression(CoreError),
-    ResourceContractExceeded { resource: &'static str },
-    ResourceContractTooLarge { resource: &'static str },
+    ResourceContractExceeded { resource: ContractResource },
+    ResourceContractTooLarge { resource: ContractResource },
     EmptyBranchTable,
     UnreachableNode { step: StepIdx },
     BackwardEdge { from: StepIdx, to: StepIdx },
+    ReduceBranchTargetAlias { step: StepIdx, target: StepIdx },
+    ForEachBranchTargetAlias { step: StepIdx, target: StepIdx },
     ImproperLoopNesting { inner: StepIdx, outer_done: StepIdx },
-    BudgetPolicyExceeded { detail: &'static str },
+    BudgetPolicyExceeded { detail: BudgetDimension },
     StepCountOverflow { actual: u64 },
     DepthOverflow { depth: u16 },
     SymbolOutOfBounds { symbol: SymbolId },
@@ -498,6 +501,10 @@ pub enum WorkflowError {
     InputSlotOutOfBounds { slot: SlotIdx, kind: InputSlotKind },
     DuplicateInputSlot { slot: SlotIdx, kind: InputSlotKind },
     NonCanonicalInputSlotOrder { prev_slot: SlotIdx, curr_slot: SlotIdx },
+    InconsistentInputConstraint { slot: SlotIdx, issue: InputConstraintIssue },
+    LoopRegionUnpaired { control: StepIdx },
+    LoopRegionCrossing { control: StepIdx, from: StepIdx, to: StepIdx },
+    LoopRegionUnsupported { control: StepIdx, step: StepIdx },
 }
 
 // ===========================================================================
@@ -513,6 +520,51 @@ pub enum WorkflowError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoreError {
     Other,
+}
+
+// ===========================================================================
+// Local stub: `vb_core::workflow::InputConstraintIssue`
+// ===========================================================================
+//
+// Production `InputConstraintIssue` at crates/vb_core/src/workflow/mod.rs:598-605
+// declares a 3-variant enum. The mirror reproduces it verbatim; it is the
+// payload type of `WorkflowError::InconsistentInputConstraint`.
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InputConstraintIssue {
+    MinExceedsMax,
+    MinLengthExceedsMaxLength,
+    NegativeLengthBound,
+}
+
+// ===========================================================================
+// Local stub: `vb_core::workflow::ContractResource`
+// ===========================================================================
+//
+// Production `ContractResource` at crates/vb_core/src/workflow/mod.rs:299-342
+// declares a 21-variant enum. The mirror declares a single-variant stub
+// because production `WorkflowError` carries `ContractResource` only via
+// the `ResourceContractExceeded` / `ResourceContractTooLarge` payloads
+// and the spec proofs do not inspect the inner resource dimension.
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ContractResource {
+    Steps,
+}
+
+// ===========================================================================
+// Local stub: `vb_core::budget::BudgetDimension`
+// ===========================================================================
+//
+// Production `BudgetDimension` at crates/vb_core/src/budget.rs:793-840
+// declares a ~20-variant enum. The mirror declares a single-variant stub
+// because production `WorkflowError` carries `BudgetDimension` only via
+// the `BudgetPolicyExceeded` payload and the spec proofs do not inspect
+// the inner budget dimension.
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BudgetDimension {
+    TotalSteps,
 }
 
 // ===========================================================================

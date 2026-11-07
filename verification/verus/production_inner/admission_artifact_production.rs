@@ -12,7 +12,8 @@
 // which is the explicit drift-detection mechanism.
 //
 // Production sources mirrored:
-//   - `vb_core::ids::WorkflowDigest`             (crates/vb_core/src/ids/mod.rs:340-357)
+//   - `vb_core::ids::WorkflowDigest`             (crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255)
+// Production `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255`
 //   - `vb_storage::admission::VerificationProof` (crates/vb_storage/src/admission.rs:67-91)
 //   - `vb_storage::admission::AcceptedArtifact`   (crates/vb_storage/src/admission.rs:203-228)
 //   - `vb_storage::admission::ADMISSION_GATE_COUNT` (crates/vb_storage/src/admission.rs:330)

@@ -106,7 +106,7 @@ extract_claims() {
   awk '
     BEGIN { drift_pending = 0; master_emitted = 0 }
     {
-      if (drift_pending && /^\s*\/\//) {
+      if (drift_pending && /^[[:space:]]*\/\//) {
         line = $0
         if (match(line, /`[A-Za-z0-9_.\/-]+:[0-9]+-[0-9]+`/)) {
           path = substr(line, RSTART + 1, RLENGTH - 2)
@@ -120,7 +120,7 @@ extract_claims() {
           next
         }
       }
-      if (/^\s*\/\/\s*DRIFT POLICY:/) {
+      if (/^[[:space:]]*\/\/[[:space:]]*DRIFT POLICY:/) {
         line = $0
         if (match(line, /`[A-Za-z0-9_.\/-]+:[0-9]+-[0-9]+`/)) {
           path = substr(line, RSTART + 1, RLENGTH - 2)

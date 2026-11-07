@@ -6,45 +6,45 @@
 //
 // This file is a structural mirror of the production exec fn
 // `emit_single_body_set` at
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297`.
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
 //
-// Production decision shape (from part_04.rs:222-296):
+// Production decision shape (from part_04.rs:105-178):
 //   - body.len() != 1
 //     -> Err(CompileError::StepFieldShape {
 //          step: diagnostic_step,
 //          field: "steps",
 //          expected: "exactly one set step",
 //        })
-//     (part_04.rs:222-228)
+//     (part_04.rs:105-111)
 //   - step.primitive == Set { value, .. }
-//     -> Ok(()) (part_04.rs:236-243)
+//     -> Ok(()) (part_04.rs:120-126)
 //   - step.primitive == Do { action, input }
-//     -> Ok(()) (part_04.rs:244-289; parse errors are not part of the
+//     -> Ok(()) (part_04.rs:127-171; parse errors are not part of the
 //        spec PO)
 //   - step.primitive == other
 //     -> Err(CompileError::UnsupportedStepPrimitive {
 //          step: diagnostic_step,
 //          primitive: canonical_primitive_name(other),
 //        })
-//     (part_04.rs:290-295)
+//     (part_04.rs:172-177)
 //
 // Substitutions (required for `verus --crate-type=lib` standalone):
 //
 //   1. `CompileError::StepFieldShape` at
-//      `crates/vb_compile/src/mod_compile_errors/kind.rs:113-114` and
-//      `CompileError::UnsupportedStepPrimitive` at kind.rs:107-108
+//      `crates/vb_compile/src/mod_compile_errors/kind.rs:124` and
+//      `CompileError::UnsupportedStepPrimitive` at kind.rs:118
 //      are mirrored as `SpecCompileError` with `&'static str` payloads
 //      flattened to `u8` tags. Field structure (3 payload fields for
 //      `StepFieldShape`, 2 for `UnsupportedStepPrimitive`) is preserved
 //      exactly so any rename or arity change breaks this mirror.
-//   2. `&[crate::StepAst]` (production part_04.rs:214) is collapsed to
+//   2. `&[crate::StepAst]` (production part_04.rs:97) is collapsed to
 //      `(body_len: usize, primitive_tag: u8)` so the projection does
 //      not depend on the production AST type.
 //   3. `id: StepIdx`, `slot: SlotIdx`, `next: Option<StepIdx>`,
 //      `&mut SlotCompiler`, and `reuse_first_constant: bool` are unused
 //      by the dispatch and are omitted from the projection.
 //   4. `canonical_primitive_name` (defined at
-//      `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:6-22`)
+//      `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`)
 //      is collapsed to the `PRIMITIVE_*_TAG` mapping so the projection
 //      does not need to model the production `StepPrimitive` enum.
 //
@@ -53,7 +53,7 @@
 // contract via `assume_specification`.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297`
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`
 // whenever production changes. Each section header cites the
 // originating production line range.
 
@@ -120,7 +120,7 @@ impl SlotIdx {
 // ============================================================================
 //
 // Mirrors `canonical_primitive_name` at
-// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:6-22`.
+// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
 // Each tag is a unique spec-side handle for one of the production
 // `StepPrimitive` variants.
 
@@ -166,10 +166,10 @@ pub const PRIMITIVE_FINISH_TAG: u8 = 11;
 //
 // Mirrors the two `CompileError` variants that `emit_single_body_set`
 // constructs:
-//   - `CompileError::StepFieldShape` at kind.rs:113-114
+//   - `CompileError::StepFieldShape` at kind.rs:124
 //     (production fields: `step: usize`, `field: &'static str`,
 //      `expected: &'static str`).
-//   - `CompileError::UnsupportedStepPrimitive` at kind.rs:107-108
+//   - `CompileError::UnsupportedStepPrimitive` at kind.rs:118
 //     (production fields: `step: usize`, `primitive: &'static str`).
 //
 // For the purpose of this binding we mirror each variant
@@ -183,7 +183,7 @@ pub const PRIMITIVE_FINISH_TAG: u8 = 11;
 /// `emit_single_body_set`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SpecCompileError {
-    /// Mirror of `CompileError::StepFieldShape` at kind.rs:113-114.
+    /// Mirror of `CompileError::StepFieldShape` at kind.rs:124.
     StepFieldShape {
         /// Widened to u64 to avoid Verus integer-width confusion
         /// when comparing against `usize` arguments.
@@ -195,7 +195,7 @@ pub enum SpecCompileError {
         expected: u8,
     },
     /// Mirror of `CompileError::UnsupportedStepPrimitive` at
-    /// kind.rs:107-108.
+    /// kind.rs:118.
     UnsupportedStepPrimitive {
         /// Widened to u64.
         step: u64,
@@ -205,15 +205,15 @@ pub enum SpecCompileError {
     },
 }
 
-/// `field` tag for the literal `"steps"` (production: kind.rs:114).
+/// `field` tag for the literal `"steps"` (production: kind.rs:124).
 pub const FIELD_STEPS: u8 = 0;
 
 /// `expected` tag for the literal `"exactly one set step"` (production:
-/// part_04.rs:226).
+/// part_04.rs:109).
 pub const EXPECTED_EXACTLY_ONE_SET_STEP: u8 = 0;
 
 /// `expected` tag for the literal `"one set step"` (production:
-/// part_04.rs:233). Reserved for the unreachable
+/// part_04.rs:116). Reserved for the unreachable
 /// `body.first().ok_or_else(...)` branch; the projection does not
 /// surface it because `body.len() != 1` short-circuits first.
 pub const EXPECTED_ONE_SET_STEP: u8 = 1;
@@ -223,7 +223,7 @@ pub const EXPECTED_ONE_SET_STEP: u8 = 1;
 // ============================================================================
 
 /// Mirror of the production dispatch in `emit_single_body_set` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
 ///
 /// The body reproduces the production decision shape exactly.
 #[verifier::external]

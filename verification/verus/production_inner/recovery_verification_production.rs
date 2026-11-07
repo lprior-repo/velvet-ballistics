@@ -26,7 +26,8 @@
 //   - `RecoveryTerminalState`            <- crates/vb_storage/src/recovery/types.rs:547-562
 //   - `RecoveryRuntimeSummary`           <- crates/vb_storage/src/recovery/types.rs:564-589
 //   - `RecoveryHydration`                <- crates/vb_storage/src/recovery/types.rs:604-645
-//   - `RecoveryFrameSeedProduct`         <- crates/vb_storage/src/recovery/types.rs:647-740
+//   - `RecoveryFrameSeedProduct`         <- crates/vb_storage/src/recovery/types.rs:660-665
+// Production `crates/vb_storage/src/recovery/types.rs:660-665`
 //   - `DigestPair` / ActionAbiDigest..   <- crates/vb_storage/src/recovery/types.rs:346-526
 //   - `DigestCheck`                      <- crates/vb_storage/src/recovery/types.rs:1635-1678
 //   - Decision fns                       <- crates/vb_storage/src/recovery/recover.rs:32-187

@@ -69,7 +69,8 @@
 //                                               crates/vb_core/src/budget.rs:170-191)
 //   - `WholeWorkflowBudget`                 <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/budget.rs:11-59)
+//                                               crates/vb_core/src/budget.rs:14-90)
+// Production `crates/vb_core/src/budget.rs:14-90`
 //   - `WholeWorkflowBudget::compute`        <- extern_budget_monotonic.rs
 //                                               `whole_workflow_budget_compute`
 //                                               (mirror of

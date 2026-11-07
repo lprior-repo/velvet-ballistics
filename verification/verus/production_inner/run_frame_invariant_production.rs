@@ -31,7 +31,7 @@
 //      serde derives blocked by the same root issue.
 //
 // DRIFT POLICY: This file MUST be regenerated from
-// crates/vb_core/src/frame.rs, crates/vb_core/src/value.rs,
+// `crates/vb_core/src/frame.rs:1-144`, crates/vb_core/src/value.rs,
 // crates/vb_core/src/ids/mod.rs, and crates/vb_core/src/errors.rs
 // whenever production changes. Field NAME and TYPE are preserved
 // byte-for-byte; any drift breaks the verification build.
