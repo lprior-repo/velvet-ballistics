@@ -3367,22 +3367,6 @@ fn retry_await_charges_second_action_scheduled_ticket_bytes() -> Result<(), Stri
     let delta = second_events
         .get(first_events.len()..)
         .ok_or_else(|| "retry snapshot must extend the submit snapshot".to_string())?;
-    let uncharged = delta
-        .iter()
-        .filter(|event| {
-            matches!(event, RuntimeJournalEvent::ActionFailed { run: failed_run, .. } if *failed_run == run)
-        })
-        .try_fold(0u64, |total, event| {
-            let len = u64::try_from(
-                postcard::to_allocvec(event)
-                    .map_err(|error| format!("event encode failed: {error:?}"))?
-                    .len(),
-            )
-            .map_err(|_| "length overflow".to_string())?;
-            total
-                .checked_add(len)
-                .ok_or_else(|| "uncharged total overflow".to_string())
-        })?;
     assert_eq!(
         delta
             .iter()
@@ -3412,12 +3396,8 @@ fn retry_await_charges_second_action_scheduled_ticket_bytes() -> Result<(), Stri
     let charged = second_counter
         .checked_sub(first_counter)
         .ok_or_else(|| "counter must not decrease across the retry".to_string())?;
-    assert_eq!(
-        charged,
-        appended
-            .checked_sub(uncharged)
-            .ok_or_else(|| "uncharged bytes must not exceed appended bytes".to_string())?
-    );
+    // Command-path retries charge every appended event, including ActionFailed.
+    assert_eq!(charged, appended);
     assert!(
         charged > second_ticket_bytes,
         "retry drive evidence must be charged alongside the ticket"
@@ -3704,4 +3684,673 @@ fn empty_evidence_await_timer_over_budget_returns_state_unjournaled() -> Result<
         "nothing must be journaled over budget: {events:?}"
     );
     Ok(())
+}
+
+fn two_ask_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let set_prompt = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let set_timeout = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(1),
+        },
+        Some(SlotIdx::new(1)),
+        Some(StepIdx::new(2)),
+    );
+    let ask_first = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::Ask {
+            prompt: SlotIdx::ZERO,
+            timeout_slot: Some(SlotIdx::new(1)),
+        },
+        None,
+        Some(StepIdx::new(3)),
+    );
+    let resume_first = vb_core::workflow::node(
+        StepIdx::new(3),
+        CompiledNodeKind::AskResume {
+            answer: SlotIdx::new(2),
+        },
+        None,
+        Some(StepIdx::new(4)),
+    );
+    let ask_second = vb_core::workflow::node(
+        StepIdx::new(4),
+        CompiledNodeKind::Ask {
+            prompt: SlotIdx::ZERO,
+            timeout_slot: Some(SlotIdx::new(1)),
+        },
+        None,
+        Some(StepIdx::new(5)),
+    );
+    let resume_second = vb_core::workflow::node(
+        StepIdx::new(5),
+        CompiledNodeKind::AskResume {
+            answer: SlotIdx::new(2),
+        },
+        None,
+        Some(StepIdx::new(6)),
+    );
+    let finish_node = vb_core::workflow::node(
+        StepIdx::new(6),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::new(2),
+        },
+        None,
+        None,
+    );
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("two_ask_then_finish"),
+        digest: WorkflowDigest::from_bytes([41; 32]),
+        nodes: Box::from([
+            set_prompt,
+            set_timeout,
+            ask_first,
+            resume_first,
+            ask_second,
+            resume_second,
+            finish_node,
+        ]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([
+            ConstValue::Symbol(vb_core::ids::SymbolId::new(1)),
+            ConstValue::I64(10),
+        ]),
+        slot_count: 3,
+        symbols_count: 2,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn two_wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let set_deadline = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let wait_first = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::WaitUntil {
+            deadline_slot: SlotIdx::ZERO,
+        },
+        None,
+        Some(StepIdx::new(2)),
+    );
+    let wait_second = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::WaitUntil {
+            deadline_slot: SlotIdx::ZERO,
+        },
+        None,
+        Some(StepIdx::new(3)),
+    );
+    let finish_node = vb_core::workflow::node(
+        StepIdx::new(3),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+        None,
+        None,
+    );
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("two_wait_then_finish"),
+        digest: WorkflowDigest::from_bytes([42; 32]),
+        nodes: Box::from([set_deadline, wait_first, wait_second, finish_node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([ConstValue::I64(10)]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn two_action_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+    let first = vb_core::workflow::node(
+        StepIdx::ZERO,
+        CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(1)),
+    );
+    let second = vb_core::workflow::node(
+        StepIdx::new(1),
+        CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::ZERO,
+        },
+        Some(SlotIdx::ZERO),
+        Some(StepIdx::new(2)),
+    );
+    let finish_node = vb_core::workflow::node(
+        StepIdx::new(2),
+        CompiledNodeKind::Finish {
+            result: SlotIdx::ZERO,
+        },
+        None,
+        None,
+    );
+    let parts = WorkflowParts {
+        semantic_source_identity: None,
+        name: Box::from("two_action_then_finish"),
+        digest: WorkflowDigest::from_bytes([43; 32]),
+        nodes: Box::from([first, second, finish_node]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        step_names: Box::from([]),
+        resource_contract: ResourceContract::DEFAULT,
+        input_slots: Box::from([]),
+    };
+    vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+fn assert_counter_matches_journal(
+    shard: &Shard,
+    journal: &crate::journal::VolatileRuntimeJournal,
+    run: RunId,
+) -> Result<(), String> {
+    let state = shard
+        .run_state_get(run)
+        .ok_or_else(|| "run should still be active".to_string())?;
+    let events = require_snapshot(journal)?;
+    let measured = measured_journal_bytes(&events)?;
+    assert!(measured > 0, "journal must contain events");
+    assert_eq!(state.journal_bytes_written, measured);
+    Ok(())
+}
+
+fn cap_journal_budget(
+    shard: &mut Shard,
+    run: RunId,
+    digest: WorkflowDigest,
+    total: u64,
+) -> Result<(), String> {
+    let state = shard
+        .run_state_get_mut(run)
+        .ok_or_else(|| "run should still be active to cap its budget".to_string())?;
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(total),
+    ));
+    Ok(())
+}
+
+fn counter_before(shard: &Shard, run: RunId) -> Result<u64, String> {
+    shard
+        .run_state_get(run)
+        .map(|state| state.journal_bytes_written)
+        .ok_or_else(|| "run should still be active".to_string())
+}
+
+fn completion_output() -> ActionOutputReady {
+    ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: SlotValue::I64(7),
+        taint: Taint::Clean,
+        encoded_len: 2,
+    }
+}
+
+fn count_events(
+    events: &[RuntimeJournalEvent],
+    run: RunId,
+    matches: fn(&RuntimeJournalEvent, RunId) -> bool,
+) -> usize {
+    events
+        .iter()
+        .filter(|event| matches(event, run))
+        .count()
+}
+
+fn is_action_completed(event: &RuntimeJournalEvent, run: RunId) -> bool {
+    matches!(event, RuntimeJournalEvent::ActionCompletedEnvelope { ticket, .. } if ticket.run == run)
+}
+
+fn is_ask_answered(event: &RuntimeJournalEvent, run: RunId) -> bool {
+    matches!(event, RuntimeJournalEvent::AskAnswered { run: r, .. } if *r == run)
+}
+
+fn is_wait_resolved(event: &RuntimeJournalEvent, run: RunId) -> bool {
+    matches!(event, RuntimeJournalEvent::WaitResolved { run: r, .. } if *r == run)
+}
+
+fn is_run_cancelled(event: &RuntimeJournalEvent, run: RunId) -> bool {
+    matches!(event, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run)
+}
+
+fn is_run_killed(event: &RuntimeJournalEvent, run: RunId) -> bool {
+    matches!(event, RuntimeJournalEvent::RunKilled { run: r, .. } if *r == run)
+}
+
+fn is_action_abandoned(event: &RuntimeJournalEvent, run: RunId) -> bool {
+    matches!(event, RuntimeJournalEvent::ActionAbandoned { ticket } if ticket.run == run)
+}
+
+fn is_resumed(event: &RuntimeJournalEvent, run: RunId) -> bool {
+    matches!(event, RuntimeJournalEvent::Resumed { run: r, .. } if *r == run)
+}
+
+#[test]
+fn command_journal_bytes_exceeds_boundary() -> Result<(), String> {
+    let workflow = two_slot_workflow().ok_or_else(|| "two slot workflow builds".to_string())?;
+    let run = RunId::new(780);
+    let digest = workflow.digest();
+    let mut state = crate::shard::helpers::make_run_state(workflow, run)
+        .ok_or_else(|| "run state builds".to_string())?;
+    let event = RuntimeJournalEvent::RunFailed { run, attempt: 1 };
+    let bytes = postcard::to_allocvec(&event)
+        .map_err(|error| format!("event encode failed: {error:?}"))?;
+    let len = u64::try_from(bytes.len()).map_err(|_| "event length overflow".to_string())?;
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(len),
+    ));
+    assert!(
+        !Shard::command_journal_bytes_exceeds(&state, &[event.clone()])
+            .map_err(|error| format!("probe failed: {error:?}"))?,
+        "appending exactly up to the budget must not exceed it"
+    );
+    state.admission = Some(RunAdmission::with_budget(
+        digest,
+        run,
+        CapabilitySet::empty(),
+        vb_core::policy::RuntimePolicy::Relaxed,
+        journal_bytes_budget(len.checked_sub(1).ok_or_else(|| "budget underflow".to_string())?),
+    ));
+    assert!(
+        Shard::command_journal_bytes_exceeds(&state, &[event.clone()])
+            .map_err(|error| format!("probe failed: {error:?}"))?,
+        "one byte over the budget must exceed it"
+    );
+    state.admission = None;
+    assert!(
+        !Shard::command_journal_bytes_exceeds(&state, &[event])
+            .map_err(|error| format!("probe failed: {error:?}"))?,
+        "no admitted budget must never exceed"
+    );
+    Ok(())
+}
+
+#[test]
+fn command_completion_charges_journal_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("two_action", two_action_workflow())?;
+    let run = RunId::new(781);
+    submit_run(&mut shard, run, wf);
+    let ticket = pending_ticket(&shard, run, StepIdx::ZERO, 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted {
+            ticket,
+            output: completion_output(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_action_completed), 1);
+    assert_counter_matches_journal(&shard, &journal, run)
+}
+
+#[test]
+fn command_completion_falls_back_to_single_run_failed_when_journal_budget_exceeded(
+) -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = retry_workflow()?;
+    let digest = wf.digest();
+    let run = RunId::new(782);
+    submit_run(&mut shard, run, wf);
+    let before = counter_before(&shard, run)?;
+    cap_journal_budget(&mut shard, run, digest, before)?;
+    let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted {
+            ticket,
+            output: completion_output(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert!(shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    assert_eq!(run_failed_count(&events, run), 1);
+    assert_eq!(
+        count_events(&events, run, is_action_completed),
+        0,
+        "completion must not be journaled after fallback: {events:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn command_legacy_completion_charges_journal_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("two_action", two_action_workflow())?;
+    let run = RunId::new(783);
+    submit_run(&mut shard, run, wf);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompletedLegacy {
+            run,
+            step: StepIdx::ZERO,
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    let events = require_snapshot(&journal)?;
+    assert!(
+        events.iter().any(|event| matches!(
+            event,
+            RuntimeJournalEvent::StepSucceeded { run: r, step, .. }
+                if *r == run && *step == StepIdx::ZERO
+        )),
+        "legacy completion must journal StepSucceeded for the completed step: {events:?}"
+    );
+    assert_counter_matches_journal(&shard, &journal, run)
+}
+
+#[test]
+fn command_retryable_failure_charges_journal_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = retry_workflow()?;
+    let run = RunId::new(784);
+    submit_run(&mut shard, run, wf);
+    enqueue_action_failure(&mut shard, run, StepIdx::new(1), 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    assert_eq!(
+        action_failed_count(&require_snapshot(&journal)?, run, StepIdx::new(1)),
+        1
+    );
+    assert_counter_matches_journal(&shard, &journal, run)
+}
+
+#[test]
+fn command_retryable_failure_falls_back_when_journal_budget_exceeded() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = retry_workflow()?;
+    let digest = wf.digest();
+    let run = RunId::new(785);
+    submit_run(&mut shard, run, wf);
+    let before = counter_before(&shard, run)?;
+    cap_journal_budget(&mut shard, run, digest, before)?;
+    enqueue_action_failure(&mut shard, run, StepIdx::new(1), 1);
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert!(shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    assert_eq!(run_failed_count(&events, run), 1);
+    assert_eq!(
+        action_failed_count(&events, run, StepIdx::new(1)),
+        0,
+        "failure must not be journaled after fallback: {events:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn command_fail_run_failure_records_fallback_only_when_journal_budget_exceeded(
+) -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = retry_workflow()?;
+    let digest = wf.digest();
+    let run = RunId::new(786);
+    submit_run(&mut shard, run, wf);
+    let before = counter_before(&shard, run)?;
+    cap_journal_budget(&mut shard, run, digest, before)?;
+    let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert!(shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    assert_eq!(run_failed_count(&events, run), 1);
+    assert_eq!(
+        action_failed_count(&events, run, StepIdx::new(1)),
+        0,
+        "failure must not be journaled when only the fallback fits: {events:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn command_fail_run_failure_records_both_events_when_budget_allows() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = retry_workflow()?;
+    let run = RunId::new(787);
+    submit_run(&mut shard, run, wf);
+    let ticket = pending_ticket(&shard, run, StepIdx::new(1), 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert!(shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    assert_event_order(
+        &events,
+        RuntimeJournalEvent::ActionFailed {
+            run,
+            step: StepIdx::new(1),
+            action: ActionId::new(0),
+            attempt: 1,
+        },
+        RuntimeJournalEvent::RunFailed { run, attempt: 1 },
+    );
+    Ok(())
+}
+
+#[test]
+fn command_ask_answer_charges_journal_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("two_ask", two_ask_workflow())?;
+    let run = RunId::new(788);
+    submit_with_journal(&mut shard, run, wf);
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .ok_or_else(|| "suspended ask must issue a ticket".to_string())?;
+    assert_eq!(
+        shard.enqueue(ShardCommand::AskAnswered {
+            answer: AskAnswer {
+                ticket,
+                answer_slot: SlotIdx::new(2),
+                value: SlotValue::I64(77),
+                taint: Taint::Clean,
+                encoded_len: 0,
+            },
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_ask_answered), 1);
+    assert_counter_matches_journal(&shard, &journal, run)
+}
+
+#[test]
+fn command_ask_answer_falls_back_when_journal_budget_exceeded() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("two_ask", two_ask_workflow())?;
+    let digest = wf.digest();
+    let run = RunId::new(789);
+    submit_with_journal(&mut shard, run, wf);
+    let before = counter_before(&shard, run)?;
+    cap_journal_budget(&mut shard, run, digest, before)?;
+    let ticket = shard
+        .lookup_pending_ask_ticket(run, StepIdx::new(2))
+        .ok_or_else(|| "suspended ask must issue a ticket".to_string())?;
+    assert_eq!(
+        shard.enqueue(ShardCommand::AskAnswered {
+            answer: AskAnswer {
+                ticket,
+                answer_slot: SlotIdx::new(2),
+                value: SlotValue::I64(77),
+                taint: Taint::Clean,
+                encoded_len: 0,
+            },
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert!(shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    assert_eq!(run_failed_count(&events, run), 1);
+    assert_eq!(
+        count_events(&events, run, is_ask_answered),
+        0,
+        "answer must not be journaled after fallback: {events:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn command_timer_resolution_charges_journal_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("two_wait", two_wait_workflow())?;
+    let run = RunId::new(790);
+    submit_with_journal(&mut shard, run, wf);
+    assert_eq!(shard.enqueue(timer_command(&shard, run)), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_wait_resolved), 1);
+    assert_counter_matches_journal(&shard, &journal, run)
+}
+
+#[test]
+fn command_timer_resolution_falls_back_when_journal_budget_exceeded() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("two_wait", two_wait_workflow())?;
+    let digest = wf.digest();
+    let run = RunId::new(791);
+    submit_with_journal(&mut shard, run, wf);
+    let before = counter_before(&shard, run)?;
+    cap_journal_budget(&mut shard, run, digest, before)?;
+    assert_eq!(shard.enqueue(timer_command(&shard, run)), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert!(shard.terminal_runs_contains(run));
+    let events = require_snapshot(&journal)?;
+    assert_eq!(run_failed_count(&events, run), 1);
+    assert_eq!(
+        count_events(&events, run, is_wait_resolved),
+        0,
+        "resolution must not be journaled after fallback: {events:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn command_cancel_records_journal_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("suspended", suspended_workflow())?;
+    let run = RunId::new(792);
+    submit_run(&mut shard, run, wf);
+    let attempt = shard
+        .run_state_get(run)
+        .map(|state| state.run_attempt.get())
+        .ok_or_else(|| "run should still be active".to_string())?;
+    shard.append_cancel_terminal_events(run, None, attempt)
+        .map_err(|error| format!("cancel append failed: {error:?}"))?;
+    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_run_cancelled), 1);
+    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_action_abandoned), 1);
+    assert_counter_matches_journal(&shard, &journal, run)
+}
+
+#[test]
+fn command_kill_records_journal_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("suspended", suspended_workflow())?;
+    let run = RunId::new(793);
+    submit_run(&mut shard, run, wf);
+    let attempt = shard
+        .run_state_get(run)
+        .map(|state| state.run_attempt.get())
+        .ok_or_else(|| "run should still be active".to_string())?;
+    shard.append_kill_terminal_events(run, attempt)
+        .map_err(|error| format!("kill append failed: {error:?}"))?;
+    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_run_killed), 1);
+    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_action_abandoned), 1);
+    assert_counter_matches_journal(&shard, &journal, run)
+}
+
+#[test]
+fn command_resumed_records_journal_bytes() -> Result<(), String> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let wf = require_workflow("ask_then_finish", ask_workflow())?;
+    let run = RunId::new(794);
+    submit_with_journal(&mut shard, run, wf);
+    shard
+        .append_resumed_event(run)
+        .map_err(|error| format!("resumed event append failed: {error:?}"))?;
+    assert_eq!(count_events(&require_snapshot(&journal)?, run, is_resumed), 1);
+    assert_counter_matches_journal(&shard, &journal, run)
 }
