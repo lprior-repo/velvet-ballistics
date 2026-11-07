@@ -13,7 +13,7 @@
 //
 //   1. The `extern_accepted_artifact_admission_decision` module inlines
 //      a structural mirror of the production `ArtifactEnvelopeError`
-//      discriminant set (admission.rs:26-78, 11 variants) and a pure
+//      discriminant set (`crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:10-63`, 12 variants in production, 11 modelled) and a pure
 //      projection of the strict-admission dispatch rejection branch
 //      (`admission_decision`) plus success branch (`admission_decision_ok`).
 //      See the companion file for the full binding ledger and trust
@@ -39,7 +39,7 @@
 // Valid) and proved structural properties via 10 proof fns. The proof
 // was mathematically correct but completely disconnected from the
 // production `ArtifactEnvelopeError` enum at
-// `crates/vb_runtime/src/admission.rs:26-78`: there was no bridge
+// `crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:10-63`: there was no bridge
 // saying "production strict admission dispatches the canonical 11 error
 // variants to these outcomes". The proofs would have remained green
 // even if production renamed `ArtifactNotFound` to `ArtifactMissing`
@@ -99,7 +99,7 @@ pub use production::{
 /// Spec predicate: maps a production `ArtifactEnvelopeError` variant to
 /// its corresponding `SpecAdmissionError` class. Mirrors the production
 /// `map_artifact_envelope_error` function at
-/// `crates/vb_runtime/src/admission.rs:580-618`, collapsed so the 8
+/// `crates/vb_runtime/src/admission/parts/chunk_004_validation.rs:41-82`, collapsed so the 8
 /// "InvalidProofFlag" variants (6 `MissingRequiredProofFlag*` +
 /// `MissingIdempotencyAttestation` + the InvalidGateCount projection)
 /// all map to `InvalidVerificationProof`.
@@ -139,7 +139,7 @@ pub open spec fn spec_outcome_error(err: SpecArtifactEnvelopeError) -> SpecAdmis
 
 /// Spec predicate: true iff the strict-admission dispatch rejected the
 /// run. Mirrors the production invariant at
-/// `crates/vb_runtime/src/admission.rs:668-670`: "On error, no run
+/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:60-61`: "On error, no run
 /// frame is allocated, no run state is inserted, and no `RunAccepted`
 /// journal event is recorded."
 pub open spec fn spec_outcome_rejects(err: SpecArtifactEnvelopeError) -> bool {
@@ -157,14 +157,14 @@ pub open spec fn spec_outcome_admitted(err: SpecArtifactEnvelopeError) -> bool {
 
 /// Spec predicate: true iff the dispatch acknowledged the run. The spec
 /// projection is `false` for every `ArtifactEnvelopeError` variant
-/// (production: admission.rs:668-670 — no ack on rejection).
+/// (production: crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:60-61 — no ack on rejection).
 pub open spec fn spec_outcome_acknowledged(err: SpecArtifactEnvelopeError) -> bool {
     false
 }
 
 /// Spec predicate: true iff run state was inserted. The spec projection
 /// is `false` for every `ArtifactEnvelopeError` variant (production:
-/// admission.rs:668-670 — no run state on rejection).
+/// crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:60-61 — no run state on rejection).
 pub open spec fn spec_outcome_run_state_inserted(err: SpecArtifactEnvelopeError) -> bool {
     false
 }
@@ -172,7 +172,7 @@ pub open spec fn spec_outcome_run_state_inserted(err: SpecArtifactEnvelopeError)
 /// Spec predicate: the success branch (no envelope error) admits the
 /// run, acknowledges it, and inserts run state. Mirrors the production
 /// `Ok(RunAdmission::with_idempotency_evidence(...))` branch at
-/// `crates/vb_runtime/src/admission.rs:768-775`.
+/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:165-174`.
 pub open spec fn spec_outcome_admitted_ok() -> bool {
     true
 }

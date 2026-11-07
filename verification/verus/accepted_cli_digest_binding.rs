@@ -30,25 +30,25 @@
 //
 // This rewrite grounds every lemma in the production digest
 // positions (the 5-digest chain that production enforces at
-// `crates/vb_runtime/src/admission.rs:711-725` and post-conditions at
-// admission.rs:768-775):
+// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-122` and post-conditions at
+// chunk_005_admit_core.rs:165-174):
 //
 //   1. source_digest  <->  SpecAcceptedArtifact.source_digest
 //                          (production: artifact.source_digest,
-//                          admission.rs:519, 711)
+//                          chunk_005_admit_core.rs:26-31, 108-113)
 //   2. artifact_digest <->  SpecAcceptedArtifact.digest
 //                          (production: artifact.digest,
-//                          admission.rs:519, 711, 720)
+//                          chunk_005_admit_core.rs:26-31, 108-113, 117-122)
 //   3. header_digest  <->  requested SpecWorkflowDigest parameter
 //                          (production: artifact_digest parameter to
 //                          admit_artifact_run_with_certificate_floor,
-//                          admission.rs:711-716)
+//                          chunk_005_admit_core.rs:108-113)
 //   4. event_digest   <->  SpecAcceptedArtifact.verification.digest
 //                          (production: artifact.verification.digest,
-//                          admission.rs:720-725, INV-003)
+//                          chunk_005_admit_core.rs:117-122, INV-003)
 //   5. admission_digest <->  SpecRunAdmission.artifact_digest
 //                          (production: RunAdmission::artifact_digest
-//                          set at admission.rs:768-775 via
+//                          set at chunk_005_admit_core.rs:165-174 via
 //                          RunAdmission::with_idempotency_evidence)
 //
 // The 5-digest chained equality in `digest_binding_total` is the
@@ -63,36 +63,36 @@
 // ============================================================================
 //   - SpecWorkflowDigest            <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of vb_core::ids::WorkflowDigest
-//                                       at crates/vb_core/src/ids/mod.rs:340-357)
+//                                       at crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255)
 //   - SpecAcceptedArtifact          <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of
 //                                       vb_storage::admission::AcceptedArtifact
 //                                       at
-//                                       crates/vb_storage/src/admission.rs:203-228)
+//                                       crates/vb_storage/src/admission.rs:201-237)
 //   - SpecRunAdmission              <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of
 //                                       vb_runtime::admission::RunAdmission
-//                                       at crates/vb_runtime/src/admission.rs:82-95)
+//                                       at crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31)
 //   - production_artifact_digest_eq_header
 //                                   <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of strict-policy check
 //                                       INV-002 at
-//                                       crates/vb_runtime/src/admission.rs:711-716)
+//                                       crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113)
 //   - production_proof_digest_eq_artifact
 //                                   <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of strict-policy check
 //                                       INV-003 at
-//                                       crates/vb_runtime/src/admission.rs:720-725)
+//                                       crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122)
 //   - production_run_admission_new_digest
 //                                   <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of RunAdmission::new
 //                                       at
-//                                       crates/vb_runtime/src/admission.rs:110-124)
+//                                       crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66)
 //   - production_run_admission_artifact_digest
 //                                   <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of RunAdmission::artifact_digest
 //                                       at
-//                                       crates/vb_runtime/src/admission.rs:162-166)
+//                                       crates/vb_runtime/src/admission/parts/chunk_002_records.rs:147-151)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS (VACUUM) FORM
@@ -170,13 +170,13 @@ pub use production::{
 ///
 /// This is the spec-side statement of the production post-condition
 /// after successful strict admission: at
-/// `crates/vb_runtime/src/admission.rs:768-775` the production code
+/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:165-174` the production code
 /// constructs
 /// `RunAdmission::with_idempotency_evidence(admitted_digest, ...)`
-/// where `admitted_digest = artifact.digest` (line 768). Combined with
-/// the INV-002 check at admission.rs:711-716
+/// where `admitted_digest = artifact.digest` (line 165). Combined with
+/// the INV-002 check at chunk_005_admit_core.rs:108-113
 /// (`artifact.digest == artifact_digest || artifact.source_digest == artifact_digest`)
-/// and the INV-003 check at admission.rs:720-725
+/// and the INV-003 check at chunk_005_admit_core.rs:117-122
 /// (`artifact.verification.digest == artifact.digest`), all 5
 /// positions resolve to the same canonical envelope digest.
 pub open spec fn digest_binding_total(
@@ -213,7 +213,7 @@ pub open spec fn digest_mismatch_rejects(
 // Production-bound exec wrappers (call the production extern fns)
 // ============================================================================
 /// Production-bound exec wrapper for the strict-policy INV-002
-/// check at `crates/vb_runtime/src/admission.rs:711-716`.
+/// check at `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113`.
 pub fn production_artifact_digest_eq_header_exec(
     artifact: &production::SpecAcceptedArtifact,
     header_digest: production::SpecWorkflowDigest,
@@ -222,7 +222,7 @@ pub fn production_artifact_digest_eq_header_exec(
 }
 
 /// Production-bound exec wrapper for the strict-policy INV-003
-/// check at `crates/vb_runtime/src/admission.rs:720-725`.
+/// check at `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122`.
 pub fn production_proof_digest_eq_artifact_exec(
     artifact: &production::SpecAcceptedArtifact,
 ) -> bool {
@@ -230,7 +230,7 @@ pub fn production_proof_digest_eq_artifact_exec(
 }
 
 /// Production-bound exec wrapper for `RunAdmission::new` at
-/// `crates/vb_runtime/src/admission.rs:110-124`.
+/// `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66`.
 pub fn production_run_admission_new_digest_exec(
     digest: production::SpecWorkflowDigest,
 ) -> production::SpecRunAdmission {
@@ -238,7 +238,7 @@ pub fn production_run_admission_new_digest_exec(
 }
 
 /// Production-bound exec wrapper for `RunAdmission::artifact_digest`
-/// at `crates/vb_runtime/src/admission.rs:162-166`.
+/// at `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:147-151`.
 pub fn production_run_admission_artifact_digest_exec(
     admission: &production::SpecRunAdmission,
 ) -> production::SpecWorkflowDigest {
@@ -260,7 +260,7 @@ pub fn production_run_admission_artifact_digest_exec(
 // the requested header digest.
 // --------------------------------------------------------------------------
 // Mirrors the strict-policy check at
-// `crates/vb_runtime/src/admission.rs:711-716`:
+// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113`:
 //
 //     if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
 //         return Err(AdmissionError::ArtifactDigestMismatch { ... });
@@ -282,7 +282,7 @@ pub assume_specification[ production::production_artifact_digest_eq_header ](
 // artifact's `digest`.
 // --------------------------------------------------------------------------
 // Mirrors the strict-policy check at
-// `crates/vb_runtime/src/admission.rs:720-725`:
+// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122`:
 //
 //     if artifact.verification.digest != artifact.digest {
 //         return Err(AdmissionError::ArtifactDigestMismatch { ... });
@@ -303,7 +303,7 @@ pub assume_specification[ production::production_proof_digest_eq_artifact ](
 // digest.
 // --------------------------------------------------------------------------
 // Mirrors `RunAdmission::new` at
-// `crates/vb_runtime/src/admission.rs:110-124`, whose body sets
+// `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66`, whose body sets
 // `Self.artifact_digest = digest` (line 117).
 pub assume_specification[ production::production_run_admission_new_digest ](
     digest: production::SpecWorkflowDigest,
@@ -317,7 +317,7 @@ pub assume_specification[ production::production_run_admission_new_digest ](
 // `artifact_digest` field of the admission record.
 // --------------------------------------------------------------------------
 // Mirrors the `RunAdmission::artifact_digest(&self) -> WorkflowDigest`
-// accessor at `crates/vb_runtime/src/admission.rs:162-166`, whose
+// accessor at `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:147-151`, whose
 // body is `self.artifact_digest` (line 165).
 pub assume_specification[ production::production_run_admission_artifact_digest ](
     admission: &production::SpecRunAdmission,
@@ -433,12 +433,12 @@ pub proof fn proof_admitted_digest_matches_run_header(
 )
     requires
 // Production strict-policy digest binding holds:
-//   - INV-002 (admission.rs:711-716): artifact.digest or
+//   - INV-002 (chunk_005_admit_core.rs:108-113): artifact.digest or
 //     artifact.source_digest matches the requested header.
-//   - INV-003 (admission.rs:720-725): artifact.verification.digest
+//   - INV-003 (chunk_005_admit_core.rs:117-122): artifact.verification.digest
 //     equals artifact.digest.
 //   - RunAdmission::with_idempotency_evidence(admitted_digest, ...)
-//     at admission.rs:769-775 sets admission.artifact_digest
+//     at chunk_005_admit_core.rs:165-174 sets admission.artifact_digest
 //     to artifact.digest.
 
         artifact.digest == header_digest || artifact.source_digest == header_digest,

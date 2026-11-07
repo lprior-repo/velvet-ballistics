@@ -9,7 +9,7 @@
 // This file is the production-binding surface for the
 // `step_offset.rs` Verus spec. It binds the spec to the production
 // arithmetic primitive `StepIdx::checked_add` at
-// `crates/vb_core/src/ids/mod.rs:303-308` and to the production
+// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206` and to the production
 // `checked_step_offset` wrapper at
 // `crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212`,
 // via `#[path]` inclusion of the in-tree production mirror at
@@ -22,7 +22,7 @@
 //
 // This binding replaces the shadow type with the production
 // `CompileError::PrimitiveLoweringLimitExceeded` variant from
-// `crates/vb_compile/src/mod_compile_errors/kind.rs:124` (which is
+// `crates/vb_compile/src/mod_compile_errors/kind.rs:141` (which is
 // what `checked_step_offset` actually constructs on overflow — see
 // part_12.rs:206-211), and grounds the spec lemmas in the production
 // `StepIdx::checked_add` contract via `assume_specification` bridges.
@@ -33,19 +33,19 @@
 //
 //   - `StepIdx` (u16 newtype)         <- production_inner/step_offset_production.rs
 //                                        (verbatim mirror of
-//                                         crates/vb_core/src/ids/mod.rs:55)
+//                                         crates/vb_core/src/ids/mod.rs:70)
 //   - `StepIdx::new`                  <- production_inner/step_offset_production.rs
 //                                        (mirror of
-//                                         crates/vb_core/src/ids/mod.rs:21)
+//                                         crates/vb_core/src/ids/mod.rs:36)
 //   - `StepIdx::get`                  <- production_inner/step_offset_production.rs
 //                                        (mirror of
-//                                         crates/vb_core/src/ids/mod.rs:27)
+//                                         crates/vb_core/src/ids/mod.rs:42)
 //   - `StepIdx::checked_add`          <- production_inner/step_offset_production.rs
 //                                        (mirror of
-//                                         crates/vb_core/src/ids/mod.rs:303-308)
+//                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206)
 //   - `SpecCompileError`              <- production_inner/step_offset_production.rs
 //                                        (mirror of
-//                                         crates/vb_compile/src/mod_compile_errors/kind.rs:124)
+//                                         crates/vb_compile/src/mod_compile_errors/kind.rs:141)
 //   - `checked_step_offset`           <- production_inner/step_offset_production.rs
 //                                        (verbatim mirror of
 //                                         crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212)
@@ -106,20 +106,20 @@ pub use production::{checked_step_offset, SpecCompileError, StepIdx};
 // The drift check references every production method the spec file
 // attaches an `assume_specification` bridge to:
 //
-//   - StepIdx::checked_add     (production ids/mod.rs:303-308)
+//   - StepIdx::checked_add     (production ids/parts/chunk_001_custom_types.rs:201-206)
 //   - checked_step_offset      (production mod_compile_lowering/part_12.rs:199-212)
 //
 // Plus the `SpecCompileError::PrimitiveLoweringLimitExceeded`
 // discriminant with all four payload fields.
 #[verifier::external]
 fn prod_methods_drift_check() {
-    // Reference every StepIdx method (production ids/mod.rs:21-308).
+    // Reference every StepIdx method (production ids/mod.rs:36-42 for new/get; ids/parts/chunk_001_custom_types.rs:201-206 for checked_add).
     let id = StepIdx::new(0);
     let _ = StepIdx::get(id);
     let _ = id.checked_add(0u16);
 
     // Reference the SpecCompileError discriminant with all four
-    // payload fields (production mod_compile_errors/kind.rs:124).
+    // payload fields (production mod_compile_errors/kind.rs:141).
     let _err = SpecCompileError::PrimitiveLoweringLimitExceeded {
         primitive: "",
         field: "",

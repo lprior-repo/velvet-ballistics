@@ -9,7 +9,7 @@
 // ============================================================================
 //
 // This file is bound to the production arithmetic primitive
-// `StepIdx::checked_add` at `crates/vb_core/src/ids/mod.rs:303-308`
+// `StepIdx::checked_add` at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`
 // and to the production wrapper `checked_step_offset` at
 // `crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212`
 // through the companion extern surface
@@ -23,7 +23,7 @@
 // This rewrite grounds every lemma in production types:
 //   - The shadow error enum is gone. The production error variant
 //     `CompileError::PrimitiveLoweringLimitExceeded` from
-//     `crates/vb_compile/src/mod_compile_errors/kind.rs:124` is what
+//     `crates/vb_compile/src/mod_compile_errors/kind.rs:141` is what
 //     `checked_step_offset` actually constructs on overflow (see
 //     part_12.rs:206-211).
 //   - The shadow `int` parameters are gone. Each lemma takes the
@@ -44,19 +44,19 @@
 // ============================================================================
 //   - `StepIdx` (u16 newtype)         <- extern_step_offset.rs
 //                                         (mirror of
-//                                         crates/vb_core/src/ids/mod.rs:55)
+//                                         crates/vb_core/src/ids/mod.rs:70)
 //   - `StepIdx::new`                  <- extern_step_offset.rs
 //                                         (mirror of
-//                                         crates/vb_core/src/ids/mod.rs:21)
+//                                         crates/vb_core/src/ids/mod.rs:36)
 //   - `StepIdx::get`                  <- extern_step_offset.rs
 //                                         (mirror of
-//                                         crates/vb_core/src/ids/mod.rs:27)
+//                                         crates/vb_core/src/ids/mod.rs:42)
 //   - `StepIdx::checked_add`          <- extern_step_offset.rs
 //                                         (mirror of
-//                                         crates/vb_core/src/ids/mod.rs:303-308)
+//                                         crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206)
 //   - `SpecCompileError`              <- extern_step_offset.rs
 //                                         (mirror of
-//                                         crates/vb_compile/src/mod_compile_errors/kind.rs:124)
+//                                         crates/vb_compile/src/mod_compile_errors/kind.rs:141)
 //   - `checked_step_offset`           <- extern_step_offset.rs
 //                                         (mirror of
 //                                         crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212)
@@ -112,7 +112,7 @@ pub use production::{SpecCompileError, StepIdx, checked_step_offset};
 
 /// The maximum value of u16 (StepIdx inner type).
 /// This is the bound used in the MachineInt model and matches
-/// `u16::MAX` in `crates/vb_core/src/ids/mod.rs:299`
+/// `u16::MAX` in `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:197`
 /// (`StepIdx::MAX = Self(u16::MAX)`).
 pub open spec fn u16_max() -> int { 65535 }
 
@@ -124,7 +124,7 @@ pub open spec fn u16_max() -> int { 65535 }
 // Bridge: `StepIdx::checked_add` matches u16 arithmetic.
 // --------------------------------------------------------------------------
 // Mirrors production `StepIdx::checked_add(self, rhs: u16) -> Option<Self>`
-// at `crates/vb_core/src/ids/mod.rs:303-308`:
+// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`:
 //
 //     pub const fn checked_add(self, rhs: u16) -> Option<Self> {
 //         match self.0.checked_add(rhs) {
@@ -300,8 +300,8 @@ pub open spec fn spec_offset_ok(id: production::StepIdx, offset: int) -> bool {
 /// `u16::MAX - offset` headroom.
 ///
 /// Production call sites (collect offsets 1, 2, 3) live at:
-///   - crates/vb_compile/src/mod_compile_lowering/part_03.rs:204-208
-///   - crates/vb_compile/src/mod_compile_lowering/part_10.rs:183-184
+///   - crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:120-124
+///   - crates/vb_compile/src/mod_compile_lowering/part_10.rs:182-183 (reduce offsets 1, 2)
 pub proof fn lemma_collect_offsets(id: production::StepIdx)
     requires
         id.0 as int <= u16_max(),

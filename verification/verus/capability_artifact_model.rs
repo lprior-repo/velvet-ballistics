@@ -11,12 +11,12 @@
 // PRODUCTION BINDING (GOD RULE 2 compliance)
 // ============================================================================
 // Target: crates/vb_runtime/src/admission.rs::admit_artifact_run_with_certificate_floor
-// at crates/vb_runtime/src/admission.rs:692-785.
+// at crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189.
 //
 // Binding mechanism: `#[path = "extern_capability_artifact_model.rs"]` imports
 // the thin extern surface, which inlines a pure decision projection of the
-// production cardinality-exact branch (admission.rs:735-766) plus the policy
-// dispatch (admission.rs:700-784). The spec file attaches an exec contract
+// production cardinality-exact branch (chunk_005_admit_core.rs:132-163) plus the policy
+// dispatch (chunk_005_admit_core.rs:92-175). The spec file attaches an exec contract
 // to that projection via `assume_specification` and discharges the cardinality-
 // exact obligation through proof fns that reason about the spec-side mirror
 // `spec_admit_decision`. The production-bound exec wrapper
@@ -28,7 +28,7 @@
 // TRUST BOUNDARY
 // ============================================================================
 // The production body of `admit_artifact_run_with_certificate_floor`
-// (admission.rs:692-785) depends on `vb_storage::AcceptedArtifactStore`,
+// (chunk_005_admit_core.rs:83-189) depends on `vb_storage::AcceptedArtifactStore`,
 // `RuntimePolicy`, `WorkflowDigest`, `CapabilitySet`, `EventSeq`, and the
 // `RunAdmission` constructor; these transitively pull in Fjall, postcard,
 // and runtime internals that Verus cannot model end-to-end. The pure
@@ -113,7 +113,7 @@ pub open spec fn accepted_certificate_preserves_profile(
 
 /// Spec predicate: every required capability has an exact name+action
 /// match in the granted set. The mathematical characterization of the
-/// per-required subset check at crates/vb_runtime/src/admission.rs:756-758.
+/// per-required subset check at crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:153-155.
 pub open spec fn all_required_granted(
     required: Seq<SpecCapability>,
     granted: Seq<SpecCapability>,
@@ -138,8 +138,8 @@ pub open spec fn gate12_schema_valid(
 
 /// Spec-side decision fn mirroring the production
 /// `admit_artifact_run_with_certificate_floor` cardinality-exact
-/// branch (admission.rs:735-766) plus the policy dispatch
-/// (admission.rs:700-784). This is the mathematical model the bridge
+/// branch (chunk_005_admit_core.rs:132-163) plus the policy dispatch
+/// (chunk_005_admit_core.rs:92-175). This is the mathematical model the bridge
 /// below guarantees the production projection implements.
 pub open spec fn spec_admit_decision(
     policy: SpecRuntimePolicy,
@@ -206,12 +206,12 @@ pub open spec fn spec_cardinality_exact_admit(
 // contract to a Rust function whose body Verus cannot model
 // end-to-end. The projection body in the extern file is
 // `#[verifier::external]`; the contract below is the post-fix
-// RA-023 behavior recorded in admission.rs:735-766.
+// RA-023 behavior recorded in chunk_005_admit_core.rs:132-163.
 //
 // TRUST BOUNDARY: the body of production
 // `admit_artifact_run_with_certificate_floor` is not verified. The
 // contract is the post-fix SA-003 / RA-023 behavior described in
-// admission.rs:692-785.
+// chunk_005_admit_core.rs:83-189.
 pub assume_specification[ production::admit_artifact_run_with_certificate_floor ](
     policy: SpecRuntimePolicy,
     required_count: u64,
@@ -469,7 +469,7 @@ pub proof fn proof_cardinality_match_admits_success(
 
 // Non-vacuous: a missing required capability returns CapabilityDenied
 // rather than the cardinality-mismatch variant. This bounds the
-// per-required subset check at admission.rs:756-758 to its correct
+// per-required subset check at chunk_005_admit_core.rs:153-155 to its correct
 // behavior (no fabricated CapabilityCountMismatch on a missing grant).
 pub proof fn proof_missing_required_returns_capability_denied(
     policy: SpecRuntimePolicy,
@@ -503,7 +503,7 @@ pub proof fn proof_missing_required_returns_capability_denied(
 }
 
 // Non-vacuous: Relaxed policy admits unconditionally (skips artifact
-// loading and capability checking at admission.rs:777-780).
+// loading and capability checking at chunk_005_admit_core.rs:176-184).
 pub proof fn proof_relaxed_policy_always_admits(
     required_count: u64,
     granted_count: u64,
@@ -530,7 +530,7 @@ pub proof fn proof_relaxed_policy_always_admits(
 }
 
 // Non-vacuous: an unrecognized policy variant returns the typed
-// ArtifactInvalidProofFlag (admission.rs:781-783 catch-all).
+// ArtifactInvalidProofFlag (chunk_005_admit_core.rs:185-187 catch-all).
 pub proof fn proof_other_policy_returns_invalid_proof_flag(
     required_count: u64,
     granted_count: u64,
@@ -558,7 +558,7 @@ pub proof fn proof_other_policy_returns_invalid_proof_flag(
 
 // Non-vacuous: failure of an earlier gate (digest binding or
 // certificate staleness) collapses to ArtifactDigestMismatch in the
-// projection, mirroring the production surface at admission.rs:711-733.
+// projection, mirroring the production surface at chunk_005_admit_core.rs:108-130.
 pub proof fn proof_earlier_gate_failure_collapses_to_digest_mismatch(
     policy: SpecRuntimePolicy,
     required_count: u64,

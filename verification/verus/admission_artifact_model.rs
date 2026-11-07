@@ -20,22 +20,22 @@
 // ============================================================================
 //   - `WorkflowDigest`                          <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/ids/mod.rs:340-357;
+//                                               crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255;
 //                                               projected from [u8;32] to
 //                                               pub u64 for spec-mode
 //                                               equality reasoning)
 //   - `VerificationProof`                      <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_storage/src/admission.rs:67-91;
+//                                               crates/vb_storage/src/admission.rs:65-90;
 //                                               all 8 production fields mirrored)
 //   - `AcceptedArtifact`                       <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_storage/src/admission.rs:203-228;
+//                                               crates/vb_storage/src/admission.rs:201-237;
 //                                               4 digest fields + embedded
 //                                               VerificationProof mirrored)
-//   - `ADMISSION_GATE_COUNT = 15`              <- extern_admission_artifact_model.rs
-//                                               (mirror of
-//                                               crates/vb_storage/src/admission.rs:330)
+//   - `SPEC_REQUIRED_GATE_COUNT = 15`           <- extern_admission_artifact_model.rs
+//                                               (mirror of production REQUIRED_GATE_COUNT
+//                                               at crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2)
 //   - `is_strict_admission_valid`              <- extern_admission_artifact_model.rs
 //                                               (mirror of strict gate
 //                                               validation in
@@ -43,15 +43,15 @@
 //                                               at admission.rs:412-415
 //                                               plus the unconditional
 //                                               flag set at
-//                                               admission.rs:123-127)
+//                                               crates/vb_storage/src/admission.rs:122-126)
 //   - `digest_eq`                              <- extern_admission_artifact_model.rs
 //                                               (mirror of PartialEq derive
 //                                               on WorkflowDigest at
-//                                               crates/vb_core/src/ids/mod.rs:341)
+//                                               crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239)
 //   - `artifact_digest_bound`                  <- extern_admission_artifact_model.rs
 //                                               (mirror of
 //                                               bind_artifact_digest at
-//                                               crates/vb_storage/src/admission.rs:182-187)
+//                                               crates/vb_storage/src/admission.rs:179-184)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS (VACUUM) FORM
@@ -127,8 +127,8 @@ pub use production::{
 // Spec constants (mirrors of production constants)
 // ============================================================================
 
-/// Mirror of `ADMISSION_GATE_COUNT` (u8 = 15) at
-/// `crates/vb_storage/src/admission.rs:330`.
+/// Mirror of the required gate count (u8 = 15), production
+/// `REQUIRED_GATE_COUNT` at `crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2`.
 pub const SPEC_REQUIRED_GATE_COUNT: u8 = 15;
 
 /// Spec view of `ADMISSION_GATE_COUNT` as a mathematical integer.
@@ -162,7 +162,7 @@ pub fn is_strict_admission_valid_exec(
 
 // Production decision fn: `digest_eq` mirrors the `PartialEq` impl
 // derived on `vb_core::ids::WorkflowDigest` at
-// `crates/vb_core/src/ids/mod.rs:341`.
+// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239`.
 pub fn digest_eq_exec(
     a: &production::WorkflowDigest,
     b: &production::WorkflowDigest,
@@ -172,7 +172,7 @@ pub fn digest_eq_exec(
 
 // Production decision fn: `artifact_digest_bound` mirrors
 // `vb_storage::admission::bind_artifact_digest` at
-// `crates/vb_storage/src/admission.rs:182-187`.
+// `crates/vb_storage/src/admission.rs:179-184`.
 pub fn artifact_digest_bound_exec(
     artifact: &production::AcceptedArtifact,
 ) -> bool {
@@ -195,7 +195,7 @@ pub fn artifact_digest_bound_exec(
 // --------------------------------------------------------------------------
 // Mirrors production `submit_artifact_with_contracts` strict-policy
 // branch at `crates/vb_storage/src/admission.rs:412-415` plus the
-// unconditional flag set at admission.rs:123-127.
+// unconditional flag set at crates/vb_storage/src/admission.rs:122-126.
 pub assume_specification[ production::is_strict_admission_valid ](
     proof: &production::VerificationProof,
 ) -> (r: bool)
@@ -215,7 +215,7 @@ pub assume_specification[ production::is_strict_admission_valid ](
 // inner u64 word (production: same 32-byte payload).
 // --------------------------------------------------------------------------
 // Mirrors production `PartialEq` derive on `WorkflowDigest` at
-// `crates/vb_core/src/ids/mod.rs:341`.
+// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239`.
 pub assume_specification[ production::digest_eq ](
     a: &production::WorkflowDigest,
     b: &production::WorkflowDigest,
@@ -229,7 +229,7 @@ pub assume_specification[ production::digest_eq ](
 // top-level digest equals the verification proof's digest.
 // --------------------------------------------------------------------------
 // Mirrors production `bind_artifact_digest` at
-// `crates/vb_storage/src/admission.rs:182-187`, which sets both
+// `crates/vb_storage/src/admission.rs:179-184`, which sets both
 // `artifact.digest` and `artifact.verification.digest` to the same
 // computed digest. The ensures uses direct field access (not the
 // exec fn `digest_eq`) because the spec-mode ensures clause cannot
@@ -247,7 +247,7 @@ pub assume_specification[ production::artifact_digest_bound ](
 
 /// Spec view: true iff all 5 proof flags are claimed true (matches
 /// the production `verification_proof_core` const fn at
-/// `crates/vb_storage/src/admission.rs:114-129` for the 5-flag
+/// `crates/vb_storage/src/admission.rs:113-128` for the 5-flag
 /// surface).
 pub open spec fn proof_flags_complete(
     bounded: bool,
