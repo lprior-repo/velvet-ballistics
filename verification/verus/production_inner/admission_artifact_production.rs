@@ -16,16 +16,17 @@
 // Production `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255`
 //   - `vb_storage::admission::VerificationProof` (crates/vb_storage/src/admission.rs:67-91)
 //   - `vb_storage::admission::AcceptedArtifact`   (crates/vb_storage/src/admission.rs:203-228)
-//   - `vb_storage::admission::ADMISSION_GATE_COUNT` (crates/vb_storage/src/admission.rs:330)
-//   - `vb_storage::admission::submit_artifact_with_contracts`
-//                                                 (crates/vb_storage/src/admission.rs:327-422)
+//   - `vb_storage::admission::verification_proof_core`
+//                                                 (crates/vb_storage/src/admission.rs:113-129)
+//   - `vb_storage::admission::prepare_with_profile` proof construction
+//                                                 (crates/vb_storage/src/admission/verification.rs:35-37)
 //
 // Stub substitutions: the production `WorkflowDigest` is a newtype
 // over `[u8; 32]`; we model it as `pub struct WorkflowDigest(pub u64)`
 // for spec-mode equality reasoning. The production `AcceptedArtifact`
 // carries opaque payload fields (`ir: Vec<u8>`, `accepted_at_seq:
 // EventSeq`, `required_capabilities: Box<[Capability]>`) which are
-// not part of the strict-admission decision and are NOT mirrored here.
+// not part of the prepared-proof-shape decision and are NOT mirrored here.
 //
 // DRIFT POLICY: This file MUST be regenerated whenever the production
 // source changes. The mirror is annotated with the originating
@@ -63,8 +64,7 @@ pub struct WorkflowDigest(pub u64);
 //
 // The `idempotency_keyed` / `idempotency_attested` slice fields and
 // `warnings` vec at admission.rs:86-90 are NOT mirrored here — they
-// are not part of the strict-admission gate-count / proof-flag
-// decision.
+// are not part of the prepared-proof-shape decision.
 pub struct VerificationProof {
     pub digest: WorkflowDigest,
     pub gate_count: u8,
@@ -93,32 +93,47 @@ pub struct AcceptedArtifact {
 }
 
 // ---------------------------------------------------------------------------
-// Production decision fn: is_strict_admission_valid
+// Production decision fn: proof_matches_prepared_shape
 // ---------------------------------------------------------------------------
 //
-// Mirrors the strict-policy gate validation in
-// `vb_storage::admission::submit_artifact_with_contracts` at
-// `crates/vb_storage/src/admission.rs:412-415` (the
-// `VerificationProof::new(zero_workflow_digest(), ADMISSION_GATE_COUNT,
-// durable)` call) combined with the unconditional flag set at
-// admission.rs:123-127.
+// Mirrors the prepared-proof shape production constructs for every
+// admitted artifact: `verification_proof_core` at
+// `crates/vb_storage/src/admission.rs:113-129` forces gate_count 0,
+// durable false, and every proof flag false (supplied counts and
+// durability are intentionally ignored by `VerificationProof::new` at
+// admission.rs:135-154), and `prepare_with_profile` at
+// `crates/vb_storage/src/admission/verification.rs:35-37` then sets
+// exactly `bounded_claimed` and `idempotency_verified_claimed` true.
+// `submit_artifact_with_contracts` (admission.rs:354-374) performs no
+// gate-count or proof-flag validation of its own; the shape is
+// enforced by `verify_accepted_artifact` at
+// `crates/vb_storage/src/admission/verification.rs:56-87`, which
+// recomputes the expected artifact and rejects any deviation with
+// `ArtifactEvidenceInvalid` (see the gate-count and proof-flag tests
+// at `crates/vb_runtime/src/admission/artifact_envelope_tests.rs:205-260`).
 //
-// Returns `true` iff the proof has the canonical 15-gate count AND
-// all 5 spec-projection flags (`bounded_claimed`,
-// `taint_safe_claimed`, `retry_safe_claimed`, `durable`,
-// `replayable_claimed`) are `true`.
+// Returns `true` iff the proof carries exactly the prepared shape:
+// gate_count 0, durable false, `bounded_claimed` and
+// `idempotency_verified_claimed` true, and `taint_safe_claimed`,
+// `retry_safe_claimed`, and `replayable_claimed` false. A proof with
+// the legacy 15-gate count and all flags true (the shape the
+// always-present store fixture builds at
+// `crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-95`)
+// does NOT match: it is not an admitted artifact, and the real
+// validation rejects it.
 //
 // Marked `#[verifier::external]` so Verus skips body verification;
 // the companion spec file attaches the production contract via
-// `assume_specification[ production::is_strict_admission_valid ]`.
+// `assume_specification[ production::proof_matches_prepared_shape ]`.
 #[verifier::external]
-pub fn is_strict_admission_valid(proof: &VerificationProof) -> bool {
-    proof.gate_count == 15
+pub fn proof_matches_prepared_shape(proof: &VerificationProof) -> bool {
+    proof.gate_count == 0
+        && !proof.durable
         && proof.bounded_claimed
-        && proof.taint_safe_claimed
-        && proof.retry_safe_claimed
-        && proof.durable
-        && proof.replayable_claimed
+        && !proof.taint_safe_claimed
+        && !proof.retry_safe_claimed
+        && proof.idempotency_verified_claimed
+        && !proof.replayable_claimed
 }
 
 // ---------------------------------------------------------------------------

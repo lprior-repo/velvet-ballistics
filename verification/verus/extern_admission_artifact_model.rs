@@ -54,9 +54,9 @@ verus! {
 // These are non-opaque re-exports of the production types and exec
 // fns from `prod`. They are visible to Verus at the extern's crate
 // root, and the spec file references them as `production::WorkflowDigest`,
-// `production::is_strict_admission_valid`, etc.
+// `production::proof_matches_prepared_shape`, etc.
 pub use prod::{
-    artifact_digest_bound, digest_eq, is_strict_admission_valid, AcceptedArtifact,
+    artifact_digest_bound, digest_eq, proof_matches_prepared_shape, AcceptedArtifact,
     VerificationProof, WorkflowDigest,
 };
 
