@@ -4,18 +4,34 @@
 // IN-TREE PRODUCTION-SOURCE MIRROR for accepted-envelope admission
 // ============================================================================
 //
-// This file is a VERBATIM mirror of the production `is_strict_accepted`
-// decision logic. The mirror contains the same gate-validation semantics
-// as the production `submit_artifact_with_contracts` strict-policy
-// branch so any drift in field names, discriminant sets, or fn
-// signatures breaks the companion `extern_accepted_envelope.rs` Verus
-// build at compile time, which is the explicit drift-detection
-// mechanism for the strict-envelope admission contract.
+// This file is a VERBATIM mirror of the prepared-proof shape
+// production constructs for every admitted artifact. The mirror
+// contains the same shape decision as production so any drift in
+// field names, discriminant sets, or fn signatures breaks the
+// companion `extern_accepted_envelope.rs` Verus build at compile
+// time, which is the explicit drift-detection mechanism for the
+// strict-envelope admission contract.
 //
-// Production source mirrored:
-//   - `vb_storage::admission::submit_artifact_with_contracts` strict
-//     branch (crates/vb_storage/src/admission.rs:327-422), projected
-//     onto the pure decision shape used by the spec.
+// Production sources mirrored:
+//   - `vb_storage::admission::verification_proof_core`
+//                                                 (crates/vb_storage/src/admission.rs:113-129)
+//   - `vb_storage::admission::prepare_with_profile` proof construction
+//                                                 (crates/vb_storage/src/admission/verification.rs:35-37)
+//   - `vb_storage::admission::verify_accepted_artifact` enforcement
+//                                                 (crates/vb_storage/src/admission/verification.rs:56-87)
+//   - `vb_storage::admission::verify_expected_bindings`
+//                                                 (crates/vb_storage/src/admission/verification.rs:141-156)
+//   - `vb_runtime::admission::verify_stored_artifact` error mapping
+//                                                 (crates/vb_runtime/src/admission/registered_verification.rs:5-28)
+//   - `vb_runtime::admission::ArtifactEnvelopeError`
+//                                                 (crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:10-63)
+//
+// There is no production `is_strict_accepted` decision fn and no
+// strict-policy gate validation in `submit_artifact_with_contracts`
+// (crates/vb_storage/src/admission.rs:354-374 performs no gate-count
+// or proof-flag check). The shape below is the decision production
+// actually enforces, by recompute-and-compare, with every deviation
+// rejected as `ArtifactEvidenceInvalid`.
 //
 // DRIFT POLICY: This file MUST be regenerated whenever the production
 // source changes. The mirror is annotated with the originating
@@ -28,22 +44,14 @@
 #![allow(non_snake_case)]
 
 // ---------------------------------------------------------------------------
-// Production mirror: submit_artifact_with_contracts strict branch decision
+// Production mirror: prepared-proof-shape decision
 // ---------------------------------------------------------------------------
 //
-// Mirrors the strict-policy decision in
-// `vb_storage::admission::submit_artifact_with_contracts` at
-// `crates/vb_storage/src/admission.rs:412-415`. Returns Ok(()) iff
-// the artifact's verification proof carries the canonical 15-gate
-// count, all required proof flags are claimed true, the artifact
-// digest equals the verification digest, and any required idempotency
-// attestation is present.
-//
-// The body is a verbatim logic copy of the production gate validation
-// branch (lines 412-415 plus the earlier proof-flag checks at lines
-// 119-128). The projection to `Result<(), ArtifactEnvelopeErrorKind>`
-// drops the I/O surface (no FjallJournal, no postcard, no blake3) and
-// keeps only the pure decision.
+// Mirrors the prepared-proof shape production constructs for every
+// admitted artifact (see the decision fn below). The projection to
+// `Result<(), ArtifactEnvelopeErrorKind>` drops the I/O surface (no
+// FjallJournal, no postcard, no blake3) and keeps only the pure
+// decision.
 //
 // `REQUIRED_GATE_COUNT` is the verbatim mirror of
 // `vb_runtime::admission::REQUIRED_GATE_COUNT = 15` at
@@ -61,6 +69,7 @@ pub const REQUIRED_GATE_COUNT: u8 = 15;
 pub enum ArtifactEnvelopeErrorKind {
     ArtifactNotFound,
     PostcardDecodeFailed,
+    ArtifactEvidenceInvalid,
     InvalidGateCount,
     MissingRequiredProofFlagBounded,
     MissingRequiredProofFlagTaintSafe,
@@ -72,14 +81,58 @@ pub enum ArtifactEnvelopeErrorKind {
     ArtifactDigestMismatch,
 }
 
-// Production decision fn: the strict-admission gate validation. Mirrors
-// the strict-policy branch of `submit_artifact_with_contracts` at
-// `crates/vb_storage/src/admission.rs:412-415`.
+// Prepared gate count: the gate_count `verification_proof_core`
+// forces for every admitted artifact
+// (crates/vb_storage/src/admission.rs:113-129). `REQUIRED_GATE_COUNT`
+// above mirrors the real `vb_runtime` constant (= 15) naming the
+// legacy fixture count; it is NOT the count admission requires.
+pub const PREPARED_GATE_COUNT: u8 = 0;
+
+// ---------------------------------------------------------------------------
+// Production decision fn: proof_matches_prepared_shape
+// ---------------------------------------------------------------------------
 //
-// Body: verbatim copy of the production gate validation, with
-// references to `REQUIRED_GATE_COUNT` and `ArtifactEnvelopeErrorKind`
-// inlined so the body is self-contained.
-pub fn is_strict_accepted(
+// Mirrors the prepared-proof shape production constructs for every
+// admitted artifact: `verification_proof_core` at
+// `crates/vb_storage/src/admission.rs:113-129` forces gate_count 0,
+// durable false, and every proof flag false (supplied counts and
+// durability are intentionally ignored by `VerificationProof::new` at
+// admission.rs:135-154), and `prepare_with_profile` at
+// `crates/vb_storage/src/admission/verification.rs:35-37` then sets
+// exactly `bounded_claimed` and `idempotency_verified_claimed` true
+// and leaves the idempotency attestation empty.
+// `submit_artifact_with_contracts` (admission.rs:354-374) performs no
+// gate-count or proof-flag validation of its own; the shape is
+// enforced by `verify_accepted_artifact` at
+// `crates/vb_storage/src/admission/verification.rs:56-87`, which
+// recomputes the expected artifact and rejects any deviation with
+// `ArtifactEvidenceInvalid` (see the gate-count and proof-flag tests
+// at `crates/vb_runtime/src/admission/artifact_envelope_tests.rs:205-291`).
+//
+// Returns `Ok(())` iff the proof carries exactly the prepared shape:
+// gate_count 0, durable false, `bounded_claimed` and
+// `idempotency_verified_claimed` true, `taint_safe_claimed`,
+// `retry_safe_claimed`, and `replayable_claimed` false, the artifact
+// digest equals the verification digest, and no idempotency
+// attestation entries are present. Any deviation returns the single
+// error production returns on this path, `ArtifactEvidenceInvalid`:
+// production never returns the per-flag variants here, and never
+// returns `InvalidGateCount` for a wrong gate count. A proof with the
+// legacy 15-gate count and all flags true (the shape the
+// always-present store fixture builds at
+// `crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-95`)
+// does NOT match: it is not an admitted artifact, and the real
+// validation rejects it.
+//
+// The projection to `Result<(), ArtifactEnvelopeErrorKind>` drops the
+// I/O surface (no FjallJournal, no postcard, no blake3) and keeps only
+// the pure decision.
+//
+// Marked `#[verifier::external]` so Verus skips body verification;
+// the companion spec file attaches the production contract via
+// `assume_specification[ production::proof_matches_prepared_shape ]`.
+#[verifier::external]
+pub fn proof_matches_prepared_shape(
     gate_count: u8,
     bounded_claimed: bool,
     taint_safe_claimed: bool,
@@ -88,34 +141,19 @@ pub fn is_strict_accepted(
     replayable_claimed: bool,
     idempotency_verified_claimed: bool,
     artifact_digest_matches: bool,
-    idempotency_attestation_present: bool,
+    idempotency_attestation_absent: bool,
 ) -> Result<(), ArtifactEnvelopeErrorKind> {
-    if gate_count != REQUIRED_GATE_COUNT {
-        return Err(ArtifactEnvelopeErrorKind::InvalidGateCount);
-    }
-    if !bounded_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagBounded);
-    }
-    if !taint_safe_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagTaintSafe);
-    }
-    if !retry_safe_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagRetrySafe);
-    }
-    if !durable {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagDurable);
-    }
-    if !replayable_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagReplayable);
-    }
-    if !idempotency_verified_claimed {
-        return Err(ArtifactEnvelopeErrorKind::MissingRequiredProofFlagIdempotencyVerified);
-    }
-    if !artifact_digest_matches {
-        return Err(ArtifactEnvelopeErrorKind::ArtifactDigestMismatch);
-    }
-    if !idempotency_attestation_present {
-        return Err(ArtifactEnvelopeErrorKind::MissingIdempotencyAttestation);
+    if gate_count != PREPARED_GATE_COUNT
+        || !bounded_claimed
+        || taint_safe_claimed
+        || retry_safe_claimed
+        || durable
+        || replayable_claimed
+        || !idempotency_verified_claimed
+        || !artifact_digest_matches
+        || !idempotency_attestation_absent
+    {
+        return Err(ArtifactEnvelopeErrorKind::ArtifactEvidenceInvalid);
     }
     Ok(())
 }

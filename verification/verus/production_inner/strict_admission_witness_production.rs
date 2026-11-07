@@ -15,11 +15,24 @@
 //   - `SpecStrictWitnessResult`
 //                              <- mirror of strict-admission decision
 //                                 output variants at
-//                                 crates/vb_runtime/src/admission.rs:692-785
+//                                 crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189
 //   - `production_strict_like`        <- production strict-policy gate
 //   - `production_storage_backed`     <- production storage-backed gate
 //   - `strict_admission_witness_decision`
-//                                       <- production composite decision fn
+//                                       <- production composite decision fn:
+//                                          strict-like policy plus a
+//                                          storage-backed witness plus the
+//                                          prepared-proof shape
+//                                          (verification_proof_core at
+//                                          crates/vb_storage/src/admission.rs:113-129;
+//                                          enforced by verify_accepted_artifact at
+//                                          crates/vb_storage/src/admission/verification.rs:56-87,
+//                                          which rejects any deviation with
+//                                          ArtifactEvidenceInvalid). The
+//                                          legacy 15-gate shape is the
+//                                          AlwaysPresentArtifactStore fixture
+//                                          only
+//                                          (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-95).
 // Regenerate this file whenever production changes. Any rename of
 // `SpecRuntimePolicy`, `SpecWitnessKind`, or `SpecStrictWitnessResult`
 // variants breaks the `extern_strict_admission_witness` Verus build
@@ -79,15 +92,22 @@ pub fn strict_admission_witness_decision(
     policy: SpecRuntimePolicy,
     witness: SpecWitnessKind,
     gate_count: u8,
-    all_required_proof_flags_set: bool,
+    prepared_proof_shape: bool,
 ) -> SpecStrictWitnessResult {
     if !production_strict_like(policy) {
         SpecStrictWitnessResult::NotStrictLike
     } else if !production_storage_backed(witness) {
         SpecStrictWitnessResult::WitnessNotStorageBacked
-    } else if gate_count != 15 {
+    } else if gate_count != 0 {
+        // Prepared gate count: `verification_proof_core` forces
+        // gate_count 0 for every admitted artifact
+        // (crates/vb_storage/src/admission.rs:113-129). The literal is
+        // used here rather than a named const: a `pub const` in this
+        // mirror triggers a known Verus erasure bug (see the
+        // spec-side PREPARED_GATE_COUNT in strict_admission_witness.rs
+        // for the same work-around as REQUIRED_GATE_COUNT).
         SpecStrictWitnessResult::GateCountInvalid
-    } else if !all_required_proof_flags_set {
+    } else if !prepared_proof_shape {
         SpecStrictWitnessResult::RequiredProofFlagMissing
     } else {
         SpecStrictWitnessResult::StrictAccepted

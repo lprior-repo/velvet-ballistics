@@ -119,10 +119,10 @@ pub open spec fn production_storage_backed_spec(witness: SpecWitnessKind) -> boo
 }
 
 /// Spec predicate: the strict admission witness obligation holds for a
-/// (policy, witness, gate_count, all_required_proof_flags_set) tuple iff
-/// strict_like(policy) ==> storage_backed(witness). The strict-admission
-/// witness obligation: a strict-policy run requires a storage-backed
-/// witness; a relaxed-policy run imposes no witness requirement.
+/// (policy, witness) pair iff strict_like(policy) ==> storage_backed(witness).
+/// The strict-admission witness obligation: a strict-policy run requires a
+/// storage-backed witness; a relaxed-policy run imposes no witness
+/// requirement.
 pub open spec fn valid_admission_witness(
     policy: SpecRuntimePolicy,
     witness: SpecWitnessKind,
@@ -130,22 +130,39 @@ pub open spec fn valid_admission_witness(
     strict_like(policy) ==> storage_backed(witness)
 }
 
+// Spec-side mirror constant: the gate_count `verification_proof_core`
+// forces for every admitted artifact
+// (crates/vb_storage/src/admission.rs:113-129). A proof carrying the
+// legacy 15-gate count does not match the prepared shape and is
+// rejected by `verify_accepted_artifact` with `ArtifactEvidenceInvalid`.
+// `REQUIRED_GATE_COUNT` above mirrors the real `vb_runtime` constant
+// (= 15) naming the legacy fixture count; it is NOT the count
+// admission requires.
+pub const PREPARED_GATE_COUNT: u8 = 0;
+
 /// Spec-side decision fn mirroring `production::strict_admission_witness_decision`.
 /// This is the mathematical model the `assume_specification` bridge below
-/// guarantees the production projection implements.
+/// guarantees the production projection implements. The gate-count arm
+/// requires the prepared count (0), not the legacy 15: the prepared
+/// shape is what `verify_accepted_artifact` enforces by
+/// recompute-and-compare, and the 15-gate shape is the
+/// AlwaysPresentArtifactStore fixture only. `prepared_proof_shape`
+/// records whether the verification proof carries exactly the prepared
+/// flag shape (bounded + idempotency true, every other flag false,
+/// durable false).
 pub open spec fn spec_strict_admission_witness_decision(
     policy: SpecRuntimePolicy,
     witness: SpecWitnessKind,
     gate_count: int,
-    all_required_proof_flags_set: bool,
+    prepared_proof_shape: bool,
 ) -> SpecStrictWitnessResult {
     if !strict_like(policy) {
         SpecStrictWitnessResult::NotStrictLike
     } else if !storage_backed(witness) {
         SpecStrictWitnessResult::WitnessNotStorageBacked
-    } else if gate_count != REQUIRED_GATE_COUNT as int {
+    } else if gate_count != PREPARED_GATE_COUNT as int {
         SpecStrictWitnessResult::GateCountInvalid
-    } else if !all_required_proof_flags_set {
+    } else if !prepared_proof_shape {
         SpecStrictWitnessResult::RequiredProofFlagMissing
     } else {
         SpecStrictWitnessResult::StrictAccepted
@@ -182,14 +199,14 @@ pub assume_specification[ production::strict_admission_witness_decision ](
     policy: SpecRuntimePolicy,
     witness: SpecWitnessKind,
     gate_count: u8,
-    all_required_proof_flags_set: bool,
+    prepared_proof_shape: bool,
 ) -> (result: SpecStrictWitnessResult)
     ensures
         result == spec_strict_admission_witness_decision(
             policy,
             witness,
             gate_count as int,
-            all_required_proof_flags_set,
+            prepared_proof_shape,
         ),
 ;
 
@@ -223,27 +240,27 @@ pub exec fn checked_strict_admission_witness_decision(
     policy: SpecRuntimePolicy,
     witness: SpecWitnessKind,
     gate_count: u8,
-    all_required_proof_flags_set: bool,
+    prepared_proof_shape: bool,
 ) -> (result: SpecStrictWitnessResult)
     ensures
         result == spec_strict_admission_witness_decision(
             policy,
             witness,
             gate_count as int,
-            all_required_proof_flags_set,
+            prepared_proof_shape,
         ),
 {
     let result = strict_admission_witness_decision(
         policy,
         witness,
         gate_count,
-        all_required_proof_flags_set,
+        prepared_proof_shape,
     );
     assert(result == spec_strict_admission_witness_decision(
         policy,
         witness,
         gate_count as int,
-        all_required_proof_flags_set,
+        prepared_proof_shape,
     ));
     result
 }
@@ -418,6 +435,52 @@ pub proof fn proof_storage_artifact_satisfies_strict_witness()
         SpecRuntimePolicy::Journaled,
         SpecWitnessKind::StorageAcceptedArtifact,
     ));
+}
+
+// Non-vacuous proof 7: the legacy 15-gate count is denied by the
+// strict-admission witness decision. The old "valid" shape is the
+// AlwaysPresentArtifactStore fixture, not an admitted artifact: the
+// prepared gate count is 0.
+pub proof fn proof_legacy_fifteen_gate_count_denied(
+    policy: SpecRuntimePolicy,
+    witness: SpecWitnessKind,
+    prepared_proof_shape: bool,
+)
+    requires
+        strict_like(policy),
+        storage_backed(witness),
+        prepared_proof_shape,
+    ensures
+        spec_strict_admission_witness_decision(policy, witness, 15, prepared_proof_shape)
+            == SpecStrictWitnessResult::GateCountInvalid,
+{
+    reveal(spec_strict_admission_witness_decision);
+    assert(PREPARED_GATE_COUNT == 0);
+    let result = spec_strict_admission_witness_decision(policy, witness, 15, prepared_proof_shape);
+    assert(result == SpecStrictWitnessResult::GateCountInvalid);
+}
+
+// Non-vacuous proof 8: the prepared gate count is accepted by the
+// strict-admission witness decision when the policy is strict-like,
+// the witness is storage-backed, and the proof carries the prepared
+// shape.
+pub proof fn proof_prepared_gate_count_accepted(
+    policy: SpecRuntimePolicy,
+    witness: SpecWitnessKind,
+    prepared_proof_shape: bool,
+)
+    requires
+        strict_like(policy),
+        storage_backed(witness),
+        prepared_proof_shape,
+    ensures
+        spec_strict_admission_witness_decision(policy, witness, 0, prepared_proof_shape)
+            == SpecStrictWitnessResult::StrictAccepted,
+{
+    reveal(spec_strict_admission_witness_decision);
+    assert(PREPARED_GATE_COUNT == 0);
+    let result = spec_strict_admission_witness_decision(policy, witness, 0, prepared_proof_shape);
+    assert(result == SpecStrictWitnessResult::StrictAccepted);
 }
 
 } // verus!

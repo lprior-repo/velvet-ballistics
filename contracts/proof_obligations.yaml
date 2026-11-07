@@ -1036,7 +1036,7 @@ verus_registry:
     production: crates/vb_runtime/src/admission.rs
 
   - id: PO-VERUS-014
-    description: "Accepted-envelope v1 admission: canonical gate count, durable non-stale evidence, accepted proof flags, supported schema/status (VERUS-ENV-006 / PO-006)."
+    description: "Accepted-envelope v1 admission: prepared-proof shape (gate_count 0, durable false, bounded + idempotency claimed, every other proof flag false), digest binding, supported schema/status (VERUS-ENV-006 / PO-006)."
     verus: verification/verus/accepted_envelope_model.rs
     production: crates/vb_storage/src/admission.rs
 
@@ -1046,7 +1046,7 @@ verus_registry:
     production: crates/vb_runtime/src/admission.rs
 
   - id: PO-VERUS-016
-    description: "Strict admission witness: REQUIRED_GATE_COUNT = 15 invariant; model-level strict admission failure classification (PO-003)."
+    description: "Strict admission witness: prepared-proof shape (gate_count 0) invariant; model-level strict admission failure classification (PO-003)."
     verus: verification/verus/strict_admission_witness.rs
     production: crates/vb_runtime/src/admission.rs
 
