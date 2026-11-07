@@ -7,7 +7,7 @@
 // ============================================================================
 // This file binds the try_from_parts.rs Verus spec to the production
 // `CompiledWorkflow::try_from_parts` validation entry point in
-// `crates/vb_core/src/workflow/mod.rs:33-51`. The binding is structural +
+// `crates/vb_core/src/workflow/mod.rs:42-65`. The binding is structural +
 // contract: each production type is mirrored with the SAME name (where
 // practical), SAME discriminant shape, and SAME field types, and the
 // production exec validation has a `#[verifier::external]` wrapper that
@@ -98,10 +98,10 @@
 // Direct `#[path]` inclusion of the in-tree production mirror at
 // `production_inner/try_from_parts_production.rs`. The mirror is a
 // verbatim copy of the production `CompiledWorkflow::try_from_parts`
-// function body (workflow/mod.rs:33-51), the `WorkflowParts` struct
-// declaration (workflow/mod.rs:272-297), the `ResourceContract`
-// struct + DEFAULT constant (workflow/mod.rs:189-251), and the
-// `WorkflowError` discriminant set (workflow/mod.rs:319-452), with
+// function body (workflow/mod.rs:42-65), the `WorkflowParts` struct
+// declaration (workflow/mod.rs:609-642), the `ResourceContract`
+// struct + DEFAULT constant (workflow/mod.rs:252-289), and the
+// `WorkflowError` discriminant set (workflow/mod.rs:666-880), with
 // local stubs for the production-side type graph and proc-macro
 // derives stripped. Any drift in the production source breaks the
 // mirror at compile time.
@@ -119,11 +119,14 @@ use vstd::prelude::*;
 // Error discriminant mirror (SpecWorkflowError)
 // ============================================================================
 /// Mirrors the production `WorkflowError` discriminant set at
-/// `crates/vb_core/src/workflow/mod.rs:319-452`. The projection collapses
+/// `crates/vb_core/src/workflow/mod.rs:666-880`. The projection collapses
 /// all variants into one closed set; `Ok` is signalled separately so the
 /// decision fn has a single Ok / Err shape.
 #[derive(Clone, Copy)]
 pub enum SpecWorkflowError {
+    /// `WorkflowError::RepeatCounterForeignWrite { .. }` — step wrote to a
+    /// repeat counter slot owned by a different step.
+    RepeatCounterForeignWrite,
     /// `WorkflowError::EmptyNodes` — workflow emitted no nodes.
     EmptyNodes,
     /// `WorkflowError::EntryOutOfBounds { .. }`.
@@ -134,6 +137,9 @@ pub enum SpecWorkflowError {
     SlotOutOfBounds,
     /// `WorkflowError::ConstOutOfBounds { .. }` — const reference outside pool.
     ConstOutOfBounds,
+    /// `WorkflowError::NodeIdMismatch { .. }` — node id does not match its
+    /// table position.
+    NodeIdMismatch,
     /// `WorkflowError::Expression(_)` — expression program invalid.
     ExpressionInvalid,
     /// `WorkflowError::ResourceContractExceeded { .. }`.
@@ -146,6 +152,12 @@ pub enum SpecWorkflowError {
     UnreachableNode,
     /// `WorkflowError::BackwardEdge { .. }`.
     BackwardEdge,
+    /// `WorkflowError::ReduceBranchTargetAlias { .. }` — reduce node branch
+    /// targets alias the same step.
+    ReduceBranchTargetAlias,
+    /// `WorkflowError::ForEachBranchTargetAlias { .. }` — for_each_next body
+    /// and done targets are the same step.
+    ForEachBranchTargetAlias,
     /// `WorkflowError::ImproperLoopNesting { .. }`.
     ImproperLoopNesting,
     /// `WorkflowError::BudgetPolicyExceeded { .. }`.
@@ -170,6 +182,18 @@ pub enum SpecWorkflowError {
     /// `WorkflowError::NonCanonicalInputSlotOrder { .. }` — input slots not in
     /// strictly increasing index order.
     NonCanonicalInputSlotOrder,
+    /// `WorkflowError::InconsistentInputConstraint { .. }` — input slot carries
+    /// an inconsistent constraint.
+    InconsistentInputConstraint,
+    /// `WorkflowError::LoopRegionUnpaired { .. }` — loop control step has no
+    /// matching loop body or done target.
+    LoopRegionUnpaired,
+    /// `WorkflowError::LoopRegionCrossing { .. }` — loop regions cross,
+    /// violating proper nesting.
+    LoopRegionCrossing,
+    /// `WorkflowError::LoopRegionUnsupported { .. }` — loop region references
+    /// an unsupported step.
+    LoopRegionUnsupported,
 }
 /// Mirrors the production `WorkflowParts` validation outcome. `Ok` means
 /// every check in `validate_parts` AND `validate_budget` passed; any
@@ -521,12 +545,14 @@ pub const fn spec_validation_result_is_ok(r: SpecValidationResult) -> bool {
 /// Const-fn mirror of `spec_workflow_error_is_bound_violation` from the
 /// spec file. Returns true iff the error variant is one of the
 /// numeric-bound violations (slot, step, const, expr, accessor,
-/// symbol). The validator projection uses this to short-circuit the
-/// entire decision to the *first* encountered violation.
+/// symbol, input constraint, counter slot). The validator projection
+/// uses this to short-circuit the entire decision to the *first*
+/// encountered violation.
 pub const fn spec_workflow_error_is_bound_violation(e: SpecWorkflowError) -> bool {
     matches!(
         e,
-        SpecWorkflowError::EmptyNodes
+        SpecWorkflowError::RepeatCounterForeignWrite
+            | SpecWorkflowError::EmptyNodes
             | SpecWorkflowError::EntryOutOfBounds
             | SpecWorkflowError::StepOutOfBounds
             | SpecWorkflowError::SlotOutOfBounds
@@ -534,6 +560,10 @@ pub const fn spec_workflow_error_is_bound_violation(e: SpecWorkflowError) -> boo
             | SpecWorkflowError::ExpressionInvalid
             | SpecWorkflowError::SymbolOutOfBounds
             | SpecWorkflowError::AccessorPathTooDeep
+            | SpecWorkflowError::InputSlotOutOfBounds
+            | SpecWorkflowError::DuplicateInputSlot
+            | SpecWorkflowError::NonCanonicalInputSlotOrder
+            | SpecWorkflowError::InconsistentInputConstraint
     )
 }
 // ============================================================================
