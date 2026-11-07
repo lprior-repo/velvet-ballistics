@@ -148,7 +148,7 @@ impl SlotIdx {
 // ============================================================================
 //
 // The production `CompiledNodeKind` enum at
-// `crates/vb_core/src/workflow/mod.rs:585-...` has 30+ variants. The
+// `crates/vb_core/src/workflow/mod.rs:1191-1357` has 34 variants. The
 // mirror below is the spec-side discriminant set the spec proofs reason
 // about. We do NOT mirror every variant because the budget-bounded spec
 // only needs the discriminant shape to refer to node-kind arms in the
@@ -165,12 +165,16 @@ pub enum CompiledNodeKind {
         input: SlotIdx,
     },
     ForEachStart {
+        input: SlotIdx,
+        item_slot: SlotIdx,
         limit: u32,
         body: StepIdx,
         done: StepIdx,
     },
     CollectStart {
+        source: SlotIdx,
         limit: u32,
+        page_size: u32,
         body: StepIdx,
         done: StepIdx,
     },
@@ -196,7 +200,7 @@ pub enum CompiledNodeKind {
 }
 
 // ============================================================================
-// ResourceContract — mirror of `crates/vb_core/src/workflow/mod.rs:190-228`
+// ResourceContract — mirror of `crates/vb_core/src/workflow/mod.rs:252-289`
 // ============================================================================
 
 /// Mirror of `ResourceContract`. Field names and types match production
@@ -661,7 +665,7 @@ pub mod workflow {
     }
 
     /// Marker mirror of production `WorkflowError` discriminant set at
-    /// `crates/vb_core/src/workflow/mod.rs:321-...`. Restricted to the
+    /// `crates/vb_core/src/workflow/mod.rs:666-880`. Restricted to the
     /// variants referenced by budget.rs.
     #[derive(Clone, Copy)]
     pub enum WorkflowError {

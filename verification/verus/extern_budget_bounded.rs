@@ -187,6 +187,28 @@ fn prod_methods_drift_check(
         max_transitions_per_tick: 0,
     };
 
+    // Reference every variant of CompiledNodeKind used by the spec:
+    // ForEachStart, CollectStart (production
+    // workflow/mod.rs:1191-1357). Constructing them with the
+    // production fields pins the mirror against field drift even
+    // though the spec never constructs them.
+    let step = production_inner::StepIdx::new(0);
+    let slot = production_inner::SlotIdx::new(0);
+    let _kind = production_inner::CompiledNodeKind::ForEachStart {
+        input: slot,
+        item_slot: slot,
+        limit: 0,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::CompiledNodeKind::CollectStart {
+        source: slot,
+        limit: 0,
+        page_size: 0,
+        body: step,
+        done: step,
+    };
+
     // Force resolution of every production method by invoking it
     // with phantom arguments. The body is opaque to Verus but the
     // rustc compilation resolves the names.
