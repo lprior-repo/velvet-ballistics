@@ -8,7 +8,7 @@
 // `emit_single_body_set` at
 // `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
 //
-// Production decision shape (from part_04.rs:105-178):
+// Production decision shape (from part_04.rs:96-179):
 //   - body.len() != 1
 //     -> Err(CompileError::StepFieldShape {
 //          step: diagnostic_step,
@@ -31,8 +31,8 @@
 // Substitutions (required for `verus --crate-type=lib` standalone):
 //
 //   1. `CompileError::StepFieldShape` at
-//      `crates/vb_compile/src/mod_compile_errors/kind.rs:124` and
-//      `CompileError::UnsupportedStepPrimitive` at kind.rs:118
+//      `crates/vb_compile/src/mod_compile_errors/kind.rs:123-124` and
+//      `CompileError::UnsupportedStepPrimitive` at kind.rs:117-118
 //      are mirrored as `SpecCompileError` with `&'static str` payloads
 //      flattened to `u8` tags. Field structure (3 payload fields for
 //      `StepFieldShape`, 2 for `UnsupportedStepPrimitive`) is preserved
@@ -70,7 +70,7 @@ verus! {
 // ============================================================================
 //
 // Mirror of `StepIdx` (u16 newtype) at
-// `crates/vb_core/src/ids/mod.rs:55`. The mirror exposes the inner
+// `crates/vb_core/src/ids/mod.rs:70` (numeric_id! invocation; macro :24-55). The mirror exposes the inner
 // field as `pub` so the spec proofs can name `id.0` for arithmetic
 // reasoning when needed.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -78,38 +78,38 @@ pub struct StepIdx(pub u16);
 
 impl StepIdx {
     /// Mirror of `StepIdx::new(value: u16) -> Self` at
-    /// `crates/vb_core/src/ids/mod.rs:21`.
+    /// `crates/vb_core/src/ids/mod.rs:36` (numeric_id! macro body).
     pub const fn new(value: u16) -> Self {
         Self(value)
     }
 
     /// Mirror of `StepIdx::get(self) -> u16` at
-    /// `crates/vb_core/src/ids/mod.rs:27`.
+    /// `crates/vb_core/src/ids/mod.rs:42` (numeric_id! macro body).
     pub const fn get(self) -> u16 {
         self.0
     }
 
     /// Mirror of `StepIdx::as_usize(self) -> usize` at
-    /// `crates/vb_core/src/ids/mod.rs:30`.
+    /// `crates/vb_core/src/ids/mod.rs:62` (checked_index! macro body; invoked for StepIdx at :85).
     pub const fn as_usize(self) -> usize {
         self.0 as usize
     }
 }
 
 /// Mirror of `SlotIdx` (u16 newtype) at
-/// `crates/vb_core/src/ids/mod.rs:56`.
+/// `crates/vb_core/src/ids/mod.rs:71` (numeric_id! invocation).
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct SlotIdx(pub u16);
 
 impl SlotIdx {
     /// Mirror of `SlotIdx::new(value: u16) -> Self` at
-    /// `crates/vb_core/src/ids/mod.rs:62`.
+    /// `crates/vb_core/src/ids/mod.rs:36` (numeric_id! macro body).
     pub const fn new(value: u16) -> Self {
         Self(value)
     }
 
     /// Mirror of `SlotIdx::get(self) -> u16` at
-    /// `crates/vb_core/src/ids/mod.rs:68`.
+    /// `crates/vb_core/src/ids/mod.rs:42` (numeric_id! macro body).
     pub const fn get(self) -> u16 {
         self.0
     }
@@ -124,40 +124,40 @@ impl SlotIdx {
 // Each tag is a unique spec-side handle for one of the production
 // `StepPrimitive` variants.
 
-/// Production: `StepPrimitive::Set { .. }` (part_05_digest.rs:8)
+/// Production: `StepPrimitive::Set { .. }` (part_05_digest.rs:127)
 pub const PRIMITIVE_SET_TAG: u8 = 0;
 
-/// Production: `StepPrimitive::Do { .. }` (part_05_digest.rs:10)
+/// Production: `StepPrimitive::Do { .. }` (part_05_digest.rs:129)
 pub const PRIMITIVE_DO_TAG: u8 = 1;
 
-/// Production: `StepPrimitive::Save { .. }` (part_05_digest.rs:9)
+/// Production: `StepPrimitive::Save { .. }` (part_05_digest.rs:128)
 pub const PRIMITIVE_SAVE_TAG: u8 = 2;
 
-/// Production: `StepPrimitive::Choose { .. }` (part_05_digest.rs:11)
+/// Production: `StepPrimitive::Choose { .. }` (part_05_digest.rs:130)
 pub const PRIMITIVE_CHOOSE_TAG: u8 = 3;
 
-/// Production: `StepPrimitive::ForEach { .. }` (part_05_digest.rs:12)
+/// Production: `StepPrimitive::ForEach { .. }` (part_05_digest.rs:131)
 pub const PRIMITIVE_FOR_EACH_TAG: u8 = 4;
 
-/// Production: `StepPrimitive::Together { .. }` (part_05_digest.rs:13)
+/// Production: `StepPrimitive::Together { .. }` (part_05_digest.rs:132)
 pub const PRIMITIVE_TOGETHER_TAG: u8 = 5;
 
-/// Production: `StepPrimitive::Collect { .. }` (part_05_digest.rs:14)
+/// Production: `StepPrimitive::Collect { .. }` (part_05_digest.rs:133)
 pub const PRIMITIVE_COLLECT_TAG: u8 = 6;
 
-/// Production: `StepPrimitive::Aggregate { .. }` (part_05_digest.rs:15)
+/// Production: `StepPrimitive::Aggregate { .. }` (part_05_digest.rs:134)
 pub const PRIMITIVE_AGGREGATE_TAG: u8 = 7;
 
-/// Production: `StepPrimitive::Repeat { .. }` (part_05_digest.rs:16)
+/// Production: `StepPrimitive::Repeat { .. }` (part_05_digest.rs:135)
 pub const PRIMITIVE_REPEAT_TAG: u8 = 8;
 
-/// Production: `StepPrimitive::Wait { .. }` (part_05_digest.rs:17)
+/// Production: `StepPrimitive::Wait { .. }` (part_05_digest.rs:136)
 pub const PRIMITIVE_WAIT_TAG: u8 = 9;
 
-/// Production: `StepPrimitive::Ask { .. }` (part_05_digest.rs:18)
+/// Production: `StepPrimitive::Ask { .. }` (part_05_digest.rs:137)
 pub const PRIMITIVE_ASK_TAG: u8 = 10;
 
-/// Production: `StepPrimitive::Finish { .. }` (part_05_digest.rs:19)
+/// Production: `StepPrimitive::Finish { .. }` (part_05_digest.rs:138)
 pub const PRIMITIVE_FINISH_TAG: u8 = 11;
 
 // ============================================================================
@@ -166,10 +166,10 @@ pub const PRIMITIVE_FINISH_TAG: u8 = 11;
 //
 // Mirrors the two `CompileError` variants that `emit_single_body_set`
 // constructs:
-//   - `CompileError::StepFieldShape` at kind.rs:124
+//   - `CompileError::StepFieldShape` at kind.rs:123-124
 //     (production fields: `step: usize`, `field: &'static str`,
 //      `expected: &'static str`).
-//   - `CompileError::UnsupportedStepPrimitive` at kind.rs:118
+//   - `CompileError::UnsupportedStepPrimitive` at kind.rs:117-118
 //     (production fields: `step: usize`, `primitive: &'static str`).
 //
 // For the purpose of this binding we mirror each variant
@@ -183,7 +183,7 @@ pub const PRIMITIVE_FINISH_TAG: u8 = 11;
 /// `emit_single_body_set`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SpecCompileError {
-    /// Mirror of `CompileError::StepFieldShape` at kind.rs:124.
+    /// Mirror of `CompileError::StepFieldShape` at kind.rs:123-124.
     StepFieldShape {
         /// Widened to u64 to avoid Verus integer-width confusion
         /// when comparing against `usize` arguments.
@@ -195,7 +195,7 @@ pub enum SpecCompileError {
         expected: u8,
     },
     /// Mirror of `CompileError::UnsupportedStepPrimitive` at
-    /// kind.rs:118.
+    /// kind.rs:117-118.
     UnsupportedStepPrimitive {
         /// Widened to u64.
         step: u64,

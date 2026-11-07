@@ -54,7 +54,7 @@
 //      which does not exist.
 //
 //   2. `use vb_core::{AccessorProgram, CompiledNode, ...};` at
-//      part_04.rs:9-13 — `vb_core` is not registered as an extern
+//      part_04.rs:13-18 — `vb_core` is not registered as an extern
 //      crate in this single-file Verus unit, and the newtypes it
 //      re-exports are not constructible without the parent's
 //      `numeric_id!` macro_rules! invocation.
@@ -211,7 +211,7 @@ impl SlotIdx {
 /// Mirror of `ActionId` (u16 newtype) at `crates/vb_core/src/action/mod.rs`.
 /// Used by `CompiledNodeKind::Do { action, .. }` and constructed by
 /// `emit_single_body_set` for the `Do { action, input }` arm at
-/// part_04.rs:167.
+/// part_04.rs:164.
 #[derive(Clone, Copy)]
 pub struct ActionId(pub u16);
 
@@ -229,8 +229,8 @@ impl ActionId {
 // StepAst / StepPrimitive — mirrors of `crates/vb_yaml/src/yaml_ast/types.rs`
 // ============================================================================
 //
-// Production `StepAst` (yaml_ast/types.rs:208) and `StepPrimitive`
-// (yaml_ast/types.rs:230) are the AST types passed to
+// Production `StepAst` (yaml_ast/types/step.rs:39) and `StepPrimitive`
+// (yaml_ast/types/step.rs:61) are the AST types passed to
 // `emit_single_body_set` via `body: &[crate::StepAst]`. The mirror
 // preserves the field shape (`id`, `name`, `condition`, `primitive`,
 // `with`, `retry`, `on_error`, `then`) and the discriminant set (`Set`,
@@ -246,7 +246,7 @@ impl ActionId {
 // parity proofs reason about.
 
 /// Mirror of production `StepPrimitive` at
-/// `crates/vb_yaml/src/yaml_ast/types.rs:230`. All twelve production
+/// `crates/vb_yaml/src/yaml_ast/types/step.rs:61`. All twelve production
 /// variants plus an `Other` arm to model the `#[non_exhaustive]`
 /// catch-all. `emit_single_body_set` only pattern-matches on `Set` and
 /// `Do` at part_04.rs:120 and 127; every other variant falls through to
@@ -314,7 +314,7 @@ pub enum StepPrimitive {
 }
 
 /// Mirror of production `ScalarValue` at
-/// `crates/vb_yaml/src/yaml_ast/types.rs:332`. Integer discriminant
+/// `crates/vb_yaml/src/yaml_ast/types/step.rs:159`. Integer discriminant
 /// preserved; string is `&'static str` for Verus compatibility.
 pub enum ScalarValue {
     String(&'static str),
@@ -322,21 +322,21 @@ pub enum ScalarValue {
 }
 
 /// Mirror of production `ChooseBranch` at
-/// `crates/vb_yaml/src/yaml_ast/types.rs:341`.
+/// `crates/vb_yaml/src/yaml_ast/types/step.rs:168`.
 pub struct ChooseBranch {
     pub when: &'static str,
     pub steps: Vec<StepAst>,
 }
 
 /// Mirror of production `TogetherBranch` at
-/// `crates/vb_yaml/src/yaml_ast/types.rs:350`.
+/// `crates/vb_yaml/src/yaml_ast/types/step.rs:177`.
 pub struct TogetherBranch {
     pub label: &'static str,
     pub steps: Vec<StepAst>,
 }
 
 /// Mirror of production `StepAst` at
-/// `crates/vb_yaml/src/yaml_ast/types.rs:208`. Field names match
+/// `crates/vb_yaml/src/yaml_ast/types/step.rs:39`. Field names match
 /// production line-by-line so any drift breaks the mirror.
 pub struct StepAst {
     pub id: &'static str,
@@ -350,14 +350,14 @@ pub struct StepAst {
 }
 
 /// Mirror of production `RetryPolicy` at
-/// `crates/vb_yaml/src/yaml_ast/types.rs:359`.
+/// `crates/vb_yaml/src/yaml_ast/types/step.rs:186`.
 pub struct RetryPolicy {
     pub max_attempts: u16,
     pub delay: Option<&'static str>,
 }
 
 /// Mirror of production `ErrorHandlerAst` at
-/// `crates/vb_yaml/src/yaml_ast/types.rs:368`.
+/// `crates/vb_yaml/src/yaml_ast/types/step.rs:195`.
 pub struct ErrorHandlerAst {
     pub handler: &'static str,
 }
@@ -369,12 +369,12 @@ pub struct ErrorHandlerAst {
 // Production `CompileError` at
 // `crates/vb_compile/src/mod_compile_errors/kind.rs:12` is `#[non_exhaustive]`
 // with 50+ variants. `emit_single_body_set` only constructs the following
-// subset (verified by reading part_04.rs:105-178 line by line):
+// subset (verified by reading part_04.rs:96-179 line by line):
 //
 //   - StepFieldShape { step, field, expected }  (part_04.rs:106, 113, 130, 146)
 //   - UnsupportedStepPrimitive { step, primitive }  (part_04.rs:173)
 //   - PrimitiveLoweringLimitExceeded { primitive, field, value, limit }  (part_04.rs:137)
-//   - SlotIndexOutOfRange { value }  (parts_04.rs:270)
+//   - SlotIndexOutOfRange { value }  (part_04.rs:153)
 //
 // All other variants are unreachable from `emit_single_body_set`. The
 // mirror includes a `StepFieldShape` and `UnsupportedStepPrimitive`
@@ -416,7 +416,7 @@ pub enum CompileError {
 }
 
 /// Mirror of production `CompileErrors` at
-/// `crates/vb_compile/src/mod_compile_errors/collection.rs:237`.
+/// `crates/vb_compile/src/mod_compile_errors/collection.rs:245`.
 pub struct CompileErrors(pub Vec<CompileError>);
 
 // ============================================================================
@@ -426,8 +426,8 @@ pub struct CompileErrors(pub Vec<CompileError>);
 // Production `CompiledNode` and `CompiledNodeKind` are at
 // `crates/vb_core/src/workflow/mod.rs` and carry 30+ variants. The
 // mirror restricts to the two arms `emit_single_body_set` constructs:
-// `SetConst` (via `lower_set` at part_04.rs:241) and `Do` (at
-// part_04.rs:283-287). The unmodeled variants do not affect the
+// `SetConst` (via `lower_set` at part_04.rs:124) and `Do` (at
+// part_04.rs:161-169). The unmodeled variants do not affect the
 // error-parity drift-detection surface because `emit_single_body_set`
 // cannot observe them.
 
@@ -463,14 +463,14 @@ pub enum CompiledNodeKind {
 // ============================================================================
 //
 // The production `SlotCompiler` is a `pub(crate)` builder at
-// `crates/vb_compile/src/mod_compile_lowering/part_07.rs:185` with
+// `crates/vb_compile/src/mod_compile_lowering/part_07.rs:148` with
 // private fields and an internal counter. The mirror exposes only the
 // surface used by `emit_single_body_set`: `record_slot`, `push_node`,
 // and counters so the spec can observe whether `push_node` was invoked
-// (which it is in the Set/Do success arms at part_04.rs:241 and 277).
+// (which it is in the Set/Do success arms at part_04.rs:124 and 161).
 
 /// Mirror of production `SlotCompiler` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_07.rs:185`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_07.rs:148`.
 #[derive(Default)]
 pub struct SlotCompiler {
     slots: Vec<SlotIdx>,
@@ -484,14 +484,13 @@ impl SlotCompiler {
         Self::default()
     }
 
-    /// Mirror of `SlotCompiler::record_slot` at part_07.rs (impl in
-    /// part_08.rs). Records that the given slot was produced.
+    /// Mirror of `SlotCompiler::record_slot` at part_08.rs:111. Records that the given slot was produced.
     #[verifier::external]
     pub fn record_slot(&mut self, slot: SlotIdx) {
         self.slots.push(slot);
     }
 
-    /// Mirror of `SlotCompiler::push_node` at part_07.rs. Appends a
+    /// Mirror of `SlotCompiler::push_node` at part_08.rs:134. Appends a
     /// compiled node to the program.
     #[verifier::external]
     pub fn push_node(&mut self, node: CompiledNode) {
