@@ -225,11 +225,71 @@ pub mod workflow {
     #[derive(Clone, Copy)]
     pub struct CompiledNode {
         pub id: StepIdx,
-        pub output: Option<SlotIdx>,
-        pub next: Option<StepIdx>,
-        pub on_error: Option<StepIdx>,
-        pub error_slot: Option<SlotIdx>,
+        pub output: NodeOutput,
+        pub routing: NodeRouting,
         pub kind: CompiledNodeKind,
+    }
+
+    /// Mirror of production `NodeOutput` at
+    /// `crates/vb_core/src/workflow/mod.rs:1008-1013`.
+    #[derive(Clone, Copy)]
+    pub enum NodeOutput {
+        Discard,
+        Slot(SlotIdx),
+    }
+
+    impl NodeOutput {
+        pub const fn slot(self) -> Option<SlotIdx> {
+            match self {
+                Self::Discard => None,
+                Self::Slot(slot) => Some(slot),
+            }
+        }
+    }
+
+    /// Mirror of production `NodeRouting` at
+    /// `crates/vb_core/src/workflow/mod.rs:1028-1033`.
+    #[derive(Clone, Copy)]
+    pub struct NodeRouting {
+        pub next: NodeContinuation,
+        pub error: ErrorRouting,
+    }
+
+    /// Mirror of production `NodeContinuation` at
+    /// `crates/vb_core/src/workflow/mod.rs:1037-1042`.
+    #[derive(Clone, Copy)]
+    pub enum NodeContinuation {
+        End,
+        Step(StepIdx),
+    }
+
+    impl NodeContinuation {
+        pub const fn step(self) -> Option<StepIdx> {
+            match self {
+                Self::End => None,
+                Self::Step(step) => Some(step),
+            }
+        }
+    }
+
+    /// Mirror of production `ErrorRouting` at
+    /// `crates/vb_core/src/workflow/mod.rs:1083-1093`.
+    #[derive(Clone, Copy)]
+    pub enum ErrorRouting {
+        None,
+        Handler {
+            handler: StepIdx,
+            error_slot: Option<SlotIdx>,
+        },
+    }
+
+    impl ErrorRouting {
+        pub const fn handler(self) -> Option<StepIdx> {
+            match self {
+                Self::None => None,
+                Self::Handler { handler, .. } => Some(handler),
+            }
+        }
     }
 
     /// Mirror of production `ExprBranch` at
