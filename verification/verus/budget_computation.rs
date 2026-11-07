@@ -21,27 +21,27 @@
 // spec file reasons about — comprises six production sites:
 //
 //   1. `count_total_steps` per-step increment
-//        -> crates/vb_core/src/budget.rs:1422-1425
+//        -> crates/vb_core/src/budget.rs:2301-2304
 //        -> extern `count_total_steps_step_increment`
 //
 //   2. `count_body_region_nodes` per-body increment
-//        -> crates/vb_core/src/budget.rs:1678-1683
+//        -> crates/vb_core/src/budget.rs:2559-2564
 //        -> extern `body_region_step_increment`
 //
 //   3. `count_and_push_loop_body` body * iter_count
-//        -> crates/vb_core/src/budget.rs:1591-1596
+//        -> crates/vb_core/src/budget.rs:2486-2491
 //        -> extern `count_and_push_loop_body` (multiplication arm)
 //
 //   4. `count_and_push_loop_body` total + product
-//        -> crates/vb_core/src/budget.rs:1597-1602
+//        -> crates/vb_core/src/budget.rs:2492-2497
 //        -> extern `count_and_push_loop_body` (addition arm)
 //
 //   5. `update_workflow_metrics` CollectStart pages
-//        -> crates/vb_core/src/budget.rs:2154-2156
+//        -> crates/vb_core/src/budget.rs:3098-3100
 //        -> extern `collect_start_update_metrics` (pages arm)
 //
 //   6. `update_workflow_metrics` CollectStart items
-//        -> crates/vb_core/src/budget.rs:2157-2159
+//        -> crates/vb_core/src/budget.rs:3101-3103
 //        -> extern `collect_start_update_metrics` (items arm)
 //
 // ============================================================================
@@ -65,7 +65,7 @@
 // The spec proofs below demonstrate that:
 //   - The multiplication `body_count * iter_count` is bounded by
 //     `u64::MAX` whenever `iter_count <= u32::MAX` (production
-//     `u64::from(*limit)` guarantee at budget.rs:1450).
+//     `u64::from(*limit)` guarantee at budget.rs:2314, 2329).
 //   - The addition `total + product` is bounded by `u64::MAX` whenever
 //     `body_count * iter_count` is bounded.
 //   - The gather-pages increment `max_gather_pages + 1` is bounded by
@@ -111,19 +111,19 @@ pub use production::{
 // surface explicit. Drift between the spec literals and the production
 // built-ins is reported as binding debt outside Verus.
 /// Production u32::MAX mirror (4_294_967_295) — the upper bound on
-/// `max_gather_items` arithmetic (budget.rs:2159).
+/// `max_gather_items` arithmetic (budget.rs:3101-3103).
 #[allow(non_upper_case_globals)]
 pub const U32_MAX: u32 = 4_294_967_295;
 
 /// Production u64::MAX mirror (18_446_744_073_709_551_615) — the upper
-/// bound on `total` step arithmetic (budget.rs:1424, 1596, 1601, 1700).
+/// bound on `total` step arithmetic (budget.rs:2301, 2487, 2493, 2560).
 #[allow(non_upper_case_globals)]
 pub const U64_MAX: u64 = 18_446_744_073_709_551_615;
 
 /// Production u32::MAX mirror — the upper bound on CollectStart's
 /// `limit` field (the source of `iter_count = u64::from(limit)` at
-/// budget.rs:1450 and the `max_gather_items.checked_add(*limit)` at
-/// budget.rs:2158).
+/// budget.rs:2314, 2329 and the `max_gather_items.checked_add(*limit)` at
+/// budget.rs:3102).
 #[allow(non_upper_case_globals)]
 pub const COLLECT_LIMIT_MAX: u32 = 4_294_967_295;
 
@@ -138,14 +138,14 @@ pub open spec fn spec_u64_max() -> int {
 }
 
 /// Spec mirror of the production CollectStart limit upper bound
-/// (`u64::from(*limit)` at budget.rs:1450 preserves the u32 limit value
+/// (`u64::from(*limit)` at budget.rs:2314, 2329 preserves the u32 limit value
 /// as a u64; limit is itself a u32 field on `CompiledNodeKind::CollectStart`).
 pub open spec fn spec_collect_limit_max() -> int {
     COLLECT_LIMIT_MAX as int
 }
 
 /// Spec helper: the effective iteration count after the production
-/// `iter_count.max(1)` adjustment at `crates/vb_core/src/budget.rs:1590`.
+/// `iter_count.max(1)` adjustment at `crates/vb_core/src/budget.rs:2485`.
 /// For u64 inputs this is `iter_count` if `iter_count >= 1`, else 1.
 pub open spec fn spec_effective_iter_count(iter_count: u64) -> int {
     if iter_count == 0u64 {
@@ -179,7 +179,7 @@ pub open spec fn spec_checked_add_u32_ok(a: int, b: int) -> bool {
 /// Bridge contract: `count_and_push_loop_body` returns `Ok(new_total)`
 /// iff both the multiplication `body_count * iter_count` and the
 /// addition `total + product` succeed as checked u64 operations.
-/// Mirrors `crates/vb_core/src/budget.rs:1591-1602`.
+/// Mirrors `crates/vb_core/src/budget.rs:2474-2500`.
 pub assume_specification[ production::count_and_push_loop_body ](
     _body_count: u64,
     _iter_count: u64,
@@ -196,7 +196,7 @@ pub assume_specification[ production::count_and_push_loop_body ](
 ;
 
 /// Bridge contract: `checked_step_add` returns `Ok(sum)` iff
-/// `left + right <= u64::MAX`. Mirrors `crates/vb_core/src/budget.rs:1569-1574`.
+/// `left + right <= u64::MAX`. Mirrors `crates/vb_core/src/budget.rs:2464-2469`.
 pub assume_specification[ production::checked_step_add ](left: u64, right: u64) -> (result: Result<
     u64,
     BudgetTraversalError,
@@ -213,7 +213,7 @@ pub assume_specification[ production::checked_step_add ](left: u64, right: u64) 
 /// Bridge contract: `collect_start_update_metrics` returns
 /// `Ok((new_pages, new_items))` iff both the `max_gather_pages + 1`
 /// and `max_gather_items + limit` checked u32 additions succeed.
-/// Mirrors `crates/vb_core/src/budget.rs:2154-2159`.
+/// Mirrors `crates/vb_core/src/budget.rs:3091-3104`.
 pub assume_specification[ production::collect_start_update_metrics ](
     max_gather_pages: u32,
     max_gather_items: u32,
@@ -229,7 +229,7 @@ pub assume_specification[ production::collect_start_update_metrics ](
 
 /// Bridge contract: `count_total_steps_step_increment` returns
 /// `Ok(new_total)` iff `total + 1 <= u64::MAX`. Mirrors
-/// `crates/vb_core/src/budget.rs:1422-1425`.
+/// `crates/vb_core/src/budget.rs:2301-2304`.
 #[allow(dead_code)]
 pub assume_specification[ production::count_total_steps_step_increment ](total: u64) -> (result:
     Result<u64, BudgetTraversalError>)
@@ -244,7 +244,7 @@ pub assume_specification[ production::count_total_steps_step_increment ](total: 
 
 /// Bridge contract: `body_region_step_increment` returns
 /// `Ok(new_count)` iff `count + 1 <= u64::MAX`. Mirrors
-/// `crates/vb_core/src/budget.rs:1678-1683`.
+/// `crates/vb_core/src/budget.rs:2559-2564`.
 #[allow(dead_code)]
 pub assume_specification[ production::body_region_step_increment ](count: u64) -> (result: Result<
     u64,
@@ -269,7 +269,7 @@ pub assume_specification[ production::body_region_step_increment ](count: u64) -
 // bridge contract; the proof lemmas below reason about their behavior.
 /// Exec fn: production-bound per-step increment for `count_total_steps`.
 /// Mirrors the per-iteration `total = total.checked_add(1)` at
-/// `crates/vb_core/src/budget.rs:1422-1425`.
+/// `crates/vb_core/src/budget.rs:2301-2304`.
 #[allow(dead_code)]
 pub fn exec_count_total_steps_step_increment(total: u64) -> (result: Result<
     u64,
@@ -287,7 +287,7 @@ pub fn exec_count_total_steps_step_increment(total: u64) -> (result: Result<
 }
 
 /// Exec fn: production-bound per-body increment for
-/// `count_body_region_nodes`. Mirrors `crates/vb_core/src/budget.rs:1678-1683`.
+/// `count_body_region_nodes`. Mirrors `crates/vb_core/src/budget.rs:2559-2564`.
 #[allow(dead_code)]
 pub fn exec_body_region_step_increment(count: u64) -> (result: Result<u64, BudgetError>)
     ensures
@@ -301,7 +301,7 @@ pub fn exec_body_region_step_increment(count: u64) -> (result: Result<u64, Budge
 }
 
 /// Exec fn: production-bound body * iter_count + total arithmetic.
-/// Mirrors `crates/vb_core/src/budget.rs:1591-1602` (the
+/// Mirrors `crates/vb_core/src/budget.rs:2474-2500` (the
 /// CollectStart / ForEachStart / RepeatStart / ReduceStart loop body
 /// accumulation).
 #[allow(dead_code)]
@@ -321,7 +321,7 @@ pub fn exec_count_and_push_loop_body(body_count: u64, iter_count: u64, total: u6
 
 /// Exec fn: production-bound CollectStart pages + items increment.
 /// Mirrors the `CompiledNodeKind::CollectStart` arm of
-/// `update_workflow_metrics` at `crates/vb_core/src/budget.rs:2154-2159`.
+/// `update_workflow_metrics` at `crates/vb_core/src/budget.rs:3091-3104`.
 #[allow(dead_code)]
 pub fn exec_collect_start_update_metrics(
     max_gather_pages: u32,
@@ -348,19 +348,19 @@ pub fn exec_collect_start_update_metrics(
 //
 //   1. `body_count * iter_count` (with the `iter_count.max(1)`
 //      adjustment) is bounded by `u64::MAX` when `iter_count <=
-//      u32::MAX as u64` (production guard at budget.rs:1450).
+//      u32::MAX as u64` (production guard at budget.rs:2314, 2329).
 //
 //   2. `total + product` is bounded by `u64::MAX` when `total` and
-//      `product` are both u64 (production checked_add at budget.rs:1597).
+//      `product` are both u64 (production checked_add at budget.rs:2493).
 //
 //   3. `max_gather_pages + 1` is bounded by `u32::MAX` (production
-//      checked_add at budget.rs:2154).
+//      checked_add at budget.rs:3099).
 //
 //   4. `max_gather_items + limit` is bounded by `u32::MAX` when both
-//      operands are u32 (production checked_add at budget.rs:2158).
+//      operands are u32 (production checked_add at budget.rs:3102).
 //
 //   5. The per-step `total + 1` increment is bounded by `u64::MAX`
-//      while `total < u64::MAX` (production at budget.rs:1422).
+//      while `total < u64::MAX` (production at budget.rs:2301).
 //
 // The exec fns above (`exec_count_and_push_loop_body`, etc.) discharge
 // the production contracts when called from exec-mode; the proof lemmas
@@ -370,7 +370,7 @@ pub fn exec_collect_start_update_metrics(
 /// multiplication `body_count * iter_count` fits in u64 (since
 /// `1 * x = x` and `x <= u32::MAX < u64::MAX`).
 ///
-/// Mirrors the production guard at `crates/vb_core/src/budget.rs:1450`:
+/// Mirrors the production guard at `crates/vb_core/src/budget.rs:2314, 2329`:
 /// `iter_count = u64::from(*limit)` where `limit: u32`. The bound on
 /// `body_count = 1` is the default-path specialization — the general
 /// `body_count <= u32::MAX` case requires `nonlinear_arith` to verify
@@ -457,7 +457,7 @@ pub proof fn lemma_default_budget_valid() {
 /// `total < u64::MAX`.
 ///
 /// Production increments `total` by 1 per visited node at
-/// `crates/vb_core/src/budget.rs:1422-1425`. While `total < u64::MAX`
+/// `crates/vb_core/src/budget.rs:2301-2304`. While `total < u64::MAX`
 /// the checked addition `total + 1` does not overflow u64.
 pub proof fn lemma_per_step_increment_ok(total: u64)
     requires
@@ -475,7 +475,7 @@ pub proof fn lemma_per_step_increment_ok(total: u64)
 /// Production increments `total` by 1 per visited node; when `total`
 /// has reached `u64::MAX` the next increment fails with
 /// `BudgetTraversalError::StepCountOverflow { actual: u64::MAX }`
-/// at `crates/vb_core/src/budget.rs:1424`.
+/// at `crates/vb_core/src/budget.rs:2301-2304`.
 pub proof fn lemma_per_step_increment_overflow_at_u64_max() {
     // Spec: u64::MAX + 1 > u64::MAX (overflow).
     assert(spec_u64_max() + 1 > spec_u64_max());

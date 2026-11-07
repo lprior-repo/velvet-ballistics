@@ -37,22 +37,22 @@
 //
 // BINDING LEDGER:
 //   - `WholeWorkflowBudget`        <- extern_budget_monotonic.rs
-//                                       (mirror of budget.rs:11-59)
+//                                       (mirror of budget.rs:14-90)
 //   - `WholeWorkflowBudget::compute` <- extern_budget_monotonic.rs
 //                                       `whole_workflow_budget_compute`
-//                                       (mirror of budget.rs:64-70)
+//                                       (mirror of budget.rs:97-103)
 //   - `BudgetTraversalError`       <- extern_budget_monotonic.rs
-//                                       (mirror of budget.rs:170-191)
+//                                       (mirror of budget.rs:256-280)
 //   - `WorkflowError`              <- extern_budget_monotonic.rs
 //                                       `workflow` submodule
-//                                       (mirror of workflow/mod.rs:321-...)
+//                                       (mirror of workflow/mod.rs:666-880)
 //   - `ResourceContract`           <- extern_budget_monotonic.rs
-//                                       (mirror of workflow/mod.rs:191-228)
+//                                       (mirror of workflow/mod.rs:252-289)
 //   - `CompiledNode`, `CompiledNodeKind`
 //                                   <- extern_budget_monotonic.rs
 //                                       `workflow` submodule
-//                                       (mirror of workflow/mod.rs:563-...,
-//                                       :585-...)
+//                                       (mirror of workflow/mod.rs:995-1004,
+//                                       :1191-1357)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -136,10 +136,10 @@ pub open spec fn spec_budget_non_decreasing(
 /// by its respective u-type max values. This is the production-bound
 /// claim that the Ok branch of `compute` never overflows u64 / u16.
 /// Production sources for these bounds:
-///   - `max_total_steps <= u64::MAX`     <- budget.rs:1422 (checked_add)
-///   - `max_total_slots <= u64::MAX`     <- budget.rs:127   (u64::from)
-///   - `max_fanout <= u16::MAX`          <- budget.rs:2104-2121 (branch_count_to_u16)
-///   - `max_nesting_depth <= u16::MAX`   <- budget.rs:2083-2091 (checked_add)
+///   - `max_total_steps <= u64::MAX`     <- budget.rs:2301 (checked_add)
+///   - `max_total_slots <= u64::MAX`     <- budget.rs:163   (u64::from)
+///   - `max_fanout <= u16::MAX`          <- budget.rs:2799-2806 (branch_count_to_u16)
+///   - `max_nesting_depth <= u16::MAX`   <- budget.rs:3019-3024 (checked_add)
 pub open spec fn spec_budget_in_bounds(b: WholeWorkflowBudget) -> bool {
     &&& (b.max_total_steps <= u64::MAX)
     &&& (b.max_total_slots <= u64::MAX)
@@ -149,7 +149,7 @@ pub open spec fn spec_budget_in_bounds(b: WholeWorkflowBudget) -> bool {
 
 /// Spec predicate: `max_total_slots` is determined solely by
 /// `contract.max_slots`. Mirrors the production body at
-/// `crates/vb_core/src/budget.rs:127`:
+/// `crates/vb_core/src/budget.rs:163`:
 /// `let max_total_slots = u64::from(contract.max_slots);`
 pub open spec fn spec_max_total_slots_from_contract(
     contract: ResourceContract,
@@ -159,7 +159,7 @@ pub open spec fn spec_max_total_slots_from_contract(
 }
 
 /// Spec predicate: `max_run_time_seconds` equals `max_total_steps`.
-/// Mirrors the production body at `crates/vb_core/src/budget.rs:130`:
+/// Mirrors the production body at `crates/vb_core/src/budget.rs:166`:
 /// `let max_run_time_seconds = max_total_steps;`
 pub open spec fn spec_run_time_equals_total_steps(b: WholeWorkflowBudget) -> bool {
     b.max_run_time_seconds as int == b.max_total_steps as int
@@ -176,11 +176,11 @@ pub open spec fn spec_run_time_equals_total_steps(b: WholeWorkflowBudget) -> boo
 /// Bridge 1+2: `WholeWorkflowBudget::compute` Ok-branch satisfies the
 /// production field-shape contracts (`max_total_slots_from_contract` and
 /// `run_time_equals_total_steps`, mirroring production bodies at
-/// `crates/vb_core/src/budget.rs:127` and `:130`) AND the production
+/// `crates/vb_core/src/budget.rs:163` and `:166`) AND the production
 /// field-bounds contract (`spec_budget_in_bounds`, mirroring the
-/// production overflow handling at `crates/vb_core/src/budget.rs:1422`
-/// (steps), `:2083-2091` (depth), `:2104-2121` (branch_count_to_u16),
-/// `:1947-1972` (tracked vec capacity)).
+/// production overflow handling at `crates/vb_core/src/budget.rs:2301`
+/// (steps), `:3019-3024` (depth), `:2799-2806` (branch_count_to_u16),
+/// `:2812-2814` (tracked vec capacity)).
 pub assume_specification[ production::whole_workflow_budget_compute ](
     nodes: &[production::workflow::CompiledNode],
     entry: StepIdx,
@@ -250,7 +250,7 @@ pub exec fn exec_compute_and_discharge_contracts(
 /// VERUS-INV-005 / Bridge 1 (max_total_slots_from_contract):
 /// When `WholeWorkflowBudget::compute` returns Ok, the resulting
 /// `max_total_slots` field equals `contract.max_slots` (cast to u64).
-/// Mirrors the production body at `crates/vb_core/src/budget.rs:127`:
+/// Mirrors the production body at `crates/vb_core/src/budget.rs:163`:
 /// `let max_total_slots = u64::from(contract.max_slots);`
 ///
 /// Non-vacuous: the `requires` premise models the production contract
@@ -277,12 +277,12 @@ pub proof fn proof_max_total_slots_from_contract(b: WholeWorkflowBudget, contrac
 /// VERUS-INV-005 / Bridge 1 (run_time_equals_total_steps):
 /// When `WholeWorkflowBudget::compute` returns Ok, the resulting
 /// `max_run_time_seconds` field equals `max_total_steps`.
-/// Mirrors the production body at `crates/vb_core/src/budget.rs:130`:
+/// Mirrors the production body at `crates/vb_core/src/budget.rs:166`:
 /// `let max_run_time_seconds = max_total_steps;`
 pub proof fn proof_run_time_equals_total_steps(b: WholeWorkflowBudget)
     requires
 // Production premise: b is a budget produced by compute(). The
-// production body at line 130 unconditionally sets max_run_time_seconds
+// production body at line 166 unconditionally sets max_run_time_seconds
 // = max_total_steps, so this is satisfied by every Ok-branch budget.
 
         b.max_run_time_seconds == b.max_total_steps,
@@ -299,7 +299,7 @@ pub proof fn proof_run_time_equals_total_steps(b: WholeWorkflowBudget)
 pub proof fn proof_budget_in_bounds(b: WholeWorkflowBudget)
     requires
 // Production premise: b is a budget produced by compute(). The
-// production overflow checks at lines 1422, 2086, 1947-1972 etc.
+// production overflow checks at lines 2301, 3021, 2812-2814 etc.
 // guarantee every Ok-branch field is within its u-type max.
 
         b.max_total_steps <= u64::MAX,

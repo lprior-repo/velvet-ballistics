@@ -32,7 +32,7 @@
 // BINDING LEDGER:
 //   - `WholeWorkflowBudget`                  <- extern_budget_bounded.rs
 //                                              (mirror of
-//                                              budget.rs:11-59)
+//                                              budget.rs:14-90)
 //   - `WholeWorkflowBudget::compute`         <- extern_budget_bounded.rs
 //                                              `whole_workflow_budget_compute`
 //   - `BoundednessPolicy::validate`          <- extern_budget_bounded.rs
@@ -47,7 +47,7 @@
 //                                              assume_specification below)
 //   - `AggregateResourceBudget`/`Capacity`/`Usage`
 //                                           <- extern_budget_bounded.rs
-//                                              (mirror of budget.rs:570-644)
+//                                              (mirror of budget.rs:882-1003)
 //
 // Spec-mode reasoning:
 //   - The spec constants `max_steps_per_workflow() = 65535`,
@@ -56,7 +56,7 @@
 //     bounds. The first two mirror `crates/vb_core/src/limits.rs:11` and
 //     `:94`. The last two are spec-only — production's `BoundednessPolicy
 //     ::DEFAULT.absolute_max_parallel = 256` and `..._action_tickets =
-//     100_000` (budget.rs:378-396) — drift is reported as a binding
+//     100_000` (budget.rs:506-530) — drift is reported as a binding
 //     debt item outside Verus.
 //
 // ============================================================================
@@ -357,7 +357,7 @@ pub const SPEC_MAX_ACTION_TICKETS: u64 = 1_000_000;
 // `MAX_LIST_ITEMS_PER_VALUE` mirrors the production constant at
 // `crates/vb_core/src/limits.rs:71 = 65_535`. The value is referenced
 // by the production budget iteration accounting at
-// `crates/vb_core/src/budget.rs:1459, 1719` but is currently unused
+// `crates/vb_core/src/budget.rs:2338, 2598` but is currently unused
 // in any spec proof or exec fn in this scope; it is kept here as a
 // binding-ledger artifact so the production constant name stays
 // resolvable from spec mode.
@@ -407,8 +407,9 @@ pub open spec fn spec_count_total_steps_bounded(result: int) -> bool {
     result >= 0 && result <= max_steps_per_workflow()
 }
 
-/// Spec mirror of `count_total_steps` returning `Result<u64, WorkflowError>`.
-/// Mirrors `crates/vb_core/src/budget.rs:1332-1360` semantics:
+/// Spec mirror of `count_total_steps` returning `Result<u64, BudgetTraversalError>`
+/// (mapped to `WorkflowError` by `compute` via `From`).
+/// Mirrors `crates/vb_core/src/budget.rs:2232-2238` semantics:
 ///   - Ok(v) iff v in [0, u64::MAX]
 ///   - Err(WorkflowError::StepCountOverflow) iff the DFS overflowed u64.
 pub open spec fn spec_count_total_steps_result(result: Result<int, SpecWorkflowError>) -> bool {
@@ -429,7 +430,7 @@ pub open spec fn spec_count_total_steps_result(result: Result<int, SpecWorkflowE
 // section.
 /// Bridge contract: `add_dim` returns Ok iff the checked_add does not
 /// overflow. Mirrors production body at
-/// `crates/vb_core/src/budget.rs:1250-1258`:
+/// `crates/vb_core/src/budget.rs:2148-2156`:
 ///   `current.checked_add(requested).ok_or(Overflow { resource })`
 pub assume_specification[ production::add_dim ](
     current: u64,
@@ -449,7 +450,7 @@ pub assume_specification[ production::add_dim ](
 
 /// Bridge contract: `sub_dim` returns Ok iff the checked_sub does not
 /// underflow. Mirrors production body at
-/// `crates/vb_core/src/budget.rs:1260-1268`.
+/// `crates/vb_core/src/budget.rs:2158-2166`.
 pub assume_specification[ production::sub_dim ](
     current: u64,
     requested: u64,
@@ -470,8 +471,8 @@ pub assume_specification[ production::sub_dim ](
 /// with `max_total_steps <= u64::MAX` (no u64 overflow) and `Ok` iff the
 /// production DFS did not encounter a back-edge cycle or depth overflow.
 /// Mirrors the success branch of `compute` at
-/// `crates/vb_core/src/budget.rs:64-70` and the success contract of
-/// `count_total_steps` at `crates/vb_core/src/budget.rs:1332-1360`.
+/// `crates/vb_core/src/budget.rs:97-103` and the success contract of
+/// `count_total_steps` at `crates/vb_core/src/budget.rs:2232-2238`.
 pub assume_specification[ production::whole_workflow_budget_compute ](
     nodes: &[production::workflow::CompiledNode],
     entry: StepIdx,
@@ -487,7 +488,7 @@ pub assume_specification[ production::whole_workflow_budget_compute ](
 /// Bridge contract: `boundedness_policy_validate` returns Ok iff every
 /// dimension of the budget is within the policy limits. The closure of
 /// the discriminant set in the ensures matches the production body at
-/// `crates/vb_core/src/budget.rs:400-457` (returns the FIRST violation
+/// `crates/vb_core/src/budget.rs:534-592` (returns the FIRST violation
 /// encountered, or Ok(())).
 ///
 /// The contract uses a spec predicate `spec_policy_violation` to compare
@@ -537,7 +538,7 @@ pub assume_specification[ production::boundedness_policy_validate ](
 
 /// Bridge contract: `validate_aggregate_budget` returns Ok iff every
 /// dimension of the aggregate budget is within the policy limits.
-/// Mirrors `crates/vb_core/src/budget.rs:1110-1209`.
+/// Mirrors `crates/vb_core/src/budget.rs:1714-1848`.
 pub assume_specification[ production::validate_aggregate_budget ](
     budget: &AggregateResourceBudget,
     policy: &BoundednessPolicy,
@@ -552,7 +553,7 @@ pub assume_specification[ production::validate_aggregate_budget ](
 /// Bridge contract: `validate_step_ceilings` returns Ok iff
 /// `max_step_budget_per_tick <= 1_000_000` and
 /// `max_transitions_per_tick <= 1_000_000`. Mirrors
-/// `crates/vb_core/src/budget.rs:1213-1248`.
+/// `crates/vb_core/src/budget.rs:2111-2146`.
 pub assume_specification[ production::validate_step_ceilings ](
     budget: &AggregateResourceBudget,
 ) -> (result: Result<(), AggregateBudgetError>)
@@ -713,11 +714,10 @@ pub proof fn proof_nested_finite_repeat_cost(body: int, factor: int)
 }
 
 /// VERUS-BUD-002 (unknown negative factor): a negative factor rejects
-/// rather than defaulting to a bound. Mirrors the production check at
-/// `crates/vb_core/src/budget.rs` where negative iteration counts are
-/// rejected. The proof establishes that `factor < 0` is the discriminant
-/// that the production body uses to return Err (no further arithmetic
-/// property is required).
+/// rather than defaulting to a bound. Production iteration counts are
+/// unsigned (`u32` limit, `u64` iter_count), so a negative factor is
+/// outside the production input domain; the lemma covers the spec-level
+/// discriminant `factor < 0` (no further arithmetic property is required).
 pub proof fn proof_unknown_factor_rejects(body: int, factor: int)
     requires
         factor < 0,
@@ -730,7 +730,7 @@ pub proof fn proof_unknown_factor_rejects(body: int, factor: int)
 /// VERUS-BUD-002 (overflow reject): when body * factor would overflow
 /// the u64 ceiling, the operation must reject. Mirrors the production
 /// `checked_mul` in `count_and_push_loop_body` at
-/// `crates/vb_core/src/budget.rs:1591-1602`.
+/// `crates/vb_core/src/budget.rs:2486-2491`.
 pub proof fn proof_nested_overflow_rejects(body: int, factor: int)
     requires
         body >= 0,
@@ -749,7 +749,7 @@ pub proof fn proof_nested_overflow_rejects(body: int, factor: int)
 /// Branch max: spec predicate `branch_cost(left, right) = max(left, right)`
 /// is conservative — its value is at least the larger of the two
 /// branches. Used in the production `add_conditional_max_steps` at
-/// `crates/vb_core/src/budget.rs:1533-1549`.
+/// `crates/vb_core/src/budget.rs:2412-2436`.
 pub open spec fn branch_cost(left: int, right: int) -> int {
     if left >= right {
         left
@@ -776,7 +776,7 @@ pub proof fn proof_branch_max_conservative(left: int, right: int)
 /// Together fanout: the spec predicate `together_fanout(branch_count)`
 /// accepts only finite policy-fitting branch counts. Mirrors the
 /// production `update_fanout` / `update_workflow_metrics` TogetherStart
-/// branch at `crates/vb_core/src/budget.rs:2103-2112` / `:2144-2152`.
+/// branch at `crates/vb_core/src/budget.rs:3039-3044` / `:3082-3090`.
 pub open spec fn together_fanout(branch_count: int) -> Option<int> {
     if branch_count >= 0 && branch_count <= max_parallel_in_flight() {
         Some(branch_count)
@@ -814,7 +814,7 @@ pub proof fn proof_together_fanout_over_limit_rejects(branch_count: int)
 /// refinement of the verified whole budget. Every dimension present in
 /// `WholeWorkflowBudget` is propagated into `AggregateResourceBudget`
 /// by `AggregateResourceBudget::from_whole_workflow_budget` at
-/// `crates/vb_core/src/budget.rs:746-773`.
+/// `crates/vb_core/src/budget.rs:1169-1203`.
 pub open spec fn aggregate_refines_whole(
     whole_steps: int,
     whole_actions: int,
@@ -842,10 +842,9 @@ pub proof fn proof_aggregate_refines_verified_whole(steps: int, actions: int)
 // PO-VERUS-DIAG-001: diagnostic projection totality
 // ============================================================================
 /// Spec predicate: proof-visible diagnostic projection is total only
-/// when every required field is present. Mirrors the production
-/// `DiagnosticEnvelope` construction at
-/// `crates/vb_core/src/diagnostic.rs` (referenced by budget.rs when
-/// constructing StepCountOverflow diagnostics at lines 140-143).
+/// when every required field is present. Spec-side only: no production
+/// `DiagnosticEnvelope` type exists, and production `StepCountOverflow`
+/// carries only `{ actual }` (`crates/vb_core/src/budget.rs:263-265`).
 pub open spec fn diagnostic_complete(
     has_resource: bool,
     has_primitive: bool,
@@ -904,7 +903,7 @@ pub proof fn proof_overflow_add_returns_error()
 /// Spec lemma: `checked_mul` of u64::MAX * 2 (overflow) returns Err.
 /// Mirrors the production `add_dim` overflow detection shape. The
 /// production does not multiply in `add_dim` (multiplication lives in
-/// `count_and_push_loop_body` at budget.rs:1591); this lemma asserts
+/// `count_and_push_loop_body` at budget.rs:2486-2491); this lemma asserts
 /// the same overflow-detection shape that the multiplication path
 /// discharges in the same way.
 pub proof fn proof_overflow_mul_returns_error()
