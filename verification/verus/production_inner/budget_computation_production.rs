@@ -102,7 +102,7 @@ use vstd::prelude::*;
 // newtype structs. The mirror below replicates only the types
 // referenced by the CollectStart budget arithmetic surface.
 
-/// Mirror of `StepIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:55`.
+/// Mirror of `StepIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:70`.
 #[derive(Clone, Copy)]
 pub struct StepIdx(pub u16);
 
@@ -118,11 +118,27 @@ impl StepIdx {
     }
 }
 
-/// Mirror of `SlotIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:56`.
+/// Mirror of `SlotIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:71`.
 #[derive(Clone, Copy)]
 pub struct SlotIdx(pub u16);
 
 impl SlotIdx {
+    pub const fn new(value: u16) -> Self {
+        Self(value)
+    }
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+    pub const fn as_usize(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// Mirror of `ConstIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:75`.
+#[derive(Clone, Copy)]
+pub struct ConstIdx(pub u16);
+
+impl ConstIdx {
     pub const fn new(value: u16) -> Self {
         Self(value)
     }
@@ -199,6 +215,9 @@ pub enum CompiledNodeKind {
         done: StepIdx,
     },
     ReduceStart {
+        input: SlotIdx,
+        accumulator: SlotIdx,
+        initial: ConstIdx,
         body: StepIdx,
         done: StepIdx,
     },
