@@ -12,11 +12,12 @@
 // The `#[path]` import below binds this spec file to a thin in-tree
 // `production_inner/accepted_envelope_production.rs` mirror that exposes
 // the verbatim production `REQUIRED_GATE_COUNT`, the discriminant
-// variants of `ArtifactEnvelopeError`, and the pure `is_strict_accepted`
-// decision fn whose semantics match the strict-policy branch of the
-// production `submit_artifact_with_contracts`. The spec file attaches
-// `assume_specification` to that production decision fn, and each proof
-// fn non-vacuously proves a different structural property of the spec.
+// variants of `ArtifactEnvelopeError`, and the pure
+// `proof_matches_prepared_shape` decision fn modelling the prepared-proof
+// shape production constructs for every admitted artifact. The spec file
+// attaches `assume_specification` to that production decision fn, and
+// each proof fn non-vacuously proves a different structural property of
+// the spec.
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
@@ -38,7 +39,7 @@ verus! {
 // Verus build.
 //
 // The `prod` module exposes `REQUIRED_GATE_COUNT`,
-// `ArtifactEnvelopeErrorKind`, and `is_strict_accepted` to the wrapper
+// `ArtifactEnvelopeErrorKind`, and `proof_matches_prepared_shape` to the wrapper
 // functions in this file. Inside `prod`, these items are opaque
 // (`#[verifier::external]` at module level).
 #[verifier::external]
@@ -92,13 +93,13 @@ fn convert_artifact_envelope_error(e: prod::ArtifactEnvelopeErrorKind) -> SpecAr
     }
 }
 
-// Production exec fn: `is_strict_accepted` (the non-opaque wrapper).
-// The body calls the production `is_strict_accepted` (via the prod
+// Production exec fn: `proof_matches_prepared_shape` (the non-opaque wrapper).
+// The body calls the production `proof_matches_prepared_shape` (via the prod
 // mirror) and converts the error discriminant. The body is opaque to
 // Verus (`#[verifier::external]`); the spec file attaches the
 // production contract via `assume_specification`.
 #[verifier::external]
-pub fn is_strict_accepted(
+pub fn proof_matches_prepared_shape(
     gate_count: u8,
     bounded_claimed: bool,
     taint_safe_claimed: bool,
@@ -107,9 +108,9 @@ pub fn is_strict_accepted(
     replayable_claimed: bool,
     idempotency_verified_claimed: bool,
     artifact_digest_matches: bool,
-    idempotency_attestation_present: bool,
+    idempotency_attestation_absent: bool,
 ) -> Result<(), SpecArtifactEnvelopeError> {
-    prod::is_strict_accepted(
+    prod::proof_matches_prepared_shape(
         gate_count,
         bounded_claimed,
         taint_safe_claimed,
@@ -118,7 +119,7 @@ pub fn is_strict_accepted(
         replayable_claimed,
         idempotency_verified_claimed,
         artifact_digest_matches,
-        idempotency_attestation_present,
+        idempotency_attestation_absent,
     )
     .map_err(convert_artifact_envelope_error)
 }
