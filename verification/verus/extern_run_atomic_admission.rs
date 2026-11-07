@@ -10,10 +10,15 @@
 // Direct `#[path]` inclusion of
 // verification/verus/production_inner/accepted_run_atomic_admission_production.rs.
 // The production mirror contains the same type shapes and decision-fn
-// semantics as the production source for strict-run admission
-// (`vb_runtime::admission::REQUIRED_GATE_COUNT`,
-// `vb_storage::admission::submit_artifact_with_contracts` strict
-// branch).
+// semantics as the production source for accepted-run admission:
+// the prepared-proof gate-count decision
+// (`vb_storage::admission::submit_artifact_with_contracts` at
+// crates/vb_storage/src/admission.rs:354-374 performs no gate/flag
+// validation; the prepared proof carries gate_count 0 per
+// `verification_proof_core` at crates/vb_storage/src/admission.rs:113-129,
+// with only bounded_claimed and idempotency_verified_claimed set by
+// `prepare_with_profile` at
+// crates/vb_storage/src/admission/verification.rs:26-54).
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

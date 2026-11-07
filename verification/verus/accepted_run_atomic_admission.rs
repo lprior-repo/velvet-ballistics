@@ -10,15 +10,26 @@
 //
 // Production binding (BINDING LEDGER):
 //   - Required gate count mirrors `vb_runtime::admission::REQUIRED_GATE_COUNT` (= 15)
-//     at crates/vb_runtime/src/admission.rs:20.
+//     at crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2.
+//     Production constructs gate_count 0, not 15: `verification_proof_core`
+//     (crates/vb_storage/src/admission.rs:113-129) forces gate_count 0,
+//     durable false, and all flags false; `prepare_with_profile`
+//     (crates/vb_storage/src/admission/verification.rs:26-54) sets only
+//     bounded_claimed and idempotency_verified_claimed true. The 15-gate
+//     shape exists only in the AlwaysPresentArtifactStore fixture
+//     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-95).
 //   - RunAdmission struct mirrors `vb_runtime::admission::RunAdmission`
-//     at crates/vb_runtime/src/admission.rs:82-95.
+//     at crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31.
 //   - RunAdmission::new mirrors
 //     `vb_runtime::admission::RunAdmission::new` at
-//     crates/vb_runtime/src/admission.rs:110-124.
-//   - submit_artifact_with_contracts strict branch mirrors
-//     `vb_storage::admission::submit_artifact_with_contracts` at
-//     crates/vb_storage/src/admission.rs:327-422.
+//     crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66.
+//   - `vb_storage::admission::submit_artifact_with_contracts` at
+//     crates/vb_storage/src/admission.rs:354-374 performs no gate/flag
+//     validation; `verify_accepted_artifact`
+//     (crates/vb_storage/src/admission/verification.rs:56-87) enforces the
+//     prepared shape by recompute-and-compare, any deviation returned as
+//     ArtifactEvidenceInvalid
+//     (crates/vb_runtime/src/admission/registered_verification.rs:5-28).
 
 use vstd::prelude::*;
 
@@ -123,7 +134,7 @@ pub assume_specification[ production::all_required_gates_accepted ](
     all_required_gate_proofs_accepted: bool,
 ) -> (r: bool)
     ensures
-        r == (gate_count == 15 && all_required_gate_proofs_accepted),
+        r == spec_all_required_gates_accepted(gate_count, all_required_gate_proofs_accepted),
 ;
 
 pub assume_specification[ production::artifact_matches_header_and_source ](
@@ -236,6 +247,25 @@ pub enum SpecAdmissionError {
 pub enum SpecAdmissionOutcome {
     Success,
     Err(SpecAdmissionError),
+}
+
+// `REQUIRED_GATE_COUNT` (= 15) names the legacy fixture count; it is NOT
+// the count admission requires. Production constructs gate_count 0
+// (`verification_proof_core`, crates/vb_storage/src/admission.rs:113-129).
+pub const PREPARED_GATE_COUNT: u8 = 0;
+
+// Prepared-proof gate-count decision. Production constructs gate_count 0;
+// the bool is the prepared profile's claimed flags (bounded_claimed and
+// idempotency_verified_claimed, set by `prepare_with_profile` at
+// crates/vb_storage/src/admission/verification.rs:26-54). The legacy
+// 15-gate shape exists only in the AlwaysPresentArtifactStore fixture
+// (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-95)
+// and is rejected by real validation.
+pub open spec fn spec_all_required_gates_accepted(
+    gate_count: u8,
+    all_required_gate_proofs_accepted: bool,
+) -> bool {
+    gate_count == PREPARED_GATE_COUNT && all_required_gate_proofs_accepted
 }
 
 pub open spec fn spec_artifact_matches_header_and_source(
@@ -540,6 +570,30 @@ pub proof fn proof_error_taxonomy_exhaustive(cause: SpecFailureCause)
             assert(spec_error_classifies_failure(cause, SpecAdmissionError::IndexDerivationFailed));
         },
     }
+}
+
+// Non-vacuous proof 7: the legacy 15-gate count is denied by the
+// prepared-proof gate check. The old "valid" shape is the
+// AlwaysPresentArtifactStore fixture, not an admitted artifact: the
+// prepared gate count is 0.
+pub proof fn proof_legacy_fifteen_gate_count_denied()
+    ensures
+        !spec_all_required_gates_accepted(15, true),
+{
+    reveal(spec_all_required_gates_accepted);
+    assert(PREPARED_GATE_COUNT == 0);
+    assert(!spec_all_required_gates_accepted(15, true));
+}
+
+// Non-vacuous proof 8: the prepared gate count is accepted by the
+// prepared-proof gate check when the prepared profile's claimed flags hold.
+pub proof fn proof_prepared_gate_count_accepted()
+    ensures
+        spec_all_required_gates_accepted(0, true),
+{
+    reveal(spec_all_required_gates_accepted);
+    assert(PREPARED_GATE_COUNT == 0);
+    assert(spec_all_required_gates_accepted(0, true));
 }
 
 fn main() {}
