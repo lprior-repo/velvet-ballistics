@@ -12,7 +12,7 @@
 // inclusion of the production source:
 //
 //   1. Production `use thiserror::Error;` and `#[derive(... serde::Serialize,
-//      serde::Deserialize ...)]` at budget.rs:8 / :571 are NOT re-included.
+//      serde::Deserialize ...)]` at budget.rs:8 / :881 are NOT re-included.
 //      The mirror uses a `#[derive(Clone, Copy, ...)]` subset that
 //      Verus 0.2026.05.05 can parse without proc-macro support. Field
 //      NAMES and TYPES match production byte-for-byte, so any drift
@@ -50,7 +50,6 @@
 // BINDING LEDGER — production ↔ mirror ↔ spec
 // ============================================================================
 //   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:2474-2500
-// Production `crates/vb_core/src/budget.rs:2474-2500`
 //        (production: CollectStart / ForEachStart / RepeatStart /
 //         ReduceStart body multiplication by iteration limit;
 //         the multiplication is `body_count.checked_mul(iter_count)` at
@@ -59,26 +58,25 @@
 //        -> mirrored as `count_and_push_loop_body`
 //
 //   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:2464-2469
-// Production `crates/vb_core/src/budget.rs:2464-2469`
 //        (production: pure checked_add of two u64 step totals with
 //         StepCountOverflow error)
 //        -> mirrored as `checked_step_add`
 //
 //   - `update_workflow_metrics` CollectStart arm
-//                                          <- crates/vb_core/src/budget.rs:2153-2160
-//        (production: `max_gather_pages.checked_add(1)` and
-//         `max_gather_items.checked_add(*limit)`)
+//                                          <- crates/vb_core/src/budget.rs:3091-3104
+//        (production: `pages = ceil(limit / max(page_size, 1))`,
+//         `u32::try_from(pages)`, `max_gather_pages.checked_add(pages)`
+//         and `max_gather_items.checked_add(*limit)`)
 //        -> mirrored as `collect_start_update_metrics`
 //
-//   - `count_total_steps`                   <- crates/vb_core/src/budget.rs:2232-2238
-// Production `crates/vb_core/src/budget.rs:2232-2238`
-//        (production: pure DFS step counter; only the per-step
-//         `total.checked_add(1)` at budget.rs:2301 is referenced)
+//   - `visit_node_for_total_steps`          <- crates/vb_core/src/budget.rs:2279-2402
+//        (production: DFS step counter; only the per-step
+//         `total.checked_add(1)` at budget.rs:2301-2303 is referenced,
+//         failing with `StepOutOfBounds` on u64 overflow)
 //        -> mirrored as `count_total_steps_step_increment`
 //
-//   - `count_body_region_nodes`             <- crates/vb_core/src/budget.rs:2526-2533
-// Production `crates/vb_core/src/budget.rs:2526-2533`
-//        (production: per-body `count.checked_add(1)` at budget.rs:2560
+//   - `visit_body_region_node`              <- crates/vb_core/src/budget.rs:2537-2636
+//        (production: per-body `count.checked_add(1)` at budget.rs:2559-2564
 //         with `TotalStepsExceeded` on u64 overflow)
 //        -> mirrored as `body_region_step_increment`
 //
@@ -106,7 +104,7 @@ use vstd::prelude::*;
 // newtype structs. The mirror below replicates only the types
 // referenced by the CollectStart budget arithmetic surface.
 
-/// Mirror of `StepIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:55`.
+/// Mirror of `StepIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:70`.
 #[derive(Clone, Copy)]
 pub struct StepIdx(pub u16);
 
@@ -122,7 +120,7 @@ impl StepIdx {
     }
 }
 
-/// Mirror of `SlotIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:56`.
+/// Mirror of `SlotIdx` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:71`.
 #[derive(Clone, Copy)]
 pub struct SlotIdx(pub u16);
 
@@ -142,12 +140,12 @@ impl SlotIdx {
 // ResourceContract — restricted mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/workflow/mod.rs:190-228`. Field names
+// Mirror of `crates/vb_core/src/workflow/mod.rs:252-289`. Field names
 // and types match production line-by-line so any drift in budget.rs
 // use sites breaks the mirror.
 
 /// Mirror of production `ResourceContract` at
-/// `crates/vb_core/src/workflow/mod.rs:190-228`. Field-by-field copy
+/// `crates/vb_core/src/workflow/mod.rs:252-289`. Field-by-field copy
 /// of the production struct.
 #[derive(Clone, Copy)]
 pub struct ResourceContract {
@@ -194,6 +192,7 @@ pub enum CompiledNodeKind {
     },
     CollectStart {
         limit: u32,
+        page_size: u32,
         body: StepIdx,
         done: StepIdx,
     },
@@ -243,13 +242,13 @@ pub struct CompiledNode {
 // BudgetTraversalError / BudgetError — restricted mirrors
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:170-191` and `:533-568`.
+// Mirror of `crates/vb_core/src/budget.rs:256-280` and `:703-750`.
 // Restricted to the discriminant arms referenced by the CollectStart
 // budget arithmetic surface (StepCountOverflow, EntryOutOfBounds,
 // StepOutOfBounds, JumpCycle, DepthOverflow, TotalStepsExceeded).
 
 /// Mirror of production `BudgetTraversalError` discriminant set at
-/// `crates/vb_core/src/budget.rs:170-191`. Restricted to the
+/// `crates/vb_core/src/budget.rs:256-280`. Restricted to the
 /// variants the CollectStart budget arithmetic surface can produce.
 #[derive(Clone, Copy)]
 pub enum BudgetTraversalError {
@@ -261,7 +260,7 @@ pub enum BudgetTraversalError {
 }
 
 /// Mirror of production `BudgetError` discriminant set at
-/// `crates/vb_core/src/budget.rs:533-568`. Restricted to the variants
+/// `crates/vb_core/src/budget.rs:703-750`. Restricted to the variants
 /// the CollectStart budget arithmetic surface produces
 /// (`TotalStepsExceeded` from `count_and_push_loop_body` /
 /// `count_nested_for_region`).
@@ -287,7 +286,7 @@ pub mod workflow {
     pub use super::CompiledNodeKind as CompiledNodeKindT;
 
     /// Marker mirror of production `WorkflowError` at
-    /// `crates/vb_core/src/workflow/mod.rs:321-...`. Restricted to the
+    /// `crates/vb_core/src/workflow/mod.rs:666-880`. Restricted to the
     /// variants referenced by budget.rs.
     #[derive(Clone, Copy)]
     pub enum WorkflowError {
@@ -325,27 +324,27 @@ pub mod workflow {
 // `budget_computation.rs`.
 
 /// Production wrapper for `count_and_push_loop_body` at
-/// `crates/vb_core/src/budget.rs:1579-1605`. Body performs the same
+/// `crates/vb_core/src/budget.rs:2474-2500`. Body performs the same
 /// `checked_mul` + `checked_add` as production. Body skipped by Verus.
 ///
 /// The production function does three things in sequence for any
 /// loop header (CollectStart / ForEachStart / RepeatStart /
 /// ReduceStart):
 ///   1. `let body_count = count_body_region_nodes(...)`
-///   2. `let product = body_count.checked_mul(iter_count)` (line 1591-1596)
-///   3. `total = total.checked_add(product)` (line 1597-1602)
+///   2. `let product = body_count.checked_mul(iter_count)` (line 2486-2491)
+///   3. `total = total.checked_add(product)` (line 2492-2497)
 ///
 /// This mirror exposes the multiplication and the addition as a single
 /// exec fn so the spec surface stays aligned with the production
-/// call site at line 1446-1456 (CollectStart) / 1429-1442 (ForEachStart)
-/// / 1468-1484 (RepeatStart) / 1458-1467 (ReduceStart).
+/// call sites at budget.rs:2310 (ForEachStart) / :2325 (CollectStart)
+/// / :2342 (ReduceStart) / :2352 (RepeatStart).
 #[verifier::external]
 pub fn count_and_push_loop_body(
     _body_count: u64,
     _iter_count: u64,
     _total: u64,
 ) -> Result<u64, BudgetError> {
-    // Production body (budget.rs:1579-1605):
+    // Production body (budget.rs:2474-2500):
     //   let body_count = count_body_region_nodes(nodes, body, done, node_count)?;
     //   let iter_count = iter_count.max(1);
     //   let product = body_count
@@ -376,7 +375,7 @@ pub fn count_and_push_loop_body(
 }
 
 /// Production wrapper for `checked_step_add` at
-/// `crates/vb_core/src/budget.rs:1569-1574`. Pure checked_add of two
+/// `crates/vb_core/src/budget.rs:2464-2469`. Pure checked_add of two
 /// u64 step totals. Body skipped by Verus.
 #[verifier::external]
 pub fn checked_step_add(left: u64, right: u64) -> Result<u64, BudgetTraversalError> {
@@ -387,28 +386,45 @@ pub fn checked_step_add(left: u64, right: u64) -> Result<u64, BudgetTraversalErr
 }
 
 /// Production mirror of the `CollectStart` arm of
-/// `update_workflow_metrics` at `crates/vb_core/src/budget.rs:2153-2160`:
+/// `update_workflow_metrics` at `crates/vb_core/src/budget.rs:3091-3104`:
 ///
-///   CompiledNodeKind::CollectStart { limit, .. } => {
+///   CompiledNodeKind::CollectStart { limit, page_size, .. } => {
+///       let per_page = u64::from(*page_size).max(1);
+///       let pages = u64::from(*limit).div_ceil(per_page);
+///       let pages = u32::try_from(pages)
+///           .map_err(|_| BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
 ///       *max_gather_pages = max_gather_pages
-///           .checked_add(1)
+///           .checked_add(pages)
 ///           .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
 ///       *max_gather_items = max_gather_items
 ///           .checked_add(*limit)
 ///           .ok_or(BudgetTraversalError::StepCountOverflow { actual: u64::MAX })?;
 ///   }
 ///
-/// This mirror exposes the two arithmetic operations as a single
-/// exec fn returning `(new_gather_pages, new_gather_items)`. Both
-/// dimensions are tracked separately: pages increments by 1, items
-/// increments by `limit`. Both are `u32` and may overflow u32::MAX.
+/// This mirror exposes the page computation and the two arithmetic
+/// operations as a single exec fn returning
+/// `(new_gather_pages, new_gather_items)`. Pages is the ceiling of
+/// `limit / max(page_size, 1)`, not a constant 1: `limit = 0` adds
+/// zero pages, and `page_size = 0` behaves as `page_size = 1`. All
+/// three failures (page count above `u32::MAX`, pages addition
+/// overflow, items addition overflow) report
+/// `StepCountOverflow { actual: u64::MAX }`, in production order.
 #[verifier::external]
 pub fn collect_start_update_metrics(
     max_gather_pages: u32,
     max_gather_items: u32,
     limit: u32,
+    page_size: u32,
 ) -> Result<(u32, u32), BudgetTraversalError> {
-    let new_pages = match max_gather_pages.checked_add(1) {
+    let per_page = u64::from(page_size).max(1);
+    let pages = u64::from(limit).div_ceil(per_page);
+    let pages = match u32::try_from(pages) {
+        Ok(v) => v,
+        Err(_) => {
+            return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX });
+        }
+    };
+    let new_pages = match max_gather_pages.checked_add(pages) {
         Some(v) => v,
         None => return Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
     };
@@ -420,19 +436,25 @@ pub fn collect_start_update_metrics(
 }
 
 /// Production wrapper for the per-step increment in
-/// `visit_node_for_total_steps` at `crates/vb_core/src/budget.rs:2301-2304`:
+/// `visit_node_for_total_steps` at `crates/vb_core/src/budget.rs:2301-2303`:
 ///
 ///   total = match total.checked_add(1) {
 ///       Some(v) => v,
 ///       None => return Err(BudgetTraversalError::StepOutOfBounds { step: current }),
 ///   };
 ///
-/// This mirror exposes the arithmetic as a pure decision fn.
+/// This mirror exposes the arithmetic as a pure decision fn. The
+/// overflow error carries the step being visited, not a
+/// `StepCountOverflow` sentinel: production reports
+/// `StepOutOfBounds { step: current }` here.
 #[verifier::external]
-pub fn count_total_steps_step_increment(total: u64) -> Result<u64, BudgetTraversalError> {
+pub fn count_total_steps_step_increment(
+    total: u64,
+    current: StepIdx,
+) -> Result<u64, BudgetTraversalError> {
     match total.checked_add(1) {
         Some(v) => Ok(v),
-        None => Err(BudgetTraversalError::StepCountOverflow { actual: u64::MAX }),
+        None => Err(BudgetTraversalError::StepOutOfBounds { step: current }),
     }
 }
 

@@ -21,7 +21,7 @@
 // spec file reasons about — comprises six production sites:
 //
 //   1. `count_total_steps` per-step increment
-//        -> crates/vb_core/src/budget.rs:2301-2304
+//        -> crates/vb_core/src/budget.rs:2301-2303
 //        -> extern `count_total_steps_step_increment`
 //
 //   2. `count_body_region_nodes` per-body increment
@@ -59,17 +59,20 @@
 // ============================================================================
 // - PO-024: CollectStart budget computation respects limits and does not overflow.
 //
-// The CollectStart node kind carries `limit (u32)`. Production budget
-// arithmetic involves two checked multiplications and one checked
-// addition per CollectStart header, plus the per-node step counter.
+// The CollectStart node kind carries `limit (u32)` and `page_size (u32)`.
+// Production budget arithmetic involves a checked multiplication and a
+// checked addition per loop-body region, a ceiling page computation
+// (`pages = ceil(limit / max(page_size, 1))`) with two checked u32
+// additions per CollectStart header, plus the per-node step counter.
 // The spec proofs below demonstrate that:
 //   - The multiplication `body_count * iter_count` is bounded by
 //     `u64::MAX` whenever `iter_count <= u32::MAX` (production
 //     `u64::from(*limit)` guarantee at budget.rs:2314, 2329).
 //   - The addition `total + product` is bounded by `u64::MAX` whenever
 //     `body_count * iter_count` is bounded.
-//   - The gather-pages increment `max_gather_pages + 1` is bounded by
-//     `u32::MAX`.
+//   - The gather-pages increment `max_gather_pages + pages` is bounded by
+//     `u32::MAX` whenever `pages <= u32::MAX` (production
+//     checked_add at budget.rs:3098-3100).
 //   - The gather-items increment `max_gather_items + limit` is bounded
 //     by `u32::MAX` whenever both operands are in `u32::MAX`.
 //   - The default values `limit = 1`, `page_size = 1` (production
@@ -167,6 +170,20 @@ pub open spec fn spec_checked_add_u32_ok(a: int, b: int) -> bool {
     a >= 0 && b >= 0 && a + b <= spec_u32_max()
 }
 
+/// Spec helper: the CollectStart page count after the production
+/// `per_page = max(page_size, 1)` and `pages = ceil(limit / per_page)`
+/// computation at `crates/vb_core/src/budget.rs:3094-3095`.
+/// `limit = 0` yields zero pages for any `page_size`; `page_size = 0`
+/// behaves as `page_size = 1`.
+pub open spec fn spec_collect_pages(limit: u32, page_size: u32) -> int {
+    let per_page = if page_size == 0u32 { 1int } else { page_size as int };
+    if limit == 0u32 {
+        0int
+    } else {
+        ((limit as int) + per_page - 1) / per_page
+    }
+}
+
 // ============================================================================
 // assume_specification bridges — production contract surface
 // ============================================================================
@@ -211,33 +228,48 @@ pub assume_specification[ production::checked_step_add ](left: u64, right: u64) 
 ;
 
 /// Bridge contract: `collect_start_update_metrics` returns
-/// `Ok((new_pages, new_items))` iff both the `max_gather_pages + 1`
-/// and `max_gather_items + limit` checked u32 additions succeed.
+/// `Ok((new_pages, new_items))` iff the page count
+/// `pages = ceil(limit / max(page_size, 1))` fits in `u32` and both
+/// the `max_gather_pages + pages` and `max_gather_items + limit`
+/// checked u32 additions succeed. Any of the three failures reports
+/// `StepCountOverflow { actual: u64::MAX }`.
 /// Mirrors `crates/vb_core/src/budget.rs:3091-3104`.
 pub assume_specification[ production::collect_start_update_metrics ](
     max_gather_pages: u32,
     max_gather_items: u32,
     limit: u32,
+    page_size: u32,
 ) -> (result: Result<(u32, u32), BudgetTraversalError>)
     ensures
         match result {
-            Ok(pair) => pair.0 == max_gather_pages + 1 && pair.1 == max_gather_items + limit,
-            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX,
+            Ok(pair) => pair.0 as int == max_gather_pages as int + spec_collect_pages(
+                limit,
+                page_size,
+            ) && pair.1 as int == max_gather_items as int + limit as int,
+            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX
+                && (spec_collect_pages(limit, page_size) > spec_u32_max()
+                    || max_gather_pages as int + spec_collect_pages(limit, page_size)
+                        > spec_u32_max()
+                    || max_gather_items as int + limit as int > spec_u32_max()),
             Err(_) => false,
         },
 ;
 
 /// Bridge contract: `count_total_steps_step_increment` returns
-/// `Ok(new_total)` iff `total + 1 <= u64::MAX`. Mirrors
-/// `crates/vb_core/src/budget.rs:2301-2304`.
+/// `Ok(new_total)` iff `total + 1 <= u64::MAX`. On overflow production
+/// reports `StepOutOfBounds { step: current }` for the node being
+/// visited, not a `StepCountOverflow` sentinel.
+/// Mirrors `crates/vb_core/src/budget.rs:2301-2303`.
 #[allow(dead_code)]
-pub assume_specification[ production::count_total_steps_step_increment ](total: u64) -> (result:
-    Result<u64, BudgetTraversalError>)
+pub assume_specification[ production::count_total_steps_step_increment ](
+    total: u64,
+    current: StepIdx,
+) -> (result: Result<u64, BudgetTraversalError>)
     ensures
         match result {
             Ok(v) => v == total + 1,
-            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX && total
-                == u64::MAX,
+            Err(BudgetTraversalError::StepOutOfBounds { step }) => step.0 == current.0
+                && total == u64::MAX,
             Err(_) => false,
         },
 ;
@@ -269,21 +301,21 @@ pub assume_specification[ production::body_region_step_increment ](count: u64) -
 // bridge contract; the proof lemmas below reason about their behavior.
 /// Exec fn: production-bound per-step increment for `count_total_steps`.
 /// Mirrors the per-iteration `total = total.checked_add(1)` at
-/// `crates/vb_core/src/budget.rs:2301-2304`.
+/// `crates/vb_core/src/budget.rs:2301-2303`.
 #[allow(dead_code)]
-pub fn exec_count_total_steps_step_increment(total: u64) -> (result: Result<
-    u64,
-    BudgetTraversalError,
->)
+pub fn exec_count_total_steps_step_increment(
+    total: u64,
+    current: StepIdx,
+) -> (result: Result<u64, BudgetTraversalError>)
     ensures
         match result {
             Ok(v) => v == total + 1,
-            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX && total
-                == u64::MAX,
+            Err(BudgetTraversalError::StepOutOfBounds { step }) => step.0 == current.0
+                && total == u64::MAX,
             Err(_) => false,
         },
 {
-    count_total_steps_step_increment(total)
+    count_total_steps_step_increment(total, current)
 }
 
 /// Exec fn: production-bound per-body increment for
@@ -327,15 +359,23 @@ pub fn exec_collect_start_update_metrics(
     max_gather_pages: u32,
     max_gather_items: u32,
     limit: u32,
+    page_size: u32,
 ) -> (result: Result<(u32, u32), BudgetTraversalError>)
     ensures
         match result {
-            Ok(pair) => pair.0 == max_gather_pages + 1 && pair.1 == max_gather_items + limit,
-            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX,
+            Ok(pair) => pair.0 as int == max_gather_pages as int + spec_collect_pages(
+                limit,
+                page_size,
+            ) && pair.1 as int == max_gather_items as int + limit as int,
+            Err(BudgetTraversalError::StepCountOverflow { actual }) => actual == u64::MAX
+                && (spec_collect_pages(limit, page_size) > spec_u32_max()
+                    || max_gather_pages as int + spec_collect_pages(limit, page_size)
+                        > spec_u32_max()
+                    || max_gather_items as int + limit as int > spec_u32_max()),
             Err(_) => false,
         },
 {
-    collect_start_update_metrics(max_gather_pages, max_gather_items, limit)
+    collect_start_update_metrics(max_gather_pages, max_gather_items, limit, page_size)
 }
 
 // ============================================================================
@@ -353,14 +393,15 @@ pub fn exec_collect_start_update_metrics(
 //   2. `total + product` is bounded by `u64::MAX` when `total` and
 //      `product` are both u64 (production checked_add at budget.rs:2493).
 //
-//   3. `max_gather_pages + 1` is bounded by `u32::MAX` (production
-//      checked_add at budget.rs:3099).
+//   3. `max_gather_pages + pages` (with `pages = ceil(limit /
+//      max(page_size, 1))`) is bounded by `u32::MAX` when
+//      `pages <= u32::MAX` (production checked_add at budget.rs:3098-3100).
 //
 //   4. `max_gather_items + limit` is bounded by `u32::MAX` when both
-//      operands are u32 (production checked_add at budget.rs:3102).
+//      operands are u32 (production checked_add at budget.rs:3101-3103).
 //
 //   5. The per-step `total + 1` increment is bounded by `u64::MAX`
-//      while `total < u64::MAX` (production at budget.rs:2301).
+//      while `total < u64::MAX` (production at budget.rs:2301-2303).
 //
 // The exec fns above (`exec_count_and_push_loop_body`, etc.) discharge
 // the production contracts when called from exec-mode; the proof lemmas
@@ -393,15 +434,31 @@ pub proof fn lemma_collect_budget_multiplication(iter_count: u64)
     assert(spec_collect_limit_max() <= spec_u64_max());
 }
 
-/// Lemma: `limit = 0` is valid (zero pages, zero items).
+/// Lemma: `limit = 0` is valid (zero pages, zero items) for any `page_size`.
 ///
 /// Production calls `update_workflow_metrics` with `max_gather_pages =
 /// 0`, `max_gather_items = 0`, and any `limit`. When `limit = 0` the
-/// checked additions `0 + 1` and `0 + 0` both succeed.
-pub proof fn lemma_limit_zero_valid() {
-    // Spec: (0 + 1) and (0 + 0) both satisfy spec_checked_add_u32_ok.
-    assert(spec_checked_add_u32_ok(0, 1));
+/// page count is zero (`ceil(0 / per_page) = 0`), so the checked
+/// additions `0 + 0` and `0 + 0` both succeed.
+pub proof fn lemma_limit_zero_valid(page_size: u32) {
+    // Spec: pages is 0 for limit 0, so (0 + 0) and (0 + 0) both succeed.
+    assert(spec_collect_pages(0, page_size) == 0);
+    assert(spec_checked_add_u32_ok(0, spec_collect_pages(0, page_size)));
     assert(spec_checked_add_u32_ok(0, 0));
+}
+
+/// Lemma: the page count is the ceiling of `limit / per_page`.
+///
+/// Production computes `per_page = max(page_size, 1)` and
+/// `pages = ceil(limit / per_page)` at `crates/vb_core/src/budget.rs:3094-3095`.
+/// The spec helper matches on the boundary cases: an exact division
+/// yields the quotient, a remainder rounds up, and `page_size = 0`
+/// behaves as `page_size = 1`.
+pub proof fn lemma_collect_pages_arithmetic() {
+    assert(spec_collect_pages(10, 3) == 4) by (compute);
+    assert(spec_collect_pages(9, 3) == 3) by (compute);
+    assert(spec_collect_pages(7, 0) == 7) by (compute);
+    assert(spec_collect_pages(1, u32::MAX) == 1) by (compute);
 }
 
 /// Lemma: `limit = 1, page_size = 1` gives a valid product.
@@ -446,10 +503,12 @@ pub proof fn lemma_limit_max_items_overflow() {
 ///
 /// Production initializes `max_gather_pages = 0`, `max_gather_items = 0`
 /// and traverses an empty or 1-node workflow for the default path.
-/// The contract returns `Ok((1, 1))` for `(0, 0, 1)`.
+/// The contract returns `Ok((1, 1))` for `(0, 0, 1, 1)`.
 pub proof fn lemma_default_budget_valid() {
-    // Spec: 0 + 1 and 0 + 1 both succeed as u32 checked additions.
-    assert(spec_checked_add_u32_ok(0, 1));
+    // Spec: pages is 1 for (limit=1, page_size=1), so 0 + 1 and 0 + 1
+    // both succeed as u32 checked additions.
+    assert(spec_collect_pages(1, 1) == 1);
+    assert(spec_checked_add_u32_ok(0, spec_collect_pages(1, 1)));
     assert(spec_checked_add_u32_ok(0, 1));
 }
 
@@ -457,7 +516,7 @@ pub proof fn lemma_default_budget_valid() {
 /// `total < u64::MAX`.
 ///
 /// Production increments `total` by 1 per visited node at
-/// `crates/vb_core/src/budget.rs:2301-2304`. While `total < u64::MAX`
+/// `crates/vb_core/src/budget.rs:2301-2303`. While `total < u64::MAX`
 /// the checked addition `total + 1` does not overflow u64.
 pub proof fn lemma_per_step_increment_ok(total: u64)
     requires
@@ -474,8 +533,8 @@ pub proof fn lemma_per_step_increment_ok(total: u64)
 ///
 /// Production increments `total` by 1 per visited node; when `total`
 /// has reached `u64::MAX` the next increment fails with
-/// `BudgetTraversalError::StepCountOverflow { actual: u64::MAX }`
-/// at `crates/vb_core/src/budget.rs:2301-2304`.
+/// `BudgetTraversalError::StepOutOfBounds { step: current }`
+/// at `crates/vb_core/src/budget.rs:2301-2303`.
 pub proof fn lemma_per_step_increment_overflow_at_u64_max() {
     // Spec: u64::MAX + 1 > u64::MAX (overflow).
     assert(spec_u64_max() + 1 > spec_u64_max());
