@@ -13,7 +13,7 @@
 //
 //   1. The `extern_accepted_artifact_admission_decision` module inlines
 //      a structural mirror of the production `ArtifactEnvelopeError`
-//      discriminant set (`crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:10-63`, 12 variants in production, 11 modelled) and a pure
+//      discriminant set (`crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:10-63`, 12 variants) and a pure
 //      projection of the strict-admission dispatch rejection branch
 //      (`admission_decision`) plus success branch (`admission_decision_ok`).
 //      See the companion file for the full binding ledger and trust
@@ -40,10 +40,10 @@
 // was mathematically correct but completely disconnected from the
 // production `ArtifactEnvelopeError` enum at
 // `crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:10-63`: there was no bridge
-// saying "production strict admission dispatches the canonical 11 error
+// saying "production strict admission dispatches the canonical 12 error
 // variants to these outcomes". The proofs would have remained green
 // even if production renamed `ArtifactNotFound` to `ArtifactMissing`
-// or added a 12th variant.
+// or added a 13th variant.
 //
 // Additionally, the previous file had a parse error at line 156: an
 // orphan expression
@@ -57,7 +57,7 @@
 // set (mirrored via `extern_accepted_artifact_admission_decision`)
 // as the spec-side input type, exercises every discriminant arm
 // through the production-bound exec wrapper `admission_decision`, and
-// discharges 11+ non-vacuous proof fns (one per production variant
+// discharges 12+ non-vacuous proof fns (one per production variant
 // plus the success path) that reveal the spec predicate and apply the
 // `assume_specification` contract. Any production modification to the
 // `ArtifactEnvelopeError` discriminant set, the
@@ -99,10 +99,10 @@ pub use production::{
 /// Spec predicate: maps a production `ArtifactEnvelopeError` variant to
 /// its corresponding `SpecAdmissionError` class. Mirrors the production
 /// `map_artifact_envelope_error` function at
-/// `crates/vb_runtime/src/admission/parts/chunk_004_validation.rs:41-82`, collapsed so the 8
+/// `crates/vb_runtime/src/admission/parts/chunk_004_validation.rs:41-82`, collapsed so the 9
 /// "InvalidProofFlag" variants (6 `MissingRequiredProofFlag*` +
-/// `MissingIdempotencyAttestation` + the InvalidGateCount projection)
-/// all map to `InvalidVerificationProof`.
+/// `MissingIdempotencyAttestation` + the InvalidGateCount projection +
+/// `ArtifactEvidenceInvalid`) all map to `InvalidVerificationProof`.
 pub open spec fn spec_outcome_error(err: SpecArtifactEnvelopeError) -> SpecAdmissionError {
     match err {
         SpecArtifactEnvelopeError::ArtifactNotFound => {
@@ -110,6 +110,9 @@ pub open spec fn spec_outcome_error(err: SpecArtifactEnvelopeError) -> SpecAdmis
         }
         SpecArtifactEnvelopeError::PostcardDecodeFailed => {
             SpecAdmissionError::MalformedAcceptedArtifact
+        }
+        SpecArtifactEnvelopeError::ArtifactEvidenceInvalid => {
+            SpecAdmissionError::InvalidVerificationProof
         }
         SpecArtifactEnvelopeError::InvalidGateCount => SpecAdmissionError::InvalidVerificationProof,
         SpecArtifactEnvelopeError::MissingRequiredProofFlagBounded => {
@@ -301,7 +304,7 @@ pub exec fn checked_admission_decision_ok() -> (result: SpecAdmissionOutcome)
 }
 
 // ============================================================================
-// Non-vacuous proofs: 11 per-variant obligations + total decision +
+// Non-vacuous proofs: 12 per-variant obligations + total decision +
 // rejection-before-ack + success-implies-ack-and-state
 // ============================================================================
 //
@@ -344,7 +347,24 @@ pub proof fn proof_postcard_decode_failed_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 3: InvalidGateCount -> InvalidVerificationProof + rejected
+// ---- 3: ArtifactEvidenceInvalid -> InvalidVerificationProof + rejected
+pub proof fn proof_artifact_evidence_invalid_rejects_before_ack()
+    ensures
+        spec_outcome_error(SpecArtifactEnvelopeError::ArtifactEvidenceInvalid)
+            == SpecAdmissionError::InvalidVerificationProof,
+        !spec_outcome_admitted(SpecArtifactEnvelopeError::ArtifactEvidenceInvalid),
+        !spec_outcome_acknowledged(SpecArtifactEnvelopeError::ArtifactEvidenceInvalid),
+        !spec_outcome_run_state_inserted(SpecArtifactEnvelopeError::ArtifactEvidenceInvalid),
+        spec_outcome_rejects(SpecArtifactEnvelopeError::ArtifactEvidenceInvalid),
+{
+    reveal(spec_outcome_error);
+    reveal(spec_outcome_admitted);
+    reveal(spec_outcome_acknowledged);
+    reveal(spec_outcome_run_state_inserted);
+    reveal(spec_outcome_rejects);
+}
+
+// ---- 4: InvalidGateCount -> InvalidVerificationProof + rejected
 pub proof fn proof_invalid_gate_count_rejects_before_ack()
     ensures
         spec_outcome_error(SpecArtifactEnvelopeError::InvalidGateCount)
@@ -361,7 +381,7 @@ pub proof fn proof_invalid_gate_count_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 4: MissingRequiredProofFlagBounded -> InvalidVerificationProof + rejected
+// ---- 5: MissingRequiredProofFlagBounded -> InvalidVerificationProof + rejected
 pub proof fn proof_missing_proof_flag_bounded_rejects_before_ack()
     ensures
         spec_outcome_error(SpecArtifactEnvelopeError::MissingRequiredProofFlagBounded)
@@ -380,7 +400,7 @@ pub proof fn proof_missing_proof_flag_bounded_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 5: MissingRequiredProofFlagTaintSafe -> InvalidVerificationProof + rejected
+// ---- 6: MissingRequiredProofFlagTaintSafe -> InvalidVerificationProof + rejected
 pub proof fn proof_missing_proof_flag_taint_safe_rejects_before_ack()
     ensures
         spec_outcome_error(SpecArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe)
@@ -399,7 +419,7 @@ pub proof fn proof_missing_proof_flag_taint_safe_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 6: MissingRequiredProofFlagRetrySafe -> InvalidVerificationProof + rejected
+// ---- 7: MissingRequiredProofFlagRetrySafe -> InvalidVerificationProof + rejected
 pub proof fn proof_missing_proof_flag_retry_safe_rejects_before_ack()
     ensures
         spec_outcome_error(SpecArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe)
@@ -418,7 +438,7 @@ pub proof fn proof_missing_proof_flag_retry_safe_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 7: MissingRequiredProofFlagDurable -> InvalidVerificationProof + rejected
+// ---- 8: MissingRequiredProofFlagDurable -> InvalidVerificationProof + rejected
 pub proof fn proof_missing_proof_flag_durable_rejects_before_ack()
     ensures
         spec_outcome_error(SpecArtifactEnvelopeError::MissingRequiredProofFlagDurable)
@@ -437,7 +457,7 @@ pub proof fn proof_missing_proof_flag_durable_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 8: MissingRequiredProofFlagReplayable -> InvalidVerificationProof + rejected
+// ---- 9: MissingRequiredProofFlagReplayable -> InvalidVerificationProof + rejected
 pub proof fn proof_missing_proof_flag_replayable_rejects_before_ack()
     ensures
         spec_outcome_error(SpecArtifactEnvelopeError::MissingRequiredProofFlagReplayable)
@@ -458,7 +478,7 @@ pub proof fn proof_missing_proof_flag_replayable_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 9: MissingRequiredProofFlagIdempotencyVerified -> InvalidVerificationProof + rejected
+// ---- 10: MissingRequiredProofFlagIdempotencyVerified -> InvalidVerificationProof + rejected
 pub proof fn proof_missing_proof_flag_idempotency_verified_rejects_before_ack()
     ensures
         spec_outcome_error(
@@ -482,7 +502,7 @@ pub proof fn proof_missing_proof_flag_idempotency_verified_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 10: MissingIdempotencyAttestation -> InvalidVerificationProof + rejected
+// ---- 11: MissingIdempotencyAttestation -> InvalidVerificationProof + rejected
 pub proof fn proof_missing_idempotency_attestation_rejects_before_ack()
     ensures
         spec_outcome_error(SpecArtifactEnvelopeError::MissingIdempotencyAttestation)
@@ -501,7 +521,7 @@ pub proof fn proof_missing_idempotency_attestation_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 11: ArtifactDigestMismatch -> DigestMismatch + rejected
+// ---- 12: ArtifactDigestMismatch -> DigestMismatch + rejected
 pub proof fn proof_artifact_digest_mismatch_rejects_before_ack()
     ensures
         spec_outcome_error(SpecArtifactEnvelopeError::ArtifactDigestMismatch)
@@ -518,7 +538,7 @@ pub proof fn proof_artifact_digest_mismatch_rejects_before_ack()
     reveal(spec_outcome_rejects);
 }
 
-// ---- 12: Total decision — every variant either admits or rejects.
+// ---- 13: Total decision — every variant either admits or rejects.
 pub proof fn proof_decision_total(err: SpecArtifactEnvelopeError)
     ensures
         !spec_outcome_admitted(err) || !spec_outcome_rejects(err),
@@ -529,7 +549,7 @@ pub proof fn proof_decision_total(err: SpecArtifactEnvelopeError)
     assert(spec_outcome_rejects(err));
 }
 
-// ---- 13: Rejection before ack and run state (universal).
+// ---- 14: Rejection before ack and run state (universal).
 pub proof fn proof_rejection_before_ack_and_run_state(err: SpecArtifactEnvelopeError)
     requires
         spec_outcome_rejects(err),
@@ -550,7 +570,7 @@ pub proof fn proof_rejection_before_ack_and_run_state(err: SpecArtifactEnvelopeE
     assert(!spec_outcome_run_state_inserted(err));
 }
 
-// ---- 14: Success path — admit implies ack and run state, and no error.
+// ---- 15: Success path — admit implies ack and run state, and no error.
 pub proof fn proof_success_implies_ack_and_run_state()
     ensures
         spec_outcome_admitted_ok(),

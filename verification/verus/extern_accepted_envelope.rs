@@ -5,9 +5,9 @@
 //
 // Production binding (BINDING LEDGER):
 //   - vb_runtime::admission::REQUIRED_GATE_COUNT (u8 = 15)
-//     at crates/vb_runtime/src/admission.rs:20
+//     at crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2
 //   - vb_storage::admission::submit_artifact_with_contracts strict-policy
-//     branch (crates/vb_storage/src/admission.rs:327-422)
+//     branch (crates/vb_storage/src/admission.rs:354-374)
 //
 // The `#[path]` import below binds this spec file to a thin in-tree
 // `production_inner/accepted_envelope_production.rs` mirror that exposes
@@ -59,6 +59,7 @@ pub mod prod;
 pub enum SpecArtifactEnvelopeError {
     ArtifactNotFound,
     PostcardDecodeFailed,
+    ArtifactEvidenceInvalid,
     InvalidGateCount,
     MissingRequiredProofFlagBounded,
     MissingRequiredProofFlagTaintSafe,
@@ -78,6 +79,7 @@ fn convert_artifact_envelope_error(e: prod::ArtifactEnvelopeErrorKind) -> SpecAr
     match e {
         prod::ArtifactEnvelopeErrorKind::ArtifactNotFound => SpecArtifactEnvelopeError::ArtifactNotFound,
         prod::ArtifactEnvelopeErrorKind::PostcardDecodeFailed => SpecArtifactEnvelopeError::PostcardDecodeFailed,
+        prod::ArtifactEnvelopeErrorKind::ArtifactEvidenceInvalid => SpecArtifactEnvelopeError::ArtifactEvidenceInvalid,
         prod::ArtifactEnvelopeErrorKind::InvalidGateCount => SpecArtifactEnvelopeError::InvalidGateCount,
         prod::ArtifactEnvelopeErrorKind::MissingRequiredProofFlagBounded => SpecArtifactEnvelopeError::MissingRequiredProofFlagBounded,
         prod::ArtifactEnvelopeErrorKind::MissingRequiredProofFlagTaintSafe => SpecArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe,

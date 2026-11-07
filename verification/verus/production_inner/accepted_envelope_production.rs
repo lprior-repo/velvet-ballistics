@@ -47,20 +47,23 @@
 //
 // `REQUIRED_GATE_COUNT` is the verbatim mirror of
 // `vb_runtime::admission::REQUIRED_GATE_COUNT = 15` at
-// `crates/vb_runtime/src/admission.rs:20`. The value `15` is
+// `crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2`. The value `15` is
 // inlined here to avoid depending on a separate type definition.
 pub const REQUIRED_GATE_COUNT: u8 = 15;
 
 // Production mirror of `vb_runtime::admission::ArtifactEnvelopeError`
-// at `crates/vb_runtime/src/admission.rs:22-79`, restricted to the
-// discriminant variants exercised by the strict-policy branch of
-// `submit_artifact_with_contracts`. Field-bearing variants are
+// at `crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:10-63`,
+// the full 12-variant discriminant set. Field-bearing variants are
 // collapsed to bare discriminants because the spec only reasons about
-// variant membership.
+// variant membership. `ArtifactEvidenceInvalid` is raised by independent
+// runtime verification (`verify_stored_artifact` at
+// `crates/vb_runtime/src/admission/registered_verification.rs:5-30`),
+// not by the strict gate checks in `is_strict_accepted` below.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArtifactEnvelopeErrorKind {
     ArtifactNotFound,
     PostcardDecodeFailed,
+    ArtifactEvidenceInvalid,
     InvalidGateCount,
     MissingRequiredProofFlagBounded,
     MissingRequiredProofFlagTaintSafe,
