@@ -300,20 +300,80 @@ pub enum ExprOp {
 // Local stub: `vb_core::workflow::CompiledNode` and `CompiledNodeKind`
 // ---------------------------------------------------------------------------
 //
-// Production `CompiledNode` at workflow/mod.rs:561-579 with
+// Production `CompiledNode` at workflow/mod.rs:995-1004 with
 // `#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]`.
-// Production `CompiledNodeKind` at workflow/mod.rs:585-751 has ~40
+// Production `CompiledNodeKind` at workflow/mod.rs:1191-1357 has ~40
 // variants. The mirror preserves the field shape and retains the
 // production variants referenced by sibling lowering fns.
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompiledNode {
     pub id: StepIdx,
-    pub output: Option<SlotIdx>,
-    pub next: Option<StepIdx>,
-    pub on_error: Option<StepIdx>,
-    pub error_slot: Option<SlotIdx>,
+    pub output: NodeOutput,
+    pub routing: NodeRouting,
     pub kind: CompiledNodeKind,
+}
+
+/// Mirror of production `NodeOutput` at
+/// `crates/vb_core/src/workflow/mod.rs:1008-1013`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodeOutput {
+    Discard,
+    Slot(SlotIdx),
+}
+
+impl NodeOutput {
+    pub const fn slot(self) -> Option<SlotIdx> {
+        match self {
+            Self::Discard => None,
+            Self::Slot(slot) => Some(slot),
+        }
+    }
+}
+
+/// Mirror of production `NodeRouting` at
+/// `crates/vb_core/src/workflow/mod.rs:1028-1033`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NodeRouting {
+    pub next: NodeContinuation,
+    pub error: ErrorRouting,
+}
+
+/// Mirror of production `NodeContinuation` at
+/// `crates/vb_core/src/workflow/mod.rs:1037-1042`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodeContinuation {
+    End,
+    Step(StepIdx),
+}
+
+impl NodeContinuation {
+    pub const fn step(self) -> Option<StepIdx> {
+        match self {
+            Self::End => None,
+            Self::Step(step) => Some(step),
+        }
+    }
+}
+
+/// Mirror of production `ErrorRouting` at
+/// `crates/vb_core/src/workflow/mod.rs:1083-1093`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorRouting {
+    None,
+    Handler {
+        handler: StepIdx,
+        error_slot: Option<SlotIdx>,
+    },
+}
+
+impl ErrorRouting {
+    pub const fn handler(self) -> Option<StepIdx> {
+        match self {
+            Self::None => None,
+            Self::Handler { handler, .. } => Some(handler),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
