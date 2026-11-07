@@ -32,7 +32,7 @@
 // ============================================================================
 // BINDING LEDGER (mirrors production_inner/ipc_capacity_bounds_production.rs)
 // ============================================================================
-//   - `MirrorIpcError` (3-variant subset enum)        <- crates/vb_ipc/src/error.rs:10-75
+//   - `MirrorIpcError` (3-variant subset enum)        <- crates/vb_ipc/src/error.rs:12-97
 //   - `MirrorQueueCapacity` (struct)                 <- crates/vb_ipc/src/bounded.rs:12
 //   - `MirrorQueueCapacity::new`                     <- crates/vb_ipc/src/bounded.rs:16-18
 //   - `MirrorMaxPayloadBytes` (struct)               <- crates/vb_ipc/src/bounded.rs:28
@@ -42,9 +42,9 @@
 //   - `MirrorBoundedPayload::new`                    <- crates/vb_ipc/src/bounded.rs:53-62
 //   - `MirrorMemoryIngress` (struct)                 <- crates/vb_ipc/src/ingress.rs:68-71
 //   - `MirrorMemoryIngress::bounded`                 <- crates/vb_ipc/src/ingress.rs:76-79
-//   - `MirrorMemoryIngress::try_submit`              <- crates/vb_ipc/src/ingress.rs:90-92, 122-127
-//   - `MirrorMemoryIngress::len`                     <- crates/vb_ipc/src/ingress.rs:105-107
-//   - `MirrorMemoryIngress::is_empty`                <- crates/vb_ipc/src/ingress.rs:111-113
+//   - `MirrorMemoryIngress::try_submit`              <- crates/vb_ipc/src/ingress.rs:91-93, 123-128
+//   - `MirrorMemoryIngress::len`                     <- crates/vb_ipc/src/ingress.rs:106-108
+//   - `MirrorMemoryIngress::is_empty`                <- crates/vb_ipc/src/ingress.rs:112-114
 //
 // ============================================================================
 // TRUST BOUNDARY
