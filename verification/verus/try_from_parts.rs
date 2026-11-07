@@ -7,35 +7,48 @@
 // PRODUCTION BINDING (GOD RULE 2 compliance)
 // ============================================================================
 // Target: vb_core::workflow::CompiledWorkflow::try_from_parts
-//   at crates/vb_core/src/workflow/mod.rs:35-56
+//   at crates/vb_core/src/workflow/mod.rs:42-65
 //
-// Production body (workflow/mod.rs:35-56):
+// Production body (workflow/mod.rs:42-65):
 //   pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
 //       validate_parts(&parts)?;
+//       let loop_regions = loop_regions::validate(&parts)?;
+//       let nested_activation_entries =
+//           loop_regions::nested_activation_map(&parts, &loop_regions)?;
 //       validate_budget(&parts)?;
 //       validate_input_slots(&parts)?;
 //       Ok(Self { ... })
 //
 // Production validation sequence:
-//   1. validate_parts (workflow/mod.rs:850-874):
+//   1. validate_parts (workflow/mod.rs:1367-1392):
 //      - empty nodes,
-//      - validate_resource_contract (834-839),
-//      - validate_entry (945-947),
-//      - validate_expressions (1289-1298),
-//      - validate_accessors (1312-1317),
-//      - per-node: validate_node_id (819-832) + validate_node
-//        (949-1090),
-//      - validate_accessor_paths (1332-1362),
-//      - validate_constants_symbols (1365-1375),
-//      - validate_build_object_symbols (1378-1390),
-//      - validate_reachability (1403-1472),
-//      - validate_forward_edges (1579-1602),
-//      - validate_no_nested_together.
-//   2. validate_budget (workflow/mod.rs:908-914): whole-workflow
+//      - validate_resource_contract (1587-1593),
+//      - validate_entry (1673-1675),
+//      - validate_expressions (2046-2055),
+//      - validate_accessors (2069-2074),
+//      - per-node: validate_node_id (1472-1485) + validate_node
+//        (1677-1682),
+//      - validate_accessor_paths (2089-2119),
+//      - validate_constants_symbols (2122-2132),
+//      - validate_build_object_symbols (2135-2147),
+//      - validate_reachability (2160-2229),
+//      - validate_forward_edges (2336-2364),
+//      - repeat_counter_ownership::validate
+//        (workflow/repeat_counter_ownership.rs:6-12),
+//      - validate_no_nested_together
+//        (engine/validate.rs:119-172).
+//   2. loop_regions::validate (workflow/loop_regions.rs:59-72):
+//      loop-region pairing and bounds; returns the per-node
+//      CompiledLoopRegion table stored on the workflow.
+//   3. loop_regions::nested_activation_map
+//      (workflow/loop_regions.rs:78-83): per-node nested-activation
+//      flags derived from the region table.
+//   4. validate_budget (workflow/mod.rs:1453-1459): whole-workflow
 //      boundedness policy via WholeWorkflowBudget::compute +
 //      BoundednessPolicy::DEFAULT.validate.
-//   3. validate_input_slots (workflow/mod.rs:876-906): input slot
-//      bounds, duplicate, and strict-increasing-order checks.
+//   5. validate_input_slots (workflow/mod.rs:1394-1425): input slot
+//      bounds, duplicate, and strict-increasing-order checks, plus a
+//      per-slot validate_input_constraint (1427-1451).
 //
 // Binding mechanism: `#[path = "extern_try_from_parts.rs"]` imports the
 // thin extern surface, which mirrors the production IR types with the
