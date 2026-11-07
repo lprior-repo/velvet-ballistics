@@ -76,26 +76,26 @@
 // Type mirrors (each mirrors a production type line-by-line so any
 // drift breaks the build):
 //
-//   - `UnsupportedRecoveryState`          <- crates/vb_storage/src/recovery/types.rs:821-832
-//   - `RecoveryFrameSeed`                 <- crates/vb_storage/src/recovery/types.rs:925-946
-//   - `RecoveryCannotResumeState`         <- crates/vb_storage/src/recovery/types.rs:1063-1098
-//   - `RecoveredStepState`                <- crates/vb_storage/src/recovery/types.rs:776-790
-//   - `RecoveredStepEntry`                <- crates/vb_storage/src/recovery/types.rs:806-811
-//   - `RecoveredSlotEntry`                <- crates/vb_storage/src/recovery/types.rs:815-822
-//   - `RecoveredPendingAction`            <- crates/vb_storage/src/recovery/types.rs:826-831
-//   - `RecoveryTerminalState`             <- crates/vb_storage/src/recovery/types.rs:547-562
-//   - `RecoveryRuntimeSummary`            <- crates/vb_storage/src/recovery/types.rs:564-589
-//   - `RecoveryHydration` (enum)          <- crates/vb_storage/src/recovery/types.rs:604-645
-//   - `RecoveryFrameSeedProduct`          <- crates/vb_storage/src/recovery/types.rs:647-740
-//   - `DigestPair`                        <- crates/vb_storage/src/recovery/types.rs:363-378
-//   - `ActionAbiDigestComparison`         <- crates/vb_storage/src/recovery/types.rs:380-398
-//   - `PolicyDigestComparison`            <- crates/vb_storage/src/recovery/types.rs:400-418
-//   - `FullDigestEvidence<'a>`            <- crates/vb_storage/src/recovery/types.rs:420-475
-//   - `DigestVerificationRequest<'a>`     <- crates/vb_storage/src/recovery/types.rs:477-545
-//   - `DigestCheck`                       <- crates/vb_storage/src/recovery/types.rs:1606-1652
-//   - `RecoveryError` (spec subset)       <- crates/vb_storage/src/recovery/types.rs:39-158
+//   - `UnsupportedRecoveryState`          <- crates/vb_storage/src/recovery/types.rs:839-848
+//   - `RecoveryFrameSeed`                 <- crates/vb_storage/src/recovery/types.rs:941-960
+//   - `RecoveryCannotResumeState`         <- crates/vb_storage/src/recovery/types.rs:1083-1110
+//   - `RecoveredStepState`                <- crates/vb_storage/src/recovery/types.rs:795-806
+//   - `RecoveredStepEntry`                <- crates/vb_storage/src/recovery/types.rs:810-815
+//   - `RecoveredSlotEntry`                <- crates/vb_storage/src/recovery/types.rs:819-826
+//   - `RecoveredPendingAction`            <- crates/vb_storage/src/recovery/types.rs:830-835
+//   - `RecoveryTerminalState`             <- crates/vb_storage/src/recovery/types.rs:550-562
+//   - `RecoveryRuntimeSummary`            <- crates/vb_storage/src/recovery/types.rs:566-589
+//   - `RecoveryHydration` (enum)          <- crates/vb_storage/src/recovery/types.rs:614-619
+//   - `RecoveryFrameSeedProduct`          <- crates/vb_storage/src/recovery/types.rs:660-665
+//   - `DigestPair`                        <- crates/vb_storage/src/recovery/types.rs:365-370
+//   - `ActionAbiDigestComparison`         <- crates/vb_storage/src/recovery/types.rs:382-387
+//   - `PolicyDigestComparison`            <- crates/vb_storage/src/recovery/types.rs:402-407
+//   - `FullDigestEvidence<'a>`            <- crates/vb_storage/src/recovery/types.rs:422-425
+//   - `DigestVerificationRequest<'a>`     <- crates/vb_storage/src/recovery/types.rs:479-505
+//   - `DigestCheck`                       <- crates/vb_storage/src/recovery/types.rs:1671-1678
+//   - `RecoveryError` (spec subset)       <- crates/vb_storage/src/recovery/types.rs:38-147
 //                                            (only the four variants the spec exercises)
-//   - `RuntimeError` (spec subset)        <- crates/vb_runtime/src/error/mod.rs:7-203
+//   - `RuntimeError` (spec subset)        <- crates/vb_runtime/src/error/mod.rs:7-306
 //                                            (only the variants the spec exercises)
 //
 // Pure decision fns (each production body mirrors the production
@@ -105,7 +105,7 @@
 // `assume_specification`):
 //
 //   - `DurableFrameRecoveryProduct::hydrate_run_frame`
-//        <- crates/vb_runtime/src/recovery/product.rs:36-41
+//        <- crates/vb_runtime/src/recovery/product.rs:43-48
 //        (production body: dispatches the typed recovery product;
 //        frame seeds are rejected when any of the 13 cannot-resume
 //        flags is true.)
@@ -139,8 +139,8 @@
 //        summarize_recovery_events. Pure projection: success iff
 //        has_events && summary_ok.)
 //   - `hydrate_run_frame`
-//        <- crates/vb_storage/src/recovery/hydrate.rs:218-238 +
-//           crates/vb_runtime/src/recovery/product.rs:36-41
+//        <- crates/vb_storage/src/recovery/hydrate.rs:220-242 +
+//           crates/vb_runtime/src/recovery/product.rs:43-48
 //        (production body: validate_snapshot_recovery_inputs, then
 //        decode_snapshot_slots (alloc), then derive_dimensions
 //        (alloc), then ensure_nonzero_step_count, then build RunFrame
@@ -152,7 +152,7 @@
 //        steps_apply_ok, slots_apply_ok, pc_in_bounds,
 //        unsupported_passes_through_reject).)
 //   - `SummaryRecoveryBoundary::hydrate_run_frame`
-//        <- crates/vb_runtime/src/recovery.rs:220-222
+//        <- crates/vb_runtime/src/recovery.rs:230-232
 //        (production body: returns Err(UnsupportedFullRecoveryHydration).
 //        Pure projection: never succeeds.)
 //

@@ -26,14 +26,13 @@
 //
 // BINDING LEDGER (mirrors production_inner/budget_monotonic_production.rs)
 // ============================================================================
-//   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget.rs:11-59
-//   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget.rs:64-70
-//   - `BudgetTraversalError`       <- crates/vb_core/src/budget.rs:170-191
-//   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:394-...
-//   - `ResourceContract`           <- crates/vb_core/src/workflow/mod.rs:217-254
+//   - `WholeWorkflowBudget`        <- crates/vb_core/src/budget.rs:14-90
+//   - `WholeWorkflowBudget::compute` <- crates/vb_core/src/budget.rs:97-103
+//   - `BudgetTraversalError`       <- crates/vb_core/src/budget.rs:256-280
+//   - `WorkflowError`              <- crates/vb_core/src/workflow/mod.rs:666-880
+//   - `ResourceContract`           <- crates/vb_core/src/workflow/mod.rs:252-289
 //   - `CompiledNode`, `CompiledNodeKind`
-//                                   <- crates/vb_core/src/workflow/mod.rs:660-...,
-//                                      :682-...
+//                                   <- crates/vb_core/src/workflow/mod.rs:995-1357
 //
 // ============================================================================
 // TRUST BOUNDARY

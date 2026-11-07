@@ -25,18 +25,18 @@
 //
 // BINDING LEDGER (mirrors production_inner/budget_bounded_production.rs)
 // ============================================================================
-//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget.rs:11-59
-//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget.rs:64-70
-//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget.rs:341-375
-//   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget.rs:400-457
-//   - `BudgetError`                          <- crates/vb_core/src/budget.rs:533-568
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget.rs:571-596
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget.rs:622-644
-//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget.rs:655-725
-//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1110-1209
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:1213-1248
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:1250-1268
-//   - `count_total_steps`                    <- crates/vb_core/src/budget.rs:1332-1360
+//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget.rs:14-90
+//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget.rs:97-103
+//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget.rs:455-502
+//   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget.rs:534-592
+//   - `BudgetError`                          <- crates/vb_core/src/budget.rs:703-750
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget.rs:882-920
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget.rs:969-1003
+//   - `AggregateBudgetError`                 <- crates/vb_core/src/budget.rs:1079-1148
+//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1714-1848
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:2111-2146
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:2148-2166
+//   - `count_total_steps`                    <- crates/vb_core/src/budget.rs:2232-2238
 //
 // ============================================================================
 // TRUST BOUNDARY

@@ -75,20 +75,23 @@
 //   - `StepIdx` (u16 newtype)                   <- crates/vb_core/src/ids/mod.rs:70-70
 //   - `StepIdx::new(value: u16) -> Self`        <- crates/vb_core/src/ids/mod.rs:36-36
 //   - `StepIdx::get(self) -> u16`               <- crates/vb_core/src/ids/mod.rs:70-70
-//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:227-234
+//   - `StepIdx::checked_add`                    <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
 //                                                  (used at part_03.rs:203-208
 //                                                   via the `checked_step_offset`
 //                                                   wrapper at part_12.rs:199-212)
 //   - `CompileError::PrimitiveLoweringLimitExceeded`
-//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:124
+//                                                <- crates/vb_compile/src/mod_compile_errors/kind.rs:141
 //                                                  (mirror of
 //                                                  `CompileError::PrimitiveLoweringLimitExceeded`;
 //                                                  the exact variant produced by
 //                                                  `checked_step_offset` on overflow)
-//   - `lower_canonical_collect`                 <- crates/vb_compile/src/mod_compile_lowering/part_03.rs:195-256
-//                                                  (4-node collect emission: body=id+1,
-//                                                  page=id+2, done=id+3; 1 record_slot(source);
-//                                                  3 + body.len() push_node calls)
+//   - `lower_bounded_collect` (formerly `lower_canonical_collect`;
+//     renamed in the collect-lowering split; the production_inner
+//     mirror still models the pre-split body)
+//                                                <- crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260
+//                                                  (plan build + start/body/next/finish emission;
+//                                                  offsets computed by plan_compute_edges, see
+//                                                  the part_03.rs verus block for the contract)
 //   - `lower_canonical_collect_offsets`         <- part_03.rs:203-208 (inlined)
 //                                                  (mirror of the 3 calls to
 //                                                  `checked_step_offset(id, 1/2/3, "collect", ...)`)

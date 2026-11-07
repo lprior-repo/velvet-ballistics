@@ -61,14 +61,14 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `ActionReplayTracker`                          <- crates/vb_storage/src/recovery/types.rs:1439-1447
-//   - `ActionReplayTracker::new`                     <- crates/vb_storage/src/recovery/types.rs:1472-1482
-//   - `ActionReplayTracker::mark_completed`          <- crates/vb_storage/src/recovery/types.rs:1542-1546
-//   - `ActionReplayTracker::mark_failed`             <- crates/vb_storage/src/recovery/types.rs:1612-1614
-//   - `ActionReplayTracker::has_completed`           <- crates/vb_storage/src/recovery/types.rs:1618-1620
-//   - `ActionReplayTracker::has_failed`              <- crates/vb_storage/src/recovery/types.rs:1624-1626
-//   - `ActionReplayTracker::is_resolved`             <- crates/vb_storage/src/recovery/types.rs:1631-1633
-//   - `ActionReplayTracker::default`                 <- crates/vb_storage/src/recovery/types.rs:1637-1640
+//   - `ActionReplayTracker`                          <- crates/vb_storage/src/recovery/types.rs:1446-1451
+//   - `ActionReplayTracker::new`                     <- crates/vb_storage/src/recovery/types.rs:1479-1486
+//   - `ActionReplayTracker::mark_completed`          <- crates/vb_storage/src/recovery/types.rs:1549-1551
+//   - `ActionReplayTracker::mark_failed`             <- crates/vb_storage/src/recovery/types.rs:1638-1640
+//   - `ActionReplayTracker::has_completed`           <- crates/vb_storage/src/recovery/types.rs:1644-1646
+//   - `ActionReplayTracker::has_failed`              <- crates/vb_storage/src/recovery/types.rs:1650-1652
+//   - `ActionReplayTracker::is_resolved`             <- crates/vb_storage/src/recovery/types.rs:1657-1659
+//   - `ActionReplayTracker::default`                 <- crates/vb_storage/src/recovery/types.rs:1663-1665
 //   - Private `mark_scheduled_ticket_effect`, `require_scheduled_ticket`,
 //     `mark_completed_envelope_effect`, `mark_completed_envelope` are
 //     present in the included module but not bound by the spec; they
