@@ -146,7 +146,7 @@ pub open spec fn spec_workflow_error_is_structural(e: SpecWorkflowError) -> bool
 
 /// Spec predicate: the `SpecNodeKind` discriminant is one of the
 /// documented variants. Closed set (matches the production enum at
-/// `crates/vb_core/src/workflow/mod.rs:582-751`).
+/// `crates/vb_core/src/workflow/mod.rs:1191-1357`).
 pub open spec fn spec_node_kind_disc_valid(disc: int) -> bool {
     0 <= disc <= 33
 }
@@ -441,7 +441,7 @@ pub proof fn lemma_structural_failure_in_closed_set(e: SpecWorkflowError)
 
 /// Lemma 5: the empty-nodes rejection. When the node metadata
 /// vector is empty, the validator cannot return `Ok`. (Mirrors
-/// workflow/mod.rs:754-756.)
+/// workflow/mod.rs:1368-1370.)
 pub proof fn lemma_empty_nodes_rejected(nodes_meta_len: int)
     requires
         nodes_meta_len == 0,
@@ -587,7 +587,7 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
 
 /// Spec predicate: check input slots for the first violation,
 /// returning the specific error variant or None if all valid.
-/// Mirrors production validate_input_slots at workflow/mod.rs:876-906
+/// Mirrors production validate_input_slots at workflow/mod.rs:1394-1425
 /// with exact first-error semantics: bounds check first, then
 /// duplicate, then strict ordering.
 pub open spec fn check_input_slots(parts: &SpecWorkflowParts, index: int, prev: Option<int>) -> Option<SpecWorkflowError>
@@ -742,7 +742,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
 
 /// Lemma 16: the closed-set validity of node-kind discriminants.
 /// Mirrors the production `CompiledNodeKind` enum at
-/// `crates/vb_core/src/workflow/mod.rs:582-751`. Any discriminant
+/// `crates/vb_core/src/workflow/mod.rs:1191-1357`. Any discriminant
 /// outside `0..=33` is binding drift, not a legitimate variant.
 pub proof fn lemma_node_kind_disc_closed(disc: int)
     ensures
