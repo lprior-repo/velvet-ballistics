@@ -49,15 +49,17 @@
 // ============================================================================
 // BINDING LEDGER — production ↔ mirror ↔ spec
 // ============================================================================
-//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:1579-1605
+//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:2474-2500
+// Production `crates/vb_core/src/budget.rs:2474-2500`
 //        (production: CollectStart / ForEachStart / RepeatStart /
 //         ReduceStart body multiplication by iteration limit;
 //         the multiplication is `body_count.checked_mul(iter_count)` at
-//         budget.rs:1592 and the addition is `total.checked_add(product)`
-//         at budget.rs:1597)
+//         budget.rs:2487 and the addition is `total.checked_add(product)`
+//         at budget.rs:2493)
 //        -> mirrored as `count_and_push_loop_body`
 //
-//   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:1569-1574
+//   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:2464-2469
+// Production `crates/vb_core/src/budget.rs:2464-2469`
 //        (production: pure checked_add of two u64 step totals with
 //         StepCountOverflow error)
 //        -> mirrored as `checked_step_add`
@@ -68,13 +70,15 @@
 //         `max_gather_items.checked_add(*limit)`)
 //        -> mirrored as `collect_start_update_metrics`
 //
-//   - `count_total_steps`                   <- crates/vb_core/src/budget.rs:1332-1360
+//   - `count_total_steps`                   <- crates/vb_core/src/budget.rs:2232-2238
+// Production `crates/vb_core/src/budget.rs:2232-2238`
 //        (production: pure DFS step counter; only the per-step
-//         `total.checked_add(1)` at budget.rs:1422 is referenced)
+//         `total.checked_add(1)` at budget.rs:2301 is referenced)
 //        -> mirrored as `count_total_steps_step_increment`
 //
-//   - `count_body_region_nodes`             <- crates/vb_core/src/budget.rs:1629-1653
-//        (production: per-body `count.checked_add(1)` at budget.rs:1678
+//   - `count_body_region_nodes`             <- crates/vb_core/src/budget.rs:2526-2533
+// Production `crates/vb_core/src/budget.rs:2526-2533`
+//        (production: per-body `count.checked_add(1)` at budget.rs:2560
 //         with `TotalStepsExceeded` on u64 overflow)
 //        -> mirrored as `body_region_step_increment`
 //
@@ -416,7 +420,7 @@ pub fn collect_start_update_metrics(
 }
 
 /// Production wrapper for the per-step increment in
-/// `visit_node_for_total_steps` at `crates/vb_core/src/budget.rs:1422-1425`:
+/// `visit_node_for_total_steps` at `crates/vb_core/src/budget.rs:2301-2304`:
 ///
 ///   total = match total.checked_add(1) {
 ///       Some(v) => v,
@@ -433,7 +437,7 @@ pub fn count_total_steps_step_increment(total: u64) -> Result<u64, BudgetTravers
 }
 
 /// Production wrapper for the per-body increment in
-/// `visit_body_region_node` at `crates/vb_core/src/budget.rs:1678-1683`:
+/// `visit_body_region_node` at `crates/vb_core/src/budget.rs:2559-2564`:
 ///
 ///   count = count
 ///       .checked_add(1)

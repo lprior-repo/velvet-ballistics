@@ -9,13 +9,18 @@
 //
 // Production sources mirrored:
 //   - `vb_core::action::SideEffect`         (crates/vb_core/src/action/contract.rs:23-34)
+// Production `crates/vb_core/src/action/contract.rs:23-34`
 //   - `vb_core::action::RetrySafety`        (crates/vb_core/src/action/contract.rs:40-47)
+// Production `crates/vb_core/src/action/contract.rs:40-47`
 //   - `vb_core::action::Idempotency`        (crates/vb_core/src/action/contract.rs:10-17)
+// Production `crates/vb_core/src/action/contract.rs:10-17`
 //   - `vb_core::action::ActionContract`     (crates/vb_core/src/action/contract.rs:83-105)
 //   - `vb_storage::admission::is_contract_idempotency_accepted`
-//                                            (crates/vb_storage/src/admission.rs:531-545)
+//                                            (crates/vb_storage/src/admission.rs:427-441)
+// Production `crates/vb_storage/src/admission.rs:427-441`
 //   - `vb_validate::idempotency_contract::is_statically_idempotent_contract`
 //                                            (crates/vb_validate/src/idempotency_contract.rs:140-187)
+// Production `crates/vb_validate/src/idempotency_contract.rs:140-187`
 //
 // DRIFT POLICY: `crates/vb_core/src/action/contract.rs:10-105`
 // Regenerate this file whenever production changes. Any rename of

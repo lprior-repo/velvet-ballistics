@@ -16,7 +16,8 @@
 //      preserved verbatim.
 //
 //   2. The production error variant `CompileError::PrimitiveLoweringLimitExceeded`
-//      at `crates/vb_compile/src/mod_compile_errors/kind.rs:124` is
+//      at `crates/vb_compile/src/mod_compile_errors/kind.rs:141` is
+// Production `crates/vb_compile/src/mod_compile_errors/kind.rs:141-141`
 //      mirrored as `SpecCompileError::PrimitiveLoweringLimitExceeded`.
 //      Field shape (4 payload fields: primitive, field, value, limit)
 //      is preserved; field types are abstracted from `usize` to `u64`

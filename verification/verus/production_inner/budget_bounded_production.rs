@@ -48,26 +48,40 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget.rs:11-59
-//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget.rs:64-70
-//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget.rs:341-375
-//   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget.rs:400-457
+//   - `WholeWorkflowBudget`                  <- crates/vb_core/src/budget.rs:14-90
+// Production `crates/vb_core/src/budget.rs:14-90`
+//   - `WholeWorkflowBudget::compute`         <- crates/vb_core/src/budget.rs:97-103
+// Production `crates/vb_core/src/budget.rs:97-103`
+//   - `BoundednessPolicy`                    <- crates/vb_core/src/budget.rs:455-502
+// Production `crates/vb_core/src/budget.rs:455-502`
+//   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget.rs:534-592
+// Production `crates/vb_core/src/budget.rs:534-592`
 //   - `BudgetError`                          <- crates/vb_core/src/budget.rs:533-568
-//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget.rs:571-596
+//   - `AggregateResourceBudget`              <- crates/vb_core/src/budget.rs:882-920
+// Production `crates/vb_core/src/budget.rs:882-920`
 //   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget.rs:733-744
 //   - `AggregateResourceBudget::from_whole_workflow_budget`
-//                                            <- crates/vb_core/src/budget.rs:746-773
-//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget.rs:598-620
-//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget.rs:622-644
+//                                            <- crates/vb_core/src/budget.rs:1169-1203
+// Production `crates/vb_core/src/budget.rs:1169-1203`
+//   - `AggregateResourceCapacity`            <- crates/vb_core/src/budget.rs:924-965
+// Production `crates/vb_core/src/budget.rs:924-965`
+//   - `AggregateResourceUsage`               <- crates/vb_core/src/budget.rs:969-1003
+// Production `crates/vb_core/src/budget.rs:969-1003`
 //   - `AggregateResourceUsage::try_add_budget`
-//                                            <- crates/vb_core/src/budget.rs:787-870
+//                                            <- crates/vb_core/src/budget.rs:1217-1331
+// Production `crates/vb_core/src/budget.rs:1217-1331`
 //   - `AggregateResourceUsage::try_subtract_budget`
-//                                            <- crates/vb_core/src/budget.rs:872-955
-//   - `AggregateResourceUsage::fits_within`   <- crates/vb_core/src/budget.rs:957-1046
-//   - `AggregateResourceUsage::check_policy` <- crates/vb_core/src/budget.rs:1051-1107
-//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1110-1209
+//                                            <- crates/vb_core/src/budget.rs:1333-1447
+// Production `crates/vb_core/src/budget.rs:1333-1447`
+//   - `AggregateResourceUsage::fits_within`   <- crates/vb_core/src/budget.rs:1449-1578
+// Production `crates/vb_core/src/budget.rs:1449-1578`
+//   - `AggregateResourceUsage::check_policy` <- crates/vb_core/src/budget.rs:1583-1674
+// Production `crates/vb_core/src/budget.rs:1583-1674`
+//   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1714-1848
+// Production `crates/vb_core/src/budget.rs:1714-1848`
 //   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:1213-1248
-//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:1250-1268
+//   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:2148-2166
+// Production `crates/vb_core/src/budget.rs:2148-2166`
 //                                            (pure checked_add / checked_sub;
 //                                             these are the pure decision fns
 //                                             we exercise via `assume_specification`)

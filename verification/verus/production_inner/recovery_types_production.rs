@@ -7,6 +7,8 @@
 // Drift-detection stubs for the recovery type surface at
 //   crates/vb_storage/src/recovery/types.rs
 //
+// DRIFT POLICY: `crates/vb_storage/src/recovery/types.rs:1-1714`
+//
 // Source coverage:
 //   - `RecoveryTerminalState` enum (Cancelled, Killed, Finished{result},
 //      Failed)                                  <- types.rs:550-562

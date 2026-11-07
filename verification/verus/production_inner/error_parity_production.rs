@@ -8,9 +8,9 @@
 //
 // This file binds the `error_parity.rs` spec to the production
 // `emit_single_body_set` function in
-// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297` and to
+// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179` and to
 // the production `canonical_primitive_name` function in
-// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:6-22`.
+// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
 //
 // The binding is structural + contract:
 //
@@ -24,7 +24,7 @@
 //      verbatim from the production body, so the spec proofs exercise the
 //      same Set/Save/Do/Choose/ForEach/Together/Collect/Aggregate/Repeat/
 //      Wait/Ask/Finish classification that production emits in the
-//      `UnsupportedStepPrimitive` error arm at part_04.rs:290-295.
+//      `UnsupportedStepPrimitive` error arm at part_04.rs:172-177.
 //
 //   3. The production exec function `emit_single_body_set` is mirrored as
 //      a `#[verifier::external]` wrapper that mirrors the production
@@ -106,15 +106,15 @@
 //   - `ActionId`                           <- mirror of vb_core::action::ActionId (u16 newtype)
 //   - `SlotCompiler`                       <- mirror of vb_compile::SlotCompiler builder surface
 //   - `canonical_primitive_name`           <- VERBATIM production body
-//                                              (part_05_digest.rs:6-22)
+//                                              (part_05_digest.rs:125-141)
 //   - `lower_set`                          <- production exec wrapper
-//                                              (part_05_ir.rs:41-55) `[verifier::external]`
+//                                              (part_05_ir.rs:44-51) `[verifier::external]`
 //   - `body_constant_index`                <- production exec wrapper
-//                                              (part_04.rs:299-...) `[verifier::external]`
+//                                              (body_constants.rs:3-28) `[verifier::external]`
 //   - `integer_error_value`                <- production exec wrapper
 //                                              (part_12.rs:152-157) `[verifier::external]`
 //   - `emit_single_body_set`               <- production exec wrapper
-//                                              (part_04.rs:213-297) `[verifier::external]`
+//                                              (part_04.rs:96-179) `[verifier::external]`
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -131,14 +131,14 @@
 // outside Verus.
 //
 // ============================================================================
-// DRIFT POLICY: `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297`
+// DRIFT POLICY: `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`
 // ============================================================================
 // Production source coverage:
-//   - `canonical_primitive_name`     <- part_05_digest.rs:6-22 (verbatim body)
-//   - `lower_set`                    <- part_05_ir.rs:41-55
-//   - `body_constant_index`          <- part_04.rs:299+
+//   - `canonical_primitive_name`     <- part_05_digest.rs:125-141 (verbatim body)
+//   - `lower_set`                    <- part_05_ir.rs:44-51
+//   - `body_constant_index`          <- body_constants.rs:3-28
 //   - `integer_error_value`          <- part_12.rs:152-157
-//   - `emit_single_body_set`         <- part_04.rs:213-297
+//   - `emit_single_body_set`         <- part_04.rs:96-179
 //   - `StepIdx`, `SlotIdx`           <- vb_core/src/ids/mod.rs
 //   - `StepAst`, `StepPrimitive`     <- vb_compile::yaml_ast::types
 //   - `CompileError`, `CompileErrors` <- vb_compile::mod_compile_errors
@@ -211,7 +211,7 @@ impl SlotIdx {
 /// Mirror of `ActionId` (u16 newtype) at `crates/vb_core/src/action/mod.rs`.
 /// Used by `CompiledNodeKind::Do { action, .. }` and constructed by
 /// `emit_single_body_set` for the `Do { action, input }` arm at
-/// part_04.rs:284.
+/// part_04.rs:167.
 #[derive(Clone, Copy)]
 pub struct ActionId(pub u16);
 
@@ -249,9 +249,9 @@ impl ActionId {
 /// `crates/vb_yaml/src/yaml_ast/types.rs:230`. All twelve production
 /// variants plus an `Other` arm to model the `#[non_exhaustive]`
 /// catch-all. `emit_single_body_set` only pattern-matches on `Set` and
-/// `Do` at part_04.rs:237 and 244; every other variant falls through to
+/// `Do` at part_04.rs:120 and 127; every other variant falls through to
 /// the `other => Err(UnsupportedStepPrimitive { primitive: canonical_primitive_name(other) })`
-/// arm at part_04.rs:290-295, so the discriminant set must mirror
+/// arm at part_04.rs:172-177, so the discriminant set must mirror
 /// production exactly for the parity proofs to fire.
 pub enum StepPrimitive {
     Set {
@@ -309,7 +309,7 @@ pub enum StepPrimitive {
     /// Catch-all for the production `#[non_exhaustive]` enum. In
     /// production this is unreachable from the public API (every
     /// `StepPrimitive` constructor is named), but `canonical_primitive_name`
-    /// maps it to `"unknown"` at part_05_digest.rs:20.
+    /// maps it to `"unknown"` at part_05_digest.rs:139.
     Other,
 }
 
@@ -369,11 +369,11 @@ pub struct ErrorHandlerAst {
 // Production `CompileError` at
 // `crates/vb_compile/src/mod_compile_errors/kind.rs:12` is `#[non_exhaustive]`
 // with 50+ variants. `emit_single_body_set` only constructs the following
-// subset (verified by reading part_04.rs:222-296 line by line):
+// subset (verified by reading part_04.rs:105-178 line by line):
 //
-//   - StepFieldShape { step, field, expected }  (parts_04.rs:223, 230, 247, 263)
-//   - UnsupportedStepPrimitive { step, primitive }  (parts_04.rs:291)
-//   - PrimitiveLoweringLimitExceeded { primitive, field, value, limit }  (parts_04.rs:254)
+//   - StepFieldShape { step, field, expected }  (part_04.rs:106, 113, 130, 146)
+//   - UnsupportedStepPrimitive { step, primitive }  (part_04.rs:173)
+//   - PrimitiveLoweringLimitExceeded { primitive, field, value, limit }  (part_04.rs:137)
 //   - SlotIndexOutOfRange { value }  (parts_04.rs:270)
 //
 // All other variants are unreachable from `emit_single_body_set`. The
@@ -386,10 +386,10 @@ pub struct ErrorHandlerAst {
 /// Mirror of production `CompileError` discriminant set reachable from
 /// `emit_single_body_set`. The variants and their fields match the
 /// production source line-by-line:
-///   - `StepFieldShape`                   <- kind.rs:114
-///   - `UnsupportedStepPrimitive`         <- kind.rs:108
-///   - `PrimitiveLoweringLimitExceeded`   <- kind.rs:124 (Do action branch)
-///   - `SlotIndexOutOfRange`              <- kind.rs:118 (Do input branch)
+///   - `StepFieldShape`                   <- kind.rs:124
+///   - `UnsupportedStepPrimitive`         <- kind.rs:118
+///   - `PrimitiveLoweringLimitExceeded`   <- kind.rs:141 (Do action branch)
+///   - `SlotIndexOutOfRange`              <- kind.rs:128 (Do input branch)
 pub enum CompileError {
     StepFieldShape {
         step: usize,
@@ -516,13 +516,13 @@ impl SlotCompiler {
 // ============================================================================
 //
 // Mirrors production `canonical_primitive_name` at
-// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:6-22`.
+// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
 // Body is reproduced verbatim so the spec proofs discharge against the
 // same discriminant mapping production emits in the
-// `UnsupportedStepPrimitive` error arm at part_04.rs:290-295.
+// `UnsupportedStepPrimitive` error arm at part_04.rs:172-177.
 
 /// Mirror of production `canonical_primitive_name` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:6-22`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_05_digest.rs:125-141`.
 ///
 /// The production body maps every `StepPrimitive` discriminant to a
 /// canonical name string:
@@ -555,7 +555,7 @@ pub fn canonical_primitive_name(primitive: &StepPrimitive) -> &'static str {
 // result from the production discriminant set.
 
 /// Spec helper: returns true iff `primitive` is the `Set` variant.
-/// Mirrors the discriminant test at part_04.rs:237
+/// Mirrors the discriminant test at part_04.rs:120
 /// (`crate::StepPrimitive::Set { value, .. }`).
 #[verifier::external]
 pub fn is_set_primitive(primitive: &StepPrimitive) -> bool {
@@ -563,7 +563,7 @@ pub fn is_set_primitive(primitive: &StepPrimitive) -> bool {
 }
 
 /// Spec helper: returns true iff `primitive` is the `Do` variant.
-/// Mirrors the discriminant test at part_04.rs:244
+/// Mirrors the discriminant test at part_04.rs:127
 /// (`crate::StepPrimitive::Do { action, input }`).
 #[verifier::external]
 pub fn is_do_primitive(primitive: &StepPrimitive) -> bool {
@@ -580,7 +580,7 @@ pub fn is_do_primitive(primitive: &StepPrimitive) -> bool {
 // (`error_parity.rs`).
 
 /// Production wrapper for `lower_set` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs:41-55`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_05_ir.rs:44-51`.
 /// Body skipped by Verus; contract attached via `assume_specification`
 /// in the spec file.
 #[verifier::external]
@@ -596,7 +596,7 @@ pub fn lower_set(
 }
 
 /// Production wrapper for `body_constant_index` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:299-...`.
+/// `crates/vb_compile/src/mod_compile_lowering/body_constants.rs:3-28`.
 /// Body skipped by Verus; contract attached via `assume_specification`
 /// in the spec file.
 #[verifier::external]
@@ -620,7 +620,7 @@ pub fn integer_error_value(_value: i64) -> usize {
 }
 
 /// Production wrapper for `emit_single_body_set` at
-/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:213-297`.
+/// `crates/vb_compile/src/mod_compile_lowering/part_04.rs:96-179`.
 /// Body skipped by Verus; contract attached via `assume_specification`
 /// in the spec file. This is the primary binding target for the
 /// `error_parity` proofs.

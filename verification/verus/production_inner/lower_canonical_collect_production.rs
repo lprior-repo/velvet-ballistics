@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 //
 // ============================================================================
-// IN-TREE PRODUCTION-SOURCE MIRROR for `lower_canonical_collect`
+// IN-TREE PRODUCTION-SOURCE MIRROR for `lower_bounded_collect`
 // ============================================================================
 //
 // This file is a minimal production-binding stub for the
 // `collect_ir_structure.rs` Verus spec. The primary production source
-// is `crates/vb_compile/src/mod_compile_lowering/part_03.rs:195-256`
-// (the `lower_canonical_collect` body). The production file cannot be
+// is `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`
+// (the `lower_bounded_collect` body). The production file cannot be
 // `#[path]`-included from this single-file Verus unit because:
 //
 //   1. `part_03.rs` uses `use super::*;` which fails when the file is
@@ -19,7 +19,7 @@
 //      and `CompileError` — none of which are reachable as extern
 //      crates in `verus --crate-type=lib`.
 //
-//   3. The production `lower_canonical_collect` signature takes
+//   3. The production `lower_bounded_collect` signature takes
 //      `CollectLowering<'_>` and `&mut SlotCompiler` and emits four
 //      `CompiledNode` entries, all of which carry proc-macro derives
 //      Verus cannot model.
@@ -38,7 +38,7 @@
 // so the projection is nameable in spec mode.
 //
 // DRIFT POLICY: This mirror MUST be regenerated from
-// `crates/vb_compile/src/mod_compile_lowering/part_03.rs:195-256`
+// `crates/vb_compile/src/mod_compile_lowering/bounded_collect.rs:243-260`
 // whenever production changes. Section headers cite the originating
 // production line range so regeneration is mechanical.
 

@@ -34,7 +34,8 @@
 // ============================================================================
 // BINDING LEDGER
 // ============================================================================
-//   - `StrictAdmissionRefinement` (struct)             <- crates/vb_runtime/src/ipc_refinement.rs:21-29
+//   - `StrictAdmissionRefinement` (struct)             <- crates/vb_runtime/src/ipc_refinement.rs:23-30
+// Production `crates/vb_runtime/src/ipc_refinement.rs:23-30`
 //     - `artifact_digest_matches: bool`               <- crates/vb_runtime/src/ipc_refinement.rs:24
 //     - `run_id_matches: bool`                        <- crates/vb_runtime/src/ipc_refinement.rs:26
 //     - `policy_matches: bool`                        <- crates/vb_runtime/src/ipc_refinement.rs:28
