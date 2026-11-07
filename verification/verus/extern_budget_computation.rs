@@ -116,17 +116,28 @@ fn prod_methods_drift_check() {
 
     // Reference every variant of CompiledNodeKind used by the spec:
     // ForEachStart, CollectStart, RepeatStart (production
-    // workflow/mod.rs:1191-1357).
+    // workflow/mod.rs:1191-1357). CollectNext is referenced too, to
+    // pin its collector_slot field, even though the spec never
+    // constructs it.
     let entry = production_inner::StepIdx::new(0);
     let step = production_inner::StepIdx::new(0);
+    let slot = production_inner::SlotIdx::new(0);
     let _kind = production_inner::CompiledNodeKind::ForEachStart {
+        input: slot,
+        item_slot: slot,
         limit: 0,
         body: step,
         done: step,
     };
     let _kind = production_inner::CompiledNodeKind::CollectStart {
+        source: slot,
         limit: 0,
         page_size: 0,
+        body: step,
+        done: step,
+    };
+    let _kind = production_inner::CompiledNodeKind::CollectNext {
+        collector_slot: slot,
         body: step,
         done: step,
     };

@@ -186,18 +186,21 @@ pub enum CompiledNodeKind {
         input: SlotIdx,
     },
     ForEachStart {
+        input: SlotIdx,
+        item_slot: SlotIdx,
         limit: u32,
         body: StepIdx,
         done: StepIdx,
     },
     CollectStart {
+        source: SlotIdx,
         limit: u32,
         page_size: u32,
         body: StepIdx,
         done: StepIdx,
     },
     CollectNext {
-        limit: u32,
+        collector_slot: SlotIdx,
         body: StepIdx,
         done: StepIdx,
     },
