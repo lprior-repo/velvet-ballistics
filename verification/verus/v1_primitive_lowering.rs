@@ -11,17 +11,17 @@
 // Target: production `lower_*` exec fns in
 // `crates/vb_compile/src/mod_compile_lowering/`:
 //
-//   - lower_set           <- part_05_ir.rs:41-55
-//   - lower_do            <- part_05_ir.rs:58-75
-//   - lower_choose        <- part_06.rs:20-51
-//   - lower_for_each      <- part_06.rs:54-94
-//   - lower_together      <- part_06.rs:97-135
-//   - lower_collect       <- part_06.rs:146-193
-//   - lower_reduce        <- part_06.rs:196-244
-//   - lower_repeat        <- part_07.rs:16-65
-//   - lower_wait          <- part_07.rs:84-111
-//   - lower_ask           <- part_07.rs:114-152
-//   - lower_finish        <- part_07.rs:155-165
+//   - lower_set           <- part_05_ir.rs:44-51
+//   - lower_do            <- part_05_ir.rs:54-64
+//   - lower_choose        <- part_06.rs:22-51
+//   - lower_for_each      <- part_06.rs:54-90
+//   - lower_together      <- part_06.rs:93-127
+//   - lower_collect       <- bounded_collect.rs:243-260
+//   - lower_reduce        <- part_06.rs:135-178
+//   - lower_repeat        <- part_07.rs:17-56
+//   - lower_wait          <- part_07.rs:75-95
+//   - lower_ask           <- part_07.rs:98-135
+//   - lower_finish        <- part_07.rs:138-141
 //
 // Binding mechanism: `#[path = "extern_v1_primitive_lowering.rs"]` imports
 // the thin extern surface, which defines a `#[verifier::external]`
@@ -47,6 +47,19 @@
 // ledger. Each proof below operates on the projection through a
 // production-bound exec wrapper; any divergence between the projection
 // and the production body is a binding debt item tracked outside Verus.
+//
+// The `lower_collect` projection models the scalar-determined
+// sub-decision of `lower_bounded_collect` only: body emptiness, edge
+// arithmetic, and the slot budget. Variable-name and capture
+// validation, source resolution, bounds validation (pages/items), and
+// body-emission errors stay outside it, so `ok == true` there means
+// the sub-decision succeeds, not that the full production fn returns
+// `Ok`. Slot accounting assumes the fresh-source case and counts the
+// full call: one `record_slot(source)` plus two `allocate_slot` calls
+// plus one slot per body step (`+3 + body_len`), because body steps
+// are Set or Do only and each allocates exactly one slot. This differs
+// deliberately from the PO-011 `collect_lowering.rs` projection, which
+// scopes to `plan_build` only (`+3`).
 //
 // ============================================================================
 // SPEC MODEL — AbstractPlan / SourceInputs
@@ -108,6 +121,8 @@ pub use production::{
     SPEC_ERR_LIMIT_EXCEEDED,
     SPEC_ERR_NONE,
     SPEC_ERR_SLOT_OUT_OF_RANGE,
+    SPEC_ERR_STEP_INDEX_OUT_OF_RANGE,
+    SPEC_ERR_STEP_SHAPE,
 };
 
 // ============================================================================
@@ -249,6 +264,38 @@ pub open spec fn collect_shape(plan: AbstractPlan) -> bool {
         plan.body_target,
         plan,
     ) && target_in_range(plan.done_target, plan)
+}
+
+pub open spec fn spec_collect_offsets_ok(id: StepIdx, body_len: u16) -> bool {
+    &&& id.0 as int + 1 <= u16_max()
+    &&& id.0 as int + body_len as int + 1 <= u16_max()
+    &&& id.0 as int + body_len as int + 2 <= u16_max()
+    &&& body_len as int + 1 <= u16_max()
+    &&& body_len as int + 2 <= u16_max()
+}
+
+pub open spec fn spec_collect_ok(id: StepIdx, body_len: u16, pre_slot_count: u16) -> bool {
+    &&& body_len as int >= 1
+    &&& spec_collect_offsets_ok(id, body_len)
+    &&& pre_slot_count as int + 3 + body_len as int <= u16_max()
+}
+
+pub open spec fn spec_collect_error_kind(id: StepIdx, body_len: u16, pre_slot_count: u16) -> u8 {
+    if body_len as int == 0 {
+        SPEC_ERR_STEP_SHAPE
+    } else if id.0 as int + 1 > u16_max() {
+        SPEC_ERR_LIMIT_EXCEEDED
+    } else if body_len as int + 1 > u16_max() {
+        SPEC_ERR_STEP_INDEX_OUT_OF_RANGE
+    } else if id.0 as int + body_len as int + 1 > u16_max() {
+        SPEC_ERR_LIMIT_EXCEEDED
+    } else if body_len as int + 2 > u16_max() {
+        SPEC_ERR_STEP_INDEX_OUT_OF_RANGE
+    } else if id.0 as int + body_len as int + 2 > u16_max() {
+        SPEC_ERR_LIMIT_EXCEEDED
+    } else {
+        SPEC_ERR_SLOT_OUT_OF_RANGE
+    }
 }
 
 pub open spec fn reduce_shape(plan: AbstractPlan) -> bool {
@@ -460,22 +507,34 @@ pub assume_specification[ production::lower_together_projection ](
 ;
 
 pub assume_specification[ production::lower_collect_projection ](
-    _id: StepIdx,
+    id: StepIdx,
     _source: SlotIdx,
     _limit: u32,
     _page_size: u32,
     _body: StepIdx,
     _done: StepIdx,
+    body_len: u16,
     pre_slot_count: u16,
 ) -> (outcome: SpecLowerOutcome)
     ensures
-        outcome.ok,
-        outcome.error_kind == SPEC_ERR_NONE,
-        outcome.pre_slot_count == pre_slot_count,
-        // record_slot(source).
-        outcome.post_slot_count == pre_slot_count + 1,
-        // CollectStart + CollectPage + CollectFinish.
-        outcome.emitted_node_count == 3u16,
+        match outcome.ok {
+            true => {
+                &&& outcome.error_kind == SPEC_ERR_NONE
+                &&& outcome.pre_slot_count == pre_slot_count
+                &&& outcome.post_slot_count as int == pre_slot_count as int + 3 + body_len as int
+                &&& outcome.emitted_node_count as int == 3 + body_len as int
+                &&& body_len as int >= 1
+                &&& spec_collect_offsets_ok(id, body_len)
+                &&& pre_slot_count as int + 3 + body_len as int <= u16_max()
+            },
+            false => {
+                &&& outcome.error_kind == spec_collect_error_kind(id, body_len, pre_slot_count)
+                &&& outcome.pre_slot_count == pre_slot_count
+                &&& outcome.post_slot_count == pre_slot_count
+                &&& outcome.emitted_node_count == 0u16
+                &&& !spec_collect_ok(id, body_len, pre_slot_count)
+            },
+        },
 ;
 
 pub assume_specification[ production::lower_reduce_projection ](
@@ -720,16 +779,23 @@ pub exec fn checked_prod_lower_together(source: SourceInputs) -> (outcome: SpecL
     )
 }
 
-/// Production-bound exec wrapper for `lower_collect`.
-pub exec fn checked_prod_lower_collect(source: SourceInputs) -> (outcome: SpecLowerOutcome)
+/// Production-bound exec wrapper for `lower_collect`. Requires the
+/// body to be non-empty, the `id + body_len + 2` done edge to fit in
+/// u16 (which bounds every `plan_compute_edges` sum), and the
+/// `pre + 3 + body_len` slot count to fit in u16.
+pub exec fn checked_prod_lower_collect(source: SourceInputs, body_len: u16) -> (outcome:
+    SpecLowerOutcome)
     requires
         source_inputs_valid(source),
+        body_len > 0u16,
+        source.next_target_input as int + body_len as int + 2 <= u16_max(),
+        source.allocated_slots as int + 3 + body_len as int <= u16_max(),
     ensures
         outcome.ok,
-        outcome.emitted_node_count == 3u16,
-        outcome.post_slot_count == source.allocated_slots + 1,
-        outcome.pre_slot_count == source.allocated_slots,
         outcome.error_kind == SPEC_ERR_NONE,
+        outcome.pre_slot_count == source.allocated_slots,
+        outcome.post_slot_count as int == source.allocated_slots as int + 3 + body_len as int,
+        outcome.emitted_node_count as int == 3 + body_len as int,
 {
     production::lower_collect_projection(
         StepIdx(source.next_target_input),
@@ -738,6 +804,7 @@ pub exec fn checked_prod_lower_collect(source: SourceInputs) -> (outcome: SpecLo
         0u32,
         StepIdx(source.body_target_input),
         StepIdx(source.done_target_input),
+        body_len,
         source.allocated_slots,
     )
 }
