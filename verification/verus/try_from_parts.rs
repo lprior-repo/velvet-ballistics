@@ -103,13 +103,14 @@ pub open spec fn spec_validation_ok(r: SpecValidationResult) -> bool {
 
 /// Spec predicate: a `SpecWorkflowError` discriminant is one of the
 /// typed bound violations (slot, step, const, expr, accessor, symbol,
-/// empty). Spec-fn mirror of the const fn
+/// empty, input constraint, counter slot). Spec-fn mirror of the const fn
 /// `spec_workflow_error_is_bound_violation` in
 /// `extern_try_from_parts.rs`.
 pub open spec fn spec_workflow_error_is_bound_violation_spec(e: SpecWorkflowError) -> bool {
     matches!(
         e,
-        SpecWorkflowError::EmptyNodes
+        SpecWorkflowError::RepeatCounterForeignWrite
+            | SpecWorkflowError::EmptyNodes
             | SpecWorkflowError::EntryOutOfBounds
             | SpecWorkflowError::StepOutOfBounds
             | SpecWorkflowError::SlotOutOfBounds
@@ -120,27 +121,35 @@ pub open spec fn spec_workflow_error_is_bound_violation_spec(e: SpecWorkflowErro
             | SpecWorkflowError::InputSlotOutOfBounds
             | SpecWorkflowError::DuplicateInputSlot
             | SpecWorkflowError::NonCanonicalInputSlotOrder
+            | SpecWorkflowError::InconsistentInputConstraint
     )
 }
 
 /// Spec predicate: a `SpecWorkflowError` discriminant is one of the
 /// structural / policy failures (resource contract, branch table,
 /// reachability, forward edges, loop nesting, budget, jump cycles,
-/// nested together). Spec-fn mirror of the production discriminant set.
+/// nested together, node identity, branch-target aliasing, loop
+/// regions). Spec-fn mirror of the production discriminant set.
 pub open spec fn spec_workflow_error_is_structural(e: SpecWorkflowError) -> bool {
     matches!(
         e,
-        SpecWorkflowError::ResourceContractExceeded
+        SpecWorkflowError::NodeIdMismatch
+            | SpecWorkflowError::ResourceContractExceeded
             | SpecWorkflowError::ResourceContractTooLarge
             | SpecWorkflowError::EmptyBranchTable
             | SpecWorkflowError::UnreachableNode
             | SpecWorkflowError::BackwardEdge
+            | SpecWorkflowError::ReduceBranchTargetAlias
+            | SpecWorkflowError::ForEachBranchTargetAlias
             | SpecWorkflowError::ImproperLoopNesting
             | SpecWorkflowError::BudgetPolicyExceeded
             | SpecWorkflowError::StepCountOverflow
             | SpecWorkflowError::DepthOverflow
             | SpecWorkflowError::JumpCycle
             | SpecWorkflowError::NestedTogether
+            | SpecWorkflowError::LoopRegionUnpaired
+            | SpecWorkflowError::LoopRegionCrossing
+            | SpecWorkflowError::LoopRegionUnsupported
     )
 }
 
@@ -392,18 +401,19 @@ pub proof fn lemma_error_classification_is_total(e: SpecWorkflowError)
         !(spec_workflow_error_is_bound_violation_spec(e) && spec_workflow_error_is_structural(e)),
 {
     // The two spec predicates enumerate disjoint variants; the
-    // discriminant set at workflow/mod.rs:319-452 covers every
+    // discriminant set at workflow/mod.rs:666-880 covers every
     // named variant. The proof is by closed enumeration.
 }
 
 /// Lemma 3: every bound-violation discriminant is one of the
 /// documented slot / step / const / expr / accessor / symbol /
-/// empty variants.
+/// empty / input constraint / counter slot variants.
 pub proof fn lemma_bound_violation_in_closed_set(e: SpecWorkflowError)
     requires
         spec_workflow_error_is_bound_violation_spec(e),
     ensures
-        e == SpecWorkflowError::EmptyNodes
+        e == SpecWorkflowError::RepeatCounterForeignWrite
+            || e == SpecWorkflowError::EmptyNodes
             || e == SpecWorkflowError::EntryOutOfBounds
             || e == SpecWorkflowError::StepOutOfBounds
             || e == SpecWorkflowError::SlotOutOfBounds
@@ -413,29 +423,37 @@ pub proof fn lemma_bound_violation_in_closed_set(e: SpecWorkflowError)
             || e == SpecWorkflowError::AccessorPathTooDeep
             || e == SpecWorkflowError::InputSlotOutOfBounds
             || e == SpecWorkflowError::DuplicateInputSlot
-            || e == SpecWorkflowError::NonCanonicalInputSlotOrder,
+            || e == SpecWorkflowError::NonCanonicalInputSlotOrder
+            || e == SpecWorkflowError::InconsistentInputConstraint,
 {
     // The closed-set enumeration in spec_workflow_error_is_bound_violation_spec
-    // exactly enumerates these 11 variants.
+    // exactly enumerates these 13 variants.
 }
 
 /// Lemma 4: every structural-failure discriminant is one of the
-/// documented resource / branch / graph variants.
+/// documented resource / branch / graph / node identity /
+/// branch-target aliasing / loop region variants.
 pub proof fn lemma_structural_failure_in_closed_set(e: SpecWorkflowError)
     requires
         spec_workflow_error_is_structural(e),
     ensures
-        e == SpecWorkflowError::ResourceContractExceeded
+        e == SpecWorkflowError::NodeIdMismatch
+            || e == SpecWorkflowError::ResourceContractExceeded
             || e == SpecWorkflowError::ResourceContractTooLarge
             || e == SpecWorkflowError::EmptyBranchTable
             || e == SpecWorkflowError::UnreachableNode
             || e == SpecWorkflowError::BackwardEdge
+            || e == SpecWorkflowError::ReduceBranchTargetAlias
+            || e == SpecWorkflowError::ForEachBranchTargetAlias
             || e == SpecWorkflowError::ImproperLoopNesting
             || e == SpecWorkflowError::BudgetPolicyExceeded
             || e == SpecWorkflowError::StepCountOverflow
             || e == SpecWorkflowError::DepthOverflow
             || e == SpecWorkflowError::JumpCycle
-            || e == SpecWorkflowError::NestedTogether,
+            || e == SpecWorkflowError::NestedTogether
+            || e == SpecWorkflowError::LoopRegionUnpaired
+            || e == SpecWorkflowError::LoopRegionCrossing
+            || e == SpecWorkflowError::LoopRegionUnsupported,
 {
 }
 
