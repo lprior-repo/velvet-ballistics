@@ -26,11 +26,11 @@
 //
 // BINDING LEDGER (mirrors production_inner/budget_computation_production.rs)
 // ============================================================================
-//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:1579-1605
-//   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:1569-1574
-//   - `max_gather_pages`                    <- crates/vb_core/src/budget.rs:2154-2159
-//   - `total`                               <- crates/vb_core/src/budget.rs:1422-1425
-//   - `count`                               <- crates/vb_core/src/budget.rs:1678-1683
+//   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:2474-2500
+//   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:2464-2469
+//   - `max_gather_pages`                    <- crates/vb_core/src/budget.rs:3094-3103
+//   - `total`                               <- crates/vb_core/src/budget.rs:2301-2304
+//   - `count`                               <- crates/vb_core/src/budget.rs:2559-2564
 //
 // ============================================================================
 // TRUST BOUNDARY

@@ -37,25 +37,25 @@
 // ============================================================================
 // BINDING LEDGER (mirrors production_inner/ipc_runtime_transitions_production.rs)
 // ============================================================================
-//   - `RuntimeEvent` (9-variant enum)                 <- crates/vb_runtime/src/shard/types.rs:1246-1269
-//   - `RuntimeEvent::is_terminal()`                   <- crates/vb_runtime/src/shard/types.rs:1274-1279
-//   - `RuntimeEvent::is_resumable()`                  <- crates/vb_runtime/src/shard/types.rs:1283-1288
-//   - `RuntimeState` (5-variant enum)                 <- crates/vb_runtime/src/shard/types.rs:1222-1236
-//   - `RuntimeState::is_resumable()`                  <- crates/vb_runtime/src/shard/types.rs:1241-1243
-//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types.rs:1146-1171
-//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types.rs:1173-1181
-//   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`           <- crates/vb_runtime/src/shard/types.rs:703
-//   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types.rs:721-725
-//   - `PendingTimerKind` (2-variant enum)             <- crates/vb_runtime/src/shard/types.rs:31-34
-//   - `TimerEntry` (4-field struct)                   <- crates/vb_runtime/src/shard/timer_wheel.rs:20-30
+//   - `RuntimeEvent` (9-variant enum)                 <- crates/vb_runtime/src/shard/types.rs:1500-1519
+//   - `RuntimeEvent::is_terminal()`                   <- crates/vb_runtime/src/shard/types.rs:1524-1529
+//   - `RuntimeEvent::is_resumable()`                  <- crates/vb_runtime/src/shard/types.rs:1533-1538
+//   - `RuntimeState` (5-variant enum)                 <- crates/vb_runtime/src/shard/types.rs:1475-1486
+//   - `RuntimeState::is_resumable()`                  <- crates/vb_runtime/src/shard/types.rs:1491-1493
+//   - `ShardStatus` (11-field struct)                 <- crates/vb_runtime/src/shard/types.rs:1398-1421
+//   - `ShardHealth` (2-variant enum)                  <- crates/vb_runtime/src/shard/types.rs:1426-1431
+//   - `MAX_COMMAND_QUEUE_CAPACITY = 65_536`           <- crates/vb_runtime/src/shard/types.rs:830
+//   - `ShardCommandQueue` (capacity/depth struct)     <- crates/vb_runtime/src/shard/types.rs:848-864
+//   - `PendingTimerKind` (2-variant enum)             <- crates/vb_runtime/src/shard/types.rs:33-36
+//   - `TimerEntry` (4-field struct)                   <- crates/vb_runtime/src/shard/timer_wheel.rs:21-30
 //   - `TimerWheel`                                    <- crates/vb_runtime/src/shard/timer_wheel.rs:41-46
 //   - `TimerWheel::new`                               <- crates/vb_runtime/src/shard/timer_wheel.rs:51-56
 //   - `TimerWheel::cancel`                            <- crates/vb_runtime/src/shard/timer_wheel.rs:93-104
 //   - `TimerWheel::fire_expired`                      <- crates/vb_runtime/src/shard/timer_wheel.rs:109-128
 //   - `TimerWheel::len`                               <- crates/vb_runtime/src/shard/timer_wheel.rs:144-146
 //   - `TimerWheel::get_kind`                          <- crates/vb_runtime/src/shard/timer_wheel.rs:150-152
-//   - `RuntimePolicy` (4-variant enum)                <- crates/vb_core/src/policy.rs:7+
-//   - `RunAdmission` (6-field struct)                 <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-16
+//   - `RuntimePolicy` (3-variant enum)                <- crates/vb_core/src/policy.rs:194-201
+//   - `RunAdmission` (9-field struct)                 <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31
 //
 // ============================================================================
 // TRUST BOUNDARY
