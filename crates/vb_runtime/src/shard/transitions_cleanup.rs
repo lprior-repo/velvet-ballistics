@@ -1,6 +1,9 @@
+use core::num::NonZeroU16;
+
 use vb_core::ids::{RunId, StepIdx};
 
 use crate::journal::RuntimeJournalEvent;
+use crate::run_checkpoint::RunCheckpointV1;
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
@@ -66,7 +69,7 @@ impl crate::shard::Shard {
         checkpoint_result
     }
 
-    fn capture_retry_checkpoint(
+    pub(crate) fn capture_retry_checkpoint(
         &mut self,
         run: RunId,
         retry_step: StepIdx,
@@ -92,7 +95,7 @@ impl crate::shard::Shard {
             Some(seq) => seq,
             None => return Ok(()),
         };
-        let checkpoint = match crate::run_checkpoint::RunCheckpointV1::capture(
+        let mut checkpoint = match RunCheckpointV1::capture(
             run,
             artifact_digest,
             next_attempt,
@@ -103,22 +106,56 @@ impl crate::shard::Shard {
             Ok(checkpoint) => checkpoint,
             Err(_) => return Ok(()),
         };
-        let payload = match postcard::to_allocvec(&checkpoint) {
-            Ok(bytes) => bytes,
-            Err(_) => return Ok(()),
-        };
-        let payload_digest = *blake3::hash(&payload).as_bytes();
-        let event = RuntimeJournalEvent::RetryCheckpoint {
-            run,
-            attempt: next_attempt.get(),
-            step: retry_step,
-            payload_digest,
-            payload,
-        };
-        let projected = Self::journal_bytes_after_append(state, core::slice::from_ref(&event))?;
+        let base = state.journal_bytes_written;
+        let event =
+            match Self::retry_checkpoint_event(&mut checkpoint, run, next_attempt, retry_step) {
+                Ok(event) => event,
+                Err(_) => return Ok(()),
+            };
+        let projected = base
+            .checked_add(Self::journal_event_bytes(&event)?)
+            .ok_or(RuntimeError::EncodeFailed)?;
         self.append_journal_event(event)?;
         state.journal_bytes_written = projected;
         Ok(())
+    }
+
+    fn retry_checkpoint_event(
+        checkpoint: &mut RunCheckpointV1,
+        run: RunId,
+        attempt: NonZeroU16,
+        step: StepIdx,
+    ) -> RuntimeResult<RuntimeJournalEvent> {
+        let base = checkpoint.journal_bytes_written;
+        let mut stored = base;
+        // The stored counter must include this event's own encoded size, but
+        // that size depends on the stored counter through the postcard varint
+        // lengths of the counter and the payload length. Both lengths are
+        // non-decreasing step functions that change at most nine times each,
+        // so the fixed point is reached within nineteen rounds; thirty-two
+        // is a safe static bound.
+        for _ in 0..32 {
+            checkpoint.journal_bytes_written = stored;
+            let payload =
+                postcard::to_allocvec(&*checkpoint).map_err(|_| RuntimeError::EncodeFailed)?;
+            let payload_digest = *blake3::hash(&payload).as_bytes();
+            let event = RuntimeJournalEvent::RetryCheckpoint {
+                run,
+                attempt: attempt.get(),
+                step,
+                payload_digest,
+                payload,
+            };
+            let event_bytes = Self::journal_event_bytes(&event)?;
+            let next = base
+                .checked_add(event_bytes)
+                .ok_or(RuntimeError::EncodeFailed)?;
+            if next == stored {
+                return Ok(event);
+            }
+            stored = next;
+        }
+        Err(RuntimeError::EncodeFailed)
     }
 
     pub(crate) fn rollback_run_state_preserving_error(

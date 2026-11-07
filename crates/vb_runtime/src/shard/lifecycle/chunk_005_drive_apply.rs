@@ -450,7 +450,7 @@ impl Shard {
         Ok(total)
     }
 
-    fn journal_event_bytes(event: &RuntimeJournalEvent) -> RuntimeResult<u64> {
+    pub(crate) fn journal_event_bytes(event: &RuntimeJournalEvent) -> RuntimeResult<u64> {
         Self::journal_batch_bytes(core::slice::from_ref(event))
     }
 
