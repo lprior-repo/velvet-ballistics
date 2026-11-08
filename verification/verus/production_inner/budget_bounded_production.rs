@@ -448,6 +448,13 @@ pub struct AggregateResourceBudget {
     pub max_input_bytes: u32,
     pub max_step_budget_per_tick: u64,
     pub max_transitions_per_tick: u64,
+    pub max_open_gates: u32,
+    pub max_signal_subscriptions: u32,
+    pub max_incident_emissions: u64,
+    pub max_transitions: u64,
+    pub max_journal_bytes_total: u64,
+    pub max_value_store_entries: u64,
+    pub max_cost_units: u64,
 }
 
 /// Mirror of production `AggregateResourceCapacity` at

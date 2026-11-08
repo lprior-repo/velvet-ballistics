@@ -35,6 +35,15 @@
 #      drift: a production variant, field, function, or constant was
 #      added or renamed in a way the mirror has not been regenerated
 #      to reflect.
+#   6. Per-struct field check: for every struct in a claimed
+#      production slice that is also declared in the mirror, verifies
+#      that every production field appears in the same-named mirror
+#      struct. The whole-file check in step 5 cannot see a field
+#      addition when the field name already appears elsewhere in the
+#      mirror file (a sibling struct carrying the same field masks
+#      it); this check closes that gap. Structs with no same-named
+#      declaration in the mirror are skipped here (their declaration
+#      may live in a sibling mirror file) and stay covered by step 5.
 #
 # Sections explicitly marked `REMOVED:` are skipped (the mirror
 # intentionally omits that production range; flagging it as drift
@@ -368,6 +377,63 @@ filter_noise_words() {
   grep -vE '^(crate|derive|non_exhaustive|must_use|repr|error|from|allow|forbid|deny|warn|impl|fn|pub|struct|enum|use|mod|where|let|mut|const|static|match|return|self|Self|true|false|None|Some|Ok|Err|line|lines|verbatim|byte|preserved|removed|declared|production|mirror|stub|local|header|note|comment|doc|string|section|substitution|variant|discriminant|block|name|fn_name|impl_block|error_msg|the|and|for|with|from|that|this|of|in|to|or|is|as|by|on|at|are|be|it|an|a|see|via|per|all|any|each|their|these|those|which|both|never|always|still|also|even|after|before|same|other|must|should|cannot|will|would|could|may|might|do|does|did|done|when|where|why|how|what|whom|whose|been|being|have|has|had|not|but|yet|so|because|since|although|though|unless|until|while|whereas|wherever|here|above|below|under|over|between|through|against|among|into|onto|upon|within|without|out|off|down|up|again|further|then|once|such|very|too|only|own|than|now|just|about|drift|substituted|removed|policy|sources|coverage|bindings|binding|debt|ledgers|sections|crates|source|range|body|naming|include|including|excludes|exclude|except|besides|apart|alongside|replacing|replaced|extended|extends|substitution|reason|rationale|description|notes|hint|hints|field|fields|variants|argument|arguments|parameter|parameters|signature|signatures|version|versions|build|rebuild|target|targets|companion|companions|part|parts|piece|pieces|tier|tiers|api|apis|adheres|adhere|expand|expands|expanded|rule|rules|fact|facts|role|roles|effect|effects|sum|sums|summed|step|steps|level|levels|share|shares|shared|gap|gaps|policies|policy|again|details|detail|silent|silently|surface|surfaces|also|value|values|output|outputs|input|inputs|result|results)$' || true
 }
 
+# Extract `StructName field_name` pairs from Rust source on stdin.
+# Only named-field structs (`struct Name { field: Type, ... }`) are
+# reported; unit and tuple structs have no named fields to compare.
+# Input is expected to have passed through strip_noise first, so
+# comments and attribute lines are already gone. Output is sorted
+# and de-duplicated so it can be compared with `comm`.
+#
+# Limitations, documented rather than silently worked around:
+#   - A struct whose declaration is not in the mirror at all is not
+#     checked here (its fields may live in a sibling mirror file
+#     included through the same `#[path]` chain); the whole-file
+#     identifier check above still requires its name to appear.
+#   - Field lists assume one field per line, which is what `cargo
+#     fmt` produces; two fields on one line would report only the
+#     first. Struct bodies contain only field declarations, so no
+#     other `name:` line shape occurs inside the braces.
+extract_struct_fields() {
+  strip_noise \
+    | perl -0777 -ne '
+        while (/\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)/g) {
+          my $name = $1;
+          my $rest = substr($_, pos($_));
+          my $brace = index($rest, "{");
+          my $semi = index($rest, ";");
+          next if $brace < 0;
+          next if $semi >= 0 && $semi < $brace;
+          my $depth = 0;
+          my $i = $brace;
+          my $len = length($rest);
+          my ($body_start, $body_end);
+          while ($i < $len) {
+            my $c = substr($rest, $i, 1);
+            if ($c eq "{") { $depth++; $body_start = $i + 1 if $depth == 1 && !defined $body_start; }
+            elsif ($c eq "}") { $depth--; if ($depth == 0) { $body_end = $i; last; } }
+            $i++;
+          }
+          # A claimed range that ends mid-struct (for example the
+          # header range predates a field added at the end of the
+          # struct, so the closing brace now sits one line past the
+          # range) still yields the fields inside the range: treat
+          # end of input as the body end instead of skipping the
+          # struct, which would hide exactly the addition this
+          # check exists to catch.
+          $body_end = $len if !defined $body_end && defined $body_start;
+          next unless defined $body_end;
+          my $body = substr($rest, $body_start, $body_end - $body_start);
+          for my $line (split /\n/, $body) {
+            if ($line =~ /^\s*(?:pub\s*(?:\([^)]*\))?\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*:/) {
+              print "$name $1\n";
+            }
+          }
+          pos($_) = pos($_) + $body_end + 1;
+        }
+      ' \
+    | sort -u
+}
+
 # ---------------------------------------------------------------------------
 # Per-mirror drift check
 # ---------------------------------------------------------------------------
@@ -398,6 +464,11 @@ for mirror in "$MIRROR_DIR"/*.rs; do
   # substitutions for production types and must be present in the
   # identifier set.
   mirror_ids=$(extract_identifiers < "$mirror" | filter_noise_words)
+
+  # Mirror struct fields are extracted from the ENTIRE mirror file
+  # for the same reason: a struct may be declared in the preamble
+  # as a local stub and used by a mirrored section.
+  mirror_struct_fields=$(extract_struct_fields < "$mirror")
 
   # Per-claim drift check. Only per-section claims are checked; the
   # master DRIFT POLICY claim (if any) is used only for bare-path
@@ -463,6 +534,36 @@ for mirror in "$MIRROR_DIR"/*.rs; do
         printf 'DRIFT: production identifiers in %s missing from mirror:\n' \
           "${abs_path#"$REPO_ROOT/"}"
         printf '%s\n' "$missing" | sed 's/^/  - /'
+      } | tee -a "$LOG"
+      claim_drift=1
+    fi
+
+    # Per-struct field check for this claim. The whole-file check
+    # above cannot see a field addition when the field name already
+    # appears elsewhere in the mirror file (for example a sibling
+    # struct in the same file carries the same field), so compare
+    # fields per struct: every field of a production struct must
+    # appear in the same-named struct in the mirror. Production
+    # structs with no same-named declaration in this mirror are
+    # skipped here — their declaration may live in a sibling mirror
+    # file — and stay covered by the whole-file check above.
+    prod_struct_fields=$(sed -n "${start},${end}p" "$abs_path" \
+      | extract_struct_fields)
+    scoped_prod_fields=$(awk 'NR==FNR { names[$1]=1; next } ($1 in names)' \
+      <(printf '%s\n' "$mirror_struct_fields") \
+      <(printf '%s\n' "$prod_struct_fields") \
+      | sort -u || true)
+    missing_fields=$(comm -23 \
+      <(printf '%s\n' "$scoped_prod_fields") \
+      <(printf '%s\n' "$mirror_struct_fields") \
+      || true)
+
+    if [ -n "$missing_fields" ]; then
+      {
+        printf '\n=== %s ===\n' "$mirror_rel"
+        printf 'DRIFT: production struct fields in %s missing from the same-named mirror struct:\n' \
+          "${abs_path#"$REPO_ROOT/"}"
+        printf '%s\n' "$missing_fields" | sed 's/^/  - /'
       } | tee -a "$LOG"
       claim_drift=1
     fi
