@@ -1,5 +1,6 @@
 //! Private diagnostic-domain module.
 
+mod codes;
 mod collection;
 mod kind;
 mod source_mark;
