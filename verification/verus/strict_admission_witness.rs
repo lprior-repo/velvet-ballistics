@@ -100,7 +100,7 @@ pub open spec fn production_strict_like_spec(policy: SpecRuntimePolicy) -> bool 
 
 /// Spec predicate: a `SpecWitnessKind` is storage-backed iff it is
 /// `StorageAcceptedArtifact`. Mirrors the production storage-backend
-/// surface at chunk_003_stores.rs:112-196 — only `StorageArtifactStore` reading
+/// surface at chunk_003_stores.rs:113-196 — only `StorageArtifactStore` reading
 /// through `vb_storage::FjallJournal` provides a true storage-backed
 /// witness.
 pub open spec fn storage_backed(witness: SpecWitnessKind) -> bool {
@@ -132,7 +132,7 @@ pub open spec fn valid_admission_witness(
 
 // Spec-side mirror constant: the gate_count `verification_proof_core`
 // forces for every admitted artifact
-// (crates/vb_storage/src/admission.rs:113-129). A proof carrying the
+// (crates/vb_storage/src/admission.rs:113-128). A proof carrying the
 // legacy 15-gate count does not match the prepared shape and is
 // rejected by `verify_accepted_artifact` with `ArtifactEvidenceInvalid`.
 // `REQUIRED_GATE_COUNT` above mirrors the real `vb_runtime` constant
