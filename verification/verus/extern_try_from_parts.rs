@@ -130,6 +130,10 @@
 //     <- crates/vb_core/src/workflow/mod.rs:2012-2156
 //   - `validate_accessor_paths`
 //     <- crates/vb_core/src/workflow/mod.rs:2089-2119
+//   - `validate_constants_symbols`
+//     <- crates/vb_core/src/workflow/mod.rs:2122-2132
+//   - `validate_build_object_symbols`
+//     <- crates/vb_core/src/workflow/mod.rs:2135-2147
 //   - `MAX_PATH_DEPTH`
 //     <- crates/vb_core/src/limits.rs:59
 //   - `validate_reachability`
@@ -815,6 +819,27 @@ pub struct SpecWorkflowParts {
     /// projection treats a missing entry (a `kind_refs` shorter than
     /// `nodes_meta`) as an empty inventory for the tail nodes.
     pub kind_refs: Vec<Vec<SpecKindRef>>,
+    /// Symbol inventory of the constant pool consumed by
+    /// `validate_constants_symbols` (workflow/mod.rs:2122-2132).
+    /// `constants_symbols` lists, in pool order, the `SymbolId`
+    /// of every `ConstValue::Symbol` constant
+    /// (value.rs:165); non-`Symbol` constants contribute no
+    /// entry, so the inventory is symbol-only by construction
+    /// and no sentinel is needed. The projection returns
+    /// `SymbolOutOfBounds` for the first entry at or beyond
+    /// `symbols_count`, matching production's `validate_symbol`
+    /// (workflow/mod.rs:2150-2156).
+    pub constants_symbols: Vec<u32>,
+    /// Per-node BuildObject field-symbol inventory consumed by
+    /// `validate_build_object_symbols` (workflow/mod.rs:2135-2147).
+    /// `build_object_field_symbols[i]` is node i's BuildObject
+    /// field symbols in field order; nodes of any other kind
+    /// carry an empty entry. The projection treats a missing
+    /// entry (a `build_object_field_symbols` shorter than
+    /// `nodes_meta`) as no BuildObject fields for the tail nodes,
+    /// and returns `SymbolOutOfBounds` for the first field
+    /// symbol at or beyond `symbols_count`.
+    pub build_object_field_symbols: Vec<Vec<u32>>,
     /// Caller-supplied computed budget consumed by step 4
     /// (`validate_budget`, workflow/mod.rs:1453-1459). Production
     /// derives it with `WholeWorkflowBudget::compute`
@@ -1360,6 +1385,53 @@ pub fn accessor_path_error(
                 if index == u32::MAX {
                     return Some(SpecWorkflowError::ExpressionInvalid);
                 }
+            }
+        }
+    }
+    None
+}
+
+/// Pure projection of `validate_constants_symbols`
+/// (workflow/mod.rs:2122-2132): each `ConstValue::Symbol`
+/// constant in pool order via `validate_symbol`
+/// (workflow/mod.rs:2150-2156, `symbol.get() < symbols_count`
+/// else `SymbolOutOfBounds`). Reads the caller-supplied
+/// symbol-only `constants_symbols` inventory, so non-`Symbol`
+/// constants never reach the check. Returns the first failure,
+/// or `None` when every pooled symbol validates.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn constants_symbols_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    for symbol in &parts.constants_symbols {
+        if *symbol >= parts.symbols_count {
+            return Some(SpecWorkflowError::SymbolOutOfBounds);
+        }
+    }
+    None
+}
+
+/// Pure projection of `validate_build_object_symbols`
+/// (workflow/mod.rs:2135-2147): each `BuildObject` field symbol,
+/// node by node in node order and field by field in field order,
+/// via `validate_symbol` (workflow/mod.rs:2150-2156,
+/// `symbol.get() < symbols_count` else `SymbolOutOfBounds`).
+/// Reads the caller-supplied `build_object_field_symbols`
+/// inventory; a missing entry means the node carries no
+/// BuildObject fields. Returns the first failure, or `None`
+/// when every field symbol validates.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn build_object_symbols_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    for fields in &parts.build_object_field_symbols {
+        for symbol in fields {
+            if *symbol >= parts.symbols_count {
+                return Some(SpecWorkflowError::SymbolOutOfBounds);
             }
         }
     }
@@ -2507,9 +2579,16 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         }
     }
     // 1g. validate_constants_symbols + validate_build_object_symbols
-    // (workflow/mod.rs:2122-2147) — per-symbol detail remains
-    // trusted/future: the projection does not yet model the
-    // SymbolId bounds of the constant pool or BuildObject fields.
+    // (workflow/mod.rs:2122-2147) — per-symbol detail modelled from
+    // the caller-supplied `constants_symbols` and
+    // `build_object_field_symbols` inventories, in production order:
+    // the constant pool first, then the BuildObject fields.
+    if let Some(err) = constants_symbols_error(parts) {
+        return SpecValidationResult::Err(err);
+    }
+    if let Some(err) = build_object_symbols_error(parts) {
+        return SpecValidationResult::Err(err);
+    }
     // 1h. validate_reachability (workflow/mod.rs:2160-2229) —
     // every node must be reachable from the entry over routing
     // `next`, routing error handlers, and kind targets.
