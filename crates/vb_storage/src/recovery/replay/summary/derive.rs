@@ -3,18 +3,16 @@
 //!
 //! Also exposes admission recovery and dimension proof helpers for production bindings.
 
-use std::collections::{HashMap, HashSet};
-
-use vb_core::{ActionId, CompiledWorkflow, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::{CompiledWorkflow, RunId, StepIdx, WorkflowDigest};
 
 use crate::JournalEvent;
 use crate::recovery::types::{
-    RecoveredPendingAction, RecoveredRunAdmission, RecoveredStepEntry, RecoveredStepState,
-    RecoveryError, RecoveryFrameSeed, RecoveryFrameSeedProduct, RecoveryResult,
-    UnsupportedRecoveryState,
+    RecoveredRunAdmission, RecoveryError, RecoveryFrameSeed, RecoveryFrameSeedProduct,
+    RecoveryResult, UnsupportedRecoveryState,
 };
 
 use super::accumulator::FrameSeedAccumulator;
+use super::derive_entries::{dimension_count, recovered_pending_actions, recovered_steps};
 use super::hydrate::RecoveredSlots;
 
 /// Builder that constructs a raw [`RecoveryFrameSeed`] from journal events.
@@ -260,50 +258,4 @@ fn seed_unsupported_state(
         UnsupportedRecoveryState::SUPPORTED,
         UnsupportedRecoveryState::union,
     )
-}
-
-trait RecoveryIndex {
-    fn index(self) -> u16;
-}
-
-impl RecoveryIndex for StepIdx {
-    fn index(self) -> u16 {
-        self.get()
-    }
-}
-
-impl RecoveryIndex for SlotIdx {
-    fn index(self) -> u16 {
-        self.get()
-    }
-}
-
-fn dimension_count<T: RecoveryIndex>(max: Option<T>, run: RunId) -> RecoveryResult<u16> {
-    max.map(|value| {
-        value
-            .index()
-            .checked_add(1)
-            .ok_or(RecoveryError::FrameDimensionOverflow { run })
-    })
-    .map_or(Ok(0), |result| result)
-}
-
-fn recovered_steps(step_states: HashMap<StepIdx, RecoveredStepState>) -> Vec<RecoveredStepEntry> {
-    let mut entries: Vec<RecoveredStepEntry> = step_states
-        .into_iter()
-        .map(|(step, state)| RecoveredStepEntry { step, state })
-        .collect();
-    entries.sort_by_key(|entry| entry.step);
-    entries
-}
-
-fn recovered_pending_actions(
-    pending_actions: HashSet<(ActionId, StepIdx)>,
-) -> Vec<RecoveredPendingAction> {
-    let mut entries: Vec<RecoveredPendingAction> = pending_actions
-        .into_iter()
-        .map(|(action, step)| RecoveredPendingAction { step, action })
-        .collect();
-    entries.sort_by_key(|entry| (entry.step, entry.action));
-    entries
 }

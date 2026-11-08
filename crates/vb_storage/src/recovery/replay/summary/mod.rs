@@ -8,6 +8,7 @@
 //! Organized into:
 //! - `apply`: event-to-summary application
 //! - `derive`: top-level recovery entry points and frame seed builder
+//! - `derive_entries`: recovered entry assembly and dimension counting for `derive`
 //! - `accumulator`: `FrameSeedAccumulator` state machine
 //! - `hydrate`: slot hydration, taint recovery, and replay error mapping
 
@@ -27,6 +28,7 @@ use hydrate::{RecoveredSlots, replay_error_to_recovery};
 pub mod accumulator;
 pub mod apply;
 pub mod derive;
+pub mod derive_entries;
 pub mod dimensions;
 pub mod hydrate;
 
