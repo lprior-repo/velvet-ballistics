@@ -100,7 +100,8 @@ pub use production::{
     spec_node_kind_together_start, spec_node_kind_wait_event,
     spec_node_kind_wait_until, spec_ref_none, SpecAccessor, SpecNode,
     SpecNodeKind, SpecNodeMeta, SpecResourceContract, SpecValidationResult,
-    SpecWorkflowError, SpecWorkflowParts, spec_validation_result_is_ok,
+    SpecWorkflowError, SpecWorkflowParts, loop_pairing_error,
+    spec_validation_result_is_ok,
     spec_workflow_error_is_bound_violation, try_from_parts_pure,
     validate_node_pure,
 };
@@ -242,6 +243,19 @@ pub assume_specification[ production::validate_node_pure ](
         err == validate_node_pure_spec(meta, slot_count as int, node_count as int,
             expressions_len as int, accessors_len as int, constants_len as int,
             symbols_count as int),
+;
+
+/// Spec-level mirror of `production::loop_pairing_error`. Returns the
+/// first `LoopRegionUnpaired` failure the pairing step would report,
+/// or `None` when every cached control pairs with a unique ordered
+/// start. The mirror is the contract layer for the pairing decision;
+/// the exec projection in `extern_try_from_parts.rs` is the trusted
+/// base recorded in the binding ledger.
+pub assume_specification[ production::loop_pairing_error ](
+    parts: &SpecWorkflowParts,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_pairing_error(&parts.nodes_meta, 0),
 ;
 
 /// Spec-level mirror of `production::validate_node_pure`. Returns
@@ -578,6 +592,83 @@ pub proof fn lemma_projection_deterministic(parts: &SpecWorkflowParts)
 {
 }
 
+/// Spec predicate: a start shape owns a control shape iff body,
+/// done, and both state slots agree. Mirrors `loop_shape_matches`
+/// in `extern_try_from_parts.rs`.
+pub open spec fn spec_loop_shape_matches(control: SpecNodeMeta, start: SpecNodeMeta) -> bool {
+    control.ctrl_body == start.start_body
+        && control.ctrl_done == start.start_done
+        && control.ctrl_state_a == start.start_state_a
+        && control.ctrl_state_b == start.start_state_b
+}
+
+/// Spec mirror of the `unique_owner` scan (pairing.rs:33-50) for one
+/// cached control at index `ctrl_idx`. Scans candidate starts from
+/// index `j`; `found` records whether an ordered owner was already
+/// seen. Returns the first `LoopRegionUnpaired` failure (missing
+/// owner when the scan ends unfound, duplicate owner, or unordered
+/// owner), or `None` when the control pairs with exactly one ordered
+/// start.
+pub open spec fn spec_owner_scan_error(
+    metas: &Vec<SpecNodeMeta>,
+    ctrl_idx: int,
+    j: int,
+    found: bool,
+) -> Option<SpecWorkflowError>
+    decreases metas.len() - j
+{
+    if ctrl_idx < 0 || ctrl_idx >= metas.len() {
+        None
+    } else if j >= metas.len() {
+        if found {
+            None
+        } else {
+            Some(SpecWorkflowError::LoopRegionUnpaired)
+        }
+    } else {
+        let candidate = metas[j];
+        let control = metas[ctrl_idx];
+        if candidate.has_start_shape == 1 && spec_loop_shape_matches(control, candidate) {
+            let ordered = candidate.id < control.ctrl_body
+                && control.ctrl_body < control.id
+                && control.id < control.ctrl_done;
+            if found || !ordered {
+                Some(SpecWorkflowError::LoopRegionUnpaired)
+            } else {
+                spec_owner_scan_error(metas, ctrl_idx, j + 1, true)
+            }
+        } else {
+            spec_owner_scan_error(metas, ctrl_idx, j + 1, found)
+        }
+    }
+}
+
+/// Spec mirror of the `cache_control` pairing pass (pairing.rs:8-31)
+/// over the node table. Walks controls in table order; a control
+/// participates only when its body does not follow its own id
+/// (`ctrl_body <= id`, the complement of the production skip).
+/// Returns the first `LoopRegionUnpaired` failure, or `None` when
+/// every cached control pairs.
+pub open spec fn spec_pairing_error(metas: &Vec<SpecNodeMeta>, i: int) -> Option<SpecWorkflowError>
+    decreases metas.len() - i
+{
+    if i >= metas.len() {
+        None
+    } else {
+        let meta = metas[i];
+        if meta.has_ctrl_shape == 1 && meta.ctrl_body <= meta.id {
+            let err = spec_owner_scan_error(metas, i, 0, false);
+            if err != None::<SpecWorkflowError> {
+                err
+            } else {
+                spec_pairing_error(metas, i + 1)
+            }
+        } else {
+            spec_pairing_error(metas, i + 1)
+        }
+    }
+}
+
 /// Spec-level mirror of the projection result. The spec proofs
 /// reference this so the `assume_specification` ensures clauses
 /// resolve through the spec mirror rather than the opaque body.
@@ -607,11 +698,16 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
     } else if parts.slot_count > parts.resource_contract.max_slots {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else {
-        let slot_err = input_slots_valid(parts);
-        if (slot_err != None::<SpecWorkflowError>) {
-            SpecValidationResult::Err(slot_err.unwrap())
+        let pairing_err = spec_pairing_error(&parts.nodes_meta, 0);
+        if pairing_err != None::<SpecWorkflowError> {
+            SpecValidationResult::Err(pairing_err.unwrap())
         } else {
-            SpecValidationResult::Ok
+            let slot_err = input_slots_valid(parts);
+            if (slot_err != None::<SpecWorkflowError>) {
+                SpecValidationResult::Err(slot_err.unwrap())
+            } else {
+                SpecValidationResult::Ok
+            }
         }
     }
 }
@@ -735,6 +831,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
     ensures
         // The projection returns Ok for these inputs. The spec
@@ -764,6 +861,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Resource contract exceeded: skip.
     } else if parts.slot_count > parts.resource_contract.max_slots {
         // Resource contract exceeded: skip.
+    } else if spec_pairing_error(&parts.nodes_meta, 0) != None::<SpecWorkflowError> {
+        // Loop pairing: skip (already required valid).
     } else if input_slots_valid(parts) != None::<SpecWorkflowError> {
         // Input slot validation: skip (already required valid).
     } else {
@@ -795,6 +894,72 @@ pub proof fn lemma_ref_none_sentinel()
         // < u32::MAX, so the sentinel never collides with a real index.
         (0xFFFFFFFFu32 as int) > 10000,
 {
+}
+
+/// Lemma 18: the loop-region unpaired rejection. A lone cached
+/// control with no start shape anywhere in the table is rejected
+/// with `LoopRegionUnpaired` (production `unique_owner`,
+/// pairing.rs:33-50, returns the same error when no start matches
+/// the control shape).
+pub proof fn lemma_loop_region_unpaired_rejected(metas: &Vec<SpecNodeMeta>)
+    requires
+        metas.len() == 1,
+        metas[0].has_ctrl_shape == 1,
+        metas[0].ctrl_body <= metas[0].id,
+        metas[0].has_start_shape == 0,
+    ensures
+        spec_pairing_error(metas, 0) == Some(SpecWorkflowError::LoopRegionUnpaired),
+{
+    assert(spec_pairing_error(metas, 0) == spec_owner_scan_error(metas, 0, 0, false));
+    assert(spec_owner_scan_error(metas, 0, 0, false) == spec_owner_scan_error(metas, 0, 1, false));
+    assert(spec_owner_scan_error(metas, 0, 1, false) == Some(SpecWorkflowError::LoopRegionUnpaired));
+}
+
+/// Lemma 19: the duplicate-owner rejection. A cached control whose
+/// shape matches two ordered starts is rejected with
+/// `LoopRegionUnpaired` (production `unique_owner` errors as soon
+/// as a second matching start is seen).
+pub proof fn lemma_loop_region_duplicate_owner_rejected(metas: &Vec<SpecNodeMeta>)
+    requires
+        metas.len() == 3,
+        metas[0].has_ctrl_shape == 1,
+        metas[0].ctrl_body <= metas[0].id,
+        metas[0].has_start_shape == 0,
+        metas[1].has_start_shape == 1,
+        metas[2].has_start_shape == 1,
+        spec_loop_shape_matches(metas[0], metas[1]),
+        spec_loop_shape_matches(metas[0], metas[2]),
+        metas[1].id < metas[0].ctrl_body,
+        metas[0].ctrl_body < metas[0].id,
+        metas[0].id < metas[0].ctrl_done,
+        metas[2].id < metas[0].ctrl_body,
+    ensures
+        spec_pairing_error(metas, 0) == Some(SpecWorkflowError::LoopRegionUnpaired),
+{
+    assert(spec_pairing_error(metas, 0) == spec_owner_scan_error(metas, 0, 0, false));
+    assert(spec_owner_scan_error(metas, 0, 0, false) == spec_owner_scan_error(metas, 0, 1, false));
+    assert(spec_owner_scan_error(metas, 0, 1, false) == spec_owner_scan_error(metas, 0, 2, true));
+    assert(spec_owner_scan_error(metas, 0, 2, true) == Some(SpecWorkflowError::LoopRegionUnpaired));
+}
+
+/// Lemma 20: the unordered-owner rejection. A cached control whose
+/// only matching start is not ordered (`start.id < body < control
+/// < done` fails) is rejected with `LoopRegionUnpaired`.
+pub proof fn lemma_loop_region_unordered_owner_rejected(metas: &Vec<SpecNodeMeta>)
+    requires
+        metas.len() == 2,
+        metas[0].has_ctrl_shape == 1,
+        metas[0].ctrl_body <= metas[0].id,
+        metas[0].has_start_shape == 0,
+        metas[1].has_start_shape == 1,
+        spec_loop_shape_matches(metas[0], metas[1]),
+        metas[1].id >= metas[0].ctrl_body,
+    ensures
+        spec_pairing_error(metas, 0) == Some(SpecWorkflowError::LoopRegionUnpaired),
+{
+    assert(spec_pairing_error(metas, 0) == spec_owner_scan_error(metas, 0, 0, false));
+    assert(spec_owner_scan_error(metas, 0, 0, false) == spec_owner_scan_error(metas, 0, 1, false));
+    assert(spec_owner_scan_error(metas, 0, 1, false) == Some(SpecWorkflowError::LoopRegionUnpaired));
 }
 
 fn main() {}
