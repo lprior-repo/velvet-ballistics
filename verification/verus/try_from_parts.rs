@@ -2658,6 +2658,14 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
     } else if parts.resource_contract.max_ipc_payload_bytes > 16777216 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
+    } else if parts.resource_contract.max_retry_attempts > 10 {
+        SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
+    } else if parts.resource_contract.max_fanout > 256 {
+        SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
+    } else if parts.resource_contract.max_collect_items > 1048576 {
+        SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
+    } else if parts.resource_contract.max_queue_depth > 1048576 {
+        SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
     } else if parts.resource_contract.max_journal_batch_bytes > 16777216 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
     } else if parts.nodes_len > parts.resource_contract.max_steps {
@@ -2886,6 +2894,10 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -2944,6 +2956,14 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
     } else if parts.resource_contract.max_blob_bytes > 67108864 {
         // Resource contract too large: skip.
     } else if parts.resource_contract.max_ipc_payload_bytes > 16777216 {
+        // Resource contract too large: skip.
+    } else if parts.resource_contract.max_retry_attempts > 10 {
+        // Resource contract too large: skip.
+    } else if parts.resource_contract.max_fanout > 256 {
+        // Resource contract too large: skip.
+    } else if parts.resource_contract.max_collect_items > 1048576 {
+        // Resource contract too large: skip.
+    } else if parts.resource_contract.max_queue_depth > 1048576 {
         // Resource contract too large: skip.
     } else if parts.resource_contract.max_journal_batch_bytes > 16777216 {
         // Resource contract too large: skip.
@@ -3805,6 +3825,10 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -3868,6 +3892,10 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -3938,6 +3966,10 @@ pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -4080,6 +4112,10 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -4172,6 +4208,10 @@ pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWo
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -4295,6 +4335,10 @@ pub proof fn lemma_forward_edge_improper_nesting_rejected(parts: &SpecWorkflowPa
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -4403,6 +4447,10 @@ pub proof fn lemma_reachability_unreachable_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -4522,6 +4570,10 @@ pub proof fn lemma_nested_together_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -5706,6 +5758,10 @@ pub proof fn lemma_budget_pairing_before_budget(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -5759,6 +5815,10 @@ pub proof fn lemma_budget_before_input_slots(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -5814,6 +5874,10 @@ pub proof fn lemma_budget_within_caps_reaches_input_slots(parts: &SpecWorkflowPa
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6127,6 +6191,10 @@ pub proof fn lemma_expr_before_budget(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6348,6 +6416,10 @@ pub proof fn lemma_accessor_path_before_reachability(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6443,6 +6515,10 @@ pub proof fn lemma_expr_stack_before_exprs(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6485,6 +6561,10 @@ pub proof fn lemma_expr_stack_within_cap_reaches_exprs(parts: &SpecWorkflowParts
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6635,6 +6715,10 @@ pub proof fn lemma_symbols_before_reachability(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6682,6 +6766,10 @@ pub proof fn lemma_symbols_within_bounds_reaches_reachability(parts: &SpecWorkfl
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6745,6 +6833,10 @@ pub proof fn lemma_constants_count_over_cap_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6779,6 +6871,10 @@ pub proof fn lemma_accessors_count_over_cap_rejected(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6814,6 +6910,10 @@ pub proof fn lemma_expressions_count_over_cap_rejected(parts: &SpecWorkflowParts
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6856,6 +6956,10 @@ pub proof fn lemma_resource_counts_first_over_cap_wins(parts: &SpecWorkflowParts
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6893,6 +6997,10 @@ pub proof fn lemma_resource_counts_before_exprs(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6930,6 +7038,10 @@ pub proof fn lemma_resource_counts_within_cap_reaches_exprs(parts: &SpecWorkflow
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -6971,6 +7083,10 @@ pub proof fn lemma_resource_counts_at_cap_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -7137,6 +7253,10 @@ pub proof fn lemma_contract_limits_within_cap_reaches_usage(parts: &SpecWorkflow
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -7151,10 +7271,11 @@ pub proof fn lemma_contract_limits_within_cap_reaches_usage(parts: &SpecWorkflow
 
 /// Lemma 132: the at-cap limits are accepted. A workflow whose
 /// constants, accessors, expressions, step-budget, input, output,
-/// blob, IPC-payload, and journal-batch caps are each exactly at
-/// their hard limit validates: production rejects only when a
-/// declared cap exceeds its hard limit
-/// (workflow/mod.rs:1509-1523, 1529-1533, 1539-1558, 1579-1583).
+/// blob, IPC-payload, retry, fanout, collect, queue, and
+/// journal-batch caps are each exactly at their hard limit
+/// validates: production rejects only when a declared cap exceeds
+/// its hard limit (workflow/mod.rs:1509-1523, 1529-1533,
+/// 1539-1558, 1559-1578, 1579-1583).
 /// The boundary equalities imply the lemma 15 requires, so the
 /// well-formed acceptance carries the result.
 pub proof fn lemma_contract_limits_at_cap_accepted(parts: &SpecWorkflowParts)
@@ -7174,6 +7295,10 @@ pub proof fn lemma_contract_limits_at_cap_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes == 16777216,
         parts.resource_contract.max_blob_bytes == 67108864,
         parts.resource_contract.max_ipc_payload_bytes == 16777216,
+        parts.resource_contract.max_retry_attempts == 10,
+        parts.resource_contract.max_fanout == 256,
+        parts.resource_contract.max_collect_items == 1048576,
+        parts.resource_contract.max_queue_depth == 1048576,
         parts.resource_contract.max_journal_batch_bytes == 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -7357,9 +7482,7 @@ pub proof fn lemma_ipc_payload_bytes_limit_over_cap_rejected(parts: &SpecWorkflo
 /// maximum, so this arm is reachable on a real production contract.
 /// Production runs the retry (1559-1563), fanout (1564-1568),
 /// collect (1569-1573), and queue (1574-1578) arms between the IPC
-/// arm and this arm; those dims are not yet modelled, so this
-/// lemma pins the mirror behavior with the modelled predecessors
-/// within cap.
+/// arm and this arm; this lemma requires those dims within cap.
 pub proof fn lemma_journal_batch_bytes_limit_over_cap_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7377,6 +7500,10 @@ pub proof fn lemma_journal_batch_bytes_limit_over_cap_rejected(parts: &SpecWorkf
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes > 16777216,
     ensures
         try_from_parts_pure_spec(parts)
@@ -7455,9 +7582,10 @@ pub proof fn lemma_byte_budget_limits_before_usage(parts: &SpecWorkflowParts)
 
 /// Lemma 141: within-cap byte/budget limits reach the usage check.
 /// A workflow whose step-budget, input, output, blob, IPC-payload,
-/// and journal-batch caps all fit their hard limits and whose
-/// constant pool is over its contract cap is rejected with the
-/// usage error, not the limits error (production
+/// retry, fanout, collect, queue, and journal-batch caps all fit
+/// their hard limits and whose constant pool is over its contract
+/// cap is rejected with the usage error, not the limits error
+/// (production
 /// `check_resource_contract_limits` passes, then
 /// `validate_resource_usage` runs, workflow/mod.rs:1587-1593 and
 /// 1614-1644).
@@ -7478,6 +7606,10 @@ pub proof fn lemma_byte_budget_limits_within_cap_reaches_usage(parts: &SpecWorkf
         parts.resource_contract.max_output_bytes <= 16777216,
         parts.resource_contract.max_blob_bytes <= 67108864,
         parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
         parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
@@ -7492,10 +7624,10 @@ pub proof fn lemma_byte_budget_limits_within_cap_reaches_usage(parts: &SpecWorkf
 
 /// Lemma 142: the at-cap byte/budget limits are accepted. A
 /// workflow whose step-budget, input, output, blob, IPC-payload,
-/// and journal-batch caps are each exactly at their hard limit
-/// validates: production rejects only when a declared cap exceeds
-/// its hard limit (workflow/mod.rs:1529-1533, 1539-1558,
-/// 1579-1583). The boundary equalities imply the lemma 15
+/// retry, fanout, collect, queue, and journal-batch caps are each
+/// exactly at their hard limit validates: production rejects only
+/// when a declared cap exceeds its hard limit
+/// (workflow/mod.rs:1529-1533, 1539-1558, 1559-1578, 1579-1583). The boundary equalities imply the lemma 15
 /// requires, so the well-formed acceptance carries the result.
 pub proof fn lemma_byte_budget_limits_at_cap_accepted(parts: &SpecWorkflowParts)
     requires
@@ -7514,7 +7646,315 @@ pub proof fn lemma_byte_budget_limits_at_cap_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_output_bytes == 16777216,
         parts.resource_contract.max_blob_bytes == 67108864,
         parts.resource_contract.max_ipc_payload_bytes == 16777216,
+        parts.resource_contract.max_retry_attempts == 10,
+        parts.resource_contract.max_fanout == 256,
+        parts.resource_contract.max_collect_items == 1048576,
+        parts.resource_contract.max_queue_depth == 1048576,
         parts.resource_contract.max_journal_batch_bytes == 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+        spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
+        spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
+        spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
+        input_slots_valid(parts) == None::<SpecWorkflowError>,
+    ensures
+        spec_validation_ok(try_from_parts_pure_spec(parts)),
+{
+    lemma_well_formed_parts_accepted(parts);
+    assert(spec_validation_ok(try_from_parts_pure_spec(parts)));
+}
+
+/// Lemma 143: the retry-attempts-limit rejection. A contract whose
+/// `max_retry_attempts` exceeds the hard limit is rejected with
+/// `ResourceContractTooLarge` (production
+/// `check_resource_contract_limits`, workflow/mod.rs:1559-1563,
+/// `MAX_RETRY_ATTEMPTS` 10, limits.rs:114). The production field is
+/// `u16` and the cap is below the type maximum, so this arm is
+/// reachable on a real production contract.
+pub proof fn lemma_retry_attempts_limit_over_cap_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts > 10,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
+}
+
+/// Lemma 144: the fanout-limit rejection. A contract whose
+/// `max_fanout` exceeds the hard limit is rejected with
+/// `ResourceContractTooLarge` (production
+/// `check_resource_contract_limits`, workflow/mod.rs:1564-1568,
+/// `MAX_FANOUT` 256, limits.rs:118). The production field is `u16`
+/// and the cap is below the type maximum, so this arm is reachable
+/// on a real production contract.
+pub proof fn lemma_fanout_limit_over_cap_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout > 256,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
+}
+
+/// Lemma 145: the collect-items-limit rejection. A contract whose
+/// `max_collect_items` exceeds the hard limit is rejected with
+/// `ResourceContractTooLarge` (production
+/// `check_resource_contract_limits`, workflow/mod.rs:1569-1573,
+/// `MAX_COLLECT_ITEMS` 1048576, limits.rs:122). The production
+/// field is `u32` and the cap is below the type maximum, so this
+/// arm is reachable on a real production contract.
+pub proof fn lemma_collect_items_limit_over_cap_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items > 1048576,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
+}
+
+/// Lemma 146: the queue-depth-limit rejection. A contract whose
+/// `max_queue_depth` exceeds the hard limit is rejected with
+/// `ResourceContractTooLarge` (production
+/// `check_resource_contract_limits`, workflow/mod.rs:1574-1578,
+/// `MAX_QUEUE_DEPTH` 1048576, limits.rs:126). The production field
+/// is `u32` and the cap is below the type maximum, so this arm is
+/// reachable on a real production contract.
+pub proof fn lemma_queue_depth_limit_over_cap_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth > 1048576,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
+}
+
+/// Lemma 147: the first over-cap retry/fanout/collect/queue limit
+/// wins. A contract whose retry, fanout, collect, and queue caps
+/// are all over their hard limits is rejected with
+/// `ResourceContractTooLarge` (production
+/// `check_resource_contract_limits` runs the Retry arm before the
+/// Fanout arm before the Collect arm before the Queue arm,
+/// workflow/mod.rs:1559-1578). All four arms return the same
+/// `ResourceContractTooLarge` value, so their relative order is
+/// unobservable in the top-level result; this pins the combined
+/// rejection with the Retry arm first in production order,
+/// in the same sense as lemma 122 pins the count composition.
+pub proof fn lemma_retry_fanout_collect_queue_limits_first_over_cap_wins(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts > 10,
+        parts.resource_contract.max_fanout > 256,
+        parts.resource_contract.max_collect_items > 1048576,
+        parts.resource_contract.max_queue_depth > 1048576,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
+}
+
+/// Lemma 148: the retry/fanout/collect/queue limits check runs
+/// before the usage check. A workflow with an over-cap
+/// retry-attempts cap and an over-cap constant pool is rejected
+/// with the limits error, not the usage error (production
+/// `validate_resource_contract` runs
+/// `check_resource_contract_limits` before
+/// `validate_resource_usage`, workflow/mod.rs:1587-1593). The
+/// transitions arms precede the retry arm in the mirror, so the
+/// lemma requires them within cap.
+pub proof fn lemma_retry_fanout_collect_queue_limits_before_usage(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_retry_attempts > 10,
+        parts.constants_len > parts.resource_contract.max_constants,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
+}
+
+/// Lemma 149: within-cap retry/fanout/collect/queue limits reach
+/// the usage check. A workflow whose retry, fanout, collect, and
+/// queue caps all fit their hard limits and whose constant pool is
+/// over its contract cap is rejected with the usage error, not the
+/// limits error (production `check_resource_contract_limits`
+/// passes, then `validate_resource_usage` runs,
+/// workflow/mod.rs:1587-1593 and 1614-1644).
+pub proof fn lemma_retry_fanout_collect_queue_limits_within_cap_reaches_usage(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len > parts.resource_contract.max_constants,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 150: the at-cap retry/fanout/collect/queue limits are
+/// accepted. A workflow whose retry, fanout, collect, and queue
+/// caps are each exactly at their hard limit validates: production
+/// rejects only when a declared cap exceeds its hard limit
+/// (workflow/mod.rs:1559-1578). The boundary equalities imply the
+/// lemma 15 requires, so the well-formed acceptance carries the
+/// result.
+pub proof fn lemma_retry_fanout_collect_queue_limits_at_cap_accepted(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts == 10,
+        parts.resource_contract.max_fanout == 256,
+        parts.resource_contract.max_collect_items == 1048576,
+        parts.resource_contract.max_queue_depth == 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
         parts.constants_len <= parts.resource_contract.max_constants,
