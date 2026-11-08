@@ -200,14 +200,22 @@ fn prod_methods_drift_check() {
     // Force resolution of every production method by invoking it
     // with phantom arguments. The body is opaque to Verus but the
     // rustc compilation resolves the names.
-    let _ = production_inner::count_and_push_loop_body(0u64, 0u64, 0u64);
     let nodes: Vec<production_inner::CompiledNode> = Vec::new();
+    let mut stack: Vec<production_inner::StepIdx> = Vec::new();
+    let _ = production_inner::count_and_push_loop_body(
+        0u64,
+        0u64,
+        0u64,
+        &nodes,
+        production_inner::StepIdx::new(0),
+        0,
+        &mut stack,
+    );
     let _ = production_inner::find_node_position(
         &nodes,
         production_inner::StepIdx::new(0),
         0,
     );
-    let mut stack: Vec<production_inner::StepIdx> = Vec::new();
     let _ = production_inner::push_done_continuation(
         &nodes,
         production_inner::StepIdx::new(0),

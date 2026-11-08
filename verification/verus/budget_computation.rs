@@ -46,8 +46,10 @@
 //
 //   7. `count_and_push_loop_body` done-continuation push
 //        -> crates/vb_core/src/budget.rs:2498, 2502-2522
-//        -> extern `push_done_continuation` (stack arm: successor id
-//           when the done node ends the workflow, then `done`)
+//        -> extern `count_and_push_loop_body` (stack arm: successor id
+//           when the done node ends the workflow, then `done`;
+//           the standalone `push_done_continuation` bridge covers
+//           the push on its own for the push lemmas)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -177,6 +179,12 @@ pub open spec fn spec_checked_mul_u64_ok(a: int, b: int) -> bool {
     a >= 0 && b >= 0 && a * b <= spec_u64_max()
 }
 
+/// Spec predicate: checked u64 addition succeeds and the sum is
+/// bounded by `u64::MAX` whenever both operands are non-negative.
+pub open spec fn spec_checked_add_u64_ok(a: int, b: int) -> bool {
+    a >= 0 && b >= 0 && a + b <= spec_u64_max()
+}
+
 /// Spec predicate: checked u32 addition succeeds and the sum is
 /// bounded by `u32::MAX` whenever both operands are non-negative.
 pub open spec fn spec_checked_add_u32_ok(a: int, b: int) -> bool {
@@ -301,21 +309,42 @@ pub open spec fn spec_push_done_stack(
 // exercise the contracts via exec fns in the "Production-bound exec
 // fns" section.
 /// Bridge contract: `count_and_push_loop_body` returns `Ok(new_total)`
-/// iff both the multiplication `body_count * iter_count` and the
-/// addition `total + product` succeed as checked u64 operations.
-/// Mirrors `crates/vb_core/src/budget.rs:2474-2500`.
+/// iff the multiplication `body_count * iter_count` and the addition
+/// `total + product` succeed as checked u64 operations and the trailing
+/// done-continuation push succeeds. On success the stack is the
+/// `spec_push_done_stack` result; on failure the stack is unchanged,
+/// and the failure is a multiplication overflow, an addition overflow,
+/// or an unlocatable done step. Mirrors
+/// `crates/vb_core/src/budget.rs:2474-2500`.
 pub assume_specification[ production::count_and_push_loop_body ](
     _body_count: u64,
     _iter_count: u64,
     _total: u64,
+    nodes: &Vec<CompiledNode>,
+    done: StepIdx,
+    node_count: usize,
+    stack: &mut Vec<StepIdx>,
 ) -> (result: Result<u64, BudgetError>)
     ensures
         match result {
             Ok(new_total) => new_total == _total + _body_count * spec_effective_iter_count(
                 _iter_count,
-            ),
+            )
+                && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
+                    == Some((*final(stack))@),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
-                == u64::MAX,
+                == u64::MAX
+                && (*final(stack))@ == (*old(stack))@
+                && (!spec_checked_mul_u64_ok(
+                    _body_count as int,
+                    spec_effective_iter_count(_iter_count),
+                )
+                    || !spec_checked_add_u64_ok(
+                        _total as int,
+                        _body_count as int * spec_effective_iter_count(_iter_count),
+                    )
+                    || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
+                        == None),
         },
 ;
 
@@ -463,23 +492,44 @@ pub fn exec_body_region_step_increment(count: u64) -> (result: Result<u64, Budge
     body_region_step_increment(count)
 }
 
-/// Exec fn: production-bound body * iter_count + total arithmetic.
-/// Mirrors `crates/vb_core/src/budget.rs:2474-2500` (the
+/// Exec fn: production-bound body * iter_count + total arithmetic
+/// with the trailing done-continuation push. Mirrors
+/// `crates/vb_core/src/budget.rs:2474-2500` (the
 /// CollectStart / ForEachStart / RepeatStart / ReduceStart loop body
-/// accumulation).
+/// accumulation plus the `push_done_continuation` call at :2498).
 #[allow(dead_code)]
-pub fn exec_count_and_push_loop_body(body_count: u64, iter_count: u64, total: u64) -> (result:
-    Result<u64, BudgetError>)
+pub fn exec_count_and_push_loop_body(
+    body_count: u64,
+    iter_count: u64,
+    total: u64,
+    nodes: &Vec<CompiledNode>,
+    done: StepIdx,
+    node_count: usize,
+    stack: &mut Vec<StepIdx>,
+) -> (result: Result<u64, BudgetError>)
     ensures
         match result {
             Ok(new_total) => new_total == total + body_count * spec_effective_iter_count(
                 iter_count,
-            ),
+            )
+                && spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
+                    == Some((*final(stack))@),
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => actual == u64::MAX && limit
-                == u64::MAX,
+                == u64::MAX
+                && (*final(stack))@ == (*old(stack))@
+                && (!spec_checked_mul_u64_ok(
+                    body_count as int,
+                    spec_effective_iter_count(iter_count),
+                )
+                    || !spec_checked_add_u64_ok(
+                        total as int,
+                        body_count as int * spec_effective_iter_count(iter_count),
+                    )
+                    || spec_push_done_stack(nodes@, done, node_count as int, (*old(stack))@)
+                        == None),
         },
 {
-    count_and_push_loop_body(body_count, iter_count, total)
+    count_and_push_loop_body(body_count, iter_count, total, nodes, done, node_count, stack)
 }
 
 /// Exec fn: production-bound done-continuation push for
@@ -781,6 +831,30 @@ pub proof fn lemma_push_done_stack_ends_with_done(
             assert(stack.push(done)[stack.len() as int] == done);
         }
     }
+}
+
+/// Lemma: a successful combined loop-body step leaves `done` on top
+/// of the stack.
+///
+/// The combined `exec_count_and_push_loop_body` Ok arm requires the
+/// final stack to equal `spec_push_done_stack`; this lemma discharges
+/// the consequence that the pushed `done` is the last element, via
+/// `lemma_push_done_stack_ends_with_done`.
+pub proof fn lemma_loop_body_ok_stack_ends_with_done(
+    nodes: Seq<CompiledNode>,
+    done: StepIdx,
+    node_count: int,
+    stack: Seq<StepIdx>,
+    new_stack: Seq<StepIdx>,
+    pos: int,
+)
+    requires
+        spec_find_position(nodes, done, node_count) == Some(pos),
+        spec_push_done_stack(nodes, done, node_count, stack) == Some(new_stack),
+    ensures
+        new_stack[new_stack.len() - 1] == done,
+{
+    lemma_push_done_stack_ends_with_done(nodes, done, node_count, stack, pos);
 }
 
 /// Lemma: the linear id scan finds nothing exactly when no node in
