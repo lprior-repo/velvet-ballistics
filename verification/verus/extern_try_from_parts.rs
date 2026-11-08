@@ -100,6 +100,10 @@
 //     <- crates/vb_core/src/workflow/mod.rs:2633-2680
 //   - `validate_no_nested_together` (moved out of workflow/mod.rs)
 //     <- crates/vb_core/src/engine/validate.rs:119-172
+//   - `walk_contains_together_start`
+//     <- crates/vb_core/src/engine/validate.rs:177-205
+//   - `find_inner_together_start`
+//     <- crates/vb_core/src/engine/validate.rs:209-237
 //   - `validate` (repeat_counter_ownership)
 //     <- crates/vb_core/src/workflow/repeat_counter_ownership.rs:6-12
 //   - `identify_counter_owners`
@@ -1677,6 +1681,198 @@ pub fn forward_edges_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowErro
     }
     None
 }
+
+/// Pure projection of `validate_reachability`
+/// (workflow/mod.rs:2160-2229): breadth-first walk from the entry
+/// over each node's routing `next` step, routing error handler,
+/// and kind targets (`collect_node_targets`,
+/// workflow/mod.rs:2233-2299). Returns the first unreachable node
+/// in table order, else `None`. An entry at or past the node
+/// count returns `None`, matching production (entry bounds are
+/// already enforced by step 1b); an out-of-range target is
+/// skipped, matching production (bounds are enforced by the
+/// per-node checks). Positions are table indices; the caller
+/// supplies `meta.id` values matching them, as step 1e does.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus
+/// (`#[verifier::external]`). The spec-side mirror in
+/// `try_from_parts.rs` is the contract; this projection is the
+/// trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn reachability_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    let node_count = parts.nodes_len;
+    if parts.nodes_meta.is_empty() {
+        return None;
+    }
+    let entry = parts.entry;
+    if entry >= node_count {
+        return None;
+    }
+    let mut visited: Vec<bool> = vec![false; node_count as usize];
+    let mut queue: Vec<u32> = Vec::new();
+    let Some(entry_flag) = visited.get_mut(entry as usize) else {
+        return None;
+    };
+    *entry_flag = true;
+    queue.push(entry);
+    let mut head = 0usize;
+    while head < queue.len() {
+        let current = match queue.get(head) {
+            Some(&v) => v,
+            None => break,
+        };
+        head = match head.checked_add(1) {
+            Some(v) => v,
+            None => break,
+        };
+        let meta = match parts.nodes_meta.get(current as usize) {
+            Some(meta) => meta,
+            None => break,
+        };
+        let mut targets: Vec<u32> = Vec::new();
+        if meta.has_next == 1 {
+            targets.push(meta.next_step);
+        }
+        if meta.has_on_error == 1 {
+            targets.push(meta.on_error_step);
+        }
+        if let Some(kind_targets) = parts.kind_targets.get(current as usize) {
+            for target in kind_targets {
+                targets.push(*target);
+            }
+        }
+        for target in targets {
+            if target < node_count {
+                let Some(flag) = visited.get_mut(target as usize) else {
+                    continue;
+                };
+                if !*flag {
+                    *flag = true;
+                    queue.push(target);
+                }
+            }
+        }
+    }
+    for was_visited in visited.iter() {
+        if !was_visited {
+            return Some(SpecWorkflowError::UnreachableNode);
+        }
+    }
+    None
+}
+
+/// Pure projection of `walk_contains_together_start`
+/// (engine/validate.rs:177-205): follows the routing `next`
+/// chain from `start_idx`, stopping at `stop_idx` (exclusive),
+/// and reports whether any node on the chain is a
+/// `TogetherStart` distinct from `outer`. Membership is read
+/// from the caller-supplied `together_starts` id inventory,
+/// matching production's `BTreeSet<StepIdx>` built from the same
+/// nodes. The stack holds at most one step at a time (each node
+/// pushes at most its single `next`), so the walk is the linear
+/// chain production walks.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus
+/// (`#[verifier::external]`). The spec-side mirror in
+/// `try_from_parts.rs` is the contract; this projection is the
+/// trusted base recorded in the binding ledger.
+#[verifier::external]
+fn walk_contains_together_start(
+    parts: &SpecWorkflowParts,
+    together_starts: &[u32],
+    start_idx: u32,
+    stop_idx: u32,
+    outer: u32,
+) -> bool {
+    let mut visited: Vec<bool> = vec![false; parts.nodes_len as usize];
+    let mut stack: Vec<u32> = vec![start_idx];
+    while let Some(idx) = stack.pop() {
+        if idx >= parts.nodes_len || idx == stop_idx {
+            continue;
+        }
+        let Some(flag) = visited.get_mut(idx as usize) else {
+            continue;
+        };
+        if *flag {
+            continue;
+        }
+        *flag = true;
+        let meta = match parts.nodes_meta.get(idx as usize) {
+            Some(meta) => meta,
+            None => continue,
+        };
+        if meta.id != outer && together_starts.contains(&meta.id) {
+            return true;
+        }
+        if meta.has_next == 1 {
+            stack.push(meta.next_step);
+        }
+    }
+    false
+}
+
+/// Pure projection of `validate_no_nested_together`
+/// (engine/validate.rs:119-172): a `TogetherStart` whose branch
+/// body contains another `TogetherStart` is rejected. Branch
+/// entries and the join read the caller-supplied
+/// `kind_targets` inventory (branch entries then join for
+/// `TogetherStart`); a branch whose entry or join is out of
+/// range is skipped, matching production. With fewer than two
+/// `TogetherStart` nodes nesting is impossible, matching
+/// production's early return. Returns the first failure in
+/// table order, else `None`. The error variant carries no
+/// payload at this projection granularity; production's
+/// `NestedTogether { outer, inner }` first inner is the one
+/// `walk_contains_together_start` finds, so the decision
+/// agrees.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus
+/// (`#[verifier::external]`). The spec-side mirror in
+/// `try_from_parts.rs` is the contract; this projection is the
+/// trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn nested_together_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    let node_count = parts.nodes_len;
+    let mut together_starts: Vec<u32> = Vec::new();
+    for meta in &parts.nodes_meta {
+        if meta.kind_disc == spec_node_kind_together_start() {
+            together_starts.push(meta.id);
+        }
+    }
+    if together_starts.len() < 2 {
+        return None;
+    }
+    for (index, meta) in parts.nodes_meta.iter().enumerate() {
+        if meta.kind_disc != spec_node_kind_together_start() {
+            continue;
+        }
+        let outer = meta.id;
+        let targets = match parts.kind_targets.get(index) {
+            Some(targets) => targets,
+            None => continue,
+        };
+        if targets.is_empty() {
+            continue;
+        }
+        let join = match targets.last() {
+            Some(join) => *join,
+            None => continue,
+        };
+        for branch_entry in &targets[..targets.len() - 1] {
+            let entry_idx = *branch_entry;
+            if entry_idx >= node_count {
+                continue;
+            }
+            if join >= node_count {
+                continue;
+            }
+            if walk_contains_together_start(parts, &together_starts, entry_idx, join, outer) {
+                return Some(SpecWorkflowError::NestedTogether);
+            }
+        }
+    }
+    None
+}
 // ============================================================================
 // Pure decision fn: top-level try_from_parts validation
 // ============================================================================
@@ -1826,21 +2022,19 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // constant / field / path-segment; the projection trusts the
     // caller-supplied `parts.symbols_count` is sufficient (the spec
     // proves SymbolOutOfBounds separately).
-    // 1g. validate_forward_edges (workflow/mod.rs:2336-2364) —
+    // 1g. validate_reachability (workflow/mod.rs:2160-2229) —
+    // every node must be reachable from the entry over routing
+    // `next`, routing error handlers, and kind targets.
+    if let Some(err) = reachability_error(parts) {
+        return SpecValidationResult::Err(err);
+    }
+    // validate_forward_edges (workflow/mod.rs:2336-2364) —
     // routing and kind edges must point strictly forward (except
     // a RepeatCheck back-edge validated against its owning
     // RepeatStart), and loop spans must nest properly.
     if let Some(err) = forward_edges_error(parts) {
         return SpecValidationResult::Err(err);
     }
-    // validate_reachability and validate_no_nested_together
-    // remain approximated as passing: the per-node metadata
-    // (max_step_ref = strict-forward aggregation) is precomputed
-    // by the spec caller, so a violation surfaces via
-    // max_step_ref >= node_count (a StepOutOfBounds-equivalent at
-    // the decision-fn level; the spec's UnreachableNode /
-    // NestedTogether arms are exercised via dedicated spec
-    // functions).
     // 1h. repeat_counter_ownership::validate
     // (repeat_counter_ownership.rs:6-12). Production runs this
     // inside validate_parts after validate_forward_edges and
@@ -1851,6 +2045,12 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // slots read the caller-supplied `written_slots` inventory;
     // a missing entry means the node writes no kind-specific slot.
     if let Some(err) = repeat_counter_ownership_error(parts) {
+        return SpecValidationResult::Err(err);
+    }
+    // validate_no_nested_together (engine/validate.rs:119-172) —
+    // no `TogetherStart` may be reachable from another
+    // `TogetherStart`'s branch body.
+    if let Some(err) = nested_together_error(parts) {
         return SpecValidationResult::Err(err);
     }
     // ---- Step 2: loop-region validation ----

@@ -33,13 +33,15 @@
 //      - validate_accessor_paths (2089-2119),
 //      - validate_constants_symbols (2122-2132),
 //      - validate_build_object_symbols (2135-2147),
-//      - validate_reachability (2160-2229),
+//      - validate_reachability (2160-2229), modelled in the
+//        projection (`reachability_error`) and its spec mirror,
 //      - validate_forward_edges (2336-2364), modelled in the
 //        projection (`forward_edges_error`) and its spec mirror,
 //      - repeat_counter_ownership::validate
 //        (workflow/repeat_counter_ownership.rs:6-12),
 //      - validate_no_nested_together
-//        (engine/validate.rs:119-172).
+//        (engine/validate.rs:119-172), modelled in the
+//        projection (`nested_together_error`) and its spec mirror.
 //   2. loop_regions::validate (workflow/loop_regions.rs:59-72):
 //      loop-region pairing (cache_control + unique_owner),
 //      region relations (validate_region_relations), edge closure
@@ -82,9 +84,9 @@
 // binding-debt item tracked outside Verus.
 //
 // Per-node check details (max_step_ref / max_slot_ref pre-aggregation,
-// the reachability and nested-together graph walks, the budget
-// polynomial evaluation) are documented as approximations in the
-// projection file. Forward edges are modelled, not approximated.
+// the budget polynomial evaluation) are documented as approximations
+// in the projection file. Reachability, forward edges, and
+// nested-together are modelled, not approximated.
 
 use vstd::prelude::*;
 
@@ -115,7 +117,8 @@ pub use production::{
     SpecResourceContract, SpecValidationResult, SpecWorkflowError,
     SpecWorkflowParts, branch_target_alias_error, input_constraint_error,
     forward_edges_error, loop_pairing_error, loop_region_edges_error,
-    loop_region_relations_error, repeat_counter_ownership_error,
+    loop_region_relations_error, nested_together_error,
+    reachability_error, repeat_counter_ownership_error,
     spec_validation_result_is_ok, spec_workflow_error_is_bound_violation,
     try_from_parts_pure, validate_node_pure,
 };
@@ -347,6 +350,32 @@ pub assume_specification[ production::forward_edges_error ](
 ) -> (err: Option<SpecWorkflowError>)
     ensures
         err == spec_forward_edges_error(parts),
+;
+
+/// Spec-level mirror of `production::reachability_error`.
+/// Returns the first `UnreachableNode` failure the reachability
+/// step would report — the first node in table order not
+/// reachable from the entry over routing `next`, routing error
+/// handlers, and kind targets — or `None` when every node is
+/// reachable.
+pub assume_specification[ production::reachability_error ](
+    parts: &SpecWorkflowParts,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_reachability_error(parts),
+;
+
+/// Spec-level mirror of `production::nested_together_error`.
+/// Returns the first `NestedTogether` failure the
+/// nested-together step would report — a `TogetherStart`
+/// reachable from another `TogetherStart`'s branch body over the
+/// routing `next` chain — or `None` when no `TogetherStart` is
+/// nested inside another.
+pub assume_specification[ production::nested_together_error ](
+    parts: &SpecWorkflowParts,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_nested_together_error(parts),
 ;
 
 /// Spec-level mirror of `production::branch_target_alias_error`.
@@ -1777,6 +1806,202 @@ pub open spec fn spec_forward_edges_error(parts: &SpecWorkflowParts) -> Option<S
     spec_forward_edges_from(parts, 0)
 }
 
+/// Spec mirror of one `kind_targets` entry membership: whether
+/// `target` appears in `targets` from position `k` onward
+/// (production `collect_node_targets`,
+/// workflow/mod.rs:2233-2299, flattened into the
+/// caller-supplied inventory).
+pub open spec fn spec_targets_contain(targets: &Vec<u32>, target: int, k: int) -> bool
+    decreases targets.len() - k
+{
+    if k >= targets.len() {
+        false
+    } else if (targets[k] as int) == target {
+        true
+    } else {
+        spec_targets_contain(targets, target, k + 1)
+    }
+}
+
+/// Spec mirror of one node's outgoing edges in
+/// `validate_reachability` (workflow/mod.rs:2160-2229): the
+/// routing `next` step, the routing error handler, and the kind
+/// targets from the caller-supplied inventory.
+pub open spec fn spec_has_edge(parts: &SpecWorkflowParts, i: int, target: int) -> bool {
+    if i < 0 || i >= parts.nodes_meta.len() {
+        false
+    } else {
+        let meta = parts.nodes_meta[i];
+        (meta.has_next == 1 && (meta.next_step as int) == target)
+            || (meta.has_on_error == 1 && (meta.on_error_step as int) == target)
+            || (i < parts.kind_targets.len()
+                && spec_targets_contain(&parts.kind_targets[i], target, 0))
+    }
+}
+
+/// Spec mirror of the reachability fixpoint in
+/// `validate_reachability` (workflow/mod.rs:2160-2229): `target`
+/// is reachable from the entry by a path of at most `fuel`
+/// edges. The scan over predecessors restarts at index 0 for
+/// each step back along the path, so `fuel` bounds the path
+/// length; any reachable node has a simple path of at most
+/// `nodes_meta.len() - 1` edges. The lexicographic measure
+/// decreases the fuel on the step back and the remaining scan
+/// on the step forward.
+pub open spec fn spec_path_exists(
+    parts: &SpecWorkflowParts,
+    target: int,
+    fuel: int,
+    i: int,
+) -> bool
+    decreases fuel, parts.nodes_meta.len() - i
+{
+    if target == (parts.entry as int) {
+        true
+    } else if fuel <= 0 {
+        false
+    } else if i >= parts.nodes_meta.len() {
+        false
+    } else if spec_has_edge(parts, i, target) && spec_path_exists(parts, i, fuel - 1, 0) {
+        true
+    } else {
+        spec_path_exists(parts, target, fuel, i + 1)
+    }
+}
+
+/// Spec mirror of one node's reachability in
+/// `validate_reachability` (workflow/mod.rs:2160-2229): the node
+/// is reachable iff a path from the entry exists within the
+/// node-count fuel bound.
+pub open spec fn spec_reachable(parts: &SpecWorkflowParts, target: int) -> bool {
+    spec_path_exists(parts, target, parts.nodes_meta.len() as int, 0)
+}
+
+/// Spec mirror of the unreachable-node scan in
+/// `validate_reachability` (workflow/mod.rs:2160-2229): the first
+/// node in table order that is not reachable from the entry, or
+/// `None` when every node is reachable.
+pub open spec fn spec_first_unreachable_from(
+    parts: &SpecWorkflowParts,
+    i: int,
+) -> Option<SpecWorkflowError>
+    decreases parts.nodes_meta.len() - i
+{
+    if i >= parts.nodes_meta.len() {
+        None
+    } else if !spec_reachable(parts, i) {
+        Some(SpecWorkflowError::UnreachableNode)
+    } else {
+        spec_first_unreachable_from(parts, i + 1)
+    }
+}
+
+/// Spec-level mirror of `production::reachability_error`.
+/// An empty table or an out-of-range entry returns `None`,
+/// matching production (empty nodes are rejected at step 1 and
+/// entry bounds at step 1b, before this step runs).
+pub open spec fn spec_reachability_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    if parts.nodes_meta.len() == 0 {
+        None
+    } else if (parts.entry as int) >= parts.nodes_meta.len() {
+        None
+    } else {
+        spec_first_unreachable_from(parts, 0)
+    }
+}
+
+/// Spec mirror of one `next`-chain step in
+/// `find_inner_together_start` (engine/validate.rs:209-237):
+/// the first `TogetherStart` (discriminant 12) distinct from
+/// `outer` reachable from `idx` by following routing `next`
+/// steps, stopping at `stop` (exclusive). `fuel` bounds the
+/// walk: the first inner start on the chain is within
+/// `nodes_meta.len()` steps, since the chain visits distinct
+/// nodes until it repeats, stops, or leaves the table.
+pub open spec fn spec_walk_inner(
+    parts: &SpecWorkflowParts,
+    idx: int,
+    stop: int,
+    outer: int,
+    fuel: int,
+) -> Option<u32>
+    decreases fuel
+{
+    if fuel <= 0 || idx < 0 || idx >= parts.nodes_meta.len() || idx == stop {
+        None
+    } else {
+        let meta = parts.nodes_meta[idx];
+        if meta.kind_disc == 12u32 && (meta.id as int) != outer {
+            Some(meta.id)
+        } else if meta.has_next == 1 {
+            spec_walk_inner(parts, meta.next_step as int, stop, outer, fuel - 1)
+        } else {
+            None
+        }
+    }
+}
+
+/// Spec mirror of one outer `TogetherStart`'s branch scan in
+/// `validate_no_nested_together`
+/// (engine/validate.rs:119-172): the branch entries are every
+/// `kind_targets` position but the last (the join); a branch
+/// whose entry or join is out of range is skipped, matching
+/// production.
+pub open spec fn spec_nested_branches_from(
+    parts: &SpecWorkflowParts,
+    targets: &Vec<u32>,
+    outer: int,
+    j: int,
+) -> Option<SpecWorkflowError>
+    decreases targets.len() - j
+{
+    if j >= targets.len() - 1 {
+        None
+    } else {
+        let entry_idx = targets[j] as int;
+        let join_idx = targets[targets.len() - 1] as int;
+        if entry_idx >= parts.nodes_meta.len() || join_idx >= parts.nodes_meta.len() {
+            spec_nested_branches_from(parts, targets, outer, j + 1)
+        } else {
+            match spec_walk_inner(parts, entry_idx, join_idx, outer, parts.nodes_meta.len() as int) {
+                Some(_inner) => Some(SpecWorkflowError::NestedTogether),
+                None => spec_nested_branches_from(parts, targets, outer, j + 1),
+            }
+        }
+    }
+}
+
+/// Spec mirror of the outer scan in
+/// `validate_no_nested_together`
+/// (engine/validate.rs:119-172): the first `TogetherStart` in
+/// table order whose branch bodies contain another
+/// `TogetherStart`. With fewer than two `TogetherStart` nodes
+/// the scan returns `None`, matching production's early return:
+/// the only `TogetherStart` a walk could find is the outer node
+/// itself, which the walk excludes.
+pub open spec fn spec_nested_outer_from(parts: &SpecWorkflowParts, i: int) -> Option<SpecWorkflowError>
+    decreases parts.nodes_meta.len() - i
+{
+    if i >= parts.nodes_meta.len() {
+        None
+    } else {
+        let meta = parts.nodes_meta[i];
+        if meta.kind_disc == 12u32 && i < parts.kind_targets.len() {
+            match spec_nested_branches_from(parts, &parts.kind_targets[i], meta.id as int, 0) {
+                Some(e) => Some(e),
+                None => spec_nested_outer_from(parts, i + 1),
+            }
+        } else {
+            spec_nested_outer_from(parts, i + 1)
+        }
+    }
+}
+
+/// Spec-level mirror of `production::nested_together_error`.
+pub open spec fn spec_nested_together_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    spec_nested_outer_from(parts, 0)
+}
+
 /// Spec-level mirror of the projection result. The spec proofs
 /// reference this so the `assume_specification` ensures clauses
 /// resolve through the spec mirror rather than the opaque body.
@@ -1805,6 +2030,8 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else if parts.slot_count > parts.resource_contract.max_slots {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
+    } else if spec_reachability_error(parts) != None::<SpecWorkflowError> {
+        SpecValidationResult::Err(spec_reachability_error(parts).unwrap())
     } else if spec_forward_edges_error(parts) != None::<SpecWorkflowError> {
         SpecValidationResult::Err(spec_forward_edges_error(parts).unwrap())
     } else {
@@ -1812,6 +2039,10 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         if counter_err != None::<SpecWorkflowError> {
             SpecValidationResult::Err(counter_err.unwrap())
         } else {
+            let nested_err = spec_nested_together_error(parts);
+            if nested_err != None::<SpecWorkflowError> {
+                SpecValidationResult::Err(nested_err.unwrap())
+            } else {
             let pairing_err = spec_pairing_error(&parts.nodes_meta, 0);
             if pairing_err != None::<SpecWorkflowError> {
                 SpecValidationResult::Err(pairing_err.unwrap())
@@ -1832,6 +2063,7 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -1995,8 +2227,10 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
         spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
         spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
         spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
         spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
@@ -2029,10 +2263,14 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Resource contract exceeded: skip.
     } else if parts.slot_count > parts.resource_contract.max_slots {
         // Resource contract exceeded: skip.
+    } else if spec_reachability_error(parts) != None::<SpecWorkflowError> {
+        // Reachability: skip (already required valid).
     } else if spec_forward_edges_error(parts) != None::<SpecWorkflowError> {
         // Forward edges: skip (already required valid).
     } else if spec_repeat_counter_error(parts) != None::<SpecWorkflowError> {
         // Repeat-counter ownership: skip (already required valid).
+    } else if spec_nested_together_error(parts) != None::<SpecWorkflowError> {
+        // Nested together: skip (already required valid).
     } else if spec_pairing_error(&parts.nodes_meta, 0) != None::<SpecWorkflowError> {
         // Loop pairing: skip (already required valid).
     } else if spec_loop_relations_error(parts) != None::<SpecWorkflowError> {
@@ -2846,6 +3084,7 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
         spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
         parts.nodes_meta[0].kind_disc == 22u32,
         parts.nodes_meta[0].has_output == 1,
@@ -2856,6 +3095,7 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
         try_from_parts_pure_spec(parts)
             == SpecValidationResult::Err(SpecWorkflowError::RepeatCounterForeignWrite),
 {
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
     assert(spec_repeat_duplicate_error(&parts.nodes_meta, 0)
         == spec_repeat_duplicate_error(&parts.nodes_meta, 1));
     assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 0)
@@ -2871,7 +3111,10 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
 /// Lemma 36: the backward routing-next rejection. A node whose
 /// routing `next` step points backward (or at itself) is
 /// rejected with `BackwardEdge` (production
-/// `validate_forward_target`, workflow/mod.rs:2621-2630).
+/// `validate_forward_target`, workflow/mod.rs:2621-2630). The
+/// node carries a forward error handler to the second node so
+/// the fixture passes the reachability step that runs before
+/// the forward-edges step in production order.
 pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() == 2,
@@ -2890,7 +3133,8 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
         parts.nodes_meta[0].kind_disc == 0u32,
         parts.nodes_meta[0].has_next == 1,
         parts.nodes_meta[0].next_step == 0u32,
-        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].has_on_error == 1,
+        parts.nodes_meta[0].on_error_step == 1u32,
         parts.nodes_meta[0].id == 0u32,
         parts.nodes_meta[1].kind_disc == 33u32,
         parts.nodes_meta[1].has_next == 0,
@@ -2900,6 +3144,14 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
         try_from_parts_pure_spec(parts)
             == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge),
 {
+    assert(spec_path_exists(parts, 1, 2, 0) == spec_path_exists(parts, 0, 1, 0));
+    assert(spec_path_exists(parts, 0, 1, 0));
+    assert(spec_reachable(parts, 0));
+    assert(spec_reachable(parts, 1));
+    assert(spec_first_unreachable_from(parts, 0) == spec_first_unreachable_from(parts, 1));
+    assert(spec_first_unreachable_from(parts, 1) == spec_first_unreachable_from(parts, 2));
+    assert(spec_first_unreachable_from(parts, 2) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
     assert(spec_forward_node_error(parts, 0) == Some(SpecWorkflowError::BackwardEdge));
     assert(spec_forward_edges_error(parts) == Some(SpecWorkflowError::BackwardEdge));
     assert(try_from_parts_pure_spec(parts)
@@ -2909,7 +3161,10 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
 /// Lemma 37: the backward kind-edge rejection. A `Jump` node
 /// whose kind target points backward (or at itself) is rejected
 /// with `BackwardEdge` (production `validate_kind_edges`,
-/// workflow/mod.rs:2367-2427).
+/// workflow/mod.rs:2367-2427). The node carries a forward error
+/// handler to the second node so the fixture passes the
+/// reachability step that runs before the forward-edges step in
+/// production order.
 pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() == 2,
@@ -2927,7 +3182,8 @@ pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
         parts.kind_targets[0][0] == 0u32,
         parts.nodes_meta[0].kind_disc == 32u32,
         parts.nodes_meta[0].has_next == 0,
-        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].has_on_error == 1,
+        parts.nodes_meta[0].on_error_step == 1u32,
         parts.nodes_meta[0].id == 0u32,
         parts.nodes_meta[1].kind_disc == 33u32,
         parts.nodes_meta[1].has_next == 0,
@@ -2937,6 +3193,14 @@ pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
         try_from_parts_pure_spec(parts)
             == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge),
 {
+    assert(spec_path_exists(parts, 1, 2, 0) == spec_path_exists(parts, 0, 1, 0));
+    assert(spec_path_exists(parts, 0, 1, 0));
+    assert(spec_reachable(parts, 0));
+    assert(spec_reachable(parts, 1));
+    assert(spec_first_unreachable_from(parts, 0) == spec_first_unreachable_from(parts, 1));
+    assert(spec_first_unreachable_from(parts, 1) == spec_first_unreachable_from(parts, 2));
+    assert(spec_first_unreachable_from(parts, 2) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
     assert(spec_kind_target_forward(parts, 0, 0) == Some(SpecWorkflowError::BackwardEdge));
     assert(spec_forward_kind_edge_error(parts, 0) == Some(SpecWorkflowError::BackwardEdge));
     assert(spec_forward_node_error(parts, 0) == Some(SpecWorkflowError::BackwardEdge));
@@ -3019,7 +3283,10 @@ pub proof fn lemma_forward_edge_repeat_check_exempt(parts: &SpecWorkflowParts)
 /// A `RepeatCheck` whose routing `next` points backward with no
 /// enclosing structured start is rejected with `BackwardEdge`
 /// (production `repeat_check_validate`,
-/// workflow/mod.rs:2465-2587).
+/// workflow/mod.rs:2465-2587). The entry node carries a forward
+/// routing `next` to the check so the fixture passes the
+/// reachability step that runs before the forward-edges step in
+/// production order.
 pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() == 3,
@@ -3038,7 +3305,8 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
         parts.kind_targets[1][0] == 2u32,
         parts.kind_targets[2].len() == 0,
         parts.nodes_meta[0].kind_disc == 0u32,
-        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_next == 1,
+        parts.nodes_meta[0].next_step == 1u32,
         parts.nodes_meta[0].has_on_error == 0,
         parts.nodes_meta[0].id == 0u32,
         parts.nodes_meta[1].kind_disc == 24u32,
@@ -3058,6 +3326,20 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
         try_from_parts_pure_spec(parts)
             == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge),
 {
+    assert(spec_path_exists(parts, 1, 2, 0) == spec_path_exists(parts, 0, 1, 0));
+    assert(spec_path_exists(parts, 1, 3, 0) == spec_path_exists(parts, 0, 2, 0));
+    assert(spec_path_exists(parts, 0, 1, 0));
+    assert(spec_path_exists(parts, 0, 2, 0));
+    assert(spec_path_exists(parts, 2, 3, 0) == spec_path_exists(parts, 2, 3, 1));
+    assert(spec_path_exists(parts, 2, 3, 1));
+    assert(spec_reachable(parts, 0));
+    assert(spec_reachable(parts, 1));
+    assert(spec_reachable(parts, 2));
+    assert(spec_first_unreachable_from(parts, 0) == spec_first_unreachable_from(parts, 1));
+    assert(spec_first_unreachable_from(parts, 1) == spec_first_unreachable_from(parts, 2));
+    assert(spec_first_unreachable_from(parts, 2) == spec_first_unreachable_from(parts, 3));
+    assert(spec_first_unreachable_from(parts, 3) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
     assert(spec_repeat_owner(parts, 1, 0, None) == spec_repeat_owner(parts, 1, 1, None));
     assert(spec_repeat_owner(parts, 1, 1, None) == None::<int>);
     assert(spec_repeat_check_error(parts, 1, 0u32) == Some(SpecWorkflowError::BackwardEdge));
@@ -3073,7 +3355,10 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
 /// A `RepeatCheck` whose nearest active enclosing start is a
 /// `ForEachStart` rather than a `RepeatStart` is rejected with
 /// `BackwardEdge` (production `repeat_check_validate`,
-/// workflow/mod.rs:2465-2587).
+/// workflow/mod.rs:2465-2587). The body node carries a forward
+/// routing `next` to the check so the fixture passes the
+/// reachability step that runs before the forward-edges step in
+/// production order.
 pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() == 4,
@@ -3108,7 +3393,8 @@ pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWo
         parts.nodes_meta[1].has_output == 1,
         parts.nodes_meta[1].out_slot != parts.nodes_meta[0].out_slot,
         parts.nodes_meta[1].has_error_slot == 0,
-        parts.nodes_meta[1].has_next == 0,
+        parts.nodes_meta[1].has_next == 1,
+        parts.nodes_meta[1].next_step == 2u32,
         parts.nodes_meta[1].has_on_error == 0,
         parts.nodes_meta[1].id == 1u32,
         parts.nodes_meta[2].kind_disc == 24u32,
@@ -3131,6 +3417,32 @@ pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWo
         try_from_parts_pure_spec(parts)
             == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge),
 {
+    assert(spec_path_exists(parts, 1, 4, 0) == spec_path_exists(parts, 0, 3, 0));
+    assert(spec_path_exists(parts, 1, 3, 0) == spec_path_exists(parts, 0, 2, 0));
+    assert(spec_path_exists(parts, 0, 3, 0));
+    assert(spec_path_exists(parts, 0, 2, 0));
+    assert(spec_targets_contain(&parts.kind_targets[0], 2, 0)
+        == spec_targets_contain(&parts.kind_targets[0], 2, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 2, 1)
+        == spec_targets_contain(&parts.kind_targets[0], 2, 2));
+    assert(spec_targets_contain(&parts.kind_targets[0], 2, 2) == false);
+    assert(!spec_has_edge(parts, 0, 2));
+    assert(spec_path_exists(parts, 2, 4, 0) == spec_path_exists(parts, 2, 4, 1));
+    assert(spec_path_exists(parts, 2, 4, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 3, 0)
+        == spec_targets_contain(&parts.kind_targets[0], 3, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 3, 1));
+    assert(spec_path_exists(parts, 3, 4, 0));
+    assert(spec_reachable(parts, 0));
+    assert(spec_reachable(parts, 1));
+    assert(spec_reachable(parts, 2));
+    assert(spec_reachable(parts, 3));
+    assert(spec_first_unreachable_from(parts, 0) == spec_first_unreachable_from(parts, 1));
+    assert(spec_first_unreachable_from(parts, 1) == spec_first_unreachable_from(parts, 2));
+    assert(spec_first_unreachable_from(parts, 2) == spec_first_unreachable_from(parts, 3));
+    assert(spec_first_unreachable_from(parts, 3) == spec_first_unreachable_from(parts, 4));
+    assert(spec_first_unreachable_from(parts, 4) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
     assert(spec_repeat_owner(parts, 2, 0, None) == spec_repeat_owner(parts, 2, 1, Some(0)));
     assert(spec_repeat_owner(parts, 2, 1, Some(0)) == spec_repeat_owner(parts, 2, 2, Some(0)));
     assert(spec_repeat_owner(parts, 2, 2, Some(0)) == Some(0));
@@ -3195,6 +3507,35 @@ pub proof fn lemma_forward_edge_improper_nesting_rejected(parts: &SpecWorkflowPa
         try_from_parts_pure_spec(parts)
             == SpecValidationResult::Err(SpecWorkflowError::ImproperLoopNesting),
 {
+    assert(spec_targets_contain(&parts.kind_targets[0], 2, 0)
+        == spec_targets_contain(&parts.kind_targets[0], 2, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 2, 1));
+    assert(spec_path_exists(parts, 1, 4, 0) == spec_path_exists(parts, 0, 3, 0));
+    assert(spec_path_exists(parts, 2, 4, 0));
+    assert(spec_path_exists(parts, 1, 3, 0) == spec_path_exists(parts, 0, 2, 0));
+    assert(spec_path_exists(parts, 0, 3, 0));
+    assert(spec_path_exists(parts, 0, 2, 0));
+    assert(spec_targets_contain(&parts.kind_targets[1], 3, 0)
+        == spec_targets_contain(&parts.kind_targets[1], 3, 1));
+    assert(spec_targets_contain(&parts.kind_targets[1], 3, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 3, 0)
+        == spec_targets_contain(&parts.kind_targets[0], 3, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 3, 1)
+        == spec_targets_contain(&parts.kind_targets[0], 3, 2));
+    assert(spec_targets_contain(&parts.kind_targets[0], 3, 2) == false);
+    assert(!spec_has_edge(parts, 0, 3));
+    assert(spec_path_exists(parts, 3, 4, 0) == spec_path_exists(parts, 3, 4, 1));
+    assert(spec_path_exists(parts, 3, 4, 1));
+    assert(spec_reachable(parts, 0));
+    assert(spec_reachable(parts, 1));
+    assert(spec_reachable(parts, 2));
+    assert(spec_reachable(parts, 3));
+    assert(spec_first_unreachable_from(parts, 0) == spec_first_unreachable_from(parts, 1));
+    assert(spec_first_unreachable_from(parts, 1) == spec_first_unreachable_from(parts, 2));
+    assert(spec_first_unreachable_from(parts, 2) == spec_first_unreachable_from(parts, 3));
+    assert(spec_first_unreachable_from(parts, 3) == spec_first_unreachable_from(parts, 4));
+    assert(spec_first_unreachable_from(parts, 4) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
     assert(spec_nesting_before(parts, 1, 0) == Some(SpecWorkflowError::ImproperLoopNesting));
     assert(spec_forward_node_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_forward_node_error(parts, 1) == Some(SpecWorkflowError::ImproperLoopNesting));
@@ -3202,6 +3543,350 @@ pub proof fn lemma_forward_edge_improper_nesting_rejected(parts: &SpecWorkflowPa
     assert(spec_forward_edges_error(parts) == Some(SpecWorkflowError::ImproperLoopNesting));
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::ImproperLoopNesting));
+}
+
+/// Lemma 42: the unreachable-node rejection. A node with no
+/// path from the entry is rejected with `UnreachableNode`
+/// (production `validate_reachability`,
+/// workflow/mod.rs:2160-2229). The first unreachable node in
+/// table order is reported.
+pub proof fn lemma_reachability_unreachable_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 2,
+        parts.nodes_len == 2,
+        parts.entry == 0u32,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.kind_targets.len() == 2,
+        parts.kind_targets[0].len() == 0,
+        parts.kind_targets[1].len() == 0,
+        parts.nodes_meta[0].kind_disc == 0u32,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 33u32,
+        parts.nodes_meta[1].has_next == 0,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::UnreachableNode),
+{
+    assert(spec_path_exists(parts, 0, 2, 0));
+    assert(spec_path_exists(parts, 1, 2, 0) == spec_path_exists(parts, 1, 2, 1));
+    assert(spec_path_exists(parts, 1, 2, 1) == spec_path_exists(parts, 1, 2, 2));
+    assert(spec_path_exists(parts, 1, 2, 2) == false);
+    assert(!spec_path_exists(parts, 1, 2, 0));
+    assert(spec_reachable(parts, 0));
+    assert(!spec_reachable(parts, 1));
+    assert(spec_first_unreachable_from(parts, 0) == spec_first_unreachable_from(parts, 1));
+    assert(spec_first_unreachable_from(parts, 1)
+        == Some(SpecWorkflowError::UnreachableNode));
+    assert(spec_reachability_error(parts) == Some(SpecWorkflowError::UnreachableNode));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::UnreachableNode));
+}
+
+/// Lemma 43: the reachability exemption. A chain of nodes
+/// linked by routing `next` steps from the entry is NOT
+/// rejected: every node is reachable (production
+/// `validate_reachability`, workflow/mod.rs:2160-2229). This is
+/// the no-over-reject witness for the reachability step.
+pub proof fn lemma_reachability_chain_accepted(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 3,
+        parts.nodes_len == 3,
+        parts.entry == 0u32,
+        parts.kind_targets.len() == 3,
+        parts.kind_targets[0].len() == 0,
+        parts.kind_targets[1].len() == 0,
+        parts.kind_targets[2].len() == 0,
+        parts.nodes_meta[0].kind_disc == 0u32,
+        parts.nodes_meta[0].has_next == 1,
+        parts.nodes_meta[0].next_step == 1u32,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 0u32,
+        parts.nodes_meta[1].has_next == 1,
+        parts.nodes_meta[1].next_step == 2u32,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 33u32,
+        parts.nodes_meta[2].has_next == 0,
+        parts.nodes_meta[2].has_on_error == 0,
+        parts.nodes_meta[2].id == 2u32,
+    ensures
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+{
+    assert(spec_path_exists(parts, 0, 3, 0));
+    assert(spec_path_exists(parts, 1, 2, 0) == spec_path_exists(parts, 0, 1, 0));
+    assert(spec_path_exists(parts, 1, 3, 0) == spec_path_exists(parts, 0, 2, 0));
+    assert(spec_path_exists(parts, 0, 1, 0));
+    assert(spec_path_exists(parts, 0, 2, 0));
+    assert(spec_path_exists(parts, 2, 3, 0) == spec_path_exists(parts, 2, 3, 1));
+    assert(spec_path_exists(parts, 2, 3, 1));
+    assert(spec_reachable(parts, 0));
+    assert(spec_reachable(parts, 1));
+    assert(spec_reachable(parts, 2));
+    assert(spec_first_unreachable_from(parts, 0) == spec_first_unreachable_from(parts, 1));
+    assert(spec_first_unreachable_from(parts, 1) == spec_first_unreachable_from(parts, 2));
+    assert(spec_first_unreachable_from(parts, 2) == spec_first_unreachable_from(parts, 3));
+    assert(spec_first_unreachable_from(parts, 3) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
+}
+
+/// Lemma 44: the nested-together rejection. A `TogetherStart`
+/// reachable from another `TogetherStart`'s branch body over
+/// the routing `next` chain is rejected with `NestedTogether`
+/// (production `validate_no_nested_together`,
+/// engine/validate.rs:119-172). The fixture is otherwise
+/// well-formed: every node is reachable, every edge points
+/// forward, the loop spans nest strictly, and no counter slot
+/// is claimed, so the nested-together step is the first failure
+/// in production order.
+pub proof fn lemma_nested_together_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 5,
+        parts.nodes_len == 5,
+        parts.entry == 0u32,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.kind_targets.len() == 5,
+        parts.kind_targets[0].len() == 2,
+        parts.kind_targets[0][0] == 1u32,
+        parts.kind_targets[0][1] == 4u32,
+        parts.kind_targets[1].len() == 2,
+        parts.kind_targets[1][0] == 2u32,
+        parts.kind_targets[1][1] == 3u32,
+        parts.kind_targets[2].len() == 0,
+        parts.kind_targets[3].len() == 0,
+        parts.kind_targets[4].len() == 0,
+        parts.nodes_meta[0].kind_disc == 12u32,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 12u32,
+        parts.nodes_meta[1].has_next == 0,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 0u32,
+        parts.nodes_meta[2].has_next == 1,
+        parts.nodes_meta[2].next_step == 3u32,
+        parts.nodes_meta[2].has_on_error == 0,
+        parts.nodes_meta[2].id == 2u32,
+        parts.nodes_meta[3].kind_disc == 14u32,
+        parts.nodes_meta[3].has_next == 1,
+        parts.nodes_meta[3].next_step == 4u32,
+        parts.nodes_meta[3].has_on_error == 0,
+        parts.nodes_meta[3].id == 3u32,
+        parts.nodes_meta[4].kind_disc == 14u32,
+        parts.nodes_meta[4].has_next == 0,
+        parts.nodes_meta[4].has_on_error == 0,
+        parts.nodes_meta[4].id == 4u32,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::NestedTogether),
+{
+    assert(spec_path_exists(parts, 0, 5, 0));
+    assert(spec_targets_contain(&parts.kind_targets[0], 1, 0));
+    assert(spec_path_exists(parts, 1, 5, 0) == spec_path_exists(parts, 0, 4, 0));
+    assert(spec_path_exists(parts, 1, 4, 0) == spec_path_exists(parts, 0, 3, 0));
+    assert(spec_path_exists(parts, 0, 4, 0));
+    assert(spec_path_exists(parts, 0, 3, 0));
+    assert(spec_targets_contain(&parts.kind_targets[0], 2, 0)
+        == spec_targets_contain(&parts.kind_targets[0], 2, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 2, 1)
+        == spec_targets_contain(&parts.kind_targets[0], 2, 2));
+    assert(spec_targets_contain(&parts.kind_targets[0], 2, 2) == false);
+    assert(!spec_has_edge(parts, 0, 2));
+    assert(spec_path_exists(parts, 2, 5, 0) == spec_path_exists(parts, 2, 5, 1));
+    assert(spec_path_exists(parts, 2, 5, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 3, 0)
+        == spec_targets_contain(&parts.kind_targets[0], 3, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 3, 1)
+        == spec_targets_contain(&parts.kind_targets[0], 3, 2));
+    assert(spec_targets_contain(&parts.kind_targets[0], 3, 2) == false);
+    assert(!spec_has_edge(parts, 0, 3));
+    assert(spec_targets_contain(&parts.kind_targets[1], 3, 0)
+        == spec_targets_contain(&parts.kind_targets[1], 3, 1));
+    assert(spec_targets_contain(&parts.kind_targets[1], 3, 1));
+    assert(spec_path_exists(parts, 3, 5, 0) == spec_path_exists(parts, 3, 5, 1));
+    assert(spec_path_exists(parts, 3, 5, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 4, 0)
+        == spec_targets_contain(&parts.kind_targets[0], 4, 1));
+    assert(spec_targets_contain(&parts.kind_targets[0], 4, 1));
+    assert(spec_path_exists(parts, 4, 5, 0));
+    assert(spec_reachable(parts, 0));
+    assert(spec_reachable(parts, 1));
+    assert(spec_reachable(parts, 2));
+    assert(spec_reachable(parts, 3));
+    assert(spec_reachable(parts, 4));
+    assert(spec_first_unreachable_from(parts, 0) == spec_first_unreachable_from(parts, 1));
+    assert(spec_first_unreachable_from(parts, 1) == spec_first_unreachable_from(parts, 2));
+    assert(spec_first_unreachable_from(parts, 2) == spec_first_unreachable_from(parts, 3));
+    assert(spec_first_unreachable_from(parts, 3) == spec_first_unreachable_from(parts, 4));
+    assert(spec_first_unreachable_from(parts, 4) == spec_first_unreachable_from(parts, 5));
+    assert(spec_first_unreachable_from(parts, 5) == None::<SpecWorkflowError>);
+    assert(spec_reachability_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_kind_targets_forward_from(&parts.kind_targets[0], 0u32, 0)
+        == spec_kind_targets_forward_from(&parts.kind_targets[0], 0u32, 1));
+    assert(spec_kind_targets_forward_from(&parts.kind_targets[0], 0u32, 1)
+        == spec_kind_targets_forward_from(&parts.kind_targets[0], 0u32, 2));
+    assert(spec_kind_targets_forward_from(&parts.kind_targets[0], 0u32, 2)
+        == None::<SpecWorkflowError>);
+    assert(spec_forward_kind_edge_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_nesting_before(parts, 0, 0) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_kind_targets_forward_from(&parts.kind_targets[1], 1u32, 0)
+        == spec_kind_targets_forward_from(&parts.kind_targets[1], 1u32, 1));
+    assert(spec_kind_targets_forward_from(&parts.kind_targets[1], 1u32, 1)
+        == spec_kind_targets_forward_from(&parts.kind_targets[1], 1u32, 2));
+    assert(spec_kind_targets_forward_from(&parts.kind_targets[1], 1u32, 2)
+        == None::<SpecWorkflowError>);
+    assert(spec_forward_kind_edge_error(parts, 1) == None::<SpecWorkflowError>);
+    assert(spec_loop_span_end(parts, 1) == Some(3u32));
+    assert(spec_loop_span_end(parts, 0) == Some(4u32));
+    assert(spec_nesting_before(parts, 1, 0) == spec_nesting_before(parts, 1, 1));
+    assert(spec_nesting_before(parts, 1, 1) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 1) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 2) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 3) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 4) == None::<SpecWorkflowError>);
+    assert(spec_forward_edges_from(parts, 0) == spec_forward_edges_from(parts, 1));
+    assert(spec_forward_edges_from(parts, 1) == spec_forward_edges_from(parts, 2));
+    assert(spec_forward_edges_from(parts, 2) == spec_forward_edges_from(parts, 3));
+    assert(spec_forward_edges_from(parts, 3) == spec_forward_edges_from(parts, 4));
+    assert(spec_forward_edges_from(parts, 4) == spec_forward_edges_from(parts, 5));
+    assert(spec_forward_edges_from(parts, 5) == None::<SpecWorkflowError>);
+    assert(spec_forward_edges_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 0, 0) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 3, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 3, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 3, 1)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 3, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 3, 2)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 3, 3));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 3, 3) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 4, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 4, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 4, 1)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 4, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 4, 2)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 4, 3));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 4, 3)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 4, 4));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 4, 4) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 0)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 1));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 1)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 2));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 2)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 3));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 3)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 4));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 4)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 5));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 5) == None::<SpecWorkflowError>);
+    assert(spec_ownership_error(parts, 0) == spec_ownership_error(parts, 1));
+    assert(spec_ownership_error(parts, 1) == spec_ownership_error(parts, 2));
+    assert(spec_ownership_error(parts, 2) == spec_ownership_error(parts, 3));
+    assert(spec_ownership_error(parts, 3) == spec_ownership_error(parts, 4));
+    assert(spec_ownership_error(parts, 4) == spec_ownership_error(parts, 5));
+    assert(spec_ownership_error(parts, 5) == None::<SpecWorkflowError>);
+    assert(spec_repeat_counter_error(parts) == None::<SpecWorkflowError>);
+    assert(spec_walk_inner(parts, 1, 4, 0, 5) == Some(1u32));
+    assert(spec_nested_branches_from(parts, &parts.kind_targets[0], 0, 0)
+        == Some(SpecWorkflowError::NestedTogether));
+    assert(spec_nested_outer_from(parts, 0) == Some(SpecWorkflowError::NestedTogether));
+    assert(spec_nested_together_error(parts) == Some(SpecWorkflowError::NestedTogether));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::NestedTogether));
+}
+
+/// Lemma 45: the sequential-together exemption. Two
+/// `TogetherStart` nodes run one after the other are NOT
+/// rejected: the second starts at the first one's join, so the
+/// first one's branch walk stops before reaching it
+/// (production `validate_no_nested_together`,
+/// engine/validate.rs:119-172). This is the no-over-reject
+/// witness for the nested-together step.
+pub proof fn lemma_nested_together_sequential_accepted(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 5,
+        parts.nodes_len == 5,
+        parts.entry == 0u32,
+        parts.kind_targets.len() == 5,
+        parts.kind_targets[0].len() == 2,
+        parts.kind_targets[0][0] == 1u32,
+        parts.kind_targets[0][1] == 2u32,
+        parts.kind_targets[1].len() == 0,
+        parts.kind_targets[2].len() == 2,
+        parts.kind_targets[2][0] == 3u32,
+        parts.kind_targets[2][1] == 4u32,
+        parts.kind_targets[3].len() == 0,
+        parts.kind_targets[4].len() == 0,
+        parts.nodes_meta[0].kind_disc == 12u32,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 0u32,
+        parts.nodes_meta[1].has_next == 1,
+        parts.nodes_meta[1].next_step == 2u32,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 12u32,
+        parts.nodes_meta[2].has_next == 0,
+        parts.nodes_meta[2].has_on_error == 0,
+        parts.nodes_meta[2].id == 2u32,
+        parts.nodes_meta[3].kind_disc == 0u32,
+        parts.nodes_meta[3].has_next == 1,
+        parts.nodes_meta[3].next_step == 4u32,
+        parts.nodes_meta[3].has_on_error == 0,
+        parts.nodes_meta[3].id == 3u32,
+        parts.nodes_meta[4].kind_disc == 14u32,
+        parts.nodes_meta[4].has_next == 0,
+        parts.nodes_meta[4].has_on_error == 0,
+        parts.nodes_meta[4].id == 4u32,
+    ensures
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+{
+    assert(spec_walk_inner(parts, 1, 2, 0, 5) == spec_walk_inner(parts, 2, 2, 0, 4));
+    assert(spec_walk_inner(parts, 2, 2, 0, 4) == None::<u32>);
+    assert(spec_walk_inner(parts, 3, 4, 2, 5) == spec_walk_inner(parts, 4, 4, 2, 4));
+    assert(spec_walk_inner(parts, 4, 4, 2, 4) == None::<u32>);
+    assert(spec_nested_branches_from(parts, &parts.kind_targets[0], 0, 0)
+        == spec_nested_branches_from(parts, &parts.kind_targets[0], 0, 1));
+    assert(spec_nested_branches_from(parts, &parts.kind_targets[0], 0, 1)
+        == None::<SpecWorkflowError>);
+    assert(spec_nested_branches_from(parts, &parts.kind_targets[2], 2, 0)
+        == spec_nested_branches_from(parts, &parts.kind_targets[2], 2, 1));
+    assert(spec_nested_branches_from(parts, &parts.kind_targets[2], 2, 1)
+        == None::<SpecWorkflowError>);
+    assert(spec_nested_outer_from(parts, 0) == spec_nested_outer_from(parts, 1));
+    assert(spec_nested_outer_from(parts, 1) == spec_nested_outer_from(parts, 2));
+    assert(spec_nested_outer_from(parts, 2) == spec_nested_outer_from(parts, 3));
+    assert(spec_nested_outer_from(parts, 3) == spec_nested_outer_from(parts, 4));
+    assert(spec_nested_outer_from(parts, 4) == spec_nested_outer_from(parts, 5));
+    assert(spec_nested_outer_from(parts, 5) == None::<SpecWorkflowError>);
+    assert(spec_nested_together_error(parts) == None::<SpecWorkflowError>);
 }
 
 fn main() {}
