@@ -2482,7 +2482,11 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     }
     let node_count = parts.nodes_len;
     // 1a. resource contract bounds (workflow/mod.rs:1587-1593).
-    // The caller-supplied `slot_count`, `constants_len`,
+    // The TooLarge arms live in `check_resource_contract_limits`
+    // (workflow/mod.rs:1496-1585): steps, slots, constants
+    // (1509-1513, MAX_CONSTANTS 65535), accessors (1514-1518,
+    // MAX_ACCESSORS 8192), expressions (1519-1523, MAX_EXPRESSIONS
+    // 4096), expr_stack. The caller-supplied `slot_count`,
     // `accessors_len`, and `expressions_len` are trusted to be the
     // true inventory lengths. Each is checked against its contract
     // cap in production `validate_resource_usage` order; a
@@ -2497,6 +2501,15 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
     if contract.max_slots > 1024 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_constants > 65535 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_accessors > 8192 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_expressions > 4096 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
     }
     if parts.slot_count > contract.max_slots {
