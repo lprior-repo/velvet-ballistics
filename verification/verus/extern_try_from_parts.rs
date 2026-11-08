@@ -2486,7 +2486,15 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // (workflow/mod.rs:1496-1585): steps, slots, constants
     // (1509-1513, MAX_CONSTANTS 65535), accessors (1514-1518,
     // MAX_ACCESSORS 8192), expressions (1519-1523, MAX_EXPRESSIONS
-    // 4096), expr_stack. The caller-supplied `slot_count`,
+    // 4096), expr_stack, step_budget (1529-1533, MAX_STEP_BUDGET
+    // 10000), input (1539-1543, MAX_INPUT_BYTES 16777216),
+    // output (1544-1548, MAX_OUTPUT_BYTES 16777216), blob
+    // (1549-1553, MAX_BLOB_BYTES 67108864), ipc (1554-1558,
+    // MAX_IPC_PAYLOAD_BYTES 16777216), journal (1579-1583,
+    // MAX_JOURNAL_BATCH_BYTES 16777216). The transitions arm
+    // (1534-1538) is handled by the combined check below, which
+    // returns ResourceContractExceeded where production returns
+    // ResourceContractTooLarge. The caller-supplied `slot_count`,
     // `accessors_len`, and `expressions_len` are trusted to be the
     // true inventory lengths. Each is checked against its contract
     // cap in production `validate_resource_usage` order; a
@@ -2525,6 +2533,24 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
     if contract.max_expr_stack > 64 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_step_budget_per_tick > 10000 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_input_bytes > 16777216 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_output_bytes > 16777216 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_blob_bytes > 67108864 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_ipc_payload_bytes > 16777216 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_journal_batch_bytes > 16777216 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
     }
     for expression in &parts.expressions {
