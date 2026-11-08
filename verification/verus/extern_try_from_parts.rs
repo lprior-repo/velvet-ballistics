@@ -78,6 +78,26 @@
 //     <- crates/vb_core/src/workflow/mod.rs:2160-2229
 //   - `validate_forward_edges`
 //     <- crates/vb_core/src/workflow/mod.rs:2336-2364
+//   - `validate_kind_edges`
+//     <- crates/vb_core/src/workflow/mod.rs:2367-2426
+//   - `validate_choose_slot_edges`
+//     <- crates/vb_core/src/workflow/mod.rs:2428-2441
+//   - `validate_choose_expr_edges`
+//     <- crates/vb_core/src/workflow/mod.rs:2443-2456
+//   - `validate_loop_done_only`
+//     <- crates/vb_core/src/workflow/mod.rs:2458-2460
+//   - `repeat_check_validate` (`nearest_active_owner`)
+//     <- crates/vb_core/src/workflow/mod.rs:2465-2582
+//   - `validate_loop_start_edges`
+//     <- crates/vb_core/src/workflow/mod.rs:2588-2596
+//   - `validate_together_start_edges`
+//     <- crates/vb_core/src/workflow/mod.rs:2598-2608
+//   - `validate_together_branch_edges`
+//     <- crates/vb_core/src/workflow/mod.rs:2610-2618
+//   - `validate_forward_target`
+//     <- crates/vb_core/src/workflow/mod.rs:2621-2630
+//   - `push_loop_span`
+//     <- crates/vb_core/src/workflow/mod.rs:2633-2680
 //   - `validate_no_nested_together` (moved out of workflow/mod.rs)
 //     <- crates/vb_core/src/engine/validate.rs:119-172
 //   - `validate` (repeat_counter_ownership)
@@ -1353,6 +1373,311 @@ pub fn repeat_counter_ownership_error(parts: &SpecWorkflowParts) -> Option<SpecW
     None
 }
 // ============================================================================
+// Pure decision fns: validate_forward_edges
+// ============================================================================
+/// Pure projection of `validate_forward_target`
+/// (workflow/mod.rs:2621-2630): a target step is strictly forward
+/// from the current node iff it exceeds the node's id. The
+/// projection compares against `meta.id`, trusting it to match
+/// the table position as step 1e does; production compares
+/// against the enumeration position.
+#[verifier::external]
+fn forward_target_error(target: u32, current: u32) -> Option<SpecWorkflowError> {
+    if target > current {
+        None
+    } else {
+        Some(SpecWorkflowError::BackwardEdge)
+    }
+}
+
+/// Pure projection of the loop-span end `push_loop_span` reads
+/// (workflow/mod.rs:2633-2680): the `done` step of a loop start
+/// kind, or the `join` step of a `TogetherStart`, from the
+/// caller-supplied `kind_targets` inventory (`body` then `done`
+/// for loop starts, branch entries then `join` for
+/// `TogetherStart`). Returns `None` for non-start kinds and when
+/// the inventory has no entry for the node.
+#[verifier::external]
+fn loop_span_end(parts: &SpecWorkflowParts, index: usize) -> Option<u32> {
+    let meta = match parts.nodes_meta.get(index) {
+        Some(meta) => meta,
+        None => return None,
+    };
+    let targets = match parts.kind_targets.get(index) {
+        Some(targets) => targets,
+        None => return None,
+    };
+    if meta.kind_disc == spec_node_kind_foreach_start()
+        || meta.kind_disc == spec_node_kind_collect_start()
+        || meta.kind_disc == spec_node_kind_reduce_start()
+        || meta.kind_disc == spec_node_kind_repeat_start()
+    {
+        targets.get(1).copied()
+    } else if meta.kind_disc == spec_node_kind_together_start() {
+        targets.last().copied()
+    } else {
+        None
+    }
+}
+
+/// Pure projection of `repeat_check_validate::validate`
+/// (workflow/mod.rs:2465-2587) for a `RepeatCheck` node at
+/// `check_index` whose routing `next` step `back_target` points
+/// backward: the nearest active enclosing structured start
+/// (`nearest_active_owner`, workflow/mod.rs:2470-2489) must be a
+/// `RepeatStart` whose body is the back target, whose done
+/// matches the check's done, and whose output slot is the check's
+/// attempt slot; the owner must precede the check, its body must
+/// precede the check, and the check must precede its done. A
+/// slot-less owner has no output slot, so it can never satisfy
+/// the attempt-slot match. Returns `BackwardEdge` for the first
+/// failing condition, else `None`. Positions are `meta.id`
+/// values, trusting them to match the table position as step 1e
+/// does.
+#[verifier::external]
+fn repeat_check_owner_error(
+    parts: &SpecWorkflowParts,
+    check_index: usize,
+    back_target: u32,
+) -> Option<SpecWorkflowError> {
+    let check_meta = match parts.nodes_meta.get(check_index) {
+        Some(meta) => *meta,
+        None => return Some(SpecWorkflowError::BackwardEdge),
+    };
+    let mut owner_index: Option<usize> = None;
+    let mut j = check_index;
+    while j > 0 {
+        j -= 1;
+        let candidate = match parts.nodes_meta.get(j) {
+            Some(meta) => *meta,
+            None => continue,
+        };
+        let is_start = candidate.kind_disc == spec_node_kind_foreach_start()
+            || candidate.kind_disc == spec_node_kind_collect_start()
+            || candidate.kind_disc == spec_node_kind_reduce_start()
+            || candidate.kind_disc == spec_node_kind_repeat_start()
+            || candidate.kind_disc == spec_node_kind_together_start();
+        if !is_start {
+            continue;
+        }
+        match loop_span_end(parts, j) {
+            Some(end) if end > check_meta.id => {
+                owner_index = Some(j);
+                break;
+            }
+            _ => continue,
+        }
+    }
+    let owner_index = match owner_index {
+        Some(owner_index) => owner_index,
+        None => return Some(SpecWorkflowError::BackwardEdge),
+    };
+    let owner_meta = match parts.nodes_meta.get(owner_index) {
+        Some(meta) => *meta,
+        None => return Some(SpecWorkflowError::BackwardEdge),
+    };
+    if owner_meta.kind_disc != spec_node_kind_repeat_start() {
+        return Some(SpecWorkflowError::BackwardEdge);
+    }
+    if owner_meta.has_start_shape != 1 {
+        return Some(SpecWorkflowError::BackwardEdge);
+    }
+    if check_meta.has_ctrl_shape != 1 {
+        return Some(SpecWorkflowError::BackwardEdge);
+    }
+    let owner_targets = match parts.kind_targets.get(owner_index) {
+        Some(targets) => targets,
+        None => return Some(SpecWorkflowError::BackwardEdge),
+    };
+    let owner_body = match owner_targets.get(0) {
+        Some(body) => *body,
+        None => return Some(SpecWorkflowError::BackwardEdge),
+    };
+    let owner_done = match owner_targets.get(1) {
+        Some(done) => *done,
+        None => return Some(SpecWorkflowError::BackwardEdge),
+    };
+    if owner_meta.start_state_a != check_meta.ctrl_state_a {
+        return Some(SpecWorkflowError::BackwardEdge);
+    }
+    if owner_body != back_target {
+        return Some(SpecWorkflowError::BackwardEdge);
+    }
+    if owner_done != check_meta.ctrl_done {
+        return Some(SpecWorkflowError::BackwardEdge);
+    }
+    if owner_meta.id >= check_meta.id {
+        return Some(SpecWorkflowError::BackwardEdge);
+    }
+    if owner_body >= check_meta.id {
+        return Some(SpecWorkflowError::BackwardEdge);
+    }
+    if check_meta.id >= owner_done {
+        return Some(SpecWorkflowError::BackwardEdge);
+    }
+    None
+}
+
+/// Pure projection of one `kind_targets` entry of
+/// `validate_kind_edges` (workflow/mod.rs:2367-2426): the target
+/// at `pos` must point strictly forward from the node. A missing
+/// inventory entry, or a missing position, means the caller
+/// supplied no target there, so the check passes.
+#[verifier::external]
+fn kind_target_forward_error(
+    parts: &SpecWorkflowParts,
+    index: usize,
+    current: u32,
+    pos: usize,
+) -> Option<SpecWorkflowError> {
+    let targets = match parts.kind_targets.get(index) {
+        Some(targets) => targets,
+        None => return None,
+    };
+    match targets.get(pos) {
+        Some(target) => forward_target_error(*target, current),
+        None => None,
+    }
+}
+
+/// Pure projection of the forward check over every
+/// `kind_targets` entry of one node (`validate_choose_slot_edges`
+/// / `validate_choose_expr_edges` /
+/// `validate_together_start_edges`, workflow/mod.rs:2428-2442,
+/// 2443-2457, 2598-2609): branch targets in inventory order,
+/// then the fallback / join.
+#[verifier::external]
+fn kind_targets_forward_error(
+    parts: &SpecWorkflowParts,
+    index: usize,
+    current: u32,
+) -> Option<SpecWorkflowError> {
+    let targets = match parts.kind_targets.get(index) {
+        Some(targets) => targets,
+        None => return None,
+    };
+    for target in targets.iter() {
+        if let Some(err) = forward_target_error(*target, current) {
+            return Some(err);
+        }
+    }
+    None
+}
+
+/// Pure projection of `validate_kind_edges`
+/// (workflow/mod.rs:2367-2427) for one node: which
+/// `kind_targets` positions production checks depends on the
+/// kind. Loop `*Next` / `*Attempt` / `RetryCheck` / `RepeatCheck`
+/// / `ErrorHandler` kinds check only their forward target
+/// (`done` / `exhausted` / `handler`); the back-edge slots
+/// (`body`) are not forward edges. `*Start` kinds check `body`
+/// then `done`; `TogetherBranch` checks `entry` then `join`;
+/// `Jump` checks its target; `Choose` / `ChooseSlot` /
+/// `TogetherStart` check every target in inventory order; every
+/// other kind has no kind edges.
+#[verifier::external]
+fn kind_edges_error(
+    parts: &SpecWorkflowParts,
+    index: usize,
+    meta: SpecNodeMeta,
+) -> Option<SpecWorkflowError> {
+    let current = meta.id;
+    if meta.kind_disc == spec_node_kind_jump() {
+        kind_target_forward_error(parts, index, current, 0)
+    } else if meta.kind_disc == spec_node_kind_choose()
+        || meta.kind_disc == spec_node_kind_choose_slot()
+        || meta.kind_disc == spec_node_kind_together_start()
+    {
+        kind_targets_forward_error(parts, index, current)
+    } else if meta.kind_disc == spec_node_kind_foreach_start()
+        || meta.kind_disc == spec_node_kind_collect_start()
+        || meta.kind_disc == spec_node_kind_reduce_start()
+        || meta.kind_disc == spec_node_kind_repeat_start()
+        || meta.kind_disc == spec_node_kind_together_branch()
+    {
+        match kind_target_forward_error(parts, index, current, 0) {
+            Some(err) => Some(err),
+            None => kind_target_forward_error(parts, index, current, 1),
+        }
+    } else if meta.kind_disc == spec_node_kind_foreach_next()
+        || meta.kind_disc == spec_node_kind_collect_page()
+        || meta.kind_disc == spec_node_kind_collect_next()
+        || meta.kind_disc == spec_node_kind_reduce_next()
+        || meta.kind_disc == spec_node_kind_repeat_attempt()
+        || meta.kind_disc == spec_node_kind_retry_check()
+        || meta.kind_disc == spec_node_kind_error_handler()
+    {
+        kind_target_forward_error(parts, index, current, 1)
+    } else if meta.kind_disc == spec_node_kind_repeat_check() {
+        kind_target_forward_error(parts, index, current, 0)
+    } else {
+        None
+    }
+}
+
+/// Pure projection of `validate_forward_edges`
+/// (workflow/mod.rs:2336-2364): every node in table order must
+/// have strictly forward routing and kind edges, except a
+/// `RepeatCheck` routing back-edge validated against its owning
+/// `RepeatStart` (`repeat_check_validate`), and loop spans must
+/// be properly nested (`push_loop_span`, Check D:
+/// `ImproperLoopNesting`). Returns the first failure in
+/// production order (routing `next`, routing error handler, kind
+/// edges, span nesting), else `None`. Positions are `meta.id`
+/// values, trusting them to match the table position as step 1e
+/// does; the span stack mirrors `push_loop_span` exactly
+/// (retire finished spans before the nesting comparison, so
+/// sequential loops are not rejected).
+///
+/// TRUST BOUNDARY: the body is opaque to Verus
+/// (`#[verifier::external]`). The spec-side mirror in
+/// `try_from_parts.rs` is the contract; this projection is the
+/// trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn forward_edges_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    let mut spans: Vec<(u32, u32)> = Vec::new();
+    for (index, meta) in parts.nodes_meta.iter().enumerate() {
+        let current = meta.id;
+        if meta.has_next == 1 {
+            if meta.kind_disc == spec_node_kind_repeat_check() && meta.next_step <= current {
+                if let Some(err) = repeat_check_owner_error(parts, index, meta.next_step) {
+                    return Some(err);
+                }
+            } else if let Some(err) = forward_target_error(meta.next_step, current) {
+                return Some(err);
+            }
+        }
+        if meta.has_on_error == 1 {
+            if let Some(err) = forward_target_error(meta.on_error_step, current) {
+                return Some(err);
+            }
+        }
+        if let Some(err) = kind_edges_error(parts, index, *meta) {
+            return Some(err);
+        }
+        if let Some(end) = loop_span_end(parts, index) {
+            loop {
+                let done = match spans.last() {
+                    Some((_, done)) => *done,
+                    None => break,
+                };
+                if done <= current {
+                    spans.pop();
+                } else {
+                    break;
+                }
+            }
+            if let Some((_, outer_done)) = spans.last() {
+                if end > *outer_done {
+                    return Some(SpecWorkflowError::ImproperLoopNesting);
+                }
+            }
+            spans.push((current, end));
+        }
+    }
+    None
+}
+// ============================================================================
 // Pure decision fn: top-level try_from_parts validation
 // ============================================================================
 /// Pure projection of `CompiledWorkflow::try_from_parts` validation
@@ -1501,15 +1826,20 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // constant / field / path-segment; the projection trusts the
     // caller-supplied `parts.symbols_count` is sufficient (the spec
     // proves SymbolOutOfBounds separately).
-    // 1g. validate_reachability, validate_forward_edges,
-    // validate_no_nested_together — graph structural checks.
-    // The projection treats these as passing because the per-node
-    // metadata (max_step_ref = strict-forward aggregation) is
-    // precomputed by the spec caller; if any node violates, the
-    // projection reports it via max_step_ref >= node_count (which
-    // the spec records as a StepOutOfBounds-equivalent at the
-    // decision-fn level; the spec's BackwardEdge / UnreachableNode
-    // / NestedTogether arms are exercised via dedicated spec
+    // 1g. validate_forward_edges (workflow/mod.rs:2336-2364) —
+    // routing and kind edges must point strictly forward (except
+    // a RepeatCheck back-edge validated against its owning
+    // RepeatStart), and loop spans must nest properly.
+    if let Some(err) = forward_edges_error(parts) {
+        return SpecValidationResult::Err(err);
+    }
+    // validate_reachability and validate_no_nested_together
+    // remain approximated as passing: the per-node metadata
+    // (max_step_ref = strict-forward aggregation) is precomputed
+    // by the spec caller, so a violation surfaces via
+    // max_step_ref >= node_count (a StepOutOfBounds-equivalent at
+    // the decision-fn level; the spec's UnreachableNode /
+    // NestedTogether arms are exercised via dedicated spec
     // functions).
     // 1h. repeat_counter_ownership::validate
     // (repeat_counter_ownership.rs:6-12). Production runs this
