@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod admission;
+mod boundary;
 mod full_ask_schedule;
 mod pending;
 mod product;
@@ -18,11 +19,12 @@ pub(crate) use admission::{
     RecoveredAdmissionContext, RecoveredAdmissionEvidence, action_abi_digests_from_contracts,
     action_contract_abi_digest, validate_recovered_admission_evidence,
 };
+pub use boundary::{RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind};
 pub(crate) use pending::pending_action_ticket_from_events;
 pub(crate) use product::ResumableRecoveryParts;
 pub use product::{
-    NonResumableRecoveryProduct, RecoveredOpenAsk, RecoveredRunBoundary, RecoveredRunBoundaryKind,
-    ResumableRecoveryProduct, RuntimeRecoveryProduct, SummaryRecoveryProduct,
+    NonResumableRecoveryProduct, ResumableRecoveryProduct, RuntimeRecoveryProduct,
+    SummaryRecoveryProduct,
 };
 
 use crate::{RuntimeError, RuntimeResult};

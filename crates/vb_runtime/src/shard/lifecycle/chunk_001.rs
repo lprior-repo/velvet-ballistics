@@ -587,6 +587,25 @@ impl Shard {
         self.terminal_runs_remove(run);
         self.admit_run_state(run, state, crate::shard::types::RuntimeState::Initial)?;
 
+        // Step 7a: Restore reconstructed open gates before any boundary
+        // handling. A gated run is suspended on its gate, never on another
+        // boundary: a recovered gate together with a pending-action or
+        // open-ask boundary is inconsistent journal evidence, so recovery
+        // fails instead of driving a gated run or dropping the gate. The
+        // run stays suspended (AwaitAction) and is not driven; the gate
+        // decision resumes or fails it through the normal submission flow.
+        if !command.open_gates.is_empty() {
+            if boundary.kind() != crate::recovery::RecoveredRunBoundaryKind::None {
+                return Err(RuntimeError::Recovery {
+                    error: "recovered run has both an open gate and a suspended boundary"
+                        .to_string(),
+                });
+            }
+            self.restore_open_gates(run, &command.open_gates)?;
+            self.apply(run, crate::shard::types::RuntimeEvent::AwaitAction)?;
+            return Ok(());
+        }
+
         // Step 7: Handle boundary for suspended operations
         match boundary.kind() {
             crate::recovery::RecoveredRunBoundaryKind::None => {}

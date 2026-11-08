@@ -72,6 +72,39 @@ impl Shard {
         Ok(())
     }
 
+    /// Restores gates reconstructed from durable journal evidence into the
+    /// shard registry after recovery.
+    ///
+    /// The gates were folded from the full per-run journal by
+    /// [`crate::manual_gate::reconstruct_open_gates`], so their definitions
+    /// are already validated; this restores the live registry entries the
+    /// crash lost. Every gate must belong to the recovered run, no gate id
+    /// may already be registered, and the registry cap still applies. A
+    /// violation fails recovery instead of silently dropping a gate.
+    /// Restoring performs no journal append: the openings are already durable.
+    pub(crate) fn restore_open_gates(
+        &mut self,
+        run: RunId,
+        gates: &[OpenGate],
+    ) -> RuntimeResult<()> {
+        for open in gates {
+            if open.gate.run != run {
+                return Err(RuntimeError::Recovery {
+                    error: format!(
+                        "recovered open gate {} belongs to a different run",
+                        open.gate.id.get()
+                    ),
+                });
+            }
+            if self.open_gates.contains_key(&open.gate.id) {
+                return Err(RuntimeError::GateAlreadyOpen { gate: open.gate.id });
+            }
+            self.reserve_open_gate_slot()?;
+            self.open_gates.insert(open.gate.id, open.clone());
+        }
+        Ok(())
+    }
+
     /// Submits an operator decision to an open manual gate and applies
     /// the outcome.
     ///

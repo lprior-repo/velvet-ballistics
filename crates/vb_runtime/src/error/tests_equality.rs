@@ -221,3 +221,36 @@ fn cross_variant_slot_mismatch_vs_recovery() {
     };
     assert_ne!(a, b);
 }
+
+#[test]
+fn gate_already_open_identical_equal() {
+    let a = RuntimeError::GateAlreadyOpen {
+        gate: vb_core::manual_gate::GateId::new(7),
+    };
+    let b = RuntimeError::GateAlreadyOpen {
+        gate: vb_core::manual_gate::GateId::new(7),
+    };
+    assert_eq!(a, b);
+}
+
+#[test]
+fn gate_already_open_different_gate_unequal() {
+    let a = RuntimeError::GateAlreadyOpen {
+        gate: vb_core::manual_gate::GateId::new(7),
+    };
+    let b = RuntimeError::GateAlreadyOpen {
+        gate: vb_core::manual_gate::GateId::new(8),
+    };
+    assert_ne!(a, b);
+}
+
+#[test]
+fn cross_variant_gate_already_open_vs_gate_not_open() {
+    let a = RuntimeError::GateAlreadyOpen {
+        gate: vb_core::manual_gate::GateId::new(7),
+    };
+    let b = RuntimeError::GateNotOpen {
+        gate: vb_core::manual_gate::GateId::new(7),
+    };
+    assert_ne!(a, b);
+}

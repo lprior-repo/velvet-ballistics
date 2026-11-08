@@ -301,6 +301,11 @@ pub struct RecoverRunCommand {
     pub retry_checkpoint: Option<crate::run_checkpoint::RunCheckpointV1>,
     /// Recovery boundary classification.
     pub boundary: crate::recovery::RecoveredRunBoundary,
+    /// Open manual gates reconstructed from the durable journal by
+    /// `reconstruct_open_gates`. Empty on the raw and retry paths, which
+    /// carry no gate evidence. Restored into the shard registry by
+    /// `handle_recover`; a gated run is never driven until its gate is decided.
+    pub(crate) open_gates: Vec<OpenGate>,
     /// Admission evidence carried by the recovery command. The Unverified
     /// variant represents missing historical evidence rather than a fabricated
     /// verified pin. Callers on the raw command path cannot gain verified
@@ -335,11 +340,22 @@ impl RecoverRunCommand {
             collect_states,
             retry_checkpoint: None,
             boundary,
+            open_gates: Vec::new(),
             admission: RecoveredAdmissionKind::Unverified {
                 run_id: run,
                 artifact_digest,
             },
         }
+    }
+
+    /// Attaches reconstructed open manual gates from journal replay.
+    ///
+    /// Crate-private: only the validated recovery product path should call this,
+    /// after `reconstruct_open_gates` has folded the durable gate evidence.
+    #[must_use]
+    pub(crate) fn with_open_gates(mut self, open_gates: Vec<OpenGate>) -> Self {
+        self.open_gates = open_gates;
+        self
     }
 
     /// Attaches a validated historical admission from a recovery product.
@@ -429,6 +445,7 @@ impl RecoverRunCommand {
             collect_states,
             retry_checkpoint: Some(checkpoint),
             boundary: crate::recovery::RecoveredRunBoundary::none(),
+            open_gates: Vec::new(),
             admission,
         })
     }

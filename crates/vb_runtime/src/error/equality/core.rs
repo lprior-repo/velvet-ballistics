@@ -10,6 +10,7 @@ pub(super) fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeEr
         || runtime_error_action_taint_eq(left, right)
         || runtime_error_journal_eq(left, right)
         || runtime_error_shard_eq(left, right)
+        || runtime_error_gate_eq(left, right)
         || runtime_error_recovery_and_contract_eq(left, right)
 }
 
@@ -197,6 +198,40 @@ fn runtime_error_shard_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
         (RuntimeError::ShardNotFound { shard: a }, RuntimeError::ShardNotFound { shard: b })
             if a == b
     )
+}
+
+fn runtime_error_gate_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
+        (RuntimeError::GateAlreadyOpen { gate: a }, RuntimeError::GateAlreadyOpen { gate: b }) => {
+            a == b
+        }
+        (RuntimeError::GateNotOpen { gate: a }, RuntimeError::GateNotOpen { gate: b }) => a == b,
+        (
+            RuntimeError::GateEvaluationFailed { source: a },
+            RuntimeError::GateEvaluationFailed { source: b },
+        ) => a == b,
+        (
+            RuntimeError::GateRunNotSuspendable { run: a, state: sa },
+            RuntimeError::GateRunNotSuspendable { run: b, state: sb },
+        ) => a == b && sa == sb,
+        (
+            RuntimeError::GateWrongDelegate {
+                gate: a,
+                expected: ea,
+                actual: aa,
+            },
+            RuntimeError::GateWrongDelegate {
+                gate: b,
+                expected: eb,
+                actual: ab,
+            },
+        ) => a == b && ea == eb && aa == ab,
+        (
+            RuntimeError::GateOpenBlocksResume { run: a, gate: ga },
+            RuntimeError::GateOpenBlocksResume { run: b, gate: gb },
+        ) => a == b && ga == gb,
+        _ => false,
+    }
 }
 
 fn runtime_error_recovery_and_contract_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
