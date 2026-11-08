@@ -26,7 +26,7 @@
 // the body has more than one step: the consecutiveness lemma (L3)
 // and the max-valid-start lemma (L4, 65532) no longer hold. This
 // rewrite re-grounds every lemma in the current shape, mirroring the
-// production-side contract already proven in the part_03.rs Verus
+// production-side contract already proven in the part_03_collect_spec.rs Verus
 // block (L1-L6 for `plan_compute_edges`).
 //
 // This rewrite grounds every lemma in production types:

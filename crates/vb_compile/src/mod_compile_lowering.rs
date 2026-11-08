@@ -3,6 +3,7 @@
 mod part_01;
 mod part_02;
 mod part_03;
+mod part_03_collect_spec;
 mod part_04;
 pub(crate) mod part_05;
 mod part_06;
