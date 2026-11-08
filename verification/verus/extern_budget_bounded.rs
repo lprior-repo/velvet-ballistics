@@ -192,6 +192,15 @@ fn prod_methods_drift_check(
         max_input_bytes: 0,
         max_step_budget_per_tick: 0,
         max_transitions_per_tick: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
+        tenant_quota_cost_units: 0,
+        global_quota_cost_units: 0,
     };
 
     // Reference every variant of CompiledNodeKind used by the spec:

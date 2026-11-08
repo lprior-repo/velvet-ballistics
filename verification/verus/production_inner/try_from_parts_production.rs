@@ -499,10 +499,12 @@ pub struct WorkflowParts {
 // invariants the production `try_from_parts` enforces (entry in
 // nodes bounds, slot_count u16-bounded, symbols_count u32-bounded,
 // nodes non-empty), but the full body is included verbatim so any
-// rename of `validate_parts`, `validate_budget`, `validate_input_slots`,
-// `parts.name`, or any field breaks this mirror at compile time.
+// rename of `validate_parts`, `loop_regions::validate`,
+// `loop_regions::nested_activation_map`, `validate_budget`,
+// `validate_input_slots`, `parts.name`, or any field breaks this mirror
+// at compile time.
 
-/// Production `CompiledWorkflow` at workflow/mod.rs:17-31. The mirror
+/// Production `CompiledWorkflow` at workflow/mod.rs:22-38. The mirror
 /// preserves the field NAMES exactly; the field VISIBILITY is `pub` so
 /// the verification surface can read the fields.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -520,18 +522,24 @@ pub struct CompiledWorkflow {
     pub resource_contract: ResourceContract,
     pub step_names: Vec<Box<str>>,
     pub input_slots: Vec<CompiledInputSlot>,
+    pub loop_regions: Vec<Option<CompiledLoopRegion>>,
+    pub nested_activation_entries: Vec<bool>,
 }
 
 impl CompiledWorkflow {
     /// Verbatim copy of production `CompiledWorkflow::try_from_parts`
-    /// at crates/vb_core/src/workflow/mod.rs:37-62. The body delegates
-    /// to production `validate_parts`, `validate_budget`, and
-    /// `validate_input_slots`. `validate_parts` and `validate_budget`
+    /// at crates/vb_core/src/workflow/mod.rs:42-65. The body delegates
+    /// to production `validate_parts`, `loop_regions::validate`,
+    /// `loop_regions::nested_activation_map`, `validate_budget`, and
+    /// `validate_input_slots`. `validate_parts`, `validate_budget`,
+    /// `loop_regions::validate`, and `loop_regions::nested_activation_map`
     /// are stub bodies (return Ok) because the spec proofs reason
     /// about the postcondition contracts. `validate_input_slots` is
     /// a faithful body matching production.
     pub fn try_from_parts(parts: WorkflowParts) -> Result<Self, WorkflowError> {
         validate_parts(&parts)?;
+        let loop_regions = loop_regions::validate(&parts)?;
+        let nested_activation_entries = loop_regions::nested_activation_map(&parts, &loop_regions)?;
         validate_budget(&parts)?;
         validate_input_slots(&parts)?;
         Ok(Self {
@@ -548,6 +556,8 @@ impl CompiledWorkflow {
             resource_contract: parts.resource_contract,
             step_names: parts.step_names,
             input_slots: parts.input_slots,
+            loop_regions,
+            nested_activation_entries,
         })
     }
 }
@@ -710,4 +720,49 @@ pub fn validate_input_slots(parts: &WorkflowParts) -> Result<(), WorkflowError> 
         prev_slot = Some(current);
     }
     Ok(())
+}
+
+// ===========================================================================
+// PRODUCTION MIRROR: loop-region ownership cache stubs
+// ===========================================================================
+//
+// Production `CompiledLoopRegion` at
+// `crates/vb_core/src/workflow/loop_regions.rs:14-19`, `validate` at
+// `crates/vb_core/src/workflow/loop_regions.rs:59-72`, and
+// `nested_activation_map` at
+// `crates/vb_core/src/workflow/loop_regions.rs:78-83`. The mirror bodies
+// return `Ok` with empty collections because the spec proofs reason about
+// the postcondition contracts, not about the validation implementation
+// details. Drift in the struct FIELDS or function SIGNATURES breaks this
+// mirror at compile time. The production `Box<[...]>` return types are
+// mirrored as `Vec<...>` per the file header substitution rule.
+
+/// Mirror of production `CompiledLoopRegion`: immutable,
+/// constructor-validated ownership of one loop backedge. Field names and
+/// types match production; visibility is `pub` per this file's convention.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CompiledLoopRegion {
+    pub start: StepIdx,
+    pub body: StepIdx,
+    pub control: StepIdx,
+    pub done: StepIdx,
+}
+
+pub mod loop_regions {
+    use super::{CompiledLoopRegion, WorkflowError, WorkflowParts};
+
+    /// Stub for production `loop_regions::validate`: builds a
+    /// control-indexed cache without changing serialized workflow parts.
+    pub fn validate(_parts: &WorkflowParts) -> Result<Vec<Option<CompiledLoopRegion>>, WorkflowError> {
+        Ok(Vec::new())
+    }
+
+    /// Stub for production `loop_regions::nested_activation_map`: derives
+    /// the nested activation entry map from validated loop regions.
+    pub fn nested_activation_map(
+        _parts: &WorkflowParts,
+        _regions: &[Option<CompiledLoopRegion>],
+    ) -> Result<Vec<bool>, WorkflowError> {
+        Ok(Vec::new())
+    }
 }

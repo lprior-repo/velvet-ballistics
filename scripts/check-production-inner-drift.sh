@@ -24,8 +24,8 @@
 #   3. For each claim, extracts the production source slice, normalizes
 #      (strips comments, drops documented attribute substitutions,
 #      normalizes `pub(crate)` to `pub`, collapses whitespace), and
-#      extracts a focused identifier set (PascalCase types, snake_case
-#      functions/fields of length >= 7, SCREAMING_SNAKE_CASE constants).
+#      extracts a focused identifier set (PascalCase types, multi-word
+#      snake_case functions/fields, SCREAMING_SNAKE_CASE constants).
 #   4. Extracts the same identifier set from the entire mirror (local
 #      stubs declared in the preamble are intentional substitutions for
 #      production types from OTHER files, so the local-stub identifiers
@@ -308,32 +308,47 @@ strip_noise() {
 # Extract a focused identifier set from Rust source. Keep only tokens
 # that look like structural names (type/variant/field/function/constant),
 # drop Rust keywords, primitive type names, common stdlib type names,
-# and short all-lowercase tokens (those are module/crate names that
-# appear in production paths like `vb_core`, `errors`, `ids`, and
+# and single-word all-lowercase tokens (those are module/crate names
+# that appear in production paths like `vb_core`, `errors`, `ids`, and
 # are not present as bare identifiers in the mirror — the mirror uses
-# local stubs).
+# local stubs). Multi-word snake_case tokens (containing an underscore,
+# e.g. `cost_units`, `compute_max_attempt`) are structural field and
+# function names and are kept, so a production field addition is
+# visible to the gate.
 extract_identifiers() {
   strip_noise \
     | perl -ne '
+        # Drop `let`-bound local names (`let x = ...`, `let mut x = ...`):
+        # a local binding is chosen by the fn author and is not mirrored
+        # surface, so a production local must not require a mirror token.
+        s{\blet\s+(?:mut\s+)?[A-Za-z_][A-Za-z0-9_]*\s*=}{let =}g;
+        # Drop path heads (`crate::`, `vb_core::`, `module::`): the
+        # mirror flattens paths to bare item names, so a path segment
+        # is never expected to appear as a bare identifier. Only the
+        # final segment (the referenced item) is kept.
+        s{[A-Za-z_][A-Za-z0-9_]*::}{}g;
         while (/[A-Za-z_][A-Za-z0-9_]*/g) {
           my $id = $&;
+          # Drop function and method names: an identifier immediately
+          # followed by `(` is a fn definition or call. Mirrors stub
+          # method bodies and rename exec fns, so production fn names
+          # are not expected verbatim in the mirror.
+          next if substr($_, pos($_), 1) eq "(";
           next if length($id) < 3;
           next if $id =~ /^(?:pub|fn|impl|struct|enum|match|use|mod|self|Self|return|let|const|static|where|for|in|if|else|while|loop|break|continue|true|false|None|Some|Ok|Err|u8|u16|u32|u64|u128|usize|i8|i16|i32|i64|i128|isize|bool|str|String|Vec|Box|Option|Result|HashSet|HashMap|BTreeSet|BTreeMap|PhantomData|Default|copy|clone|debug)$/;
-          # Drop all-lowercase (with optional underscores) tokens:
-          # those are crate names (vb_core, vb_storage), module names
-          # (errors, ids, events, recovery), and other path
-          # components that production references in `crate::path::Type`
-          # form but the mirror flattens to the bare type name. We
-          # only care about PascalCase types, snake_case
-          # functions/fields (containing at least one underscore AND
-          # at least one uppercase boundary marker — actually no,
-          # pure snake_case like `compute_max_attempt` IS structural),
-          # and SCREAMING_SNAKE_CASE constants. The distinguishing
-          # feature for "is this a structural identifier?" is: does
-          # the token have at least one uppercase letter OR is it
-          # SCREAMING_SNAKE_CASE (contains an underscore but ALL
-          # letters are uppercase)?
-          next if $id =~ /^[a-z_]+$/;
+          # Drop single-word all-lowercase tokens: those are crate
+          # names (vb_core, vb_storage), module names (errors, ids,
+          # events, recovery), and other path components that
+          # production references in `crate::path::Type` form but the
+          # mirror flattens to the bare type name. Multi-word
+          # snake_case tokens (containing an underscore) are kept:
+          # struct fields are pure snake_case (e.g. `cost_units`),
+          # and dropping them made field additions invisible to the
+          # gate. Function and method names are dropped instead by
+          # the `(` check below: mirrors stub method bodies and
+          # rename exec fns, so a production fn name is not
+          # expected to appear verbatim in the mirror.
+          next if $id =~ /^[a-z]+$/;
           # Drop pure SCREAMING_SNAKE_CASE tokens shorter than 7 chars
           # (constants like `MAX`, `MIN`, `OK`, etc. are already in the
           # keyword list; this drops e.g. `ID`, `LEN`).

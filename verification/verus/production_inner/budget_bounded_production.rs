@@ -471,6 +471,15 @@ pub struct AggregateResourceCapacity {
     pub max_input_bytes: u64,
     pub max_step_budget_per_tick: u64,
     pub max_transitions_per_tick: u64,
+    pub max_open_gates: u64,
+    pub max_signal_subscriptions: u64,
+    pub max_incident_emissions: u64,
+    pub max_transitions: u64,
+    pub max_journal_bytes_total: u64,
+    pub max_value_store_entries: u64,
+    pub max_cost_units: u64,
+    pub tenant_quota_cost_units: u64,
+    pub global_quota_cost_units: u64,
 }
 
 /// Mirror of production `AggregateResourceUsage` at
@@ -494,6 +503,13 @@ pub struct AggregateResourceUsage {
     pub max_input_bytes: u64,
     pub max_step_budget_per_tick: u64,
     pub max_transitions_per_tick: u64,
+    pub max_open_gates: u64,
+    pub max_signal_subscriptions: u64,
+    pub max_incident_emissions: u64,
+    pub max_transitions: u64,
+    pub max_journal_bytes_total: u64,
+    pub max_value_store_entries: u64,
+    pub max_cost_units: u64,
 }
 
 // ============================================================================
