@@ -92,7 +92,7 @@
 //                                   <- extern_accepted_cli_digest_binding.rs
 //                                       (mirror of RunAdmission::artifact_digest
 //                                       at
-//                                       crates/vb_runtime/src/admission/parts/chunk_002_records.rs:147-151)
+//                                       crates/vb_runtime/src/admission/parts/chunk_002_records.rs:149-151)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS (VACUUM) FORM
@@ -238,7 +238,7 @@ pub fn production_run_admission_new_digest_exec(
 }
 
 /// Production-bound exec wrapper for `RunAdmission::artifact_digest`
-/// at `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:147-151`.
+/// at `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:149-151`.
 pub fn production_run_admission_artifact_digest_exec(
     admission: &production::SpecRunAdmission,
 ) -> production::SpecWorkflowDigest {
@@ -317,7 +317,7 @@ pub assume_specification[ production::production_run_admission_new_digest ](
 // `artifact_digest` field of the admission record.
 // --------------------------------------------------------------------------
 // Mirrors the `RunAdmission::artifact_digest(&self) -> WorkflowDigest`
-// accessor at `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:147-151`, whose
+// accessor at `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:149-151`, whose
 // body is `self.artifact_digest` (line 165).
 pub assume_specification[ production::production_run_admission_artifact_digest ](
     admission: &production::SpecRunAdmission,
