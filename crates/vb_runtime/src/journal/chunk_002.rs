@@ -516,6 +516,25 @@ impl RuntimeJournal for StorageRuntimeJournal {
             .map_err(RuntimeError::from)
     }
 
+    fn append_gate_opened_strict(
+        &self,
+        gate: vb_core::manual_gate::ManualGate,
+        opened_at_ms: u64,
+        requester: vb_core::manual_gate::ApproverId,
+        seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        let storage_event = JournalEvent::GateOpenedEvent {
+            run: gate.run,
+            seq,
+            gate,
+            opened_at_ms,
+            requester,
+        };
+        self.journal
+            .append_strict(&storage_event)
+            .map_err(RuntimeError::from)
+    }
+
     fn append_sequenced_batch(
         &self,
         events: &[RuntimeJournalEvent],

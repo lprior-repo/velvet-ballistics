@@ -34,6 +34,7 @@ pub(super) const TAG_RUN_ANSWERED: u16 = RecordKind::RunAnswered.id();
 pub(super) const TAG_ASK_TIMED_OUT: u16 = RecordKind::AskTimedOut.id();
 pub(super) const TAG_POLICY_DECISION: u16 = RecordKind::PolicyDecision.id();
 pub(super) const TAG_GATE_DECISION: u16 = RecordKind::GateDecision.id();
+pub(super) const TAG_GATE_OPENED: u16 = RecordKind::GateOpened.id();
 pub(super) const TAG_COMPATIBILITY_DECISION: u16 = RecordKind::CompatibilityDecision.id();
 
 pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
@@ -66,6 +67,7 @@ pub(super) const JOURNAL_EVENT_VARIANTS: &[&str] = &[
     "PolicyDecisionEvent",
     "RunContinuation",
     "GateDecisionEvent",
+    "GateOpenedEvent",
     "CompatibilityDecisionEvent",
     "CapabilityGrantEvent",
     "RunAdmissionBudget",

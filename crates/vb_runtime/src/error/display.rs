@@ -28,6 +28,7 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::InvalidGateDecisionRecord => {
             Some("gate outcome record is structurally invalid")
         }
+        RuntimeError::InvalidGateOpenedRecord => Some("gate opened record is structurally invalid"),
         RuntimeError::InvalidTimerFire => Some("invalid timer fire"),
         RuntimeError::UnsupportedFullRecoveryHydration => {
             Some("full run frame recovery hydration is unsupported")

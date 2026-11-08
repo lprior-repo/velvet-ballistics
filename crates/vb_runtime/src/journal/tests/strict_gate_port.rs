@@ -176,6 +176,77 @@ fn queued_adapter_drains_prefix_before_strict_decision() -> Result<(), Box<dyn s
 }
 
 #[test]
+fn storage_adapter_persists_full_gate_opened_event() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let journal = Arc::new(FjallJournal::open(temp.path(), None)?);
+    let adapter = StorageRuntimeJournal::shared_journaled(journal.clone());
+    let run = RunId::new(1002);
+    let gate = fixture_gate(run);
+    let requester = ApproverId::new("bob".to_string()).unwrap();
+
+    adapter.append_gate_opened_strict(gate.clone(), 100, requester.clone(), EventSeq::new(0))?;
+
+    drop(adapter);
+    drop(journal);
+
+    let reopened = FjallJournal::open(temp.path(), None)?;
+    let actual = reopened.events_for_run(run)?;
+    let expected = vec![JournalEvent::GateOpenedEvent {
+        run,
+        seq: EventSeq::new(0),
+        gate,
+        opened_at_ms: 100,
+        requester,
+    }];
+    assert_eq!(actual, expected, "full durable GateOpenedEvent roundtrip");
+    Ok(())
+}
+
+#[test]
+fn queued_adapter_drains_prefix_before_strict_open() -> Result<(), Box<dyn std::error::Error>> {
+    let (_temp, journal, _queue, adapter) = setup_queued_test()?;
+    let run_a = RunId::new(2003);
+    let run_b = RunId::new(2004);
+    let workflow = WorkflowDigest::from_bytes([17; 32]);
+
+    adapter.append_sequenced(
+        RuntimeJournalEvent::RunSubmitted {
+            run: run_a,
+            workflow,
+        },
+        EventSeq::new(0),
+    )?;
+
+    let gate = fixture_gate(run_a);
+    let requester = ApproverId::new("bob".to_string()).unwrap();
+    adapter.append_gate_opened_strict(gate.clone(), 100, requester.clone(), EventSeq::new(1))?;
+
+    let actual_a = journal.events_for_run(run_a)?;
+    let expected_a = vec![
+        JournalEvent::RunAccepted {
+            run: run_a,
+            seq: EventSeq::new(0),
+            workflow,
+        },
+        JournalEvent::GateOpenedEvent {
+            run: run_a,
+            seq: EventSeq::new(1),
+            gate,
+            opened_at_ms: 100,
+            requester,
+        },
+    ];
+    assert_eq!(
+        actual_a, expected_a,
+        "run_a prefix flushed before strict gate opening"
+    );
+
+    append_drain_assert_run_b(&adapter, &journal, run_b)?;
+
+    Ok(())
+}
+
+#[test]
 fn noop_and_volatile_adapters_fail_closed() {
     let noop = crate::journal::NoopRuntimeJournal::shared();
     let run = RunId::new(3001);
@@ -200,5 +271,33 @@ fn noop_and_volatile_adapters_fail_closed() {
             })
         ),
         "volatile adapter must return exact UnsupportedOperation"
+    );
+
+    let noop = crate::journal::NoopRuntimeJournal::shared();
+    let gate = fixture_gate(run);
+    let requester = ApproverId::new("bob".to_string()).unwrap();
+    let result =
+        noop.append_gate_opened_strict(gate.clone(), 100, requester.clone(), EventSeq::new(0));
+    assert!(
+        matches!(
+            result,
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "append_gate_opened_strict"
+            })
+        ),
+        "noop adapter must return exact UnsupportedOperation for gate opening"
+    );
+
+    let volatile = VolatileRuntimeJournal::shared();
+    let result =
+        volatile.append_gate_opened_strict(gate, 100, requester, EventSeq::new(0));
+    assert!(
+        matches!(
+            result,
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "append_gate_opened_strict"
+            })
+        ),
+        "volatile adapter must return exact UnsupportedOperation for gate opening"
     );
 }

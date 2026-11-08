@@ -499,11 +499,11 @@ pub(crate) struct PendingAskAuthority {
 
 /// Operator-opened manual gate awaiting a decision (MASTER §77.15).
 ///
-/// Lives in shard memory only: the gate definition, its opening time, the
-/// operator who requested the gated action, and the current delegate after
-/// a delegation decision. The durable record of a gate is its outcome
-/// record, journaled when the gate is decided or escalated; an open gate
-/// that never reaches a decision leaves no journal trace.
+/// The gate definition, its opening time, the operator who requested the
+/// gated action, and the current delegate after a delegation decision. The
+/// opening is durably journaled as a `GateOpenedEvent` before the run is
+/// suspended, so recovery can reconstruct the open gate; the outcome record
+/// is journaled when the gate is decided or escalated.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct OpenGate {
     /// Gate definition as opened by the operator.

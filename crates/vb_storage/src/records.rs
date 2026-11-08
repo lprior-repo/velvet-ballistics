@@ -236,6 +236,8 @@ pub enum RecordKind {
     /// Run admission receipt carrying the admitted aggregate budget (§77.18);
     /// appended, no old ordinal moved.
     RunAdmissionBudget = 47,
+    /// Manual gate opened (§77.15); appended, no old ordinal moved.
+    GateOpened = 48,
 }
 
 impl RecordKind {
@@ -284,6 +286,7 @@ impl RecordKind {
             Self::CompatibilityDecision => 45,
             Self::CapabilityGrant => 46,
             Self::RunAdmissionBudget => 47,
+            Self::GateOpened => 48,
             Self::Blob => 40,
             Self::IndexUpdate => 50,
         }
@@ -334,6 +337,7 @@ impl RecordKind {
             45 => Some(Self::CompatibilityDecision),
             46 => Some(Self::CapabilityGrant),
             47 => Some(Self::RunAdmissionBudget),
+            48 => Some(Self::GateOpened),
             40 => Some(Self::Blob),
             50 => Some(Self::IndexUpdate),
             _ => None,
@@ -378,6 +382,7 @@ impl RecordKind {
             | Self::CompatibilityDecision
             | Self::CapabilityGrant
             | Self::RunAdmissionBudget
+            | Self::GateOpened
             | Self::RunContinuation => true,
             Self::WorkflowSource
             | Self::CompiledIr

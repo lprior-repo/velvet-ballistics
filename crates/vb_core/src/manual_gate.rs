@@ -255,6 +255,17 @@ impl ManualGate {
     pub const fn evidence_display_required(&self) -> bool {
         matches!(self.risk, RiskClass::High) && !self.compensatable
     }
+
+    /// Checks the structural invariants of the gate: non-zero gate, run,
+    /// and action identifiers, and a valid required role. Zero identifiers
+    /// are the null/placeholder values and can never name a real gate.
+    #[must_use]
+    pub fn is_structurally_valid(&self) -> bool {
+        self.id.get() != 0
+            && self.run.get() != 0
+            && self.action.get() != 0
+            && self.required_role.is_valid()
+    }
 }
 
 /// Operator submission to a gate.

@@ -19,6 +19,7 @@ use super::{require_workflow, small_config, suspended_workflow};
 #[derive(Debug, Default)]
 struct RecordingJournal {
     strict_calls: Mutex<Vec<(GateOutcomeRecord, vb_storage::EventSeq)>>,
+    opened_calls: Mutex<Vec<(ManualGate, u64, ApproverId, vb_storage::EventSeq)>>,
     strict_error: Mutex<Option<RuntimeError>>,
 }
 
@@ -30,6 +31,16 @@ impl RecordingJournal {
     fn strict_calls(&self) -> RuntimeResult<Vec<(GateOutcomeRecord, vb_storage::EventSeq)>> {
         let calls = self
             .strict_calls
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?;
+        Ok(calls.clone())
+    }
+
+    fn opened_calls(
+        &self,
+    ) -> RuntimeResult<Vec<(ManualGate, u64, ApproverId, vb_storage::EventSeq)>> {
+        let calls = self
+            .opened_calls
             .lock()
             .map_err(|_| RuntimeError::JournalPoisoned)?;
         Ok(calls.clone())
@@ -78,6 +89,32 @@ impl RuntimeJournal for RecordingJournal {
             .lock()
             .map_err(|_| RuntimeError::JournalPoisoned)?;
         calls.push((record, seq));
+
+        if let Some(err) = pending_err {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    fn append_gate_opened_strict(
+        &self,
+        gate: ManualGate,
+        opened_at_ms: u64,
+        requester: ApproverId,
+        seq: vb_storage::EventSeq,
+    ) -> RuntimeResult<()> {
+        let mut err_slot = self
+            .strict_error
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?;
+
+        let pending_err = err_slot.take();
+
+        let mut calls = self
+            .opened_calls
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?;
+        calls.push((gate, opened_at_ms, requester, seq));
 
         if let Some(err) = pending_err {
             return Err(err);
@@ -256,6 +293,98 @@ fn open_gate_suspends_running_run() -> Result<(), Box<dyn std::error::Error>> {
         shard.open_gate_for(run),
         Some(GateId::new(7)),
         "open gate must be registered for the run"
+    );
+    Ok(())
+}
+
+#[test]
+fn open_gate_journals_opened_event_before_suspension() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92010);
+    let (mut shard, journal) = make_running_shard(run)?;
+
+    let seq_before = shard.journal_sequence_for(run);
+    let bytes_before = journal_bytes_written(&shard, run)?;
+    let gate = test_gate(run, 7);
+
+    shard.open_gate(gate.clone(), 100, person("bob"))?;
+
+    assert_eq!(
+        journal.opened_calls()?,
+        vec![(gate.clone(), 100, person("bob"), seq_before)],
+        "opening must be journaled exactly once at the pre-open sequence"
+    );
+    assert_eq!(
+        shard.journal_sequence_for(run).get(),
+        seq_before.get() + 1,
+        "sequence must advance by one for the opened event"
+    );
+    let event = vb_storage::JournalEvent::GateOpenedEvent {
+        run,
+        seq: seq_before,
+        gate,
+        opened_at_ms: 100,
+        requester: person("bob"),
+    };
+    let expected_bytes = u64::try_from(postcard::to_allocvec(&event)?.len())?;
+    assert_eq!(
+        journal_bytes_written(&shard, run)?,
+        bytes_before + expected_bytes,
+        "counter must grow by exactly the stored opened event bytes"
+    );
+    assert_eq!(
+        shard.runtime_state_get(run),
+        Some(RuntimeState::Resumable),
+        "run must be suspended after the journaled opening"
+    );
+    assert_eq!(
+        shard.open_gate_for(run),
+        Some(GateId::new(7)),
+        "open gate must be registered for the run"
+    );
+    Ok(())
+}
+
+#[test]
+fn open_gate_journal_failure_leaves_run_running() -> Result<(), Box<dyn std::error::Error>> {
+    let run = RunId::new(92011);
+    let (mut shard, journal) = make_running_shard(run)?;
+
+    let seq_before = shard.journal_sequence_for(run);
+    let bytes_before = journal_bytes_written(&shard, run)?;
+    journal.set_strict_error(RuntimeError::UnsupportedOperation {
+        operation: "test_gate_opened_failure",
+    })?;
+
+    let result = shard.open_gate(test_gate(run, 7), 100, person("bob"));
+    let err = result
+        .err()
+        .ok_or("expected open_gate to propagate the journal error")?;
+    match err {
+        RuntimeError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "test_gate_opened_failure");
+        }
+        _ => return Err("wrong typed journal error propagated".into()),
+    }
+
+    assert_eq!(
+        shard.runtime_state_get(run),
+        Some(RuntimeState::Running),
+        "run must stay running when the opening cannot be journaled"
+    );
+    assert_eq!(
+        shard.open_gate_for(run),
+        None,
+        "no gate must be registered when the opening cannot be journaled"
+    );
+    assert_eq!(
+        journal_bytes_written(&shard, run)?,
+        bytes_before,
+        "counter must not advance when the journal fails"
+    );
+    assert_eq!(
+        shard.journal_sequence_for(run),
+        seq_before,
+        "sequence must not advance when the journal fails"
     );
     Ok(())
 }
@@ -675,8 +804,8 @@ fn journal_failure_leaves_gate_open() -> Result<(), Box<dyn std::error::Error>> 
     let (mut shard, journal) = make_running_shard(run)?;
 
     shard.seed_journal_sequence(run, vb_storage::EventSeq::new(5))?;
-    let seq_before = shard.journal_sequence_for(run);
     open_test_gate(&mut shard, run, 7)?;
+    let seq_after_open = shard.journal_sequence_for(run);
     let bytes_before = journal_bytes_written(&shard, run)?;
 
     journal.set_strict_error(RuntimeError::UnsupportedOperation {
@@ -709,8 +838,8 @@ fn journal_failure_leaves_gate_open() -> Result<(), Box<dyn std::error::Error>> 
     );
     assert_eq!(
         shard.journal_sequence_for(run),
-        seq_before,
-        "sequence must not advance when journaling fails"
+        seq_after_open,
+        "sequence must not advance past the opened event when journaling fails"
     );
     Ok(())
 }

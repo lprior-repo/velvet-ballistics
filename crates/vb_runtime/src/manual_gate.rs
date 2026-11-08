@@ -30,6 +30,9 @@ use vb_core::manual_gate::{
     GateOutcomeRecord, ManualGate, RiskClass,
 };
 
+use crate::shard::types::OpenGate;
+use indexmap::IndexMap;
+
 /// Typed manual-gate evaluation errors.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum GateError {
@@ -109,6 +112,15 @@ pub enum GateError {
     /// Replay found a receipt on a non-approval outcome.
     #[error("replay record carries a receipt without an approval outcome")]
     ReplayReceiptMismatch,
+    /// Replay found a gate opened twice without a closing decision.
+    #[error("replay opened gate {gate} twice without a closing decision")]
+    ReplayDuplicateOpen {
+        /// Gate identifier opened twice.
+        gate: u64,
+    },
+    /// Replay found a gate-opened event carrying a structurally invalid gate.
+    #[error("replay gate-opened event carries a structurally invalid gate")]
+    ReplayInvalidGate,
 }
 
 /// Canonical decision byte for receipt digest encoding.
@@ -474,6 +486,101 @@ pub fn gate_decision_event(
     }
 }
 
+/// Builds the journal event carrying a gate opening. The caller supplies
+/// the run and per-run storage sequence; the gate's own run must match,
+/// enforced by the storage wire codec on serialization.
+pub fn gate_opened_event(
+    gate: ManualGate,
+    opened_at_ms: u64,
+    requester: ApproverId,
+    seq: vb_storage::EventSeq,
+) -> vb_storage::JournalEvent {
+    vb_storage::JournalEvent::GateOpenedEvent {
+        run: gate.run,
+        seq,
+        gate,
+        opened_at_ms,
+        requester,
+    }
+}
+
+/// Reconstructs the currently open gates from journal events in order.
+///
+/// A `GateOpenedEvent` opens its gate; a terminal `GateDecisionEvent`
+/// (approve, deny, break-glass, escalate) closes it; more-evidence
+/// leaves it open and delegation updates its delegate. Decisions for a
+/// gate with no opening in this event stream are ignored: the gate was
+/// opened before the recovered window and its definition is not in this
+/// evidence. A second opening of a gate that is already open, or an
+/// opening carrying a structurally invalid gate, fails the reconstruction:
+/// the journal is inconsistent and recovery must not silently drop a gate.
+/// Replay performs no external effect; the returned gates are in opening
+/// order.
+///
+/// No recovery path calls this yet: threading the reconstructed gates
+/// through `ResumableRecoveryProduct` into `RecoverRunCommand` is the
+/// follow-up batch. Until then the seam is exercised by its tests.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn reconstruct_open_gates(
+    events: &[vb_storage::JournalEvent],
+) -> Result<Vec<OpenGate>, GateError> {
+    let open = events.iter().try_fold(
+        IndexMap::new(),
+        |mut open: IndexMap<vb_core::manual_gate::GateId, OpenGate>,
+         event: &vb_storage::JournalEvent| {
+            match event {
+                vb_storage::JournalEvent::GateOpenedEvent {
+                    gate,
+                    opened_at_ms,
+                    requester,
+                    ..
+                } => {
+                    if !gate.is_structurally_valid() || !requester.is_valid() {
+                        return Err(GateError::ReplayInvalidGate);
+                    }
+                    if open.contains_key(&gate.id) {
+                        return Err(GateError::ReplayDuplicateOpen {
+                            gate: gate.id.get(),
+                        });
+                    }
+                    open.insert(
+                        gate.id,
+                        OpenGate {
+                            gate: gate.clone(),
+                            opened_at_ms: *opened_at_ms,
+                            requester: requester.clone(),
+                            delegated_to: None,
+                        },
+                    );
+                    Ok(open)
+                }
+                vb_storage::JournalEvent::GateDecisionEvent { record, .. } => {
+                    if !record.is_structurally_valid() {
+                        return Err(GateError::InvalidRecord);
+                    }
+                    match record.outcome {
+                        GateOutcome::Approved
+                        | GateOutcome::Denied
+                        | GateOutcome::BreakGlassApproved
+                        | GateOutcome::Escalated => {
+                            open.shift_remove(&record.gate);
+                        }
+                        GateOutcome::Delegated => {
+                            if let Some(open_gate) = open.get_mut(&record.gate) {
+                                open_gate.delegated_to = record.delegated_to.clone();
+                            }
+                        }
+                        GateOutcome::MoreEvidenceRequested => {}
+                    }
+                    Ok(open)
+                }
+                _ => Ok(open),
+            }
+        },
+    )?;
+    Ok(open.into_values().collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -836,6 +943,196 @@ mod tests {
         assert_eq!(history.len(), 1);
         assert_eq!(history[0].outcome, GateOutcome::Approved);
         assert_eq!(history[0].receipt_digest, record.receipt.map(|r| r.digest));
+    }
+
+    #[test]
+    fn gate_opened_event_round_trips_through_postcard() {
+        let gate = gate();
+        let event = gate_opened_event(
+            gate.clone(),
+            100,
+            person("bob"),
+            vb_storage::EventSeq::new(1),
+        );
+        assert_eq!(event.run_id(), gate.run);
+        assert_eq!(event.seq(), vb_storage::EventSeq::new(1));
+        assert_eq!(event.record_kind(), vb_storage::RecordKind::GateOpened);
+        let bytes = postcard::to_allocvec(&event).unwrap();
+        let decoded: vb_storage::JournalEvent = postcard::from_bytes(&bytes).unwrap();
+        assert_eq!(decoded, event);
+        let open = reconstruct_open_gates(std::slice::from_ref(&decoded)).unwrap();
+        assert_eq!(open.len(), 1);
+        assert_eq!(open[0].gate, gate);
+        assert_eq!(open[0].opened_at_ms, 100);
+        assert_eq!(open[0].requester, person("bob"));
+        assert_eq!(open[0].delegated_to, None);
+    }
+
+    #[test]
+    fn reconstruct_open_gates_folds_open_and_close_in_order() {
+        let gate = gate();
+        let mut other = gate.clone();
+        other.id = GateId::new(8);
+        let opened =
+            gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
+        let other_opened = gate_opened_event(
+            other.clone(),
+            10,
+            person("bob"),
+            vb_storage::EventSeq::new(2),
+        );
+        let denied = gate_decision_event(
+            gate.run,
+            vb_storage::EventSeq::new(3),
+            evaluate_decision(&gate, 0, &input(GateDecision::Deny)).unwrap(),
+        );
+
+        let open = reconstruct_open_gates(&[opened.clone(), other_opened.clone()]).unwrap();
+        assert_eq!(open.len(), 2);
+        assert_eq!(open[0].gate, gate);
+        assert_eq!(open[1].gate, other);
+
+        let open = reconstruct_open_gates(&[opened, other_opened, denied]).unwrap();
+        assert_eq!(open.len(), 1);
+        assert_eq!(open[0].gate, other);
+
+        for decision in [
+            GateDecision::Approve,
+            GateDecision::BreakGlass,
+            GateDecision::Deny,
+        ] {
+            let mut decision_input = input(decision);
+            if decision == GateDecision::BreakGlass {
+                decision_input.break_glass_justification = Some("prod is down".to_string());
+            }
+            let opened =
+                gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
+            let decided = gate_decision_event(
+                gate.run,
+                vb_storage::EventSeq::new(2),
+                evaluate_decision(&gate, 0, &decision_input).unwrap(),
+            );
+            assert!(
+                reconstruct_open_gates(&[opened, decided])
+                    .unwrap()
+                    .is_empty(),
+                "{decision:?} must close the gate"
+            );
+        }
+        let opened =
+            gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
+        let escalated = gate_decision_event(
+            gate.run,
+            vb_storage::EventSeq::new(2),
+            evaluate_timeout(&gate, &person("bob"), 0, 2_000).unwrap(),
+        );
+        assert!(
+            reconstruct_open_gates(&[opened, escalated])
+                .unwrap()
+                .is_empty(),
+            "escalation must close the gate"
+        );
+    }
+
+    #[test]
+    fn reconstruct_open_gates_keeps_gate_on_more_evidence_and_delegation() {
+        let gate = gate();
+        let opened =
+            gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
+        let more = gate_decision_event(
+            gate.run,
+            vb_storage::EventSeq::new(2),
+            evaluate_decision(&gate, 0, &input(GateDecision::RequestMoreEvidence)).unwrap(),
+        );
+        let open = reconstruct_open_gates(&[opened.clone(), more]).unwrap();
+        assert_eq!(open.len(), 1);
+        assert_eq!(open[0].delegated_to, None);
+
+        let mut delegate_input = input(GateDecision::Delegate);
+        delegate_input.delegated_to = Some(person("carol"));
+        let delegated = gate_decision_event(
+            gate.run,
+            vb_storage::EventSeq::new(3),
+            evaluate_decision(&gate, 0, &delegate_input).unwrap(),
+        );
+        let open = reconstruct_open_gates(&[opened, delegated]).unwrap();
+        assert_eq!(open.len(), 1);
+        assert_eq!(open[0].delegated_to, Some(person("carol")));
+    }
+
+    #[test]
+    fn reconstruct_open_gates_rejects_duplicate_open_and_invalid_gate() {
+        let gate = gate();
+        let opened =
+            gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
+        let again = gate_opened_event(gate.clone(), 5, person("bob"), vb_storage::EventSeq::new(2));
+        let err = reconstruct_open_gates(&[opened, again]).unwrap_err();
+        assert_eq!(err, GateError::ReplayDuplicateOpen { gate: 7 });
+
+        let mut invalid = gate.clone();
+        invalid.id = GateId::new(0);
+        let bad = gate_opened_event(invalid, 0, person("bob"), vb_storage::EventSeq::new(1));
+        let err = reconstruct_open_gates(std::slice::from_ref(&bad)).unwrap_err();
+        assert_eq!(err, GateError::ReplayInvalidGate);
+
+        let bad_requester = gate_opened_event(
+            gate.clone(),
+            0,
+            ApproverId {
+                value: String::new(),
+            },
+            vb_storage::EventSeq::new(1),
+        );
+        let err = reconstruct_open_gates(std::slice::from_ref(&bad_requester)).unwrap_err();
+        assert_eq!(err, GateError::ReplayInvalidGate);
+    }
+
+    #[test]
+    fn reconstruct_open_gates_ignores_decisions_for_unknown_gates() {
+        let gate = gate();
+        let denied = gate_decision_event(
+            gate.run,
+            vb_storage::EventSeq::new(1),
+            evaluate_decision(&gate, 0, &input(GateDecision::Deny)).unwrap(),
+        );
+        assert!(
+            reconstruct_open_gates(std::slice::from_ref(&denied))
+                .unwrap()
+                .is_empty(),
+            "a decision for a gate opened before the window is not an error"
+        );
+
+        let opened =
+            gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
+        let denied = gate_decision_event(
+            gate.run,
+            vb_storage::EventSeq::new(2),
+            evaluate_decision(&gate, 0, &input(GateDecision::Deny)).unwrap(),
+        );
+        let reopened = gate_opened_event(
+            gate.clone(),
+            3_000,
+            person("bob"),
+            vb_storage::EventSeq::new(3),
+        );
+        let open = reconstruct_open_gates(&[opened, denied, reopened]).unwrap();
+        assert_eq!(open.len(), 1);
+        assert_eq!(open[0].opened_at_ms, 3_000);
+    }
+
+    #[test]
+    fn reconstruct_open_gates_rejects_invalid_decision_record() {
+        let gate = gate();
+        let opened =
+            gate_opened_event(gate.clone(), 0, person("bob"), vb_storage::EventSeq::new(1));
+        let mut denied = evaluate_decision(&gate, 0, &input(GateDecision::Deny)).unwrap();
+        denied.receipt = evaluate_decision(&gate, 0, &input(GateDecision::Approve))
+            .unwrap()
+            .receipt;
+        assert!(!denied.is_structurally_valid());
+        let bad = gate_decision_event(gate.run, vb_storage::EventSeq::new(2), denied);
+        let err = reconstruct_open_gates(&[opened, bad]).unwrap_err();
+        assert_eq!(err, GateError::InvalidRecord);
     }
 
     #[test]

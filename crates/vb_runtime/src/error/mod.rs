@@ -78,6 +78,8 @@ pub enum RuntimeError {
     InvalidActionCompletion,
     /// Gate outcome record failed structural validation before journaling.
     InvalidGateDecisionRecord,
+    /// Gate definition or opener failed structural validation before journaling.
+    InvalidGateOpenedRecord,
     /// A manual gate with this id is already open on the shard.
     GateAlreadyOpen {
         /// Gate identifier that is already open.
