@@ -125,7 +125,7 @@ pub use production::{
     SpecInputConstraint, SpecKindRef, SpecLoopRegion, SpecNode, SpecNodeKind, SpecNodeMeta,
     SpecResourceContract, SpecValidationResult, SpecWorkflowError,
     SpecWorkflowParts, branch_target_alias_error, budget_error, input_constraint_error,
-    kind_ref_error,
+    kind_ref_error, node_id_error,
     forward_edges_error, loop_pairing_error, loop_region_edges_error,
     loop_region_relations_error, nested_together_error,
     reachability_error, repeat_counter_ownership_error,
@@ -291,6 +291,17 @@ pub assume_specification[ production::kind_ref_error ](
     ensures
         err == spec_kind_ref_error(refs, 0, slot_count as int, node_count as int,
             constants_len as int, expressions_len as int),
+;
+
+/// Spec-level mirror of `production::node_id_error`.
+/// Returns `Some(NodeIdMismatch)` when the node's id differs from
+/// its table position, or `None` when they match.
+pub assume_specification[ production::node_id_error ](
+    meta: SpecNodeMeta,
+    index: usize,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_node_id_error(meta, index as int),
 ;
 
 /// Spec-level mirror of `production::budget_error`. Returns
@@ -509,6 +520,41 @@ pub open spec fn spec_kind_ref_error(
                         constants_len, expressions_len)
                 }
             }
+        }
+    }
+}
+
+/// Spec-level mirror of `production::node_id_error`.
+/// Returns `Some(NodeIdMismatch)` when the node's id differs from
+/// its table position, or `None` when they match. Production's
+/// `u16::try_from(index)` arm is unreachable on inputs that reach
+/// step 1e: step 1a caps `max_steps` at 10000, so every table
+/// position is below 65536 and the conversion cannot fail.
+pub open spec fn spec_node_id_error(meta: SpecNodeMeta, index: int) -> Option<SpecWorkflowError> {
+    if (meta.id as int) == index {
+        None
+    } else {
+        Some(SpecWorkflowError::NodeIdMismatch)
+    }
+}
+
+/// Spec-level mirror of the step-1e per-node loop's id pass:
+/// walks the node table from index `i` and returns the first
+/// `NodeIdMismatch` in table order, or `None` when every remaining
+/// id matches its table position. Production checks
+/// `validate_node_id` before `validate_node` for each node, in
+/// node order (workflow/mod.rs:1375-1378).
+pub open spec fn spec_nodes_id_error(metas: &Vec<SpecNodeMeta>, i: int) -> Option<SpecWorkflowError>
+    decreases metas.len() - i
+{
+    if i < 0 || i >= metas.len() {
+        None
+    } else {
+        let err = spec_node_id_error(metas[i], i);
+        if err != None::<SpecWorkflowError> {
+            err
+        } else {
+            spec_nodes_id_error(metas, i + 1)
         }
     }
 }
@@ -1177,8 +1223,8 @@ pub open spec fn spec_loop_relations_error(parts: &SpecWorkflowParts) -> Option<
 /// discriminant 33, `spec_node_kind_finish()`). Mirrors `is_finish`
 /// (edges.rs:130-135); production indexes the node table by
 /// position, the mirror scans by id, which agrees on inputs that
-/// reached this step (step 1e trusts `meta.id` to match the table
-/// position).
+/// reached this step (step 1e validates `meta.id` against the table
+/// position first).
 pub open spec fn spec_is_finish_step(metas: &Vec<SpecNodeMeta>, step: u32, i: int) -> bool
     decreases metas.len() - i
 {
@@ -1438,7 +1484,7 @@ pub open spec fn spec_loop_edges_error(parts: &SpecWorkflowParts) -> Option<Spec
 /// owner meta for step `owner`, or `None` when no node carries
 /// that id. Production indexes by table position; the mirror
 /// scans by id, which agrees on inputs that reached this step
-/// (step 1e trusts `meta.id` to match the table position).
+/// (step 1e validates `meta.id` against the table position first).
 pub open spec fn spec_repeat_owner_meta(
     metas: &Vec<SpecNodeMeta>,
     owner: u32,
@@ -5119,6 +5165,61 @@ pub proof fn lemma_budget_within_caps_reaches_input_slots(parts: &SpecWorkflowPa
     assert(input_slots_valid(parts) == Some(SpecWorkflowError::InputSlotOutOfBounds));
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds));
+}
+/// Lemma 82: the node-id mismatch rejection. A node table whose
+/// first node carries an id different from its table position is
+/// rejected with `NodeIdMismatch` (production `validate_node_id`,
+/// workflow/mod.rs:1472-1485, compares `node.id` against the
+/// enumeration position and reports the first mismatch).
+pub proof fn lemma_node_id_first_mismatch_rejected(metas: &Vec<SpecNodeMeta>)
+    requires
+        metas.len() == 2,
+        metas[0].id == 5u32,
+        metas[1].id == 1u32,
+    ensures
+        spec_nodes_id_error(metas, 0) == Some(SpecWorkflowError::NodeIdMismatch),
+{
+    assert(spec_node_id_error(metas[0], 0) == Some(SpecWorkflowError::NodeIdMismatch));
+    assert(spec_nodes_id_error(metas, 0) == Some(SpecWorkflowError::NodeIdMismatch));
+}
+
+/// Lemma 83: well-formed node ids are accepted. A node table whose
+/// every id matches its table position passes the node-id check
+/// (production `validate_node_id` returns `Ok` for it).
+pub proof fn lemma_node_id_well_formed_accepted(metas: &Vec<SpecNodeMeta>)
+    requires
+        metas.len() == 2,
+        metas[0].id == 0u32,
+        metas[1].id == 1u32,
+    ensures
+        spec_nodes_id_error(metas, 0) == None::<SpecWorkflowError>,
+{
+    assert(spec_node_id_error(metas[0], 0) == None::<SpecWorkflowError>);
+    assert(spec_nodes_id_error(metas, 0) == spec_nodes_id_error(metas, 1));
+    assert(spec_node_id_error(metas[1], 1) == None::<SpecWorkflowError>);
+    assert(spec_nodes_id_error(metas, 1) == spec_nodes_id_error(metas, 2));
+    assert(spec_nodes_id_error(metas, 2) == None::<SpecWorkflowError>);
+    assert(spec_nodes_id_error(metas, 0) == None::<SpecWorkflowError>);
+}
+
+/// Lemma 84: the first mismatch wins. A node table with mismatches
+/// at positions 0 and 2 reports the position-0 mismatch: the scan
+/// returns the first node's decision without consulting later nodes
+/// (production checks `validate_node_id` in node order and `?`
+/// propagates the first failure, workflow/mod.rs:1375-1378).
+pub proof fn lemma_node_id_first_mismatch_wins(metas: &Vec<SpecNodeMeta>)
+    requires
+        metas.len() == 3,
+        metas[0].id == 7u32,
+        metas[1].id == 1u32,
+        metas[2].id == 9u32,
+    ensures
+        spec_nodes_id_error(metas, 0) == Some(SpecWorkflowError::NodeIdMismatch),
+        spec_nodes_id_error(metas, 0) == spec_node_id_error(metas[0], 0),
+{
+    assert(spec_node_id_error(metas[0], 0) == Some(SpecWorkflowError::NodeIdMismatch));
+    assert(spec_nodes_id_error(metas, 0) == Some(SpecWorkflowError::NodeIdMismatch));
+    assert(spec_nodes_id_error(metas, 0) == spec_node_id_error(metas[0], 0));
 }
 fn main() {}
 
