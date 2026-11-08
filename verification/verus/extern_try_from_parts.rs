@@ -2490,7 +2490,10 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // 10000), input (1539-1543, MAX_INPUT_BYTES 16777216),
     // output (1544-1548, MAX_OUTPUT_BYTES 16777216), blob
     // (1549-1553, MAX_BLOB_BYTES 67108864), ipc (1554-1558,
-    // MAX_IPC_PAYLOAD_BYTES 16777216), journal (1579-1583,
+    // MAX_IPC_PAYLOAD_BYTES 16777216), retry (1559-1563,
+    // MAX_RETRY_ATTEMPTS 10), fanout (1564-1568, MAX_FANOUT 256),
+    // collect (1569-1573, MAX_COLLECT_ITEMS 1048576), queue
+    // (1574-1578, MAX_QUEUE_DEPTH 1048576), journal (1579-1583,
     // MAX_JOURNAL_BATCH_BYTES 16777216). The transitions arm
     // (1534-1538) is handled by the combined check below, which
     // returns ResourceContractExceeded where production returns
@@ -2548,6 +2551,18 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
     }
     if contract.max_ipc_payload_bytes > 16777216 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_retry_attempts > 10 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_fanout > 256 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_collect_items > 1048576 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
+    if contract.max_queue_depth > 1048576 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
     }
     if contract.max_journal_batch_bytes > 16777216 {
