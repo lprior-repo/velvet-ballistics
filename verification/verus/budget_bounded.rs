@@ -267,7 +267,14 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for AggregateResourceBudget {
             == other.max_ipc_payload_bytes && self.max_blob_bytes == other.max_blob_bytes
             && self.max_input_bytes == other.max_input_bytes && self.max_step_budget_per_tick
             == other.max_step_budget_per_tick && self.max_transitions_per_tick
-            == other.max_transitions_per_tick
+            == other.max_transitions_per_tick && self.max_open_gates
+            == other.max_open_gates && self.max_signal_subscriptions
+            == other.max_signal_subscriptions && self.max_incident_emissions
+            == other.max_incident_emissions && self.max_transitions
+            == other.max_transitions && self.max_journal_bytes_total
+            == other.max_journal_bytes_total && self.max_value_store_entries
+            == other.max_value_store_entries && self.max_cost_units
+            == other.max_cost_units
     }
 }
 
