@@ -78,6 +78,26 @@
 //     <- crates/vb_core/src/workflow/loop_regions/pairing.rs:8-31
 //   - `unique_owner`
 //     <- crates/vb_core/src/workflow/loop_regions/pairing.rs:33-50
+//   - `validate_region_relations`
+//     <- crates/vb_core/src/workflow/loop_regions/pairing.rs:52-71
+//   - `disjoint_or_nested`
+//     <- crates/vb_core/src/workflow/loop_regions/pairing.rs:72-77
+//   - `validate_region_edges`
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:14-39
+//   - `collect_kind_targets`
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:41-60
+//   - `validate_edge`
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:62-82
+//   - `owned_backedge`
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:84-106
+//   - `validate_recovery_support`
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:108-128
+//   - `is_finish`
+//     <- crates/vb_core/src/workflow/loop_regions/edges.rs:130-135
+//   - `collect_node_targets`
+//     <- crates/vb_core/src/workflow/mod.rs:2233-2299
+//   - `crossing` (LoopRegionCrossing constructor)
+//     <- crates/vb_core/src/workflow/loop_regions.rs:100-106
 //   - `control_shape`
 //     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:21-34
 //   - `start_shape`
@@ -492,6 +512,23 @@ pub struct SpecWorkflowParts {
     /// input slot declaration. The projection checks: all in-bounds,
     /// no duplicates, strictly increasing order.
     pub input_slots: Vec<u32>,
+    /// Per-node kind-successor inventory consumed by the loop-region
+    /// edge closure (`validate_region_edges`,
+    /// loop_regions/edges.rs:14-39). `kind_targets[i]` is node i's
+    /// successor list in `collect_node_targets` order
+    /// (workflow/mod.rs:2233-2299): branch targets then `otherwise`
+    /// for Choose / ChooseSlot, branch entries then join for
+    /// TogetherStart, body then done for the loop Start / Next /
+    /// Attempt / RetryCheck kinds, done only for RepeatCheck, entry
+    /// then join for TogetherBranch, body then handler for
+    /// ErrorHandler, target for Jump, empty for every other kind.
+    /// The projection treats a missing entry (a `kind_targets`
+    /// shorter than `nodes_meta`) as an empty inventory for the
+    /// tail nodes. The `try_reserve_exact` reservation inside
+    /// `collect_kind_targets` (edges.rs:41-60) has no projection
+    /// counterpart: the inventory is caller-supplied, so the
+    /// allocation step is out of scope.
+    pub kind_targets: Vec<Vec<u32>>,
 }
 /// Per-node metadata feeding the validator. See `SpecWorkflowParts`
 /// for the field semantics. Mirrors every scalar that
@@ -599,6 +636,40 @@ pub const fn spec_node_kind_finish() -> u32 { 33 }
 /// exceeds every legitimate slot/step count (slot_count <= 1024,
 /// node_count <= 10000) so it never collides with a real index.
 pub const fn spec_ref_none() -> u32 { u32::MAX }
+/// Discriminants for the `EdgeOrigin` of a loop-region edge check
+/// (`validate_edge`, loop_regions/edges.rs:62-82). The projection
+/// carries the origin as a `u32` so the spec layer can switch on it
+/// without importing the production enum.
+pub const fn spec_loop_edge_origin_next() -> u32 { 0 }
+pub const fn spec_loop_edge_origin_error() -> u32 { 1 }
+pub const fn spec_loop_edge_origin_kind() -> u32 { 2 }
+/// Mirrors the production `CompiledLoopRegion`
+/// (`crates/vb_core/src/workflow/loop_regions.rs:16-21`): the
+/// owning start, first body step, unique control latch, and owning
+/// completion target of one validated loop backedge.
+#[derive(Clone, Copy)]
+pub struct SpecLoopRegion {
+    pub start: u32,
+    pub body: u32,
+    pub control: u32,
+    pub done: u32,
+}
+/// Const-fn mirror of `CompiledLoopRegion::contains`
+/// (loop_regions.rs:40-42): the step lies in the inclusive body /
+/// control activation interval.
+pub const fn region_contains(region: SpecLoopRegion, step: u32) -> bool {
+    region.body <= step && step <= region.control
+}
+/// Const-fn mirror of `disjoint_or_nested`
+/// (loop_regions/pairing.rs:72-77): two regions are properly
+/// related iff they are disjoint or one is strictly nested inside
+/// the other.
+pub const fn disjoint_or_nested(first: SpecLoopRegion, second: SpecLoopRegion) -> bool {
+    first.control < second.body
+        || second.control < first.body
+        || (first.body < second.body && second.control < first.control)
+        || (second.body < first.body && first.control < second.control)
+}
 // ============================================================================
 // Spec predicate mirrors (used from spec file via `assume_specification`)
 // ============================================================================
@@ -736,6 +807,30 @@ pub const fn loop_shape_matches(control: SpecNodeMeta, start: SpecNodeMeta) -> b
         && control.ctrl_state_b == start.start_state_b
 }
 
+/// Pure projection of the `unique_owner` scan
+/// (pairing.rs:33-50) for one cached control. Returns the unique
+/// ordered start owning the control, or `None` when the owner is
+/// missing, duplicated, or unordered. Shared by
+/// `loop_pairing_error` and `loop_regions_table` so the pairing
+/// decision and the region table can never disagree about an owner.
+#[verifier::external]
+pub fn pairing_owner(parts: &SpecWorkflowParts, control: SpecNodeMeta) -> Option<u32> {
+    let mut owner: Option<u32> = None;
+    for candidate in parts.nodes_meta.iter() {
+        if candidate.has_start_shape != 1 || !loop_shape_matches(control, *candidate) {
+            continue;
+        }
+        let ordered = candidate.id < control.ctrl_body
+            && control.ctrl_body < control.id
+            && control.id < control.ctrl_done;
+        if owner.is_some() || !ordered {
+            return None;
+        }
+        owner = Some(candidate.id);
+    }
+    owner
+}
+
 /// Pure projection of the pairing step of `loop_regions::validate`
 /// (`cache_control` + `unique_owner`, pairing.rs:8-50), applied to
 /// the whole node table in table order. A cached control is a node
@@ -756,20 +851,240 @@ pub fn loop_pairing_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError
         if meta.has_ctrl_shape != 1 || meta.ctrl_body > meta.id {
             continue;
         }
-        let mut owner: Option<u32> = None;
-        for candidate in parts.nodes_meta.iter() {
-            if candidate.has_start_shape != 1 || !loop_shape_matches(*meta, *candidate) {
+        if pairing_owner(parts, *meta).is_none() {
+            return Some(SpecWorkflowError::LoopRegionUnpaired);
+        }
+    }
+    None
+}
+
+/// Builds the validated loop-region table from the pairing step
+/// (`cache_control`, pairing.rs:8-31): one `SpecLoopRegion` per
+/// cached control, in node-table order (ascending control id, since
+/// the projection trusts `meta.id` to match the table position, as
+/// step 1e does). Returns `None` exactly when `loop_pairing_error`
+/// would report `LoopRegionUnpaired`, so the relations and edge
+/// steps that consume the table only run on fully paired inputs.
+#[verifier::external]
+pub fn loop_regions_table(parts: &SpecWorkflowParts) -> Option<Vec<SpecLoopRegion>> {
+    let mut regions = Vec::new();
+    for meta in parts.nodes_meta.iter() {
+        if meta.has_ctrl_shape != 1 || meta.ctrl_body > meta.id {
+            continue;
+        }
+        match pairing_owner(parts, *meta) {
+            Some(start) => regions.push(SpecLoopRegion {
+                start,
+                body: meta.ctrl_body,
+                control: meta.id,
+                done: meta.ctrl_done,
+            }),
+            None => return None,
+        }
+    }
+    Some(regions)
+}
+
+/// Pure projection of `validate_region_relations`
+/// (pairing.rs:52-71): every pair of cached regions, first in
+/// ascending control order, must share no start and must be
+/// disjoint or strictly nested. A shared start returns
+/// `LoopRegionUnpaired`; a partially overlapping pair returns
+/// `LoopRegionCrossing`; both name the second (later-control)
+/// region. Returns `None` when pairing failed (the table is
+/// absent) or every pair is properly related.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn loop_region_relations_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    let regions = match loop_regions_table(parts) {
+        Some(regions) => regions,
+        None => return None,
+    };
+    for first in regions.iter() {
+        for second in regions.iter() {
+            if first.control >= second.control {
                 continue;
             }
-            let ordered =
-                candidate.id < meta.ctrl_body && meta.ctrl_body < meta.id && meta.id < meta.ctrl_done;
-            if owner.is_some() || !ordered {
+            if first.start == second.start {
                 return Some(SpecWorkflowError::LoopRegionUnpaired);
             }
-            owner = Some(candidate.id);
+            if !disjoint_or_nested(*first, *second) {
+                return Some(SpecWorkflowError::LoopRegionCrossing);
+            }
         }
-        if owner.is_none() {
-            return Some(SpecWorkflowError::LoopRegionUnpaired);
+    }
+    None
+}
+
+/// Finds the cached region a node controls, if any
+/// (`regions.get(node.id)` in edges.rs:84-106). The table holds one
+/// entry per cached control, so the scan is unique when it hits.
+#[verifier::external]
+fn region_for_control(regions: &[SpecLoopRegion], control: u32) -> Option<SpecLoopRegion> {
+    for region in regions.iter() {
+        if region.control == control {
+            return Some(*region);
+        }
+    }
+    None
+}
+
+/// Pure projection of `is_finish` (edges.rs:130-135): the step
+/// names a `Finish` node. Production indexes the node table by
+/// position; the projection scans by id, which agrees on every
+/// input that reached this step because step 1e trusts `meta.id`
+/// to match the table position.
+#[verifier::external]
+fn is_finish_step(parts: &SpecWorkflowParts, step: u32) -> bool {
+    for meta in parts.nodes_meta.iter() {
+        if meta.id == step && meta.kind_disc == spec_node_kind_finish() {
+            return true;
+        }
+    }
+    false
+}
+
+/// Pure projection of `owned_backedge` (edges.rs:84-106): a
+/// backward edge inside a region is owned iff it comes from the
+/// origin production expects for the node's kind (`Next` for a
+/// RepeatCheck, `Kind` otherwise) and the source node itself
+/// controls a region nested inside the outer one whose body is the
+/// edge target.
+#[verifier::external]
+fn owned_backedge(
+    regions: &[SpecLoopRegion],
+    outer: SpecLoopRegion,
+    node: SpecNodeMeta,
+    to: u32,
+    origin: u32,
+) -> bool {
+    let expected = if node.kind_disc == spec_node_kind_repeat_check() {
+        spec_loop_edge_origin_next()
+    } else {
+        spec_loop_edge_origin_kind()
+    };
+    if origin != expected {
+        return false;
+    }
+    match region_for_control(regions, node.id) {
+        Some(inner) => {
+            inner.body == to && outer.body <= inner.body && inner.control <= outer.control
+        }
+        None => false,
+    }
+}
+
+/// Pure projection of `validate_edge` (edges.rs:62-82) for one edge
+/// `from -> to` against one region. An entry edge is allowed only
+/// as a `Kind` edge from the region's start to its body; an exit
+/// edge only to the region's done step or a `Finish` node; a
+/// backward edge inside the region only when it is an owned
+/// backedge. Returns `Some(LoopRegionCrossing)` for the first
+/// violation, else `None`.
+#[verifier::external]
+fn validate_loop_edge(
+    parts: &SpecWorkflowParts,
+    region: SpecLoopRegion,
+    regions: &[SpecLoopRegion],
+    node: SpecNodeMeta,
+    to: u32,
+    origin: u32,
+) -> Option<SpecWorkflowError> {
+    let from_in = region_contains(region, node.id);
+    let to_in = region_contains(region, to);
+    if !from_in && to_in {
+        if origin != spec_loop_edge_origin_kind() || node.id != region.start || to != region.body {
+            return Some(SpecWorkflowError::LoopRegionCrossing);
+        }
+    } else if from_in && !to_in {
+        if to != region.done && !is_finish_step(parts, to) {
+            return Some(SpecWorkflowError::LoopRegionCrossing);
+        }
+    } else if from_in
+        && to_in
+        && to <= node.id
+        && !owned_backedge(regions, region, node, to, origin)
+    {
+        return Some(SpecWorkflowError::LoopRegionCrossing);
+    }
+    None
+}
+
+/// Pure projection of `validate_region_edges` (edges.rs:14-39)
+/// over the validated region table, in ascending control order.
+/// For each region: the entry step must lie outside it, then every
+/// node is checked in table order — routing `next` edge, routing
+/// error-handler edge, kind-target edges from the caller-supplied
+/// `kind_targets` inventory, then recovery support
+/// (`validate_recovery_support`, edges.rs:108-128): a node inside
+/// the region with an internal error handler, or an `ErrorHandler`
+/// node inside the region, returns `LoopRegionUnsupported`.
+/// Returns the first failure in that order, else `None`; `None`
+/// when pairing failed (the table is absent).
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn loop_region_edges_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    let regions = match loop_regions_table(parts) {
+        Some(regions) => regions,
+        None => return None,
+    };
+    for region in regions.iter() {
+        if region_contains(*region, parts.entry) {
+            return Some(SpecWorkflowError::LoopRegionCrossing);
+        }
+        for (index, meta) in parts.nodes_meta.iter().enumerate() {
+            if meta.has_next == 1 {
+                if let Some(err) = validate_loop_edge(
+                    parts,
+                    *region,
+                    &regions,
+                    *meta,
+                    meta.next_step,
+                    spec_loop_edge_origin_next(),
+                ) {
+                    return Some(err);
+                }
+            }
+            if meta.has_on_error == 1 {
+                if let Some(err) = validate_loop_edge(
+                    parts,
+                    *region,
+                    &regions,
+                    *meta,
+                    meta.on_error_step,
+                    spec_loop_edge_origin_error(),
+                ) {
+                    return Some(err);
+                }
+            }
+            if let Some(targets) = parts.kind_targets.get(index) {
+                for target in targets.iter() {
+                    if let Some(err) = validate_loop_edge(
+                        parts,
+                        *region,
+                        &regions,
+                        *meta,
+                        *target,
+                        spec_loop_edge_origin_kind(),
+                    ) {
+                        return Some(err);
+                    }
+                }
+            }
+            if region_contains(*region, meta.id) {
+                let internal_handler = meta.has_on_error == 1
+                    && region_contains(*region, meta.on_error_step)
+                    && !is_finish_step(parts, meta.on_error_step);
+                if internal_handler || meta.kind_disc == spec_node_kind_error_handler() {
+                    return Some(SpecWorkflowError::LoopRegionUnsupported);
+                }
+            }
         }
     }
     None
@@ -785,9 +1100,12 @@ pub fn loop_pairing_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError
 ///      (workflow/mod.rs:1367-1392).
 ///   2. `loop_regions::validate(&parts)?` — loop-region pairing,
 ///      relations, edge closure, and recovery support
-///      (loop_regions.rs:59-72). The projection models the pairing
-///      step only; relations, edge closure, and recovery support are
-///      documented approximations (see step 1h).
+///      (loop_regions.rs:59-72). The projection models all four
+///      sub-steps in production order: pairing
+///      (`loop_pairing_error`), region relations
+///      (`loop_region_relations_error`), edge closure
+///      (`loop_region_edges_error`), and recovery support (inside
+///      the edge step).
 ///   3. `loop_regions::nested_activation_map(&parts, &loop_regions)?`
 ///      (loop_regions.rs:78-83). The map derives only
 ///      `StepOutOfBounds` / `ResourceContractExceeded` failures from
@@ -928,17 +1246,25 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // decision-fn level; the spec's BackwardEdge / UnreachableNode
     // / NestedTogether arms are exercised via dedicated spec
     // functions).
-    // ---- Step 2: loop-region pairing ----
+    // ---- Step 2: loop-region validation ----
     // Production calls loop_regions::validate (loop_regions.rs:59-72)
-    // next; its first step pairs each cached loop control with its
-    // unique ordered start. The projection models that pairing step
-    // here. The later region relations
-    // (validate_region_relations, pairing.rs:52-71), edge closure
-    // (validate_region_edges, edges.rs), and recovery support
-    // (LoopRegionUnsupported) remain documented approximations: the
-    // projection has no per-node routing-edge inventory to decide
-    // them, the same standing approximation as 1g.
+    // next, in this order: pairing (`cache_control` +
+    // `unique_owner`, pairing.rs:8-50), region relations
+    // (`validate_region_relations`, pairing.rs:52-71), then edge
+    // closure and recovery support (`validate_region_edges`,
+    // edges.rs:14-39). The projection models each step here, in
+    // the same order, over the region table the pairing step
+    // builds. The kind-target edges read the caller-supplied
+    // `kind_targets` inventory; the `try_reserve_exact`
+    // reservation inside `collect_kind_targets` has no projection
+    // counterpart (see the `kind_targets` field doc).
     if let Some(err) = loop_pairing_error(parts) {
+        return SpecValidationResult::Err(err);
+    }
+    if let Some(err) = loop_region_relations_error(parts) {
+        return SpecValidationResult::Err(err);
+    }
+    if let Some(err) = loop_region_edges_error(parts) {
         return SpecValidationResult::Err(err);
     }
     // ---- Step 3: nested activation map ----
