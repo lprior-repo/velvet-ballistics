@@ -35,41 +35,8 @@ use vb_ipc::{
 /// which has a `pub(crate)` getter inaccessible from workspace tests.
 const DEFAULT_MAX_PAYLOAD: u32 = 1_048_576;
 
-// ============================================================================
-// Reference Model — Contract §2.1, §2.2
-// ============================================================================
-//
-// These values mirror the Kani reference model in kani_flag_validation.rs
-// and the domain contract in contract.md §2.2.
-//
-// TODO(vb-39jp, GAP-1): Replace with `CommandFlags::valid_mask()` and
-// `CommandFlags::reserved_global_mask()` when production CommandFlags exists.
-
-/// Global reserved flag mask (bits 8-15). All commands must reject flags
-/// with any bit in this range set.
-const RESERVED_GLOBAL_MASK: u16 = 0xFF00;
-
-/// Contract-defined valid flag mask per command (§2.2 upper bounds).
-///
-/// These are the maximum allowed masks. The production implementation may
-/// use subset masks. Contract invariant INV-6: ∀ C: valid_mask(C) & 0xFF00 == 0.
-const fn valid_mask_ref(command: IpcCommand) -> u16 {
-    match command {
-        IpcCommand::SubmitRun => 0x00FF,
-        IpcCommand::SubmitRunInline => 0x00FF,
-        IpcCommand::CancelRun => 0x0000,
-        IpcCommand::InspectRun => 0x0003,
-        IpcCommand::ListEvents => 0x00FF,
-        IpcCommand::AnswerAsk => 0x0000,
-        IpcCommand::CompleteAction => 0x0000,
-        IpcCommand::FailAction => 0x0000,
-        IpcCommand::DrainTrace => 0x0007,
-        IpcCommand::Health => 0x0000,
-        IpcCommand::Shutdown => 0x0000,
-        // Future commands: no flags (mask=0) by default
-        _ => 0x0000,
-    }
-}
+// Masks come from production `CommandFlags`; the independent contract
+// oracle remains the Kani reference model in kani_flag_validation.rs.
 
 /// All 11 IPC v1 commands in declaration order.
 const ALL_COMMANDS: [IpcCommand; 11] = [
@@ -189,7 +156,7 @@ fn proptest_header_roundtrip_preserves_all_fields() {
         let command = ALL_COMMANDS[cmd_idx];
 
         // Generate flags within low byte only (0x00..=0xFF)
-        let flags: u16 = rng.random_range(0..=valid_mask_ref(command));
+        let flags: u16 = rng.random_range(0..=CommandFlags::valid_mask(command));
 
         // Generate correlation: any u64
         let correlation: u64 = rng.random();
@@ -238,19 +205,19 @@ fn proptest_decode_rejects_invalid_flags_per_command() {
         for &test_flag in &[0x0000_u16, 0x0001, 0x00FF, 0x0100, 0xFF00, 0xFF01, 0xFFFF] {
             let header_bytes = raw_header_with_flags(*command, test_flag, 0);
             let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
-            if (test_flag & RESERVED_GLOBAL_MASK) != 0 {
+            if (test_flag & CommandFlags::reserved_global_mask()) != 0 {
                 assert_eq!(
                     result,
                     Err(IpcError::ReservedBitsSet {
                         command: *command,
                         actual: test_flag,
-                        reserved_mask: RESERVED_GLOBAL_MASK,
+                        reserved_mask: CommandFlags::reserved_global_mask(),
                     }),
                     "command={:?} flags={:#06x}",
                     command,
                     test_flag
                 );
-            } else if (test_flag & !valid_mask_ref(*command)) != 0 {
+            } else if (test_flag & !CommandFlags::valid_mask(*command)) != 0 {
                 assert_eq!(
                     result,
                     Err(IpcError::InvalidCommandFlags {
@@ -284,7 +251,7 @@ fn proptest_idempotent_header_encode_decode_roundtrip() {
     for _ in 0..500 {
         let cmd_idx: usize = rng.random_range(0..11);
         let command = ALL_COMMANDS[cmd_idx];
-        let flags: u16 = rng.random_range(0..=valid_mask_ref(command));
+        let flags: u16 = rng.random_range(0..=CommandFlags::valid_mask(command));
         let correlation: u64 = rng.random();
         let payload_len: u32 = rng.random_range(0..=(DEFAULT_MAX_PAYLOAD));
 
@@ -357,12 +324,16 @@ fn proptest_encode_succeeds_for_any_flags_value() {
 #[test]
 fn proptest_valid_mask_is_disjoint_from_reserved_global_mask() {
     for command in &ALL_COMMANDS {
-        let mask = valid_mask_ref(*command);
-        let intersection = mask & RESERVED_GLOBAL_MASK;
+        let mask = CommandFlags::valid_mask(*command);
+        let intersection = mask & CommandFlags::reserved_global_mask();
         assert_eq!(
-            intersection, 0,
+            intersection,
+            0,
             "valid_mask({:?})={:#06x} must be disjoint from reserved_global_mask={:#06x}, got intersection={:#06x}",
-            command, mask, RESERVED_GLOBAL_MASK, intersection
+            command,
+            mask,
+            CommandFlags::reserved_global_mask(),
+            intersection
         );
     }
 }
@@ -386,7 +357,9 @@ fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
         // Flags with at least one invalid aspect (reserved bit or outside mask)
         let flags: u16 = loop {
             let f: u16 = rng.random();
-            if (f & RESERVED_GLOBAL_MASK) != 0 || (f & !valid_mask_ref(command)) != 0 {
+            if (f & CommandFlags::reserved_global_mask()) != 0
+                || (f & !CommandFlags::valid_mask(command)) != 0
+            {
                 break f;
             }
         };
@@ -441,7 +414,7 @@ fn validate_zero_flags_succeeds_for_all_11_commands() {
 #[test]
 fn validate_accepts_flags_within_valid_mask_for_each_command() {
     for command in &NONZERO_MASK_COMMANDS {
-        let mask = valid_mask_ref(*command);
+        let mask = CommandFlags::valid_mask(*command);
         let mut test_flags = vec![0x0001_u16];
         if mask >= 0x00FF {
             test_flags.push(0x00FF);
@@ -515,7 +488,7 @@ fn validate_returns_reserved_bits_set_for_all_11_commands() {
 #[test]
 fn validate_returns_invalid_command_flags_when_flags_outside_valid_mask() {
     for command in &ALL_COMMANDS {
-        let mask = valid_mask_ref(*command);
+        let mask = CommandFlags::valid_mask(*command);
         let invalid_flags: Vec<u16> = if mask == 0 {
             vec![0x0001_u16, 0x0002, 0x00FF, 0x0055]
         } else if mask == 0x0001 {
@@ -576,7 +549,7 @@ fn validate_returns_reserved_bits_set_not_invalid_command_flags_when_both_condit
 #[test]
 fn validate_rejects_every_nonzero_flag_for_zero_mask_commands() {
     for command in &ZERO_MASK_COMMANDS {
-        assert_eq!(valid_mask_ref(*command), 0);
+        assert_eq!(CommandFlags::valid_mask(*command), 0);
         for &flag in &[0x0001_u16, 0x0002, 0x00FF, 0x0055] {
             assert_eq!(
                 CommandFlags::validate(*command, flag),
@@ -597,12 +570,16 @@ fn validate_rejects_every_nonzero_flag_for_zero_mask_commands() {
 #[test]
 fn valid_mask_and_reserved_global_mask_are_disjoint_for_all_commands() {
     for command in &ALL_COMMANDS {
-        let mask = valid_mask_ref(*command);
-        let intersection = mask & RESERVED_GLOBAL_MASK;
+        let mask = CommandFlags::valid_mask(*command);
+        let intersection = mask & CommandFlags::reserved_global_mask();
         assert_eq!(
-            intersection, 0,
+            intersection,
+            0,
             "INV-6 violation: valid_mask({:?})={:#06x} & reserved_global_mask={:#06x} = {:#06x} (expected 0)",
-            command, mask, RESERVED_GLOBAL_MASK, intersection
+            command,
+            mask,
+            CommandFlags::reserved_global_mask(),
+            intersection
         );
     }
 }
@@ -743,7 +720,7 @@ fn submit_run_inline_command_header_with_payload_len_at_bound_roundtrips() {
 #[test]
 fn all_11_ipc_commands_roundtrip_header_with_valid_flags() {
     for command in &ALL_COMMANDS {
-        let mask = valid_mask_ref(*command);
+        let mask = CommandFlags::valid_mask(*command);
         // Use the maximum valid flag for this command (or 0 for zero-mask)
         let flags: u16 = if mask > 0 { mask } else { 0x0000 };
         let correlation = command.as_u16() as u64;
@@ -783,7 +760,7 @@ fn all_11_ipc_commands_roundtrip_header_with_valid_flags() {
 #[test]
 fn header_flag_bits_roundtrip_at_zero_min_and_max_for_each_command() {
     for command in &NONZERO_MASK_COMMANDS {
-        let mask = valid_mask_ref(*command);
+        let mask = CommandFlags::valid_mask(*command);
         let test_flags: Vec<u16> = {
             let mut v = vec![0x0000_u16];
             if mask > 0 {
@@ -916,7 +893,7 @@ fn decode_accepts_payload_len_equal_to_max_bound() {
 #[test]
 fn header_encode_decode_is_idempotent_for_valid_headers() {
     for command in &ALL_COMMANDS {
-        let mask = valid_mask_ref(*command);
+        let mask = CommandFlags::valid_mask(*command);
         let flags: u16 = if mask > 0 { mask } else { 0x0000 };
         let correlation = (command.as_u16() as u64) * 7;
 
@@ -1413,7 +1390,7 @@ fn flag_matrix_all_11_commands_all_classes_decode_as_expected() {
     // Flag classes from §8.1:
     // Valid=0, Valid Low, Valid Max, Invalid Low, Reserved, Reserved+Invalid
     let flag_cases = |cmd: IpcCommand| -> Vec<FlagCase> {
-        let mask = valid_mask_ref(cmd);
+        let mask = CommandFlags::valid_mask(cmd);
         let mut cases = Vec::new();
 
         // Class: Flags=0 (always valid)
