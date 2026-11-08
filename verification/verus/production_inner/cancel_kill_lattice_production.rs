@@ -47,6 +47,10 @@ pub struct Frame(pub u64);
 #[derive(Clone, Copy)]
 pub struct RunState {
     pub frame: Frame,
+    /// Durable run attempt. Production stores a `NonZeroU16`; the mirror
+    /// models the count as a plain `u16` because the lattice proofs never
+    /// reason about the attempt value, only thread it to journal events.
+    pub run_attempt: u16,
 }
 
 #[derive(Clone, Copy)]
@@ -111,7 +115,7 @@ impl Shard {
     pub fn run_state_remove(&mut self, _run: RunId) -> Option<RunState> {
         if self.run_state_present {
             self.run_state_present = false;
-            Some(RunState { frame: Frame(0) })
+            Some(RunState { frame: Frame(0), run_attempt: 0 })
         } else {
             None
         }
