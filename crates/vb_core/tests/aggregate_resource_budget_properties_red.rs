@@ -1,6 +1,12 @@
 use proptest::prelude::{ProptestConfig, *};
 
 const BUDGET_RS: &str = include_str!("../src/budget.rs");
+// The aggregate budget implementation is split across `budget.rs` and
+// its `budget/` submodules; the checked add/subtract impls moved to
+// `budget/usage.rs` in the source-length split series, so the shell
+// alone no longer contains `try_add_budget`. Concatenate the submodule
+// so the proptest sees the same surface the production binary sees.
+const BUDGET_USAGE_RS: &str = include_str!("../src/budget/usage.rs");
 // The admission shell is split across focused chunks under `parts/` that
 // are `include!`-d into `admission.rs` at compile time. The runtime-source
 // literals this proptest searches for (`admit_run_with_budget`,
@@ -25,6 +31,16 @@ fn admission_production_surface() -> String {
     s.push_str(ADMISSION_ERRORS_RS);
     s.push('\n');
     s.push_str(ADMISSION_BUDGET_RS);
+    s
+}
+
+/// Total production surface area of the aggregate budget module after
+/// the shell glues its `budget/` submodules in. Asserted at proptest
+/// time so the split does not silently re-break surface-area checks.
+fn budget_production_surface() -> String {
+    let mut s = String::from(BUDGET_RS);
+    s.push('\n');
+    s.push_str(BUDGET_USAGE_RS);
     s
 }
 
@@ -80,13 +96,14 @@ proptest! {
     fn proptest_checked_add_and_subtract_are_contractually_required(a in 0u64..1000, b in 0u64..1000) {
         let checked_sum = a.checked_add(b);
         let checked_difference = a.checked_sub(b);
+        let budget_rs = budget_production_surface();
 
         prop_assert_eq!(checked_sum, a.checked_add(b));
         prop_assert_eq!(checked_difference, a.checked_sub(b));
-        prop_assert_eq!(BUDGET_RS.contains("try_add_budget"), true);
-        prop_assert_eq!(BUDGET_RS.contains("try_subtract_budget"), true);
-        prop_assert_eq!(BUDGET_RS.contains("checked_add"), true);
-        prop_assert_eq!(BUDGET_RS.contains("checked_sub"), true);
+        prop_assert_eq!(budget_rs.contains("try_add_budget"), true);
+        prop_assert_eq!(budget_rs.contains("try_subtract_budget"), true);
+        prop_assert_eq!(budget_rs.contains("checked_add"), true);
+        prop_assert_eq!(budget_rs.contains("checked_sub"), true);
     }
 
     #[test]
