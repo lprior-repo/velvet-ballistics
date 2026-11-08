@@ -52,6 +52,11 @@
 //      sub-steps in production order; the per-region table is built
 //      from the pairing step and the kind-target edges read the
 //      caller-supplied `kind_targets` inventory.
+//      `ResourceContractExceeded { resource: LoopRegions }` has no
+//      deterministic model: its only production sites are the
+//      `try_reserve_exact` / `checked_add` failure paths in
+//      loop_regions.rs:85-98, loop_regions/edges.rs:52-55, and
+//      loop_regions/nested_entries.rs:24-30, all via `resource_error()`.
 //   3. loop_regions::nested_activation_map
 //      (workflow/loop_regions.rs:78-83): per-node nested-activation
 //      flags derived from the region table.
@@ -7978,6 +7983,257 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_at_cap_accepted(parts: &Spe
 {
     lemma_well_formed_parts_accepted(parts);
     assert(spec_validation_ok(try_from_parts_pure_spec(parts)));
+}
+
+/// Lemma 151: the object-fields count-cap rejection. A BuildObject node
+/// with more fields than `MAX_OBJECT_FIELDS_PER_VALUE` is rejected with
+/// `ResourceContractExceeded` (production `validate_build_object`,
+/// workflow/mod.rs:1869-1882, checks the cap before the per-field
+/// slots; cap `MAX_OBJECT_FIELDS_PER_VALUE` 65535, limits.rs:75).
+pub proof fn lemma_build_object_fields_over_cap_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 4u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::Count(65536u32, 65535u32),
+        kind_refs[1] == SpecKindRef::Slot(1u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 152: the zero branch-count rejection. A TogetherJoin node
+/// with zero branches is rejected with `ResourceContractExceeded`
+/// (production TogetherJoin arm, workflow/mod.rs:1760-1766, calls
+/// `validate_nonzero_u16` (1927-1933) before the accumulator slot).
+pub proof fn lemma_together_join_zero_branch_count_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 14u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::NonZero(0u32),
+        kind_refs[1] == SpecKindRef::Slot(1u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 153: the list-items cap precedes slot validation. A BuildList
+/// node over the items cap is rejected with `ResourceContractExceeded`
+/// even when a following slot is out of bounds (production
+/// `validate_build_list`, workflow/mod.rs:1860-1867, checks the cap
+/// before `validate_slots`; cap `MAX_LIST_ITEMS_PER_VALUE` 65535,
+/// limits.rs:71).
+pub proof fn lemma_build_list_items_before_slots(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 5u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::Count(65536u32, 65535u32),
+        kind_refs[1] == SpecKindRef::Slot(99u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 154: the object-fields cap precedes slot validation.
+/// A BuildObject node over the fields cap is rejected with
+/// `ResourceContractExceeded` even when a following slot is out of
+/// bounds (production `validate_build_object`,
+/// workflow/mod.rs:1869-1882, checks the cap before the per-field
+/// slots; cap `MAX_OBJECT_FIELDS_PER_VALUE` 65535, limits.rs:75).
+pub proof fn lemma_build_object_fields_before_slots(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 4u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::Count(65536u32, 65535u32),
+        kind_refs[1] == SpecKindRef::Slot(99u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 155: the zero branch-count check precedes the accumulator
+/// slot check. A TogetherJoin node with zero branches is rejected
+/// with `ResourceContractExceeded` even when the accumulator slot is
+/// out of bounds (production TogetherJoin arm,
+/// workflow/mod.rs:1760-1766, calls `validate_nonzero_u16`
+/// (1927-1933) before the accumulator slot).
+pub proof fn lemma_together_join_zero_branch_count_before_accumulator(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 14u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::NonZero(0u32),
+        kind_refs[1] == SpecKindRef::Slot(99u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 156: the at-cap object-fields acceptance. A BuildObject node
+/// with exactly `MAX_OBJECT_FIELDS_PER_VALUE` fields and an in-bounds
+/// slot passes the per-node check (production `validate_build_object`,
+/// workflow/mod.rs:1869-1882, rejects only above the cap).
+pub proof fn lemma_build_object_fields_at_cap_accepted(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 4u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::Count(65535u32, 65535u32),
+        kind_refs[1] == SpecKindRef::Slot(1u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == None::<SpecWorkflowError>,
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 0));
+    assert(spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 0)
+        == spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 0));
+    assert(spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 0)
+        == None::<SpecWorkflowError>);
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == None::<SpecWorkflowError>);
+}
+
+/// Lemma 157: the one-branch acceptance. A TogetherJoin node with a
+/// branch count of one and an in-bounds accumulator slot passes the
+/// per-node check (production TogetherJoin arm,
+/// workflow/mod.rs:1760-1766, rejects only a zero branch count).
+pub proof fn lemma_together_join_branch_count_one_accepted(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 14u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::NonZero(1u32),
+        kind_refs[1] == SpecKindRef::Slot(1u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == None::<SpecWorkflowError>,
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 0));
+    assert(spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 0)
+        == spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 0));
+    assert(spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 0)
+        == None::<SpecWorkflowError>);
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == None::<SpecWorkflowError>);
+}
+
+/// Lemma 158: the at-cap list-items acceptance. A BuildList node with
+/// exactly `MAX_LIST_ITEMS_PER_VALUE` items and an in-bounds slot
+/// passes the per-node check (production `validate_build_list`,
+/// workflow/mod.rs:1860-1867, rejects only above the cap).
+pub proof fn lemma_build_list_items_at_cap_accepted(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 5u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::Count(65535u32, 65535u32),
+        kind_refs[1] == SpecKindRef::Slot(1u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == None::<SpecWorkflowError>,
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 0));
+    assert(spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 0)
+        == spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 0));
+    assert(spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 0)
+        == None::<SpecWorkflowError>);
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == None::<SpecWorkflowError>);
 }
 fn main() {}
 
