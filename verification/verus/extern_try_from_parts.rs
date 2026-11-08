@@ -541,8 +541,8 @@ pub struct SpecNode {
     pub kind: SpecNodeKind,
 }
 /// Mirror of the production `ExprOp` stack-effect classes
-/// (`crates/vb_core/src/workflow/mod.rs:914-974`, classified by
-/// `expr_stack_effect` at 2728-2743): `Push` covers `LoadSlot` /
+/// (`crates/vb_core/src/workflow/mod.rs:914-973`, classified by
+/// `expr_stack_effect` at 2728-2741): `Push` covers `LoadSlot` /
 /// `LoadConst` (effect 0,1); `LoadAccessor` covers `LoadAccessor`
 /// (effect 0,1) and carries the accessor index for the
 /// `validate_accessor` bound check (workflow/mod.rs:2076-2086);
@@ -1235,7 +1235,7 @@ pub fn node_id_error(meta: SpecNodeMeta, index: usize) -> Option<SpecWorkflowErr
 }
 
 /// Stack effect of one `SpecExprOp`, mirroring production
-/// `expr_stack_effect` (workflow/mod.rs:2728-2743): `(pop, push)`.
+/// `expr_stack_effect` (workflow/mod.rs:2728-2741): `(pop, push)`.
 fn expr_stack_effect(op: SpecExprOp) -> (u32, u32) {
     match op {
         SpecExprOp::Push => (0, 1),
@@ -2399,7 +2399,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // `validate_expression_accessors` (workflow/mod.rs:2057-2067);
     // `expr_error` models the full per-op detail (op count at
     // workflow/mod.rs:2682-2690, stack simulation at 976-987 with
-    // effects at 2728-2743, final depth at 2712-2720, max_stack
+    // effects at 2728-2741, final depth at 2712-2720, max_stack
     // mismatch at 899-908, accessor bounds at 2076-2086).
     for expression in &parts.expressions {
         if let Some(err) = expr_error(expression, parts.accessors_len) {

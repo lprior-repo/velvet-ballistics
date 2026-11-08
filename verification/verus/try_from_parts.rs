@@ -574,7 +574,7 @@ pub open spec fn spec_nodes_id_error(metas: &Vec<SpecNodeMeta>, i: int) -> Optio
 }
 
 /// Spec-level mirror of production `expr_stack_effect`
-/// (workflow/mod.rs:2728-2743): the `(pop, push)` stack effect of
+/// (workflow/mod.rs:2728-2741): the `(pop, push)` stack effect of
 /// one `SpecExprOp`.
 pub open spec fn spec_expr_effect(op: SpecExprOp) -> (int, int) {
     match op {
