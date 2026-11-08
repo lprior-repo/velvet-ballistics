@@ -7,7 +7,8 @@ use crate::ids::{RunId, StepIdx, TenantId};
 use crate::workflow::{
     CompiledNodeKind, CompiledWorkflow, NodeContinuation, ResourceContract, WorkflowError,
 };
-use reachable::{compute_reachable_metrics, compute_structural_depth};
+use depth::compute_structural_depth;
+use reachable::compute_reachable_metrics;
 use successors::{
     bounded_tracking_vec, insert_tracked_jump_edge, insert_tracked_step, push_successor_targets,
     tracked_steps_contain,
@@ -2673,6 +2674,7 @@ fn count_nested_for_region(
         })
 }
 
+mod depth;
 mod reachable;
 mod successors;
 
@@ -2692,7 +2694,7 @@ mod depth_overflow_tests {
     //! carrying the actual pre-overflow depth value, not the lossy
     //! `StepCountOverflow { actual: u64::MAX }` sentinel it used to produce.
 
-    use super::reachable::compute_child_depth;
+    use super::depth::compute_child_depth;
     use super::{BudgetTraversalError, CompiledNodeKind};
 
     #[test]
