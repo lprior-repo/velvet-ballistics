@@ -34,7 +34,8 @@
 //      - validate_constants_symbols (2122-2132),
 //      - validate_build_object_symbols (2135-2147),
 //      - validate_reachability (2160-2229),
-//      - validate_forward_edges (2336-2364),
+//      - validate_forward_edges (2336-2364), modelled in the
+//        projection (`forward_edges_error`) and its spec mirror,
 //      - repeat_counter_ownership::validate
 //        (workflow/repeat_counter_ownership.rs:6-12),
 //      - validate_no_nested_together
@@ -81,8 +82,9 @@
 // binding-debt item tracked outside Verus.
 //
 // Per-node check details (max_step_ref / max_slot_ref pre-aggregation,
-// graph-shape checks beyond pure bounds, the budget polynomial
-// evaluation) are documented as approximations in the projection file.
+// the reachability and nested-together graph walks, the budget
+// polynomial evaluation) are documented as approximations in the
+// projection file. Forward edges are modelled, not approximated.
 
 use vstd::prelude::*;
 
@@ -112,10 +114,10 @@ pub use production::{
     SpecLoopRegion, SpecNode, SpecNodeKind, SpecNodeMeta,
     SpecResourceContract, SpecValidationResult, SpecWorkflowError,
     SpecWorkflowParts, branch_target_alias_error, input_constraint_error,
-    loop_pairing_error, loop_region_edges_error, loop_region_relations_error,
-    repeat_counter_ownership_error, spec_validation_result_is_ok,
-    spec_workflow_error_is_bound_violation, try_from_parts_pure,
-    validate_node_pure,
+    forward_edges_error, loop_pairing_error, loop_region_edges_error,
+    loop_region_relations_error, repeat_counter_ownership_error,
+    spec_validation_result_is_ok, spec_workflow_error_is_bound_violation,
+    try_from_parts_pure, validate_node_pure,
 };
 
 // ============================================================================
@@ -332,6 +334,19 @@ pub assume_specification[ production::repeat_counter_ownership_error ](
 ) -> (err: Option<SpecWorkflowError>)
     ensures
         err == spec_repeat_counter_error(parts),
+;
+
+/// Spec-level mirror of `production::forward_edges_error`.
+/// Returns the first `BackwardEdge` / `ImproperLoopNesting`
+/// failure the forward-edges step would report — a backward
+/// routing or kind edge, a `RepeatCheck` back-edge with no valid
+/// owner, or an improperly nested loop span — or `None` when
+/// every edge points forward and every loop span nests properly.
+pub assume_specification[ production::forward_edges_error ](
+    parts: &SpecWorkflowParts,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_forward_edges_error(parts),
 ;
 
 /// Spec-level mirror of `production::branch_target_alias_error`.
@@ -1412,6 +1427,356 @@ pub open spec fn spec_repeat_counter_error(parts: &SpecWorkflowParts) -> Option<
     }
 }
 
+/// Spec lookup of one `kind_targets` entry: the target at `pos`
+/// for the node at `index`, or `None` when the inventory has no
+/// entry for the node or no position there.
+pub open spec fn spec_kind_target_at(
+    parts: &SpecWorkflowParts,
+    index: int,
+    pos: int,
+) -> Option<u32> {
+    if index < 0 || index >= parts.kind_targets.len() || pos < 0 {
+        None
+    } else if pos >= parts.kind_targets[index].len() {
+        None
+    } else {
+        Some(parts.kind_targets[index][pos])
+    }
+}
+
+/// Spec mirror of one `kind_targets` entry of
+/// `validate_kind_edges` (workflow/mod.rs:2367-2427): the target
+/// at `pos` must point strictly forward from the node. A missing
+/// inventory entry, or a missing position, means the caller
+/// supplied no target there, so the check passes. Positions are
+/// node ids, trusting them to match the table position as step
+/// 1e does.
+pub open spec fn spec_kind_target_forward(
+    parts: &SpecWorkflowParts,
+    index: int,
+    pos: int,
+) -> Option<SpecWorkflowError> {
+    if index < 0 || index >= parts.nodes_meta.len() || index >= parts.kind_targets.len() {
+        None
+    } else {
+        let targets = parts.kind_targets[index];
+        if pos < 0 || pos >= targets.len() {
+            None
+        } else if (targets[pos] as int) <= (parts.nodes_meta[index].id as int) {
+            Some(SpecWorkflowError::BackwardEdge)
+        } else {
+            None
+        }
+    }
+}
+
+/// Spec mirror of the forward check over every `kind_targets`
+/// entry of one node (`validate_choose_slot_edges` /
+/// `validate_choose_expr_edges` /
+/// `validate_together_start_edges`, workflow/mod.rs:2428-2442,
+/// 2443-2457, 2598-2609), from position `k` onward, in
+/// inventory order.
+pub open spec fn spec_kind_targets_forward_from(
+    targets: &Vec<u32>,
+    id: u32,
+    k: int,
+) -> Option<SpecWorkflowError>
+    decreases targets.len() - k
+{
+    if k >= targets.len() {
+        None
+    } else if (targets[k] as int) <= (id as int) {
+        Some(SpecWorkflowError::BackwardEdge)
+    } else {
+        spec_kind_targets_forward_from(targets, id, k + 1)
+    }
+}
+
+/// Spec mirror of `validate_kind_edges`
+/// (workflow/mod.rs:2367-2427) for the node at `index`: which
+/// `kind_targets` positions production checks depends on the
+/// kind (see `kind_edges_error` in `extern_try_from_parts.rs`
+/// for the position table).
+pub open spec fn spec_forward_kind_edge_error(parts: &SpecWorkflowParts, index: int) -> Option<SpecWorkflowError> {
+    if index < 0 || index >= parts.nodes_meta.len() {
+        None
+    } else {
+        let meta = parts.nodes_meta[index];
+        if meta.kind_disc == 32u32 {
+            spec_kind_target_forward(parts, index, 0)
+        } else if meta.kind_disc == 7u32 || meta.kind_disc == 8u32 || meta.kind_disc == 12u32 {
+            if index >= parts.kind_targets.len() {
+                None
+            } else {
+                spec_kind_targets_forward_from(&parts.kind_targets[index], meta.id, 0)
+            }
+        } else if meta.kind_disc == 9u32
+            || meta.kind_disc == 15u32
+            || meta.kind_disc == 19u32
+            || meta.kind_disc == 22u32
+            || meta.kind_disc == 13u32
+        {
+            match spec_kind_target_forward(parts, index, 0) {
+                Some(e) => Some(e),
+                None => spec_kind_target_forward(parts, index, 1),
+            }
+        } else if meta.kind_disc == 10u32
+            || meta.kind_disc == 16u32
+            || meta.kind_disc == 17u32
+            || meta.kind_disc == 20u32
+            || meta.kind_disc == 23u32
+            || meta.kind_disc == 30u32
+            || meta.kind_disc == 31u32
+        {
+            spec_kind_target_forward(parts, index, 1)
+        } else if meta.kind_disc == 24u32 {
+            spec_kind_target_forward(parts, index, 0)
+        } else {
+            None
+        }
+    }
+}
+
+/// Spec mirror of the loop-span end `push_loop_span` reads
+/// (workflow/mod.rs:2633-2680): the `done` step of a loop start
+/// kind, or the `join` step of a `TogetherStart`, from the
+/// caller-supplied `kind_targets` inventory. Returns `None` for
+/// non-start kinds and when the inventory has no entry.
+pub open spec fn spec_loop_span_end(parts: &SpecWorkflowParts, index: int) -> Option<u32> {
+    if index < 0 || index >= parts.nodes_meta.len() || index >= parts.kind_targets.len() {
+        None
+    } else {
+        let meta = parts.nodes_meta[index];
+        let targets = parts.kind_targets[index];
+        if meta.kind_disc == 9u32
+            || meta.kind_disc == 15u32
+            || meta.kind_disc == 19u32
+            || meta.kind_disc == 22u32
+        {
+            if targets.len() > 1 {
+                Some(targets[1])
+            } else {
+                None
+            }
+        } else if meta.kind_disc == 12u32 {
+            if targets.len() > 0 {
+                Some(targets[targets.len() - 1])
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+/// Spec mirror of the `nearest_active_owner` scan
+/// (workflow/mod.rs:2470-2489): the nearest structured start
+/// before `check_index` whose span end lies past the check, or
+/// `None` when there is none. Scans upward from `j`, carrying
+/// the nearest active start seen so far in `best`.
+pub open spec fn spec_repeat_owner(
+    parts: &SpecWorkflowParts,
+    check_index: int,
+    j: int,
+    best: Option<int>,
+) -> Option<int>
+    decreases check_index - j
+{
+    if check_index < 0 || check_index >= parts.nodes_meta.len() {
+        None
+    } else if j >= check_index {
+        best
+    } else if j < 0 || j >= parts.nodes_meta.len() {
+        best
+    } else {
+        let check_id = parts.nodes_meta[check_index].id;
+        let candidate = parts.nodes_meta[j];
+        if candidate.kind_disc == 9u32
+            || candidate.kind_disc == 15u32
+            || candidate.kind_disc == 19u32
+            || candidate.kind_disc == 22u32
+            || candidate.kind_disc == 12u32
+        {
+            match spec_loop_span_end(parts, j) {
+                Some(end) => {
+                    if (end as int) > (check_id as int) {
+                        spec_repeat_owner(parts, check_index, j + 1, Some(j))
+                    } else {
+                        spec_repeat_owner(parts, check_index, j + 1, best)
+                    }
+                }
+                None => spec_repeat_owner(parts, check_index, j + 1, best),
+            }
+        } else {
+            spec_repeat_owner(parts, check_index, j + 1, best)
+        }
+    }
+}
+
+/// Spec mirror of `repeat_check_validate::validate`
+/// (workflow/mod.rs:2465-2587): the owner found by
+/// `spec_repeat_owner` must be a `RepeatStart` with an output
+/// slot, whose body is the back target, whose done matches the
+/// check's done, and whose output slot is the check's attempt
+/// slot; the owner must precede the check, its body must
+/// precede the check, and the check must precede its done.
+pub open spec fn spec_repeat_check_error(
+    parts: &SpecWorkflowParts,
+    check_index: int,
+    back_target: u32,
+) -> Option<SpecWorkflowError> {
+    if check_index < 0 || check_index >= parts.nodes_meta.len() {
+        Some(SpecWorkflowError::BackwardEdge)
+    } else {
+        match spec_repeat_owner(parts, check_index, 0, None) {
+            None => Some(SpecWorkflowError::BackwardEdge),
+            Some(owner_index) => {
+                if owner_index < 0 || owner_index >= parts.nodes_meta.len() {
+                    Some(SpecWorkflowError::BackwardEdge)
+                } else {
+                    let owner = parts.nodes_meta[owner_index];
+                    let check = parts.nodes_meta[check_index];
+                    if owner.kind_disc != 22u32 {
+                        Some(SpecWorkflowError::BackwardEdge)
+                    } else if owner.has_start_shape != 1 {
+                        Some(SpecWorkflowError::BackwardEdge)
+                    } else if check.has_ctrl_shape != 1 {
+                        Some(SpecWorkflowError::BackwardEdge)
+                    } else {
+                        match spec_kind_target_at(parts, owner_index, 0) {
+                            None => Some(SpecWorkflowError::BackwardEdge),
+                            Some(owner_body) => match spec_kind_target_at(parts, owner_index, 1) {
+                                None => Some(SpecWorkflowError::BackwardEdge),
+                                Some(owner_done) => {
+                                    if owner.start_state_a != check.ctrl_state_a {
+                                        Some(SpecWorkflowError::BackwardEdge)
+                                    } else if owner_body != back_target {
+                                        Some(SpecWorkflowError::BackwardEdge)
+                                    } else if owner_done != check.ctrl_done {
+                                        Some(SpecWorkflowError::BackwardEdge)
+                                    } else if (owner.id as int) >= (check.id as int) {
+                                        Some(SpecWorkflowError::BackwardEdge)
+                                    } else if (owner_body as int) >= (check.id as int) {
+                                        Some(SpecWorkflowError::BackwardEdge)
+                                    } else if (check.id as int) >= (owner_done as int) {
+                                        Some(SpecWorkflowError::BackwardEdge)
+                                    } else {
+                                        None
+                                    }
+                                }
+                            },
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Spec mirror of the `push_loop_span` nesting comparison
+/// (workflow/mod.rs:2633-2680) for the start at `i`: an earlier
+/// start `a` is still active at `i` when its span end lies past
+/// `i`, and the spans overlap improperly when the new span ends
+/// past the active span's end. Scans earlier starts from `a`;
+/// the first improperly overlapping active span reports
+/// `ImproperLoopNesting`.
+pub open spec fn spec_nesting_before(
+    parts: &SpecWorkflowParts,
+    i: int,
+    a: int,
+) -> Option<SpecWorkflowError>
+    decreases i - a
+{
+    if i < 0 || i >= parts.nodes_meta.len() {
+        None
+    } else if a >= i {
+        None
+    } else if a < 0 || a >= parts.nodes_meta.len() {
+        None
+    } else {
+        match spec_loop_span_end(parts, i) {
+            None => None,
+            Some(end_i) => match spec_loop_span_end(parts, a) {
+                None => spec_nesting_before(parts, i, a + 1),
+                Some(end_a) => {
+                    if (end_a as int) > (parts.nodes_meta[i].id as int)
+                        && (end_i as int) > (end_a as int)
+                    {
+                        Some(SpecWorkflowError::ImproperLoopNesting)
+                    } else {
+                        spec_nesting_before(parts, i, a + 1)
+                    }
+                }
+            },
+        }
+    }
+}
+
+/// Spec mirror of one node's checks inside
+/// `validate_forward_edges` (workflow/mod.rs:2336-2364), in
+/// production order: routing `next` (a `RepeatCheck` back-edge
+/// goes through `spec_repeat_check_error`), routing error
+/// handler, kind edges, then the loop-span nesting check.
+pub open spec fn spec_forward_node_error(parts: &SpecWorkflowParts, i: int) -> Option<SpecWorkflowError> {
+    if i < 0 || i >= parts.nodes_meta.len() {
+        None
+    } else {
+        let meta = parts.nodes_meta[i];
+        let next_err = if meta.has_next == 1
+            && meta.kind_disc == 24u32
+            && (meta.next_step as int) <= (meta.id as int)
+        {
+            spec_repeat_check_error(parts, i, meta.next_step)
+        } else if meta.has_next == 1 && (meta.next_step as int) <= (meta.id as int) {
+            Some(SpecWorkflowError::BackwardEdge)
+        } else {
+            None
+        };
+        match next_err {
+            Some(e) => Some(e),
+            None => {
+                let handler_err = if meta.has_on_error == 1
+                    && (meta.on_error_step as int) <= (meta.id as int)
+                {
+                    Some(SpecWorkflowError::BackwardEdge)
+                } else {
+                    None
+                };
+                match handler_err {
+                    Some(e) => Some(e),
+                    None => match spec_forward_kind_edge_error(parts, i) {
+                        Some(e) => Some(e),
+                        None => spec_nesting_before(parts, i, 0),
+                    },
+                }
+            }
+        }
+    }
+}
+
+/// Spec mirror of `validate_forward_edges`
+/// (workflow/mod.rs:2336-2364) over the node table: the first
+/// per-node failure in table order, or `None` when every edge
+/// points forward and every loop span nests properly.
+pub open spec fn spec_forward_edges_from(parts: &SpecWorkflowParts, i: int) -> Option<SpecWorkflowError>
+    decreases parts.nodes_meta.len() - i
+{
+    if i >= parts.nodes_meta.len() {
+        None
+    } else {
+        match spec_forward_node_error(parts, i) {
+            Some(e) => Some(e),
+            None => spec_forward_edges_from(parts, i + 1),
+        }
+    }
+}
+
+/// Spec-level mirror of `production::forward_edges_error`.
+pub open spec fn spec_forward_edges_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    spec_forward_edges_from(parts, 0)
+}
+
 /// Spec-level mirror of the projection result. The spec proofs
 /// reference this so the `assume_specification` ensures clauses
 /// resolve through the spec mirror rather than the opaque body.
@@ -1440,6 +1805,8 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else if parts.slot_count > parts.resource_contract.max_slots {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
+    } else if spec_forward_edges_error(parts) != None::<SpecWorkflowError> {
+        SpecValidationResult::Err(spec_forward_edges_error(parts).unwrap())
     } else {
         let counter_err = spec_repeat_counter_error(parts);
         if counter_err != None::<SpecWorkflowError> {
@@ -1628,6 +1995,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
         spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
         spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
         spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
@@ -1661,6 +2029,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Resource contract exceeded: skip.
     } else if parts.slot_count > parts.resource_contract.max_slots {
         // Resource contract exceeded: skip.
+    } else if spec_forward_edges_error(parts) != None::<SpecWorkflowError> {
+        // Forward edges: skip (already required valid).
     } else if spec_repeat_counter_error(parts) != None::<SpecWorkflowError> {
         // Repeat-counter ownership: skip (already required valid).
     } else if spec_pairing_error(&parts.nodes_meta, 0) != None::<SpecWorkflowError> {
@@ -2476,6 +2846,7 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
         parts.nodes_meta[0].kind_disc == 22u32,
         parts.nodes_meta[0].has_output == 1,
         parts.nodes_meta[1].kind_disc == 22u32,
@@ -2495,6 +2866,342 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
         == Some(SpecWorkflowError::RepeatCounterForeignWrite));
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::RepeatCounterForeignWrite));
+}
+
+/// Lemma 36: the backward routing-next rejection. A node whose
+/// routing `next` step points backward (or at itself) is
+/// rejected with `BackwardEdge` (production
+/// `validate_forward_target`, workflow/mod.rs:2621-2630).
+pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 2,
+        parts.nodes_len == 2,
+        parts.entry == 0u32,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.kind_targets.len() == 2,
+        parts.kind_targets[0].len() == 0,
+        parts.kind_targets[1].len() == 0,
+        parts.nodes_meta[0].kind_disc == 0u32,
+        parts.nodes_meta[0].has_next == 1,
+        parts.nodes_meta[0].next_step == 0u32,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 33u32,
+        parts.nodes_meta[1].has_next == 0,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge),
+{
+    assert(spec_forward_node_error(parts, 0) == Some(SpecWorkflowError::BackwardEdge));
+    assert(spec_forward_edges_error(parts) == Some(SpecWorkflowError::BackwardEdge));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge));
+}
+
+/// Lemma 37: the backward kind-edge rejection. A `Jump` node
+/// whose kind target points backward (or at itself) is rejected
+/// with `BackwardEdge` (production `validate_kind_edges`,
+/// workflow/mod.rs:2367-2427).
+pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 2,
+        parts.nodes_len == 2,
+        parts.entry == 0u32,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.kind_targets.len() == 1,
+        parts.kind_targets[0].len() == 1,
+        parts.kind_targets[0][0] == 0u32,
+        parts.nodes_meta[0].kind_disc == 32u32,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 33u32,
+        parts.nodes_meta[1].has_next == 0,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge),
+{
+    assert(spec_kind_target_forward(parts, 0, 0) == Some(SpecWorkflowError::BackwardEdge));
+    assert(spec_forward_kind_edge_error(parts, 0) == Some(SpecWorkflowError::BackwardEdge));
+    assert(spec_forward_node_error(parts, 0) == Some(SpecWorkflowError::BackwardEdge));
+    assert(spec_forward_edges_error(parts) == Some(SpecWorkflowError::BackwardEdge));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge));
+}
+
+/// Lemma 38: the valid `RepeatCheck` back-edge exemption. A
+/// well-formed repeat (owner `RepeatStart`, paired
+/// `RepeatCheck` whose routing `next` returns to the owner's
+/// body with matching attempt slot and done) is NOT rejected by
+/// the forward-edges step (production
+/// `repeat_check_validate`, workflow/mod.rs:2465-2587). This is
+/// the no-over-reject witness for the forward-edges step.
+pub proof fn lemma_forward_edge_repeat_check_exempt(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 4,
+        parts.kind_targets.len() == 4,
+        parts.kind_targets[0].len() == 2,
+        parts.kind_targets[0][0] == 1u32,
+        parts.kind_targets[0][1] == 3u32,
+        parts.kind_targets[1].len() == 0,
+        parts.kind_targets[2].len() == 1,
+        parts.kind_targets[2][0] == 3u32,
+        parts.kind_targets[3].len() == 0,
+        parts.nodes_meta[0].kind_disc == 22u32,
+        parts.nodes_meta[0].has_output == 1,
+        parts.nodes_meta[0].has_error_slot == 0,
+        parts.nodes_meta[0].has_start_shape == 1,
+        parts.nodes_meta[0].start_body == 1u32,
+        parts.nodes_meta[0].start_done == 3u32,
+        parts.nodes_meta[0].start_state_a == parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 1u32,
+        parts.nodes_meta[1].has_output == 1,
+        parts.nodes_meta[1].out_slot != parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[1].has_error_slot == 0,
+        parts.nodes_meta[1].has_next == 0,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 24u32,
+        parts.nodes_meta[2].has_ctrl_shape == 1,
+        parts.nodes_meta[2].ctrl_state_a == parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[2].ctrl_body == 1u32,
+        parts.nodes_meta[2].ctrl_done == 3u32,
+        parts.nodes_meta[2].has_next == 1,
+        parts.nodes_meta[2].next_step == 1u32,
+        parts.nodes_meta[2].has_error_slot == 0,
+        parts.nodes_meta[2].has_on_error == 0,
+        parts.nodes_meta[2].id == 2u32,
+        parts.nodes_meta[3].kind_disc == 33u32,
+        parts.nodes_meta[3].has_output == 0,
+        parts.nodes_meta[3].has_error_slot == 0,
+        parts.nodes_meta[3].has_next == 0,
+        parts.nodes_meta[3].has_on_error == 0,
+        parts.nodes_meta[3].id == 3u32,
+    ensures
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+{
+    assert(spec_repeat_owner(parts, 2, 0, None) == spec_repeat_owner(parts, 2, 1, Some(0)));
+    assert(spec_repeat_owner(parts, 2, 1, Some(0)) == spec_repeat_owner(parts, 2, 2, Some(0)));
+    assert(spec_repeat_owner(parts, 2, 2, Some(0)) == Some(0));
+    assert(spec_repeat_check_error(parts, 2, 1u32) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 1) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 2) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 3) == None::<SpecWorkflowError>);
+    assert(spec_forward_edges_from(parts, 0) == spec_forward_edges_from(parts, 1));
+    assert(spec_forward_edges_from(parts, 1) == spec_forward_edges_from(parts, 2));
+    assert(spec_forward_edges_from(parts, 2) == spec_forward_edges_from(parts, 3));
+    assert(spec_forward_edges_from(parts, 3) == spec_forward_edges_from(parts, 4));
+    assert(spec_forward_edges_from(parts, 4) == None::<SpecWorkflowError>);
+    assert(spec_forward_edges_error(parts) == None::<SpecWorkflowError>);
+}
+
+/// Lemma 39: the ownerless `RepeatCheck` back-edge rejection.
+/// A `RepeatCheck` whose routing `next` points backward with no
+/// enclosing structured start is rejected with `BackwardEdge`
+/// (production `repeat_check_validate`,
+/// workflow/mod.rs:2465-2587).
+pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 3,
+        parts.nodes_len == 3,
+        parts.entry == 0u32,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.kind_targets.len() == 3,
+        parts.kind_targets[0].len() == 0,
+        parts.kind_targets[1].len() == 1,
+        parts.kind_targets[1][0] == 2u32,
+        parts.kind_targets[2].len() == 0,
+        parts.nodes_meta[0].kind_disc == 0u32,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 24u32,
+        parts.nodes_meta[1].has_ctrl_shape == 1,
+        parts.nodes_meta[1].ctrl_body == 0u32,
+        parts.nodes_meta[1].ctrl_done == 2u32,
+        parts.nodes_meta[1].has_next == 1,
+        parts.nodes_meta[1].next_step == 0u32,
+        parts.nodes_meta[1].has_error_slot == 0,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 33u32,
+        parts.nodes_meta[2].has_next == 0,
+        parts.nodes_meta[2].has_on_error == 0,
+        parts.nodes_meta[2].id == 2u32,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge),
+{
+    assert(spec_repeat_owner(parts, 1, 0, None) == spec_repeat_owner(parts, 1, 1, None));
+    assert(spec_repeat_owner(parts, 1, 1, None) == None::<int>);
+    assert(spec_repeat_check_error(parts, 1, 0u32) == Some(SpecWorkflowError::BackwardEdge));
+    assert(spec_forward_node_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 1) == Some(SpecWorkflowError::BackwardEdge));
+    assert(spec_forward_edges_from(parts, 0) == spec_forward_edges_from(parts, 1));
+    assert(spec_forward_edges_error(parts) == Some(SpecWorkflowError::BackwardEdge));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge));
+}
+
+/// Lemma 40: the wrong-owner `RepeatCheck` back-edge rejection.
+/// A `RepeatCheck` whose nearest active enclosing start is a
+/// `ForEachStart` rather than a `RepeatStart` is rejected with
+/// `BackwardEdge` (production `repeat_check_validate`,
+/// workflow/mod.rs:2465-2587).
+pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 4,
+        parts.nodes_len == 4,
+        parts.entry == 0u32,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.kind_targets.len() == 4,
+        parts.kind_targets[0].len() == 2,
+        parts.kind_targets[0][0] == 1u32,
+        parts.kind_targets[0][1] == 3u32,
+        parts.kind_targets[1].len() == 0,
+        parts.kind_targets[2].len() == 1,
+        parts.kind_targets[2][0] == 3u32,
+        parts.kind_targets[3].len() == 0,
+        parts.nodes_meta[0].kind_disc == 9u32,
+        parts.nodes_meta[0].has_output == 1,
+        parts.nodes_meta[0].has_error_slot == 0,
+        parts.nodes_meta[0].has_start_shape == 1,
+        parts.nodes_meta[0].start_body == 1u32,
+        parts.nodes_meta[0].start_done == 3u32,
+        parts.nodes_meta[0].start_state_a == parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 1u32,
+        parts.nodes_meta[1].has_output == 1,
+        parts.nodes_meta[1].out_slot != parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[1].has_error_slot == 0,
+        parts.nodes_meta[1].has_next == 0,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 24u32,
+        parts.nodes_meta[2].has_ctrl_shape == 1,
+        parts.nodes_meta[2].ctrl_state_a == parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[2].ctrl_body == 1u32,
+        parts.nodes_meta[2].ctrl_done == 3u32,
+        parts.nodes_meta[2].has_next == 1,
+        parts.nodes_meta[2].next_step == 1u32,
+        parts.nodes_meta[2].has_error_slot == 0,
+        parts.nodes_meta[2].has_on_error == 0,
+        parts.nodes_meta[2].id == 2u32,
+        parts.nodes_meta[3].kind_disc == 33u32,
+        parts.nodes_meta[3].has_output == 0,
+        parts.nodes_meta[3].has_error_slot == 0,
+        parts.nodes_meta[3].has_next == 0,
+        parts.nodes_meta[3].has_on_error == 0,
+        parts.nodes_meta[3].id == 3u32,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge),
+{
+    assert(spec_repeat_owner(parts, 2, 0, None) == spec_repeat_owner(parts, 2, 1, Some(0)));
+    assert(spec_repeat_owner(parts, 2, 1, Some(0)) == spec_repeat_owner(parts, 2, 2, Some(0)));
+    assert(spec_repeat_owner(parts, 2, 2, Some(0)) == Some(0));
+    assert(spec_repeat_check_error(parts, 2, 1u32) == Some(SpecWorkflowError::BackwardEdge));
+    assert(spec_forward_node_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 1) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 2) == Some(SpecWorkflowError::BackwardEdge));
+    assert(spec_forward_edges_from(parts, 0) == spec_forward_edges_from(parts, 1));
+    assert(spec_forward_edges_from(parts, 1) == spec_forward_edges_from(parts, 2));
+    assert(spec_forward_edges_error(parts) == Some(SpecWorkflowError::BackwardEdge));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge));
+}
+
+/// Lemma 41: the improper loop-nesting rejection. Two loop
+/// spans that partially overlap (the second starts inside the
+/// first and ends past it) are rejected with
+/// `ImproperLoopNesting` (production `push_loop_span`,
+/// workflow/mod.rs:2633-2680).
+pub proof fn lemma_forward_edge_improper_nesting_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 4,
+        parts.nodes_len == 4,
+        parts.entry == 0u32,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.kind_targets.len() == 4,
+        parts.kind_targets[0].len() == 2,
+        parts.kind_targets[0][0] == 1u32,
+        parts.kind_targets[0][1] == 2u32,
+        parts.kind_targets[1].len() == 2,
+        parts.kind_targets[1][0] == 2u32,
+        parts.kind_targets[1][1] == 3u32,
+        parts.kind_targets[2].len() == 0,
+        parts.kind_targets[3].len() == 0,
+        parts.nodes_meta[0].kind_disc == 22u32,
+        parts.nodes_meta[0].has_output == 0,
+        parts.nodes_meta[0].has_start_shape == 0,
+        parts.nodes_meta[0].has_next == 0,
+        parts.nodes_meta[0].has_on_error == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 22u32,
+        parts.nodes_meta[1].has_output == 0,
+        parts.nodes_meta[1].has_start_shape == 0,
+        parts.nodes_meta[1].has_next == 0,
+        parts.nodes_meta[1].has_on_error == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 33u32,
+        parts.nodes_meta[2].has_next == 0,
+        parts.nodes_meta[2].has_on_error == 0,
+        parts.nodes_meta[2].id == 2u32,
+        parts.nodes_meta[3].kind_disc == 33u32,
+        parts.nodes_meta[3].has_next == 0,
+        parts.nodes_meta[3].has_on_error == 0,
+        parts.nodes_meta[3].id == 3u32,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ImproperLoopNesting),
+{
+    assert(spec_nesting_before(parts, 1, 0) == Some(SpecWorkflowError::ImproperLoopNesting));
+    assert(spec_forward_node_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_forward_node_error(parts, 1) == Some(SpecWorkflowError::ImproperLoopNesting));
+    assert(spec_forward_edges_from(parts, 0) == spec_forward_edges_from(parts, 1));
+    assert(spec_forward_edges_error(parts) == Some(SpecWorkflowError::ImproperLoopNesting));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ImproperLoopNesting));
 }
 
 fn main() {}
