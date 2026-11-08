@@ -1191,6 +1191,28 @@ pub fn budget_error(budget: SpecComputedBudget) -> Option<SpecWorkflowError> {
     None
 }
 
+/// Pure projection of `validate_node_id`
+/// (workflow/mod.rs:1472-1485): returns `Some(NodeIdMismatch)`
+/// when the node's id differs from its table position, or `None`
+/// when they match. Production's `u16::try_from(index)` arm is
+/// unreachable on inputs that reach step 1e: step 1a caps
+/// `max_steps` at 10000 and rejects a longer table first, so
+/// every table position is below 65536 and the conversion cannot
+/// fail; the projection compares the ids directly and models no
+/// overflow error.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn node_id_error(meta: SpecNodeMeta, index: usize) -> Option<SpecWorkflowError> {
+    if meta.id as usize == index {
+        None
+    } else {
+        Some(SpecWorkflowError::NodeIdMismatch)
+    }
+}
+
 /// Pure projection of `validate_node_common`, `validate_node_kind`,
 /// and the branch-target alias checks at
 /// `crates/vb_core/src/workflow/mod.rs:1677-1847`, applied to a
@@ -1328,8 +1350,8 @@ pub fn loop_pairing_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError
 /// Builds the validated loop-region table from the pairing step
 /// (`cache_control`, pairing.rs:8-31): one `SpecLoopRegion` per
 /// cached control, in node-table order (ascending control id, since
-/// the projection trusts `meta.id` to match the table position, as
-/// step 1e does). Returns `None` exactly when `loop_pairing_error`
+/// step 1e validates `meta.id` against the table position before
+/// this step runs). Returns `None` exactly when `loop_pairing_error`
 /// would report `LoopRegionUnpaired`, so the relations and edge
 /// steps that consume the table only run on fully paired inputs.
 #[verifier::external]
@@ -1402,8 +1424,8 @@ fn region_for_control(regions: &[SpecLoopRegion], control: u32) -> Option<SpecLo
 /// Pure projection of `is_finish` (edges.rs:130-135): the step
 /// names a `Finish` node. Production indexes the node table by
 /// position; the projection scans by id, which agrees on every
-/// input that reached this step because step 1e trusts `meta.id`
-/// to match the table position.
+/// input that reached this step because step 1e validates `meta.id`
+/// against the table position first.
 #[verifier::external]
 fn is_finish_step(parts: &SpecWorkflowParts, step: u32) -> bool {
     for meta in parts.nodes_meta.iter() {
@@ -1568,8 +1590,8 @@ pub fn loop_region_edges_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflow
 /// the owner's body and done, and whose routing next step is the
 /// owner's body. The owner lookup scans by id, which agrees with
 /// production's `parts.nodes.get(owner.as_usize())` position index
-/// on every input that reached this step because step 1e trusts
-/// `meta.id` to match the table position. An owner carries a start
+/// on every input that reached this step because step 1e validates
+/// `meta.id` against the table position first. An owner carries a start
 /// shape by construction (`start_state` needs only the output
 /// slot, which owners have by definition), so a missing start
 /// shape means the node is not paired.
@@ -1684,8 +1706,8 @@ pub fn repeat_counter_ownership_error(parts: &SpecWorkflowParts) -> Option<SpecW
 /// Pure projection of `validate_forward_target`
 /// (workflow/mod.rs:2621-2630): a target step is strictly forward
 /// from the current node iff it exceeds the node's id. The
-/// projection compares against `meta.id`, trusting it to match
-/// the table position as step 1e does; production compares
+/// projection compares against `meta.id`, which step 1e validates
+/// against the table position; production compares
 /// against the enumeration position.
 #[verifier::external]
 fn forward_target_error(target: u32, current: u32) -> Option<SpecWorkflowError> {
@@ -1738,8 +1760,7 @@ fn loop_span_end(parts: &SpecWorkflowParts, index: usize) -> Option<u32> {
 /// slot-less owner has no output slot, so it can never satisfy
 /// the attempt-slot match. Returns `BackwardEdge` for the first
 /// failing condition, else `None`. Positions are `meta.id`
-/// values, trusting them to match the table position as step 1e
-/// does.
+/// values, which step 1e validates against the table position.
 #[verifier::external]
 fn repeat_check_owner_error(
     parts: &SpecWorkflowParts,
@@ -1930,8 +1951,8 @@ fn kind_edges_error(
 /// `ImproperLoopNesting`). Returns the first failure in
 /// production order (routing `next`, routing error handler, kind
 /// edges, span nesting), else `None`. Positions are `meta.id`
-/// values, trusting them to match the table position as step 1e
-/// does; the span stack mirrors `push_loop_span` exactly
+/// values, which step 1e validates against the table position;
+/// the span stack mirrors `push_loop_span` exactly
 /// (retire finished spans before the nesting comparison, so
 /// sequential loops are not rejected).
 ///
@@ -1993,8 +2014,8 @@ pub fn forward_edges_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowErro
 /// count returns `None`, matching production (entry bounds are
 /// already enforced by step 1b); an out-of-range target is
 /// skipped, matching production (bounds are enforced by the
-/// per-node checks). Positions are table indices; the caller
-/// supplies `meta.id` values matching them, as step 1e does.
+/// per-node checks). Positions are table indices; step 1e validates
+/// the caller-supplied `meta.id` values against them first.
 ///
 /// TRUST BOUNDARY: the body is opaque to Verus
 /// (`#[verifier::external]`). The spec-side mirror in
@@ -2302,12 +2323,11 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // no kind-payload references.
     let empty_refs: Vec<SpecKindRef> = Vec::new();
     for (index, meta) in parts.nodes_meta.iter().enumerate() {
-        // validate_node_id (workflow/mod.rs:1472-1485).
-        // Production indexes by enumeration position; the
-        // projection trusts the caller-supplied `meta.id` matches
-        // the iteration index. The spec's NodeIdMismatch arm is
-        // exercised separately via a dedicated spec function.
-        let _ = meta.id;
+        // validate_node_id (workflow/mod.rs:1472-1485), before
+        // validate_node for this node (workflow/mod.rs:1375-1378).
+        if let Some(err) = node_id_error(*meta, index) {
+            return SpecValidationResult::Err(err);
+        }
         let kind_refs = match parts.kind_refs.get(index) {
             Some(refs) => refs,
             None => &empty_refs,
