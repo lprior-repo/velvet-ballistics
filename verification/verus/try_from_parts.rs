@@ -2651,10 +2651,8 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
     } else if parts.resource_contract.max_step_budget_per_tick > 10000 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
-    } else if parts.resource_contract.max_transitions_per_tick == 0 {
-        SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else if parts.resource_contract.max_transitions_per_tick > 10000 {
-        SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
+        SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
     } else if parts.resource_contract.max_input_bytes > 16777216 {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge)
     } else if parts.resource_contract.max_output_bytes > 16777216 {
@@ -2685,6 +2683,8 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else if spec_expr_stack_error(parts, 0) != None::<SpecWorkflowError> {
         SpecValidationResult::Err(spec_expr_stack_error(parts, 0).unwrap())
+    } else if parts.resource_contract.max_transitions_per_tick == 0 {
+        SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else if spec_exprs_error(parts, 0) != None::<SpecWorkflowError> {
         SpecValidationResult::Err(spec_exprs_error(parts, 0).unwrap())
     } else if spec_accessors_path_error(parts, 0) != None::<SpecWorkflowError> {
@@ -2950,10 +2950,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Resource contract too large: skip.
     } else if parts.resource_contract.max_step_budget_per_tick > 10000 {
         // Resource contract too large: skip.
-    } else if parts.resource_contract.max_transitions_per_tick == 0 {
-        // Resource contract exceeded: skip.
     } else if parts.resource_contract.max_transitions_per_tick > 10000 {
-        // Resource contract exceeded: skip.
+        // Resource contract too large: skip.
     } else if parts.resource_contract.max_input_bytes > 16777216 {
         // Resource contract too large: skip.
     } else if parts.resource_contract.max_output_bytes > 16777216 {
@@ -2984,6 +2982,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Resource contract exceeded: skip.
     } else if spec_expr_stack_error(parts, 0) != None::<SpecWorkflowError> {
         // Expression stack usage: skip (already required valid).
+    } else if parts.resource_contract.max_transitions_per_tick == 0 {
+        // Resource contract exceeded: skip.
     } else if spec_exprs_error(parts, 0) != None::<SpecWorkflowError> {
         // Expressions: skip (already required valid).
     } else if spec_accessors_path_error(parts, 0) != None::<SpecWorkflowError> {
@@ -7560,8 +7560,8 @@ pub proof fn lemma_byte_budget_limits_first_over_cap_wins(parts: &SpecWorkflowPa
 /// the usage error (production `validate_resource_contract` runs
 /// `check_resource_contract_limits` before
 /// `validate_resource_usage`, workflow/mod.rs:1587-1593). The
-/// transitions arms precede the input arm in the mirror, so the
-/// lemma requires them within cap.
+/// transitions over-cap arm precedes the input arm in the mirror,
+/// so the lemma requires it within cap.
 pub proof fn lemma_byte_budget_limits_before_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -7866,8 +7866,8 @@ pub proof fn lemma_retry_fanout_collect_queue_limits_first_over_cap_wins(parts: 
 /// `validate_resource_contract` runs
 /// `check_resource_contract_limits` before
 /// `validate_resource_usage`, workflow/mod.rs:1587-1593). The
-/// transitions arms precede the retry arm in the mirror, so the
-/// lemma requires them within cap.
+/// transitions over-cap arm precedes the retry arm in the mirror,
+/// so the lemma requires it within cap.
 pub proof fn lemma_retry_fanout_collect_queue_limits_before_usage(parts: &SpecWorkflowParts)
     requires
         parts.nodes_meta.len() > 0,
@@ -8234,6 +8234,212 @@ pub proof fn lemma_build_list_items_at_cap_accepted(
         == None::<SpecWorkflowError>);
     assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
         == None::<SpecWorkflowError>);
+}
+
+/// Lemma 159: the transitions-limit rejection. A contract whose
+/// `max_transitions_per_tick` exceeds the hard limit is rejected
+/// with `ResourceContractTooLarge` (production
+/// `check_resource_contract_limits`, workflow/mod.rs:1534-1538,
+/// `MAX_STEP_BUDGET` 10000, limits.rs:94). The production field is
+/// `u64` and the cap is below the type maximum, so this arm is
+/// reachable on a real production contract.
+pub proof fn lemma_transitions_limit_over_cap_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 10000,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
+}
+
+/// Lemma 160: the first over-cap transitions/input limit wins. A
+/// contract whose transitions and input-bytes caps are both over
+/// their hard limits is rejected with `ResourceContractTooLarge`
+/// (production `check_resource_contract_limits` runs the
+/// Transitions arm before the Input arm, workflow/mod.rs:1534-1543).
+/// Both arms return the same `ResourceContractTooLarge` value, so
+/// their relative order is unobservable in the top-level result;
+/// this pins the combined rejection with the Transitions arm first
+/// in production order, in the same sense as lemma 122 pins the
+/// count composition.
+pub proof fn lemma_transitions_input_limits_first_over_cap_wins(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 10000,
+        parts.resource_contract.max_input_bytes > 16777216,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
+}
+
+/// Lemma 161: the transitions limit check runs before the usage
+/// check. A workflow with an over-cap transitions cap and an
+/// over-cap step count is rejected with the limits error, not the
+/// usage error (production `validate_resource_contract` runs
+/// `check_resource_contract_limits` before
+/// `validate_resource_usage`, workflow/mod.rs:1587-1593).
+pub proof fn lemma_transitions_limit_before_usage(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 10000,
+        parts.nodes_len > parts.resource_contract.max_steps,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
+}
+
+/// Lemma 162: within-cap transitions reach the usage check. A
+/// workflow whose transitions cap fits its hard limit and whose
+/// constant pool is over its contract cap is rejected with the
+/// usage error, not the limits error (production
+/// `check_resource_contract_limits` passes, then
+/// `validate_resource_usage` runs, workflow/mod.rs:1587-1593 and
+/// 1614-1644).
+pub proof fn lemma_transitions_within_cap_reaches_usage(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.resource_contract.max_input_bytes <= 16777216,
+        parts.resource_contract.max_output_bytes <= 16777216,
+        parts.resource_contract.max_blob_bytes <= 67108864,
+        parts.resource_contract.max_ipc_payload_bytes <= 16777216,
+        parts.resource_contract.max_retry_attempts <= 10,
+        parts.resource_contract.max_fanout <= 256,
+        parts.resource_contract.max_collect_items <= 1048576,
+        parts.resource_contract.max_queue_depth <= 1048576,
+        parts.resource_contract.max_journal_batch_bytes <= 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len > parts.resource_contract.max_constants,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 163: the at-cap transitions limit is accepted. A workflow
+/// whose transitions cap is exactly at its hard limit validates:
+/// production rejects only when a declared cap exceeds its hard
+/// limit (workflow/mod.rs:1534-1538). The boundary equality implies
+/// the lemma 15 requires, so the well-formed acceptance carries the
+/// result.
+pub proof fn lemma_transitions_limit_at_cap_accepted(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick == 10000,
+        parts.resource_contract.max_transitions_per_tick == 10000,
+        parts.resource_contract.max_input_bytes == 16777216,
+        parts.resource_contract.max_output_bytes == 16777216,
+        parts.resource_contract.max_blob_bytes == 67108864,
+        parts.resource_contract.max_ipc_payload_bytes == 16777216,
+        parts.resource_contract.max_retry_attempts == 10,
+        parts.resource_contract.max_fanout == 256,
+        parts.resource_contract.max_collect_items == 1048576,
+        parts.resource_contract.max_queue_depth == 1048576,
+        parts.resource_contract.max_journal_batch_bytes == 16777216,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.constants_len <= parts.resource_contract.max_constants,
+        parts.accessors_len <= parts.resource_contract.max_accessors,
+        parts.expressions_len <= parts.resource_contract.max_expressions,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+        spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
+        spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
+        spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
+        input_slots_valid(parts) == None::<SpecWorkflowError>,
+    ensures
+        spec_validation_ok(try_from_parts_pure_spec(parts)),
+{
+    lemma_well_formed_parts_accepted(parts);
+    assert(spec_validation_ok(try_from_parts_pure_spec(parts)));
+}
+
+/// Lemma 164: the zero-transitions check runs after the limits
+/// check. A workflow with a zero transitions cap and an over-cap
+/// input-bytes cap is rejected with the limits error, not the
+/// zero-transitions error (production `validate_resource_contract`
+/// runs `check_resource_contract_limits` before
+/// `validate_transitions_nonzero`, workflow/mod.rs:1587-1593 and
+/// 1600-1606): the input arm precedes the moved zero arm in the
+/// mirror.
+pub proof fn lemma_zero_transitions_after_limits(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_constants <= 65535,
+        parts.resource_contract.max_accessors <= 8192,
+        parts.resource_contract.max_expressions <= 4096,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_step_budget_per_tick <= 10000,
+        parts.resource_contract.max_transitions_per_tick == 0,
+        parts.resource_contract.max_input_bytes > 16777216,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge),
+{
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge));
 }
 fn main() {}
 

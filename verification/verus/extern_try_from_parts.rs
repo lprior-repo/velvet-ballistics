@@ -2487,17 +2487,20 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // (1509-1513, MAX_CONSTANTS 65535), accessors (1514-1518,
     // MAX_ACCESSORS 8192), expressions (1519-1523, MAX_EXPRESSIONS
     // 4096), expr_stack, step_budget (1529-1533, MAX_STEP_BUDGET
-    // 10000), input (1539-1543, MAX_INPUT_BYTES 16777216),
+    // 10000), transitions (1534-1538, MAX_STEP_BUDGET 10000),
+    // input (1539-1543, MAX_INPUT_BYTES 16777216),
     // output (1544-1548, MAX_OUTPUT_BYTES 16777216), blob
     // (1549-1553, MAX_BLOB_BYTES 67108864), ipc (1554-1558,
     // MAX_IPC_PAYLOAD_BYTES 16777216), retry (1559-1563,
     // MAX_RETRY_ATTEMPTS 10), fanout (1564-1568, MAX_FANOUT 256),
     // collect (1569-1573, MAX_COLLECT_ITEMS 1048576), queue
     // (1574-1578, MAX_QUEUE_DEPTH 1048576), journal (1579-1583,
-    // MAX_JOURNAL_BATCH_BYTES 16777216). The transitions arm
-    // (1534-1538) is handled by the combined check below, which
-    // returns ResourceContractExceeded where production returns
-    // ResourceContractTooLarge. The caller-supplied `slot_count`,
+    // MAX_JOURNAL_BATCH_BYTES 16777216). The transitions
+    // over-cap arm returns ResourceContractTooLarge, matching
+    // production; the zero-transitions check below returns
+    // ResourceContractExceeded after the expr-stack loop, matching
+    // `validate_transitions_nonzero` (workflow/mod.rs:1600-1606).
+    // The caller-supplied `slot_count`,
     // `accessors_len`, and `expressions_len` are trusted to be the
     // true inventory lengths. Each is checked against its contract
     // cap in production `validate_resource_usage` order; a
@@ -2541,6 +2544,9 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     if contract.max_step_budget_per_tick > 10000 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
     }
+    if contract.max_transitions_per_tick > 10000 {
+        return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
+    }
     if contract.max_input_bytes > 16777216 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractTooLarge);
     }
@@ -2573,9 +2579,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
             return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
         }
     }
-    if contract.max_transitions_per_tick == 0
-        || contract.max_transitions_per_tick > 10000
-    {
+    if contract.max_transitions_per_tick == 0 {
         return SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded);
     }
     // 1b. entry bounds (workflow/mod.rs:1673-1675, 1372).
