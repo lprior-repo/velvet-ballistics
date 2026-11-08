@@ -83,10 +83,10 @@
 // divergence between the projection and the production body is a
 // binding-debt item tracked outside Verus.
 //
-// Per-node check details (max_step_ref / max_slot_ref pre-aggregation,
-// the budget polynomial evaluation) are documented as approximations
-// in the projection file. Reachability, forward edges, and
-// nested-together are modelled, not approximated.
+// Per-node kind-payload checks are modelled from the ordered
+// `kind_refs` inventory in the projection file. Reachability,
+// forward edges, and nested-together are modelled, not approximated.
+// The budget polynomial evaluation remains approximated.
 
 use vstd::prelude::*;
 
@@ -113,9 +113,10 @@ pub use production::{
     spec_node_kind_together_branch, spec_node_kind_together_join,
     spec_node_kind_together_start, spec_node_kind_wait_event,
     spec_node_kind_wait_until, spec_ref_none, SpecAccessor, SpecInputConstraint,
-    SpecLoopRegion, SpecNode, SpecNodeKind, SpecNodeMeta,
+    SpecKindRef, SpecLoopRegion, SpecNode, SpecNodeKind, SpecNodeMeta,
     SpecResourceContract, SpecValidationResult, SpecWorkflowError,
     SpecWorkflowParts, branch_target_alias_error, input_constraint_error,
+    kind_ref_error,
     forward_edges_error, loop_pairing_error, loop_region_edges_error,
     loop_region_relations_error, nested_together_error,
     reachability_error, repeat_counter_ownership_error,
@@ -243,6 +244,7 @@ pub assume_specification[ production::try_from_parts_pure ](
 
 pub assume_specification[ production::validate_node_pure ](
     meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
     slot_count: u32,
     node_count: u32,
     expressions_len: u32,
@@ -252,17 +254,34 @@ pub assume_specification[ production::validate_node_pure ](
 ) -> (err: Option<SpecWorkflowError>)
     ensures
         // The decision is closed: if Some, it is one of the typed
-        // bound violations, the EmptyBranchTable arm, or one of the
-        // branch-target alias arms.
+        // bound violations, the EmptyBranchTable arm, the
+        // ResourceContractExceeded arm (count cap / nonzero kind
+        // checks), or one of the branch-target alias arms.
         err.is_none() || spec_workflow_error_is_bound_violation_spec(err.unwrap())
             || err.unwrap() == SpecWorkflowError::EmptyBranchTable
+            || err.unwrap() == SpecWorkflowError::ResourceContractExceeded
             || err.unwrap() == SpecWorkflowError::ReduceBranchTargetAlias
             || err.unwrap() == SpecWorkflowError::ForEachBranchTargetAlias,
         // Spec-side decision equivalence: the projection's result
         // matches the spec mirror at the contract layer.
-        err == validate_node_pure_spec(meta, slot_count as int, node_count as int,
+        err == validate_node_pure_spec(meta, kind_refs, slot_count as int, node_count as int,
             expressions_len as int, accessors_len as int, constants_len as int,
             symbols_count as int),
+;
+
+/// Spec-level mirror of `production::kind_ref_error`.
+/// Returns the first failure the ordered kind-ref inventory would
+/// report, or `None` when every entry is in bounds.
+pub assume_specification[ production::kind_ref_error ](
+    refs: &Vec<SpecKindRef>,
+    slot_count: u32,
+    node_count: u32,
+    constants_len: u32,
+    expressions_len: u32,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_kind_ref_error(refs, 0, slot_count as int, node_count as int,
+            constants_len as int, expressions_len as int),
 ;
 
 /// Spec-level mirror of `production::branch_target_alias_error`.
@@ -397,20 +416,97 @@ pub open spec fn spec_branch_target_alias_error(meta: SpecNodeMeta) -> Option<Sp
     }
 }
 
+/// Spec-level mirror of `production::kind_ref_error`. Walks the
+/// ordered kind-ref inventory from index `i` and returns the first
+/// failure production's `validate_node_kind` would report for the
+/// corresponding payload reference, or `None` when every remaining
+/// entry is in bounds. `Slot` / `Step` / `Const` / `Expr` check one
+/// reference against its table length; `Count(len, cap)` reports
+/// `ResourceContractExceeded` when the count exceeds its cap;
+/// `NonZero(value)` reports it when the value is zero.
+pub open spec fn spec_kind_ref_error(
+    refs: &Vec<SpecKindRef>,
+    i: int,
+    slot_count: int,
+    node_count: int,
+    constants_len: int,
+    expressions_len: int,
+) -> Option<SpecWorkflowError>
+    decreases refs.len() - i
+{
+    if i < 0 || i >= refs.len() {
+        None
+    } else {
+        match refs[i] {
+            SpecKindRef::Slot(value) => {
+                if (value as int) >= slot_count {
+                    Some(SpecWorkflowError::SlotOutOfBounds)
+                } else {
+                    spec_kind_ref_error(refs, i + 1, slot_count, node_count,
+                        constants_len, expressions_len)
+                }
+            }
+            SpecKindRef::Step(value) => {
+                if (value as int) >= node_count {
+                    Some(SpecWorkflowError::StepOutOfBounds)
+                } else {
+                    spec_kind_ref_error(refs, i + 1, slot_count, node_count,
+                        constants_len, expressions_len)
+                }
+            }
+            SpecKindRef::Const(value) => {
+                if (value as int) >= constants_len {
+                    Some(SpecWorkflowError::ConstOutOfBounds)
+                } else {
+                    spec_kind_ref_error(refs, i + 1, slot_count, node_count,
+                        constants_len, expressions_len)
+                }
+            }
+            SpecKindRef::Expr(value) => {
+                if (value as int) >= expressions_len {
+                    Some(SpecWorkflowError::ExpressionInvalid)
+                } else {
+                    spec_kind_ref_error(refs, i + 1, slot_count, node_count,
+                        constants_len, expressions_len)
+                }
+            }
+            SpecKindRef::Count(len, cap) => {
+                if (len as int) > (cap as int) {
+                    Some(SpecWorkflowError::ResourceContractExceeded)
+                } else {
+                    spec_kind_ref_error(refs, i + 1, slot_count, node_count,
+                        constants_len, expressions_len)
+                }
+            }
+            SpecKindRef::NonZero(value) => {
+                if value == 0 {
+                    Some(SpecWorkflowError::ResourceContractExceeded)
+                } else {
+                    spec_kind_ref_error(refs, i + 1, slot_count, node_count,
+                        constants_len, expressions_len)
+                }
+            }
+        }
+    }
+}
+
 /// Spec-level mirror of `production::validate_node_pure`. Returns
 /// `Some(SlotOutOfBounds)` when `has_output && out_slot >= slot_count`
 /// or `has_error_slot && error_slot >= slot_count`; `Some(StepOutOfBounds)`
 /// for the analogous step checks; `Some(EmptyBranchTable)` for
-/// Choose/ChooseSlot with no `otherwise` and the branch-table flag set;
-/// the branch-target alias error for an aliasing ReduceStart /
-/// ReduceNext / ForEachNext node; `None` otherwise.
+/// Choose/ChooseSlot with no `otherwise` and the branch-table flag set
+/// (checked before the kind refs, in production order); the first
+/// failure of the ordered `kind_refs` inventory; the branch-target
+/// alias error for an aliasing ReduceStart / ReduceNext / ForEachNext
+/// node; `None` otherwise.
 pub open spec fn validate_node_pure_spec(
     meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
     slot_count: int,
     node_count: int,
-    _expressions_len: int,
+    expressions_len: int,
     _accessors_len: int,
-    _constants_len: int,
+    constants_len: int,
     _symbols_count: int,
 ) -> Option<SpecWorkflowError> {
     if meta.has_output == 1 && (meta.out_slot as int) >= slot_count {
@@ -426,7 +522,13 @@ pub open spec fn validate_node_pure_spec(
     ) {
         Some(SpecWorkflowError::EmptyBranchTable)
     } else {
-        spec_branch_target_alias_error(meta)
+        let kind_err = spec_kind_ref_error(kind_refs, 0, slot_count, node_count,
+            constants_len, expressions_len);
+        if kind_err != None::<SpecWorkflowError> {
+            kind_err
+        } else {
+            spec_branch_target_alias_error(meta)
+        }
     }
 }
 
@@ -465,6 +567,7 @@ pub exec fn checked_prod_try_from_parts_pure(parts: &SpecWorkflowParts) -> (resu
 /// decision is deterministic and lands in the closed discriminant set.
 pub exec fn checked_prod_validate_node_pure(
     meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
     slot_count: u32,
     node_count: u32,
     expressions_len: u32,
@@ -475,11 +578,13 @@ pub exec fn checked_prod_validate_node_pure(
     ensures
         err.is_none() || spec_workflow_error_is_bound_violation_spec(err.unwrap())
             || err.unwrap() == SpecWorkflowError::EmptyBranchTable
+            || err.unwrap() == SpecWorkflowError::ResourceContractExceeded
             || err.unwrap() == SpecWorkflowError::ReduceBranchTargetAlias
             || err.unwrap() == SpecWorkflowError::ForEachBranchTargetAlias,
 {
     let first = validate_node_pure(
         meta,
+        kind_refs,
         slot_count,
         node_count,
         expressions_len,
@@ -489,6 +594,7 @@ pub exec fn checked_prod_validate_node_pure(
     );
     let second = validate_node_pure(
         meta,
+        kind_refs,
         slot_count,
         node_count,
         expressions_len,
@@ -499,10 +605,10 @@ pub exec fn checked_prod_validate_node_pure(
     // Determinism follows from the assume_specification contract:
     // both calls agree with the spec mirror of the same input, so
     // they agree with each other.
-    assert(first == validate_node_pure_spec(meta, slot_count as int, node_count as int,
+    assert(first == validate_node_pure_spec(meta, kind_refs, slot_count as int, node_count as int,
         expressions_len as int, accessors_len as int, constants_len as int,
         symbols_count as int));
-    assert(second == validate_node_pure_spec(meta, slot_count as int, node_count as int,
+    assert(second == validate_node_pure_spec(meta, kind_refs, slot_count as int, node_count as int,
         expressions_len as int, accessors_len as int, constants_len as int,
         symbols_count as int));
     assert(first == second);
@@ -510,6 +616,7 @@ pub exec fn checked_prod_validate_node_pure(
         assert(
             spec_workflow_error_is_bound_violation_spec(e)
                 || e == SpecWorkflowError::EmptyBranchTable
+                || e == SpecWorkflowError::ResourceContractExceeded
                 || e == SpecWorkflowError::ReduceBranchTargetAlias
                 || e == SpecWorkflowError::ForEachBranchTargetAlias
         );
@@ -2623,7 +2730,10 @@ pub proof fn lemma_loop_region_error_handler_rejected(parts: &SpecWorkflowParts)
 /// (`body == done`) is rejected with `ReduceBranchTargetAlias`
 /// (production `validate_reduce_branch_targets`,
 /// workflow/mod.rs:1684-1697, runs after `validate_node_kind`).
-pub proof fn lemma_reduce_branch_target_alias_rejected(meta: SpecNodeMeta)
+pub proof fn lemma_reduce_branch_target_alias_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
     requires
         meta.kind_disc == 19u32,
         meta.has_branch_targets == 1,
@@ -2633,11 +2743,12 @@ pub proof fn lemma_reduce_branch_target_alias_rejected(meta: SpecNodeMeta)
         meta.has_on_error == 0,
         meta.has_error_slot == 0,
         meta.has_branch_table_no_otherwise == 0,
+        kind_refs.len() == 0,
     ensures
-        validate_node_pure_spec(meta, 0, 0, 0, 0, 0, 0)
+        validate_node_pure_spec(meta, kind_refs, 0, 0, 0, 0, 0, 0)
             == Some(SpecWorkflowError::ReduceBranchTargetAlias),
 {
-    assert(validate_node_pure_spec(meta, 0, 0, 0, 0, 0, 0)
+    assert(validate_node_pure_spec(meta, kind_refs, 0, 0, 0, 0, 0, 0)
         == spec_branch_target_alias_error(meta));
     assert(spec_branch_target_alias_error(meta)
         == Some(SpecWorkflowError::ReduceBranchTargetAlias));
@@ -2648,7 +2759,10 @@ pub proof fn lemma_reduce_branch_target_alias_rejected(meta: SpecNodeMeta)
 /// (`body == done`) is rejected with `ForEachBranchTargetAlias`
 /// (production `validate_for_each_next_targets`,
 /// workflow/mod.rs:1699-1709, runs after `validate_node_kind`).
-pub proof fn lemma_foreach_branch_target_alias_rejected(meta: SpecNodeMeta)
+pub proof fn lemma_foreach_branch_target_alias_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
     requires
         meta.kind_disc == 10u32,
         meta.has_branch_targets == 1,
@@ -2658,11 +2772,12 @@ pub proof fn lemma_foreach_branch_target_alias_rejected(meta: SpecNodeMeta)
         meta.has_on_error == 0,
         meta.has_error_slot == 0,
         meta.has_branch_table_no_otherwise == 0,
+        kind_refs.len() == 0,
     ensures
-        validate_node_pure_spec(meta, 0, 0, 0, 0, 0, 0)
+        validate_node_pure_spec(meta, kind_refs, 0, 0, 0, 0, 0, 0)
             == Some(SpecWorkflowError::ForEachBranchTargetAlias),
 {
-    assert(validate_node_pure_spec(meta, 0, 0, 0, 0, 0, 0)
+    assert(validate_node_pure_spec(meta, kind_refs, 0, 0, 0, 0, 0, 0)
         == spec_branch_target_alias_error(meta));
     assert(spec_branch_target_alias_error(meta)
         == Some(SpecWorkflowError::ForEachBranchTargetAlias));
@@ -3887,6 +4002,293 @@ pub proof fn lemma_nested_together_sequential_accepted(parts: &SpecWorkflowParts
     assert(spec_nested_outer_from(parts, 4) == spec_nested_outer_from(parts, 5));
     assert(spec_nested_outer_from(parts, 5) == None::<SpecWorkflowError>);
     assert(spec_nested_together_error(parts) == None::<SpecWorkflowError>);
+}
+
+/// Lemma 46: the slot-before-step first error. A ForEachNext node
+/// whose iterator slot is out of bounds and whose body step is also
+/// out of bounds is rejected with `SlotOutOfBounds` (production
+/// `validate_slot_and_steps`, workflow/mod.rs:1896-1904, checks the
+/// slot first).
+pub proof fn lemma_kind_ref_slot_before_step_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 10u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::Slot(9u32),
+        kind_refs[1] == SpecKindRef::Step(7u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::SlotOutOfBounds),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == Some(SpecWorkflowError::SlotOutOfBounds));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::SlotOutOfBounds));
+}
+
+/// Lemma 47: the step-before-slot first error. A TogetherBranch node
+/// whose entry step is out of bounds and whose accumulator slot is
+/// also out of bounds is rejected with `StepOutOfBounds` (production
+/// `validate_two_steps` then `validate_slot`,
+/// workflow/mod.rs:1752-1760, checks the steps first).
+pub proof fn lemma_kind_ref_step_before_slot_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 13u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 3,
+        kind_refs[0] == SpecKindRef::Step(7u32),
+        kind_refs[1] == SpecKindRef::Step(8u32),
+        kind_refs[2] == SpecKindRef::Slot(9u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 3, 5, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::StepOutOfBounds),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 3, 5, 0, 0)
+        == Some(SpecWorkflowError::StepOutOfBounds));
+    assert(validate_node_pure_spec(meta, kind_refs, 3, 5, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::StepOutOfBounds));
+}
+
+/// Lemma 48: the const-reference rejection. A ReduceStart node whose
+/// `initial` const index is out of bounds is rejected with
+/// `ConstOutOfBounds` (production `validate_reduce_start`,
+/// workflow/mod.rs:1935-1947, checks input, accumulator, const, then
+/// the two steps, in that order). This closes the approximation the
+/// old projection carried for the reduce kinds, which returned `None`
+/// for the const check.
+pub proof fn lemma_kind_ref_const_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 19u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 5,
+        kind_refs[0] == SpecKindRef::Slot(1u32),
+        kind_refs[1] == SpecKindRef::Slot(2u32),
+        kind_refs[2] == SpecKindRef::Const(4u32),
+        kind_refs[3] == SpecKindRef::Step(1u32),
+        kind_refs[4] == SpecKindRef::Step(2u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 3, 0)
+            == Some(SpecWorkflowError::ConstOutOfBounds),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 3, 0)
+        == spec_kind_ref_error(kind_refs, 1, 5, 10, 3, 0));
+    assert(spec_kind_ref_error(kind_refs, 1, 5, 10, 3, 0)
+        == spec_kind_ref_error(kind_refs, 2, 5, 10, 3, 0));
+    assert(spec_kind_ref_error(kind_refs, 2, 5, 10, 3, 0)
+        == Some(SpecWorkflowError::ConstOutOfBounds));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 3, 0)
+        == Some(SpecWorkflowError::ConstOutOfBounds));
+}
+
+/// Lemma 49: the expression-reference rejection. An EvalExpr node
+/// whose expr index is out of bounds is rejected with
+/// `ExpressionInvalid` (production `validate_expr`,
+/// workflow/mod.rs:2012-2020).
+pub proof fn lemma_kind_ref_expr_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 3u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 1,
+        kind_refs[0] == SpecKindRef::Expr(6u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 4, 0, 0, 0)
+            == Some(SpecWorkflowError::ExpressionInvalid),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 4)
+        == Some(SpecWorkflowError::ExpressionInvalid));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 4, 0, 0, 0)
+        == Some(SpecWorkflowError::ExpressionInvalid));
+}
+
+/// Lemma 50: the Choose branch interleaved order. A Choose node whose
+/// first branch is in bounds and whose second branch condition expr
+/// is out of bounds is rejected with `ExpressionInvalid` (production
+/// `validate_expr_choose`, workflow/mod.rs:1984-1995, checks each
+/// branch condition then its target, in branch order).
+pub proof fn lemma_kind_ref_choose_branch_order_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 7u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 5,
+        kind_refs[0] == SpecKindRef::Expr(1u32),
+        kind_refs[1] == SpecKindRef::Step(2u32),
+        kind_refs[2] == SpecKindRef::Expr(9u32),
+        kind_refs[3] == SpecKindRef::Step(4u32),
+        kind_refs[4] == SpecKindRef::Step(5u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 5, 0, 0, 0)
+            == Some(SpecWorkflowError::ExpressionInvalid),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 5)
+        == spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 5));
+    assert(spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 5)
+        == spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 5));
+    assert(spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 5)
+        == Some(SpecWorkflowError::ExpressionInvalid));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 5, 0, 0, 0)
+        == Some(SpecWorkflowError::ExpressionInvalid));
+}
+
+/// Lemma 51: the branch-table check precedes the kind refs. A Choose
+/// node with no branches and no `otherwise` is rejected with
+/// `EmptyBranchTable` even when its kind-ref inventory would also
+/// fail (production `validate_branch_route`,
+/// workflow/mod.rs:1997-2006, runs before the per-branch checks).
+pub proof fn lemma_kind_ref_empty_branch_table_first_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 7u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 1,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 1,
+        kind_refs[0] == SpecKindRef::Slot(99u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::EmptyBranchTable),
+{
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::EmptyBranchTable));
+}
+
+/// Lemma 52: the list-items count-cap rejection. A BuildList node
+/// with more items than `MAX_LIST_ITEMS_PER_VALUE` is rejected with
+/// `ResourceContractExceeded` (production `validate_build_list`,
+/// workflow/mod.rs:1860-1867, checks the cap before the items).
+pub proof fn lemma_kind_ref_count_cap_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 5u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 2,
+        kind_refs[0] == SpecKindRef::Count(70000u32, 65535u32),
+        kind_refs[1] == SpecKindRef::Slot(1u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 53: the nonzero rejection. A RepeatStart node with zero
+/// max attempts is rejected with `ResourceContractExceeded`
+/// (production `validate_repeat_start`,
+/// workflow/mod.rs:1961-1969, checks the nonzero bound before the
+/// two steps).
+pub proof fn lemma_kind_ref_nonzero_rejected(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 22u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 3,
+        kind_refs[0] == SpecKindRef::NonZero(0u32),
+        kind_refs[1] == SpecKindRef::Step(1u32),
+        kind_refs[2] == SpecKindRef::Step(2u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::ResourceContractExceeded),
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == Some(SpecWorkflowError::ResourceContractExceeded));
+}
+
+/// Lemma 54: well-formed kind refs are accepted. A ForEachNext node
+/// whose ordered kind refs are all in bounds passes the per-node
+/// check (production `validate_node_kind` returns `Ok` for it).
+pub proof fn lemma_kind_ref_well_formed_accepted(
+    meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
+)
+    requires
+        meta.kind_disc == 10u32,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+        meta.has_branch_targets == 0,
+        kind_refs.len() == 3,
+        kind_refs[0] == SpecKindRef::Slot(1u32),
+        kind_refs[1] == SpecKindRef::Step(2u32),
+        kind_refs[2] == SpecKindRef::Step(3u32),
+    ensures
+        validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+            == None::<SpecWorkflowError>,
+{
+    assert(spec_kind_ref_error(kind_refs, 0, 5, 10, 0, 0)
+        == spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 0));
+    assert(spec_kind_ref_error(kind_refs, 1, 5, 10, 0, 0)
+        == spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 0));
+    assert(spec_kind_ref_error(kind_refs, 2, 5, 10, 0, 0)
+        == spec_kind_ref_error(kind_refs, 3, 5, 10, 0, 0));
+    assert(spec_kind_ref_error(kind_refs, 3, 5, 10, 0, 0)
+        == None::<SpecWorkflowError>);
+    assert(validate_node_pure_spec(meta, kind_refs, 5, 10, 0, 0, 0, 0)
+        == None::<SpecWorkflowError>);
 }
 
 fn main() {}

@@ -63,6 +63,36 @@
 //     <- crates/vb_core/src/workflow/mod.rs:1673-1675
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
 //     <- crates/vb_core/src/workflow/mod.rs:1677-1847
+//   - `validate_slots`
+//     <- crates/vb_core/src/workflow/mod.rs:1853-1858
+//   - `validate_build_list`
+//     <- crates/vb_core/src/workflow/mod.rs:1860-1867
+//   - `validate_build_object`
+//     <- crates/vb_core/src/workflow/mod.rs:1869-1882
+//   - `validate_for_each_start`
+//     <- crates/vb_core/src/workflow/mod.rs:1884-1894
+//   - `validate_slot_and_steps`
+//     <- crates/vb_core/src/workflow/mod.rs:1896-1904
+//   - `validate_two_steps`
+//     <- crates/vb_core/src/workflow/mod.rs:1906-1913
+//   - `validate_together`
+//     <- crates/vb_core/src/workflow/mod.rs:1915-1925
+//   - `validate_nonzero_u16`
+//     <- crates/vb_core/src/workflow/mod.rs:1927-1933
+//   - `validate_reduce_start`
+//     <- crates/vb_core/src/workflow/mod.rs:1935-1947
+//   - `validate_reduce_next`
+//     <- crates/vb_core/src/workflow/mod.rs:1949-1959
+//   - `validate_repeat_start`
+//     <- crates/vb_core/src/workflow/mod.rs:1961-1969
+//   - `validate_slot_choose`
+//     <- crates/vb_core/src/workflow/mod.rs:1971-1982
+//   - `validate_expr_choose`
+//     <- crates/vb_core/src/workflow/mod.rs:1984-1995
+//   - `validate_branch_route`
+//     <- crates/vb_core/src/workflow/mod.rs:1997-2006
+//   - `MAX_LIST_ITEMS_PER_VALUE` / `MAX_OBJECT_FIELDS_PER_VALUE`
+//     <- crates/vb_core/src/limits.rs:71-75
 //   - `validate_reduce_branch_targets`
 //     <- crates/vb_core/src/workflow/mod.rs:1684-1697
 //   - `validate_for_each_next_targets`
@@ -526,6 +556,29 @@ pub struct SpecInputConstraint {
     pub has_max_length: u8,
     pub max_length: i64,
 }
+/// One ordered validation operation of production
+/// `validate_node_kind` (`crates/vb_core/src/workflow/mod.rs:1718-1847`)
+/// for a single node. The per-node `kind_refs` inventory lists these
+/// in the exact order production checks them, so the projection
+/// returns the same first failure production's `?`-propagation
+/// would. `Slot` / `Step` / `Const` / `Expr` check one payload
+/// reference against `slot_count` / `node_count` / `constants_len` /
+/// `expressions_len`; `Count(len, cap)` is the list/object field-count
+/// cap (`validate_build_list` / `validate_build_object`, cap 65_535
+/// from `crates/vb_core/src/limits.rs:71-75`); `NonZero(value)` is the
+/// branch-count / retry-attempts nonzero check
+/// (`validate_nonzero_u16`). Optional payload references (WaitEvent /
+/// Ask timeout slot, Choose / ChooseSlot `otherwise`) appear only
+/// when present; no-payload kinds carry an empty inventory.
+#[derive(Clone, Copy)]
+pub enum SpecKindRef {
+    Slot(u32),
+    Step(u32),
+    Const(u32),
+    Expr(u32),
+    Count(u32, u32),
+    NonZero(u32),
+}
 /// Mirrors the production `WorkflowParts` field set at
 /// `crates/vb_core/src/workflow/mod.rs:609-642`. Only the fields
 /// consumed by `validate_parts` / `validate_budget` are mirrored;
@@ -553,10 +606,6 @@ pub struct SpecWorkflowParts {
     /// `validate_node_id` (workflow/mod.rs:1472-1485).
     /// `out_kind_disc[i]` = closed-set discriminant for the node kind
     /// (see `spec_node_kind_disc`).
-    /// `out_max_step_ref[i]` = the *largest* step index referenced by
-    /// the node kind payload (used for the StepOutOfBounds check).
-    /// `out_max_slot_ref[i]` = the *largest* slot index referenced by
-    /// the node kind payload (used for the SlotOutOfBounds check).
     /// `out_has_branch_table[i]` = 1 iff the kind carries a
     /// branch table (Choose / ChooseSlot) with no `otherwise`
     /// fallback, else 0. Drives the `EmptyBranchTable` arm.
@@ -618,6 +667,45 @@ pub struct SpecWorkflowParts {
     /// when the node's output is none, matching production's
     /// `node.output.slot().is_none() && *source == slot` guard.
     pub written_slots: Vec<Vec<u32>>,
+    /// Per-node ordered kind-reference inventory consumed by
+    /// `validate_node_kind` (workflow/mod.rs:1718-1847).
+    /// `kind_refs[i]` is node i's `SpecKindRef` list in the exact
+    /// order production checks the kind payload: SetConst
+    /// Const(value); Copy Slot(source); EvalExpr Expr(expr);
+    /// BuildObject Count(fields, 65535) then one Slot per field,
+    /// in field order; BuildList Count(items, 65535) then one Slot
+    /// per item, in item order; Do Slot(input); ChooseSlot
+    /// Slot(condition) then Step(target) per branch, in branch
+    /// order, then Step(otherwise) when present; Choose
+    /// Expr(condition) then Step(target) per branch, in branch
+    /// order, then Step(otherwise) when present; ForEachStart
+    /// Slot(input), Slot(item_slot), Step(body), Step(done);
+    /// ForEachNext Slot(iterator_slot), Step(body), Step(done);
+    /// ForEachJoin Slot(output); TogetherStart one Step per branch,
+    /// in branch order, then Step(join); TogetherBranch Step(entry),
+    /// Step(join), Slot(accumulator); TogetherJoin
+    /// NonZero(branch_count), Slot(accumulator); CollectStart
+    /// Slot(source), Step(body), Step(done); CollectPage /
+    /// CollectNext Slot(collector_slot), Step(body), Step(done);
+    /// CollectFinish Slot(collector_slot); ReduceStart Slot(input),
+    /// Slot(accumulator), Const(initial), Step(body), Step(done);
+    /// ReduceNext Slot(iterator_slot), Slot(accumulator), Step(body),
+    /// Step(done); ReduceFinish Slot(accumulator); RepeatStart
+    /// NonZero(max_attempts), Step(body), Step(done); RepeatAttempt
+    /// Slot(attempt_slot), Step(body), Step(done); RepeatCheck
+    /// Slot(attempt_slot), Step(done); RepeatFinish Slot(result);
+    /// WaitUntil Slot(deadline_slot); WaitEvent Slot(event) then
+    /// Slot(timeout_slot) when present; Ask Slot(prompt) then
+    /// Slot(timeout_slot) when present; AskResume Slot(answer);
+    /// RetryCheck Slot(policy_slot), Step(body), Step(exhausted);
+    /// ErrorHandler Step(body), Step(handler); Jump Step(target);
+    /// Finish Slot(result); Nop empty. The Choose / ChooseSlot
+    /// EmptyBranchTable check (`validate_branch_route`,
+    /// workflow/mod.rs:1997-2006) runs before this inventory, driven
+    /// by the node's `has_branch_table_no_otherwise` flag. The
+    /// projection treats a missing entry (a `kind_refs` shorter than
+    /// `nodes_meta`) as an empty inventory for the tail nodes.
+    pub kind_refs: Vec<Vec<SpecKindRef>>,
 }
 /// Per-node metadata feeding the validator. See `SpecWorkflowParts`
 /// for the field semantics. Mirrors every scalar that
@@ -635,8 +723,6 @@ pub struct SpecNodeMeta {
     pub has_error_slot: u8,
     pub error_slot: u32,
     pub kind_disc: u32,
-    pub max_step_ref: u32,
-    pub max_slot_ref: u32,
     pub has_branch_table_no_otherwise: u8,
     /// 1 iff the node is a loop control (ForEachNext / CollectNext /
     /// ReduceNext / RepeatCheck) with a derivable shape
@@ -860,6 +946,67 @@ pub fn input_constraint_error(constraint: SpecInputConstraint) -> Option<SpecWor
 // ============================================================================
 // Pure decision fn: per-node validator
 // ============================================================================
+/// Pure projection of one ordered `SpecKindRef` inventory:
+/// `validate_node_kind` (`crates/vb_core/src/workflow/mod.rs:1718-1847`)
+/// checks the kind payload references in inventory order and returns
+/// the first failure production's `?`-propagation would return:
+/// `SlotOutOfBounds` (`validate_slot`, mod.rs:2030-2036),
+/// `StepOutOfBounds` (`validate_step`, mod.rs:2022-2028),
+/// `ConstOutOfBounds` (`validate_const`, mod.rs:2038-2044),
+/// `ExpressionInvalid` (`validate_expr`, mod.rs:2012-2020, which
+/// returns `WorkflowError::Expression(CoreError::ExprOutOfBounds)`),
+/// `ResourceContractExceeded` for a count over its cap
+/// (`validate_build_list` / `validate_build_object`,
+/// mod.rs:1860-1867 / 1869-1882) or a zero nonzero-checked value
+/// (`validate_nonzero_u16`, mod.rs:1927-1933). Returns `None` when
+/// every inventory entry is in bounds. The `EmptyBranchTable` check
+/// (`validate_branch_route`, mod.rs:1997-2006) runs before this
+/// inventory in production and is handled by the caller.
+#[verifier::external]
+pub fn kind_ref_error(
+    refs: &Vec<SpecKindRef>,
+    slot_count: u32,
+    node_count: u32,
+    constants_len: u32,
+    expressions_len: u32,
+) -> Option<SpecWorkflowError> {
+    for r in refs {
+        match r {
+            SpecKindRef::Slot(value) => {
+                if *value >= slot_count {
+                    return Some(SpecWorkflowError::SlotOutOfBounds);
+                }
+            }
+            SpecKindRef::Step(value) => {
+                if *value >= node_count {
+                    return Some(SpecWorkflowError::StepOutOfBounds);
+                }
+            }
+            SpecKindRef::Const(value) => {
+                if *value >= constants_len {
+                    return Some(SpecWorkflowError::ConstOutOfBounds);
+                }
+            }
+            SpecKindRef::Expr(value) => {
+                if *value >= expressions_len {
+                    return Some(SpecWorkflowError::ExpressionInvalid);
+                }
+            }
+            SpecKindRef::Count(len, cap) => {
+                if *len > *cap {
+                    return Some(SpecWorkflowError::ResourceContractExceeded);
+                }
+            }
+            SpecKindRef::NonZero(value) => {
+                if *value == 0 {
+                    return Some(SpecWorkflowError::ResourceContractExceeded);
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Pure projection of `validate_node_common`, `validate_node_kind`,
 /// and the branch-target alias checks at
 /// `crates/vb_core/src/workflow/mod.rs:1677-1847`, applied to a
@@ -868,7 +1015,13 @@ pub fn input_constraint_error(constraint: SpecInputConstraint) -> Option<SpecWor
 /// returns the *first* specific failure the production body would
 /// encounter, in the same order production uses
 /// (`?`-propagation from `validate_node_common` then
-/// `validate_node_kind`).
+/// `validate_node_kind`). The kind-payload checks read the
+/// caller-supplied ordered `kind_refs` inventory instead of the
+/// former `max_step_ref` / `max_slot_ref` aggregates, so the
+/// per-kind check order (slot-before-step for the slot-first kinds,
+/// step-before-slot for TogetherBranch / ErrorHandler, const third
+/// for ReduceStart, expr interleaved per Choose branch) is modelled
+/// rather than trusted.
 ///
 /// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
 /// The spec-side mirror in `try_from_parts.rs` is the contract; this
@@ -876,6 +1029,7 @@ pub fn input_constraint_error(constraint: SpecInputConstraint) -> Option<SpecWor
 #[verifier::external]
 pub fn validate_node_pure(
     meta: SpecNodeMeta,
+    kind_refs: &Vec<SpecKindRef>,
     slot_count: u32,
     node_count: u32,
     expressions_len: u32,
@@ -896,59 +1050,23 @@ pub fn validate_node_pure(
     if meta.has_error_slot == 1 && meta.error_slot >= slot_count {
         return Some(SpecWorkflowError::SlotOutOfBounds);
     }
-    // 2. validate_node_kind (workflow/mod.rs:1718-1847)
-    // The discriminants 0, 9..=11, 14, 18, 21, 25..=26, 29 are the
-    // no-payload kinds that production treats as "no further
-    // check" (Nop, ForEachJoin, TogetherJoin, CollectFinish,
-    // ReduceFinish, RepeatFinish, WaitUntil, AskResume).
-    let kind_err = match meta.kind_disc {
-        0  // Nop
-        | 11 // ForEachJoin
-        | 14 // TogetherJoin
-        | 18 // CollectFinish
-        | 21 // ReduceFinish
-        | 25 // RepeatFinish
-        | 26 // WaitUntil
-        | 29 // AskResume
-        => None,
-        19 | 20 // ReduceStart, ReduceNext
-        => {
-            // Both reduce kinds have a `const initial` reference.
-            // The ConstOutOfBounds check requires walking the
-            // payload; the projection has the constants_len as a
-            // uniform bound — production calls validate_const with
-            // the literal `initial` index. The projection uses
-            // max_step_ref to drive the step bounds uniformly; for
-            // the const reference, we approximate with a flag
-            // `meta.kind_disc` discriminant and trust that the
-            // caller-provided `meta.max_step_ref` has already
-            // captured the const index when needed (the spec file
-            // // records this binding as a *trusted approximation*).
-            None
-        }
-        7 | 8 // Choose, ChooseSlot
-        => {
-            if meta.has_branch_table_no_otherwise == 1 {
-                Some(SpecWorkflowError::EmptyBranchTable)
-            } else {
-                None
-            }
-        }
-        // Per-kind slot/step references: production calls
-        // validate_slot / validate_step on each. The projection
-        // trusts the caller-supplied `max_slot_ref` /
-        // `max_step_ref` aggregates and checks them once.
-        _ => {
-            if meta.max_slot_ref >= slot_count {
-                Some(SpecWorkflowError::SlotOutOfBounds)
-            } else if meta.max_step_ref >= node_count {
-                Some(SpecWorkflowError::StepOutOfBounds)
-            } else {
-                None
-            }
-        }
-    };
-    if let Some(err) = kind_err {
+    // 2. validate_node_kind (workflow/mod.rs:1718-1847). Choose /
+    // ChooseSlot run validate_branch_route first (EmptyBranchTable
+    // when zero branches and no otherwise), then the ordered
+    // kind-ref inventory; every other kind runs the inventory
+    // directly. No-payload kinds carry an empty inventory.
+    if (meta.kind_disc == 7 || meta.kind_disc == 8)
+        && meta.has_branch_table_no_otherwise == 1
+    {
+        return Some(SpecWorkflowError::EmptyBranchTable);
+    }
+    if let Some(err) = kind_ref_error(
+        kind_refs,
+        slot_count,
+        node_count,
+        constants_len,
+        expressions_len,
+    ) {
         return Some(err);
     }
     // 3. validate_reduce_branch_targets (workflow/mod.rs:1684-1697)
@@ -1995,15 +2113,24 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         }
     }
     // 1e. per-node loop: validate_node_id + validate_node.
-    for meta in &parts.nodes_meta {
+    // The kind-ref inventory is per node; a missing entry (a
+    // `kind_refs` shorter than `nodes_meta`) means the node carries
+    // no kind-payload references.
+    let empty_refs: Vec<SpecKindRef> = Vec::new();
+    for (index, meta) in parts.nodes_meta.iter().enumerate() {
         // validate_node_id (workflow/mod.rs:1472-1485).
         // Production indexes by enumeration position; the
         // projection trusts the caller-supplied `meta.id` matches
         // the iteration index. The spec's NodeIdMismatch arm is
         // exercised separately via a dedicated spec function.
         let _ = meta.id;
+        let kind_refs = match parts.kind_refs.get(index) {
+            Some(refs) => refs,
+            None => &empty_refs,
+        };
         let per_node_err = validate_node_pure(
             *meta,
+            kind_refs,
             parts.slot_count,
             node_count,
             parts.expressions_len,
