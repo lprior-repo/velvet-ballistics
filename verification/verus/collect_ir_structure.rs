@@ -53,7 +53,7 @@
 // lemma (L1), the CollectPage lemma (L4), and the slot-delta lemma
 // (L7) no longer hold. This rewrite re-grounds every lemma in the
 // current shape, mirroring the production-side contract already
-// proven in the part_03.rs Verus block (L1-L6 for
+// proven in the part_03_collect_spec.rs Verus block (L1-L6 for
 // `plan_compute_edges`) and the PO-011 sibling spec
 // (collect_lowering.rs).
 //
