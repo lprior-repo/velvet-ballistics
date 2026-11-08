@@ -55,7 +55,9 @@
 //      flags derived from the region table.
 //   4. validate_budget (workflow/mod.rs:1453-1459): whole-workflow
 //      boundedness policy via WholeWorkflowBudget::compute +
-//      BoundednessPolicy::DEFAULT.validate.
+//      BoundednessPolicy::DEFAULT.validate, modelled in the
+//      projection (`budget_error`) and its spec mirror over the
+//      caller-supplied `computed_budget` inventory.
 //   5. validate_input_slots (workflow/mod.rs:1394-1425): input slot
 //      bounds, duplicate, and strict-increasing-order checks, plus a
 //      per-slot validate_input_constraint (1427-1451), modelled from
@@ -86,7 +88,14 @@
 // Per-node kind-payload checks are modelled from the ordered
 // `kind_refs` inventory in the projection file. Reachability,
 // forward edges, and nested-together are modelled, not approximated.
-// The budget polynomial evaluation remains approximated.
+// The budget policy check is modelled from the caller-supplied
+// `computed_budget` inventory: `budget_error` mirrors
+// `BoundednessPolicy::DEFAULT.validate`'s first-violation order
+// over the 23 validated dimensions, and the spec mirror pins each
+// dimension and the ordering against steps 2 and 5. The compute
+// walk that produces the budget stays caller-supplied:
+// `budget_bounded.rs` is the exhaustive coverage of `compute`'s
+// boundedness, not re-modelled here.
 
 use vstd::prelude::*;
 
@@ -112,10 +121,10 @@ pub use production::{
     spec_node_kind_retry_check, spec_node_kind_set_const,
     spec_node_kind_together_branch, spec_node_kind_together_join,
     spec_node_kind_together_start, spec_node_kind_wait_event,
-    spec_node_kind_wait_until, spec_ref_none, SpecAccessor, SpecInputConstraint,
-    SpecKindRef, SpecLoopRegion, SpecNode, SpecNodeKind, SpecNodeMeta,
+    spec_node_kind_wait_until, spec_ref_none, SpecAccessor, SpecComputedBudget,
+    SpecInputConstraint, SpecKindRef, SpecLoopRegion, SpecNode, SpecNodeKind, SpecNodeMeta,
     SpecResourceContract, SpecValidationResult, SpecWorkflowError,
-    SpecWorkflowParts, branch_target_alias_error, input_constraint_error,
+    SpecWorkflowParts, branch_target_alias_error, budget_error, input_constraint_error,
     kind_ref_error,
     forward_edges_error, loop_pairing_error, loop_region_edges_error,
     loop_region_relations_error, nested_together_error,
@@ -282,6 +291,20 @@ pub assume_specification[ production::kind_ref_error ](
     ensures
         err == spec_kind_ref_error(refs, 0, slot_count as int, node_count as int,
             constants_len as int, expressions_len as int),
+;
+
+/// Spec-level mirror of `production::budget_error`. Returns
+/// `Some(BudgetPolicyExceeded)` for the first dimension of the
+/// supplied computed budget over its `BoundednessPolicy::DEFAULT`
+/// cap, in production `validate` order (budget.rs:534-592, via
+/// `validate_extended_budget` at 644-661, `validate_payload_budget`
+/// at 663-698, and `validate_budget_dimensions` at 595-642), or
+/// `None` when every dimension is within caps.
+pub assume_specification[ production::budget_error ](
+    budget: SpecComputedBudget,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_budget_error(budget),
 ;
 
 /// Spec-level mirror of `production::branch_target_alias_error`.
@@ -529,6 +552,69 @@ pub open spec fn validate_node_pure_spec(
         } else {
             spec_branch_target_alias_error(meta)
         }
+    }
+}
+
+/// Spec-level mirror of `production::budget_error`. Checks the 23
+/// validated dimensions of the supplied computed budget against
+/// the `BoundednessPolicy::DEFAULT` caps (budget.rs:506-530) in
+/// production `validate` first-violation order and returns
+/// `Some(BudgetPolicyExceeded)` for the first exceeded dimension,
+/// or `None` when every dimension is within caps. The seven
+/// computed-but-unvalidated fields (`max_retries_per_action`,
+/// `max_gather_pages`, `max_gather_items`,
+/// `max_for_each_iterations`, `max_together_branches`,
+/// `max_repeat_attempts`, `max_total_slots_written`) are not read
+/// here, matching production `validate`, which never reads them.
+pub open spec fn spec_budget_error(budget: SpecComputedBudget) -> Option<SpecWorkflowError> {
+    if (budget.max_total_steps as int) > 1_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_total_slots as int) > 65_535 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_fanout as int) > 64 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_nesting_depth as int) > 8 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_action_tickets as int) > 100_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_parallel_in_flight as int) > 256 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_run_time_seconds as int) > 2_592_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_result_bytes as int) > 262_144 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_steps_executable as int) > 1_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_timer_entries as int) > 1_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_trace_events as int) > 1_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_journal_batch_bytes as int) > 1_048_576 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_queue_depth as int) > 1_024 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_ipc_payload_bytes as int) > 1_048_576 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_blob_bytes as int) > 16_777_216 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_input_bytes as int) > 1_048_576 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_open_gates as int) > 1_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_signal_subscriptions as int) > 1_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_incident_emissions as int) > 1_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_transitions as int) > 10_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_journal_bytes_total as int) > 1_048_576_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_value_store_entries as int) > 2_000_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else if (budget.max_cost_units as int) > 100_000 {
+        Some(SpecWorkflowError::BudgetPolicyExceeded)
+    } else {
+        None
     }
 }
 
@@ -2162,11 +2248,16 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
                     if edges_err != None::<SpecWorkflowError> {
                         SpecValidationResult::Err(edges_err.unwrap())
                     } else {
-                        let slot_err = input_slots_valid(parts);
-                        if (slot_err != None::<SpecWorkflowError>) {
-                            SpecValidationResult::Err(slot_err.unwrap())
+                        let budget_err = spec_budget_error(parts.computed_budget);
+                        if budget_err != None::<SpecWorkflowError> {
+                            SpecValidationResult::Err(budget_err.unwrap())
                         } else {
-                            SpecValidationResult::Ok
+                            let slot_err = input_slots_valid(parts);
+                            if (slot_err != None::<SpecWorkflowError>) {
+                                SpecValidationResult::Err(slot_err.unwrap())
+                            } else {
+                                SpecValidationResult::Ok
+                            }
                         }
                     }
                 }
@@ -2341,6 +2432,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
         spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
         input_slots_valid(parts) == None::<SpecWorkflowError>,
     ensures
         // The projection returns Ok for these inputs. The spec
@@ -2384,6 +2476,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Loop-region relations: skip (already required valid).
     } else if spec_loop_edges_error(parts) != None::<SpecWorkflowError> {
         // Loop-region edge closure: skip (already required valid).
+    } else if spec_budget_error(parts.computed_budget) != None::<SpecWorkflowError> {
+        // Budget policy: skip (already required valid).
     } else if input_slots_valid(parts) != None::<SpecWorkflowError> {
         // Input slot validation: skip (already required valid).
     } else {
@@ -4291,6 +4385,741 @@ pub proof fn lemma_kind_ref_well_formed_accepted(
         == None::<SpecWorkflowError>);
 }
 
+/// Lemma 55: the within-caps acceptance. A computed budget with
+/// every validated dimension within its `DEFAULT` cap passes the
+/// budget policy check (production `BoundednessPolicy::validate`,
+/// budget.rs:534-592, returns `Ok`).
+pub proof fn lemma_budget_within_caps_accepted(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) <= 16_777_216,
+        (budget.max_input_bytes as int) <= 1_048_576,
+        (budget.max_open_gates as int) <= 1_000_000,
+        (budget.max_signal_subscriptions as int) <= 1_000_000,
+        (budget.max_incident_emissions as int) <= 1_000_000,
+        (budget.max_transitions as int) <= 10_000_000,
+        (budget.max_journal_bytes_total as int) <= 1_048_576_000_000,
+        (budget.max_value_store_entries as int) <= 2_000_000,
+        (budget.max_cost_units as int) <= 100_000,
+    ensures
+        spec_budget_error(budget) == None::<SpecWorkflowError>,
+{
+    assert(spec_budget_error(budget) == None::<SpecWorkflowError>);
+}
+
+/// Lemma 56: the total-steps rejection. A computed budget
+/// with `max_total_steps` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetError::TotalStepsExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_total_steps_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) > 1_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 57: the total-slots rejection. A computed budget
+/// with `max_total_slots` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetError::TotalSlotsExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_total_slots_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) > 65_535,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 58: the fanout rejection. A computed budget
+/// with `max_fanout` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetError::FanoutExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_fanout_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) > 64,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 59: the nesting-depth rejection. A computed budget
+/// with `max_nesting_depth` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetError::NestingDepthExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_nesting_depth_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) > 8,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 60: the action-tickets rejection. A computed budget
+/// with `max_action_tickets` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetError::ActionTicketsExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_action_tickets_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) > 100_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 61: the parallel rejection. A computed budget
+/// with `max_parallel_in_flight` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetError::ParallelExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_parallel_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) > 256,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 62: the run-time rejection. A computed budget
+/// with `max_run_time_seconds` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetError::RunTimeExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_run_time_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) > 2_592_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 63: the result-bytes rejection. A computed budget
+/// with `max_result_bytes` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetError::ResultBytesExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_result_bytes_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) > 262_144,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 64: the steps-executable rejection. A computed budget
+/// with `max_steps_executable` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `BoundednessPolicy::validate`, budget.rs:534-592 returns
+/// `BudgetError::StepsExecutableExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_steps_executable_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) > 1_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 65: the timer-entries rejection. A computed budget
+/// with `max_timer_entries` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_extended_budget`, budget.rs:644-661 returns
+/// `BudgetError::TimerEntriesExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_timer_entries_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) > 1_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 66: the trace-events rejection. A computed budget
+/// with `max_trace_events` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_extended_budget`, budget.rs:644-661 returns
+/// `BudgetError::TraceEventsExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_trace_events_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) > 1_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 67: the journal-batch-bytes rejection. A computed budget
+/// with `max_journal_batch_bytes` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetError::JournalBatchBytesExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_journal_batch_bytes_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) > 1_048_576,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 68: the queue-depth rejection. A computed budget
+/// with `max_queue_depth` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetError::QueueDepthExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_queue_depth_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) > 1_024,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 69: the ipc-payload-bytes rejection. A computed budget
+/// with `max_ipc_payload_bytes` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetError::IpcPayloadBytesExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_ipc_payload_bytes_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) > 1_048_576,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 70: the blob-bytes rejection. A computed budget
+/// with `max_blob_bytes` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetError::BlobBytesExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_blob_bytes_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) > 16_777_216,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 71: the input-bytes rejection. A computed budget
+/// with `max_input_bytes` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_payload_budget`, budget.rs:663-698 returns
+/// `BudgetError::InputBytesExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_input_bytes_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) <= 16_777_216,
+        (budget.max_input_bytes as int) > 1_048_576,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 72: the open-gates rejection. A computed budget
+/// with `max_open_gates` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetError::OpenGatesExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_open_gates_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) <= 16_777_216,
+        (budget.max_input_bytes as int) <= 1_048_576,
+        (budget.max_open_gates as int) > 1_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 73: the signal-subscriptions rejection. A computed budget
+/// with `max_signal_subscriptions` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetError::SignalSubscriptionsExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_signal_subscriptions_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) <= 16_777_216,
+        (budget.max_input_bytes as int) <= 1_048_576,
+        (budget.max_open_gates as int) <= 1_000_000,
+        (budget.max_signal_subscriptions as int) > 1_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 74: the incident-emissions rejection. A computed budget
+/// with `max_incident_emissions` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetError::IncidentEmissionsExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_incident_emissions_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) <= 16_777_216,
+        (budget.max_input_bytes as int) <= 1_048_576,
+        (budget.max_open_gates as int) <= 1_000_000,
+        (budget.max_signal_subscriptions as int) <= 1_000_000,
+        (budget.max_incident_emissions as int) > 1_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 75: the transitions rejection. A computed budget
+/// with `max_transitions` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetError::TransitionsExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_transitions_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) <= 16_777_216,
+        (budget.max_input_bytes as int) <= 1_048_576,
+        (budget.max_open_gates as int) <= 1_000_000,
+        (budget.max_signal_subscriptions as int) <= 1_000_000,
+        (budget.max_incident_emissions as int) <= 1_000_000,
+        (budget.max_transitions as int) > 10_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 76: the journal-bytes-total rejection. A computed budget
+/// with `max_journal_bytes_total` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetError::JournalBytesTotalExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_journal_bytes_total_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) <= 16_777_216,
+        (budget.max_input_bytes as int) <= 1_048_576,
+        (budget.max_open_gates as int) <= 1_000_000,
+        (budget.max_signal_subscriptions as int) <= 1_000_000,
+        (budget.max_incident_emissions as int) <= 1_000_000,
+        (budget.max_transitions as int) <= 10_000_000,
+        (budget.max_journal_bytes_total as int) > 1_048_576_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 77: the value-store-entries rejection. A computed budget
+/// with `max_value_store_entries` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetError::ValueStoreEntriesExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_value_store_entries_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) <= 16_777_216,
+        (budget.max_input_bytes as int) <= 1_048_576,
+        (budget.max_open_gates as int) <= 1_000_000,
+        (budget.max_signal_subscriptions as int) <= 1_000_000,
+        (budget.max_incident_emissions as int) <= 1_000_000,
+        (budget.max_transitions as int) <= 10_000_000,
+        (budget.max_journal_bytes_total as int) <= 1_048_576_000_000,
+        (budget.max_value_store_entries as int) > 2_000_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 78: the cost-units rejection. A computed budget
+/// with `max_cost_units` over the `DEFAULT` cap is rejected with
+/// `BudgetPolicyExceeded` (production `validate_budget_dimensions`, budget.rs:595-642 returns
+/// `BudgetError::CostUnitsExceeded`, collapsed by `validate_budget_result`,
+/// workflow/mod.rs:1461-1470). All earlier dimensions are within
+/// caps, so this is the first violation production reports.
+pub proof fn lemma_budget_cost_units_rejected(budget: SpecComputedBudget)
+    requires
+        (budget.max_total_steps as int) <= 1_000_000,
+        (budget.max_total_slots as int) <= 65_535,
+        (budget.max_fanout as int) <= 64,
+        (budget.max_nesting_depth as int) <= 8,
+        (budget.max_action_tickets as int) <= 100_000,
+        (budget.max_parallel_in_flight as int) <= 256,
+        (budget.max_run_time_seconds as int) <= 2_592_000,
+        (budget.max_result_bytes as int) <= 262_144,
+        (budget.max_steps_executable as int) <= 1_000_000,
+        (budget.max_timer_entries as int) <= 1_000_000,
+        (budget.max_trace_events as int) <= 1_000_000,
+        (budget.max_journal_batch_bytes as int) <= 1_048_576,
+        (budget.max_queue_depth as int) <= 1_024,
+        (budget.max_ipc_payload_bytes as int) <= 1_048_576,
+        (budget.max_blob_bytes as int) <= 16_777_216,
+        (budget.max_input_bytes as int) <= 1_048_576,
+        (budget.max_open_gates as int) <= 1_000_000,
+        (budget.max_signal_subscriptions as int) <= 1_000_000,
+        (budget.max_incident_emissions as int) <= 1_000_000,
+        (budget.max_transitions as int) <= 10_000_000,
+        (budget.max_journal_bytes_total as int) <= 1_048_576_000_000,
+        (budget.max_value_store_entries as int) <= 2_000_000,
+        (budget.max_cost_units as int) > 100_000,
+    ensures
+        spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(budget) == Some(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 79: loop pairing runs before the budget check. A workflow
+/// whose loop pairing fails and whose computed budget exceeds a cap
+/// is rejected with the pairing error, not the budget error
+/// (production `try_from_parts`, workflow/mod.rs:42-65, runs
+/// `loop_regions::validate` before `validate_budget`).
+pub proof fn lemma_budget_pairing_before_budget(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+        spec_pairing_error(&parts.nodes_meta, 0) == Some(SpecWorkflowError::LoopRegionUnpaired),
+        (parts.computed_budget.max_total_steps as int) > 1_000_000,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::LoopRegionUnpaired),
+{
+    assert(spec_pairing_error(&parts.nodes_meta, 0)
+        == Some(SpecWorkflowError::LoopRegionUnpaired));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::LoopRegionUnpaired));
+}
+
+/// Lemma 80: the budget check runs before input-slot validation. A
+/// workflow whose computed budget exceeds a cap and whose input
+/// slots are invalid is rejected with the budget error, not the
+/// input-slot error (production `try_from_parts`,
+/// workflow/mod.rs:42-65, runs `validate_budget` before
+/// `validate_input_slots`).
+pub proof fn lemma_budget_before_input_slots(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+        spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
+        spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
+        spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_budget_error(parts.computed_budget)
+            == Some(SpecWorkflowError::BudgetPolicyExceeded),
+        input_slots_valid(parts) == Some(SpecWorkflowError::InputSlotOutOfBounds),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::BudgetPolicyExceeded),
+{
+    assert(spec_budget_error(parts.computed_budget)
+        == Some(SpecWorkflowError::BudgetPolicyExceeded));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::BudgetPolicyExceeded));
+}
+
+/// Lemma 81: a within-caps budget reaches input-slot validation. A
+/// workflow whose computed budget is within caps and whose input
+/// slots are invalid is rejected with the input-slot error, proving
+/// the budget step passes through to step 5 instead of masking it.
+pub proof fn lemma_budget_within_caps_reaches_input_slots(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        spec_reachability_error(parts) == None::<SpecWorkflowError>,
+        spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+        spec_nested_together_error(parts) == None::<SpecWorkflowError>,
+        spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
+        spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
+        spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
+        spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>,
+        input_slots_valid(parts) == Some(SpecWorkflowError::InputSlotOutOfBounds),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds),
+{
+    assert(spec_budget_error(parts.computed_budget) == None::<SpecWorkflowError>);
+    assert(input_slots_valid(parts) == Some(SpecWorkflowError::InputSlotOutOfBounds));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds));
+}
 fn main() {}
 
 } // verus!
