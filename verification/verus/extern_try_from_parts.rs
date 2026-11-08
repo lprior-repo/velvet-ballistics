@@ -63,6 +63,14 @@
 //     <- crates/vb_core/src/workflow/mod.rs:1673-1675
 //   - `validate_node` / `validate_node_common` / `validate_node_kind`
 //     <- crates/vb_core/src/workflow/mod.rs:1677-1847
+//   - `validate_reduce_branch_targets`
+//     <- crates/vb_core/src/workflow/mod.rs:1684-1697
+//   - `validate_for_each_next_targets`
+//     <- crates/vb_core/src/workflow/mod.rs:1699-1709
+//   - `validate_input_constraint`
+//     <- crates/vb_core/src/workflow/mod.rs:1427-1451
+//   - `CompiledInputConstraint` field set
+//     <- crates/vb_core/src/workflow/mod.rs:519-543
 //   - `validate_step`, `validate_slot`, `validate_const`, `validate_expr`,
 //     `validate_accessor`, `validate_symbol`
 //     <- crates/vb_core/src/workflow/mod.rs:2012-2156
@@ -465,6 +473,25 @@ pub struct SpecAccessor {
     pub root: u32,
     pub path_depth: u32,
 }
+/// Mirrors the four numeric bounds of the production
+/// `CompiledInputConstraint` at
+/// `crates/vb_core/src/workflow/mod.rs:519-543`. Only the bounds
+/// `validate_input_constraint` (workflow/mod.rs:1427-1451) reads are
+/// mirrored; `optional`, `nullable`, `default_value`, `element`,
+/// `allow_extra`, and `secret` are out of scope for the validation
+/// decision. Flattened `has_` / value pairs follow the `SpecNodeMeta`
+/// convention so the spec layer reads them without `Option`.
+#[derive(Clone, Copy)]
+pub struct SpecInputConstraint {
+    pub has_min: u8,
+    pub min: i64,
+    pub has_max: u8,
+    pub max: i64,
+    pub has_min_length: u8,
+    pub min_length: i64,
+    pub has_max_length: u8,
+    pub max_length: i64,
+}
 /// Mirrors the production `WorkflowParts` field set at
 /// `crates/vb_core/src/workflow/mod.rs:609-642`. Only the fields
 /// consumed by `validate_parts` / `validate_budget` are mirrored;
@@ -512,6 +539,13 @@ pub struct SpecWorkflowParts {
     /// input slot declaration. The projection checks: all in-bounds,
     /// no duplicates, strictly increasing order.
     pub input_slots: Vec<u32>,
+    /// Per-slot constraint inventory consumed by the per-slot
+    /// `validate_input_constraint` (workflow/mod.rs:1427-1451).
+    /// `input_constraints[i]` is the constraint of `input_slots[i]`.
+    /// The projection treats a missing entry (an
+    /// `input_constraints` shorter than `input_slots`) as an
+    /// unconstrained slot.
+    pub input_constraints: Vec<SpecInputConstraint>,
     /// Per-node kind-successor inventory consumed by the loop-region
     /// edge closure (`validate_region_edges`,
     /// loop_regions/edges.rs:14-39). `kind_targets[i]` is node i's
@@ -581,6 +615,20 @@ pub struct SpecNodeMeta {
     /// state is the output slot.
     pub start_state_a: u32,
     pub start_state_b: u32,
+    /// 1 iff the node is a ReduceStart / ReduceNext / ForEachNext
+    /// with caller-supplied branch targets (`branch_body`,
+    /// `branch_done` taken from the kind fields, not from the loop
+    /// shapes, so a slot-less ReduceStart is still checked).
+    /// Drives the `ReduceBranchTargetAlias` /
+    /// `ForEachBranchTargetAlias` arms.
+    pub has_branch_targets: u8,
+    /// `body` step of the branch-target pair
+    /// (`validate_reduce_branch_targets` /
+    /// `validate_for_each_next_targets`,
+    /// workflow/mod.rs:1684-1697 / 1699-1709).
+    pub branch_body: u32,
+    /// `done` step of the branch-target pair.
+    pub branch_done: u32,
 }
 // ============================================================================
 // Closed-set discriminants for SpecNodeKind
@@ -703,10 +751,63 @@ pub const fn spec_workflow_error_is_bound_violation(e: SpecWorkflowError) -> boo
     )
 }
 // ============================================================================
+// Pure decision fn: branch-target alias
+// ============================================================================
+/// Pure projection of `validate_reduce_branch_targets`
+/// (workflow/mod.rs:1684-1697) and `validate_for_each_next_targets`
+/// (workflow/mod.rs:1699-1709). Returns the alias error when the
+/// node's branch-target pair aliases (`body == done`); `None`
+/// otherwise, including when the caller supplied no branch targets
+/// (`has_branch_targets == 0`) or the kind carries no branch pair.
+#[verifier::external]
+pub fn branch_target_alias_error(meta: SpecNodeMeta) -> Option<SpecWorkflowError> {
+    if meta.has_branch_targets != 1 || meta.branch_body != meta.branch_done {
+        return None;
+    }
+    match meta.kind_disc {
+        // ReduceStart, ReduceNext
+        19 | 20 => Some(SpecWorkflowError::ReduceBranchTargetAlias),
+        // ForEachNext
+        10 => Some(SpecWorkflowError::ForEachBranchTargetAlias),
+        _ => None,
+    }
+}
+
+// ============================================================================
+// Pure decision fn: input-constraint consistency
+// ============================================================================
+/// Pure projection of `validate_input_constraint`
+/// (workflow/mod.rs:1427-1451), in production order: min/max range,
+/// then min_length/max_length range, then negative length bounds.
+/// Returns `InconsistentInputConstraint` for the first inconsistency;
+/// `None` when the constraint is consistent. The
+/// `InputConstraintIssue` detail is collapsed: the projection returns
+/// the unit variant.
+#[verifier::external]
+pub fn input_constraint_error(constraint: SpecInputConstraint) -> Option<SpecWorkflowError> {
+    if constraint.has_min == 1 && constraint.has_max == 1 && constraint.min > constraint.max {
+        return Some(SpecWorkflowError::InconsistentInputConstraint);
+    }
+    if constraint.has_min_length == 1
+        && constraint.has_max_length == 1
+        && constraint.min_length > constraint.max_length
+    {
+        return Some(SpecWorkflowError::InconsistentInputConstraint);
+    }
+    if (constraint.has_min_length == 1 && constraint.min_length < 0)
+        || (constraint.has_max_length == 1 && constraint.max_length < 0)
+    {
+        return Some(SpecWorkflowError::InconsistentInputConstraint);
+    }
+    None
+}
+
+// ============================================================================
 // Pure decision fn: per-node validator
 // ============================================================================
-/// Pure projection of `validate_node_common` and `validate_node_kind`
-/// at `crates/vb_core/src/workflow/mod.rs:1711-1847`, applied to a
+/// Pure projection of `validate_node_common`, `validate_node_kind`,
+/// and the branch-target alias checks at
+/// `crates/vb_core/src/workflow/mod.rs:1677-1847`, applied to a
 /// single node's flattened metadata. The projection returns
 /// `None` when the node passes every per-node check; otherwise it
 /// returns the *first* specific failure the production body would
@@ -745,7 +846,7 @@ pub fn validate_node_pure(
     // no-payload kinds that production treats as "no further
     // check" (Nop, ForEachJoin, TogetherJoin, CollectFinish,
     // ReduceFinish, RepeatFinish, WaitUntil, AskResume).
-    match meta.kind_disc {
+    let kind_err = match meta.kind_disc {
         0  // Nop
         | 11 // ForEachJoin
         | 14 // TogetherJoin
@@ -791,7 +892,16 @@ pub fn validate_node_pure(
                 None
             }
         }
+    };
+    if let Some(err) = kind_err {
+        return Some(err);
     }
+    // 3. validate_reduce_branch_targets (workflow/mod.rs:1684-1697)
+    // + validate_for_each_next_targets (workflow/mod.rs:1699-1709).
+    // Production runs these after validate_node_kind, per node, in
+    // node order; the projection calls the shared alias decision
+    // here so the first aliasing node reports first.
+    branch_target_alias_error(meta)
 }
 // ============================================================================
 // Pure decision fn: loop-region pairing
@@ -1283,9 +1393,12 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // ---- Step 5: input slot validation ----
     // Production calls validate_input_slots(&parts)? (workflow/mod.rs:42,
     // body at workflow/mod.rs:1394-1425). The projection checks: all
-    // input slot indices in-bounds, no duplicates, strictly increasing.
+    // input slot indices in-bounds, no duplicates, strictly increasing,
+    // then the per-slot validate_input_constraint (1427-1451) from the
+    // caller-supplied `input_constraints` inventory (a missing entry
+    // is unconstrained).
     let mut prev_slot: Option<u32> = None;
-    for current in &parts.input_slots {
+    for (index, current) in parts.input_slots.iter().enumerate() {
         if *current >= parts.slot_count {
             return SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds);
         }
@@ -1295,6 +1408,11 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
             }
             if *current < prev {
                 return SpecValidationResult::Err(SpecWorkflowError::NonCanonicalInputSlotOrder);
+            }
+        }
+        if let Some(constraint) = parts.input_constraints.get(index) {
+            if let Some(err) = input_constraint_error(*constraint) {
+                return SpecValidationResult::Err(err);
             }
         }
         prev_slot = Some(*current);

@@ -27,7 +27,9 @@
 //      - validate_expressions (2046-2055),
 //      - validate_accessors (2069-2074),
 //      - per-node: validate_node_id (1472-1485) + validate_node
-//        (1677-1682),
+//        (1677-1682), including the branch-target alias checks
+//        (validate_reduce_branch_targets 1684-1697,
+//        validate_for_each_next_targets 1699-1709),
 //      - validate_accessor_paths (2089-2119),
 //      - validate_constants_symbols (2122-2132),
 //      - validate_build_object_symbols (2135-2147),
@@ -53,7 +55,9 @@
 //      BoundednessPolicy::DEFAULT.validate.
 //   5. validate_input_slots (workflow/mod.rs:1394-1425): input slot
 //      bounds, duplicate, and strict-increasing-order checks, plus a
-//      per-slot validate_input_constraint (1427-1451).
+//      per-slot validate_input_constraint (1427-1451), modelled from
+//      the caller-supplied `input_constraints` inventory (a missing
+//      entry is unconstrained).
 //
 // Binding mechanism: `#[path = "extern_try_from_parts.rs"]` imports the
 // thin extern surface, which mirrors the production IR types with the
@@ -104,10 +108,11 @@ pub use production::{
     spec_node_kind_retry_check, spec_node_kind_set_const,
     spec_node_kind_together_branch, spec_node_kind_together_join,
     spec_node_kind_together_start, spec_node_kind_wait_event,
-    spec_node_kind_wait_until, spec_ref_none, SpecAccessor, SpecLoopRegion, SpecNode,
-    SpecNodeKind, SpecNodeMeta, SpecResourceContract, SpecValidationResult,
-    SpecWorkflowError, SpecWorkflowParts, loop_pairing_error,
-    loop_region_edges_error, loop_region_relations_error,
+    spec_node_kind_wait_until, spec_ref_none, SpecAccessor, SpecInputConstraint,
+    SpecLoopRegion, SpecNode, SpecNodeKind, SpecNodeMeta,
+    SpecResourceContract, SpecValidationResult, SpecWorkflowError,
+    SpecWorkflowParts, branch_target_alias_error, input_constraint_error,
+    loop_pairing_error, loop_region_edges_error, loop_region_relations_error,
     spec_validation_result_is_ok,
     spec_workflow_error_is_bound_violation, try_from_parts_pure,
     validate_node_pure,
@@ -242,14 +247,40 @@ pub assume_specification[ production::validate_node_pure ](
 ) -> (err: Option<SpecWorkflowError>)
     ensures
         // The decision is closed: if Some, it is one of the typed
-        // bound violations (or EmptyBranchTable).
+        // bound violations, the EmptyBranchTable arm, or one of the
+        // branch-target alias arms.
         err.is_none() || spec_workflow_error_is_bound_violation_spec(err.unwrap())
-            || err.unwrap() == SpecWorkflowError::EmptyBranchTable,
+            || err.unwrap() == SpecWorkflowError::EmptyBranchTable
+            || err.unwrap() == SpecWorkflowError::ReduceBranchTargetAlias
+            || err.unwrap() == SpecWorkflowError::ForEachBranchTargetAlias,
         // Spec-side decision equivalence: the projection's result
         // matches the spec mirror at the contract layer.
         err == validate_node_pure_spec(meta, slot_count as int, node_count as int,
             expressions_len as int, accessors_len as int, constants_len as int,
             symbols_count as int),
+;
+
+/// Spec-level mirror of `production::branch_target_alias_error`.
+/// Returns the alias error when the node's branch-target pair
+/// aliases (`body == done`) for a ReduceStart / ReduceNext /
+/// ForEachNext node, or `None` otherwise.
+pub assume_specification[ production::branch_target_alias_error ](
+    meta: SpecNodeMeta,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_branch_target_alias_error(meta),
+;
+
+/// Spec-level mirror of `production::input_constraint_error`.
+/// Returns `Some(InconsistentInputConstraint)` for the first
+/// inconsistency in production order (min/max range, then
+/// min_length/max_length range, then negative length bounds),
+/// or `None` when the constraint is consistent.
+pub assume_specification[ production::input_constraint_error ](
+    constraint: SpecInputConstraint,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_input_constraint_error(constraint),
 ;
 
 /// Spec-level mirror of `production::loop_pairing_error`. Returns the
@@ -291,12 +322,32 @@ pub assume_specification[ production::loop_region_edges_error ](
         err == spec_loop_edges_error(parts),
 ;
 
+/// Spec-level mirror of `production::branch_target_alias_error`.
+/// Returns the alias error when the node's branch-target pair
+/// aliases (`body == done`) for a ReduceStart / ReduceNext
+/// (discriminants 19 / 20) or ForEachNext (discriminant 10) node,
+/// or `None` otherwise.
+pub open spec fn spec_branch_target_alias_error(meta: SpecNodeMeta) -> Option<SpecWorkflowError> {
+    if meta.has_branch_targets == 1 && meta.branch_body == meta.branch_done {
+        if meta.kind_disc == 19u32 || meta.kind_disc == 20u32 {
+            Some(SpecWorkflowError::ReduceBranchTargetAlias)
+        } else if meta.kind_disc == 10u32 {
+            Some(SpecWorkflowError::ForEachBranchTargetAlias)
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 /// Spec-level mirror of `production::validate_node_pure`. Returns
 /// `Some(SlotOutOfBounds)` when `has_output && out_slot >= slot_count`
 /// or `has_error_slot && error_slot >= slot_count`; `Some(StepOutOfBounds)`
 /// for the analogous step checks; `Some(EmptyBranchTable)` for
 /// Choose/ChooseSlot with no `otherwise` and the branch-table flag set;
-/// `None` otherwise.
+/// the branch-target alias error for an aliasing ReduceStart /
+/// ReduceNext / ForEachNext node; `None` otherwise.
 pub open spec fn validate_node_pure_spec(
     meta: SpecNodeMeta,
     slot_count: int,
@@ -319,7 +370,7 @@ pub open spec fn validate_node_pure_spec(
     ) {
         Some(SpecWorkflowError::EmptyBranchTable)
     } else {
-        Option::None
+        spec_branch_target_alias_error(meta)
     }
 }
 
@@ -367,7 +418,9 @@ pub exec fn checked_prod_validate_node_pure(
 ) -> (err: Option<SpecWorkflowError>)
     ensures
         err.is_none() || spec_workflow_error_is_bound_violation_spec(err.unwrap())
-            || err.unwrap() == SpecWorkflowError::EmptyBranchTable,
+            || err.unwrap() == SpecWorkflowError::EmptyBranchTable
+            || err.unwrap() == SpecWorkflowError::ReduceBranchTargetAlias
+            || err.unwrap() == SpecWorkflowError::ForEachBranchTargetAlias,
 {
     let first = validate_node_pure(
         meta,
@@ -399,7 +452,10 @@ pub exec fn checked_prod_validate_node_pure(
     assert(first == second);
     if let Some(e) = first {
         assert(
-            spec_workflow_error_is_bound_violation_spec(e) || e == SpecWorkflowError::EmptyBranchTable
+            spec_workflow_error_is_bound_violation_spec(e)
+                || e == SpecWorkflowError::EmptyBranchTable
+                || e == SpecWorkflowError::ReduceBranchTargetAlias
+                || e == SpecWorkflowError::ForEachBranchTargetAlias
         );
     }
     first
@@ -1181,11 +1237,45 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
     }
 }
 
+/// Spec-level mirror of `production::input_constraint_error`.
+/// Returns `Some(InconsistentInputConstraint)` for the first
+/// inconsistency in production order (min/max range, then
+/// min_length/max_length range, then negative length bounds),
+/// or `None` when the constraint is consistent.
+pub open spec fn spec_input_constraint_error(constraint: SpecInputConstraint) -> Option<SpecWorkflowError> {
+    if constraint.has_min == 1 && constraint.has_max == 1 && constraint.min > constraint.max {
+        Some(SpecWorkflowError::InconsistentInputConstraint)
+    } else if constraint.has_min_length == 1 && constraint.has_max_length == 1
+        && constraint.min_length > constraint.max_length
+    {
+        Some(SpecWorkflowError::InconsistentInputConstraint)
+    } else if (constraint.has_min_length == 1 && constraint.min_length < 0)
+        || (constraint.has_max_length == 1 && constraint.max_length < 0)
+    {
+        Some(SpecWorkflowError::InconsistentInputConstraint)
+    } else {
+        None
+    }
+}
+
+/// Spec-level lookup of the input-constraint decision for one slot:
+/// the constraint at `index` in the parallel `input_constraints`
+/// inventory, or `None` when the inventory has no entry for the
+/// slot (unconstrained).
+pub open spec fn spec_input_constraint_at(parts: &SpecWorkflowParts, index: int) -> Option<SpecWorkflowError> {
+    if index < parts.input_constraints.len() {
+        spec_input_constraint_error(parts.input_constraints[index])
+    } else {
+        None
+    }
+}
+
 /// Spec predicate: check input slots for the first violation,
 /// returning the specific error variant or None if all valid.
 /// Mirrors production validate_input_slots at workflow/mod.rs:1394-1425
 /// with exact first-error semantics: bounds check first, then
-/// duplicate, then strict ordering.
+/// duplicate, then strict ordering, then the per-slot
+/// validate_input_constraint (1427-1451).
 pub open spec fn check_input_slots(parts: &SpecWorkflowParts, index: int, prev: Option<int>) -> Option<SpecWorkflowError>
     decreases parts.input_slots.len() - index
 {
@@ -1206,7 +1296,12 @@ pub open spec fn check_input_slots(parts: &SpecWorkflowParts, index: int, prev: 
         }) {
             Some(SpecWorkflowError::NonCanonicalInputSlotOrder)
         } else {
-            check_input_slots(parts, index + 1, Some(current as int))
+            let constraint_err = spec_input_constraint_at(parts, index);
+            if constraint_err != None::<SpecWorkflowError> {
+                constraint_err
+            } else {
+                check_input_slots(parts, index + 1, Some(current as int))
+            }
         }
     }
 }
@@ -1677,6 +1772,120 @@ pub proof fn lemma_loop_region_error_handler_rejected(parts: &SpecWorkflowParts)
         },
         1,
     ) == Some(SpecWorkflowError::LoopRegionUnsupported));
+}
+
+/// Lemma 24: the reduce branch-target alias rejection. A
+/// ReduceStart node whose branch-target pair aliases
+/// (`body == done`) is rejected with `ReduceBranchTargetAlias`
+/// (production `validate_reduce_branch_targets`,
+/// workflow/mod.rs:1684-1697, runs after `validate_node_kind`).
+pub proof fn lemma_reduce_branch_target_alias_rejected(meta: SpecNodeMeta)
+    requires
+        meta.kind_disc == 19u32,
+        meta.has_branch_targets == 1,
+        meta.branch_body == meta.branch_done,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+    ensures
+        validate_node_pure_spec(meta, 0, 0, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::ReduceBranchTargetAlias),
+{
+    assert(validate_node_pure_spec(meta, 0, 0, 0, 0, 0, 0)
+        == spec_branch_target_alias_error(meta));
+    assert(spec_branch_target_alias_error(meta)
+        == Some(SpecWorkflowError::ReduceBranchTargetAlias));
+}
+
+/// Lemma 25: the for-each branch-target alias rejection. A
+/// ForEachNext node whose branch-target pair aliases
+/// (`body == done`) is rejected with `ForEachBranchTargetAlias`
+/// (production `validate_for_each_next_targets`,
+/// workflow/mod.rs:1699-1709, runs after `validate_node_kind`).
+pub proof fn lemma_foreach_branch_target_alias_rejected(meta: SpecNodeMeta)
+    requires
+        meta.kind_disc == 10u32,
+        meta.has_branch_targets == 1,
+        meta.branch_body == meta.branch_done,
+        meta.has_output == 0,
+        meta.has_next == 0,
+        meta.has_on_error == 0,
+        meta.has_error_slot == 0,
+        meta.has_branch_table_no_otherwise == 0,
+    ensures
+        validate_node_pure_spec(meta, 0, 0, 0, 0, 0, 0)
+            == Some(SpecWorkflowError::ForEachBranchTargetAlias),
+{
+    assert(validate_node_pure_spec(meta, 0, 0, 0, 0, 0, 0)
+        == spec_branch_target_alias_error(meta));
+    assert(spec_branch_target_alias_error(meta)
+        == Some(SpecWorkflowError::ForEachBranchTargetAlias));
+}
+
+/// Lemma 26: the input-constraint min-exceeds-max rejection. An
+/// input slot whose constraint carries `min > max` is rejected
+/// with `InconsistentInputConstraint` (production
+/// `validate_input_constraint`, workflow/mod.rs:1427-1451, checks
+/// the min/max range first).
+pub proof fn lemma_input_constraint_min_exceeds_max_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.input_slots.len() == 1,
+        parts.input_slots[0] < parts.slot_count,
+        parts.input_constraints.len() == 1,
+        parts.input_constraints[0].has_min == 1,
+        parts.input_constraints[0].has_max == 1,
+        parts.input_constraints[0].min > parts.input_constraints[0].max,
+    ensures
+        input_slots_valid(parts) == Some(SpecWorkflowError::InconsistentInputConstraint),
+{
+    assert(input_slots_valid(parts) == check_input_slots(parts, 0, None));
+    assert(check_input_slots(parts, 0, None) == spec_input_constraint_at(parts, 0));
+    assert(spec_input_constraint_at(parts, 0)
+        == Some(SpecWorkflowError::InconsistentInputConstraint));
+}
+
+/// Lemma 27: the input-constraint length-range rejection. An
+/// input slot whose constraint carries `min_length > max_length`
+/// is rejected with `InconsistentInputConstraint` (production
+/// `validate_input_constraint` checks the length range second).
+pub proof fn lemma_input_constraint_length_range_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.input_slots.len() == 1,
+        parts.input_slots[0] < parts.slot_count,
+        parts.input_constraints.len() == 1,
+        parts.input_constraints[0].has_min_length == 1,
+        parts.input_constraints[0].has_max_length == 1,
+        parts.input_constraints[0].min_length > parts.input_constraints[0].max_length,
+    ensures
+        input_slots_valid(parts) == Some(SpecWorkflowError::InconsistentInputConstraint),
+{
+    assert(input_slots_valid(parts) == check_input_slots(parts, 0, None));
+    assert(check_input_slots(parts, 0, None) == spec_input_constraint_at(parts, 0));
+    assert(spec_input_constraint_at(parts, 0)
+        == Some(SpecWorkflowError::InconsistentInputConstraint));
+}
+
+/// Lemma 28: the input-constraint negative-length rejection. An
+/// input slot whose constraint carries a negative length bound is
+/// rejected with `InconsistentInputConstraint` (production
+/// `validate_input_constraint` checks negative length bounds
+/// last, after both ranges).
+pub proof fn lemma_input_constraint_negative_length_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.input_slots.len() == 1,
+        parts.input_slots[0] < parts.slot_count,
+        parts.input_constraints.len() == 1,
+        parts.input_constraints[0].has_min_length == 1,
+        parts.input_constraints[0].min_length < 0,
+    ensures
+        input_slots_valid(parts) == Some(SpecWorkflowError::InconsistentInputConstraint),
+{
+    assert(input_slots_valid(parts) == check_input_slots(parts, 0, None));
+    assert(check_input_slots(parts, 0, None) == spec_input_constraint_at(parts, 0));
+    assert(spec_input_constraint_at(parts, 0)
+        == Some(SpecWorkflowError::InconsistentInputConstraint));
 }
 
 fn main() {}
