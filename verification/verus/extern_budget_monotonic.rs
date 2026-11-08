@@ -85,7 +85,7 @@ fn prod_methods_drift_check(
     entry: production_inner::StepIdx,
     contract: production_inner::ResourceContract,
 ) {
-    // Reference every field of WholeWorkflowBudget (budget.rs:11-59)
+    // Reference every field of WholeWorkflowBudget (budget.rs:14-90)
     // to surface any rename in production.
     let _budget = production_inner::WholeWorkflowBudget {
         max_total_steps: 0,
@@ -111,9 +111,16 @@ fn prod_methods_drift_check(
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
-    // Reference BudgetTraversalError variants (budget.rs:170-191).
+    // Reference BudgetTraversalError variants (budget.rs:256-280).
     let step = production_inner::StepIdx::new(0);
     let _err = production_inner::BudgetTraversalError::EntryOutOfBounds { entry };
     let _err = production_inner::BudgetTraversalError::StepOutOfBounds { step };

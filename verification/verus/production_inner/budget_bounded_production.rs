@@ -11,7 +11,7 @@
 // production source:
 //
 //   1. Production `use thiserror::Error;` and `#[derive(... serde::Serialize,
-//      serde::Deserialize ...)]` at budget.rs:8 / :571 are NOT re-included.
+//      serde::Deserialize ...)]` at budget.rs:8 / :881 are NOT re-included.
 //      The mirror uses a `#[derive(Clone, Copy, ...)]` subset that
 //      Verus 0.2026.05.05 can parse without proc-macro support. Field
 //      NAMES and TYPES match production byte-for-byte, so any drift
@@ -56,10 +56,10 @@
 // Production `crates/vb_core/src/budget.rs:455-502`
 //   - `BoundednessPolicy::validate`          <- crates/vb_core/src/budget.rs:534-592
 // Production `crates/vb_core/src/budget.rs:534-592`
-//   - `BudgetError`                          <- crates/vb_core/src/budget.rs:533-568
+//   - `BudgetError`                          <- crates/vb_core/src/budget.rs:703-750
 //   - `AggregateResourceBudget`              <- crates/vb_core/src/budget.rs:882-920
 // Production `crates/vb_core/src/budget.rs:882-920`
-//   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget.rs:733-744
+//   - `AggregateResourceBudget::from_workflow`  <- crates/vb_core/src/budget.rs:1156-1167
 //   - `AggregateResourceBudget::from_whole_workflow_budget`
 //                                            <- crates/vb_core/src/budget.rs:1169-1203
 // Production `crates/vb_core/src/budget.rs:1169-1203`
@@ -79,13 +79,13 @@
 // Production `crates/vb_core/src/budget.rs:1583-1674`
 //   - `validate_aggregate_budget`            <- crates/vb_core/src/budget.rs:1714-1848
 // Production `crates/vb_core/src/budget.rs:1714-1848`
-//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:1213-1248
+//   - `validate_step_ceilings`               <- crates/vb_core/src/budget.rs:2111-2146
 //   - `add_dim`, `sub_dim`                   <- crates/vb_core/src/budget.rs:2148-2166
 // Production `crates/vb_core/src/budget.rs:2148-2166`
 //                                            (pure checked_add / checked_sub;
 //                                             these are the pure decision fns
 //                                             we exercise via `assume_specification`)
-//   - `count_total_steps`                    <- crates/vb_core/src/budget.rs:1332-1360
+//   - `count_total_steps`                    <- crates/vb_core/src/budget.rs:2232-2238
 //                                            (pure DFS step counter; spec mirror is
 //                                             `spec_count_total_steps_result` below)
 //
@@ -245,12 +245,12 @@ pub struct ResourceContract {
 // WholeWorkflowBudget — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:11-59`. Every field name, type,
+// Mirror of `crates/vb_core/src/budget.rs:14-90`. Every field name, type,
 // and visibility matches production exactly. Drift in any field breaks
 // the mirror.
 
 /// Mirror of production `WholeWorkflowBudget` at
-/// `crates/vb_core/src/budget.rs:11-59`. Field-by-field copy of the
+/// `crates/vb_core/src/budget.rs:14-90`. Field-by-field copy of the
 /// production struct. The exec fn `WholeWorkflowBudget::compute` below
 /// is `#[verifier::external]` and accepts the production signature.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -278,11 +278,18 @@ pub struct WholeWorkflowBudget {
     pub max_ipc_payload_bytes: u32,
     pub max_blob_bytes: u64,
     pub max_input_bytes: u32,
+    pub max_open_gates: u32,
+    pub max_signal_subscriptions: u32,
+    pub max_incident_emissions: u64,
+    pub max_transitions: u64,
+    pub max_journal_bytes_total: u64,
+    pub max_value_store_entries: u64,
+    pub max_cost_units: u64,
 }
 
 impl WholeWorkflowBudget {
     /// Production wrapper for `WholeWorkflowBudget::compute` at
-    /// `crates/vb_core/src/budget.rs:64-70`. Body skipped by Verus;
+    /// `crates/vb_core/src/budget.rs:97-103`. Body skipped by Verus;
     /// contract attached via `assume_specification` in the spec file.
     #[verifier::external]
     pub fn compute(
@@ -300,10 +307,10 @@ impl WholeWorkflowBudget {
 // BoundednessPolicy — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:341-375`.
+// Mirror of `crates/vb_core/src/budget.rs:455-502`.
 
 /// Mirror of production `BoundednessPolicy` at
-/// `crates/vb_core/src/budget.rs:341-375`.
+/// `crates/vb_core/src/budget.rs:455-502`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct BoundednessPolicy {
     pub max_total_steps: u64,
@@ -322,11 +329,18 @@ pub struct BoundednessPolicy {
     pub absolute_max_ipc_payload_bytes: u32,
     pub absolute_max_blob_bytes: u64,
     pub absolute_max_input_bytes: u32,
+    pub absolute_max_open_gates: u32,
+    pub absolute_max_signal_subscriptions: u32,
+    pub absolute_max_incident_emissions: u64,
+    pub absolute_max_transitions: u64,
+    pub absolute_max_journal_bytes_total: u64,
+    pub absolute_max_value_store_entries: u64,
+    pub absolute_max_cost_units: u64,
 }
 
 impl BoundednessPolicy {
     /// Production constant `BoundednessPolicy::DEFAULT` at
-    /// `crates/vb_core/src/budget.rs:378-396`. Verus treats this as
+    /// `crates/vb_core/src/budget.rs:506-530`. Verus treats this as
     /// an external constant; the spec mirrors it via
     /// `spec_boundedness_policy_default` in the companion spec file.
     #[allow(non_upper_case_globals)]
@@ -347,10 +361,17 @@ impl BoundednessPolicy {
         absolute_max_ipc_payload_bytes: 1_048_576,
         absolute_max_blob_bytes: 16_777_216,
         absolute_max_input_bytes: 1_048_576,
+        absolute_max_open_gates: 1_000_000,
+        absolute_max_signal_subscriptions: 1_000_000,
+        absolute_max_incident_emissions: 1_000_000,
+        absolute_max_transitions: 10_000_000,
+        absolute_max_journal_bytes_total: 1_048_576_000_000,
+        absolute_max_value_store_entries: 2_000_000,
+        absolute_max_cost_units: 100_000,
     };
 
     /// Production wrapper for `BoundednessPolicy::validate` at
-    /// `crates/vb_core/src/budget.rs:400-457`.
+    /// `crates/vb_core/src/budget.rs:534-592`.
     #[verifier::external]
     pub fn validate(&self, _budget: &WholeWorkflowBudget) -> Result<(), BudgetError> {
         loop {}
@@ -361,15 +382,12 @@ impl BoundednessPolicy {
 // BudgetError — production mirror (discriminant set)
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:533-568`. The full production
-// enum has 17 variants; we mirror the variants the spec proofs discharge
-// (production calls `.into()` from `BudgetTraversalError` and the
-// `from_workflow` constructors in budget.rs).
+// Mirror of `crates/vb_core/src/budget.rs:703-750`. The full production
+// enum has 23 variants, all mirrored here.
 
 /// Mirror of production `BudgetError` discriminant set at
-/// `crates/vb_core/src/budget.rs:533-568`. Restricted to the variants
-/// that appear in the boundedness contract; the production source has
-/// `#[non_exhaustive]` and additional variants for extended budget fields.
+/// `crates/vb_core/src/budget.rs:703-750`. All 23 production variants
+/// are mirrored.
 #[derive(Clone, Copy)]
 pub enum BudgetError {
     TotalStepsExceeded { actual: u64, limit: u64 },
@@ -388,18 +406,25 @@ pub enum BudgetError {
     IpcPayloadBytesExceeded { actual: u32, limit: u32 },
     BlobBytesExceeded { actual: u64, limit: u64 },
     InputBytesExceeded { actual: u32, limit: u32 },
+    OpenGatesExceeded { actual: u32, limit: u32 },
+    SignalSubscriptionsExceeded { actual: u32, limit: u32 },
+    IncidentEmissionsExceeded { actual: u64, limit: u64 },
+    TransitionsExceeded { actual: u64, limit: u64 },
+    JournalBytesTotalExceeded { actual: u64, limit: u64 },
+    ValueStoreEntriesExceeded { actual: u64, limit: u64 },
+    CostUnitsExceeded { actual: u64, limit: u64 },
 }
 
 // ============================================================================
 // Aggregate resource types — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:570-725`. These types are the
+// Mirror of `crates/vb_core/src/budget.rs:882-1148`. These types are the
 // runtime-admission surface that the boundedness policy validates
 // against.
 
 /// Mirror of production `AggregateResourceBudget` at
-/// `crates/vb_core/src/budget.rs:571-596`.
+/// `crates/vb_core/src/budget.rs:882-920`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceBudget {
     pub max_steps_executable: u32,
@@ -426,7 +451,7 @@ pub struct AggregateResourceBudget {
 }
 
 /// Mirror of production `AggregateResourceCapacity` at
-/// `crates/vb_core/src/budget.rs:598-620`.
+/// `crates/vb_core/src/budget.rs:924-965`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AggregateResourceCapacity {
     pub max_steps_executable: u64,
@@ -449,7 +474,7 @@ pub struct AggregateResourceCapacity {
 }
 
 /// Mirror of production `AggregateResourceUsage` at
-/// `crates/vb_core/src/budget.rs:622-644`.
+/// `crates/vb_core/src/budget.rs:969-1003`.
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct AggregateResourceUsage {
     pub max_steps_executable: u64,
@@ -475,12 +500,11 @@ pub struct AggregateResourceUsage {
 // AggregateBudgetError — production mirror (restricted variants)
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:655-725`. Restricted to the
-// variants the boundedness spec proofs discharge.
+// Mirror of `crates/vb_core/src/budget.rs:1079-1148`.
 
 /// Mirror of production `AggregateBudgetError` at
-/// `crates/vb_core/src/budget.rs:655-725`. Restricted to variants used
-/// by the boundedness / capacity spec.
+/// `crates/vb_core/src/budget.rs:1079-1148`. All 9 production variants
+/// are mirrored.
 #[derive(Clone, Copy)]
 pub enum AggregateBudgetError {
     PolicyExceeded {
@@ -527,7 +551,7 @@ pub enum AggregateBudgetError {
 // spec file (`budget_bounded.rs`).
 
 /// Production wrapper for `WholeWorkflowBudget::compute` at
-/// `crates/vb_core/src/budget.rs:64-70`. Body skipped by Verus.
+/// `crates/vb_core/src/budget.rs:97-103`. Body skipped by Verus.
 #[verifier::external]
 pub fn whole_workflow_budget_compute(
     nodes: &[super::workflow::CompiledNode],
@@ -538,7 +562,7 @@ pub fn whole_workflow_budget_compute(
 }
 
 /// Production wrapper for `BoundednessPolicy::validate` at
-/// `crates/vb_core/src/budget.rs:400-457`. Body skipped by Verus.
+/// `crates/vb_core/src/budget.rs:534-592`. Body skipped by Verus.
 #[verifier::external]
 pub fn boundedness_policy_validate(
     policy: &BoundednessPolicy,
@@ -548,7 +572,7 @@ pub fn boundedness_policy_validate(
 }
 
 /// Production wrapper for `validate_aggregate_budget` at
-/// `crates/vb_core/src/budget.rs:1110-1209`. Body skipped by Verus.
+/// `crates/vb_core/src/budget.rs:1714-1848`. Body skipped by Verus.
 #[verifier::external]
 pub fn validate_aggregate_budget(
     budget: &AggregateResourceBudget,
@@ -561,7 +585,7 @@ pub fn validate_aggregate_budget(
 }
 
 /// Production wrapper for `validate_step_ceilings` at
-/// `crates/vb_core/src/budget.rs:1213-1248`. Body skipped by Verus.
+/// `crates/vb_core/src/budget.rs:2111-2146`. Body skipped by Verus.
 #[verifier::external]
 pub fn validate_step_ceilings(
     budget: &AggregateResourceBudget,
@@ -571,7 +595,7 @@ pub fn validate_step_ceilings(
 }
 
 /// Production wrapper for `add_dim` at
-/// `crates/vb_core/src/budget.rs:1250-1258`. Pure checked_add — this
+/// `crates/vb_core/src/budget.rs:2148-2156`. Pure checked_add — this
 /// is a pure decision fn and the spec attaches an `assume_specification`
 /// contract in `budget_bounded.rs`.
 #[verifier::external]
@@ -586,7 +610,7 @@ pub fn add_dim(
 }
 
 /// Production wrapper for `sub_dim` at
-/// `crates/vb_core/src/budget.rs:1260-1268`. Pure checked_sub — pure
+/// `crates/vb_core/src/budget.rs:2158-2166`. Pure checked_sub — pure
 /// decision fn with `assume_specification` contract in the spec.
 #[verifier::external]
 pub fn sub_dim(
@@ -600,7 +624,7 @@ pub fn sub_dim(
 }
 
 /// Production wrapper for `AggregateResourceUsage::try_add_budget` at
-/// `crates/vb_core/src/budget.rs:787-870`.
+/// `crates/vb_core/src/budget.rs:1217-1331`.
 #[verifier::external]
 pub fn aggregate_resource_usage_try_add_budget(
     usage: &AggregateResourceUsage,
@@ -611,7 +635,7 @@ pub fn aggregate_resource_usage_try_add_budget(
 }
 
 /// Production wrapper for `AggregateResourceUsage::try_subtract_budget`
-/// at `crates/vb_core/src/budget.rs:872-955`.
+/// at `crates/vb_core/src/budget.rs:1333-1447`.
 #[verifier::external]
 pub fn aggregate_resource_usage_try_subtract_budget(
     usage: &AggregateResourceUsage,
@@ -622,7 +646,7 @@ pub fn aggregate_resource_usage_try_subtract_budget(
 }
 
 /// Production wrapper for `AggregateResourceUsage::fits_within` at
-/// `crates/vb_core/src/budget.rs:957-1046`.
+/// `crates/vb_core/src/budget.rs:1449-1578`.
 #[verifier::external]
 pub fn aggregate_resource_usage_fits_within(
     usage: &AggregateResourceUsage,
@@ -633,7 +657,7 @@ pub fn aggregate_resource_usage_fits_within(
 }
 
 /// Production wrapper for `AggregateResourceUsage::check_policy` at
-/// `crates/vb_core/src/budget.rs:1051-1107`.
+/// `crates/vb_core/src/budget.rs:1583-1674`.
 #[verifier::external]
 pub fn aggregate_resource_usage_check_policy(
     usage: &AggregateResourceUsage,
