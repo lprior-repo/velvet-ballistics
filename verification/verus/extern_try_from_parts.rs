@@ -540,14 +540,35 @@ pub struct SpecNode {
     /// Variant payload (slot / step / const numeric references).
     pub kind: SpecNodeKind,
 }
-/// Mirrors the production `ExprProgram` at
-/// `crates/vb_core/src/workflow/mod.rs:884-889`. The projection only
-/// consumes `max_stack`; the op-bytes are not part of the
-/// `try_from_parts` decision fn (they are validated transitively by
-/// `ExprProgram::try_from_parts` itself, see workflow/mod.rs:899-908).
+/// Mirror of the production `ExprOp` stack-effect classes
+/// (`crates/vb_core/src/workflow/mod.rs:914-974`, classified by
+/// `expr_stack_effect` at 2728-2743): `Push` covers `LoadSlot` /
+/// `LoadConst` (effect 0,1); `LoadAccessor` covers `LoadAccessor`
+/// (effect 0,1) and carries the accessor index for the
+/// `validate_accessor` bound check (workflow/mod.rs:2076-2086);
+/// `Unary` covers `Not`, `Exists`, `Length`, `Empty`, `Sum`,
+/// `Count`, `Unique` (effect 1,1); `AppendIf` covers `AppendIf`
+/// (effect 3,1); `Binary` covers every remaining op (`Eq`,
+/// `NotEq`, `Gt`, `Gte`, `Lt`, `Lte`, `And`, `Or`, `Add`, `Sub`,
+/// `Mul`, `Div`, `Contains`, `StartsWith`, `EndsWith`, `Has`,
+/// `Merge`, `Append`) (effect 2,1).
 #[derive(Clone, Copy)]
+pub enum SpecExprOp {
+    Push,
+    LoadAccessor(u32),
+    Unary,
+    AppendIf,
+    Binary,
+}
+/// Mirrors the production `ExprProgram` at
+/// `crates/vb_core/src/workflow/mod.rs:884-889`. The projection
+/// consumes `max_stack` and the `ops` inventory: `expr_error`
+/// models the full per-op `validate_expressions` decision
+/// (`ExprProgram::try_from_parts`, workflow/mod.rs:899-908).
+#[derive(Clone)]
 pub struct SpecExprProgram {
     pub max_stack: u32,
+    pub ops: Vec<SpecExprOp>,
 }
 /// Mirrors the production `AccessorProgram` at
 /// `crates/vb_core/src/workflow/mod.rs:646-661`. The projection
@@ -1211,6 +1232,85 @@ pub fn node_id_error(meta: SpecNodeMeta, index: usize) -> Option<SpecWorkflowErr
     } else {
         Some(SpecWorkflowError::NodeIdMismatch)
     }
+}
+
+/// Stack effect of one `SpecExprOp`, mirroring production
+/// `expr_stack_effect` (workflow/mod.rs:2728-2743): `(pop, push)`.
+fn expr_stack_effect(op: SpecExprOp) -> (u32, u32) {
+    match op {
+        SpecExprOp::Push => (0, 1),
+        SpecExprOp::LoadAccessor(_) => (0, 1),
+        SpecExprOp::Unary => (1, 1),
+        SpecExprOp::AppendIf => (3, 1),
+        SpecExprOp::Binary => (2, 1),
+    }
+}
+
+/// Pure projection of `validate_expressions`
+/// (workflow/mod.rs:2046-2055) for one expression program:
+/// `ExprProgram::try_from_parts` (workflow/mod.rs:899-908) runs
+/// `check_expr_stack_bound` (workflow/mod.rs:976-987), which runs
+/// `validate_expr_op_count` (workflow/mod.rs:2682-2690), then
+/// simulates the stack in op order with
+/// `apply_expr_stack_effect` (workflow/mod.rs:2692-2702) and the
+/// per-op `validate_expr_stack_capacity` check
+/// (workflow/mod.rs:2704-2710) against the claimed `max_stack`,
+/// then `validate_expr_final_depth` (workflow/mod.rs:2712-2720),
+/// then the computed-required == claimed-max_stack comparison,
+/// and finally `validate_expression_accessors`
+/// (workflow/mod.rs:2057-2067) with `validate_accessor`
+/// (workflow/mod.rs:2076-2086). Every failure is a `CoreError`
+/// collapsed by `WorkflowError::Expression(#[from] CoreError)`
+/// (workflow/mod.rs:714) to `SpecWorkflowError::ExpressionInvalid`,
+/// so the projection returns `Some(ExpressionInvalid)` for the
+/// first failure in that order, or `None` when the program
+/// validates. `LoadSlot` / `LoadConst` indices are not
+/// bounds-checked by `validate_expressions` (only their stack
+/// effect matters). Depth and required are `u32`: the per-op
+/// capacity check keeps depth at or below the claimed `max_stack`,
+/// and step 1a already enforces
+/// `max_stack <= contract.max_expr_stack <= 64` (limits.rs:43),
+/// so the `u8` checked-add overflow arm of
+/// `apply_expr_stack_effect` is unreachable on inputs that reach
+/// step 1c and no overflow is modelled here.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn expr_error(program: &SpecExprProgram, accessors_len: u32) -> Option<SpecWorkflowError> {
+    if program.ops.len() > 256 {
+        return Some(SpecWorkflowError::ExpressionInvalid);
+    }
+    let mut depth: u32 = 0;
+    let mut required: u32 = 0;
+    for op in &program.ops {
+        let (pop, push) = expr_stack_effect(*op);
+        if depth < pop {
+            return Some(SpecWorkflowError::ExpressionInvalid);
+        }
+        depth = depth - pop + push;
+        if depth > required {
+            required = depth;
+        }
+        if required > program.max_stack || required > 64 {
+            return Some(SpecWorkflowError::ExpressionInvalid);
+        }
+    }
+    if depth == 0 || depth > 1 {
+        return Some(SpecWorkflowError::ExpressionInvalid);
+    }
+    if required != program.max_stack {
+        return Some(SpecWorkflowError::ExpressionInvalid);
+    }
+    for op in &program.ops {
+        if let SpecExprOp::LoadAccessor(index) = op {
+            if *index >= accessors_len {
+                return Some(SpecWorkflowError::ExpressionInvalid);
+            }
+        }
+    }
+    None
 }
 
 /// Pure projection of `validate_node_common`, `validate_node_kind`,
@@ -2294,18 +2394,17 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
         return SpecValidationResult::Err(SpecWorkflowError::EntryOutOfBounds);
     }
     // 1c. validate_expressions (workflow/mod.rs:2046-2055).
-    // The projection uses accessor_count to bound LoadAccessor
-    // references; production walks every op. Per-op detail is
-    // out of scope at the spec granularity (the spec records
-    // ExpressionInvalid as the *first* failure type, not
-    // per-variant).
-    for _expression in &parts.expressions {
-        // ExprProgram::try_from_parts runs transitively; the
-        // projection trusts the spec caller to have produced a
-        // valid stack claim (otherwise the production body would
-        // already have failed at this step). The spec's
-        // ExpressionInvalid arm is exercised by tests that supply
-        // an oversize stack.
+    // Per expression, in order: `ExprProgram::try_from_parts`
+    // (workflow/mod.rs:899-908) then
+    // `validate_expression_accessors` (workflow/mod.rs:2057-2067);
+    // `expr_error` models the full per-op detail (op count at
+    // workflow/mod.rs:2682-2690, stack simulation at 976-987 with
+    // effects at 2728-2743, final depth at 2712-2720, max_stack
+    // mismatch at 899-908, accessor bounds at 2076-2086).
+    for expression in &parts.expressions {
+        if let Some(err) = expr_error(expression, parts.accessors_len) {
+            return SpecValidationResult::Err(err);
+        }
     }
     // 1d. validate_accessors (workflow/mod.rs:2069-2074) — root
     // slot bounds.
