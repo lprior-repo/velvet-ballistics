@@ -267,11 +267,9 @@ pub fn spec_mark_step_after_signal(signal: &EngineSignal) -> SpecStepStateMirror
     }
 }
 
-/// Mirror of `SpecStepState` at
-/// `crates/vb_core/src/engine/frame.rs:StepState` (8 variants). The
-/// state machine transition contract lives in
-/// `crates/vb_core/src/proof_kernels/step_state.rs` and
-/// `specs/tla/StepState.tla`.
+/// Mirror of `StepState` at
+/// `crates/vb_core/src/proof_kernels/step_state.rs:8-17` (8 variants, same order); its
+/// transition contract lives in the same file and in `specs/tla/StepState.tla`.
 #[derive(Clone, Copy)]
 pub enum SpecStepStateMirror {
     Pending,

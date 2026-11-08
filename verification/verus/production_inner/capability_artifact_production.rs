@@ -10,9 +10,9 @@
 // Production sources mirrored:
 //   - `vb_core::capability::Capability`     (crates/vb_core/src/capability.rs:10-27)
 //   - `vb_core::policy::RuntimePolicy`       (crates/vb_core/src/policy.rs)
-//   - `vb_runtime::admission::AdmissionError` (crates/vb_runtime/src/admission.rs:200-331)
+//   - `vb_runtime::admission::AdmissionError` (crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:67-205)
 //   - `vb_runtime::admission::admit_artifact_run_with_certificate_floor`
-//                                              (crates/vb_runtime/src/admission.rs:692-785)
+//                                              (crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189)
 //
 // Stub substitutions:
 //   - `Capability` projected to `SpecCapability { name_hash: u64, action: u16 }`
@@ -20,13 +20,14 @@
 //   - `AdmissionError` projected to `SpecAdmitError`
 //   - `admit_artifact_run_with_certificate_floor` projected to a pure decision fn.
 //
-// DRIFT POLICY: `crates/vb_runtime/src/admission.rs:200-785`
+// DRIFT POLICY: `crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:67-205`
+//                + `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189`
 // Production source coverage:
 //   - `Capability`            <- crates/vb_core/src/capability.rs:10-27
 //   - `RuntimePolicy`         <- crates/vb_core/src/policy.rs
-//   - `AdmissionError`        <- crates/vb_runtime/src/admission.rs:200-331
+//   - `AdmissionError`        <- crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:67-205
 //   - `admit_artifact_run_with_certificate_floor`
-//                                  <- crates/vb_runtime/src/admission.rs:692-785
+//                                  <- crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189
 // Regenerate this file whenever production changes. Any rename of
 // `Capability`, `RuntimePolicy`, or `AdmissionError` variants breaks
 // the `extern_capability_artifact_model` Verus build.

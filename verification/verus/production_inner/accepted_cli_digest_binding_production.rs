@@ -7,26 +7,27 @@
 // This file is a VERBATIM mirror of the production runtime admission
 // digest-binding types and decision fns.
 //
-// DRIFT POLICY: `crates/vb_runtime/src/admission.rs:82-725`
+// DRIFT POLICY: `crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31`
+//                + `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189`
 // Production source coverage:
-//   - `WorkflowDigest`           <- crates/vb_core/src/ids/mod.rs:340-357
+//   - `WorkflowDigest`           <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255
 //   - `AcceptedArtifact`         <- crates/vb_storage/src/admission.rs:203-228
-//   - `RunAdmission`             <- crates/vb_runtime/src/admission.rs:82-95
-//   - `RunAdmission::new`        <- crates/vb_runtime/src/admission.rs:110-124
+//   - `RunAdmission`             <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31
+//   - `RunAdmission::new`        <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66
 //   - `RunAdmission::artifact_digest`
-//                                   <- crates/vb_runtime/src/admission.rs:162-166
+//                                   <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:147-151
 //   - production_artifact_digest_eq_header
-//                                   <- crates/vb_runtime/src/admission.rs:711-716
+//                                   <- crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113
 //                                     (INV-002 strict-policy check:
 //                                      artifact.digest == header
 //                                      || artifact.source_digest == header)
 //   - production_proof_digest_eq_artifact
-//                                   <- crates/vb_runtime/src/admission.rs:720-725
+//                                   <- crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122
 //                                     (INV-003 strict-policy check:
 //                                      artifact.verification.digest == artifact.digest)
 //   - production_digest_binding_total
-//                                   <- crates/vb_runtime/src/admission.rs:711-725,
-//                                      768-775
+//                                   <- crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-122,
+//                                      166-174
 //                                     (5-digest chain post-condition:
 //                                      source == artifact == header
 //                                      == event == admission)
@@ -68,7 +69,7 @@ pub struct SpecRunAdmission {
 }
 
 /// Mirror of the strict-policy INV-002 check at
-/// `crates/vb_runtime/src/admission.rs:711-716`:
+/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113`:
 ///
 /// ```ignore
 /// if artifact.digest != artifact_digest && artifact.source_digest != artifact_digest {
@@ -93,7 +94,7 @@ pub fn production_artifact_digest_eq_header(
 }
 
 /// Mirror of the strict-policy INV-003 check at
-/// `crates/vb_runtime/src/admission.rs:720-725`:
+/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:117-122`:
 ///
 /// ```ignore
 /// if artifact.verification.digest != artifact.digest {
@@ -120,9 +121,9 @@ pub fn production_run_admission_artifact_digest(admission: &SpecRunAdmission) ->
 
 /// Mirror of the 5-digest chain post-condition enforced by the
 /// production strict-admission happy path
-/// (`crates/vb_runtime/src/admission.rs:711-725` for INV-002 and INV-003,
+/// (`crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-122` for INV-002 and INV-003,
 /// and the `RunAdmission::with_idempotency_evidence` construction at
-/// `admission.rs:768-775` which sets `admission.artifact_digest` to
+/// `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:166-174` which sets `admission.artifact_digest` to
 /// `artifact.digest`).
 ///
 /// Returns `true` iff every digest in the 5-element chain

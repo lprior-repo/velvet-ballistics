@@ -6,9 +6,9 @@
 //
 // Bead: vb-q6xm8 (GOD-RULE-2 vacuum retirement).
 //
-// This file replaces the orphaned vacuum spec at
+// This file replaces the orphaned vacuum spec formerly at
 // `crates/vb_storage/verification/verus/recovery_types_spec.rs` (369
-// lines, NO production binding) with a WEAK production-bound bridge
+// lines, NO production binding; file since deleted) with a WEAK production-bound bridge
 // at the root `verification/verus/` path so the existing
 // `scripts/check-verus-production-binding.sh` script picks it up.
 //
@@ -109,8 +109,8 @@
 // DIFFERENCES FROM THE ORIGINAL VACUUM SPEC
 // ============================================================================
 //
-// The vacuum spec at `crates/vb_storage/verification/verus/recovery_types_spec.rs`
-// declared hand-written `Spec*` types and proved `valid_*` tautologies
+// The vacuum spec formerly at `crates/vb_storage/verification/verus/recovery_types_spec.rs`
+// (file since deleted) declared hand-written `Spec*` types and proved `valid_*` tautologies
 // on them without any production binding (GOD-RULE-2 violation). This
 // file:
 //   - REMOVES all hand-written `Spec*` types; they are replaced by the

@@ -20,7 +20,7 @@
 // ============================================================================
 //   - `WorkflowDigest`                          <- extern_admission_artifact_model.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/ids/mod.rs:340-357;
+//                                               crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255;
 //                                               projected from [u8;32] to
 //                                               pub u64 for spec-mode
 //                                               equality reasoning)
@@ -53,11 +53,11 @@
 //   - `digest_eq`                              <- extern_admission_artifact_model.rs
 //                                               (mirror of PartialEq derive
 //                                               on WorkflowDigest at
-//                                               crates/vb_core/src/ids/mod.rs:341)
+//                                               crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239)
 //   - `artifact_digest_bound`                  <- extern_admission_artifact_model.rs
 //                                               (mirror of
 //                                               bind_artifact_digest at
-//                                               crates/vb_storage/src/admission.rs:182-187)
+//                                               crates/vb_storage/src/admission.rs:179-184)
 //
 // ============================================================================
 // UPGRADE FROM PREVIOUS (VACUUM) FORM
@@ -184,7 +184,7 @@ pub fn proof_matches_prepared_shape_exec(
 
 // Production decision fn: `digest_eq` mirrors the `PartialEq` impl
 // derived on `vb_core::ids::WorkflowDigest` at
-// `crates/vb_core/src/ids/mod.rs:341`.
+// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239`.
 pub fn digest_eq_exec(
     a: &production::WorkflowDigest,
     b: &production::WorkflowDigest,
@@ -239,7 +239,7 @@ pub assume_specification[ production::proof_matches_prepared_shape ](
 // inner u64 word (production: same 32-byte payload).
 // --------------------------------------------------------------------------
 // Mirrors production `PartialEq` derive on `WorkflowDigest` at
-// `crates/vb_core/src/ids/mod.rs:341`.
+// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239`.
 pub assume_specification[ production::digest_eq ](
     a: &production::WorkflowDigest,
     b: &production::WorkflowDigest,

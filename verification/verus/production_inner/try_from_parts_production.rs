@@ -166,18 +166,36 @@ impl WorkflowDigest {
 }
 
 // ---------------------------------------------------------------------------
+// Local stub: `vb_core::value::FiniteF64`
+// ---------------------------------------------------------------------------
+//
+// Production `FiniteF64` at `crates/vb_core/src/value.rs:68-100` is a
+// `#[repr(transparent)]` newtype over `f64` that rejects NaN and
+// infinities at construction. The mirror carries the same payload type
+// and the manual `Eq` impl; the construction-time finiteness invariant
+// lives in production `FiniteF64::new` and is not modelled here.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct FiniteF64(pub f64);
+
+impl Eq for FiniteF64 {}
+
+// ---------------------------------------------------------------------------
 // Local stub: `vb_core::value::ConstValue`
 // ---------------------------------------------------------------------------
 //
-// Production `crates/vb_core/src/value/mod.rs` declares `ConstValue`
-// with several scalar variants. The mirror retains only the `I64`
-// variant used by sibling lowering fns.
+// Production `crates/vb_core/src/value.rs:165-176` declares `ConstValue`
+// with five scalar variants. The mirror carries all five in production
+// order, plus a mirror-only `String` variant retained from the earlier
+// subset (production has no `String` variant).
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstValue {
-    I64(i64),
     Null,
     Bool(bool),
+    I64(i64),
+    F64(FiniteF64),
+    Symbol(SymbolId),
     String(Box<str>),
 }
 
