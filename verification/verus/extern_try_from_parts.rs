@@ -57,6 +57,30 @@
 //     <- crates/vb_core/src/workflow/mod.rs:1367-1392
 //   - `validate_budget` budget policy validation
 //     <- crates/vb_core/src/workflow/mod.rs:1453-1459
+//   - `validate_budget_result` budget error collapse
+//     <- crates/vb_core/src/workflow/mod.rs:1461-1470
+//   - `WholeWorkflowBudget` field set
+//     <- crates/vb_core/src/budget.rs:14-90
+//   - `WholeWorkflowBudget::compute`
+//     <- crates/vb_core/src/budget.rs:97-103
+//   - `BoundednessPolicy` field set
+//     <- crates/vb_core/src/budget.rs:455-502
+//   - `BoundednessPolicy::DEFAULT`
+//     <- crates/vb_core/src/budget.rs:506-530
+//   - `BoundednessPolicy::validate`
+//     <- crates/vb_core/src/budget.rs:534-592
+//   - `validate_budget_dimensions`
+//     <- crates/vb_core/src/budget.rs:595-642
+//   - `validate_extended_budget`
+//     <- crates/vb_core/src/budget.rs:644-661
+//   - `validate_payload_budget`
+//     <- crates/vb_core/src/budget.rs:663-698
+//   - `BudgetError`
+//     <- crates/vb_core/src/budget.rs:703-750
+//   - `BudgetError::dimension`
+//     <- crates/vb_core/src/budget.rs:758-784
+//   - `BudgetDimension`
+//     <- crates/vb_core/src/budget.rs:793-840
 //   - `validate_resource_contract`
 //     <- crates/vb_core/src/workflow/mod.rs:1587-1593
 //   - `validate_entry`
@@ -579,6 +603,55 @@ pub enum SpecKindRef {
     Count(u32, u32),
     NonZero(u32),
 }
+/// Mirrors the production `WholeWorkflowBudget` field set at
+/// `crates/vb_core/src/budget.rs:14-90`: the computed budget
+/// `WholeWorkflowBudget::compute` derives by walking the IR
+/// (budget.rs:97-103). Production `u64` fields stay `u64`;
+/// production `u16` fields are promoted to `u32` per this
+/// file's numeric-mirror convention. The seven fields
+/// `BoundednessPolicy::DEFAULT.validate` never reads
+/// (`max_retries_per_action`, `max_gather_pages`,
+/// `max_gather_items`, `max_for_each_iterations`,
+/// `max_together_branches`, `max_repeat_attempts`,
+/// `max_total_slots_written`) are carried so the inventory is
+/// a faithful mirror of the computed budget; the decision fn
+/// below checks exactly the 23 validated dimensions, in
+/// production `validate` order. The compute walk itself stays
+/// caller-supplied: `budget_bounded.rs` is the exhaustive
+/// coverage of `compute`'s boundedness.
+#[derive(Clone, Copy)]
+pub struct SpecComputedBudget {
+    pub max_total_steps: u64,
+    pub max_total_slots: u64,
+    pub max_fanout: u32,
+    pub max_nesting_depth: u32,
+    pub max_steps_executable: u32,
+    pub max_action_tickets: u32,
+    pub max_parallel_in_flight: u32,
+    pub max_retries_per_action: u32,
+    pub max_gather_pages: u32,
+    pub max_gather_items: u32,
+    pub max_for_each_iterations: u32,
+    pub max_together_branches: u32,
+    pub max_repeat_attempts: u32,
+    pub max_run_time_seconds: u64,
+    pub max_result_bytes: u32,
+    pub max_total_slots_written: u32,
+    pub max_timer_entries: u32,
+    pub max_trace_events: u64,
+    pub max_journal_batch_bytes: u32,
+    pub max_queue_depth: u32,
+    pub max_ipc_payload_bytes: u32,
+    pub max_blob_bytes: u64,
+    pub max_input_bytes: u32,
+    pub max_open_gates: u32,
+    pub max_signal_subscriptions: u32,
+    pub max_incident_emissions: u64,
+    pub max_transitions: u64,
+    pub max_journal_bytes_total: u64,
+    pub max_value_store_entries: u64,
+    pub max_cost_units: u64,
+}
 /// Mirrors the production `WorkflowParts` field set at
 /// `crates/vb_core/src/workflow/mod.rs:609-642`. Only the fields
 /// consumed by `validate_parts` / `validate_budget` are mirrored;
@@ -706,6 +779,14 @@ pub struct SpecWorkflowParts {
     /// projection treats a missing entry (a `kind_refs` shorter than
     /// `nodes_meta`) as an empty inventory for the tail nodes.
     pub kind_refs: Vec<Vec<SpecKindRef>>,
+    /// Caller-supplied computed budget consumed by step 4
+    /// (`validate_budget`, workflow/mod.rs:1453-1459). Production
+    /// derives it with `WholeWorkflowBudget::compute`
+    /// (budget.rs:97-103) and validates it against
+    /// `BoundednessPolicy::DEFAULT` (budget.rs:506-530); the
+    /// projection checks the supplied value with `budget_error`
+    /// instead, so the compute walk stays with the caller.
+    pub computed_budget: SpecComputedBudget,
 }
 /// Per-node metadata feeding the validator. See `SpecWorkflowParts`
 /// for the field semantics. Mirrors every scalar that
@@ -1003,6 +1084,109 @@ pub fn kind_ref_error(
                 }
             }
         }
+    }
+    None
+}
+
+/// Pure projection of `BoundednessPolicy::DEFAULT.validate` applied
+/// to a caller-supplied computed budget
+/// (`crates/vb_core/src/budget.rs:534-592`, via
+/// `validate_extended_budget` at 644-661,
+/// `validate_payload_budget` at 663-698, and
+/// `validate_budget_dimensions` at 595-642). Checks the 23
+/// validated dimensions in production first-violation order and
+/// returns `BudgetPolicyExceeded` for the first dimension over
+/// its `DEFAULT` cap (budget.rs:506-530), or `None` when every
+/// dimension is within caps. Production collapses the typed
+/// `BudgetError` to `WorkflowError::BudgetPolicyExceeded`
+/// (`validate_budget_result`, workflow/mod.rs:1461-1470), so the
+/// projection carries no dimension payload: the first-violation
+/// order is modelled by the check order itself. Caps, in
+/// production order: total steps 1_000_000, total slots 65_535,
+/// fanout 64, nesting depth 8, action tickets 100_000, parallel
+/// in flight 256, run time 2_592_000, result bytes 262_144,
+/// steps executable 1_000_000, timer entries 1_000_000, trace
+/// events 1_000_000, journal batch bytes 1_048_576, queue depth
+/// 1_024, IPC payload bytes 1_048_576, blob bytes 16_777_216,
+/// input bytes 1_048_576, open gates 1_000_000, signal
+/// subscriptions 1_000_000, incident emissions 1_000_000,
+/// transitions 10_000_000, journal bytes total
+/// 1_048_576_000_000, value-store entries 2_000_000, cost units
+/// 100_000.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn budget_error(budget: SpecComputedBudget) -> Option<SpecWorkflowError> {
+    if budget.max_total_steps > 1_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_total_slots > 65_535 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_fanout > 64 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_nesting_depth > 8 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_action_tickets > 100_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_parallel_in_flight > 256 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_run_time_seconds > 2_592_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_result_bytes > 262_144 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_steps_executable > 1_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_timer_entries > 1_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_trace_events > 1_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_journal_batch_bytes > 1_048_576 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_queue_depth > 1_024 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_ipc_payload_bytes > 1_048_576 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_blob_bytes > 16_777_216 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_input_bytes > 1_048_576 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_open_gates > 1_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_signal_subscriptions > 1_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_incident_emissions > 1_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_transitions > 10_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_journal_bytes_total > 1_048_576_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_value_store_entries > 2_000_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
+    }
+    if budget.max_cost_units > 100_000 {
+        return Some(SpecWorkflowError::BudgetPolicyExceeded);
     }
     None
 }
@@ -2208,12 +2392,18 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // from already-validated nodes, so the projection treats it as
     // passing for inputs that reached this step.
     // ---- Step 4: budget validation ----
-    // Production calls WholeWorkflowBudget::compute (budget.rs:64-70)
-    // then BoundednessPolicy::DEFAULT.validate. Both errors collapse
-    // to BudgetPolicyExceeded at this projection granularity.
-    // The projection returns Ok for the well-formed inputs the spec
-    // proves; malformed budget inputs are out of scope (they're
-    // exhaustively covered by `budget_bounded.rs`).
+    // Production calls WholeWorkflowBudget::compute (budget.rs:97-103)
+    // then BoundednessPolicy::DEFAULT.validate (budget.rs:534-592);
+    // validate_budget_result (workflow/mod.rs:1461-1470) collapses
+    // any BudgetError to BudgetPolicyExceeded. The projection checks
+    // the caller-supplied `computed_budget` inventory with
+    // `budget_error`, which mirrors the 23 validated dimensions in
+    // production first-violation order. The compute walk itself stays
+    // caller-supplied: its boundedness is exhaustively covered by
+    // `budget_bounded.rs`, not re-modelled here.
+    if let Some(err) = budget_error(parts.computed_budget) {
+        return SpecValidationResult::Err(err);
+    }
     // ---- Step 5: input slot validation ----
     // Production calls validate_input_slots(&parts)? (workflow/mod.rs:42,
     // body at workflow/mod.rs:1394-1425). The projection checks: all
