@@ -72,6 +72,16 @@
 //     <- crates/vb_core/src/workflow/mod.rs:2336-2364
 //   - `validate_no_nested_together` (moved out of workflow/mod.rs)
 //     <- crates/vb_core/src/engine/validate.rs:119-172
+//   - `validate` (loop_regions pairing step)
+//     <- crates/vb_core/src/workflow/loop_regions.rs:59-72
+//   - `cache_control`
+//     <- crates/vb_core/src/workflow/loop_regions/pairing.rs:8-31
+//   - `unique_owner`
+//     <- crates/vb_core/src/workflow/loop_regions/pairing.rs:33-50
+//   - `control_shape`
+//     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:21-34
+//   - `start_shape`
+//     <- crates/vb_core/src/workflow/loop_regions/shapes.rs:54-67
 //   - `WorkflowError` discriminant set
 //     <- crates/vb_core/src/workflow/mod.rs:666-880
 //   - `WorkflowParts` field set
@@ -469,6 +479,10 @@ pub struct SpecWorkflowParts {
     /// `out_has_branch_table[i]` = 1 iff the kind carries a
     /// branch table (Choose / ChooseSlot) with no `otherwise`
     /// fallback, else 0. Drives the `EmptyBranchTable` arm.
+    /// `out_loop_shape[i]` = the node's loop control / start shapes
+    /// (`has_ctrl_shape` / `has_start_shape` and their body, done,
+    /// and state fields on `SpecNodeMeta`). Drives the
+    /// `LoopRegionUnpaired` arm.
     pub nodes_meta: Vec<SpecNodeMeta>,
     pub expressions: Vec<SpecExprProgram>,
     pub accessors: Vec<SpecAccessor>,
@@ -498,6 +512,38 @@ pub struct SpecNodeMeta {
     pub max_step_ref: u32,
     pub max_slot_ref: u32,
     pub has_branch_table_no_otherwise: u8,
+    /// 1 iff the node is a loop control (ForEachNext / CollectNext /
+    /// ReduceNext / RepeatCheck) with a derivable shape
+    /// (`control_shape`, shapes.rs:21-34). RepeatCheck derives its
+    /// body from the routing next step; a RepeatCheck with no step
+    /// next has no shape, so the caller supplies 0.
+    pub has_ctrl_shape: u8,
+    /// `control_shape` body (loop_regions/shapes.rs:21-34).
+    pub ctrl_body: u32,
+    /// `control_shape` done.
+    pub ctrl_done: u32,
+    /// `control_shape` state slot: iterator / collector /
+    /// accumulator / attempt slot. Reduce carries a second slot in
+    /// `ctrl_state_b`; every other shape sets it to `spec_ref_none()`.
+    pub ctrl_state_a: u32,
+    pub ctrl_state_b: u32,
+    /// 1 iff the node is a loop start (ForEachStart / CollectStart /
+    /// ReduceStart / RepeatStart) with a derivable shape
+    /// (`start_shape`, shapes.rs:54-67). A start whose shape needs
+    /// an output slot it does not have (ForEachStart, ReduceStart,
+    /// RepeatStart) has no shape, so the caller supplies 0.
+    pub has_start_shape: u8,
+    /// `start_shape` body (loop_regions/shapes.rs:54-67).
+    pub start_body: u32,
+    /// `start_shape` done.
+    pub start_done: u32,
+    /// `start_shape` state slot, same encoding as `ctrl_state_a` /
+    /// `ctrl_state_b`. ForEachStart state is the output slot;
+    /// CollectStart state is the output slot or the source slot;
+    /// ReduceStart state is (output slot, accumulator); RepeatStart
+    /// state is the output slot.
+    pub start_state_a: u32,
+    pub start_state_b: u32,
 }
 // ============================================================================
 // Closed-set discriminants for SpecNodeKind
@@ -677,16 +723,80 @@ pub fn validate_node_pure(
     }
 }
 // ============================================================================
+// Pure decision fn: loop-region pairing
+// ============================================================================
+/// Shape equality for the loop pairing check: a start owns a control
+/// iff body, done, and both state slots agree
+/// (`start_shape(node) == Some(shape)` in pairing.rs:33-50, where
+/// `LoopShape` is compared by value).
+pub const fn loop_shape_matches(control: SpecNodeMeta, start: SpecNodeMeta) -> bool {
+    control.ctrl_body == start.start_body
+        && control.ctrl_done == start.start_done
+        && control.ctrl_state_a == start.start_state_a
+        && control.ctrl_state_b == start.start_state_b
+}
+
+/// Pure projection of the pairing step of `loop_regions::validate`
+/// (`cache_control` + `unique_owner`, pairing.rs:8-50), applied to
+/// the whole node table in table order. A cached control is a node
+/// with a derivable control shape whose body does not follow its own
+/// id (`shape.body > node.id` skips the control, pairing.rs:8-31).
+/// Each cached control needs exactly one matching start shape with
+/// `start.id < body < control < done`; a missing, duplicate, or
+/// unordered owner returns `LoopRegionUnpaired`, the first such
+/// failure in table order. Returns `None` when every cached control
+/// pairs.
+///
+/// TRUST BOUNDARY: the body is opaque to Verus (`#[verifier::external]`).
+/// The spec-side mirror in `try_from_parts.rs` is the contract; this
+/// projection is the trusted base recorded in the binding ledger.
+#[verifier::external]
+pub fn loop_pairing_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    for meta in parts.nodes_meta.iter() {
+        if meta.has_ctrl_shape != 1 || meta.ctrl_body > meta.id {
+            continue;
+        }
+        let mut owner: Option<u32> = None;
+        for candidate in parts.nodes_meta.iter() {
+            if candidate.has_start_shape != 1 || !loop_shape_matches(*meta, *candidate) {
+                continue;
+            }
+            let ordered =
+                candidate.id < meta.ctrl_body && meta.ctrl_body < meta.id && meta.id < meta.ctrl_done;
+            if owner.is_some() || !ordered {
+                return Some(SpecWorkflowError::LoopRegionUnpaired);
+            }
+            owner = Some(candidate.id);
+        }
+        if owner.is_none() {
+            return Some(SpecWorkflowError::LoopRegionUnpaired);
+        }
+    }
+    None
+}
+// ============================================================================
 // Pure decision fn: top-level try_from_parts validation
 // ============================================================================
 /// Pure projection of `CompiledWorkflow::try_from_parts` validation
-/// at `crates/vb_core/src/workflow/mod.rs:35-51`. The production
+/// at `crates/vb_core/src/workflow/mod.rs:42-65`. The production
 /// body short-circuits via `?`-propagation in this order:
 ///
 ///   1. `validate_parts(&parts)?` — structural validation
-///      (workflow/mod.rs:753-777).
-///   2. `validate_budget(&parts)?` — whole-workflow budget
-///      (workflow/mod.rs:779-785).
+///      (workflow/mod.rs:1367-1392).
+///   2. `loop_regions::validate(&parts)?` — loop-region pairing,
+///      relations, edge closure, and recovery support
+///      (loop_regions.rs:59-72). The projection models the pairing
+///      step only; relations, edge closure, and recovery support are
+///      documented approximations (see step 1h).
+///   3. `loop_regions::nested_activation_map(&parts, &loop_regions)?`
+///      (loop_regions.rs:78-83). The map derives only
+///      `StepOutOfBounds` / `ResourceContractExceeded` failures from
+///      already-validated region tables, so the projection treats it
+///      as passing for inputs that reached this step.
+///   4. `validate_budget(&parts)?` — whole-workflow budget
+///      (workflow/mod.rs:1453-1459).
+///   5. `validate_input_slots(&parts)?` — input slot bounds,
+///      duplicates, and ordering (workflow/mod.rs:1394-1425).
 ///
 /// `validate_parts` itself walks (in this order):
 ///   - empty nodes check,
@@ -818,16 +928,35 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     // decision-fn level; the spec's BackwardEdge / UnreachableNode
     // / NestedTogether arms are exercised via dedicated spec
     // functions).
-    // ---- Step 2: budget validation ----
+    // ---- Step 2: loop-region pairing ----
+    // Production calls loop_regions::validate (loop_regions.rs:59-72)
+    // next; its first step pairs each cached loop control with its
+    // unique ordered start. The projection models that pairing step
+    // here. The later region relations
+    // (validate_region_relations, pairing.rs:52-71), edge closure
+    // (validate_region_edges, edges.rs), and recovery support
+    // (LoopRegionUnsupported) remain documented approximations: the
+    // projection has no per-node routing-edge inventory to decide
+    // them, the same standing approximation as 1g.
+    if let Some(err) = loop_pairing_error(parts) {
+        return SpecValidationResult::Err(err);
+    }
+    // ---- Step 3: nested activation map ----
+    // Production derives nested_activation_map (loop_regions.rs:78-83)
+    // from the validated region table; it can only fail with
+    // StepOutOfBounds / ResourceContractExceeded on tables built
+    // from already-validated nodes, so the projection treats it as
+    // passing for inputs that reached this step.
+    // ---- Step 4: budget validation ----
     // Production calls WholeWorkflowBudget::compute (budget.rs:64-70)
     // then BoundednessPolicy::DEFAULT.validate. Both errors collapse
     // to BudgetPolicyExceeded at this projection granularity.
     // The projection returns Ok for the well-formed inputs the spec
     // proves; malformed budget inputs are out of scope (they're
     // exhaustively covered by `budget_bounded.rs`).
-    // ---- Step 3: input slot validation ----
-    // Production calls validate_input_slots(&parts)? (workflow/mod.rs:40,
-    // body at workflow/mod.rs:876-906). The projection checks: all
+    // ---- Step 5: input slot validation ----
+    // Production calls validate_input_slots(&parts)? (workflow/mod.rs:42,
+    // body at workflow/mod.rs:1394-1425). The projection checks: all
     // input slot indices in-bounds, no duplicates, strictly increasing.
     let mut prev_slot: Option<u32> = None;
     for current in &parts.input_slots {
