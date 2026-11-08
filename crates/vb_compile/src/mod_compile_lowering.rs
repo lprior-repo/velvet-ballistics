@@ -8,6 +8,7 @@ pub(crate) mod part_05;
 mod part_06;
 mod part_07;
 mod part_08;
+mod part_08_legacy;
 mod part_09;
 mod part_10;
 mod part_11;
@@ -63,6 +64,8 @@ pub use part_06::*;
 pub use part_07::*;
 #[allow(unused_imports)]
 pub(crate) use part_08::*;
+#[allow(unused_imports)]
+pub(crate) use part_08_legacy::*;
 #[allow(unused_imports)]
 pub(crate) use part_09::*;
 #[allow(unused_imports)]
