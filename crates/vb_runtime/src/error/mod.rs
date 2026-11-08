@@ -72,6 +72,8 @@ pub enum RuntimeError {
     FramePoolUnavailable,
     /// Action completion did not match the suspended Do step.
     InvalidActionCompletion,
+    /// Gate outcome record failed structural validation before journaling.
+    InvalidGateDecisionRecord,
     /// Action completion belongs to an older attempt than the live suspended attempt.
     StaleAttempt {
         /// Attempt carried by the incoming completion ticket.

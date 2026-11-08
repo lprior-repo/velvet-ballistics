@@ -380,6 +380,19 @@ pub trait RuntimeJournal: Send + Sync {
         })
     }
 
+    /// Appends a gate decision with strict durable acknowledgement at the
+    /// given per-run sequence. The default fails closed for implementations
+    /// that lack a strict port (noop and volatile journals).
+    fn append_gate_decision_strict(
+        &self,
+        _record: vb_core::manual_gate::GateOutcomeRecord,
+        _seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "append_gate_decision_strict",
+        })
+    }
+
     /// Probes journal health without side effects.
     /// Returns `JournalPoisoned` if the underlying storage is unavailable.
     fn probe(&self) -> RuntimeResult<()>;

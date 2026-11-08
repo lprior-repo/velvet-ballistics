@@ -25,6 +25,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         }
         RuntimeError::FramePoolUnavailable => Some("frame pool unavailable"),
         RuntimeError::InvalidActionCompletion => Some("invalid action completion"),
+        RuntimeError::InvalidGateDecisionRecord => {
+            Some("gate outcome record is structurally invalid")
+        }
         RuntimeError::InvalidTimerFire => Some("invalid timer fire"),
         RuntimeError::UnsupportedFullRecoveryHydration => {
             Some("full run frame recovery hydration is unsupported")

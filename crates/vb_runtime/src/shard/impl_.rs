@@ -6,6 +6,7 @@ include!("impl_parts/chunk_001.rs");
 include!("impl_parts/chunk_002.rs");
 include!("impl_parts/chunk_003.rs");
 include!("impl_parts/policy_decision.rs");
+include!("impl_parts/gate_decision.rs");
 
 #[cfg(test)]
 mod tests {

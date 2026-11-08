@@ -25,6 +25,7 @@ fn runtime_error_unit_tag(error: &RuntimeError) -> Option<u8> {
         RuntimeError::SecretResultNotAllowed => Some(13),
         RuntimeError::MigrateSelf => Some(15),
         RuntimeError::IntrospectionEpochExhausted => Some(16),
+        RuntimeError::InvalidGateDecisionRecord => Some(17),
         _ => None,
     }
 }
