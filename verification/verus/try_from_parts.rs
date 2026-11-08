@@ -113,7 +113,7 @@ pub use production::{
     SpecResourceContract, SpecValidationResult, SpecWorkflowError,
     SpecWorkflowParts, branch_target_alias_error, input_constraint_error,
     loop_pairing_error, loop_region_edges_error, loop_region_relations_error,
-    spec_validation_result_is_ok,
+    repeat_counter_ownership_error, spec_validation_result_is_ok,
     spec_workflow_error_is_bound_violation, try_from_parts_pure,
     validate_node_pure,
 };
@@ -320,6 +320,18 @@ pub assume_specification[ production::loop_region_edges_error ](
 ) -> (err: Option<SpecWorkflowError>)
     ensures
         err == spec_loop_edges_error(parts),
+;
+
+/// Spec-level mirror of `production::repeat_counter_ownership_error`.
+/// Returns the first `RepeatCounterForeignWrite` failure the
+/// counter-ownership step would report — a duplicate counter
+/// claim, or a foreign write to a claimed counter slot — or `None`
+/// when every claimed counter slot is owned exclusively.
+pub assume_specification[ production::repeat_counter_ownership_error ](
+    parts: &SpecWorkflowParts,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_repeat_counter_error(parts),
 ;
 
 /// Spec-level mirror of `production::branch_target_alias_error`.
@@ -1184,6 +1196,222 @@ pub open spec fn spec_loop_edges_error(parts: &SpecWorkflowParts) -> Option<Spec
     }
 }
 
+/// Spec mirror of the `parts.nodes.get(owner)` owner lookup in
+/// `is_paired_check` (repeat_counter_ownership.rs:74-109): the
+/// owner meta for step `owner`, or `None` when no node carries
+/// that id. Production indexes by table position; the mirror
+/// scans by id, which agrees on inputs that reached this step
+/// (step 1e trusts `meta.id` to match the table position).
+pub open spec fn spec_repeat_owner_meta(
+    metas: &Vec<SpecNodeMeta>,
+    owner: u32,
+    i: int,
+) -> Option<SpecNodeMeta>
+    decreases metas.len() - i
+{
+    if i >= metas.len() {
+        None
+    } else if metas[i].id == owner {
+        Some(metas[i])
+    } else {
+        spec_repeat_owner_meta(metas, owner, i + 1)
+    }
+}
+
+/// Spec mirror of `is_paired_check`
+/// (repeat_counter_ownership.rs:74-109): the node at `node_idx`
+/// is the paired `RepeatCheck` for the counter slot `slot` owned
+/// by `owner` iff it is a `RepeatCheck` whose attempt slot is the
+/// counter slot, whose control shape exists, whose done matches
+/// the owner's start done, whose id lies strictly between the
+/// owner's body and done, and whose routing next step is the
+/// owner's body.
+pub open spec fn spec_is_paired_repeat_check(
+    metas: &Vec<SpecNodeMeta>,
+    node_idx: int,
+    slot: u32,
+    owner: u32,
+) -> bool {
+    if node_idx < 0 || node_idx >= metas.len() {
+        false
+    } else {
+        let node = metas[node_idx];
+        if node.kind_disc != 24u32 || node.has_ctrl_shape != 1 || node.ctrl_state_a != slot {
+            false
+        } else {
+            match spec_repeat_owner_meta(metas, owner, 0) {
+                Some(owner_meta) => {
+                    owner_meta.kind_disc == 22u32
+                        && owner_meta.has_start_shape == 1
+                        && node.ctrl_done == owner_meta.start_done
+                        && owner_meta.start_body < node.id
+                        && node.id < owner_meta.start_done
+                        && node.ctrl_body == owner_meta.start_body
+                }
+                None => false,
+            }
+        }
+    }
+}
+
+/// Spec predicate: the `written_slots` inventory for one node
+/// contains `slot`. A missing inventory entry means the node
+/// writes no kind-specific slot.
+pub open spec fn spec_written_slots_contains(
+    slots: &Vec<u32>,
+    slot: u32,
+    k: int,
+) -> bool
+    decreases slots.len() - k
+{
+    if k >= slots.len() {
+        false
+    } else {
+        slots[k] == slot || spec_written_slots_contains(slots, slot, k + 1)
+    }
+}
+
+/// Spec mirror of `writes_slot` (repeat_counter_ownership.rs:111-137)
+/// for the node at `node_idx`: the output slot, the routing error
+/// slot, or any slot in the caller-supplied `written_slots`
+/// inventory for the node.
+pub open spec fn spec_node_writes_counter_slot(
+    parts: &SpecWorkflowParts,
+    node_idx: int,
+    slot: u32,
+) -> bool {
+    if node_idx < 0 || node_idx >= parts.nodes_meta.len() {
+        false
+    } else {
+        let node = parts.nodes_meta[node_idx];
+        (node.has_output == 1 && node.out_slot == slot)
+            || (node.has_error_slot == 1 && node.error_slot == slot)
+            || (node_idx < parts.written_slots.len()
+                && spec_written_slots_contains(&parts.written_slots[node_idx], slot, 0))
+    }
+}
+
+/// Spec mirror of one node's check inside `validate_slot_ownership`
+/// (repeat_counter_ownership.rs:37-72) for the counter slot `slot`
+/// owned by `owner`: the owner node itself and its paired
+/// `RepeatCheck` may only touch the slot through their routing
+/// error slot; every other node must not write the slot. Returns
+/// the first failure from `node_idx` onward, or `None`.
+pub open spec fn spec_ownership_scan_error(
+    parts: &SpecWorkflowParts,
+    slot: u32,
+    owner: u32,
+    node_idx: int,
+) -> Option<SpecWorkflowError>
+    decreases parts.nodes_meta.len() - node_idx
+{
+    if node_idx >= parts.nodes_meta.len() {
+        None
+    } else {
+        let node = parts.nodes_meta[node_idx];
+        if node.id == owner {
+            if node.has_error_slot == 1 && node.error_slot == slot {
+                Some(SpecWorkflowError::RepeatCounterForeignWrite)
+            } else {
+                spec_ownership_scan_error(parts, slot, owner, node_idx + 1)
+            }
+        } else if spec_is_paired_repeat_check(&parts.nodes_meta, node_idx, slot, owner) {
+            if node.has_error_slot == 1 && node.error_slot == slot {
+                Some(SpecWorkflowError::RepeatCounterForeignWrite)
+            } else {
+                spec_ownership_scan_error(parts, slot, owner, node_idx + 1)
+            }
+        } else if spec_node_writes_counter_slot(parts, node_idx, slot) {
+            Some(SpecWorkflowError::RepeatCounterForeignWrite)
+        } else {
+            spec_ownership_scan_error(parts, slot, owner, node_idx + 1)
+        }
+    }
+}
+
+/// Spec mirror of the `validate_slot_ownership` pass
+/// (repeat_counter_ownership.rs:37-72) over every claimed counter
+/// slot, in claim order: each `RepeatStart` with an output slot
+/// owns its counter slot, and the ownership scan runs for each.
+/// Returns the first failure, or `None`.
+pub open spec fn spec_ownership_error(parts: &SpecWorkflowParts, i: int) -> Option<SpecWorkflowError>
+    decreases parts.nodes_meta.len() - i
+{
+    if i >= parts.nodes_meta.len() {
+        None
+    } else {
+        let meta = parts.nodes_meta[i];
+        if meta.kind_disc == 22u32 && meta.has_output == 1 {
+            match spec_ownership_scan_error(parts, meta.out_slot, meta.id, 0) {
+                Some(e) => Some(e),
+                None => spec_ownership_error(parts, i + 1),
+            }
+        } else {
+            spec_ownership_error(parts, i + 1)
+        }
+    }
+}
+
+/// Spec mirror of the duplicate-claim scan inside
+/// `identify_counter_owners` (repeat_counter_ownership.rs:14-35):
+/// whether any earlier node `j` claims the counter slot of the
+/// node at `i` (both `RepeatStart` nodes with an output slot
+/// naming the same slot). Returns the duplicate error, or `None`.
+pub open spec fn spec_repeat_duplicate_before(
+    metas: &Vec<SpecNodeMeta>,
+    i: int,
+    j: int,
+) -> Option<SpecWorkflowError>
+    decreases i - j
+{
+    if j >= i {
+        None
+    } else if i < 0 || i >= metas.len() || j < 0 || j >= metas.len() {
+        None
+    } else if metas[i].kind_disc == 22u32
+        && metas[i].has_output == 1
+        && metas[j].kind_disc == 22u32
+        && metas[j].has_output == 1
+        && metas[i].out_slot == metas[j].out_slot
+    {
+        Some(SpecWorkflowError::RepeatCounterForeignWrite)
+    } else {
+        spec_repeat_duplicate_before(metas, i, j + 1)
+    }
+}
+
+/// Spec mirror of `identify_counter_owners`
+/// (repeat_counter_ownership.rs:14-35) over the node table:
+/// returns the first duplicate counter claim, or `None` when
+/// every claimed counter slot has a single owner.
+pub open spec fn spec_repeat_duplicate_error(
+    metas: &Vec<SpecNodeMeta>,
+    i: int,
+) -> Option<SpecWorkflowError>
+    decreases metas.len() - i
+{
+    if i >= metas.len() {
+        None
+    } else {
+        match spec_repeat_duplicate_before(metas, i, 0) {
+            Some(e) => Some(e),
+            None => spec_repeat_duplicate_error(metas, i + 1),
+        }
+    }
+}
+
+/// Spec-level mirror of `production::repeat_counter_ownership_error`.
+/// The duplicate-claim phase (`identify_counter_owners`) runs
+/// before the ownership phase (`validate_slot_ownership`), so a
+/// duplicate claim short-circuits the mirror to the duplicate
+/// error; otherwise the first ownership failure wins.
+pub open spec fn spec_repeat_counter_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    match spec_repeat_duplicate_error(&parts.nodes_meta, 0) {
+        Some(e) => Some(e),
+        None => spec_ownership_error(parts, 0),
+    }
+}
+
 /// Spec-level mirror of the projection result. The spec proofs
 /// reference this so the `assume_specification` ensures clauses
 /// resolve through the spec mirror rather than the opaque body.
@@ -1213,23 +1441,28 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
     } else if parts.slot_count > parts.resource_contract.max_slots {
         SpecValidationResult::Err(SpecWorkflowError::ResourceContractExceeded)
     } else {
-        let pairing_err = spec_pairing_error(&parts.nodes_meta, 0);
-        if pairing_err != None::<SpecWorkflowError> {
-            SpecValidationResult::Err(pairing_err.unwrap())
+        let counter_err = spec_repeat_counter_error(parts);
+        if counter_err != None::<SpecWorkflowError> {
+            SpecValidationResult::Err(counter_err.unwrap())
         } else {
-            let relations_err = spec_loop_relations_error(parts);
-            if relations_err != None::<SpecWorkflowError> {
-                SpecValidationResult::Err(relations_err.unwrap())
+            let pairing_err = spec_pairing_error(&parts.nodes_meta, 0);
+            if pairing_err != None::<SpecWorkflowError> {
+                SpecValidationResult::Err(pairing_err.unwrap())
             } else {
-                let edges_err = spec_loop_edges_error(parts);
-                if edges_err != None::<SpecWorkflowError> {
-                    SpecValidationResult::Err(edges_err.unwrap())
+                let relations_err = spec_loop_relations_error(parts);
+                if relations_err != None::<SpecWorkflowError> {
+                    SpecValidationResult::Err(relations_err.unwrap())
                 } else {
-                    let slot_err = input_slots_valid(parts);
-                    if (slot_err != None::<SpecWorkflowError>) {
-                        SpecValidationResult::Err(slot_err.unwrap())
+                    let edges_err = spec_loop_edges_error(parts);
+                    if edges_err != None::<SpecWorkflowError> {
+                        SpecValidationResult::Err(edges_err.unwrap())
                     } else {
-                        SpecValidationResult::Ok
+                        let slot_err = input_slots_valid(parts);
+                        if (slot_err != None::<SpecWorkflowError>) {
+                            SpecValidationResult::Err(slot_err.unwrap())
+                        } else {
+                            SpecValidationResult::Ok
+                        }
                     }
                 }
             }
@@ -1395,6 +1628,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         parts.resource_contract.max_transitions_per_tick <= 10000,
         parts.nodes_len <= parts.resource_contract.max_steps,
         parts.slot_count <= parts.resource_contract.max_slots,
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
         spec_pairing_error(&parts.nodes_meta, 0) == None::<SpecWorkflowError>,
         spec_loop_relations_error(parts) == None::<SpecWorkflowError>,
         spec_loop_edges_error(parts) == None::<SpecWorkflowError>,
@@ -1427,6 +1661,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Resource contract exceeded: skip.
     } else if parts.slot_count > parts.resource_contract.max_slots {
         // Resource contract exceeded: skip.
+    } else if spec_repeat_counter_error(parts) != None::<SpecWorkflowError> {
+        // Repeat-counter ownership: skip (already required valid).
     } else if spec_pairing_error(&parts.nodes_meta, 0) != None::<SpecWorkflowError> {
         // Loop pairing: skip (already required valid).
     } else if spec_loop_relations_error(parts) != None::<SpecWorkflowError> {
@@ -1886,6 +2122,379 @@ pub proof fn lemma_input_constraint_negative_length_rejected(parts: &SpecWorkflo
     assert(check_input_slots(parts, 0, None) == spec_input_constraint_at(parts, 0));
     assert(spec_input_constraint_at(parts, 0)
         == Some(SpecWorkflowError::InconsistentInputConstraint));
+}
+
+/// Lemma 29: the duplicate counter-owner rejection. Two
+/// `RepeatStart` nodes claiming the same output slot are rejected
+/// with `RepeatCounterForeignWrite` (production
+/// `identify_counter_owners`, repeat_counter_ownership.rs:14-35,
+/// errors as soon as a second owner claims an owned slot).
+pub proof fn lemma_repeat_counter_duplicate_owner_rejected(metas: &Vec<SpecNodeMeta>)
+    requires
+        metas.len() == 2,
+        metas[0].kind_disc == 22u32,
+        metas[0].has_output == 1,
+        metas[1].kind_disc == 22u32,
+        metas[1].has_output == 1,
+        metas[0].out_slot == metas[1].out_slot,
+    ensures
+        spec_repeat_duplicate_error(metas, 0) == Some(SpecWorkflowError::RepeatCounterForeignWrite),
+{
+    assert(spec_repeat_duplicate_error(metas, 0) == spec_repeat_duplicate_error(metas, 1));
+    assert(spec_repeat_duplicate_before(metas, 1, 0)
+        == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+    assert(spec_repeat_duplicate_error(metas, 1)
+        == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+}
+
+/// Lemma 30: the foreign body-output rejection. A body node whose
+/// output slot is a claimed counter slot is rejected with
+/// `RepeatCounterForeignWrite` (production
+/// `validate_slot_ownership` + `writes_slot`,
+/// repeat_counter_ownership.rs:37-72 / 111-137; the
+/// `repeat_body_output_mutated_to_counter` case in
+/// `vb_f1_repeat_counter_ownership.rs`).
+pub proof fn lemma_repeat_counter_body_output_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 3,
+        parts.written_slots.len() == 3,
+        parts.written_slots[0].len() == 0,
+        parts.written_slots[1].len() == 0,
+        parts.written_slots[2].len() == 0,
+        parts.nodes_meta[0].kind_disc == 22u32,
+        parts.nodes_meta[0].has_output == 1,
+        parts.nodes_meta[0].has_error_slot == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 1u32,
+        parts.nodes_meta[1].has_output == 1,
+        parts.nodes_meta[1].out_slot == parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[1].has_error_slot == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 33u32,
+        parts.nodes_meta[2].has_output == 0,
+        parts.nodes_meta[2].has_error_slot == 0,
+        parts.nodes_meta[2].id == 2u32,
+    ensures
+        spec_repeat_counter_error(parts) == Some(SpecWorkflowError::RepeatCounterForeignWrite),
+{
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 0)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 1)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 2)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 3));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 3) == None::<SpecWorkflowError>);
+    assert(spec_repeat_counter_error(parts) == spec_ownership_error(parts, 0));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 0)
+        == spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 1));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 1)
+        == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+    assert(spec_ownership_error(parts, 0) == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+}
+
+/// Lemma 31: the paired-check exemption. A well-formed repeat
+/// (owner `RepeatStart`, body node writing elsewhere, paired
+/// `RepeatCheck` whose attempt slot is the counter slot) is NOT
+/// rejected: the paired check is exempt from the foreign-write
+/// rule (production `is_paired_check`,
+/// repeat_counter_ownership.rs:74-109). This is the no-over-reject
+/// witness for the counter step.
+pub proof fn lemma_repeat_counter_paired_check_exempt(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 4,
+        parts.written_slots.len() == 4,
+        parts.written_slots[0].len() == 0,
+        parts.written_slots[1].len() == 0,
+        parts.written_slots[2].len() == 0,
+        parts.written_slots[3].len() == 0,
+        parts.nodes_meta[0].kind_disc == 22u32,
+        parts.nodes_meta[0].has_output == 1,
+        parts.nodes_meta[0].has_error_slot == 0,
+        parts.nodes_meta[0].has_start_shape == 1,
+        parts.nodes_meta[0].start_body == 1u32,
+        parts.nodes_meta[0].start_done == 3u32,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 1u32,
+        parts.nodes_meta[1].has_output == 1,
+        parts.nodes_meta[1].out_slot != parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[1].has_error_slot == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 24u32,
+        parts.nodes_meta[2].has_ctrl_shape == 1,
+        parts.nodes_meta[2].ctrl_state_a == parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[2].ctrl_body == 1u32,
+        parts.nodes_meta[2].ctrl_done == 3u32,
+        parts.nodes_meta[2].has_error_slot == 0,
+        parts.nodes_meta[2].id == 2u32,
+        parts.nodes_meta[3].kind_disc == 33u32,
+        parts.nodes_meta[3].has_output == 0,
+        parts.nodes_meta[3].has_error_slot == 0,
+        parts.nodes_meta[3].id == 3u32,
+    ensures
+        spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
+{
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 0)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 1)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 2)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 3));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 3, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 3, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 3, 1)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 3, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 3, 2)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 3, 3));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 3, 3) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 3)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 4));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 4) == None::<SpecWorkflowError>);
+    assert(spec_repeat_counter_error(parts) == spec_ownership_error(parts, 0));
+    assert(!spec_node_writes_counter_slot(parts, 1, parts.nodes_meta[0].out_slot));
+    assert(spec_is_paired_repeat_check(
+        &parts.nodes_meta,
+        2,
+        parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[0].id,
+    ));
+    assert(!spec_node_writes_counter_slot(parts, 3, parts.nodes_meta[0].out_slot));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 0)
+        == spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 1));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 1)
+        == spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 2));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 2)
+        == spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 3));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 3)
+        == spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 4));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 4)
+        == None::<SpecWorkflowError>);
+    assert(spec_ownership_error(parts, 0) == spec_ownership_error(parts, 1));
+    assert(spec_ownership_error(parts, 1) == spec_ownership_error(parts, 2));
+    assert(spec_ownership_error(parts, 2) == spec_ownership_error(parts, 3));
+    assert(spec_ownership_error(parts, 3) == spec_ownership_error(parts, 4));
+    assert(spec_ownership_error(parts, 4) == None::<SpecWorkflowError>);
+}
+
+/// Lemma 32: the severed-check rejection. A `RepeatCheck` whose
+/// routing next is severed (no control shape, so it is not the
+/// paired check) still writes the counter slot through its
+/// attempt slot, and is rejected with
+/// `RepeatCounterForeignWrite` (production `is_paired_check`
+/// returns false when the shape is absent, so `writes_slot`
+/// applies; the `repeat_check_next_none` case in
+/// `vb_f1_repeat_counter_ownership.rs`).
+pub proof fn lemma_repeat_counter_severed_check_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 3,
+        parts.written_slots.len() == 3,
+        parts.written_slots[0].len() == 0,
+        parts.written_slots[1].len() == 1,
+        parts.written_slots[1][0] == parts.nodes_meta[0].out_slot,
+        parts.written_slots[2].len() == 0,
+        parts.nodes_meta[0].kind_disc == 22u32,
+        parts.nodes_meta[0].has_output == 1,
+        parts.nodes_meta[0].has_error_slot == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 24u32,
+        parts.nodes_meta[1].has_ctrl_shape == 0,
+        parts.nodes_meta[1].has_output == 0,
+        parts.nodes_meta[1].has_error_slot == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 33u32,
+        parts.nodes_meta[2].has_output == 0,
+        parts.nodes_meta[2].has_error_slot == 0,
+        parts.nodes_meta[2].id == 2u32,
+    ensures
+        spec_repeat_counter_error(parts) == Some(SpecWorkflowError::RepeatCounterForeignWrite),
+{
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 0)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 1)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 2)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 3));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 3) == None::<SpecWorkflowError>);
+    assert(spec_repeat_counter_error(parts) == spec_ownership_error(parts, 0));
+    assert(!spec_is_paired_repeat_check(
+        &parts.nodes_meta,
+        1,
+        parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[0].id,
+    ));
+    assert(spec_node_writes_counter_slot(parts, 1, parts.nodes_meta[0].out_slot));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 0)
+        == spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 1));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 1)
+        == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+    assert(spec_ownership_error(parts, 0) == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+}
+
+/// Lemma 33: the kind-slot rejection. A `RetryCheck` node whose
+/// policy slot is a claimed counter slot is rejected with
+/// `RepeatCounterForeignWrite` (production `writes_slot`,
+/// repeat_counter_ownership.rs:111-137, checks the kind-specific
+/// `policy_slot` arm; the `repeat_body_kind_retry_check` case in
+/// `vb_f1_repeat_counter_ownership.rs`).
+pub proof fn lemma_repeat_counter_kind_slot_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 3,
+        parts.written_slots.len() == 3,
+        parts.written_slots[0].len() == 0,
+        parts.written_slots[1].len() == 1,
+        parts.written_slots[1][0] == parts.nodes_meta[0].out_slot,
+        parts.written_slots[2].len() == 0,
+        parts.nodes_meta[0].kind_disc == 22u32,
+        parts.nodes_meta[0].has_output == 1,
+        parts.nodes_meta[0].has_error_slot == 0,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 30u32,
+        parts.nodes_meta[1].has_output == 0,
+        parts.nodes_meta[1].has_error_slot == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 33u32,
+        parts.nodes_meta[2].has_output == 0,
+        parts.nodes_meta[2].has_error_slot == 0,
+        parts.nodes_meta[2].id == 2u32,
+    ensures
+        spec_repeat_counter_error(parts) == Some(SpecWorkflowError::RepeatCounterForeignWrite),
+{
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 0)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 1)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 2)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 3));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 3) == None::<SpecWorkflowError>);
+    assert(spec_repeat_counter_error(parts) == spec_ownership_error(parts, 0));
+    assert(spec_node_writes_counter_slot(parts, 1, parts.nodes_meta[0].out_slot));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 0)
+        == spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 1));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 1)
+        == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+    assert(spec_ownership_error(parts, 0) == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+}
+
+/// Lemma 34: the owner error-slot rejection. An owner `RepeatStart`
+/// whose routing error slot is its own counter slot is rejected
+/// with `RepeatCounterForeignWrite` (production
+/// `validate_slot_ownership`, repeat_counter_ownership.rs:37-72,
+/// checks the owner's error slot before exempting it; the
+/// `repeat_owner_error_slot_mutated_to_counter` case in
+/// `vb_f1_repeat_counter_ownership.rs`).
+pub proof fn lemma_repeat_counter_owner_error_slot_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 3,
+        parts.written_slots.len() == 3,
+        parts.written_slots[0].len() == 0,
+        parts.written_slots[1].len() == 0,
+        parts.written_slots[2].len() == 0,
+        parts.nodes_meta[0].kind_disc == 22u32,
+        parts.nodes_meta[0].has_output == 1,
+        parts.nodes_meta[0].has_error_slot == 1,
+        parts.nodes_meta[0].error_slot == parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[0].id == 0u32,
+        parts.nodes_meta[1].kind_disc == 1u32,
+        parts.nodes_meta[1].has_output == 1,
+        parts.nodes_meta[1].out_slot != parts.nodes_meta[0].out_slot,
+        parts.nodes_meta[1].has_error_slot == 0,
+        parts.nodes_meta[1].id == 1u32,
+        parts.nodes_meta[2].kind_disc == 33u32,
+        parts.nodes_meta[2].has_output == 0,
+        parts.nodes_meta[2].has_error_slot == 0,
+        parts.nodes_meta[2].id == 2u32,
+    ensures
+        spec_repeat_counter_error(parts) == Some(SpecWorkflowError::RepeatCounterForeignWrite),
+{
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 0)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 1) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 1)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 0)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 1)
+        == spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 2, 2) == None::<SpecWorkflowError>);
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 2)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 3));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 3) == None::<SpecWorkflowError>);
+    assert(spec_repeat_counter_error(parts) == spec_ownership_error(parts, 0));
+    assert(spec_ownership_scan_error(parts, parts.nodes_meta[0].out_slot, parts.nodes_meta[0].id, 0)
+        == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+    assert(spec_ownership_error(parts, 0) == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+}
+
+/// Lemma 35: the counter-ownership rejection at the top level. A
+/// duplicate counter claim is rejected by the top-level spec
+/// mirror with `RepeatCounterForeignWrite`, before the loop-region
+/// steps run (production runs
+/// `repeat_counter_ownership::validate` inside `validate_parts`,
+/// before `loop_regions::validate`, workflow/mod.rs:42-65).
+pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() == 2,
+        parts.nodes_len == 2,
+        parts.entry == 0u32,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        parts.nodes_meta[0].kind_disc == 22u32,
+        parts.nodes_meta[0].has_output == 1,
+        parts.nodes_meta[1].kind_disc == 22u32,
+        parts.nodes_meta[1].has_output == 1,
+        parts.nodes_meta[0].out_slot == parts.nodes_meta[1].out_slot,
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::RepeatCounterForeignWrite),
+{
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 0)
+        == spec_repeat_duplicate_error(&parts.nodes_meta, 1));
+    assert(spec_repeat_duplicate_before(&parts.nodes_meta, 1, 0)
+        == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+    assert(spec_repeat_duplicate_error(&parts.nodes_meta, 1)
+        == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+    assert(spec_repeat_counter_error(parts)
+        == Some(SpecWorkflowError::RepeatCounterForeignWrite));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::RepeatCounterForeignWrite));
 }
 
 fn main() {}
