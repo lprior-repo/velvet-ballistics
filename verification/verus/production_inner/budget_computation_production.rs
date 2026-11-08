@@ -26,12 +26,18 @@
 //
 //   3. Production method bodies of `count_and_push_loop_body`,
 //      `checked_step_add`, `collect_start_update_metrics`,
-//      `count_total_steps_step_increment`, `body_region_step_increment`
+//      `count_total_steps_step_increment`, `body_region_step_increment`,
+//      `find_node_position`, `push_done_continuation`
 //      are all replaced by no-op `loop {}` placeholders marked
 //      `#[verifier::external]`. Verus skips body verification; the
 //      spec contracts attached via `assume_specification` in the
 //      companion spec file `budget_computation.rs` state the
 //      production behavior the spec proofs discharge.
+//      The `count_and_push_loop_body`, `find_node_position`, and
+//      `push_done_continuation` bodies below instead carry the real
+//      production arithmetic (checked mul/add, node lookup, stack
+//      pushes) as ordinary Rust, so a drift in the production bodies
+//      is visible by direct comparison.
 //
 // DRIFT POLICY: This file MUST be regenerated from
 // `crates/vb_core/src/budget.rs` whenever production changes. The
@@ -54,8 +60,23 @@
 //         ReduceStart body multiplication by iteration limit;
 //         the multiplication is `body_count.checked_mul(iter_count)` at
 //         budget.rs:2487 and the addition is `total.checked_add(product)`
-//         at budget.rs:2493)
+//         at budget.rs:2493; the trailing `push_done_continuation`
+//         call at budget.rs:2498 is mirrored separately below)
 //        -> mirrored as `count_and_push_loop_body`
+//
+//   - `find_node_position`                   <- crates/vb_core/src/budget.rs:2240-2267
+//        (production: direct-index fast path, linear id scan, direct
+//         fallback; `StepOutOfBounds` only when the step id is absent
+//         and `step.as_usize() >= node_count`)
+//        -> mirrored as `find_node_position`
+//
+//   - `push_done_continuation`              <- crates/vb_core/src/budget.rs:2502-2522
+//        (production: pushes the successor id when the done node ends
+//         the workflow (`NodeContinuation::End`) and a successor node
+//         exists, then always pushes `done`; lookup failure converts
+//         via `From<BudgetTraversalError>` at budget.rs:2209-2216 to
+//         `TotalStepsExceeded { actual: u64::MAX, limit: u64::MAX }`)
+//        -> mirrored as `push_done_continuation`
 //
 //   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:2464-2469
 //        (production: pure checked_add of two u64 step totals with
@@ -411,17 +432,21 @@ pub mod workflow {
 /// `crates/vb_core/src/budget.rs:2474-2500`. Body performs the same
 /// `checked_mul` + `checked_add` as production. Body skipped by Verus.
 ///
-/// The production function does three things in sequence for any
+/// The production function does four things in sequence for any
 /// loop header (CollectStart / ForEachStart / RepeatStart /
 /// ReduceStart):
 ///   1. `let body_count = count_body_region_nodes(...)`
 ///   2. `let product = body_count.checked_mul(iter_count)` (line 2486-2491)
 ///   3. `total = total.checked_add(product)` (line 2492-2497)
+///   4. `push_done_continuation(nodes, done, node_count, stack)?`
+///      (line 2498), mirrored by `push_done_continuation` below.
 ///
 /// This mirror exposes the multiplication and the addition as a single
 /// exec fn so the spec surface stays aligned with the production
 /// call sites at budget.rs:2310 (ForEachStart) / :2325 (CollectStart)
-/// / :2342 (ReduceStart) / :2352 (RepeatStart).
+/// / :2342 (ReduceStart) / :2352 (RepeatStart). The stack effect of
+/// step 4 is modelled by the separate `push_done_continuation`
+/// mirror and its bridge in the companion spec file.
 #[verifier::external]
 pub fn count_and_push_loop_body(
     _body_count: u64,
@@ -456,6 +481,91 @@ pub fn count_and_push_loop_body(
             limit: u64::MAX,
         }),
     }
+}
+
+/// Production wrapper for `find_node_position` at
+/// `crates/vb_core/src/budget.rs:2240-2267`. Body is a faithful copy
+/// of the production body with one substitution: the production
+/// `&[CompiledNode]` slice parameter is `&Vec<CompiledNode>` here.
+/// Body skipped by Verus.
+///
+/// Lookup order is exactly production: the direct-index fast path
+/// (`step.as_usize() < node_count` with a matching id), then the
+/// linear id scan, then the direct fallback (`step.as_usize() <
+/// node_count` regardless of the id stored there). Failure is
+/// `StepOutOfBounds { step }` only when the id is absent from the
+/// node list and the direct index is out of range.
+#[verifier::external]
+pub fn find_node_position(
+    nodes: &Vec<CompiledNode>,
+    step: StepIdx,
+    node_count: usize,
+) -> Result<usize, BudgetTraversalError> {
+    let direct_idx = step.as_usize();
+    if direct_idx < node_count {
+        if let Some(node) = nodes.get(direct_idx) {
+            if node.id.0 == step.0 {
+                return Ok(direct_idx);
+            }
+        }
+    }
+    for (position, node) in nodes.iter().enumerate() {
+        if node.id.0 == step.0 {
+            return Ok(position);
+        }
+    }
+    if direct_idx < node_count {
+        return Ok(direct_idx);
+    }
+    Err(BudgetTraversalError::StepOutOfBounds { step })
+}
+
+/// Production wrapper for `push_done_continuation` at
+/// `crates/vb_core/src/budget.rs:2502-2522`. Body is a faithful copy
+/// of the production body with two substitutions: the production
+/// `&[CompiledNode]` slice parameter is `&Vec<CompiledNode>` here,
+/// and the `?` error conversion is written out as a `match` returning
+/// `TotalStepsExceeded { actual: u64::MAX, limit: u64::MAX }`, which
+/// is exactly the production `From<BudgetTraversalError>` mapping at
+/// budget.rs:2209-2216. The nested `if let` chain of production is
+/// written as nested `if` blocks with identical short-circuit order.
+/// Body skipped by Verus.
+///
+/// The stack effect is: push the successor node's id when the done
+/// node ends the workflow (`NodeContinuation::End`) and a successor
+/// node exists at `done_idx + 1`, then always push `done`.
+#[verifier::external]
+pub fn push_done_continuation(
+    nodes: &Vec<CompiledNode>,
+    done: StepIdx,
+    node_count: usize,
+    stack: &mut Vec<StepIdx>,
+) -> Result<(), BudgetError> {
+    let done_idx = match find_node_position(nodes, done, node_count) {
+        Ok(idx) => idx,
+        Err(_) => {
+            return Err(BudgetError::TotalStepsExceeded {
+                actual: u64::MAX,
+                limit: u64::MAX,
+            });
+        }
+    };
+    if let Some(node) = nodes.get(done_idx) {
+        match node.routing.next {
+            NodeContinuation::End => {
+                if let Some(next_idx) = done_idx.checked_add(1) {
+                    if next_idx < nodes.len() {
+                        if let Some(next_node) = nodes.get(next_idx) {
+                            stack.push(next_node.id);
+                        }
+                    }
+                }
+            }
+            NodeContinuation::Step(_) => {}
+        }
+    }
+    stack.push(done);
+    Ok(())
 }
 
 /// Production wrapper for `checked_step_add` at

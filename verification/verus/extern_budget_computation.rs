@@ -27,6 +27,8 @@
 // BINDING LEDGER (mirrors production_inner/budget_computation_production.rs)
 // ============================================================================
 //   - `count_and_push_loop_body`            <- crates/vb_core/src/budget.rs:2474-2500
+//   - `find_node_position`                  <- crates/vb_core/src/budget.rs:2240-2267
+//   - `push_done_continuation`              <- crates/vb_core/src/budget.rs:2502-2522
 //   - `checked_step_add`                    <- crates/vb_core/src/budget.rs:2464-2469
 //   - `max_gather_pages`                    <- crates/vb_core/src/budget.rs:3091-3104
 //   - `total`                               <- crates/vb_core/src/budget.rs:2301-2303
@@ -79,6 +81,8 @@ pub mod production_inner;
 // file attaches an `assume_specification` bridge to:
 //
 //   - count_and_push_loop_body      (budget.rs:2474-2500)
+//   - find_node_position            (budget.rs:2240-2267)
+//   - push_done_continuation        (budget.rs:2502-2522)
 //   - checked_step_add              (budget.rs:2464-2469)
 //   - collect_start_update_metrics  (budget.rs:3091-3104)
 //   - count_total_steps_step_increment (budget.rs:2301-2303)
@@ -197,6 +201,19 @@ fn prod_methods_drift_check() {
     // with phantom arguments. The body is opaque to Verus but the
     // rustc compilation resolves the names.
     let _ = production_inner::count_and_push_loop_body(0u64, 0u64, 0u64);
+    let nodes: Vec<production_inner::CompiledNode> = Vec::new();
+    let _ = production_inner::find_node_position(
+        &nodes,
+        production_inner::StepIdx::new(0),
+        0,
+    );
+    let mut stack: Vec<production_inner::StepIdx> = Vec::new();
+    let _ = production_inner::push_done_continuation(
+        &nodes,
+        production_inner::StepIdx::new(0),
+        0,
+        &mut stack,
+    );
     let _ = production_inner::checked_step_add(0u64, 0u64);
     let _ = production_inner::collect_start_update_metrics(0u32, 0u32, 0u32, 0u32);
     let _ = production_inner::count_total_steps_step_increment(
