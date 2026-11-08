@@ -170,6 +170,39 @@ fn write_runtime_error_dynamic(
         RuntimeError::EngineDriveFailed { run, source } => {
             write!(f, "engine drive failed for run {run:?}: {source}")
         }
+        RuntimeError::GateAlreadyOpen { gate } => {
+            write!(f, "manual gate {gate:?} is already open")
+        }
+        RuntimeError::GateNotOpen { gate } => {
+            write!(f, "manual gate {gate:?} is not open")
+        }
+        RuntimeError::GateEvaluationFailed { source } => {
+            write!(f, "manual gate evaluation failed: {source}")
+        }
+        RuntimeError::GateRunNotSuspendable { run, state } => {
+            write!(
+                f,
+                "run {run:?} cannot be suspended by a manual gate while {state:?}"
+            )
+        }
+        RuntimeError::GateWrongDelegate {
+            gate,
+            expected,
+            actual,
+        } => {
+            write!(
+                f,
+                "manual gate {gate:?} was delegated to {:?}, not {:?}",
+                expected.value(),
+                actual.value()
+            )
+        }
+        RuntimeError::GateOpenBlocksResume { run, gate } => {
+            write!(
+                f,
+                "run {run:?} cannot resume while manual gate {gate:?} is open"
+            )
+        }
         RuntimeError::CompatGateBlocked { run, source } => {
             write!(
                 f,
@@ -203,6 +236,7 @@ impl std::error::Error for RuntimeError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Core { source } => Some(source.as_ref()),
+            Self::GateEvaluationFailed { source } => Some(source),
             Self::StorageJournalAppend { source } => Some(source.as_ref()),
             Self::RollbackFailed { primary, .. } => Some(primary.as_ref()),
             Self::AdmissionHeaderPersistenceFailed { source } => Some(source.as_ref()),

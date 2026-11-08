@@ -22,6 +22,7 @@ impl Shard {
             run_aggregate: RunAggregate::new(),
             journal_sequences: IndexMap::new(),
             pending_ask_authorities: IndexMap::new(),
+            open_gates: IndexMap::new(),
             accounted_executed_steps: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
@@ -812,6 +813,19 @@ impl Shard {
             )?,
             ShardCommand::Resume { run } => {
                 self.handle_resume(run).map_err(RuntimeError::from)?;
+            }
+            ShardCommand::OpenGate {
+                gate,
+                opened_at_ms,
+                requester,
+            } => {
+                self.open_gate(gate, opened_at_ms, requester)?;
+            }
+            ShardCommand::SubmitGateDecision { input } => {
+                self.submit_gate_decision(input)?;
+            }
+            ShardCommand::EscalateGate { gate, now_ms } => {
+                self.escalate_timed_out_gate(gate, now_ms)?;
             }
             ShardCommand::RegisteredActionCompleted { ticket, receipt, output } => {
                 self.handle_registered_action_completion(ticket, receipt, output)?;

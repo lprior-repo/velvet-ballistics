@@ -23,6 +23,7 @@ include!("lifecycle/chunk_005_prepare.rs");
 include!("lifecycle/chunk_005_drive_apply.rs");
 include!("lifecycle/chunk_005.rs");
 include!("lifecycle/chunk_004.rs");
+include!("lifecycle/gate_submission.rs");
 
 #[cfg(test)]
 mod tests {
@@ -49,5 +50,9 @@ mod tests {
 
     mod strict_gate_sequence {
         include!("lifecycle_tests/strict_gate_sequence.rs");
+    }
+
+    mod gate_submission {
+        include!("lifecycle_tests/gate_submission.rs");
     }
 }

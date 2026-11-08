@@ -65,6 +65,9 @@ impl From<ResumeError> for RuntimeError {
             ResumeError::IncompleteHydration { run_id: _ } => {
                 Self::UnsupportedFullRecoveryHydration
             }
+            ResumeError::GateOpen { run_id, gate } => {
+                Self::GateOpenBlocksResume { run: run_id, gate }
+            }
             ResumeError::JournalAppendFailed => {
                 error
                     .source_runtime_error()
