@@ -57,7 +57,9 @@ verus! {
 // `production::proof_matches_prepared_shape`, etc.
 pub use prod::{
     artifact_digest_bound, digest_eq, proof_matches_prepared_shape, AcceptedArtifact,
-    VerificationProof, WorkflowDigest,
+    ActionId, ActionPack, ArtifactEvidence, ArtifactVerificationEvidence, AssumptionId,
+    ObligationClosure, ObligationKind, PackedArtifactEvidence, RuntimePolicy,
+    VerificationLedgerEntry, VerificationProof, VerificationWarning, WorkflowDigest,
 };
 
 } // verus!
