@@ -5,7 +5,6 @@
 //! strategies and scope plumbing live there.
 
 use proptest::prelude::*;
-use vb_core::ids::StepIdx;
 use vb_core::workflow::CompiledNodeKind;
 
 use super::super::SlotCompiler;
