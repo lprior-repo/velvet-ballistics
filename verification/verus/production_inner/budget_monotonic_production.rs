@@ -12,7 +12,7 @@
 // the production source:
 //
 //   1. Production `use thiserror::Error;` and `#[derive(... serde::Serialize,
-//      serde::Deserialize ...)]` at budget.rs:8 / :571 are NOT re-included.
+//      serde::Deserialize ...)]` at budget.rs:8 / :881 are NOT re-included.
 //      The mirror uses a `#[derive(Clone, Copy, ...)]` subset that
 //      Verus 0.2026.05.05 can parse without proc-macro support. Field
 //      NAMES and TYPES match production byte-for-byte, so any drift
@@ -66,7 +66,7 @@
 //                                               crates/vb_core/src/workflow/mod.rs:666-880)
 //   - `BudgetTraversalError`                <- extern_budget_monotonic.rs
 //                                               (mirror of
-//                                               crates/vb_core/src/budget.rs:170-191)
+//                                               crates/vb_core/src/budget.rs:256-280)
 //   - `WholeWorkflowBudget`                 <- extern_budget_monotonic.rs
 //                                               (mirror of
 //                                               crates/vb_core/src/budget.rs:14-90)
@@ -74,7 +74,7 @@
 //   - `WholeWorkflowBudget::compute`        <- extern_budget_monotonic.rs
 //                                               `whole_workflow_budget_compute`
 //                                               (mirror of
-//                                               crates/vb_core/src/budget.rs:64-70)
+//                                               crates/vb_core/src/budget.rs:97-103)
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -466,7 +466,7 @@ pub mod workflow {
     /// Mirror of production `WorkflowError` discriminant set at
     /// `crates/vb_core/src/workflow/mod.rs:666-880`. Restricted to the
     /// variants reachable from `BudgetTraversalError` via the `From`
-    /// conversion at `crates/vb_core/src/budget.rs:193-205` plus the
+    /// conversion at `crates/vb_core/src/budget.rs:282-296` plus the
     /// direct `WorkflowError` returns in `compute_budget_local`.
     #[derive(Clone, Copy)]
     pub enum WorkflowError {
@@ -549,7 +549,7 @@ pub struct ResourceContract {
 }
 
 // ============================================================================
-// BudgetTraversalError — mirror of `crates/vb_core/src/budget.rs:170-191`
+// BudgetTraversalError — mirror of `crates/vb_core/src/budget.rs:256-280`
 // ============================================================================
 //
 // Mirror of `BudgetTraversalError` (the narrow error type returned by
@@ -557,7 +557,7 @@ pub struct ResourceContract {
 // any variant drift breaks the mirror.
 
 /// Mirror of production `BudgetTraversalError` at
-/// `crates/vb_core/src/budget.rs:170-191`.
+/// `crates/vb_core/src/budget.rs:256-280`.
 #[derive(Clone, Copy)]
 pub enum BudgetTraversalError {
     EntryOutOfBounds { entry: StepIdx },
@@ -571,12 +571,12 @@ pub enum BudgetTraversalError {
 // WholeWorkflowBudget — production mirror
 // ============================================================================
 //
-// Mirror of `crates/vb_core/src/budget.rs:11-59`. Every field name, type,
+// Mirror of `crates/vb_core/src/budget.rs:14-90`. Every field name, type,
 // and visibility matches production exactly. Drift in any field breaks
 // the mirror.
 
 /// Mirror of production `WholeWorkflowBudget` at
-/// `crates/vb_core/src/budget.rs:11-59`. Field-by-field copy of the
+/// `crates/vb_core/src/budget.rs:14-90`. Field-by-field copy of the
 /// production struct. The exec fn `WholeWorkflowBudget::compute` below
 /// is `#[verifier::external]` and accepts the production signature.
 #[derive(Clone, Copy)]
@@ -604,11 +604,18 @@ pub struct WholeWorkflowBudget {
     pub max_ipc_payload_bytes: u32,
     pub max_blob_bytes: u64,
     pub max_input_bytes: u32,
+    pub max_open_gates: u32,
+    pub max_signal_subscriptions: u32,
+    pub max_incident_emissions: u64,
+    pub max_transitions: u64,
+    pub max_journal_bytes_total: u64,
+    pub max_value_store_entries: u64,
+    pub max_cost_units: u64,
 }
 
 impl WholeWorkflowBudget {
     /// Production wrapper for `WholeWorkflowBudget::compute` at
-    /// `crates/vb_core/src/budget.rs:64-70`. Body skipped by Verus;
+    /// `crates/vb_core/src/budget.rs:97-103`. Body skipped by Verus;
     /// contract attached via `assume_specification` in the spec file.
     #[verifier::external]
     pub fn compute(
@@ -632,7 +639,7 @@ impl WholeWorkflowBudget {
 // (`budget_monotonic.rs`).
 
 /// Production wrapper for `WholeWorkflowBudget::compute` at
-/// `crates/vb_core/src/budget.rs:64-70`. Body skipped by Verus.
+/// `crates/vb_core/src/budget.rs:97-103`. Body skipped by Verus.
 #[verifier::external]
 pub fn whole_workflow_budget_compute(
     nodes: &[super::workflow::CompiledNode],

@@ -104,11 +104,11 @@ fn prod_methods_drift_check(
     contract: production_inner::ResourceContract,
 ) {
     // Reference the BoundednessPolicy::DEFAULT constant (production
-    // constant at budget.rs:378-396).
+    // constant at budget.rs:506-530).
     let policy = production_inner::BoundednessPolicy::DEFAULT;
 
     // Reference every field of WholeWorkflowBudget to surface any
-    // rename in budget.rs:11-59.
+    // rename in budget.rs:14-90.
     let budget = production_inner::WholeWorkflowBudget {
         max_total_steps: 0,
         max_total_slots: 0,
@@ -133,10 +133,17 @@ fn prod_methods_drift_check(
         max_ipc_payload_bytes: 0,
         max_blob_bytes: 0,
         max_input_bytes: 0,
+        max_open_gates: 0,
+        max_signal_subscriptions: 0,
+        max_incident_emissions: 0,
+        max_transitions: 0,
+        max_journal_bytes_total: 0,
+        max_value_store_entries: 0,
+        max_cost_units: 0,
     };
 
     // Reference every field of AggregateResourceBudget to surface any
-    // rename in budget.rs:571-596.
+    // rename in budget.rs:882-920.
     let arb = production_inner::AggregateResourceBudget {
         max_steps_executable: 0,
         max_action_tickets: 0,
@@ -162,11 +169,11 @@ fn prod_methods_drift_check(
     };
 
     // AggregateResourceUsage derives Default; use it to surface the
-    // production field set (budget.rs:622-644).
+    // production field set (budget.rs:969-1003).
     let aru = production_inner::AggregateResourceUsage::default();
 
     // Reference every field of AggregateResourceCapacity to surface
-    // any rename in budget.rs:598-620.
+    // any rename in budget.rs:924-965.
     let cap = production_inner::AggregateResourceCapacity {
         max_steps_executable: 0,
         max_action_tickets: 0,

@@ -205,6 +205,12 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for WholeWorkflowBudget {
             == other.max_journal_batch_bytes && self.max_queue_depth == other.max_queue_depth
             && self.max_ipc_payload_bytes == other.max_ipc_payload_bytes && self.max_blob_bytes
             == other.max_blob_bytes && self.max_input_bytes == other.max_input_bytes
+            && self.max_open_gates == other.max_open_gates && self.max_signal_subscriptions
+            == other.max_signal_subscriptions && self.max_incident_emissions
+            == other.max_incident_emissions && self.max_transitions == other.max_transitions
+            && self.max_journal_bytes_total == other.max_journal_bytes_total
+            && self.max_value_store_entries == other.max_value_store_entries
+            && self.max_cost_units == other.max_cost_units
     }
 }
 
@@ -228,7 +234,14 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for BoundednessPolicy {
             == other.absolute_max_queue_depth && self.absolute_max_ipc_payload_bytes
             == other.absolute_max_ipc_payload_bytes && self.absolute_max_blob_bytes
             == other.absolute_max_blob_bytes && self.absolute_max_input_bytes
-            == other.absolute_max_input_bytes
+            == other.absolute_max_input_bytes && self.absolute_max_open_gates
+            == other.absolute_max_open_gates && self.absolute_max_signal_subscriptions
+            == other.absolute_max_signal_subscriptions && self.absolute_max_incident_emissions
+            == other.absolute_max_incident_emissions && self.absolute_max_transitions
+            == other.absolute_max_transitions && self.absolute_max_journal_bytes_total
+            == other.absolute_max_journal_bytes_total && self.absolute_max_value_store_entries
+            == other.absolute_max_value_store_entries && self.absolute_max_cost_units
+            == other.absolute_max_cost_units
     }
 }
 
@@ -524,6 +537,24 @@ pub open spec fn spec_policy_violation(
         Err(BudgetError::StepsExecutableExceeded { actual, limit }) => actual
             == budget.max_steps_executable && limit == policy.absolute_max_steps_executable
             && actual > limit,
+        Err(BudgetError::OpenGatesExceeded { actual, limit }) => actual == budget.max_open_gates
+            && limit == policy.absolute_max_open_gates && actual > limit,
+        Err(BudgetError::SignalSubscriptionsExceeded { actual, limit }) => actual
+            == budget.max_signal_subscriptions && limit
+            == policy.absolute_max_signal_subscriptions && actual > limit,
+        Err(BudgetError::IncidentEmissionsExceeded { actual, limit }) => actual
+            == budget.max_incident_emissions && limit == policy.absolute_max_incident_emissions
+            && actual > limit,
+        Err(BudgetError::TransitionsExceeded { actual, limit }) => actual == budget.max_transitions
+            && limit == policy.absolute_max_transitions && actual > limit,
+        Err(BudgetError::JournalBytesTotalExceeded { actual, limit }) => actual
+            == budget.max_journal_bytes_total && limit
+            == policy.absolute_max_journal_bytes_total && actual > limit,
+        Err(BudgetError::ValueStoreEntriesExceeded { actual, limit }) => actual
+            == budget.max_value_store_entries && limit
+            == policy.absolute_max_value_store_entries && actual > limit,
+        Err(BudgetError::CostUnitsExceeded { actual, limit }) => actual == budget.max_cost_units
+            && limit == policy.absolute_max_cost_units && actual > limit,
         Err(_) => true,
     }
 }
@@ -535,6 +566,345 @@ pub assume_specification[ production::boundedness_policy_validate ](
     ensures
         spec_policy_violation(*budget, *policy, result),
 ;
+
+// ============================================================================
+// Policy-violation arm lemmas (new budget dimensions)
+// ============================================================================
+//
+// Each lemma proves its `spec_policy_violation` arm is load-bearing in
+// both directions: a budget over the policy cap reported with matching
+// `actual`/`limit` is accepted, while the same variant with a
+// mismatched `actual` is rejected. The two directions together are
+// what the arm decides: the positive direction alone cannot detect
+// arm deletion, because the catch-all `Err(_) => true` arm would
+// accept the matching triple anyway. Production order follows
+// `BoundednessPolicy::validate` (budget.rs:534-592) via
+// `validate_budget_dimensions` (budget.rs:595-642).
+/// Lemma: the open-gates arm is load-bearing. A budget over
+/// `policy.absolute_max_open_gates` reported as
+/// `BudgetError::OpenGatesExceeded` with matching `actual`/`limit` is
+/// accepted, while the same variant with a mismatched `actual` is
+/// rejected.
+pub proof fn lemma_policy_violation_open_gates(
+    budget: WholeWorkflowBudget,
+    policy: BoundednessPolicy,
+)
+    requires
+        (budget.max_open_gates as int) > (policy.absolute_max_open_gates as int),
+    ensures
+        spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::OpenGatesExceeded {
+                actual: budget.max_open_gates,
+                limit: policy.absolute_max_open_gates,
+            }),
+        ) && !spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::OpenGatesExceeded {
+                actual: 0,
+                limit: policy.absolute_max_open_gates,
+            }),
+        ),
+{
+    assert(spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::OpenGatesExceeded {
+            actual: budget.max_open_gates,
+            limit: policy.absolute_max_open_gates,
+        }),
+    ));
+    assert(!spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::OpenGatesExceeded {
+            actual: 0,
+            limit: policy.absolute_max_open_gates,
+        }),
+    ));
+}
+
+/// Lemma: the signal-subscriptions arm is load-bearing. A budget over
+/// `policy.absolute_max_signal_subscriptions` reported as
+/// `BudgetError::SignalSubscriptionsExceeded` with matching
+/// `actual`/`limit` is accepted, while the same variant with a
+/// mismatched `actual` is rejected.
+pub proof fn lemma_policy_violation_signal_subscriptions(
+    budget: WholeWorkflowBudget,
+    policy: BoundednessPolicy,
+)
+    requires
+        (budget.max_signal_subscriptions as int)
+            > (policy.absolute_max_signal_subscriptions as int),
+    ensures
+        spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::SignalSubscriptionsExceeded {
+                actual: budget.max_signal_subscriptions,
+                limit: policy.absolute_max_signal_subscriptions,
+            }),
+        ) && !spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::SignalSubscriptionsExceeded {
+                actual: 0,
+                limit: policy.absolute_max_signal_subscriptions,
+            }),
+        ),
+{
+    assert(spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::SignalSubscriptionsExceeded {
+            actual: budget.max_signal_subscriptions,
+            limit: policy.absolute_max_signal_subscriptions,
+        }),
+    ));
+    assert(!spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::SignalSubscriptionsExceeded {
+            actual: 0,
+            limit: policy.absolute_max_signal_subscriptions,
+        }),
+    ));
+}
+
+/// Lemma: the incident-emissions arm is load-bearing. A budget over
+/// `policy.absolute_max_incident_emissions` reported as
+/// `BudgetError::IncidentEmissionsExceeded` with matching
+/// `actual`/`limit` is accepted, while the same variant with a
+/// mismatched `actual` is rejected.
+pub proof fn lemma_policy_violation_incident_emissions(
+    budget: WholeWorkflowBudget,
+    policy: BoundednessPolicy,
+)
+    requires
+        (budget.max_incident_emissions as int)
+            > (policy.absolute_max_incident_emissions as int),
+    ensures
+        spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::IncidentEmissionsExceeded {
+                actual: budget.max_incident_emissions,
+                limit: policy.absolute_max_incident_emissions,
+            }),
+        ) && !spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::IncidentEmissionsExceeded {
+                actual: 0,
+                limit: policy.absolute_max_incident_emissions,
+            }),
+        ),
+{
+    assert(spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::IncidentEmissionsExceeded {
+            actual: budget.max_incident_emissions,
+            limit: policy.absolute_max_incident_emissions,
+        }),
+    ));
+    assert(!spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::IncidentEmissionsExceeded {
+            actual: 0,
+            limit: policy.absolute_max_incident_emissions,
+        }),
+    ));
+}
+
+/// Lemma: the transitions arm is load-bearing. A budget over
+/// `policy.absolute_max_transitions` reported as
+/// `BudgetError::TransitionsExceeded` with matching `actual`/`limit` is
+/// accepted, while the same variant with a mismatched `actual` is
+/// rejected.
+pub proof fn lemma_policy_violation_transitions(
+    budget: WholeWorkflowBudget,
+    policy: BoundednessPolicy,
+)
+    requires
+        (budget.max_transitions as int) > (policy.absolute_max_transitions as int),
+    ensures
+        spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::TransitionsExceeded {
+                actual: budget.max_transitions,
+                limit: policy.absolute_max_transitions,
+            }),
+        ) && !spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::TransitionsExceeded {
+                actual: 0,
+                limit: policy.absolute_max_transitions,
+            }),
+        ),
+{
+    assert(spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::TransitionsExceeded {
+            actual: budget.max_transitions,
+            limit: policy.absolute_max_transitions,
+        }),
+    ));
+    assert(!spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::TransitionsExceeded {
+            actual: 0,
+            limit: policy.absolute_max_transitions,
+        }),
+    ));
+}
+
+/// Lemma: the journal-bytes-total arm is load-bearing. A budget over
+/// `policy.absolute_max_journal_bytes_total` reported as
+/// `BudgetError::JournalBytesTotalExceeded` with matching
+/// `actual`/`limit` is accepted, while the same variant with a
+/// mismatched `actual` is rejected.
+pub proof fn lemma_policy_violation_journal_bytes_total(
+    budget: WholeWorkflowBudget,
+    policy: BoundednessPolicy,
+)
+    requires
+        (budget.max_journal_bytes_total as int)
+            > (policy.absolute_max_journal_bytes_total as int),
+    ensures
+        spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::JournalBytesTotalExceeded {
+                actual: budget.max_journal_bytes_total,
+                limit: policy.absolute_max_journal_bytes_total,
+            }),
+        ) && !spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::JournalBytesTotalExceeded {
+                actual: 0,
+                limit: policy.absolute_max_journal_bytes_total,
+            }),
+        ),
+{
+    assert(spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::JournalBytesTotalExceeded {
+            actual: budget.max_journal_bytes_total,
+            limit: policy.absolute_max_journal_bytes_total,
+        }),
+    ));
+    assert(!spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::JournalBytesTotalExceeded {
+            actual: 0,
+            limit: policy.absolute_max_journal_bytes_total,
+        }),
+    ));
+}
+
+/// Lemma: the value-store-entries arm is load-bearing. A budget over
+/// `policy.absolute_max_value_store_entries` reported as
+/// `BudgetError::ValueStoreEntriesExceeded` with matching
+/// `actual`/`limit` is accepted, while the same variant with a
+/// mismatched `actual` is rejected.
+pub proof fn lemma_policy_violation_value_store_entries(
+    budget: WholeWorkflowBudget,
+    policy: BoundednessPolicy,
+)
+    requires
+        (budget.max_value_store_entries as int)
+            > (policy.absolute_max_value_store_entries as int),
+    ensures
+        spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::ValueStoreEntriesExceeded {
+                actual: budget.max_value_store_entries,
+                limit: policy.absolute_max_value_store_entries,
+            }),
+        ) && !spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::ValueStoreEntriesExceeded {
+                actual: 0,
+                limit: policy.absolute_max_value_store_entries,
+            }),
+        ),
+{
+    assert(spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::ValueStoreEntriesExceeded {
+            actual: budget.max_value_store_entries,
+            limit: policy.absolute_max_value_store_entries,
+        }),
+    ));
+    assert(!spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::ValueStoreEntriesExceeded {
+            actual: 0,
+            limit: policy.absolute_max_value_store_entries,
+        }),
+    ));
+}
+
+/// Lemma: the cost-units arm is load-bearing. A budget over
+/// `policy.absolute_max_cost_units` reported as
+/// `BudgetError::CostUnitsExceeded` with matching `actual`/`limit` is
+/// accepted, while the same variant with a mismatched `actual` is
+/// rejected.
+pub proof fn lemma_policy_violation_cost_units(
+    budget: WholeWorkflowBudget,
+    policy: BoundednessPolicy,
+)
+    requires
+        (budget.max_cost_units as int) > (policy.absolute_max_cost_units as int),
+    ensures
+        spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::CostUnitsExceeded {
+                actual: budget.max_cost_units,
+                limit: policy.absolute_max_cost_units,
+            }),
+        ) && !spec_policy_violation(
+            budget,
+            policy,
+            Err(BudgetError::CostUnitsExceeded {
+                actual: 0,
+                limit: policy.absolute_max_cost_units,
+            }),
+        ),
+{
+    assert(spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::CostUnitsExceeded {
+            actual: budget.max_cost_units,
+            limit: policy.absolute_max_cost_units,
+        }),
+    ));
+    assert(!spec_policy_violation(
+        budget,
+        policy,
+        Err(BudgetError::CostUnitsExceeded {
+            actual: 0,
+            limit: policy.absolute_max_cost_units,
+        }),
+    ));
+}
 
 /// Bridge contract: `validate_aggregate_budget` returns Ok iff every
 /// dimension of the aggregate budget is within the policy limits.
