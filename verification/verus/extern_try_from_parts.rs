@@ -2461,7 +2461,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     }
     // 1d. validate_accessors (workflow/mod.rs:2069-2074) — root
     // slot bounds only. Path depth and per-segment checks live in
-    // the validate_accessor_paths step below (1e).
+    // the validate_accessor_paths step below (1f).
     for accessor in &parts.accessors {
         if accessor.root >= parts.slot_count {
             return SpecValidationResult::Err(SpecWorkflowError::SlotOutOfBounds);
@@ -2496,7 +2496,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
             return SpecValidationResult::Err(err);
         }
     }
-    // 1e. validate_accessor_paths (workflow/mod.rs:2089-2119) —
+    // 1f. validate_accessor_paths (workflow/mod.rs:2089-2119) —
     // per accessor, in order: path depth against MAX_PATH_DEPTH
     // (limits.rs:59), then per-segment Field symbol bounds and
     // reserved Index(u32::MAX). Runs after the per-node loop, in
@@ -2506,11 +2506,11 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
             return SpecValidationResult::Err(err);
         }
     }
-    // 1f. validate_constants_symbols + validate_build_object_symbols
+    // 1g. validate_constants_symbols + validate_build_object_symbols
     // (workflow/mod.rs:2122-2147) — per-symbol detail remains
     // trusted/future: the projection does not yet model the
     // SymbolId bounds of the constant pool or BuildObject fields.
-    // 1g. validate_reachability (workflow/mod.rs:2160-2229) —
+    // 1h. validate_reachability (workflow/mod.rs:2160-2229) —
     // every node must be reachable from the entry over routing
     // `next`, routing error handlers, and kind targets.
     if let Some(err) = reachability_error(parts) {
@@ -2523,7 +2523,7 @@ pub fn try_from_parts_pure(parts: &SpecWorkflowParts) -> SpecValidationResult {
     if let Some(err) = forward_edges_error(parts) {
         return SpecValidationResult::Err(err);
     }
-    // 1h. repeat_counter_ownership::validate
+    // 1i. repeat_counter_ownership::validate
     // (repeat_counter_ownership.rs:6-12). Production runs this
     // inside validate_parts after validate_forward_edges and
     // before validate_no_nested_together: one counter slot per

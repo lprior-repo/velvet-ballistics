@@ -776,7 +776,7 @@ pub open spec fn spec_accessor_path_error(
     }
 }
 
-/// Spec-level mirror of the step-1e accessor loop: walks
+/// Spec-level mirror of the step-1f accessor loop: walks
 /// `parts.accessors` from index `i` and returns the first
 /// accessor-path error in accessor order, or `None` when every
 /// path validates. Production validates accessor `i` fully
