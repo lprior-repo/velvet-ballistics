@@ -7,6 +7,10 @@
 
 mod marks;
 mod parse;
+mod parse_step_fields;
+mod parse_step_kinds;
+mod parse_trigger;
+mod parse_values;
 mod types;
 
 pub(crate) use parse::parse_workflow_ast;
