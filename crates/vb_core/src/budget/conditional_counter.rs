@@ -2,9 +2,8 @@ use crate::ids::StepIdx;
 use crate::workflow::{CompiledNode, CompiledNodeKind};
 use std::collections::HashMap;
 
-use super::{
-    BudgetTraversalError, find_node_position, remove_tracked_step, visit_node_for_total_steps,
-};
+use super::successors::remove_tracked_step;
+use super::{BudgetTraversalError, find_node_position, visit_node_for_total_steps};
 
 struct Frame {
     entry: StepIdx,
