@@ -460,6 +460,26 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
                 ),
             ],
         },
+        JournalEvent::GateOpenedEvent {
+            seq,
+            run,
+            gate,
+            opened_at_ms,
+            requester,
+        } => TraceEntry {
+            index: idx,
+            event_type: "GateOpened",
+            step: None,
+            status: Some(TraceStatus::WaitingAnswer),
+            action: Some(gate.action.get()),
+            seq: seq.get(),
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("gate", serde_json::Value::from(gate.id.get())),
+                ("opened_at_ms", serde_json::Value::from(*opened_at_ms)),
+                ("requester", serde_json::Value::from(requester.value())),
+            ],
+        },
         JournalEvent::CompatibilityDecisionEvent { seq, run, decision } => TraceEntry {
             index: idx,
             event_type: "CompatibilityDecision",

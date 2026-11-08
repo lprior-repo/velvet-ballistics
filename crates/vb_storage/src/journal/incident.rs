@@ -151,11 +151,12 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 /// Derives the final lifecycle state from a sequence of journal events.
 ///
 /// Scans events in reverse and returns the lifecycle state implied by the
-/// last non-neutral event. Policy decision events (`PolicyDecisionEvent`)
-/// and gate decision events (`GateDecisionEvent`) are neutral facts that
-/// do not affect lifecycle; they are skipped during derivation so a
-/// terminal state such as `Failed`, `Cancelled`, or `Completed` is not
-/// overwritten by a subsequent policy or gate decision.
+/// last non-neutral event. Policy decision events (`PolicyDecisionEvent`),
+/// gate decision events (`GateDecisionEvent`), and gate opened events
+/// (`GateOpenedEvent`) are neutral facts that do not affect lifecycle; they
+/// are skipped during derivation so a terminal state such as `Failed`,
+/// `Cancelled`, or `Completed` is not overwritten by a subsequent policy or
+/// gate event.
 ///
 /// Every known `JournalEvent` variant is enumerated explicitly in the
 /// `event_to_lifecycle` mapping:
@@ -191,7 +192,7 @@ pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleS
 
 /// Returns true if the event affects lifecycle state derivation.
 ///
-/// Policy decision, gate decision, compatibility decision, and
+/// Policy decision, gate decision, gate opened, compatibility decision, and
 /// capability grant events are neutral facts and do not affect lifecycle.
 #[inline]
 fn is_lifecycle_affecting(event: &JournalEvent) -> bool {
@@ -199,6 +200,7 @@ fn is_lifecycle_affecting(event: &JournalEvent) -> bool {
         event,
         JournalEvent::PolicyDecisionEvent { .. }
             | JournalEvent::GateDecisionEvent { .. }
+            | JournalEvent::GateOpenedEvent { .. }
             | JournalEvent::CompatibilityDecisionEvent { .. }
             | JournalEvent::RunContinuation { .. }
     )
@@ -241,6 +243,7 @@ pub fn event_to_lifecycle(event: &JournalEvent) -> LifecycleState {
         JournalEvent::AskTimedOutEvent { .. } => LifecycleState::Active,
         JournalEvent::PolicyDecisionEvent { .. } => LifecycleState::Active,
         JournalEvent::GateDecisionEvent { .. } => LifecycleState::Active,
+        JournalEvent::GateOpenedEvent { .. } => LifecycleState::Active,
         JournalEvent::CompatibilityDecisionEvent { .. } => LifecycleState::Active,
     }
 }

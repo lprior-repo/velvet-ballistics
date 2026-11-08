@@ -125,4 +125,29 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
             .append_strict(&storage_event)
             .map_err(RuntimeError::from)
     }
+
+    fn append_gate_opened_strict(
+        &self,
+        gate: vb_core::manual_gate::ManualGate,
+        opened_at_ms: u64,
+        requester: vb_core::manual_gate::ApproverId,
+        seq: EventSeq,
+    ) -> RuntimeResult<()> {
+        self.queue
+            .probe_accepting_writes()
+            .map_err(RuntimeError::from)?;
+        self.queue
+            .drain_all(self.journal.as_ref())
+            .map_err(RuntimeError::from)?;
+        let storage_event = JournalEvent::GateOpenedEvent {
+            run: gate.run,
+            seq,
+            gate,
+            opened_at_ms,
+            requester,
+        };
+        self.journal
+            .append_strict(&storage_event)
+            .map_err(RuntimeError::from)
+    }
 }

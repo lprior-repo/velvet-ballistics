@@ -53,7 +53,8 @@ impl JournalEvent {
             | Self::RunAnswered { run, .. }
             | Self::AskTimedOutEvent { run, .. }
             | Self::PolicyDecisionEvent { run, .. }
-            | Self::GateDecisionEvent { run, .. } => *run,
+            | Self::GateDecisionEvent { run, .. }
+            | Self::GateOpenedEvent { run, .. } => *run,
             Self::CompatibilityDecisionEvent { run, .. } => *run,
         }
     }
@@ -94,7 +95,8 @@ impl JournalEvent {
             | Self::RunAnswered { seq, .. }
             | Self::AskTimedOutEvent { seq, .. }
             | Self::PolicyDecisionEvent { seq, .. }
-            | Self::GateDecisionEvent { seq, .. } => *seq,
+            | Self::GateDecisionEvent { seq, .. }
+            | Self::GateOpenedEvent { seq, .. } => *seq,
             Self::CompatibilityDecisionEvent { seq, .. } => *seq,
         }
     }
@@ -151,6 +153,7 @@ impl JournalEvent {
             Self::AskTimedOutEvent { .. } => RecordKind::AskTimedOut,
             Self::PolicyDecisionEvent { .. } => RecordKind::PolicyDecision,
             Self::GateDecisionEvent { .. } => RecordKind::GateDecision,
+            Self::GateOpenedEvent { .. } => RecordKind::GateOpened,
             Self::CompatibilityDecisionEvent { .. } => RecordKind::CompatibilityDecision,
             Self::RunAdmissionBudget { .. } => RecordKind::RunAdmissionBudget,
         }
@@ -231,7 +234,8 @@ impl JournalEvent {
             | Self::RunRetried { .. }
             | Self::RunAnswered { .. }
             | Self::PolicyDecisionEvent { .. }
-            | Self::GateDecisionEvent { .. } => None,
+            | Self::GateDecisionEvent { .. }
+            | Self::GateOpenedEvent { .. } => None,
             Self::CompatibilityDecisionEvent { .. } => None,
         }
     }
@@ -286,7 +290,8 @@ impl JournalEvent {
             | Self::RunRetried { .. }
             | Self::RunAnswered { .. }
             | Self::PolicyDecisionEvent { .. }
-            | Self::GateDecisionEvent { .. } => true,
+            | Self::GateDecisionEvent { .. }
+            | Self::GateOpenedEvent { .. } => true,
             Self::CompatibilityDecisionEvent { .. } => true,
         }
     }

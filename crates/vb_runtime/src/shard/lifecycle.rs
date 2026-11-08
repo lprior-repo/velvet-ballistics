@@ -52,6 +52,10 @@ mod tests {
         include!("lifecycle_tests/strict_gate_sequence.rs");
     }
 
+    mod strict_gate_opened_sequence {
+        include!("lifecycle_tests/strict_gate_opened_sequence.rs");
+    }
+
     mod gate_submission {
         include!("lifecycle_tests/gate_submission.rs");
     }

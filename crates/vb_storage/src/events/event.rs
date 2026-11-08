@@ -7,6 +7,7 @@
 
 use crate::EventSeq;
 use chrono::{DateTime, Utc};
+use vb_core::manual_gate::{ApproverId, ManualGate};
 use vb_core::{
     ActionId, ActionTicket, AggregateResourceBudget, CapabilitySet, ConstValue, RunId,
     RuntimePolicy, SlotIdx, StepIdx, Taint, WorkflowDigest,
@@ -423,5 +424,23 @@ pub enum JournalEvent {
         policy: RuntimePolicy,
         /// Aggregate budget admitted for this run.
         budget: AggregateResourceBudget,
+    },
+    /// Manual gate opened (MASTER §77.15). Appended at the end of the
+    /// enum; no existing variant was renumbered. The durable record that
+    /// a gate is open: recovery reconstructs the open gate from this event
+    /// unless a later `GateDecisionEvent` closes it. Carries no effect
+    /// authority: opening a gate suspends its run, it never authorizes a
+    /// live effect.
+    GateOpenedEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Gate definition as opened by the operator.
+        gate: ManualGate,
+        /// Opening time in milliseconds since the UNIX epoch.
+        opened_at_ms: u64,
+        /// Operator who requested the gated action.
+        requester: ApproverId,
     },
 }

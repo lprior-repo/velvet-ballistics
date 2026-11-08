@@ -1077,6 +1077,60 @@ fn gate_record(
 }
 
 #[test]
+fn trace_one_gate_opened_maps_correct_fields() {
+    let event = JournalEvent::GateOpenedEvent {
+        run: make_run_id(1),
+        seq: make_event_seq(9),
+        gate: vb_core::manual_gate::ManualGate {
+            id: vb_core::manual_gate::GateId::new(7),
+            run: make_run_id(1),
+            action: make_action_id(3),
+            risk: vb_core::manual_gate::RiskClass::High,
+            compensatable: false,
+            required_role: vb_core::manual_gate::ApproverRole::new("deploy-approver".to_string())
+                .unwrap(),
+            separation_of_duties: vb_core::manual_gate::SeparationOfDuties::DistinctFromRequester,
+            evidence_bundle_digest: vb_core::manual_gate::GateDigest::from_bytes([1u8; 32]),
+            prompt_digest: vb_core::manual_gate::GateDigest::from_bytes([2u8; 32]),
+            timeout_ms: 1_000,
+            escalation_policy_digest: vb_core::manual_gate::GateDigest::from_bytes([3u8; 32]),
+            break_glass_allowed: true,
+            approval_reason_required: true,
+        },
+        opened_at_ms: 100,
+        requester: vb_core::manual_gate::ApproverId {
+            value: "bob".to_string(),
+        },
+    };
+    let entry = trace_one(4, &event);
+    assert_eq!(entry.event_type, "GateOpened");
+    assert_eq!(entry.seq, 9);
+    assert_eq!(entry.step, None);
+    assert_eq!(entry.action, Some(3));
+    assert_eq!(entry.status, Some(TraceStatus::WaitingAnswer));
+    assert_eq!(entry.index, 4);
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| *key == "gate" && *value == serde_json::Value::from(7u64))
+    );
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| *key == "opened_at_ms"
+                && *value == serde_json::Value::from(100u64))
+    );
+    assert!(
+        entry
+            .extra_json
+            .iter()
+            .any(|(key, value)| *key == "requester" && *value == serde_json::Value::from("bob"))
+    );
+}
+
+#[test]
 fn trace_one_gate_decision_approved_maps_correct_fields() {
     let event = JournalEvent::GateDecisionEvent {
         run: make_run_id(1),

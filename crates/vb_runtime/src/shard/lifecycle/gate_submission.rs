@@ -1,19 +1,21 @@
 // Operator-facing manual gate submission flow (MASTER §77.15, V1-MIN).
 //
 // Pure evaluation lives in [`crate::manual_gate`]; the durable journal
-// append port lives in `impl_parts/gate_decision.rs`. This module is the
-// imperative shell joining them: open a gate and suspend its run, submit
-// an operator decision and journal the outcome, or escalate a timed-out
-// gate. Outcomes are applied only after the decision record is durably
-// journaled, so a journal failure leaves the gate open and the run
-// suspended. A decision is final once journaled: the gate is removed
-// before the run is resumed or failed, and a later resume failure does
-// not reopen it; the operator retries with a plain resume.
+// append ports live in `impl_parts/gate_decision.rs` and
+// `impl_parts/gate_opened.rs`. This module is the imperative shell joining
+// them: open a gate and suspend its run, submit an operator decision and
+// journal the outcome, or escalate a timed-out gate. Outcomes are applied
+// only after the decision record is durably journaled, so a journal failure
+// leaves the gate open and the run suspended. A decision is final once
+// journaled: the gate is removed before the run is resumed or failed, and a
+// later resume failure does not reopen it; the operator retries with a plain
+// resume.
 //
-// Open gates live in shard memory only. The durable record of a gate is
-// its outcome record; a gate that is opened but never decided leaves no
-// journal trace, and a crash loses it. A durable gate-open event with
-// recovery reconstruction is a follow-up batch, not part of this flow.
+// Opening a gate is journaled the same way: the `GateOpenedEvent` is
+// appended before the run is suspended, so a crash after the append still
+// leaves a durable open-gate record. Recovery reconstructs the open gate
+// from the journal ([`crate::manual_gate::reconstruct_open_gates`]); a gate
+// whose opening was never journaled was never opened.
 //
 // A gated run cannot be driven by any other command while its gate is
 // open: [`Shard::handle_resume`] rejects gated runs, and a gated run
@@ -32,13 +34,17 @@ impl Shard {
     ///
     /// The run must exist and be suspendable, the gate id must not
     /// already be open, and the shard-wide open-gate registry must have
-    /// room. The run is suspended through the awaiting-action transition,
-    /// so the drive loop leaves it alone until a decision resumes or
-    /// fails it. The admission budget's `max_open_gates` is not enforced
-    /// here: the verifier derives it from reachable Ask nodes only, so
-    /// it is zero for Ask-less workflows and cannot bound
-    /// operator-opened gates. The registry cap below is the bound; a
-    /// distinct operator gate budget is a policy decision for John.
+    /// room. The opening is journaled through the strict gate port before
+    /// the run is suspended, so a journal failure leaves the run
+    /// unsuspended and the gate unregistered, and a crash after the
+    /// append leaves a durable open-gate record for recovery. The run is
+    /// suspended through the awaiting-action transition, so the drive loop
+    /// leaves it alone until a decision resumes or fails it. The admission
+    /// budget's `max_open_gates` is not enforced here: the verifier
+    /// derives it from reachable Ask nodes only, so it is zero for
+    /// Ask-less workflows and cannot bound operator-opened gates. The
+    /// registry cap below is the bound; a distinct operator gate budget
+    /// is a policy decision for John.
     pub(crate) fn open_gate(
         &mut self,
         gate: ManualGate,
@@ -54,6 +60,7 @@ impl Shard {
         }
         self.check_gate_suspendable(run)?;
         self.reserve_open_gate_slot()?;
+        self.append_gate_opened_strict(gate.clone(), opened_at_ms, requester.clone())?;
         self.apply(run, RuntimeEvent::AwaitAction)?;
         let open = OpenGate {
             gate,
