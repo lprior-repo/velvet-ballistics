@@ -282,7 +282,7 @@ pub enum MirrorJournalError {
 // ============================================================================
 
 /// Mirror of `JournalEvent` at
-/// `crates/vb_storage/src/events.rs:23-316`. Production's enum has
+/// `crates/vb_storage/src/events/event.rs:37-427`. Production's enum has
 /// 25+ variants each carrying `run: RunId` and `seq: EventSeq` plus
 /// variant-specific fields; the mirror surfaces only `run_id` and
 /// `seq` because the spec contract reasons only about run identity

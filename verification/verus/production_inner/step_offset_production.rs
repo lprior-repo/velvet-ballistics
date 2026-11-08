@@ -5,7 +5,7 @@
 // ============================================================================
 //
 // This file is a VERBATIM mirror of the production arithmetic primitive
-// `StepIdx::checked_add` at `crates/vb_core/src/ids/mod.rs:303-308` and the
+// `StepIdx::checked_add` at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206` and the
 // production wrapper `checked_step_offset` at
 // `crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212`,
 // with minimal substitutions:
@@ -53,7 +53,7 @@
 // DRIFT POLICY: `crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212`
 // ============================================================================
 // Production source coverage:
-//   - `StepIdx::checked_add`                <- crates/vb_core/src/ids/mod.rs:303-308
+//   - `StepIdx::checked_add`                <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206
 //   - `checked_step_offset`                 <- crates/vb_compile/src/mod_compile_lowering/part_12.rs:199-212
 //   - `CompileError::PrimitiveLoweringLimitExceeded`
 //                                              <- crates/vb_compile/src/mod_compile_errors/kind.rs:124
@@ -121,7 +121,7 @@ impl StepIdx {
     }
 
     /// Mirror of `StepIdx::checked_add(self, rhs: u16) -> Option<Self>`
-    /// at `crates/vb_core/src/ids/mod.rs:303-308`:
+    /// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:201-206`:
     ///
     /// ```ignore
     /// pub const fn checked_add(self, rhs: u16) -> Option<Self> {

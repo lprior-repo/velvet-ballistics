@@ -65,7 +65,7 @@ pub const REQUIRED_GATE_COUNT: u8 = 15;
 // collapsed to bare discriminants because the spec only reasons about
 // variant membership. `ArtifactEvidenceInvalid` is raised by independent
 // runtime verification (`verify_stored_artifact` at
-// `crates/vb_runtime/src/admission/registered_verification.rs:5-30`),
+// `crates/vb_runtime/src/admission/registered_verification.rs:5-28`),
 // not by the strict gate checks in `is_strict_accepted` below.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArtifactEnvelopeErrorKind {

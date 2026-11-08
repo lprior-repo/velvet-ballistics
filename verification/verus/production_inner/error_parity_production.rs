@@ -208,7 +208,7 @@ impl SlotIdx {
     }
 }
 
-/// Mirror of `ActionId` (u16 newtype) at `crates/vb_core/src/action/mod.rs`.
+/// Mirror of `ActionId` (u16 newtype) at `crates/vb_core/src/ids/mod.rs:73`.
 /// Used by `CompiledNodeKind::Do { action, .. }` and constructed by
 /// `emit_single_body_set` for the `Do { action, input }` arm at
 /// part_04.rs:164.

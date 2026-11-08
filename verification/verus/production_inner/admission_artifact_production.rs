@@ -43,7 +43,7 @@
 // ---------------------------------------------------------------------------
 //
 // Verbatim mirror of `vb_core::ids::WorkflowDigest` at
-// `crates/vb_core/src/ids/mod.rs:340-357`. Production is
+// `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255`. Production is
 // `pub struct WorkflowDigest([u8; 32])` with a derived `PartialEq`
 // impl. We model the digest as `pub struct WorkflowDigest(pub u64)`
 // for spec-mode equality reasoning — equality reduces to a u64
@@ -141,7 +141,7 @@ pub fn proof_matches_prepared_shape(proof: &VerificationProof) -> bool {
 // ---------------------------------------------------------------------------
 //
 // Mirrors the `PartialEq` impl derived on `vb_core::ids::WorkflowDigest`
-// at `crates/vb_core/src/ids/mod.rs:341`.
+// at `crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:239`.
 #[verifier::external]
 pub fn digest_eq(a: &WorkflowDigest, b: &WorkflowDigest) -> bool {
     a.0 == b.0
