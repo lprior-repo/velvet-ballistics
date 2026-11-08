@@ -70,7 +70,7 @@
 //     `CollectFinish`                      <- crates/vb_core/src/workflow/mod.rs:1264-1284
 //   - `SlotCompiler::record_slot`          <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:111-117
 //   - `SlotCompiler::allocate_slot`        <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:29-38
-//   - `emit_scoped_flat_body`              <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:20-46
+//   - `emit_scoped_flat_body`              <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:20-42
 //
 // ============================================================================
 // TRUST BOUNDARY
@@ -889,7 +889,7 @@ pub exec fn checked_prod_lower_bounded_collect_ir(
 /// (CollectFinish). This matches the production
 /// `plan_compute_edges` arithmetic at bounded_collect.rs:116-126 and
 /// the per-step ids `emit_scoped_flat_body` assigns at
-/// canonical_branch_body.rs:20-46.
+/// canonical_branch_body.rs:20-42.
 pub proof fn lemma_collect_node_ids(
     id: int,
     source: int,

@@ -133,7 +133,7 @@
 //   - `SlotCompiler::allocate_slot`             <- crates/vb_compile/src/mod_compile_lowering/part_08.rs:29-38
 //                                                  (returns SlotIdx::new(slot_count),
 //                                                  reserves one more slot)
-//   - `emit_scoped_flat_body`                   <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:20-46
+//   - `emit_scoped_flat_body`                   <- crates/vb_compile/src/mod_compile_lowering/canonical_branch_body.rs:20-42
 //                                                  (one node per body step at
 //                                                  start+index, one slot allocated
 //                                                  per step)
