@@ -12,12 +12,12 @@
 //   - Required gate count mirrors `vb_runtime::admission::REQUIRED_GATE_COUNT` (= 15)
 //     at crates/vb_runtime/src/admission/parts/chunk_001_types_errors_traits.rs:2.
 //     Production constructs gate_count 0, not 15: `verification_proof_core`
-//     (crates/vb_storage/src/admission.rs:113-129) forces gate_count 0,
+//     (crates/vb_storage/src/admission.rs:113-128) forces gate_count 0,
 //     durable false, and all flags false; `prepare_with_profile`
-//     (crates/vb_storage/src/admission/verification.rs:26-54) sets only
+//     (crates/vb_storage/src/admission/verification.rs:26-52) sets only
 //     bounded_claimed and idempotency_verified_claimed true. The 15-gate
 //     shape exists only in the AlwaysPresentArtifactStore fixture
-//     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-95).
+//     (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91).
 //   - RunAdmission struct mirrors `vb_runtime::admission::RunAdmission`
 //     at crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31.
 //   - RunAdmission::new mirrors
@@ -26,7 +26,7 @@
 //   - `vb_storage::admission::submit_artifact_with_contracts` at
 //     crates/vb_storage/src/admission.rs:354-374 performs no gate/flag
 //     validation; `verify_accepted_artifact`
-//     (crates/vb_storage/src/admission/verification.rs:56-87) enforces the
+//     (crates/vb_storage/src/admission/verification.rs:56-86) enforces the
 //     prepared shape by recompute-and-compare, any deviation returned as
 //     ArtifactEvidenceInvalid
 //     (crates/vb_runtime/src/admission/registered_verification.rs:5-28).
@@ -251,15 +251,15 @@ pub enum SpecAdmissionOutcome {
 
 // `REQUIRED_GATE_COUNT` (= 15) names the legacy fixture count; it is NOT
 // the count admission requires. Production constructs gate_count 0
-// (`verification_proof_core`, crates/vb_storage/src/admission.rs:113-129).
+// (`verification_proof_core`, crates/vb_storage/src/admission.rs:113-128).
 pub const PREPARED_GATE_COUNT: u8 = 0;
 
 // Prepared-proof gate-count decision. Production constructs gate_count 0;
 // the bool is the prepared profile's claimed flags (bounded_claimed and
 // idempotency_verified_claimed, set by `prepare_with_profile` at
-// crates/vb_storage/src/admission/verification.rs:26-54). The legacy
+// crates/vb_storage/src/admission/verification.rs:26-52). The legacy
 // 15-gate shape exists only in the AlwaysPresentArtifactStore fixture
-// (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-95)
+// (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91)
 // and is rejected by real validation.
 pub open spec fn spec_all_required_gates_accepted(
     gate_count: u8,

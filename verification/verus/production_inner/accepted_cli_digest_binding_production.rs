@@ -11,11 +11,11 @@
 //                + `crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:83-189`
 // Production source coverage:
 //   - `WorkflowDigest`           <- crates/vb_core/src/ids/parts/chunk_001_custom_types.rs:241-255
-//   - `AcceptedArtifact`         <- crates/vb_storage/src/admission.rs:203-228
+//   - `AcceptedArtifact`         <- crates/vb_storage/src/admission.rs:203-237
 //   - `RunAdmission`             <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:3-31
 //   - `RunAdmission::new`        <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:49-66
 //   - `RunAdmission::artifact_digest`
-//                                   <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:147-151
+//                                   <- crates/vb_runtime/src/admission/parts/chunk_002_records.rs:149-151
 //   - production_artifact_digest_eq_header
 //                                   <- crates/vb_runtime/src/admission/parts/chunk_005_admit_core.rs:108-113
 //                                     (INV-002 strict-policy check:
@@ -83,7 +83,7 @@ pub struct SpecRunAdmission {
 /// Equality is performed on the inner `u64` payload (the `SpecWorkflowDigest`
 /// mirror intentionally omits `PartialEq` per the standard vstd
 /// `discriminant_value` avoidance pattern; see
-/// `verification/verus/production_inner/admission_artifact_production.rs:130`
+/// `verification/verus/production_inner/admission_artifact_production.rs:406-408`
 /// for the same field-level equality pattern).
 #[verifier::external]
 pub fn production_artifact_digest_eq_header(

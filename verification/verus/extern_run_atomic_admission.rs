@@ -15,10 +15,10 @@
 // (`vb_storage::admission::submit_artifact_with_contracts` at
 // crates/vb_storage/src/admission.rs:354-374 performs no gate/flag
 // validation; the prepared proof carries gate_count 0 per
-// `verification_proof_core` at crates/vb_storage/src/admission.rs:113-129,
+// `verification_proof_core` at crates/vb_storage/src/admission.rs:113-128,
 // with only bounded_claimed and idempotency_verified_claimed set by
 // `prepare_with_profile` at
-// crates/vb_storage/src/admission/verification.rs:26-54).
+// crates/vb_storage/src/admission/verification.rs:26-52).
 
 #![forbid(unsafe_code)]
 #![allow(dead_code)]

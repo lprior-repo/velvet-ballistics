@@ -14,11 +14,11 @@
 //
 // Production sources mirrored:
 //   - `vb_storage::admission::verification_proof_core`
-//                                                 (crates/vb_storage/src/admission.rs:113-129)
+//                                                 (crates/vb_storage/src/admission.rs:113-128)
 //   - `vb_storage::admission::prepare_with_profile` proof construction
-//                                                 (crates/vb_storage/src/admission/verification.rs:35-37)
+//                                                 (crates/vb_storage/src/admission/verification.rs:35-38)
 //   - `vb_storage::admission::verify_accepted_artifact` enforcement
-//                                                 (crates/vb_storage/src/admission/verification.rs:56-87)
+//                                                 (crates/vb_storage/src/admission/verification.rs:56-86)
 //   - `vb_storage::admission::verify_expected_bindings`
 //                                                 (crates/vb_storage/src/admission/verification.rs:141-156)
 //   - `vb_runtime::admission::verify_stored_artifact` error mapping
@@ -85,7 +85,7 @@ pub enum ArtifactEnvelopeErrorKind {
 
 // Prepared gate count: the gate_count `verification_proof_core`
 // forces for every admitted artifact
-// (crates/vb_storage/src/admission.rs:113-129). `REQUIRED_GATE_COUNT`
+// (crates/vb_storage/src/admission.rs:113-128). `REQUIRED_GATE_COUNT`
 // above mirrors the real `vb_runtime` constant (= 15) naming the
 // legacy fixture count; it is NOT the count admission requires.
 pub const PREPARED_GATE_COUNT: u8 = 0;
@@ -96,20 +96,20 @@ pub const PREPARED_GATE_COUNT: u8 = 0;
 //
 // Mirrors the prepared-proof shape production constructs for every
 // admitted artifact: `verification_proof_core` at
-// `crates/vb_storage/src/admission.rs:113-129` forces gate_count 0,
+// `crates/vb_storage/src/admission.rs:113-128` forces gate_count 0,
 // durable false, and every proof flag false (supplied counts and
 // durability are intentionally ignored by `VerificationProof::new` at
-// admission.rs:135-154), and `prepare_with_profile` at
-// `crates/vb_storage/src/admission/verification.rs:35-37` then sets
+// admission.rs:135-151), and `prepare_with_profile` at
+// `crates/vb_storage/src/admission/verification.rs:35-38` then sets
 // exactly `bounded_claimed` and `idempotency_verified_claimed` true
 // and leaves the idempotency attestation empty.
 // `submit_artifact_with_contracts` (admission.rs:354-374) performs no
 // gate-count or proof-flag validation of its own; the shape is
 // enforced by `verify_accepted_artifact` at
-// `crates/vb_storage/src/admission/verification.rs:56-87`, which
+// `crates/vb_storage/src/admission/verification.rs:56-86`, which
 // recomputes the expected artifact and rejects any deviation with
 // `ArtifactEvidenceInvalid` (see the gate-count and proof-flag tests
-// at `crates/vb_runtime/src/admission/artifact_envelope_tests.rs:205-291`).
+// at `crates/vb_runtime/src/admission/artifact_envelope_tests.rs:205-318`).
 //
 // Returns `Ok(())` iff the proof carries exactly the prepared shape:
 // gate_count 0, durable false, `bounded_claimed` and
@@ -122,7 +122,7 @@ pub const PREPARED_GATE_COUNT: u8 = 0;
 // returns `InvalidGateCount` for a wrong gate count. A proof with the
 // legacy 15-gate count and all flags true (the shape the
 // always-present store fixture builds at
-// `crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-95`)
+// `crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91`)
 // does NOT match: it is not an admitted artifact, and the real
 // validation rejects it.
 //

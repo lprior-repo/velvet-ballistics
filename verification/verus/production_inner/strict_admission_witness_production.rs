@@ -24,15 +24,15 @@
 //                                          storage-backed witness plus the
 //                                          prepared-proof shape
 //                                          (verification_proof_core at
-//                                          crates/vb_storage/src/admission.rs:113-129;
+//                                          crates/vb_storage/src/admission.rs:113-128;
 //                                          enforced by verify_accepted_artifact at
-//                                          crates/vb_storage/src/admission/verification.rs:56-87,
+//                                          crates/vb_storage/src/admission/verification.rs:56-86,
 //                                          which rejects any deviation with
 //                                          ArtifactEvidenceInvalid). The
 //                                          legacy 15-gate shape is the
 //                                          AlwaysPresentArtifactStore fixture
 //                                          only
-//                                          (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-95).
+//                                          (crates/vb_runtime/src/admission/parts/chunk_003_stores.rs:74-91).
 // Regenerate this file whenever production changes. Any rename of
 // `SpecRuntimePolicy`, `SpecWitnessKind`, or `SpecStrictWitnessResult`
 // variants breaks the `extern_strict_admission_witness` Verus build
@@ -101,7 +101,7 @@ pub fn strict_admission_witness_decision(
     } else if gate_count != 0 {
         // Prepared gate count: `verification_proof_core` forces
         // gate_count 0 for every admitted artifact
-        // (crates/vb_storage/src/admission.rs:113-129). The literal is
+        // (crates/vb_storage/src/admission.rs:113-128). The literal is
         // used here rather than a named const: a `pub const` in this
         // mirror triggers a known Verus erasure bug (see the
         // spec-side PREPARED_GATE_COUNT in strict_admission_witness.rs
