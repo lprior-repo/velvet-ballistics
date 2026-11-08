@@ -31,8 +31,10 @@
 //        (validate_reduce_branch_targets 1684-1697,
 //        validate_for_each_next_targets 1699-1709),
 //      - validate_accessor_paths (2089-2119),
-//      - validate_constants_symbols (2122-2132),
-//      - validate_build_object_symbols (2135-2147),
+//      - validate_constants_symbols (2122-2132), modelled in the
+//        projection (`constants_symbols_error`) and its spec mirror,
+//      - validate_build_object_symbols (2135-2147), modelled in the
+//        projection (`build_object_symbols_error`) and its spec mirror,
 //      - validate_reachability (2160-2229), modelled in the
 //        projection (`reachability_error`) and its spec mirror,
 //      - validate_forward_edges (2336-2364), modelled in the
@@ -332,6 +334,30 @@ pub assume_specification[ production::accessor_path_error ](
 ) -> (err: Option<SpecWorkflowError>)
     ensures
         err == spec_accessor_path_error(*accessor, symbols_count as int),
+;
+
+/// Spec-level mirror of `production::constants_symbols_error`.
+/// Returns `Some(SymbolOutOfBounds)` for the first pooled symbol
+/// at or beyond `symbols_count`, or `None` when every pooled
+/// symbol validates, in production order
+/// (workflow/mod.rs:2122-2132).
+pub assume_specification[ production::constants_symbols_error ](
+    parts: &SpecWorkflowParts,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_constants_symbols_error(parts, 0),
+;
+
+/// Spec-level mirror of `production::build_object_symbols_error`.
+/// Returns `Some(SymbolOutOfBounds)` for the first BuildObject
+/// field symbol at or beyond `symbols_count`, or `None` when
+/// every field symbol validates, in production order
+/// (workflow/mod.rs:2135-2147).
+pub assume_specification[ production::build_object_symbols_error ](
+    parts: &SpecWorkflowParts,
+) -> (err: Option<SpecWorkflowError>)
+    ensures
+        err == spec_build_object_symbols_error(parts, 0),
 ;
 
 /// Spec-level mirror of `production::budget_error`. Returns
@@ -820,6 +846,93 @@ pub open spec fn spec_accessors_path_error(
         } else {
             spec_accessors_path_error(parts, i + 1)
         }
+    }
+}
+
+/// Spec-level mirror of the `validate_constants_symbols` scan
+/// (workflow/mod.rs:2122-2132): walks the caller-supplied
+/// symbol-only `constants_symbols` inventory from index `i` and
+/// returns `Some(SymbolOutOfBounds)` for the first symbol at or
+/// beyond `symbols_count`, or `None` when every pooled symbol
+/// validates. Production checks each `ConstValue::Symbol`
+/// constant in pool order via `validate_symbol`
+/// (workflow/mod.rs:2150-2156).
+pub open spec fn spec_constants_symbols_error(
+    parts: &SpecWorkflowParts,
+    i: int,
+) -> Option<SpecWorkflowError>
+    decreases parts.constants_symbols.len() - i
+{
+    if i < 0 || i >= parts.constants_symbols.len() {
+        None
+    } else if (parts.constants_symbols[i] as int) >= parts.symbols_count as int {
+        Some(SpecWorkflowError::SymbolOutOfBounds)
+    } else {
+        spec_constants_symbols_error(parts, i + 1)
+    }
+}
+
+/// Spec-level mirror of one node's BuildObject field scan in
+/// `validate_build_object_symbols` (workflow/mod.rs:2135-2147):
+/// walks `fields` from index `j` and returns
+/// `Some(SymbolOutOfBounds)` for the first field symbol at or
+/// beyond `symbols_count`, or `None` when every field validates.
+pub open spec fn spec_build_object_field_symbols_error(
+    fields: &Vec<u32>,
+    j: int,
+    symbols_count: int,
+) -> Option<SpecWorkflowError>
+    decreases fields.len() - j
+{
+    if j < 0 || j >= fields.len() {
+        None
+    } else if (fields[j] as int) >= symbols_count {
+        Some(SpecWorkflowError::SymbolOutOfBounds)
+    } else {
+        spec_build_object_field_symbols_error(fields, j + 1, symbols_count)
+    }
+}
+
+/// Spec-level mirror of the per-node loop in
+/// `validate_build_object_symbols` (workflow/mod.rs:2135-2147):
+/// walks the caller-supplied `build_object_field_symbols`
+/// inventory from node index `i`, scanning each node's fields
+/// in field order, and returns the first `SymbolOutOfBounds`,
+/// or `None` when every BuildObject field validates. A missing
+/// entry means the node carries no BuildObject fields.
+pub open spec fn spec_build_object_symbols_error(
+    parts: &SpecWorkflowParts,
+    i: int,
+) -> Option<SpecWorkflowError>
+    decreases parts.build_object_field_symbols.len() - i
+{
+    if i < 0 || i >= parts.build_object_field_symbols.len() {
+        None
+    } else {
+        let err = spec_build_object_field_symbols_error(
+            &parts.build_object_field_symbols[i],
+            0,
+            parts.symbols_count as int,
+        );
+        if err != None::<SpecWorkflowError> {
+            err
+        } else {
+            spec_build_object_symbols_error(parts, i + 1)
+        }
+    }
+}
+
+/// Spec-level mirror of step 1g: the constant-pool symbol check
+/// runs first, then the BuildObject field-symbol check, in
+/// production order (workflow/mod.rs:1380-1381). Returns the
+/// first `SymbolOutOfBounds` from either check, or `None` when
+/// both validate.
+pub open spec fn spec_symbols_error(parts: &SpecWorkflowParts) -> Option<SpecWorkflowError> {
+    let err = spec_constants_symbols_error(parts, 0);
+    if err != None::<SpecWorkflowError> {
+        err
+    } else {
+        spec_build_object_symbols_error(parts, 0)
     }
 }
 
@@ -2539,6 +2652,8 @@ pub open spec fn try_from_parts_pure_spec(parts: &SpecWorkflowParts) -> SpecVali
         SpecValidationResult::Err(spec_exprs_error(parts, 0).unwrap())
     } else if spec_accessors_path_error(parts, 0) != None::<SpecWorkflowError> {
         SpecValidationResult::Err(spec_accessors_path_error(parts, 0).unwrap())
+    } else if spec_symbols_error(parts) != None::<SpecWorkflowError> {
+        SpecValidationResult::Err(spec_symbols_error(parts).unwrap())
     } else if spec_reachability_error(parts) != None::<SpecWorkflowError> {
         SpecValidationResult::Err(spec_reachability_error(parts).unwrap())
     } else if spec_forward_edges_error(parts) != None::<SpecWorkflowError> {
@@ -2744,6 +2859,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         spec_reachability_error(parts) == None::<SpecWorkflowError>,
         spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
         spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
@@ -2787,6 +2903,8 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
         // Expressions: skip (already required valid).
     } else if spec_accessors_path_error(parts, 0) != None::<SpecWorkflowError> {
         // Accessor paths: skip (already required valid).
+    } else if spec_symbols_error(parts) != None::<SpecWorkflowError> {
+        // Symbol bounds: skip (already required valid).
     } else if spec_reachability_error(parts) != None::<SpecWorkflowError> {
         // Reachability: skip (already required valid).
     } else if spec_forward_edges_error(parts) != None::<SpecWorkflowError> {
@@ -2808,6 +2926,7 @@ pub proof fn lemma_well_formed_parts_accepted(parts: &SpecWorkflowParts)
     } else {
         assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
         assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+        assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
         assert(try_from_parts_pure_spec(parts) == SpecValidationResult::Ok);
     }
 }
@@ -3623,6 +3742,7 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         spec_reachability_error(parts) == None::<SpecWorkflowError>,
         spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
         parts.nodes_meta[0].kind_disc == 22u32,
@@ -3646,6 +3766,7 @@ pub proof fn lemma_repeat_counter_duplicate_rejected_top_level(parts: &SpecWorkf
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::RepeatCounterForeignWrite));
 }
@@ -3672,6 +3793,7 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         parts.kind_targets.len() == 2,
         parts.kind_targets[0].len() == 0,
         parts.kind_targets[1].len() == 0,
@@ -3702,6 +3824,7 @@ pub proof fn lemma_forward_edge_routing_next_rejected(parts: &SpecWorkflowParts)
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge));
 }
@@ -3728,6 +3851,7 @@ pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         parts.kind_targets.len() == 1,
         parts.kind_targets[0].len() == 1,
         parts.kind_targets[0][0] == 0u32,
@@ -3759,6 +3883,7 @@ pub proof fn lemma_forward_edge_jump_target_rejected(parts: &SpecWorkflowParts)
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge));
 }
@@ -3856,6 +3981,7 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         parts.kind_targets.len() == 3,
         parts.kind_targets[0].len() == 0,
         parts.kind_targets[1].len() == 1,
@@ -3907,6 +4033,7 @@ pub proof fn lemma_forward_edge_repeat_check_no_owner_rejected(parts: &SpecWorkf
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge));
 }
@@ -3934,6 +4061,7 @@ pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWo
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         parts.kind_targets.len() == 4,
         parts.kind_targets[0].len() == 2,
         parts.kind_targets[0][0] == 1u32,
@@ -4019,6 +4147,7 @@ pub proof fn lemma_forward_edge_repeat_check_wrong_owner_rejected(parts: &SpecWo
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::BackwardEdge));
 }
@@ -4043,6 +4172,7 @@ pub proof fn lemma_forward_edge_improper_nesting_rejected(parts: &SpecWorkflowPa
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         parts.kind_targets.len() == 4,
         parts.kind_targets[0].len() == 2,
         parts.kind_targets[0][0] == 1u32,
@@ -4113,6 +4243,7 @@ pub proof fn lemma_forward_edge_improper_nesting_rejected(parts: &SpecWorkflowPa
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::ImproperLoopNesting));
 }
@@ -4137,6 +4268,7 @@ pub proof fn lemma_reachability_unreachable_rejected(parts: &SpecWorkflowParts)
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         parts.kind_targets.len() == 2,
         parts.kind_targets[0].len() == 0,
         parts.kind_targets[1].len() == 0,
@@ -4166,6 +4298,7 @@ pub proof fn lemma_reachability_unreachable_rejected(parts: &SpecWorkflowParts)
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::UnreachableNode));
 }
@@ -4242,6 +4375,7 @@ pub proof fn lemma_nested_together_rejected(parts: &SpecWorkflowParts)
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         parts.kind_targets.len() == 5,
         parts.kind_targets[0].len() == 2,
         parts.kind_targets[0][0] == 1u32,
@@ -4401,6 +4535,7 @@ pub proof fn lemma_nested_together_rejected(parts: &SpecWorkflowParts)
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::NestedTogether));
 }
@@ -5412,6 +5547,7 @@ pub proof fn lemma_budget_pairing_before_budget(parts: &SpecWorkflowParts)
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         spec_reachability_error(parts) == None::<SpecWorkflowError>,
         spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
         spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
@@ -5427,6 +5563,7 @@ pub proof fn lemma_budget_pairing_before_budget(parts: &SpecWorkflowParts)
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::LoopRegionUnpaired));
 }
@@ -5451,6 +5588,7 @@ pub proof fn lemma_budget_before_input_slots(parts: &SpecWorkflowParts)
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         spec_reachability_error(parts) == None::<SpecWorkflowError>,
         spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
         spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
@@ -5470,6 +5608,7 @@ pub proof fn lemma_budget_before_input_slots(parts: &SpecWorkflowParts)
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::BudgetPolicyExceeded));
 }
@@ -5492,6 +5631,7 @@ pub proof fn lemma_budget_within_caps_reaches_input_slots(parts: &SpecWorkflowPa
         spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
         spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
         spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
         spec_reachability_error(parts) == None::<SpecWorkflowError>,
         spec_forward_edges_error(parts) == None::<SpecWorkflowError>,
         spec_repeat_counter_error(parts) == None::<SpecWorkflowError>,
@@ -5510,6 +5650,7 @@ pub proof fn lemma_budget_within_caps_reaches_input_slots(parts: &SpecWorkflowPa
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
     assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::InputSlotOutOfBounds));
 }
@@ -6119,6 +6260,203 @@ pub proof fn lemma_expr_stack_within_cap_reaches_exprs(parts: &SpecWorkflowParts
     assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
     assert(try_from_parts_pure_spec(parts)
         == SpecValidationResult::Err(SpecWorkflowError::ExpressionInvalid));
+}
+
+/// Lemma 111: the pooled-symbol rejection. A workflow whose only
+/// pooled symbol is at or beyond `symbols_count` is rejected with
+/// `SymbolOutOfBounds` (production `validate_constants_symbols`,
+/// workflow/mod.rs:2122-2132, via `validate_symbol`,
+/// workflow/mod.rs:2150-2156).
+pub proof fn lemma_constants_symbol_out_of_bounds_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.constants_symbols.len() == 1,
+        parts.constants_symbols[0] >= parts.symbols_count,
+    ensures
+        spec_constants_symbols_error(parts, 0) == Some(SpecWorkflowError::SymbolOutOfBounds),
+{
+    assert(spec_constants_symbols_error(parts, 1) == None::<SpecWorkflowError>);
+    assert(spec_constants_symbols_error(parts, 0)
+        == Some(SpecWorkflowError::SymbolOutOfBounds));
+}
+
+/// Lemma 112: the largest in-bounds pooled symbol is accepted. A
+/// workflow whose only pooled symbol is `4` with `symbols_count`
+/// 5 validates: `validate_symbol` accepts
+/// `symbol.get() < symbols_count` (workflow/mod.rs:2150-2156).
+pub proof fn lemma_constants_symbol_last_accepted(parts: &SpecWorkflowParts)
+    requires
+        parts.constants_symbols.len() == 1,
+        parts.constants_symbols[0] == 4u32,
+        parts.symbols_count == 5u32,
+    ensures
+        spec_constants_symbols_error(parts, 0) == None::<SpecWorkflowError>,
+{
+    assert(spec_constants_symbols_error(parts, 1) == None::<SpecWorkflowError>);
+    assert(spec_constants_symbols_error(parts, 0) == None::<SpecWorkflowError>);
+}
+
+/// Lemma 113: the first out-of-bounds pooled symbol wins. A
+/// workflow whose first pooled symbol is out of bounds and whose
+/// second is in bounds reports the error from the first symbol:
+/// the scan returns the first symbol's decision without consulting
+/// later symbols (production iterates the constant pool in order,
+/// workflow/mod.rs:2122-2132).
+pub proof fn lemma_constants_symbol_first_out_of_bounds_wins(parts: &SpecWorkflowParts)
+    requires
+        parts.constants_symbols.len() == 2,
+        parts.constants_symbols[0] >= parts.symbols_count,
+        parts.constants_symbols[1] < parts.symbols_count,
+    ensures
+        spec_constants_symbols_error(parts, 0) == Some(SpecWorkflowError::SymbolOutOfBounds),
+        spec_constants_symbols_error(parts, 1) == None::<SpecWorkflowError>,
+{
+    assert(spec_constants_symbols_error(parts, 2) == None::<SpecWorkflowError>);
+    assert(spec_constants_symbols_error(parts, 1) == None::<SpecWorkflowError>);
+    assert(spec_constants_symbols_error(parts, 0)
+        == Some(SpecWorkflowError::SymbolOutOfBounds));
+}
+
+/// Lemma 114: the BuildObject field-symbol rejection. A workflow
+/// whose only BuildObject field symbol is at or beyond
+/// `symbols_count` is rejected with `SymbolOutOfBounds`
+/// (production `validate_build_object_symbols`,
+/// workflow/mod.rs:2135-2147, via `validate_symbol`,
+/// workflow/mod.rs:2150-2156).
+pub proof fn lemma_build_object_symbol_out_of_bounds_rejected(parts: &SpecWorkflowParts)
+    requires
+        parts.build_object_field_symbols.len() == 1,
+        parts.build_object_field_symbols[0].len() == 1,
+        parts.build_object_field_symbols[0][0] >= parts.symbols_count,
+    ensures
+        spec_build_object_symbols_error(parts, 0) == Some(SpecWorkflowError::SymbolOutOfBounds),
+{
+    assert(spec_build_object_field_symbols_error(
+        &parts.build_object_field_symbols[0], 1, parts.symbols_count as int)
+        == None::<SpecWorkflowError>);
+    assert(spec_build_object_field_symbols_error(
+        &parts.build_object_field_symbols[0], 0, parts.symbols_count as int)
+        == Some(SpecWorkflowError::SymbolOutOfBounds));
+    assert(spec_build_object_symbols_error(parts, 1) == None::<SpecWorkflowError>);
+    assert(spec_build_object_symbols_error(parts, 0)
+        == Some(SpecWorkflowError::SymbolOutOfBounds));
+}
+
+/// Lemma 115: the first out-of-bounds BuildObject field wins. A
+/// node whose first field symbol is out of bounds and whose second
+/// is in bounds reports the error from the first field: the scan
+/// returns the first field's decision without consulting later
+/// fields (production iterates fields in order,
+/// workflow/mod.rs:2135-2147).
+pub proof fn lemma_build_object_symbol_first_out_of_bounds_wins(parts: &SpecWorkflowParts)
+    requires
+        parts.build_object_field_symbols.len() == 1,
+        parts.build_object_field_symbols[0].len() == 2,
+        parts.build_object_field_symbols[0][0] >= parts.symbols_count,
+        parts.build_object_field_symbols[0][1] < parts.symbols_count,
+    ensures
+        spec_build_object_symbols_error(parts, 0) == Some(SpecWorkflowError::SymbolOutOfBounds),
+        spec_build_object_field_symbols_error(
+            &parts.build_object_field_symbols[0], 1, parts.symbols_count as int)
+            == None::<SpecWorkflowError>,
+{
+    assert(spec_build_object_field_symbols_error(
+        &parts.build_object_field_symbols[0], 2, parts.symbols_count as int)
+        == None::<SpecWorkflowError>);
+    assert(spec_build_object_field_symbols_error(
+        &parts.build_object_field_symbols[0], 1, parts.symbols_count as int)
+        == None::<SpecWorkflowError>);
+    assert(spec_build_object_field_symbols_error(
+        &parts.build_object_field_symbols[0], 0, parts.symbols_count as int)
+        == Some(SpecWorkflowError::SymbolOutOfBounds));
+    assert(spec_build_object_symbols_error(parts, 0)
+        == Some(SpecWorkflowError::SymbolOutOfBounds));
+}
+
+/// Lemma 116: the symbol check runs before the reachability
+/// check. A workflow with an out-of-bounds pooled symbol and an
+/// unreachable node is rejected with the symbol error, not the
+/// reachability error (production `validate_parts` runs
+/// `validate_constants_symbols` before `validate_reachability`,
+/// workflow/mod.rs:1380 and 1382).
+pub proof fn lemma_symbols_before_reachability(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == Some(SpecWorkflowError::SymbolOutOfBounds),
+        spec_reachability_error(parts) == Some(SpecWorkflowError::UnreachableNode),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::SymbolOutOfBounds),
+{
+    assert(spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_exprs_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>);
+    assert(spec_symbols_error(parts) == Some(SpecWorkflowError::SymbolOutOfBounds));
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::SymbolOutOfBounds));
+}
+
+/// Lemma 117: in-bounds symbols reach the reachability check. A
+/// workflow whose pooled and BuildObject symbols all validate and
+/// whose reachability check fails is rejected with the
+/// reachability error, not the symbol error (production
+/// `validate_constants_symbols` and
+/// `validate_build_object_symbols` pass, then
+/// `validate_reachability` runs, workflow/mod.rs:1380-1382).
+pub proof fn lemma_symbols_within_bounds_reaches_reachability(parts: &SpecWorkflowParts)
+    requires
+        parts.nodes_meta.len() > 0,
+        parts.entry < parts.nodes_len,
+        parts.resource_contract.max_steps <= 10000,
+        parts.resource_contract.max_slots <= 1024,
+        parts.resource_contract.max_expr_stack <= 64,
+        parts.resource_contract.max_transitions_per_tick > 0,
+        parts.resource_contract.max_transitions_per_tick <= 10000,
+        parts.nodes_len <= parts.resource_contract.max_steps,
+        parts.slot_count <= parts.resource_contract.max_slots,
+        spec_expr_stack_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_exprs_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_accessors_path_error(parts, 0) == None::<SpecWorkflowError>,
+        spec_symbols_error(parts) == None::<SpecWorkflowError>,
+        spec_reachability_error(parts) == Some(SpecWorkflowError::UnreachableNode),
+    ensures
+        try_from_parts_pure_spec(parts)
+            == SpecValidationResult::Err(SpecWorkflowError::UnreachableNode),
+{
+    assert(spec_symbols_error(parts) == None::<SpecWorkflowError>);
+    assert(try_from_parts_pure_spec(parts)
+        == SpecValidationResult::Err(SpecWorkflowError::UnreachableNode));
+}
+
+/// Lemma 118: the constant-pool symbol check runs before the
+/// BuildObject field-symbol check inside the combined step-1g
+/// mirror. Both checks return the same `SymbolOutOfBounds`
+/// value, so their order is unobservable in the top-level chain;
+/// this pins the composition order at the spec level instead:
+/// when both checks fail, the combined mirror returns the
+/// constant-pool decision (production runs
+/// `validate_constants_symbols` before
+/// `validate_build_object_symbols`, workflow/mod.rs:1380-1381).
+pub proof fn lemma_constants_symbols_before_build_object(parts: &SpecWorkflowParts)
+    requires
+        spec_constants_symbols_error(parts, 0) == Some(SpecWorkflowError::SymbolOutOfBounds),
+        spec_build_object_symbols_error(parts, 0) == Some(SpecWorkflowError::SymbolOutOfBounds),
+    ensures
+        spec_symbols_error(parts)
+            == spec_constants_symbols_error(parts, 0),
+{
+    assert(spec_symbols_error(parts)
+        == spec_constants_symbols_error(parts, 0));
 }
 fn main() {}
 
